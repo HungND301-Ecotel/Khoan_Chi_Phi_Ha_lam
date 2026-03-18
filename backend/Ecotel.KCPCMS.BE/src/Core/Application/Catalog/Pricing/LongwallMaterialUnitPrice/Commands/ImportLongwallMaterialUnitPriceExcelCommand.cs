@@ -51,18 +51,21 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
         }
 
+        // Query 1 lần duy nhất, dùng lại cho cả validate lẫn map ID
         var processes = await _processRepository.GetAllAsync(disableTracking: true);
         var longwallParametersList = await _longwallParametersRepository.GetAllAsync(disableTracking: true);
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(disableTracking: true);
         var seamFaces = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(disableTracking: true);
 
-        // Validate references dùng data đã load, không query lại DB
-        if (!CheckExistedReferences(dtos, processes.Select(p => p.Name).ToHashSet(),
-                longwallParametersList.Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}").ToHashSet(),
-                cuttingThicknesses.Select(c => c.Value).ToHashSet(),
-                seamFaces.Select(s => s.Value).ToHashSet(),
-                technologies.Select(t => t.Value).ToHashSet()))
+        // Validate references từ data đã load, không query lại DB
+        if (!CheckExistedReferences(
+                dtos,
+                processes.Select(p => p.Name.Trim()).Where(n => n != null).ToHashSet()!,
+                longwallParametersList.Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}".Trim()).ToHashSet(),
+                cuttingThicknesses.Select(c => c.Value.Trim()).Where(n => n != null).ToHashSet()!,
+                seamFaces.Select(s => s.Value.Trim()).Where(n => n != null).ToHashSet()!,
+                technologies.Select(t => t.Value.Trim()).Where(n => n != null).ToHashSet()!))
         {
             throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
         }
@@ -73,14 +76,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var seamFaceIdMap = seamFaces.ToDictionary(s => s.Value, s => s.Id);
         var technologyIdMap = technologies.ToDictionary(t => t.Value, t => t.Id);
 
+        // Chỉ include Code (scalar), KHÔNG include navigation properties
+        // để tránh EF Core tracking conflict khi Update
         var dbEntities = await _materialUnitPriceRepository.GetAllAsync(
-            include: e => e
-                .Include(e => e.Code)
-                .Include(e => e.ProductionProcess)
-                .Include(e => e.LongwallParameters)
-                .Include(e => e.CuttingThickness)
-                .Include(e => e.SeamFace)
-                .Include(e => e.Technology),
+            include: e => e.Include(e => e.Code),
             disableTracking: true);
 
         var dbCodeLookup = new Dictionary<string, LongwallMaterialUnitPriceEntity>(StringComparer.OrdinalIgnoreCase);
@@ -102,6 +101,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         foreach (var dto in dtos)
         {
             var code = dto.Code.Trim();
+
             processIdMap.TryGetValue(dto.ProcessName, out var processId);
             longwallParametersIdMap.TryGetValue(dto.LongwallParametersName, out var longwallParametersId);
             cuttingThicknessIdMap.TryGetValue(dto.CuttingThicknessName, out var cuttingThicknessId);
