@@ -1,0 +1,129 @@
+# References:
+# 1. https://github.com/docker/awesome-compose/tree/master/frontnet-postgres
+
+###
+# Run: docker compose up --build
+
+##### NOTE ###########################################
+#### THIS DOCKER COMPOSE IS FOR LOCAL DEVELOPMENT ####
+######################################################
+services:
+  khl_reverseproxy:
+    image: ${REGISTRY}/khl_reverse_proxy_img:${VERSION}
+    ports:
+      # HOST_PORT:CONTAINER_PORT
+      - "4141:8888"
+    stdin_open: true
+    restart: always
+    networks:
+      - frontnet
+      - backnet
+    depends_on:
+      - khl_frontend
+      - khl_backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  khl_frontend:
+    image: ${REGISTRY}/khl_ecotel_frontend_img:${VERSION}
+    # target: development
+    stdin_open: true
+    volumes:
+      # For development only, to synced src code to container
+      # - ./ecotel_frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    # restart: always
+    networks:
+      - frontnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # ports:
+  #   - "3000:80"
+  # depends_on:
+  #   - ecotel_backend_service
+
+  khl_postgres:
+    image: postgres:latest
+    container_name: khl_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: defaultdb
+    ports:
+      - "15432:5432"
+    volumes:
+      - khl_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backnet
+
+  khl_pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: khl_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ecotel.com
+      PGADMIN_DEFAULT_PASSWORD: 123456
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5000:80"
+    depends_on:
+      khl_postgres:
+        condition: service_healthy
+    volumes:
+      - khl_pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backnet
+
+  # --- .NET API Service ---
+  khl_backend:
+    image: ${REGISTRY}/khl_ecotel_backend_img:${VERSION}
+    container_name: khl_ecotel_backend_img
+    ports:
+      - "5001:8175"
+    environment:
+      - ASPNETCORE_URLS=http://+:8175
+      - ASPNETCORE_HTTP_PORTS=8175
+      - ASPNETCORE_HTTPs_PORTS=8175
+      - ASPNETCORE_ENVIRONMENT=Production
+    depends_on:
+      khl_postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8175/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - backnet
+    restart: unless-stopped
+
+networks:
+  frontnet:
+  backnet:
+  # monitoring:
+
+volumes:
+  khl_postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/hdd/khl/khl_staging/khl_postgres_data
+      o: bind
+  khl_pgadmin_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/hdd/khl/khl_staging/khl_pgadmin_data
+      o: bind
