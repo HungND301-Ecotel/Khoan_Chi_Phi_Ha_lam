@@ -5,12 +5,12 @@ name: Deploy for release versions
 on:
   push:
     branches:
-      - main  # Deploy when code is pushed to 'main'
+      - main # Deploy when code is pushed to 'main'
 
 env:
-  WEBAPP_NAME: ECOTEL_QL_LENH_SX    # set this to your application's name
-  WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
-  NODE_VERSION: '20.x'                # set this to the node version to use
+  WEBAPP_NAME: ECOTEL_KHOAN_HA_LAM # set this to your application's name
+  WEBAPP_PACKAGE_PATH: "." # set this to the path to your web app project, defaults to the repository root
+  NODE_VERSION: "20.x" # set this to the node version to use
 
 # permissions:
 #   contents: read
@@ -28,8 +28,8 @@ jobs:
 
       - name: Create an .env file in frontend for building image
         run: |
-          echo "REACT_APP_BASE_API=${{ secrets.REACT_APP_BASE_API }}" > ./frontend/.env
-      
+          echo "REACT_APP_BASE_API=${{ secrets.VITE_API_BASE_URL }}" > ./frontend/.env
+
       - name: List Files
         run: ls -laR
 
@@ -49,36 +49,37 @@ jobs:
           host: ${{ secrets.RELEASE_HOST }}
           username: ${{ secrets.RELEASE_USER }}
           key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
           script: |
-            mkdir -p /home/${{ secrets.RELEASE_USER }}/ecotel_kvd/deployment/release
-      
+            mkdir -p /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/release
+
       - name: Transfer docker-compose file to VPS for deployment
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.RELEASE_HOST }}
           username: ${{ secrets.RELEASE_USER }}
           key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
           source: "deployment/release/*"
-          target: "/home/${{ secrets.RELEASE_USER }}/ecotel_kvd/deployment/release"
-          strip_components: 2   # Removes "deployment/release/" folder path!
-      
+          target: "/home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/release"
+          strip_components: 2 # Removes "deployment/release/" folder path!
+
       - name: Clean up containers and stuff via SSH
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.RELEASE_HOST }}
           username: ${{ secrets.RELEASE_USER }}
           key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
           script: |
             # Change to release deployment directory
-            cd /home/${{ secrets.RELEASE_USER }}/ecotel_kvd/deployment/release 
+            cd /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/release 
             # Debug info
             pwd
             ls -al
             docker image prune -f
             docker compose -f release-docker-compose.yaml down # always down first
             docker ps
-            
-          
 
       - name: Deploy to release via SSH
         uses: appleboy/ssh-action@v0.1.7
@@ -86,9 +87,10 @@ jobs:
           host: ${{ secrets.RELEASE_HOST }}
           username: ${{ secrets.RELEASE_USER }}
           key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
           script: |
             ### Change to release deployment directory
-            cd /home/${{ secrets.RELEASE_USER }}/ecotel_kvd/deployment/release 
+            cd /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/release 
             ### Clean up unused images
             docker image prune -f # clean up unused images
             ### Provide permissions and start the application

@@ -8,7 +8,6 @@
 #### THIS DOCKER COMPOSE IS FOR LOCAL DEVELOPMENT ####
 ######################################################
 services:
-
   kvd_reverse_proxy_service:
     image: kvd_reverse_proxy_img
     build:
@@ -55,8 +54,6 @@ services:
   # depends_on:
   #   - ecotel_backend_service
 
-  
-  
   kvd_Backend_service:
     env_file:
       - ./backend/.env
@@ -151,7 +148,6 @@ services:
 #       max-size: "10m"
 #       max-file: "3"
 
-
 networks:
   frontnet:
   backnet:
@@ -159,5 +155,4 @@ networks:
 
 # volumes:
 #   grafana-storage:
-
 

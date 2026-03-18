@@ -4,20 +4,19 @@
 # Run the commands:
 # a. Build: $ docker compose -f docker-compose-build.yaml build --parallel
 # b. Push:  $ docker compose -f docker-compose-build.yaml push
-##### 
+#####
 services:
-  kvd_reverseproxy:
+  khl_reverseproxy:
     build:
       context: ./reverse_proxy
-    image: ${REGISTRY}/kvd_reverse_proxy_img:${VERSION}
+    image: ${REGISTRY}/khl_reverse_proxy_img:${VERSION}
 
-  kvd_backend:
+  khl_backend:
     build:
       context: ./backend
-    image: ${REGISTRY}/kvd_ecotel_backend_img:${VERSION}
+    image: ${REGISTRY}/khl_ecotel_backend_img:${VERSION}
 
-  kvd_frontend:
+  khl_frontend:
     build:
       context: ./frontend
-    image: ${REGISTRY}/kvd_ecotel_frontend_img:${VERSION}
-  
+    image: ${REGISTRY}/khl_ecotel_frontend_img:${VERSION}
