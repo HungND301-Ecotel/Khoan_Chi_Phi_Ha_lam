@@ -51,19 +51,24 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
         }
 
-        if (!(await CheckExistedReferences(dtos)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
-
         var processes = await _processRepository.GetAllAsync(disableTracking: true);
-        var longwallParameters = await _longwallParametersRepository.GetAllAsync(disableTracking: true);
+        var longwallParametersList = await _longwallParametersRepository.GetAllAsync(disableTracking: true);
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(disableTracking: true);
         var seamFaces = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(disableTracking: true);
 
+        // Validate references dùng data đã load, không query lại DB
+        if (!CheckExistedReferences(dtos, processes.Select(p => p.Name).ToHashSet(),
+                longwallParametersList.Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}").ToHashSet(),
+                cuttingThicknesses.Select(c => c.Value).ToHashSet(),
+                seamFaces.Select(s => s.Value).ToHashSet(),
+                technologies.Select(t => t.Value).ToHashSet()))
+        {
+            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
+        }
+
         var processIdMap = processes.ToDictionary(p => p.Name, p => p.Id);
-        var longwallParametersIdMap = longwallParameters.ToDictionary(l => $"{l.Llc}-{l.Lkc}-{l.Mk}", l => l.Id);
+        var longwallParametersIdMap = longwallParametersList.ToDictionary(l => $"{l.Llc}-{l.Lkc}-{l.Mk}", l => l.Id);
         var cuttingThicknessIdMap = cuttingThicknesses.ToDictionary(c => c.Value, c => c.Id);
         var seamFaceIdMap = seamFaces.ToDictionary(s => s.Value, s => s.Id);
         var technologyIdMap = technologies.ToDictionary(t => t.Value, t => t.Id);
@@ -181,44 +186,25 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         }
     }
 
-    private async Task<bool> CheckExistedReferences(List<LongwallMaterialUnitPriceExcelDto> dtoList)
+    private static bool CheckExistedReferences(
+        List<LongwallMaterialUnitPriceExcelDto> dtoList,
+        HashSet<string> dbProcessNames,
+        HashSet<string> dbLongwallParametersNames,
+        HashSet<string> dbCuttingThicknessNames,
+        HashSet<string> dbSeamFaceNames,
+        HashSet<string> dbTechnologyNames)
     {
-        var dbProcessNames = (await _processRepository.GetAllAsync(disableTracking: true))
-            .Select(p => p.Name.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var dbLongwallParametersNames = (await _longwallParametersRepository.GetAllAsync(disableTracking: true))
-            .Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}".Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var dbCuttingThicknessNames = (await _cuttingThicknessRepository.GetAllAsync(disableTracking: true))
-            .Select(c => c.Value.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var dbSeamFaceNames = (await _seamFaceRepository.GetAllAsync(disableTracking: true))
-            .Select(s => s.Value.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var dbTechnologyNames = (await _technologyRepository.GetAllAsync(disableTracking: true))
-            .Select(t => t.Value.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
         var excelProcesses = dtoList.Select(d => d.ProcessName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
         var excelLongwallParameters = dtoList.Select(d => d.LongwallParametersName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
         var excelCuttingThicknesses = dtoList.Select(d => d.CuttingThicknessName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
         var excelSeamFaces = dtoList.Select(d => d.SeamFaceName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
         var excelTechnologies = dtoList.Select(d => d.TechnologyName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
 
-        return excelProcesses.All(name => dbProcessNames.Contains(name))
-            && excelLongwallParameters.All(name => dbLongwallParametersNames.Contains(name))
-            && excelCuttingThicknesses.All(name => dbCuttingThicknessNames.Contains(name))
-            && excelSeamFaces.All(name => dbSeamFaceNames.Contains(name))
-            && excelTechnologies.All(name => dbTechnologyNames.Contains(name));
+        return excelProcesses.All(name => dbProcessNames.Contains(name!))
+            && excelLongwallParameters.All(name => dbLongwallParametersNames.Contains(name!))
+            && excelCuttingThicknesses.All(name => dbCuttingThicknessNames.Contains(name!))
+            && excelSeamFaces.All(name => dbSeamFaceNames.Contains(name!))
+            && excelTechnologies.All(name => dbTechnologyNames.Contains(name!));
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
