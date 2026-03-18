@@ -13,7 +13,8 @@ services:
 
   khl_backend:
     build:
-      context: ./backend/Ecotel.KCPCMS.BE/src/Presentation/Host
+      context: ./backend/Ecotel.KCPCMS.BE
+      dockerfile: src/Presentation/Host/Dockerfile
     image: ${REGISTRY}/khl_ecotel_backend_img:${VERSION}
 
   khl_frontend:
