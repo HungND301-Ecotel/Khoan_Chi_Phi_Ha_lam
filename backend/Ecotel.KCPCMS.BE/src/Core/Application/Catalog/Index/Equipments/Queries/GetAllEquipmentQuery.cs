@@ -1,0 +1,35 @@
+﻿using Application.Catalog.Index.Equipments.Specifications;
+using Application.Common.Models;
+using Application.Common.Persistence;
+using Application.Common.Services;
+using Application.Dto.Catalog.Equipment;
+using Domain.Entities.Index;
+using MediatR;
+
+namespace Application.Catalog.Index.Equipments.Queries;
+
+public record GetAllEquipmentQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination, DateTime Date) : IRequest<PaginationResponse<EquipmentDto>>;
+
+public class GetAllEquipmentQueryHandler(IPaginationService paginationService, IReadRepository<Equipment> equipmentRepository) : IRequestHandler<GetAllEquipmentQuery, PaginationResponse<EquipmentDto>>
+{
+    public async Task<PaginationResponse<EquipmentDto>> Handle(GetAllEquipmentQuery request, CancellationToken cancellationToken)
+    {
+        var filter = new PaginationFilter
+        {
+            PageNumber = request.PageIndex,
+            PageSize = request.PageSize,
+            IgnorePagination = request.IgnorePagination
+        };
+
+        var spec = new EquipmentsByPaginationSpec(filter, request.Search, request.Date);
+
+        return await paginationService.PaginatedListAsync(
+            repository: equipmentRepository,
+            spec: spec,
+            pageNumber: filter.PageNumber,
+            pageSize: filter.PageSize,
+            ignorePagination: filter.IgnorePagination,
+            cancellationToken: cancellationToken);
+    }
+}
+

@@ -1,0 +1,95 @@
+﻿using Application.Common.Caching;
+using Application.Common.Exceptions;
+using Application.Common.Repositories;
+using Application.Common.UnitOfWork;
+using Application.Dto.Catalog.MaterialUnitPrice;
+using Application.Interfaces.Services;
+using Domain.Entities.Index;
+using Domain.Entities.Pricing.MaterialUnitPrice;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Shared.Constants;
+
+namespace Application.Catalog.Pricing.MaterialUnitPrice.Commands;
+
+public record UpdateMaterialUnitPriceCommand(UpdateMaterialUnitPriceDto UpdateModel) : IRequest<bool>;
+
+public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService, ICacheService cacheService) : IRequestHandler<UpdateMaterialUnitPriceCommand, bool>
+{
+    private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
+    private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
+    private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
+    private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
+    private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
+
+    private const string CacheSignalKey = "ProductUnitPrice";
+
+    public async Task<bool> Handle(UpdateMaterialUnitPriceCommand request, CancellationToken cancellationToken)
+    {
+
+        if (await _materialUnitPriceRepository.AnyAsync(m =>
+            m.StartMonth < request.UpdateModel.EndMonth &&
+            m.EndMonth > request.UpdateModel.StartMonth &&
+            m.ProcessId == request.UpdateModel.ProcessId &&
+            m.PassportId == request.UpdateModel.PassportId &&
+            m.HardnessId == request.UpdateModel.HardnessId &&
+            m.InsertItemId == request.UpdateModel.InsertItemId &&
+            m.SupportStepId == request.UpdateModel.SupportStepId &&
+            m.Id != request.UpdateModel.Id))
+        {
+            throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+        }
+
+        var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
+            predicate: m => m.Id == request.UpdateModel.Id,
+            include: m => m.Include(m => m.Code),
+            disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
+
+        if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
+        {
+            throw new ConflictException(CustomResponseMessage.MaterialUnitPriceCodeAlreadyExists);
+        }
+
+        bool processTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.UpdateModel.ProcessId);
+        bool passportTask = await _passportRepository.AnyAsync(p => p.Id == request.UpdateModel.PassportId);
+        bool hardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.UpdateModel.HardnessId);
+        bool insertItemTask = await _insertItemRepository.AnyAsync(p => p.Id == request.UpdateModel.InsertItemId);
+        bool supportStepTask = await _supportStepRepository.AnyAsync(p => p.Id == request.UpdateModel.SupportStepId);
+
+        var checkData = processTask && passportTask && hardnessTask && insertItemTask && supportStepTask;
+        if (!checkData)
+        {
+            throw new BadRequestException(CustomResponseMessage.OneOrMoreReferencedSpecificationIdsInvalid);
+        }
+
+        await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
+        try
+        {
+            materialUnitPrice.Update(
+                request.UpdateModel.Code,
+                request.UpdateModel.ProcessId,
+                request.UpdateModel.PassportId,
+                request.UpdateModel.HardnessId,
+                request.UpdateModel.InsertItemId,
+                request.UpdateModel.SupportStepId,
+                null,
+                request.UpdateModel.StartMonth,
+                request.UpdateModel.EndMonth,
+                request.UpdateModel.TotalPrice
+                );
+
+            _materialUnitPriceRepository.Update(materialUnitPrice);
+            await unitOfWork.SaveChangesAsync();
+            await unitOfWork.CommitAsync(cancellationToken);
+
+            cacheService.InvalidateGroup(CacheSignalKey);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
+        return true;
+    }
+}

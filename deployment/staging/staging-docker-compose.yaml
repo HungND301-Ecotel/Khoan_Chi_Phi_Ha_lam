@@ -1,0 +1,162 @@
+# References:
+# 1. https://github.com/docker/awesome-compose/tree/master/frontnet-postgres
+
+###
+# Run: docker compose up --build
+
+##### NOTE ###########################################
+#### THIS DOCKER COMPOSE IS FOR LOCAL DEVELOPMENT ####
+######################################################
+services:
+
+  kvd_reverse_proxy_service:
+    image: ${REGISTRY}/kvd_reverse_proxy_img:${VERSION}
+    ports:
+      # HOST_PORT:CONTAINER_PORT
+      - "8787:8888"
+    stdin_open: true
+    restart: always
+    networks:
+      - frontnet
+      - backnet
+    depends_on:
+      - kvd_Frontend_service
+      - kvd_Backend_service
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  kvd_Frontend_service:
+    image: ${REGISTRY}/kvd_ecotel_frontend_img:${VERSION}
+    # target: development
+    stdin_open: true
+    volumes:
+      # For development only, to synced src code to container
+      # - ./ecotel_frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    # restart: always
+    networks:
+      - frontnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # ports:
+  #   - "3000:80"
+  # depends_on:
+  #   - ecotel_backend_service
+
+  
+  
+  kvd_Backend_service:
+    env_file:
+      - .env_backend
+    image: ${REGISTRY}/kvd_ecotel_backend_img:${VERSION}
+    build:
+      context: ./backend
+    # target: development
+    stdin_open: true
+    volumes:
+      # For development only, to synced src code to container
+      # - ./Backend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - kvd_db
+    # ports:
+    #   - "8080:8080"
+    # restart: always
+    networks:
+      - backnet
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  kvd_db:
+    image: mongo
+    container_name: kvd_mongo_db
+    #restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - kvd_data:/data/db
+    networks:
+      - backnet
+    ports:
+      - "27019:27017"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# kvd_grafana:
+#   image: grafana/grafana
+#   container_name: kvd_grafana
+#   ports:
+#     - "5000:3000"
+#   environment:
+#     - GF_SECURITY_ADMIN_USER=admin
+#     - GF_SECURITY_ADMIN_PASSWORD=admin
+#   volumes:
+#     - grafana-storage:/var/lib/grafana
+#   networks:
+#     - monitoring
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
+
+# kvd_loki:
+#   image: grafana/loki:2.9.0
+#   container_name: kvd_loki
+#   ports:
+#     - "3200:3100"
+#   command: -config.file=/etc/loki/local-config.yaml
+#   networks:
+#     - monitoring
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
+
+# kvd_promtail:
+#   image: grafana/promtail:2.9.0
+#   container_name: kvd_promtail
+#   volumes:
+#     - /var/log:/var/log
+#     - /etc/machine-id:/etc/machine-id
+#     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+#     - /var/run/docker.sock:/var/run/docker.sock
+#     - ./promtail-config.yaml:/etc/promtail/promtail.yaml
+#   command: -config.file=/etc/promtail/promtail.yaml
+#   networks:
+#     - monitoring
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
+
+
+networks:
+  frontnet:
+  backnet:
+  # monitoring:
+
+volumes:
+  kvd_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/hdd/kvd/kvd_staging/kvd_data
+      o: bind
+
+

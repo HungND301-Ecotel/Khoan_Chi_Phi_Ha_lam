@@ -1,0 +1,182 @@
+﻿using Application.Catalog.Production.AcceptanceReports.Commands;
+using Application.Catalog.Production.AcceptanceReports.Queries;
+using Application.Catalog.Production.ProductionOutputs.Commands;
+using Application.Catalog.Production.ProductionOutputs.Queries;
+using Application.Dto.Catalog.AcceptanceReport;
+using Application.Dto.Catalog.ProductionOutput;
+using Host.Controllers.Base;
+using Microsoft.AspNetCore.Mvc;
+using NSwag.Annotations;
+using Shared.Constants;
+
+namespace Host.Controllers.Catalog;
+
+public class ProductionController : BaseNoAuthController
+{
+    #region ProductionOutput
+
+    [HttpGet("ProductionOutput")]
+    [OpenApiOperation("Get All ProductionOutput", "")]
+    public async Task<IActionResult> GetAllProductionOutput([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllProductionOutputsQuery(pageIndex, pageSize, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ProductionOutput/{id:guid}")]
+    [OpenApiOperation("Get ProductionOutput By Id", "")]
+    public async Task<IActionResult> GetProductionOutputById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetProductionOutputByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ProductionOutput/{id:guid}/detail")]
+    [OpenApiOperation("Get ProductionOutput Detail", "Get production output with all acceptance report items grouped by category and material group")]
+    public async Task<IActionResult> GetProductionOutputDetail([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetProductionOutputDetailQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("ProductionOutput")]
+    [OpenApiOperation("Create New ProductionOutput", "")]
+    public async Task<IActionResult> CreateProductionOutput([FromBody] CreateProductionOutputDto createModel)
+    {
+        var result = await Mediator.Send(new CreateProductionOutputCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ProductionOutput")]
+    [OpenApiOperation("Update ProductionOutput", "")]
+    public async Task<IActionResult> UpdateProductionOutput([FromBody] ProductionOutputDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateProductionOutputCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("ProductionOutputList")]
+    [OpenApiOperation("Create ProductionOutput List", "")]
+    public async Task<IActionResult> CreateProductionOutputList([FromBody] IList<CreateProductionOutputDto> createModels)
+    {
+        var result = await Mediator.Send(new CreateProductionOutputListCommand(createModels));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ProductionOutputList")]
+    [OpenApiOperation("Update ProductionOutput List", "")]
+    public async Task<IActionResult> UpdateProductionOutputList([FromBody] IList<ProductionOutputDto> updateModels)
+    {
+        var result = await Mediator.Send(new UpdateProductionOutputListCommand(updateModels));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("ProductionOutput/{deleteId:guid}")]
+    [OpenApiOperation("Delete ProductionOutput", "")]
+    public async Task<IActionResult> DeleteProductionOutput([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteProductionOutputCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+
+    [HttpDelete("ProductionOutput")]
+    [OpenApiOperation("Delete ProductionOutput List", "")]
+    public async Task<IActionResult> DeleteProductionOutputList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteProductionOutputListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region AcceptanceReport
+
+    [HttpPost("AcceptanceReport/UploadFile/{productionOutputId}")]
+    [OpenApiOperation("Upload AcceptanceReport File", "Upload Excel file to process acceptance report items")]
+    [DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadAcceptanceReportFile([FromForm] IFormFile file, [FromRoute] Guid productionOutputId)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(CustomResponseMessage.FileEmpty);
+        }
+
+        var result = await Mediator.Send(new UploadAcceptanceReportFileCommand(file, productionOutputId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("AcceptanceReport/{id:guid}")]
+    [OpenApiOperation("Get AcceptanceReport By Id", "Get detail of acceptance report with items")]
+    public async Task<IActionResult> GetAcceptanceReportById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetAcceptanceReportByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("AcceptanceReport")]
+    [OpenApiOperation("Create AcceptanceReport", "Create new acceptance report with items")]
+    public async Task<IActionResult> CreateAcceptanceReport([FromBody] CreateAcceptanceReportDto createModel)
+    {
+        var result = await Mediator.Send(new CreateAcceptanceReportCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("AcceptanceReport")]
+    [OpenApiOperation("Update AcceptanceReport", "Update new acceptance report with items")]
+    public async Task<IActionResult> UpdateAcceptanceReport([FromBody] UpdateAcceptanceReportDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateAcceptanceReportCommand(updateModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("AcceptanceReport/{id:guid}/download")]
+    [OpenApiOperation("Download AcceptanceReport Excel", "Download excel file for acceptance report")]
+    public async Task<IActionResult> DownloadAcceptanceReportExcel([FromRoute] Guid id)
+    {
+        var excelBytes = await Mediator.Send(new DownloadAcceptanceReportExcelQuery(id));
+        return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"AcceptanceReport_{id:N}.xlsx");
+    }
+
+    [HttpGet("AcceptanceReport/{id:guid}/additional-cost")]
+    [OpenApiOperation("Get All Additional Costs", "Get all additional cost items grouped by type")]
+    public async Task<IActionResult> GetAllAcceptanceReportAdditionalCost([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetAllAcceptanceReportAdditionalCostQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking")]
+    [OpenApiOperation("Get Long-term Item Tracking", "Get all long-term items with tracking logs (TH1 & TH2)")]
+    public async Task<IActionResult> GetAllAcceptanceReportItemLog([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetAllAcceptanceReportItemLogQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking/detail")]
+    [OpenApiOperation("Get Detail Long-term Material Cost", "Get detail long-term material cost with latest tracking information")]
+    public async Task<IActionResult> GetDetailLongTermTracking([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetDetailLongTermTrackingQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("AcceptanceReport/long-term-tracking")]
+    [OpenApiOperation("Update Allocation Ratio", "Update allocation ratio and recalculate log values")]
+    public async Task<IActionResult> UpdateAcceptanceReportItemLog([FromBody] UpdateAcceptanceReportItemLogDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateAcceptanceReportItemLogCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPut("AcceptanceReport/long-term-tracking/list")]
+    [OpenApiOperation("Update Allocation Ratio List", "Update allocation ratio for multiple items and recalculate log values")]
+    public async Task<IActionResult> UpdateAcceptanceReportItemLogList([FromBody] IList<UpdateAcceptanceReportItemLogDto> updateModels)
+    {
+        var result = await Mediator.Send(new UpdateAcceptanceReportItemLogListCommand(updateModels));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    #endregion
+}
+

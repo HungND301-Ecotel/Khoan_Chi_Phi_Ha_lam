@@ -1,0 +1,8 @@
+{
+	"singleQuote": true,
+	"endOfLine": "lf",
+	"tabWidth": 2,
+	"useTabs": true,
+	"jsxSingleQuote": true,
+	"plugins": ["prettier-plugin-tailwindcss"]
+}

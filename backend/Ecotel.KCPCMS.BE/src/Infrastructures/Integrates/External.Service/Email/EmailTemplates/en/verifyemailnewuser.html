@@ -1,0 +1,179 @@
+<!--
+  Verify Email New User Email Template (English)
+
+  Available variables that will be replaced by the backend:
+  - {WEBSITE_NAME}         : The name of the website/application
+  - {LOGO_URL}             : URL to the website logo
+  - {COMPANY_NAME}         : Company name for branding
+  - {SUPPORT_EMAIL}        : Support email address
+  - {COMPANY_ADDRESS}      : Company physical address
+  - {COMPANY_PHONE}        : Company phone number
+  - {FACEBOOK_URL}         : Facebook social media link
+  - {TWITTER_URL}          : Twitter social media link
+  - {INSTAGRAM_URL}        : Instagram social media link
+  - {LINKEDIN_URL}         : LinkedIn social media link
+  - {YOUTUBE_URL}          : YouTube social media link
+  - {COPYRIGHT}            : Copyright text with year
+  - {WEBSITE_URL}          : Main website URL
+  - {USER}                 : User's name or display name
+  - {EMAIL}                : User's email address
+  - {VERIFICATION_LINK}    : Email verification link
+
+  Template-specific variables:
+  These variables are dynamically populated when the email is sent.
+-->
+<!DOCTYPE html>
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en-US">
+
+<head>
+    <title>{WEBSITE_NAME} - Verify Your Email Address</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch><o:AllowPNG /></o:OfficeDocumentSettings></xml><![endif]-->
+    <!--[if !mso]><!-->
+    <link href="https://fonts.googleapis.com/css?family=Abril+Fatface" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Cabin" rel="stylesheet" type="text/css">
+    <!--<![endif]-->
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f9;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+            .header img {
+                max-height: 50px;
+                margin-bottom: 20px;
+            }
+
+        .content {
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .verification-button {
+            display: inline-block;
+            background-color: #0f9595;
+            color: #ffffff !important;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+            .verification-button:hover {
+                background-color: #0d7d7d;
+            }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eeeeee;
+            text-align: center;
+            color: #666666;
+            font-size: 12px;
+        }
+
+        .social-links {
+            margin: 15px 0;
+        }
+
+            .social-links a {
+                display: inline-block;
+                margin: 0 5px;
+            }
+
+        a[x-apple-data-detectors] {
+            color: inherit !important;
+            text-decoration: inherit !important;
+        }
+
+        #MessageViewBody a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        p {
+            line-height: inherit
+        }
+
+        @media (max-width:700px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .verification-button {
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body style="margin: 0; background-color: #f8f8f9; padding: 20px; -webkit-text-size-adjust: none; text-size-adjust: none;">
+    <div class="container">
+        <div class="header">
+            <img src="{LOGO_URL}" alt="{WEBSITE_NAME}" />
+            <h1 style="color: #0f9595; margin: 0;">Welcome to {WEBSITE_NAME}!</h1>
+        </div>
+
+        <div class="content">
+            <h2 style="color: #333333;">Verify Your Email Address</h2>
+            <p>Hi {USER},</p>
+            <p>Thank you for signing up for {WEBSITE_NAME}! To complete your registration and start using your account, please verify your email address by clicking the button below:</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{VERIFICATION_LINK}" class="verification-button">Verify Email Address</a>
+            </div>
+
+            <p>If the button above doesn't work, you can also click on this link or copy and paste it into your browser:</p>
+            <p style="word-break: break-all; color: #0f9595;"><a href="{VERIFICATION_LINK}" style="color: #0f9595;">{VERIFICATION_LINK}</a></p>
+
+            <p>This verification link will expire in 24 hours for security reasons.</p>
+            <p>If you didn't create an account with us, please ignore this email.</p>
+
+            <p>
+                Welcome aboard!<br>
+                Your friends at {WEBSITE_NAME}
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><a href="{WEBSITE_URL}" style="color: #0f9595; text-decoration: none;">{WEBSITE_URL}</a></p>
+
+            <div class="social-links">
+                <a href="{FACEBOOK_URL}" target="_blank"><img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/circle-gray/facebook@2x.png" width="24" height="24" alt="Facebook" style="border: 0;"></a>
+                <a href="{INSTAGRAM_URL}" target="_blank"><img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/circle-gray/instagram@2x.png" width="24" height="24" alt="Instagram" style="border: 0;"></a>
+                <a href="{LINKEDIN_URL}" target="_blank"><img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/circle-gray/linkedin@2x.png" width="24" height="24" alt="LinkedIn" style="border: 0;"></a>
+                <a href="{YOUTUBE_URL}" target="_blank"><img src="https://app-rsrc.getbee.io/public/resources/social-networks-icon-sets/circle-gray/youtube@2x.png" width="24" height="24" alt="YouTube" style="border: 0;"></a>
+            </div>
+
+            <p>{COMPANY_ADDRESS} / <a href="mailto:{SUPPORT_EMAIL}" style="color: #0f9595;">{SUPPORT_EMAIL}</a> / {COMPANY_PHONE}</p>
+            <p>{COPYRIGHT}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <None Remove="Email\EmailTemplates\en\currentemail-link.html" />
+      <None Remove="Email\EmailTemplates\en\currentemail.html" />
+      <None Remove="Email\EmailTemplates\en\loginemailcode.html" />
+      <None Remove="Email\EmailTemplates\en\verifyemailnewuser.html" />
+      <None Remove="Email\EmailTemplates\vi\currentemail-link.html" />
+      <None Remove="Email\EmailTemplates\vi\currentemail.html" />
+      <None Remove="Email\EmailTemplates\vi\loginemailcode.html" />
+      <None Remove="Email\EmailTemplates\vi\verifyemailnewuser.html" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="Email\EmailTemplates\en\changepwdsuccess.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\en\currentemail-link.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\en\currentemail.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\en\loginemailcode.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\en\resetpassword.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\en\verifyemailnewuser.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\changepwdsuccess.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\currentemail-link.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\currentemail.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\loginemailcode.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\resetpassword.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Email\EmailTemplates\vi\verifyemailnewuser.html">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MailKit" />
+        <PackageReference Include="MimeKit" />
+        <PackageReference Include="Refit" />
+        <PackageReference Include="Refit.HttpClientFactory" /> 
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\Core\Application\Application.csproj" />
+    </ItemGroup>
+ 
+</Project>

@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+      <Compile Remove="Catalog\Doctors\**" />
+      <Compile Remove="Catalog\Pricing\ActualElectricityCost\**" />
+      <Compile Remove="Catalog\Pricing\ActualMaintainCost\**" />
+      <Compile Remove="Catalog\Pricing\ActualMaterialCost\**" />
+      <Compile Remove="Catalog\Users\Params\**" />
+      <Compile Remove="Dto\Persistence\Catalog\Common\**" />
+      <EmbeddedResource Remove="Catalog\Doctors\**" />
+      <EmbeddedResource Remove="Catalog\Pricing\ActualElectricityCost\**" />
+      <EmbeddedResource Remove="Catalog\Pricing\ActualMaintainCost\**" />
+      <EmbeddedResource Remove="Catalog\Pricing\ActualMaterialCost\**" />
+      <EmbeddedResource Remove="Catalog\Users\Params\**" />
+      <EmbeddedResource Remove="Dto\Persistence\Catalog\Common\**" />
+      <None Remove="Catalog\Doctors\**" />
+      <None Remove="Catalog\Pricing\ActualElectricityCost\**" />
+      <None Remove="Catalog\Pricing\ActualMaintainCost\**" />
+      <None Remove="Catalog\Pricing\ActualMaterialCost\**" />
+      <None Remove="Catalog\Users\Params\**" />
+      <None Remove="Dto\Persistence\Catalog\Common\**" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Ardalis.Specification" />
+        <PackageReference Include="AWSSDK.S3" />
+        <PackageReference Include="ClosedXML" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+        <PackageReference Include="Mapster" />
+        <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" />
+        <PackageReference Include="Microsoft.Extensions.Localization" />
+        <PackageReference Include="Microsoft.Graph" />
+        <PackageReference Include="Newtonsoft.Json" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" />
+        <PackageReference Include="TimeZoneConverter" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Domain\Domain.csproj" />
+        <ProjectReference Include="..\Shared\Shared.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Dto\Catalog\ActualElectricityCost\" />
+      <Folder Include="Dto\Catalog\ActualMaintainCost\" />
+      <Folder Include="Dto\Catalog\ActualMaterialCost\" />
+      <Folder Include="Dto\Catalog\MaterialUnitPriceAssignmentCode\" />
+    </ItemGroup>
+</Project>

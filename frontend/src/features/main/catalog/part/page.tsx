@@ -1,0 +1,76 @@
+import { ActionDialogProps, DataTable } from '@/components/datatable';
+import { usePopup } from '@/components/popup';
+import { API } from '@/constants/api-enpoint';
+import { useMeta } from '@/data/meta/meta-hook';
+import { PartForm } from '@/features/main/catalog/part/actions';
+import {
+	CATALOG_PART_COLUMNS,
+	Part,
+} from '@/features/main/catalog/part/columns';
+import { api } from '@/lib/api';
+
+export function MainCatalogPartPage() {
+	const popup = usePopup();
+	const { breadcrumb } = useMeta();
+
+	const handleDelete = async ({ data }: ActionDialogProps<Part>) => {
+		try {
+			const selected = data.table.getFilteredSelectedRowModel();
+			const rows = selected.rows.map((row) => row.original.id);
+
+			const res = await api.delete(API.CATALOG.PART.DELETES, rows);
+
+			if (!res.success) throw new Error(res.message);
+
+			popup.success(`Đã xoá ${rows.length} ${breadcrumb}`);
+			await data.refresh();
+			data.table.toggleAllRowsSelected(false);
+		} catch (error) {
+			popup.error(error);
+		}
+	};
+
+	const handleExport = async () => {
+		try {
+			const filename = await api.export(API.CATALOG.PART.EXPORT);
+			popup.success(`Đã xuất file ${filename}`);
+		} catch (error) {
+			popup.error(error);
+		}
+	};
+
+	const handleImport = async (
+		file: File,
+		data?: ActionDialogProps<Part>['data'],
+	) => {
+		try {
+			const result = await api.import(API.CATALOG.PART.IMPORT, file);
+			if (typeof result === 'string') {
+				popup.success(`Đã tải về danh sách lỗi: ${result}`);
+			} else {
+				popup.success(`Nhập dữ liệu thành công`);
+				await data?.refresh();
+			}
+		} catch (error) {
+			popup.error(error);
+		}
+	};
+
+	return (
+		<DataTable
+			url={API.CATALOG.PART.LIST}
+			columns={CATALOG_PART_COLUMNS}
+			filters={[
+				{ key: 'code', label: 'Mã phụ tùng' },
+				{ key: 'name', label: 'Tên phụ tùng' },
+				{ key: 'equipmentCode', label: 'Mã thiết bị' },
+				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
+			]}
+			onCreate={(props) => <PartForm {...props} />}
+			onUpdate={(props) => <PartForm {...props} />}
+			onDelete={handleDelete}
+			onExport={handleExport}
+			onImport={handleImport}
+		/>
+	);
+}

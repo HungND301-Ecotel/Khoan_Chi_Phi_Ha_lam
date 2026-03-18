@@ -1,0 +1,52 @@
+using Domain.Common.Enums;
+
+namespace Application.Dto.Catalog.AcceptanceReport;
+
+public record AcceptanceReportDetailItemDto
+{
+    public required Guid Id { get; init; }
+    public required Guid AcceptanceReportId { get; init; }
+    public Guid? MaterialId { get; init; }
+    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+    public string? MaterialCode { get; init; }
+    public string? MaterialName { get; init; }
+    public string? PartCode { get; init; }
+    public string? PartName { get; init; }
+    public string? UnitOfMeasureName { get; init; }
+
+    public decimal PlanCost { get; init; }
+    public decimal ActualCost { get; init; }
+
+    public double IssuedQuantity { get; init; }
+    public double ShippedQuantity { get; init; }
+
+    public required AcceptanceReportItemType Type { get; init; }
+
+    // Vật tư tính vào doanh thu khoán
+    public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
+    public Guid? ProcessGroupId { get; init; }
+    public string? ProcessGroupCode { get; init; }
+    public string? ProcessGroupName { get; init; }
+    public required double MaterialsIncludedInContractRevenueQuantity { get; init; }
+
+    // Bổ sung chi phí
+    public required AdditionalCost AdditionalCost { get; init; }
+    public required double AdditionalCostQuantity { get; init; }
+
+    // Vật tư theo hạn mức
+    public required QuotaBasedMaterial QuotaBasedMaterial { get; init; }
+    public required QuotaBasedMaterialType QuotaBasedMaterialType { get; init; }
+    public required double QuotaBasedMaterialQuantity { get; init; }
+
+    // Tài sản
+    public required Asset Asset { get; init; }
+    public required double AssetMaterialQuantity { get; init; }
+}
+
+public record GetAcceptanceReportDetailDto
+{
+    public required Guid Id { get; init; }
+    public required Guid ProductionOutputId { get; init; }
+    public required string FilePath { get; init; }
+    public required List<AcceptanceReportDetailItemDto> Items { get; init; }
+}

@@ -1,0 +1,9 @@
+{
+  "Quartz": {
+    "Enabled": false
+    //"AutoCancelAppointment": {
+    //  "Enabled": true,
+    //  "Scheduled": "0 24 11 * * ?"
+    //}
+  }
+}
