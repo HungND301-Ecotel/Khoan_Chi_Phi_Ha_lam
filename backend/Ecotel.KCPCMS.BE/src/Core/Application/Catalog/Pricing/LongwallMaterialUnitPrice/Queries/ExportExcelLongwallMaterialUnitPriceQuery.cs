@@ -43,16 +43,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
         const int idCol = 1;
         const int startMonthCol = 2;
-        const int processCol = 3;
-        const int technologyCol = 4;
-        const int longwallParametersCol = 5;
-        const int cuttingThicknessCol = 6;
-        const int seamFaceStartCol = 7;
+        const int endMonthCol = 3;
+        const int processCol = 4;
+        const int technologyCol = 5;
+        const int longwallParametersCol = 6;
+        const int cuttingThicknessCol = 7;
+        const int seamFaceStartCol = 8;
 
         var fixedHeaders = new[]
         {
             (idCol, "Id"),
-            (startMonthCol, "Thời gian"),
+            (startMonthCol, "Thời gian bắt đầu"),
+            (endMonthCol, "Thời gian kết thúc"),
             (processCol, "Công đoạn sản xuất"),
             (technologyCol, "Công nghệ khai thác"),
             (longwallParametersCol, "Thông số lò chợ"),
@@ -112,12 +114,14 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             .GroupBy(data => new
             {
                 StartMonth = data.StartMonth.ToString("MM/yyyy"),
+                EndMonth = data.EndMonth.ToString("MM/yyyy"),
                 ProcessName = data.ProductionProcess?.Name?.Trim() ?? string.Empty,
                 TechnologyName = data.Technology?.Value?.Trim() ?? string.Empty,
                 LongwallParametersName = data.LongwallParameters != null ? $"{data.LongwallParameters.Llc}-{data.LongwallParameters.Lkc}-{data.LongwallParameters.Mk}" : string.Empty,
                 CuttingThicknessName = data.CuttingThickness?.Value?.Trim() ?? string.Empty
             })
             .OrderBy(group => group.Key.StartMonth)
+            .ThenBy(group => group.Key.EndMonth)
             .ThenBy(group => group.Key.ProcessName)
             .ThenBy(group => group.Key.TechnologyName)
             .ThenBy(group => group.Key.LongwallParametersName)
@@ -134,6 +138,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             }
 
             worksheet.Cell(rowIndex, startMonthCol).Value = group.Key.StartMonth;
+            worksheet.Cell(rowIndex, endMonthCol).Value = group.Key.EndMonth;
             worksheet.Cell(rowIndex, processCol).Value = group.Key.ProcessName;
             worksheet.Cell(rowIndex, technologyCol).Value = group.Key.TechnologyName;
             worksheet.Cell(rowIndex, longwallParametersCol).Value = group.Key.LongwallParametersName;

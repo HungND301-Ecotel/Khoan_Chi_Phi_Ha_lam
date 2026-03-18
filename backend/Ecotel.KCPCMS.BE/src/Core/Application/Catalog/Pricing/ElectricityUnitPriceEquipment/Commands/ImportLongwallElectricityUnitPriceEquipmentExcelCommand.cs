@@ -8,13 +8,12 @@ using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Shared.Constants;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 
 public record ImportLongwallElectricityUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork) 
+public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork)
     : IRequestHandler<ImportLongwallElectricityUnitPriceEquipmentExcelCommand, bool>
 {
     private readonly IWriteRepository<LongwallElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<LongwallElectricityUnitPriceEquipment>();
@@ -45,7 +44,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
         {
             equipmentIdMap.TryGetValue(d.EquipmentCode, out var equipmentId);
             var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = startMonth;
+            var endMonth = ParseMonthYear(d.EndMonth);
 
             if (d.Id != Guid.Empty)
             {

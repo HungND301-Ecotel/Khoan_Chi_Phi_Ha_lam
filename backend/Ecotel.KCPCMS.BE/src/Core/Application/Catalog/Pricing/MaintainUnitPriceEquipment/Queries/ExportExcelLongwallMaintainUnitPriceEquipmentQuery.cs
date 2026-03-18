@@ -216,10 +216,8 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
                 currentCol = 5;
                 foreach (var timeGroup in timeGroups)
                 {
-                    var maintainUnitPrice = timeGroup
-                        .FirstOrDefault(m => m.EquipmentId == equipmentGroup.Key.EquipmentId);
-
-                    var partEquipment = maintainUnitPrice?.MaintainUnitPriceEquipments
+                    var partEquipment = timeGroup
+                        .SelectMany(m => m.MaintainUnitPriceEquipments)
                         .FirstOrDefault(mpe => mpe.PartId == part.Id);
 
                     if (partEquipment != null)

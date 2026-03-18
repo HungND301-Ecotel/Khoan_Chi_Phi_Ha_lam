@@ -297,7 +297,7 @@ public class PricingController : BaseNoAuthController
     }
 
     [HttpDelete("MaintainUnitPriceEquipment")]
-    [OpenApiOperation("Delete SlideUnitPrice List", "")]
+    [OpenApiOperation("Delete MaintainUnitPriceEquipment List", "")]
     public async Task<IActionResult> DeleteMaintainUnitPriceEquipmenteList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentListCommand(deleteIds));

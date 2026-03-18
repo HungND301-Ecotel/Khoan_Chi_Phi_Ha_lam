@@ -40,7 +40,7 @@ public class DeleteMaintainUnitPriceEquipmentListCommandHandler(IUnitOfWork unit
                 .Include(m => m.MaintainUnitPriceEquipments)
                 .Include(m => m.PlannedMaintainCostAdjustmentFactors)
                 .ThenInclude(pmca => pmca.PlannedMaintainCost),
-            disableTracking: true);
+            disableTracking: false);
 
         if (itemsToDelete == null || !itemsToDelete.Any())
         {

@@ -1,19 +1,14 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using ClosedXML.Excel;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
+using ClosedXML.Excel;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing.MaterialUnitPrice;
-using LongwallMaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using LongwallMaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice;
 
 namespace Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 
@@ -100,7 +95,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             }
 
             var startMonth = ParseMonthYear(dto.StartMonth);
-            var endMonth = startMonth;
+            var endMonth = ParseMonthYear(dto.EndMonth);
 
             if (dbLookup.TryGetValue(key, out var existing))
             {
@@ -239,11 +234,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         const int idCol = 1;
         const int startMonthCol = 2;
-        const int processCol = 3;
-        const int technologyCol = 4;
-        const int longwallParametersCol = 5;
-        const int cuttingThicknessCol = 6;
-        const int seamFaceStartCol = 7;
+        const int endMonthCol = 3;
+        const int processCol = 4;
+        const int technologyCol = 5;
+        const int longwallParametersCol = 6;
+        const int cuttingThicknessCol = 7;
+        const int seamFaceStartCol = 8;
 
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
@@ -303,6 +299,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 startMonth = currentMonth;
             }
 
+            var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
+            if (string.IsNullOrWhiteSpace(endMonth))
+            {
+                endMonth = currentMonth;
+            }
+
             var fallbackCode = $"LWL-{Guid.NewGuid():N}"[..12].ToUpper();
 
             foreach (var (dmCol, ttCol, seamFaceName) in seamFacePositions)
@@ -334,7 +336,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     CuttingThicknessName = cuttingThicknessName,
                     SeamFaceName = seamFaceName,
                     StartMonth = startMonth,
-                    EndMonth = startMonth,
+                    EndMonth = endMonth,
                     TotalPrice = totalPrice
                 });
             }
@@ -360,6 +362,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     {
         return new(
             StartMonth: dto.StartMonth.Trim(),
+            EndMonth: dto.EndMonth.Trim(),
             ProcessName: dto.ProcessName.Trim(),
             TechnologyName: dto.TechnologyName.Trim(),
             LongwallParametersName: dto.LongwallParametersName.Trim(),
@@ -371,6 +374,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     {
         return new(
             StartMonth: entity.StartMonth.ToString("MM/yyyy"),
+            EndMonth: entity.EndMonth.ToString("MM/yyyy"),
             ProcessName: entity.ProductionProcess?.Name?.Trim() ?? string.Empty,
             TechnologyName: entity.Technology?.Value?.Trim() ?? string.Empty,
             LongwallParametersName: entity.LongwallParameters != null ? $"{entity.LongwallParameters.Llc}-{entity.LongwallParameters.Lkc}-{entity.LongwallParameters.Mk}" : string.Empty,
@@ -380,6 +384,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
     private sealed record LongwallLookupKey(
         string StartMonth,
+        string EndMonth,
         string ProcessName,
         string TechnologyName,
         string LongwallParametersName,
