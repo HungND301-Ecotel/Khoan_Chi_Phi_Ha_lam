@@ -17,6 +17,7 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
     {
         var listHiddenProperty = new List<string>();
         listHiddenProperty.Add(nameof(AdjustmentFactorExcelDto.Id));
+        listHiddenProperty.Add(nameof(AdjustmentFactorExcelDto.Type));
 
         var list = await _adjustmentFactorRepository.GetAllAsync(
             include: s => s
@@ -37,6 +38,7 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
         var dtoList = list.Select(s => new AdjustmentFactorExcelDto
         {
             Id = s.Id,
+            Type = (int)s.Type,
             Code = s.Code?.Value ?? "",
             Name = s.Name,
             ProcessGroupCode = s.ProcessGroup?.Code?.Value ?? ""

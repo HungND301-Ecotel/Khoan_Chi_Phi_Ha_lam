@@ -39,6 +39,27 @@ namespace Domain.Entities.Index
             };
         }
 
+        public static AdjustmentFactor Create(string code, AdjustmentFactorType type, string name, Guid processGroupId)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            return new AdjustmentFactor
+            {
+                Code = new Code(code.ToUpper()),
+                Name = name,
+                ProcessGroupId = processGroupId,
+                Type = type
+            };
+        }
+
         public static AdjustmentFactor Create(Guid id, string code, string name, Guid processGroupId)
         {
             if (string.IsNullOrWhiteSpace(code))
@@ -55,6 +76,28 @@ namespace Domain.Entities.Index
             {
                 Id = id,
                 Code = new Code(code.ToUpper()),
+                Name = name,
+                ProcessGroupId = processGroupId,
+            };
+        }
+
+        public static AdjustmentFactor Create(Guid id, AdjustmentFactorType type, string code, string name, Guid processGroupId)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            return new AdjustmentFactor
+            {
+                Id = id,
+                Code = new Code(code.ToUpper()),
+                Type = type,
                 Name = name,
                 ProcessGroupId = processGroupId,
             };
@@ -78,6 +121,27 @@ namespace Domain.Entities.Index
 
             Name = name;
             ProcessGroupId = processGroupId;
+        }
+
+        public void Update(string code, AdjustmentFactorType type, string name, Guid processGroupId)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+            }
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            if (Code != null)
+            {
+                Code.Value = code.ToUpper();
+            }
+
+            Name = name;
+            ProcessGroupId = processGroupId;
+            Type = type;
         }
 
         public void UpdateProcessGroupInfo(Guid processGroupId, string processGroupName)

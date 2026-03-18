@@ -1,4 +1,4 @@
-using Application.Common.Repositories;
+﻿using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Interfaces.Services;
@@ -27,6 +27,6 @@ public class ExportExcelCuttingThicknessQueryHandler(IExcelService excelService,
             Value = l.Value
         });
 
-        return excelService.ExportToExcel(dtoList, "Chi?u d�y c?t", listHiddenProperty);
+        return excelService.ExportToExcel(dtoList, "Chiều dày lớp khấu", listHiddenProperty);
     }
 }

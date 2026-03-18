@@ -35,15 +35,26 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
 
         //Map data to Entity Model
 
+        var adjustmentFactorCodes = dtos
+            .Select(d => ExtractAdjustmentFactorCode(d.AdjustmentFactorCode))
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Distinct()
+            .ToList();
+
         var adjusmentFactors = await _adjustmentFactorRepository.GetAllAsync(
-            predicate: p => dtos.Select(d => d.AdjustmentFactorCode).Contains(p.Code.Value),
+            predicate: p => adjustmentFactorCodes.Contains(p.Code.Value),
             include: p => p.Include(p => p.Code!),
             disableTracking: true);
-        var adjustmentFactorIdMap = adjusmentFactors.ToDictionary(p => p.Code.Value, p => p.Id);
+        var adjustmentFactorIdMap = adjusmentFactors
+            .Where(p => !string.IsNullOrWhiteSpace(p.Code?.Value))
+            .GroupBy(p => p.Code!.Value)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
         var excelDtos = dtos.Select(d =>
         {
-            if (adjustmentFactorIdMap.TryGetValue(d.AdjustmentFactorCode, out var adjustmentFactorId))
+            var adjustmentFactorCode = ExtractAdjustmentFactorCode(d.AdjustmentFactorCode);
+
+            if (adjustmentFactorIdMap.TryGetValue(adjustmentFactorCode, out var adjustmentFactorId))
             {
                 return AdjustmentFactorDescriptionEntity.Create(d.Id, d.Description, adjustmentFactorId, d.MaintenanceAdjustmentValue, d.ElectricityAdjustmentValue);
             }
@@ -122,10 +133,28 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
             .ToHashSet();
 
         var excelProcessCodes = dtoList
-            .Select(d => d.AdjustmentFactorCode?.Trim())
+            .Select(d => ExtractAdjustmentFactorCode(d.AdjustmentFactorCode))
             .Where(code => !string.IsNullOrEmpty(code))
             .Distinct();
 
         return excelProcessCodes.All(code => dbProcessCodes.Contains(code));
+    }
+
+    private static string ExtractAdjustmentFactorCode(string? adjustmentFactorCode)
+    {
+        if (string.IsNullOrWhiteSpace(adjustmentFactorCode))
+        {
+            return string.Empty;
+        }
+
+        var value = adjustmentFactorCode.Trim();
+        var separatorIndex = value.IndexOf(" - ", StringComparison.Ordinal);
+
+        if (separatorIndex < 0)
+        {
+            return value;
+        }
+
+        return value[(separatorIndex + 3)..].Trim();
     }
 }

@@ -19,7 +19,8 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
         listHiddenProperty.Add(nameof(AdjustmentFactorDescriptionExcelDto.Id));
 
         var list = await _adjustmentFactorDescriptionRepository.GetAllAsync(
-            include: s => s.Include(s => s.AdjustmentFactor).ThenInclude(a => a.Code!),
+            include: s => s.Include(s => s.AdjustmentFactor).ThenInclude(a => a.Code!)
+                            .Include(s => s.AdjustmentFactor).ThenInclude(a => a.ProcessGroup).ThenInclude(g => g.Code!),
             disableTracking: true);
 
         var adjustmentFactors = await _adjustmentFactorRepository.GetAllAsync(
@@ -35,7 +36,7 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
         var dtoList = list.Select(s => new AdjustmentFactorDescriptionExcelDto
         {
             Id = s.Id,
-            AdjustmentFactorCode = s.AdjustmentFactor.Code?.Value ?? "",
+            AdjustmentFactorCode = (s.AdjustmentFactor?.ProcessGroup!.Code!.Value + " - " + s.AdjustmentFactor!.Code?.Value) ?? "",
             Description = s.Description,
             MaintenanceAdjustmentValue = s.MaintenanceAdjustmentValue,
             ElectricityAdjustmentValue = s.ElectricityAdjustmentValue

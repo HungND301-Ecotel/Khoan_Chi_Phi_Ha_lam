@@ -3,6 +3,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -45,7 +46,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         {
             if (processGroupIdMap.TryGetValue(d.ProcessGroupCode, out var processGroupId))
             {
-                return AdjustmentFactorEntity.Create(d.Id, d.Code, d.Name, processGroupId);
+                return AdjustmentFactorEntity.Create(d.Id, (AdjustmentFactorType)d.Type, d.Code, d.Name, processGroupId);
             }
             else
             {
@@ -80,7 +81,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
                         throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId);
+                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Type, dto.Name, dto.ProcessGroupId);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -90,7 +91,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
                 {
                     throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
                 }
-                addList.Add(AdjustmentFactorEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId));
+                addList.Add(AdjustmentFactorEntity.Create(dto.Code?.Value ?? "", dto.Type, dto.Name, dto.ProcessGroupId));
             }
         }
 

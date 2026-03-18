@@ -1,4 +1,4 @@
-using Application.Common.Repositories;
+﻿using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Interfaces.Services;
@@ -29,6 +29,6 @@ public class ExportExcelLongwallParametersQueryHandler(IExcelService excelServic
             Mk = l.Mk
         });
 
-        return excelService.ExportToExcel(dtoList, "Th�ng s? longwall", listHiddenProperty);
+        return excelService.ExportToExcel(dtoList, "Thông số lò chợ", listHiddenProperty);
     }
 }

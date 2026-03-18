@@ -19,6 +19,7 @@ public class AdjustmentFactorDto : IDto
 public class AdjustmentFactorExcelDto
 {
     public Guid Id { get; set; }
+    public int Type { get; set; }
     [Display(Name = "Mã nhóm công đoạn sản xuất")]
     public string ProcessGroupCode { get; set; }
     [Display(Name = "Mã hệ số điều chỉnh")]
