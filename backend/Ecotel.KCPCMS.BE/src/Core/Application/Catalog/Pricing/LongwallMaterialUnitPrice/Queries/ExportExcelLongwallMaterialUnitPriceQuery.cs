@@ -41,18 +41,16 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Định mức vật tư lò chợ");
 
-        const int idCol = 1;
-        const int startMonthCol = 2;
-        const int endMonthCol = 3;
-        const int processCol = 4;
-        const int technologyCol = 5;
-        const int longwallParametersCol = 6;
-        const int cuttingThicknessCol = 7;
-        const int seamFaceStartCol = 8;
+        const int startMonthCol = 1;
+        const int endMonthCol = 2;
+        const int processCol = 3;
+        const int technologyCol = 4;
+        const int longwallParametersCol = 5;
+        const int cuttingThicknessCol = 6;
+        const int seamFaceStartCol = 7;
 
         var fixedHeaders = new[]
         {
-            (idCol, "Id"),
             (startMonthCol, "Thời gian bắt đầu"),
             (endMonthCol, "Thời gian kết thúc"),
             (processCol, "Công đoạn sản xuất"),
@@ -131,12 +129,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var rowIndex = 4;
         foreach (var group in groupedData)
         {
-            var representative = group.FirstOrDefault();
-            if (representative != null)
-            {
-                worksheet.Cell(rowIndex, idCol).Value = representative.Id.ToString();
-            }
-
             worksheet.Cell(rowIndex, startMonthCol).Value = group.Key.StartMonth;
             worksheet.Cell(rowIndex, endMonthCol).Value = group.Key.EndMonth;
             worksheet.Cell(rowIndex, processCol).Value = group.Key.ProcessName;
@@ -160,8 +152,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             rowIndex++;
         }
 
-        worksheet.Column(idCol).Hide();
-
         var lastDataRow = Math.Max(rowIndex - 1, 100);
         AddDropdownValidation(workbook, worksheet, processCol, processes.ToList(), lastDataRow, 1);
         AddDropdownValidation(workbook, worksheet, technologyCol, technologies.ToList(), lastDataRow, 2);
@@ -172,12 +162,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             ? seamFaceColumns.Last().ttCol
             : cuttingThicknessCol;
 
-        if (lastHeaderCol >= idCol)
-        {
-            var headerRange = worksheet.Range(1, idCol, 3, lastHeaderCol);
-            headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            headerRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        }
+        var headerRange = worksheet.Range(1, startMonthCol, 3, lastHeaderCol);
 
         foreach (var (columns, text) in headerWidthInstructions)
         {

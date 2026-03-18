@@ -4,7 +4,6 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
 {
     public class LongwallMaterialUnitPriceExcelDto
     {
-        public DefaultIdType Id { get; set; }
         [Display(Name = "Mã định mức vật liệu")]
         public string Code { get; set; } = string.Empty;
         [Display(Name = "Công đoạn sản xuất")]

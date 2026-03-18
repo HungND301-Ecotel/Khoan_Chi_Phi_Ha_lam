@@ -38,6 +38,19 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             throw new BadRequestException("Không có dữ liệu hợp lệ để import.");
         }
 
+        var duplicateCodes = dtos
+            .Select(d => d.Code?.Trim())
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .GroupBy(code => code!, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicateCodes.Any())
+        {
+            throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
+        }
+
         if (!(await CheckExistedReferences(dtos)))
         {
             throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
@@ -65,23 +78,25 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 .Include(e => e.Technology),
             disableTracking: true);
 
-        var dbLookup = new Dictionary<LongwallLookupKey, LongwallMaterialUnitPriceEntity>();
+        var dbCodeLookup = new Dictionary<string, LongwallMaterialUnitPriceEntity>(StringComparer.OrdinalIgnoreCase);
         foreach (var entity in dbEntities)
         {
-            var key = CreateLookupKey(entity);
-            if (!dbLookup.ContainsKey(key))
+            var code = entity.Code?.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(code) || dbCodeLookup.ContainsKey(code))
             {
-                dbLookup[key] = entity;
+                continue;
             }
+
+            dbCodeLookup[code] = entity;
         }
 
-        var matchedKeys = new HashSet<LongwallLookupKey>();
+        var matchedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var updateList = new List<LongwallMaterialUnitPriceEntity>();
         var addList = new List<LongwallMaterialUnitPriceEntity>();
 
         foreach (var dto in dtos)
         {
-            var key = CreateLookupKey(dto);
+            var code = dto.Code.Trim();
             processIdMap.TryGetValue(dto.ProcessName, out var processId);
             longwallParametersIdMap.TryGetValue(dto.LongwallParametersName, out var longwallParametersId);
             cuttingThicknessIdMap.TryGetValue(dto.CuttingThicknessName, out var cuttingThicknessId);
@@ -97,7 +112,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var startMonth = ParseMonthYear(dto.StartMonth);
             var endMonth = ParseMonthYear(dto.EndMonth);
 
-            if (dbLookup.TryGetValue(key, out var existing))
+            if (dbCodeLookup.TryGetValue(code, out var existing))
             {
                 existing.Update(
                     dto.Code,
@@ -110,7 +125,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     endMonth,
                     dto.TotalPrice);
                 updateList.Add(existing);
-                matchedKeys.Add(key);
+                matchedCodes.Add(code);
             }
             else
             {
@@ -125,11 +140,16 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     endMonth,
                     dto.TotalPrice);
                 addList.Add(newEntity);
+                matchedCodes.Add(code);
             }
         }
 
         var deleteList = dbEntities
-            .Where(entity => !matchedKeys.Contains(CreateLookupKey(entity)))
+            .Where(entity =>
+            {
+                var code = entity.Code?.Value?.Trim();
+                return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
+            })
             .ToList();
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -209,12 +229,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             return new DateOnly(now.Year, now.Month, 1);
         }
 
-        if (DateOnly.TryParseExact(monthYear, "MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var result))
+        if (DateOnly.TryParseExact(monthYear, "MM/yyyy", null, DateTimeStyles.None, out var result))
         {
             return result;
         }
 
-        if (DateOnly.TryParseExact(monthYear, "M/yyyy", null, System.Globalization.DateTimeStyles.None, out result))
+        if (DateOnly.TryParseExact(monthYear, "M/yyyy", null, DateTimeStyles.None, out result))
         {
             return result;
         }
@@ -232,14 +252,13 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheet(1);
 
-        const int idCol = 1;
-        const int startMonthCol = 2;
-        const int endMonthCol = 3;
-        const int processCol = 4;
-        const int technologyCol = 5;
-        const int longwallParametersCol = 6;
-        const int cuttingThicknessCol = 7;
-        const int seamFaceStartCol = 8;
+        const int startMonthCol = 1;
+        const int endMonthCol = 2;
+        const int processCol = 3;
+        const int technologyCol = 4;
+        const int longwallParametersCol = 5;
+        const int cuttingThicknessCol = 6;
+        const int seamFaceStartCol = 7;
 
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
@@ -286,13 +305,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 continue;
             }
 
-            var id = Guid.Empty;
-            var idText = worksheet.Cell(row, idCol).GetString().Trim();
-            if (!string.IsNullOrWhiteSpace(idText) && Guid.TryParse(idText, out var parsedId))
-            {
-                id = parsedId;
-            }
-
             var startMonth = worksheet.Cell(row, startMonthCol).GetString().Trim();
             if (string.IsNullOrWhiteSpace(startMonth))
             {
@@ -302,7 +314,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
             if (string.IsNullOrWhiteSpace(endMonth))
             {
-                endMonth = currentMonth;
+                endMonth = startMonth;
             }
 
             var fallbackCode = $"LWL-{Guid.NewGuid():N}"[..12].ToUpper();
@@ -328,7 +340,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
                 result.Add(new LongwallMaterialUnitPriceExcelDto
                 {
-                    Id = id,
                     Code = codeValue,
                     ProcessName = processName,
                     TechnologyName = technologyName,
@@ -357,37 +368,4 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         return double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out value)
             || double.TryParse(text, NumberStyles.Any, CultureInfo.CurrentCulture, out value);
     }
-
-    private static LongwallLookupKey CreateLookupKey(LongwallMaterialUnitPriceExcelDto dto)
-    {
-        return new(
-            StartMonth: dto.StartMonth.Trim(),
-            EndMonth: dto.EndMonth.Trim(),
-            ProcessName: dto.ProcessName.Trim(),
-            TechnologyName: dto.TechnologyName.Trim(),
-            LongwallParametersName: dto.LongwallParametersName.Trim(),
-            CuttingThicknessName: dto.CuttingThicknessName.Trim(),
-            SeamFaceName: dto.SeamFaceName.Trim());
-    }
-
-    private static LongwallLookupKey CreateLookupKey(LongwallMaterialUnitPriceEntity entity)
-    {
-        return new(
-            StartMonth: entity.StartMonth.ToString("MM/yyyy"),
-            EndMonth: entity.EndMonth.ToString("MM/yyyy"),
-            ProcessName: entity.ProductionProcess?.Name?.Trim() ?? string.Empty,
-            TechnologyName: entity.Technology?.Value?.Trim() ?? string.Empty,
-            LongwallParametersName: entity.LongwallParameters != null ? $"{entity.LongwallParameters.Llc}-{entity.LongwallParameters.Lkc}-{entity.LongwallParameters.Mk}" : string.Empty,
-            CuttingThicknessName: entity.CuttingThickness?.Value?.Trim() ?? string.Empty,
-            SeamFaceName: entity.SeamFace?.Value?.Trim() ?? string.Empty);
-    }
-
-    private sealed record LongwallLookupKey(
-        string StartMonth,
-        string EndMonth,
-        string ProcessName,
-        string TechnologyName,
-        string LongwallParametersName,
-        string CuttingThicknessName,
-        string SeamFaceName);
 }
