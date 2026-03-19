@@ -3,11 +3,9 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { MaterialForm } from '@/features/main/pricing/tunneling/material/form';
-import {
-	MAIN_PRICING_MATERIAL_COLUMNS,
-	Material,
-} from '@/features/main/pricing/tunneling/material/columns';
+import { MAIN_PRICING_MATERIAL_COLUMNS } from '@/features/main/pricing/tunneling/material/columns';
 import { api } from '@/lib/api';
+import { Material } from './type';
 
 export function MainPricingMaterialPage() {
 	const popup = usePopup();
