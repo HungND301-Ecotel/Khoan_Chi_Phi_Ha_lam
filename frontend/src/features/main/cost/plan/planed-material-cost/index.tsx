@@ -36,7 +36,6 @@ import AddIcon from '@mui/icons-material/Add';
 import CreateIcon from '@mui/icons-material/Create';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { Logs } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function PlanedMaterialCost({
