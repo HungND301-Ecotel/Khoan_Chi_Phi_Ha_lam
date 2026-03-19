@@ -78,7 +78,7 @@ export function PlanMaterialCostForm({
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
-			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALLZ),
+			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 			api.pagging<Slide>(API.PRICING.SLIDE.LIST),
 		]);
 
