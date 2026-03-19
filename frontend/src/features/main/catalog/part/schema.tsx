@@ -12,7 +12,7 @@ export const partSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
-	equipmentId: z.string().min(1, {
+	equipmentIds: z.array(z.string()).min(1, {
 		message: 'Mã thiết bị không được để trống',
 	}),
 	costs: z
@@ -48,7 +48,7 @@ export const PART_SCHEMA_DEFAULT: PartSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
-	equipmentId: '',
+	equipmentIds: [],
 	costs: [
 		{
 			startMonth: '',

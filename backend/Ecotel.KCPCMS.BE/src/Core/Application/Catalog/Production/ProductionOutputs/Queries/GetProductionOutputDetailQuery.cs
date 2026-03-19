@@ -53,7 +53,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                             .ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.MaintainUnitPriceEquipment)
-                        .ThenInclude(m => m.Part)
+                        .ThenInclude(m => m.MaintainUnitPrice)
                             .ThenInclude(p => p.Equipment)
                                 .ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
@@ -87,7 +87,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                                     .ThenInclude(p => p.Code)
                         .Include(a => a.AcceptanceReportItems)
                             .ThenInclude(i => i.MaintainUnitPriceEquipment)
-                                .ThenInclude(m => m.Part)
+                                .ThenInclude(m => m.MaintainUnitPrice)
                                     .ThenInclude(p => p.Equipment)
                                         .ThenInclude(e => e.Code)
                         .Include(a => a.AcceptanceReportItems)
@@ -224,8 +224,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
             }
 
             var part = item.MaintainUnitPriceEquipment.Part;
-            var groupCode = part.Equipment?.Code?.Value ?? "VTK";
-            var groupName = part.Equipment?.Name ?? "Vật tư khác";
+            var equipment = item.MaintainUnitPriceEquipment.MaintainUnitPrice?.Equipment;
+            var groupCode = equipment?.Code?.Value ?? "VTK";
+            var groupName = equipment?.Name ?? "Vật tư khác";
 
             if (!materialGroups.ContainsKey(groupCode))
             {
@@ -327,8 +328,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                 }
 
                 var part = item.MaintainUnitPriceEquipment.Part;
-                var groupCode = part.Equipment?.Code?.Value ?? "VTK";
-                var groupName = part.Equipment?.Name ?? "Vật tư khác";
+                var equipment = item.MaintainUnitPriceEquipment.MaintainUnitPrice?.Equipment;
+                var groupCode = equipment?.Code?.Value ?? "VTK";
+                var groupName = equipment?.Name ?? "Vật tư khác";
 
                 if (!materialGroups.ContainsKey(groupCode))
                 {

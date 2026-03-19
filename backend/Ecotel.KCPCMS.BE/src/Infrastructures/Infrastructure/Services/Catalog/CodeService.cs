@@ -39,23 +39,14 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
         return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId);
     }
 
-    public async Task<bool> IsPartCodeExisted(string code, DefaultIdType equipmentId)
+    public async Task<bool> IsPartCodeExisted(string code)
     {
-        return await _codeRepository.GetAll()
-            .Where(c => c.Value == code.ToUpper()
-                     && c.Part != null
-                     && c.Part.EquipmentId == equipmentId)
-            .AnyAsync();
+        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Part != null);
     }
 
-    public async Task<bool> IsPartCodeExisted(string code, DefaultIdType curId, DefaultIdType equipmentId)
+    public async Task<bool> IsPartCodeExisted(string code, DefaultIdType curId)
     {
-        return await _codeRepository.GetAll()
-            .Where(c => c.Value == code.ToUpper()
-                     && c.Id != curId
-                     && c.Part != null
-                     && c.Part.EquipmentId == equipmentId)
-            .AnyAsync();
+        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId && c.Part != null);
     }
 
     public async Task<bool> IsProductCodeExisted(string code, DefaultIdType processGroupId)

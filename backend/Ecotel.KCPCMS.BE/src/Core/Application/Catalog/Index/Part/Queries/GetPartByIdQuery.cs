@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Cost;
@@ -19,22 +19,24 @@ public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<G
         var details = await _partRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
             include: t => t
-                .Include(t => t.Equipment)
-                .Include(t => t.Equipment).ThenInclude(e => e.Code)
+                .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
-
 
         return new PartDetailDto
         {
             Id = details.Id,
             Code = details.Code.Value,
             Name = details.Name,
-            EquipmentId = details.EquipmentId,
+            EquipmentIds = details.EquipmentParts.Select(e => e.EquipmentId).ToList(),
+            EquipmentCodes = details.EquipmentParts
+                .Where(e => e.Equipment?.Code != null)
+                .Select(e => e.Equipment!.Code!.Value)
+                .OrderBy(code => code)
+                .ToList(),
             UnitOfMeasureId = details.UnitOfMeasureId,
-            EquipmentCode = details.Equipment != null ? details.Equipment.Code.Value : string.Empty,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
             Costs = details.Costs.Adapt<List<MaintainCostDto>>()
         };

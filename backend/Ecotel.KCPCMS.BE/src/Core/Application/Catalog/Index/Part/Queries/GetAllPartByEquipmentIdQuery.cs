@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
@@ -16,8 +16,9 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
     public async Task<IList<PartDetailBaseDto>> Handle(GetAllPartByEquipmentIdQuery request, CancellationToken cancellationToken)
     {
         var details = await _partRepository.GetAllAsync(
-            predicate: t => t.EquipmentId == request.EquipmentId,
+            predicate: t => t.EquipmentParts.Any(e => e.EquipmentId == request.EquipmentId),
             include: t => t
+                .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
@@ -30,7 +31,12 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = partDetail.Id,
             Code = partDetail.Code.Value,
             Name = partDetail.Name,
-            EquipmentId = partDetail.EquipmentId,
+            EquipmentIds = partDetail.EquipmentParts.Select(e => e.EquipmentId).ToList(),
+            EquipmentCodes = partDetail.EquipmentParts
+                .Where(e => e.Equipment?.Code != null)
+                .Select(e => e.Equipment!.Code!.Value)
+                .OrderBy(code => code)
+                .ToList(),
             UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
             CurrentCost = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.Amount ?? 0

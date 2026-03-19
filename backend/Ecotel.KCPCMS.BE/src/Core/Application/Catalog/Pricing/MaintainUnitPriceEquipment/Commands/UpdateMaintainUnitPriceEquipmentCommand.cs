@@ -29,10 +29,10 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
 
         var equipmentDetail = await _equipmentRepository.GetFirstOrDefaultAsync(
             predicate: e => e.Id == request.UpdateModel.EquipmentId,
-            include: e => e.Include(e => e.Parts).ThenInclude(p => p.Costs),
+            include: e => e.Include(e => e.EquipmentParts).ThenInclude(ep => ep.Part).ThenInclude(p => p.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
 
-        if (equipmentDetail?.Parts == null || !equipmentDetail.Parts.Any())
+        if (equipmentDetail?.EquipmentParts == null || !equipmentDetail.EquipmentParts.Any())
         {
             throw new ConflictException(CustomResponseMessage.EquipmentPartsInvalid);
         }

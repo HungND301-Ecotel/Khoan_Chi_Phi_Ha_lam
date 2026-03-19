@@ -19,13 +19,21 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     public async Task<bool> Handle(CreatePartCommand request, CancellationToken cancellationToken)
     {
-        if (await codeService.IsPartCodeExisted(request.CreateModel.Code, request.CreateModel.EquipmentId))
+        var equipmentIds = request.CreateModel.EquipmentIds.Distinct().ToList();
+        if (!equipmentIds.Any())
+        {
+            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
+        }
+
+        if (await codeService.IsPartCodeExisted(request.CreateModel.Code))
         {
             throw new ConflictException(CustomResponseMessage.PartCodeAlreadyExists);
         }
 
-        bool checkEquipmentExisted = await _equipmentRepository.ExistsAsync(x => x.Id == request.CreateModel.EquipmentId);
-        if (!checkEquipmentExisted)
+        var equipments = await _equipmentRepository.GetAllAsync(
+            predicate: x => equipmentIds.Contains(x.Id),
+            disableTracking: false);
+        if (equipments.Count != equipmentIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
         }
@@ -42,7 +50,11 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         await unitOfWork.BeginTransactionAsync();
         try
         {
-            var newPart = Domain.Entities.Index.Part.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.UnitOfMeasureId, request.CreateModel.EquipmentId);
+            var newPart = Domain.Entities.Index.Part.Create(
+                request.CreateModel.Code,
+                request.CreateModel.Name,
+                request.CreateModel.UnitOfMeasureId,
+                equipments.ToList());
 
             var costList = new List<Cost>();
             foreach (var cost in request.CreateModel.Costs)

@@ -9,12 +9,13 @@ namespace Domain.Entities.Index
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
-        public Guid EquipmentId { get; protected set; }
 
         // Navigation properties
         public virtual UnitOfMeasure? UnitOfMeasure { get; protected set; }
-        public virtual Equipment? Equipment { get; protected set; }
         public virtual Code? Code { get; protected set; }
+
+        private IList<EquipmentPart> _equipmentParts = new List<EquipmentPart>();
+        public virtual IReadOnlyCollection<EquipmentPart> EquipmentParts => _equipmentParts.AsReadOnly();
 
         private IList<Cost> _costs = new List<Cost>();
         public virtual IReadOnlyCollection<Cost> Costs => _costs.AsReadOnly();
@@ -23,7 +24,7 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
 
         // constructor
-        public static Part Create(string code, string name, Guid? unitOfMeasureId, Guid equipmentId)
+        public static Part Create(string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -33,16 +34,25 @@ namespace Domain.Entities.Index
             {
                 throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
             }
-            return new Part
+
+            ArgumentNullException.ThrowIfNull(equipments);
+            if (!equipments.Any())
+            {
+                throw new ArgumentException(CustomResponseMessage.EquipmentNotFound);
+            }
+
+            var part = new Part
             {
                 Code = new Code(code.ToUpper()),
                 Name = name,
-                UnitOfMeasureId = unitOfMeasureId,
-                EquipmentId = equipmentId
+                UnitOfMeasureId = unitOfMeasureId
             };
+            part.ReplaceEquipments(equipments);
+
+            return part;
         }
 
-        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid equipmentId)
+        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -52,17 +62,26 @@ namespace Domain.Entities.Index
             {
                 throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
             }
-            return new Part
+
+            ArgumentNullException.ThrowIfNull(equipments);
+            if (!equipments.Any())
+            {
+                throw new ArgumentException(CustomResponseMessage.EquipmentNotFound);
+            }
+
+            var part = new Part
             {
                 Id = id,
                 Code = new Code(code.ToUpper()),
                 Name = name,
-                UnitOfMeasureId = unitOfMeasureId,
-                EquipmentId = equipmentId
+                UnitOfMeasureId = unitOfMeasureId
             };
+            part.ReplaceEquipments(equipments);
+
+            return part;
         }
 
-        public void Update(string code, string name, Guid? unitOfMeasureId, Guid equipmentId)
+        public void Update(string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -71,6 +90,11 @@ namespace Domain.Entities.Index
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+            ArgumentNullException.ThrowIfNull(equipments);
+            if (!equipments.Any())
+            {
+                throw new ArgumentException(CustomResponseMessage.EquipmentNotFound);
             }
 
             if (Code != null)
@@ -80,7 +104,7 @@ namespace Domain.Entities.Index
 
             Name = name;
             UnitOfMeasureId = unitOfMeasureId;
-            EquipmentId = equipmentId;
+            ReplaceEquipments(equipments);
         }
 
         public void AddCost(Cost cost)
@@ -112,7 +136,22 @@ namespace Domain.Entities.Index
 
         public bool CheckChange(Part dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && UnitOfMeasureId == dto.UnitOfMeasureId && EquipmentId == dto.EquipmentId);
+            var currentEquipmentIds = EquipmentParts.Select(e => e.EquipmentId).OrderBy(id => id).ToList();
+            var nextEquipmentIds = dto.EquipmentParts.Select(e => e.EquipmentId).OrderBy(id => id).ToList();
+
+            return !(Code?.Value == dto.Code?.Value
+                && Name == dto.Name
+                && UnitOfMeasureId == dto.UnitOfMeasureId
+                && currentEquipmentIds.SequenceEqual(nextEquipmentIds));
+        }
+
+        private void ReplaceEquipments(IList<Equipment> equipments)
+        {
+            _equipmentParts.Clear();
+            foreach (var equipment in equipments.DistinctBy(e => e.Id))
+            {
+                _equipmentParts.Add(EquipmentPart.Create(equipment, this));
+            }
         }
     }
 }

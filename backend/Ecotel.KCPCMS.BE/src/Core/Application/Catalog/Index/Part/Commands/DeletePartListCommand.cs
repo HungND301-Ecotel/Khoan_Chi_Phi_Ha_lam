@@ -20,10 +20,10 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
         // 1. Loại bỏ ID trùng lặp
         var distinctIds = request.DeleteIds.Distinct().ToList();
 
-        if (distinctIds.Count != request.DeleteIds.Count)
-        {
-            throw new ConflictException(CustomResponseMessage.DeletedIdDuplicated);
-        }
+        //if (distinctIds.Count != request.DeleteIds.Count)
+        //{
+        //    throw new ConflictException(CustomResponseMessage.DeletedIdDuplicated);
+        //}
 
         if (!distinctIds.Any())
         {
@@ -32,7 +32,7 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
 
         var partsToDelete = await _partRepository.GetAllAsync(
             predicate: x => distinctIds.Contains(x.Id),
-            include: t => t.Include(t => t.Costs).Include(t => t.UnitOfMeasure).Include(t => t.Equipment).Include(t => t.Code),
+            include: t => t.Include(t => t.Costs).Include(t => t.UnitOfMeasure).Include(t => t.EquipmentParts).Include(t => t.Code),
             disableTracking: true);
 
 

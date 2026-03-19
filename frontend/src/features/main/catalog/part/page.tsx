@@ -60,10 +60,11 @@ export function MainCatalogPartPage() {
 		<DataTable
 			url={API.CATALOG.PART.LIST}
 			columns={CATALOG_PART_COLUMNS}
+			query={{ ignorePagination: true }}
+			getRowId={(row) => `${row.id}-${row.equipmentId}`}
 			filters={[
 				{ key: 'code', label: 'Mã phụ tùng' },
 				{ key: 'name', label: 'Tên phụ tùng' },
-				{ key: 'equipmentCode', label: 'Mã thiết bị' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <PartForm {...props} />}

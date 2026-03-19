@@ -17,8 +17,8 @@ public class Equipment : AuditableEntity<Guid>, IAggregateRoot
     private IList<Cost> _costs = new List<Cost>();
     public virtual IReadOnlyCollection<Cost> Costs => _costs.AsReadOnly();
 
-    private IList<Part> _parts = new List<Part>();
-    public virtual IReadOnlyCollection<Part> Parts => _parts.AsReadOnly();
+    private IList<EquipmentPart> _equipmentParts = new List<EquipmentPart>();
+    public virtual IReadOnlyCollection<EquipmentPart> EquipmentParts => _equipmentParts.AsReadOnly();
 
     private IList<ElectricityUnitPriceEquipment> _electricityUnitPriceEquipments = new List<ElectricityUnitPriceEquipment>();
     public virtual IReadOnlyCollection<ElectricityUnitPriceEquipment> ElectricityUnitPriceEquipments => _electricityUnitPriceEquipments.AsReadOnly();

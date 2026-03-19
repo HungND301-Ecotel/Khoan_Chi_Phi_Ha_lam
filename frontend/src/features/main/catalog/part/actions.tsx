@@ -6,6 +6,7 @@ import { FormInput } from '@/components/form/form-input';
 import { FormMonthYear } from '@/components/form/form-month-year';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
+import { MultiSelect, MultiSelectOption } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -29,8 +30,8 @@ export type PartDetail = {
 	name: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
-	equipmentId: string;
-	equipmentCode: string;
+	equipmentIds: string[];
+	equipmentCodes: string[];
 	costs: Array<{
 		startMonth: string;
 		endMonth: string;
@@ -45,6 +46,9 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [equipments, setEquipments] = useState<Equipment[]>([]);
+	const [selectedEquipments, setSelectedEquipments] = useState<
+		MultiSelectOption[]
+	>([]);
 
 	const form = useForm<PartSchema>({
 		resolver: zodResolver(partSchema),
@@ -54,18 +58,27 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 
 	useEffect(() => {
 		const promises = Promise.all([
-			api
-				.pagging<Unit>(API.CATALOG.UNIT.LIST)
-				.then((res) => setUnits(res.result.data)),
-			api
-				.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST)
-				.then((res) => setEquipments(res.result.data)),
+			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST),
 		]);
 
-		promises.then(() => {
+		promises.then(([unitsRes, equipmentsRes]) => {
+			const unitsData = unitsRes.result.data;
+			const equipmentsData = equipmentsRes.result.data;
+
+			setUnits(unitsData);
+			setEquipments(equipmentsData);
+
 			if (!row) return;
 			api.get<PartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
 				const { costs, ...part } = res.result;
+				const selectedEquipmentsFromAPI = equipmentsData
+					.filter((equipment) => part.equipmentIds.includes(equipment.id))
+					.map<MultiSelectOption>((equipment) => ({
+						label: `${equipment.code} - ${equipment.name}`,
+						value: equipment.id,
+					}));
+
 				form.reset({
 					...part,
 					costs: costs?.length
@@ -76,9 +89,17 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 							}))
 						: PART_SCHEMA_DEFAULT.costs,
 				});
+				setSelectedEquipments(selectedEquipmentsFromAPI);
 			});
 		});
 	}, [row, form]);
+
+	useEffect(() => {
+		form.setValue(
+			'equipmentIds',
+			selectedEquipments.map((item) => item.value),
+		);
+	}, [form, selectedEquipments]);
 
 	const handleSubmit = async (values: PartSchema) => {
 		try {
@@ -107,14 +128,14 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormComboBox
-				control={form.control}
-				name='equipmentId'
-				label='Mã thiết bị'
+			<MultiSelect
+				label='Mã Thiết bị'
 				placeholder='Chọn mã thiết bị'
-				options={equipments?.map((equipment) => ({
-					value: equipment.id,
-					label: equipment.code,
+				values={selectedEquipments}
+				onValuesChange={setSelectedEquipments}
+				options={equipments.map((item) => ({
+					value: item.id,
+					label: `${item.code} - ${item.name}`,
 				}))}
 			/>
 

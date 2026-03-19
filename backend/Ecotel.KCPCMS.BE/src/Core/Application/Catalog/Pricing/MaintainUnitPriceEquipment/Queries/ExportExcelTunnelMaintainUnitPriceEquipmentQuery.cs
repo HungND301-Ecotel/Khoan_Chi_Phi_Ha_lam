@@ -39,12 +39,12 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
             selector: e => e.Code != null ? e.Code.Value : "",
             disableTracking: true);
 
-        // Get all parts from database with Equipment relationship
+        // Get all parts from database with Equipment relationships
         var allParts = await _partRepository.GetAllAsync(
-            include: p => p.Include(p => p.Code).Include(p => p.UnitOfMeasure).Include(p => p.Equipment).ThenInclude(e => e!.Code),
+            include: p => p.Include(p => p.Code).Include(p => p.UnitOfMeasure).Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e!.Code),
             disableTracking: true);
 
-        return ExportTransposedFormat(list.ToList(), equipments.Where(c => !string.IsNullOrEmpty(c)).ToList(), allParts.OrderBy(p => p.Equipment?.Code?.Value).ThenBy(p => p.Code?.Value).ToList());
+        return ExportTransposedFormat(list.ToList(), equipments.Where(c => !string.IsNullOrEmpty(c)).ToList(), allParts.ToList());
     }
 
     private byte[] ExportTransposedFormat(
@@ -67,8 +67,10 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
 
         // Group parts by equipment from database relationship
         var partsByEquipment = allParts
-            .Where(p => p.Equipment != null && p.Equipment.Code != null)
-            .GroupBy(p => new { EquipmentId = p.EquipmentId, EquipmentCode = p.Equipment!.Code!.Value })
+            .SelectMany(p => p.EquipmentParts
+                .Where(e => e.Equipment != null && e.Equipment.Code != null)
+                .Select(e => new { Part = p, EquipmentId = e.EquipmentId, EquipmentCode = e.Equipment!.Code!.Value }))
+            .GroupBy(p => new { p.EquipmentId, p.EquipmentCode })
             .OrderBy(g => g.Key.EquipmentCode)
             .ToList();
 
@@ -184,7 +186,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
         foreach (var equipmentGroup in partsByEquipment)
         {
             var equipmentCode = equipmentGroup.Key.EquipmentCode;
-            var parts = equipmentGroup.OrderBy(p => p.Code?.Value).ToList();
+            var parts = equipmentGroup.Select(p => p.Part).OrderBy(p => p.Code?.Value).ToList();
             int groupStartRow = currentRow;
 
             foreach (var part in parts)

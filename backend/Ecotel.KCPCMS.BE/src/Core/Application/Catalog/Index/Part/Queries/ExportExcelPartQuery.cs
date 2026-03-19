@@ -1,4 +1,4 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
 using Application.Interfaces.Services;
@@ -18,13 +18,12 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
 
     public async Task<byte[]> Handle(ExportExcelPartQuery request, CancellationToken cancellationToken)
     {
-        var listHiddenProperty = new List<string>();
-        listHiddenProperty.Add(nameof(PartExcelDto.Id));
+        var listHiddenProperty = new List<string> { nameof(PartExcelDto.Id) };
 
         var list = await _partRepository.GetAllAsync(
             include: p => p
             .Include(p => p.UnitOfMeasure)
-            .Include(p => p.Equipment).ThenInclude(p => p.Code)
+            .Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
             .Include(p => p.Code)
             .Include(p => p.Costs),
             disableTracking: true);
@@ -37,20 +36,20 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
             { nameof(PartExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
-            { nameof(PartExcelDto.EquipmentCode), equipments.ToList() },
+            { nameof(PartExcelDto.EquipmentCodes), equipments.ToList() },
         };
 
-        var dtoList = list.Select(l =>
+        var dtoList = list.Select(l => new PartExcelDto
         {
-            return new PartExcelDto
-            {
-                Id = l.Id,
-                Code = l.Code.Value,
-                Name = l.Name,
-                UnitOfMeasureName = l.UnitOfMeasure.Name,
-                EquipmentCode = l.Equipment.Code.Value,
-                Cost = costService.BuildExcelCostString(l.Costs.ToList())
-            };
+            Id = l.Id,
+            Code = l.Code.Value,
+            Name = l.Name,
+            UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
+            EquipmentCodes = string.Join(", ", l.EquipmentParts
+                .Where(e => e.Equipment?.Code != null)
+                .Select(e => e.Equipment!.Code!.Value)
+                .OrderBy(code => code)),
+            Cost = costService.BuildExcelCostString(l.Costs.ToList())
         });
 
         return excelService.ExportToExcel(dtoList, "Phụ tùng", listHiddenProperty, dropdownConfigs);

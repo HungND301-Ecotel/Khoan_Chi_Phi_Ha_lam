@@ -60,6 +60,8 @@ type DataTableProps<TData> = {
 	url?: string;
 	query?: PaggingRequest;
 	items?: TData[];
+	transformData?: (rows: TData[]) => TData[];
+	getRowId?: (row: TData, index: number) => string;
 	filters?: { key: keyof TData; label: string }[];
 	onExpand?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onCreate?: (props: ActionDialogProps<TData>) => JSX.Element;
@@ -82,6 +84,8 @@ export function DataTable<TData>({
 	url,
 	query,
 	items,
+	transformData,
+	getRowId,
 	filters,
 	onExpand,
 	onCreate,
@@ -107,6 +111,8 @@ export function DataTable<TData>({
 		url,
 		query,
 		items,
+		transformData,
+		getRowId,
 	);
 	const { table, loading } = datatable;
 

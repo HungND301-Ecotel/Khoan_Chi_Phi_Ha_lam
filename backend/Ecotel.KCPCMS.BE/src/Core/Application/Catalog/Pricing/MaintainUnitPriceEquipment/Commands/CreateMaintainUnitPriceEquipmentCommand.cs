@@ -28,7 +28,7 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
         var equipmentIds = request.CreateModel.Select(c => c.EquipmentId);
         var equipmentDetails = await _equipmentRepository.GetAllAsync(
             predicate: e => equipmentIds.Contains(e.Id),
-            include: e => e.Include(e => e.Parts).Include(e => e.Costs),
+            include: e => e.Include(e => e.EquipmentParts).ThenInclude(ep => ep.Part).Include(e => e.Costs),
             disableTracking: true);
 
         if (equipmentDetails.Count != equipmentIds.Count())
@@ -46,7 +46,7 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
                 throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
             }
 
-            var partIds = equipment.Parts.Select(p => p.Id).ToHashSet();
+            var partIds = equipment.EquipmentParts.Select(p => p.PartId).ToHashSet();
             var inputPartIds = model.Costs.Select(c => c.PartId).ToHashSet();
 
             if (!partIds.IsSupersetOf(inputPartIds))
@@ -65,7 +65,7 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
 
             foreach (var cost in model.Costs)
             {
-                var part = equipment.Parts.FirstOrDefault(c => c.Id == cost.PartId);
+                var part = equipment.EquipmentParts.Select(c => c.Part).FirstOrDefault(c => c.Id == cost.PartId);
                 maintainUnitPrice.AddMaintainUnitPriceEquipment(Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
                     null,
                     part.Id,

@@ -33,6 +33,7 @@ public class ApplicationDbContext(
     public DbSet<AssignmentCode> AssignmentCodes => Set<AssignmentCode>();
     public DbSet<Cost> Costs => Set<Cost>();
     public DbSet<Equipment> Equipments => Set<Equipment>();
+    public DbSet<EquipmentPart> EquipmentParts => Set<EquipmentPart>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Part> Parts => Set<Part>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
@@ -99,6 +100,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<AssignmentCode>().ToTable(nameof(AssignmentCode), "Index");
         modelBuilder.Entity<Cost>().ToTable(nameof(Cost), "Index");
         modelBuilder.Entity<Equipment>().ToTable(nameof(Equipment), "Index");
+        modelBuilder.Entity<EquipmentPart>().ToTable(nameof(EquipmentPart), "Index");
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
         modelBuilder.Entity<Part>().ToTable(nameof(Part), "Index");
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
@@ -172,17 +174,17 @@ public class ApplicationDbContext(
             .WithOne(h => h.Equipment)
             .HasForeignKey(s => s.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Equipment>()
+            .HasMany(s => s.EquipmentParts)
+            .WithOne(h => h.Equipment)
+            .HasForeignKey(s => s.EquipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         //Part table
         modelBuilder.Entity<Part>()
             .HasOne(s => s.UnitOfMeasure)
             .WithMany(h => h.Parts)
             .HasForeignKey(s => s.UnitOfMeasureId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Part>()
-            .HasOne(s => s.Equipment)
-            .WithMany(h => h.Parts)
-            .HasForeignKey(s => s.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Part>()
             .HasOne(s => s.Code)
@@ -194,6 +196,16 @@ public class ApplicationDbContext(
             .WithOne(h => h.Part)
             .HasForeignKey(s => s.PartId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Part>()
+            .HasMany(s => s.EquipmentParts)
+            .WithOne(h => h.Part)
+            .HasForeignKey(s => s.PartId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EquipmentPart>()
+            .HasIndex(e => new { e.EquipmentId, e.PartId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         //Cost table
         modelBuilder.Entity<Cost>()

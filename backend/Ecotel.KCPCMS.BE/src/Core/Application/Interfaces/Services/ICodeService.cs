@@ -11,6 +11,6 @@ public interface ICodeService
     public Task<bool> IsAdjustmentFactorCodeExisted(string code, Guid processGroupId);
     public Task<bool> IsAdjustmentFactorCodeExisted(string code, Guid processGroupId, Guid curId);
 
-    public Task<bool> IsPartCodeExisted(string code, Guid equipmentId);
-    public Task<bool> IsPartCodeExisted(string code, Guid curId, Guid equipmentId);
+    public Task<bool> IsPartCodeExisted(string code);
+    public Task<bool> IsPartCodeExisted(string code, Guid curId);
 }

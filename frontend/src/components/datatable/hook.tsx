@@ -30,6 +30,8 @@ export function useDataTable<TData>(
 	url?: string,
 	query?: PaggingRequest,
 	items?: TData[],
+	transformData?: (rows: TData[]) => TData[],
+	customGetRowId?: (row: TData, index: number) => string,
 ): UseDataTable<TData> {
 	const [data, setData] = useState<TData[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -47,32 +49,34 @@ export function useDataTable<TData>(
 			if (!url) return;
 			const response = await api.pagging<TData>(url, query);
 			const result = response.result.data || [];
-			setData(result);
+			setData(transformData ? transformData(result) : result);
 		} finally {
 			setLoading(false);
 			// bỏ setExpanded({}) để không tự đóng expand
 		}
-	}, [url, query]);
+	}, [url, query, transformData]);
 
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
 
 	const table = useReactTable({
-		data: items ? items : data,
+		data: items ? (transformData ? transformData(items) : items) : data,
 		columns,
 		getCoreRowModel: getCoreRowModel(),
-		getRowId: (originalRow, index) => {
-			if (
-				typeof originalRow === 'object' &&
-				originalRow !== null &&
-				'id' in originalRow
-			) {
-				const rowId = (originalRow as { id?: string | number }).id;
-				if (rowId !== undefined && rowId !== null) return String(rowId);
-			}
-			return String(index);
-		},
+		getRowId:
+			customGetRowId ??
+			((originalRow, index) => {
+				if (
+					typeof originalRow === 'object' &&
+					originalRow !== null &&
+					'id' in originalRow
+				) {
+					const rowId = (originalRow as { id?: string | number }).id;
+					if (rowId !== undefined && rowId !== null) return String(rowId);
+				}
+				return String(index);
+			}),
 		...(hasPagination && {
 			getPaginationRowModel: getPaginationRowModel(),
 			onPaginationChange: setPagination,

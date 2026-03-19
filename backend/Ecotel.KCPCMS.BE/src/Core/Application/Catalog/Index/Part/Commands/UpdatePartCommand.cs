@@ -21,8 +21,16 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     public async Task<bool> Handle(UpdatePartCommand request, CancellationToken cancellationToken)
     {
-        bool checkEquipmentExisted = await _equipmentRepository.ExistsAsync(x => x.Id == request.UpdateModel.EquipmentId);
-        if (!checkEquipmentExisted)
+        var equipmentIds = request.UpdateModel.EquipmentIds.Distinct().ToList();
+        if (!equipmentIds.Any())
+        {
+            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
+        }
+
+        var equipments = await _equipmentRepository.GetAllAsync(
+            predicate: x => equipmentIds.Contains(x.Id),
+            disableTracking: false);
+        if (equipments.Count != equipmentIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
         }
@@ -37,10 +45,10 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         }
         var existedPart = await _partRepository.GetFirstOrDefaultAsync(
             predicate: m => m.Id == request.UpdateModel.Id,
-            include: m => m.Include(c => c.Costs).Include(c => c.Code),
-            disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+            include: m => m.Include(c => c.Costs).Include(c => c.Code).Include(c => c.EquipmentParts),
+            disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        if (await codeService.IsPartCodeExisted(request.UpdateModel.Code, existedPart.CodeId, request.UpdateModel.EquipmentId))
+        if (await codeService.IsPartCodeExisted(request.UpdateModel.Code, existedPart.CodeId))
         {
             throw new ConflictException(CustomResponseMessage.PartCodeAlreadyExists);
         }
@@ -51,7 +59,11 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             _costRepository.Delete(existedPart.Costs.ToList());
             await unitOfWork.SaveChangesAsync();
 
-            existedPart.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.EquipmentId);
+            existedPart.Update(
+                request.UpdateModel.Code,
+                request.UpdateModel.Name,
+                request.UpdateModel.UnitOfMeasureId,
+                equipments.ToList());
 
             var costList = new List<Cost>();
             foreach (var cost in request.UpdateModel.Costs)

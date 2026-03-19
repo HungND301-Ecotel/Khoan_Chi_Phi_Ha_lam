@@ -17,7 +17,7 @@ public class DeleteEquipmentCommandHandler(IUnitOfWork unitOfWork) : IRequestHan
     {
         var existEquipment = await _equipmentRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.DeleteId,
-            include: t => t.Include(e => e.UnitOfMeasure).Include(t => t.Parts).Include(t => t.Costs).Include(t => t.Code),
+            include: t => t.Include(e => e.UnitOfMeasure).Include(t => t.EquipmentParts).Include(t => t.Costs).Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
