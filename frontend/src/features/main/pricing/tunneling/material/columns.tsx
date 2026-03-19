@@ -4,24 +4,7 @@ import { Step } from '@/features/main/catalog/parameter/step/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { cn, formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
-
-export type Material = {
-	id: string;
-	code: string;
-	processId: string;
-	passportId: string;
-	hardnessId: string;
-	insertItemId: string;
-	supportStepId: string;
-	processName: string;
-	passportName: string;
-	hardnessName: string;
-	insertItemName: string;
-	supportStepName: string;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
-};
+import { Material } from './type';
 
 export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 	{

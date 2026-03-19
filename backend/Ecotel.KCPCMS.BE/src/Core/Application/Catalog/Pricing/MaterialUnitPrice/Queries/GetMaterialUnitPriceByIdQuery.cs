@@ -3,6 +3,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
 using Domain.Entities.Pricing.MaterialUnitPrice;
+using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -24,7 +25,8 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
                 .Include(u => u.Hardness)
                 .Include(u => u.InsertItem)
                 .Include(u => u.SupportStep)
-                .Include(u => u.ProductionProcess),
+                .Include(u => u.ProductionProcess)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         string passportName =
@@ -36,7 +38,14 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             Name = $"{materialUnitPrice.ProductionProcess!.Name}, {passportName}, {materialUnitPrice.InsertItem!.Value}, {materialUnitPrice.SupportStep!.Value}, {materialUnitPrice.Hardness!.Value}",
             StartMonth = materialUnitPrice.StartMonth,
             EndMonth = materialUnitPrice.EndMonth,
-            TotalPrice = materialUnitPrice.TotalPrice
+            HardnessId = materialUnitPrice.HardnessId,
+            InsertItemId = materialUnitPrice.InsertItemId,
+            PassportId = materialUnitPrice.PassportId,
+            ProcessId = materialUnitPrice.ProcessId,
+            SupportStepId = materialUnitPrice.SupportStepId,
+            TotalPrice = materialUnitPrice.TotalPrice,
+            OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
         };
     }
 }

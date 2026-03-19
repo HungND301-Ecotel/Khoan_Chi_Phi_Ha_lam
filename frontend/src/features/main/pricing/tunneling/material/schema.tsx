@@ -25,27 +25,19 @@ export const materialFormSchema = z.object({
 			message: 'Tháng không hợp lệ.',
 		})
 		.nonempty('Không được để trống'),
-	// costs: z
-	// 	.array(
-	// 		z.object({
-	// 			assignmentCodeId: z
-	// 				.string()
-	// 				.nonempty({ error: 'ID mã số không được để trống' }),
-	// 			materialId: z
-	// 				.string()
-	// 				.nonempty({ error: 'ID vật liệu không được để trống' }),
-	// 			quantity: z
-	// 				.any()
-	// 				.transform((val) => Number(val))
-	// 				.refine((val) => !Number.isNaN(val), {
-	// 					message: 'Định mức không được để trống',
-	// 				}),
-	// 		}),
-	// 	)
-	// 	.nonempty({ error: 'Mục đầu vào không được để trống' }),
-	totalPrice: z
-		.number()
-		.min(0, { message: 'Giá trị tối thiểu là 0' })
+	costs: z.array(
+		z.object({
+			assignmentCodeId: z
+				.string()
+				.nonempty({ error: 'ID mã giao khoán không được để trống' }),
+			totalPrice: z
+				.number({ message: 'Đơn giá không được để trống' })
+				.min(0, { message: 'Đơn giá phải lớn hơn hoặc bằng 0' }),
+		}),
+	),
+	otherMaterialValue: z
+		.number({ message: 'Tỷ lệ vật tư khác không được để trống' })
+		.min(0, { message: 'Tỷ lệ phải lớn hơn hoặc bằng 0' })
 		.optional(),
 });
 
@@ -60,6 +52,6 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	supportStepId: '',
 	startMonth: '',
 	endMonth: '',
-	// costs: [],
-	totalPrice: 0,
+	costs: [],
+	otherMaterialValue: undefined,
 };

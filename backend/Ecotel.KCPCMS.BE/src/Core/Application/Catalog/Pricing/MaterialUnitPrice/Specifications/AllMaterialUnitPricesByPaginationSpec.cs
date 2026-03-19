@@ -18,6 +18,7 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
             .Include(m => m.Code)
             .Include(m => m.ProductionProcess)
             .Include(m => m.Technology)
+            .Include(m => m.MaterialUnitPriceAssignmentCodes)
             .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Code.Value.ToLower().Contains(searchTerm))
             .OrderByDescending(m => m.CreatedOn);

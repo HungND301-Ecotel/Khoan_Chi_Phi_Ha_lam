@@ -37,7 +37,8 @@ public class DeleteMaterialUnitPriceListCommandHandler(IUnitOfWork unitOfWork, I
             predicate: x => distinctIds.Contains(x.Id),
             include: q => q
                 .Include(m => m.Code)
-                .Include(m => m.PlannedMaterialCosts),
+                .Include(m => m.PlannedMaterialCosts)
+                .Include(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: true);
 
         if (itemsToDelete == null || !itemsToDelete.Any())

@@ -128,7 +128,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     technologyId,
                     startMonth,
                     endMonth,
-                    dto.TotalPrice);
+                    0,
+                    []);
                 updateList.Add(existing);
                 matchedCodes.Add(code);
             }
@@ -143,7 +144,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     technologyId,
                     startMonth,
                     endMonth,
-                    dto.TotalPrice);
+                    0,
+                    []);
                 addList.Add(newEntity);
                 matchedCodes.Add(code);
             }

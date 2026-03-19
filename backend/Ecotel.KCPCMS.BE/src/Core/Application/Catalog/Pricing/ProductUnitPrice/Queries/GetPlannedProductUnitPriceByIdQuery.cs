@@ -223,8 +223,12 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
             .Select(c => new
             {
                 c.MaterialUnitPriceId,
-                c.MaterialUnitPrice,
-                c.Output.StartMonth
+                EffectiveMonth = c.Output.StartMonth,
+                c.MaterialUnitPrice.OtherMaterialvalue,
+                MaterialStartMonth = c.MaterialUnitPrice.StartMonth,
+                MaterialEndMonth = c.MaterialUnitPrice.EndMonth,
+                AssignmentCodesTotalPrice = c.MaterialUnitPrice.MaterialUnitPriceAssignmentCodes
+                    .Sum(a => a.TotalPrice)
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -232,13 +236,25 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
         return unitPriceData.GroupBy(a => a.MaterialUnitPriceId)
             .ToDictionary(
                 g => g.Key,
-                g => new List<MaterialAssignmentData>
+                g =>
                 {
-                    new MaterialAssignmentData
+                    var item = g.First();
+                    double cost = 0;
+
+                    if (item.MaterialStartMonth <= item.EffectiveMonth
+                        && item.MaterialEndMonth >= item.EffectiveMonth)
                     {
-                        Quantity = 1,
-                        Cost = g.FirstOrDefault()?.MaterialUnitPrice?.GetCurrentTotalPrice(g.First().StartMonth) ?? 0
+                        cost = item.AssignmentCodesTotalPrice * (1 + item.OtherMaterialvalue / 100);
                     }
+
+                    return new List<MaterialAssignmentData>
+                    {
+                new MaterialAssignmentData
+                {
+                    Quantity = 1,
+                    Cost = cost
+                }
+                    };
                 });
     }
 

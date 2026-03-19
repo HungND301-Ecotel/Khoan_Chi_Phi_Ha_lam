@@ -1,6 +1,7 @@
 ﻿using Application.Common.Interfaces;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.LongwallParameters;
+using Application.Dto.Catalog.MaterialUnitPrice;
 
 namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
 {
@@ -35,7 +36,8 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DefaultIdType? TechnologyId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
-        public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
     public class UpdateLongwallMaterialUnitPriceDto
@@ -49,7 +51,8 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DefaultIdType? TechnologyId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
-        public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
     public class LongwallMaterialUnitPriceDetailDto

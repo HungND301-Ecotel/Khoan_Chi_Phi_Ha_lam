@@ -6,6 +6,7 @@ using Application.Dto.Catalog.MaterialUnitPrice;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
+using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -22,6 +23,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
 
@@ -41,10 +43,20 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
 
+        var assignemntCodeIds = request.UpdateModel.Costs.Select(c => c.AssignmentCodeId).Distinct();
+        var assignmentCodeTask = await _assignmentCodeRepository.GetAllAsync(selector: a => a.Id, disableTracking: true);
+
+        var checkExisted = assignemntCodeIds.All(id => assignmentCodeTask.Any(ac => ac == id));
+
+        if (!checkExisted)
+        {
+            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
+        }
+
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
             predicate: m => m.Id == request.UpdateModel.Id,
             include: m => m.Include(m => m.Code),
-            disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
+            disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
         {
@@ -76,10 +88,10 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
                 null,
                 request.UpdateModel.StartMonth,
                 request.UpdateModel.EndMonth,
-                request.UpdateModel.TotalPrice
+                request.UpdateModel.OtherMaterialValue,
+                request.UpdateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>()
                 );
 
-            _materialUnitPriceRepository.Update(materialUnitPrice);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
 

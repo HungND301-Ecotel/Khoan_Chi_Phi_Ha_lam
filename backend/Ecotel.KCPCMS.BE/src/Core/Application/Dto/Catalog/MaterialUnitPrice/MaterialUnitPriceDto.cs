@@ -31,6 +31,13 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DefaultIdType SupportStepId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
+    }
+
+    public class MaterialUnitPriceAssignmentCodeDto
+    {
+        public DefaultIdType AssignmentCodeId { get; set; }
         public double TotalPrice { get; set; }
     }
 
@@ -45,7 +52,8 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DefaultIdType SupportStepId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
-        public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
     public class MaterialUnitPriceDetailDto
@@ -53,8 +61,15 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DefaultIdType Id { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public DefaultIdType ProcessId { get; set; }
+        public DefaultIdType PassportId { get; set; }
+        public DefaultIdType HardnessId { get; set; }
+        public DefaultIdType InsertItemId { get; set; }
+        public DefaultIdType SupportStepId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 }

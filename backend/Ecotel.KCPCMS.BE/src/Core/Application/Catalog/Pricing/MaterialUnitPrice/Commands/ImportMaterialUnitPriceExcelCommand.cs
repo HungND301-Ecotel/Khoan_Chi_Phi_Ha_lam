@@ -134,7 +134,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                     existingEntity.TechnologyId,
                     startMonth,
                     endMonth,
-                    dto.TotalPrice);
+                    0,
+                    []);
                 updateList.Add(existingEntity);
                 matchedCodes.Add(code);
             }
@@ -150,7 +151,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                     null,
                     startMonth,
                     endMonth,
-                    dto.TotalPrice);
+                    0,
+                    []);
                 addList.Add(newEntity);
                 matchedCodes.Add(code);
             }

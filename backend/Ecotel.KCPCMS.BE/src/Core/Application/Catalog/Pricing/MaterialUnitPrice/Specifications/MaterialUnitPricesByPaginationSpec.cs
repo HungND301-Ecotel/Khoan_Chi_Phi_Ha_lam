@@ -21,6 +21,7 @@ public sealed class MaterialUnitPricesByPaginationSpec
             .Include(m => m.InsertItem)
             .Include(m => m.SupportStep)
             .Include(m => m.Passport)
+            .Include(m => m.MaterialUnitPriceAssignmentCodes)
             .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Code.Value.ToLower().Contains(searchTerm));
         Query

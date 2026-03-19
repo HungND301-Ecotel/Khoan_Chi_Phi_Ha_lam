@@ -11,7 +11,8 @@ public abstract class MaterialUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     public Guid? TechnologyId { get; protected set; }
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
-    public double TotalPrice { get; set; }
+    public double OtherMaterialvalue { get; set; }
+    public double TotalPrice => MaterialUnitPriceAssignmentCodes.Sum(m => m.TotalPrice) * (1 + (OtherMaterialvalue / 100));
 
     // Navigation properties chung
     public virtual Code? Code { get; protected set; }
@@ -21,13 +22,27 @@ public abstract class MaterialUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
     public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
 
+    private IList<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodes = new List<MaterialUnitPriceAssignmentCode>();
+    public virtual IReadOnlyCollection<MaterialUnitPriceAssignmentCode> MaterialUnitPriceAssignmentCodes => _materialUnitPriceAssignmentCodes.AsReadOnly();
+
     public double GetCurrentTotalPrice(DateOnly effectiveMonth)
     {
         if (StartMonth <= effectiveMonth && EndMonth >= effectiveMonth)
         {
-            return TotalPrice;
+            double totalPrice = MaterialUnitPriceAssignmentCodes.Sum(m => m.TotalPrice);
+            totalPrice += (OtherMaterialvalue / 100) * totalPrice;
+            return totalPrice;
         }
         return 0;
+    }
+
+    public void AddCosts(IList<MaterialUnitPriceAssignmentCode> costs)
+    {
+        _materialUnitPriceAssignmentCodes.Clear();
+        foreach (var item in costs)
+        {
+            _materialUnitPriceAssignmentCodes.Add(item);
+        }
     }
 
     protected static void ValidateCommonFields(string code, DateOnly startMonth, DateOnly endMonth)

@@ -135,6 +135,11 @@ public class ApplicationDbContext(
             .WithOne(h => h.AssignmentCode)
             .HasForeignKey<AssignmentCode>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssignmentCode>()
+            .HasMany(s => s.MaterialUnitPriceAssignmentCodes)
+            .WithOne(h => h.AssignmentCode)
+            .HasForeignKey(s => s.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Material table
         modelBuilder.Entity<Material>()
@@ -379,6 +384,7 @@ public class ApplicationDbContext(
             .HasValue<TunnelExcavationMaterialUnitPrice>(MaterialUnitPriceType.TunnelExcavation)
             .HasValue<LongwallMaterialUnitPrice>(MaterialUnitPriceType.Longwall);
 
+        modelBuilder.Entity<MaterialUnitPriceAssignmentCode>().ToTable(nameof(MaterialUnitPriceAssignmentCode), "Pricing");
         modelBuilder.Entity<SlideUnitPrice>().ToTable(nameof(SlideUnitPrice), "Pricing");
         modelBuilder.Entity<MaintainUnitPrice>().ToTable(nameof(MaintainUnitPrice), "Pricing");
         modelBuilder.Entity<SlideUnitPriceAssignmentCode>().ToTable(nameof(SlideUnitPriceAssignmentCode), "Pricing");
@@ -414,6 +420,11 @@ public class ApplicationDbContext(
             .HasOne(s => s.ProductionProcess)
             .WithMany(h => h.MaterialUnitPrices)
             .HasForeignKey(s => s.ProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MaterialUnitPrice>()
+            .HasMany(s => s.MaterialUnitPriceAssignmentCodes)
+            .WithOne(h => h.MaterialUnitPrice)
+            .HasForeignKey(s => s.MaterialUnitPriceId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //TunnelExcavationMaterialUnitPrice - Đào lò specific configuration
@@ -499,6 +510,13 @@ public class ApplicationDbContext(
             .WithOne(h => h.SlideUnitPriceAssignmentCode)
             .HasForeignKey(s => s.SlideUnitPriceAssignmentCodeId)
             .OnDelete(DeleteBehavior.Cascade);
+
+
+        //MaterialUnitPriceAssignmentCode table
+        modelBuilder.Entity<MaterialUnitPriceAssignmentCode>()
+            .HasIndex(e => new { e.MaterialUnitPriceId, e.AssignmentCodeId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         //MaintainUnitPrice table
         modelBuilder.Entity<MaintainUnitPrice>()

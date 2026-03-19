@@ -4,6 +4,8 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
+using Domain.Entities.Pricing.MaterialUnitPrice;
+using Mapster;
 using MediatR;
 using Shared.Constants;
 
@@ -20,6 +22,7 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
     private readonly IWriteRepository<SeamFace> _seamFaceRepository = unitOfWork.GetRepository<SeamFace>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
     private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(CreateLongwallMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -36,6 +39,16 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
             m.SeamFaceId == request.CreateModel.SeamFaceId))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+        }
+
+        var assignemntCodeIds = request.CreateModel.Costs.Select(c => c.AssignmentCodeId).Distinct();
+        var assignmentCodeTask = await _assignmentCodeRepository.GetAllAsync(selector: a => a.Id, disableTracking: true);
+
+        var checkExisted = assignemntCodeIds.All(id => assignmentCodeTask.Any(ac => ac == id));
+
+        if (!checkExisted)
+        {
+            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
         }
 
         bool longwallParamsTask = await _longwallParametersRepository.AnyAsync(p => p.Id == request.CreateModel.LongwallParametersId);
@@ -68,7 +81,8 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
                 request.CreateModel.TechnologyId,
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
-                request.CreateModel.TotalPrice);
+                request.CreateModel.OtherMaterialValue,
+                request.CreateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>());
 
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();

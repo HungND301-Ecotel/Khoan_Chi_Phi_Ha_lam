@@ -25,9 +25,11 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
-        double totalPrice)
+        double OtherMaterialvalue,
+        IList<MaterialUnitPriceAssignmentCode> costs)
     {
         ValidateCommonFields(code, startMonth, endMonth);
+
 
         var materialUnitPrice = new TunnelExcavationMaterialUnitPrice
         {
@@ -38,10 +40,12 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
             InsertItemId = insertItemId,
             SupportStepId = supportStepId,
             TechnologyId = technologyId,
+            OtherMaterialvalue = OtherMaterialvalue,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
-            TotalPrice = totalPrice
         };
+
+        materialUnitPrice.AddCosts(costs);
         return materialUnitPrice;
     }
 
@@ -55,7 +59,8 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
-        double totalPrice)
+        double otherMaterialvalue,
+        IList<MaterialUnitPriceAssignmentCode> costs)
     {
         ValidateCommonFields(code, startMonth, endMonth);
 
@@ -72,6 +77,7 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         TechnologyId = technologyId;
         StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
         EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
-        TotalPrice = totalPrice;
+        OtherMaterialvalue = otherMaterialvalue;
+        this.AddCosts(costs);
     }
 }

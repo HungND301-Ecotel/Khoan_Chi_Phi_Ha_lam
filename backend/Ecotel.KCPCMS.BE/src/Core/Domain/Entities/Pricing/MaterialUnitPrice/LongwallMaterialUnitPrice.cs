@@ -22,7 +22,8 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
-        double totalPrice)
+        double otherMaterialvalue,
+        IList<MaterialUnitPriceAssignmentCode> costs)
     {
         ValidateCommonFields(code, startMonth, endMonth);
 
@@ -34,10 +35,12 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
             CuttingThicknessId = cuttingThicknessId,
             SeamFaceId = seamFaceId,
             TechnologyId = technologyId,
+            OtherMaterialvalue = otherMaterialvalue,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
-            TotalPrice = totalPrice
         };
+
+        materialUnitPrice.AddCosts(costs);
         return materialUnitPrice;
     }
 
@@ -50,7 +53,8 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
-        double totalPrice)
+        double otherMaterialvalue,
+        IList<MaterialUnitPriceAssignmentCode> costs)
     {
         ValidateCommonFields(code, startMonth, endMonth);
 
@@ -66,6 +70,7 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         TechnologyId = technologyId;
         StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
         EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
-        TotalPrice = totalPrice;
+        OtherMaterialvalue = otherMaterialvalue;
+        this.AddCosts(costs);
     }
 }

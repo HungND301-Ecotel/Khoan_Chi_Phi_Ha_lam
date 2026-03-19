@@ -8,6 +8,8 @@ import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
@@ -16,16 +18,19 @@ import type { Passport } from '@/features/main/catalog/parameter/passport/column
 import type { Step } from '@/features/main/catalog/parameter/step/columns';
 import type { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import type { ProcessStep } from '@/features/main/catalog/process/step/columns';
-import type { Material } from '@/features/main/pricing/tunneling/material/columns';
 import {
 	MATERIAL_FORM_DEFAULT,
 	materialFormSchema,
 	type MaterialFormSchema,
 } from '@/features/main/pricing/tunneling/material/schema';
 import { api } from '@/lib/api';
+import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useFormContext, useWatch } from 'react-hook-form';
+import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
+import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
+import { Material, MaterialDetail } from './type';
 
 export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 	const popup = usePopup();
@@ -36,8 +41,12 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [inserts, setInserts] = useState<Insert[]>([]);
 	const [steps, setSteps] = useState<Step[]>([]);
+	const [contracts, setContracts] = useState<ContractCode[]>([]);
+	const [selectedCodes, setSelectedCodes] = useState<MultiSelectOption[]>([]);
 
-	const form = useForm<MaterialFormSchema>({
+	const prevSelectedCodesRef = useRef<MultiSelectOption[]>([]);
+
+	const form = useForm<MaterialFormSchema, unknown, MaterialFormSchema>({
 		resolver: zodResolver(materialFormSchema),
 		mode: 'onSubmit',
 		defaultValues: {
@@ -54,44 +63,107 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 			api.pagging<Insert>(API.CATALOG.PARAMETER.INSERT.LIST),
 			api.pagging<Step>(API.CATALOG.PARAMETER.STEP.LIST),
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST),
 		]);
 
-		promises.then(([processes, passports, strengths, inserts, steps]) => {
-			setProcesses(processes.result.data);
-			setPassports(passports.result.data);
-			setStrengths(strengths.result.data);
-			setInserts(inserts.result.data);
-			setSteps(steps.result.data);
+		promises.then(
+			([
+				processesRes,
+				passportsRes,
+				strengthsRes,
+				insertsRes,
+				stepsRes,
+				contractsRes,
+			]) => {
+				setProcesses(processesRes.result.data);
+				setPassports(passportsRes.result.data);
+				setStrengths(strengthsRes.result.data);
+				setInserts(insertsRes.result.data);
+				setSteps(stepsRes.result.data);
 
-			if (row) {
-				form.reset({
-					startMonth: row.startMonth.substring(0, 10),
-					endMonth: row.endMonth.substring(0, 10),
-					code: row.code,
-					processId: row.processId,
-					passportId: row.passportId,
-					hardnessId: row.hardnessId,
-					insertItemId: row.insertItemId,
-					supportStepId: row.supportStepId,
-					// costs: [],
-					totalPrice: row.totalPrice,
-				});
-			}
-		});
+				const contractsData = contractsRes.result.data;
+				setContracts(contractsData);
+
+				if (row) {
+					form.reset({
+						startMonth: row.startMonth.substring(0, 10),
+						endMonth: row.endMonth.substring(0, 10),
+						code: row.code,
+						processId: row.processId,
+						passportId: row.passportId,
+						hardnessId: row.hardnessId,
+						insertItemId: row.insertItemId,
+						supportStepId: row.supportStepId,
+					});
+
+					api
+						.get<MaterialDetail>(API.PRICING.MATERIAL.TUNNELING.DETAIL(row.id))
+						.then((res) => {
+							const { costs, otherMaterialValue } = res.result;
+
+							const selectedFromAPI = contractsData
+								.filter((c) => costs.some((mc) => mc.assignmentCodeId === c.id))
+								.map<MultiSelectOption>((c) => ({
+									label: `${c.code} - ${c.name}`,
+									value: c.id,
+								}));
+
+							prevSelectedCodesRef.current = selectedFromAPI;
+							setSelectedCodes(selectedFromAPI);
+
+							form.setValue('costs', costs);
+							form.setValue('otherMaterialValue', otherMaterialValue);
+						});
+				}
+			},
+		);
 	}, [form, row]);
+
+	useEffect(() => {
+		const prevContracts = prevSelectedCodesRef.current;
+		const prevIds = new Set(prevContracts.map((c) => c.value));
+		const currentIds = new Set(selectedCodes.map((c) => c.value));
+
+		const addedIds = selectedCodes
+			.filter((c) => !prevIds.has(c.value))
+			.map((c) => c.value);
+
+		const removedIds = prevContracts
+			.filter((c) => !currentIds.has(c.value))
+			.map((c) => c.value);
+
+		const currentCosts = form.getValues('costs') || [];
+
+		let updatedCosts = currentCosts.filter(
+			(cost) => !removedIds.includes(cost.assignmentCodeId),
+		);
+
+		const newCosts = addedIds.map((id) => ({
+			assignmentCodeId: id,
+			totalPrice: NaN,
+		}));
+
+		updatedCosts = [...updatedCosts, ...newCosts].sort((a, b) => {
+			const aCode =
+				contracts.find((c) => c.id === a.assignmentCodeId)?.code ?? '';
+			const bCode =
+				contracts.find((c) => c.id === b.assignmentCodeId)?.code ?? '';
+			return aCode.localeCompare(bCode);
+		});
+
+		form.setValue('costs', updatedCosts);
+		prevSelectedCodesRef.current = selectedCodes;
+	}, [selectedCodes, contracts, form]);
 
 	const handleSubmit = async (values: MaterialFormSchema) => {
 		try {
-			const processedValues = {
-				...values,
-			};
 			if (row?.id) {
 				await api.put(API.PRICING.MATERIAL.TUNNELING.UPDATE, {
 					id: row.id,
-					...processedValues,
+					...values,
 				});
 			} else {
-				await api.post(API.PRICING.MATERIAL.TUNNELING.CREATE, processedValues);
+				await api.post(API.PRICING.MATERIAL.TUNNELING.CREATE, values);
 			}
 
 			setOpen(false);
@@ -136,10 +208,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				name='processId'
 				label='Công đoạn sản xuất'
 				placeholder='Chọn công đoạn sản xuất'
-				options={processes.map((process) => ({
-					label: process.name,
-					value: process.id,
-				}))}
+				options={processes.map((p) => ({ label: p.name, value: p.id }))}
 			/>
 
 			<FormComboBox
@@ -147,9 +216,9 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				name='passportId'
 				label='Hộ chiếu, Sđ, Sc'
 				placeholder='Chọn hộ chiếu'
-				options={passports.map((passport) => ({
-					label: `H/c ${passport.name}; ${passport.sd}; ${passport.sc}`,
-					value: passport.id,
+				options={passports.map((p) => ({
+					label: `H/c ${p.name}; ${p.sd}; ${p.sc}`,
+					value: p.id,
 				}))}
 			/>
 
@@ -158,10 +227,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				name='hardnessId'
 				label='Độ kiên cố đá, than (f)'
 				placeholder='Chọn Độ kiên cố đá, than (f)'
-				options={strengths.map((strength) => ({
-					label: strength.value,
-					value: strength.id,
-				}))}
+				options={strengths.map((s) => ({ label: s.value, value: s.id }))}
 			/>
 
 			<FormComboBox
@@ -169,10 +235,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				name='insertItemId'
 				label='Chèn'
 				placeholder='Chọn chèn'
-				options={inserts.map((item) => ({
-					label: item.value,
-					value: item.id,
-				}))}
+				options={inserts.map((i) => ({ label: i.value, value: i.id }))}
 			/>
 
 			<FormComboBox
@@ -180,20 +243,124 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				name='supportStepId'
 				label='Bước chống'
 				placeholder='Chọn bước chống'
-				options={steps.map((item) => ({
-					label: item.value,
+				options={steps.map((s) => ({ label: s.value, value: s.id }))}
+			/>
+
+			<MultiSelect
+				label='Mã giao khoán'
+				placeholder='Chọn mã giao khoán'
+				values={selectedCodes}
+				onValuesChange={setSelectedCodes}
+				options={contracts.map((item) => ({
 					value: item.id,
+					label: `${item.code} - ${item.name}`,
 				}))}
 			/>
 
-			<FormNumber
-				control={form.control}
-				name='totalPrice'
-				label='Đơn giá vật liệu (đ/m)'
-				placeholder='Nhập đơn giá vật liệu'
-			/>
+			<GroupedMaterialCosts contracts={contracts} />
 
 			<DataTableEditConfirm isEdit={!!row} />
 		</FormProvider>
+	);
+}
+
+function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
+	const { control } = useFormContext<MaterialFormSchema>();
+
+	const costs = useWatch({ control, name: 'costs' }) ?? [];
+	const otherMaterialValue = useWatch({ control, name: 'otherMaterialValue' });
+
+	if (costs.length === 0) return null;
+
+	const sumCosts = costs.reduce((acc, c) => {
+		const v = Number(c.totalPrice);
+		return acc + (isNaN(v) ? 0 : v);
+	}, 0);
+
+	const vtkValue = isNaN(Number(otherMaterialValue))
+		? 0
+		: (Number(otherMaterialValue) / 100) * sumCosts;
+
+	const total = sumCosts + vtkValue;
+
+	return (
+		<div className='flex w-full flex-col gap-4'>
+			<FormSeparator />
+
+			<div className='flex flex-col gap-2'>
+				<Label>Tổng tiền (đ/m)</Label>
+				<Input
+					readOnly
+					value={formatNumber(total)}
+					className='font-semibold read-only:bg-transparent'
+				/>
+			</div>
+
+			{costs.map((_, index) => (
+				<ContractCostRow key={index} index={index} contracts={contracts} />
+			))}
+
+			<VtkRow />
+		</div>
+	);
+}
+
+function ContractCostRow({
+	index,
+	contracts,
+}: {
+	index: number;
+	contracts: ContractCode[];
+}) {
+	const { control, getValues } = useFormContext<MaterialFormSchema>();
+	const assignmentCodeId = getValues(`costs.${index}.assignmentCodeId`);
+	const contract = contracts.find((c) => c.id === assignmentCodeId);
+
+	return (
+		<FormRow>
+			<div className='flex flex-1 flex-col gap-2'>
+				<Label>Mã giao khoán</Label>
+				<Input
+					readOnly
+					value={contract ? `${contract.code} - ${contract.name}` : ''}
+					className='read-only:bg-transparent'
+				/>
+			</div>
+
+			<div className='flex flex-1 flex-col gap-2'>
+				<FormNumber
+					control={control}
+					name={`costs.${index}.totalPrice`}
+					label='Đơn giá vật liệu (đ/m)'
+					placeholder='Nhập đơn giá vật liệu'
+				/>
+			</div>
+		</FormRow>
+	);
+}
+
+function VtkRow() {
+	const { control } = useFormContext<MaterialFormSchema>();
+
+	return (
+		<FormRow>
+			<div className='flex flex-1 flex-col gap-2'>
+				<Label>Mã giao khoán</Label>
+				<Input
+					readOnly
+					value='VTK - Vật tư khác'
+					className='read-only:bg-transparent'
+				/>
+			</div>
+
+			<div className='flex flex-1 flex-col gap-2'>
+				<FormNumber
+					control={control}
+					name='otherMaterialValue'
+					label='Đơn giá vật liệu (đ/m)'
+					placeholder='Nhập đơn giá vật liệu'
+				/>
+			</div>
+		</FormRow>
 	);
 }
