@@ -12,7 +12,13 @@ public class CostService(IUnitOfWork unitOfWork) : ICostService
 
     public string BuildExcelCostString(IList<Cost> costs)
     {
-        var costStrings = costs.Select(c => $"{c.StartMonth:MM/yyyy}~{c.EndMonth:MM/yyyy}={c.Amount}");
+        var costStrings = costs.Select(c => $"{c.StartMonth:MM/yyyy}~{c.EndMonth:MM/yyyy}={c.Amount}&{c.ActualAmount}");
+        return string.Join("; ", costStrings);
+    }
+
+    public string BuildExcelActualCostString(IList<Cost> costs)
+    {
+        var costStrings = costs.Select(c => $"{c.StartMonth:MM/yyyy}~{c.EndMonth:MM/yyyy}={c.ActualAmount}");
         return string.Join("; ", costStrings);
     }
 
@@ -35,7 +41,9 @@ public class CostService(IUnitOfWork unitOfWork) : ICostService
                 continue;
             }
 
-            var amount = decimal.Parse(parts[1].Trim());
+            var amount = parts[1].Trim().Split('&');
+            var planCost = decimal.Parse(amount[0]);
+            var actualCost = decimal.Parse(amount[1]);
 
             var dateParts = parts[0].Trim().Split('~');
             if (dateParts.Length != 2)
@@ -46,7 +54,7 @@ public class CostService(IUnitOfWork unitOfWork) : ICostService
             var startDate = DateOnly.ParseExact(dateParts[0].Trim(), "MM/yyyy", null);
             var endDate = DateOnly.ParseExact(dateParts[1].Trim(), "MM/yyyy", null);
 
-            result.Add(Cost.Create(startDate, endDate, type, (double)amount, costTypeId));
+            result.Add(Cost.Create(startDate, endDate, type, (double)planCost, costTypeId, (double)actualCost));
         }
 
         return result;

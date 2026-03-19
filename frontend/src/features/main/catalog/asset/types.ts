@@ -8,4 +8,5 @@ export type Asset = {
 	unitOfMeasureName: string;
 	usageTime: number;
 	costAmount: number;
+	actualAmount: number;
 };

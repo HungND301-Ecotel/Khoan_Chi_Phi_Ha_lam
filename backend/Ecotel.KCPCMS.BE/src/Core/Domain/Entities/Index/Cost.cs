@@ -10,6 +10,7 @@ public class Cost : AuditableEntity<Guid>
     public DateOnly EndMonth { get; protected set; }
     public CostType CostType { get; protected set; }
     public double Amount { get; protected set; }
+    public double ActualAmount { get; protected set; }
     public Guid? PartId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
@@ -20,7 +21,7 @@ public class Cost : AuditableEntity<Guid>
     public virtual Equipment? Equipment { get; protected set; }
 
     //constructor
-    public static Cost Create(DateOnly startMonth, DateOnly endMonth, CostType costType, double amount, Guid costTypeId)
+    public static Cost Create(DateOnly startMonth, DateOnly endMonth, CostType costType, double amount, Guid costTypeId, double actualAmount = 0)
     {
         if (startMonth > endMonth)
         {
@@ -33,6 +34,7 @@ public class Cost : AuditableEntity<Guid>
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
             CostType = costType,
             Amount = amount,
+            ActualAmount = actualAmount
         };
 
         switch (costType)

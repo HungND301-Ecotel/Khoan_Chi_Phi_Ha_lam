@@ -42,6 +42,12 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                                 c.EndMonth >= checkDate)
                     .Select(c => c.Amount)
                     .FirstOrDefault(),
+            ActualAmount = m.Costs
+                    .Where(c => c.CostType == CostType.Material &&
+                                c.StartMonth <= checkDate &&
+                                c.EndMonth >= checkDate)
+                    .Select(c => c.ActualAmount)
+                    .FirstOrDefault(),
             MaterialType = m.MaterialType
         });
     }

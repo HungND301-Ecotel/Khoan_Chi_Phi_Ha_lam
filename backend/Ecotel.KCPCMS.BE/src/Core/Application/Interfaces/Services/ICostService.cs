@@ -2,6 +2,7 @@
 using Domain.Entities.Index;
 
 namespace Application.Interfaces.Services;
+
 public interface ICostService
 {
     public Task<bool> IsOverlap(DateOnly startMonth, DateOnly endMonth, CostType costType);

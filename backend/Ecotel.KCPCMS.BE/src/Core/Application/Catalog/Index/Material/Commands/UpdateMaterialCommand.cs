@@ -66,6 +66,7 @@ public class UpdateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService c
                     endMonth: cost.EndMonth,
                     costType: cost.CostType,
                     amount: cost.Amount,
+                    actualAmount: cost.ActualAmount,
                     costTypeId: existedMaterial.Id));
             }
 

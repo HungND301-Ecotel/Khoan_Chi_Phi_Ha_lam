@@ -55,6 +55,7 @@ namespace Application.Catalog.Index.Material.Commands
                         endMonth: cost.EndMonth,
                         costType: cost.CostType,
                         amount: cost.Amount,
+                        actualAmount: cost.ActualAmount,
                         costTypeId: newMaterial.Id));
                 }
 

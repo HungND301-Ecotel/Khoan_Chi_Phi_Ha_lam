@@ -52,7 +52,7 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
                 UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
                 AssignmentCode = l.AssignmentCode?.Code?.Value ?? "",
                 MaterialType = l.MaterialType.GetDisplayName(),
-                Cost = costService.BuildExcelCostString(l.Costs.ToList())
+                Cost = costService.BuildExcelCostString(l.Costs.ToList()),
             };
         });
 

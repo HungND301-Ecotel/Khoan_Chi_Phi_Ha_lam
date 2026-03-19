@@ -17,6 +17,7 @@ namespace Application.Dto.Catalog.Material
         public decimal UsageTime { get; set; }
         public MaterialType MaterialType { get; set; }
         public double CostAmount { get; set; }
+        public double ActualAmount { get; set; }
     }
 
     public class MaterialExcelDto
