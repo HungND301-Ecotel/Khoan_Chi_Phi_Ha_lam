@@ -23,13 +23,16 @@ public class GetAllUnitOfMeasureQueryHandler(IPaginationService paginationServic
 
         var spec = new UnitOfMeasuresByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: unitOfMeasureRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderBy(d => d.Name).ToList();
+
+        return result;
     }
 }
 

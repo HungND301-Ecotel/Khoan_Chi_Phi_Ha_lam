@@ -23,13 +23,15 @@ public class GetAllEquipmentQueryHandler(IPaginationService paginationService, I
 
         var spec = new EquipmentsByPaginationSpec(filter, request.Search, request.Date);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: equipmentRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(e => e.Name).ToList();
+        return result;
     }
 }
 

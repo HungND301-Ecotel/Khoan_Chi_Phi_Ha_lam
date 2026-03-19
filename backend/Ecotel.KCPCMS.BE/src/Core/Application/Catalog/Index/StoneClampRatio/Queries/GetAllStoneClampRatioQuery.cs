@@ -22,12 +22,15 @@ public class GetAllStoneClampRatioQueryHandler(IPaginationService paginationServ
 
         var spec = new StoneClampRatiosByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: stoneClampRatioRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.ProcessCode).ThenBy(d => d.Value).ToList();
+        return result;
     }
 }

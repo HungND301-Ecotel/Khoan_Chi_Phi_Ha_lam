@@ -25,12 +25,15 @@ public class GetAllMetricQueryHandler<TEntity>(IPaginationService paginationServ
 
         var spec = new MetricsByPaginationSpec<TEntity>(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: repository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Value).ToList();
+        return result;
     }
 }

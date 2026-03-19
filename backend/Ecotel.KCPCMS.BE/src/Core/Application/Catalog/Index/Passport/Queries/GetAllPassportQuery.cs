@@ -6,6 +6,7 @@ using Application.Dto.Catalog.Passport;
 using MediatR;
 
 namespace Application.Catalog.Index.Passport.Queries;
+
 public record class GetAllPassportQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<PassportDto>>;
 
 public class GetAllPassportQueryHandler(IPaginationService paginationService, IReadRepository<Domain.Entities.Index.Passport> passportRepository) : IRequestHandler<GetAllPassportQuery, PaginationResponse<PassportDto>>
@@ -21,12 +22,15 @@ public class GetAllPassportQueryHandler(IPaginationService paginationService, IR
 
         var spec = new PassportsByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: passportRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Name).ToList();
+        return result;
     }
 }

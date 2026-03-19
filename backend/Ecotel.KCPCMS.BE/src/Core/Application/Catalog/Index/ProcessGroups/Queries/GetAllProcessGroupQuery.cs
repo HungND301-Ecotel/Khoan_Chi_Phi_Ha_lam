@@ -7,6 +7,7 @@ using Domain.Entities.Index;
 using MediatR;
 
 namespace Application.Catalog.Index.ProcessGroups.Queries;
+
 public record class GetAllProcessGroupQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<ProcessGroupDto>>;
 
 public class GetAllProcessGroupQueryHandler(IPaginationService paginationService, IReadRepository<ProcessGroup> processGroupRepository) : IRequestHandler<GetAllProcessGroupQuery, PaginationResponse<ProcessGroupDto>>
@@ -22,12 +23,14 @@ public class GetAllProcessGroupQueryHandler(IPaginationService paginationService
 
         var spec = new ProcessGroupsByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: processGroupRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(o => o.Name).ToList();
+        return result;
     }
 }

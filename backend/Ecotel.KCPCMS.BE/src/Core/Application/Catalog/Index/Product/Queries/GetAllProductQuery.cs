@@ -6,6 +6,7 @@ using Application.Dto.Catalog.Product;
 using MediatR;
 
 namespace Application.Catalog.Index.Product.Queries;
+
 public record class GetAllProductQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<ProductDto>>;
 
 public class GetAllProductQueryHandler(IPaginationService paginationService, IReadRepository<Domain.Entities.Index.Product> productRepository)
@@ -22,13 +23,16 @@ public class GetAllProductQueryHandler(IPaginationService paginationService, IRe
 
         var spec = new ProductsByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: productRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.ProcessGroupCode).ThenBy(d => d.Name).ToList();
+        return result;
     }
 
 }
