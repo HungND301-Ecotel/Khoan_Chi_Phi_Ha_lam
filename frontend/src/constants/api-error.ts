@@ -159,4 +159,6 @@ export const ERROR: Record<string, string> = {
 		'Phải là một ID phụ tùng hợp lệ cho Biên bản nghiệm thu.',
 	ACCEPTANCE_REPORT_ITEM_MATERIAL_ID_REQUIRED:
 		'Phải là một ID vật tư hợp lệ cho Biên bản nghiệm thu.',
+	PRODUCTION_ORDER_VALUE_IS_NULL_OR_EMPTY:
+		'Quyết định, lệnh sản xuất không được để trống.',
 } as const;

@@ -41,6 +41,7 @@ public class ApplicationDbContext(
     public DbSet<Hardness> Hardnesses => Set<Hardness>();
     public DbSet<StoneClampRatio> StoneClampRatios => Set<StoneClampRatio>();
     public DbSet<InsertItem> InsertItems => Set<InsertItem>();
+    public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
     public DbSet<Technology> Technologys => Set<Technology>();
     public DbSet<SupportStep> SupportSteps => Set<SupportStep>();
     public DbSet<Passport> Passports => Set<Passport>();
@@ -106,6 +107,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Hardness>().ToTable(nameof(Hardness), "Index");
         modelBuilder.Entity<StoneClampRatio>().ToTable(nameof(StoneClampRatio), "Index");
         modelBuilder.Entity<InsertItem>().ToTable(nameof(InsertItem), "Index");
+        modelBuilder.Entity<ProductionOrder>().ToTable(nameof(ProductionOrder), "Index");
         modelBuilder.Entity<Technology>().ToTable(nameof(Technology), "Index");
         modelBuilder.Entity<SupportStep>().ToTable(nameof(SupportStep), "Index");
         modelBuilder.Entity<Passport>().ToTable(nameof(Passport), "Index");
@@ -308,6 +310,12 @@ public class ApplicationDbContext(
 
         //InsertItem table
         modelBuilder.Entity<InsertItem>()
+            .HasIndex(e => e.Value)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
+        //InsertItem table
+        modelBuilder.Entity<ProductionOrder>()
             .HasIndex(e => e.Value)
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");

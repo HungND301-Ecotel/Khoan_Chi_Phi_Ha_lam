@@ -173,6 +173,16 @@ export const API = {
 				IMPORT: '/v1/catalog/supportstep/import',
 				EXPORT: '/v1/catalog/supportstep/export',
 			},
+			PRODUCTION_ORDER: {
+				LIST: '/v1/catalog/productionorder',
+				CREATE: '/v1/catalog/productionorder',
+				UPDATE: '/v1/catalog/productionorder',
+				DELETES: '/v1/catalog/productionorder',
+				DELETE: (id: string) => `/v1/catalog/productionorder/${id}`,
+				DETAIL: (id: string) => `/v1/catalog/productionorder/${id}`,
+				IMPORT: '/v1/catalog/productionorder/import',
+				EXPORT: '/v1/catalog/productionorder/export',
+			},
 		},
 		ADJUSTMENT: {
 			FACTOR: {

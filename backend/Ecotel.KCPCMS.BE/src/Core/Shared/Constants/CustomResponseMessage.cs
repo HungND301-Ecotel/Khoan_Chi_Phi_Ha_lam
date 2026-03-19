@@ -101,6 +101,7 @@ public static class CustomResponseMessage
     public const string CannotGetHardnessOrProcessValue = "CANNOT_GET_HARDNESS_OR_PROCESS_VALUE";
     public const string HardnessValueNullOrEmpty = "HARDNESS_VALUE_IS_NULL_OR_EMPTY";
     public const string InsertItemValueNullOrEmpty = "INSERT_ITEM_VALUE_IS_NULL_OR_EMPTY";
+    public const string ProductionOrderValueNullOrEmpty = "PRODUCTION_ORDER_VALUE_IS_NULL_OR_EMPTY";
     public const string SupportStepValueNullOrEmpty = "SUPPORT_STEP_VALUE_IS_NULL_OR_EMPTY";
     public const string StartMonthMustBeEarlierThanEndMonth = "START_MONTH_MUST_BE_EARLIER_THAN_END_MONTH";
     public const string MonthRangeOverlap = "MONTH_RANGE_OVERLAP";

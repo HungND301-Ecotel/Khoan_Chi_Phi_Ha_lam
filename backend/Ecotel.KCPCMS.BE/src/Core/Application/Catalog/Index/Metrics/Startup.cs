@@ -18,6 +18,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<GetAllMetricQuery<SupportStep>, PaginationResponse<MetricDto>>, GetAllMetricQueryHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<GetAllMetricQuery<Technology>, PaginationResponse<MetricDto>>, GetAllMetricQueryHandler<Technology>>();
             services.AddTransient<IRequestHandler<GetAllMetricQuery<SeamFace>, PaginationResponse<MetricDto>>, GetAllMetricQueryHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<GetAllMetricQuery<ProductionOrder>, PaginationResponse<MetricDto>>, GetAllMetricQueryHandler<ProductionOrder>>();
 
             // Get Metric By Id
             services.AddTransient<IRequestHandler<GetMetricByIdQuery<Hardness>, MetricDto>, GetMetricByIdQueryHandler<Hardness>>();
@@ -25,6 +26,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<GetMetricByIdQuery<SupportStep>, MetricDto>, GetMetricByIdQueryHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<GetMetricByIdQuery<Technology>, MetricDto>, GetMetricByIdQueryHandler<Technology>>();
             services.AddTransient<IRequestHandler<GetMetricByIdQuery<SeamFace>, MetricDto>, GetMetricByIdQueryHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<GetMetricByIdQuery<ProductionOrder>, MetricDto>, GetMetricByIdQueryHandler<ProductionOrder>>();
 
             // Create Metric
             services.AddTransient<IRequestHandler<CreateMetricCommand<Hardness>, bool>, CreateMetricCommandHandler<Hardness>>();
@@ -32,6 +34,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<CreateMetricCommand<SupportStep>, bool>, CreateMetricCommandHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<CreateMetricCommand<Technology>, bool>, CreateMetricCommandHandler<Technology>>();
             services.AddTransient<IRequestHandler<CreateMetricCommand<SeamFace>, bool>, CreateMetricCommandHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<CreateMetricCommand<ProductionOrder>, bool>, CreateMetricCommandHandler<ProductionOrder>>();
 
             // Update Metric
             services.AddTransient<IRequestHandler<UpdateMetricCommand<Hardness>, bool>, UpdateMetricCommandHandler<Hardness>>();
@@ -39,6 +42,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<UpdateMetricCommand<SupportStep>, bool>, UpdateMetricCommandHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<UpdateMetricCommand<Technology>, bool>, UpdateMetricCommandHandler<Technology>>();
             services.AddTransient<IRequestHandler<UpdateMetricCommand<SeamFace>, bool>, UpdateMetricCommandHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<UpdateMetricCommand<ProductionOrder>, bool>, UpdateMetricCommandHandler<ProductionOrder>>();
 
             // Delete Metric
             services.AddTransient<IRequestHandler<DeleteMetricCommand<Hardness>, bool>, DeleteMetricCommandHandler<Hardness>>();
@@ -46,6 +50,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<DeleteMetricCommand<SupportStep>, bool>, DeleteMetricCommandHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<DeleteMetricCommand<Technology>, bool>, DeleteMetricCommandHandler<Technology>>();
             services.AddTransient<IRequestHandler<DeleteMetricCommand<SeamFace>, bool>, DeleteMetricCommandHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<DeleteMetricCommand<ProductionOrder>, bool>, DeleteMetricCommandHandler<ProductionOrder>>();
 
             // Delete List Metric
             services.AddTransient<IRequestHandler<DeleteMetricListCommand<Hardness>, bool>, DeleteMetricListCommandHandler<Hardness>>();
@@ -53,6 +58,7 @@ namespace Application.Catalog.Index.Metrics
             services.AddTransient<IRequestHandler<DeleteMetricListCommand<SupportStep>, bool>, DeleteMetricListCommandHandler<SupportStep>>();
             services.AddTransient<IRequestHandler<DeleteMetricListCommand<Technology>, bool>, DeleteMetricListCommandHandler<Technology>>();
             services.AddTransient<IRequestHandler<DeleteMetricListCommand<SeamFace>, bool>, DeleteMetricListCommandHandler<SeamFace>>();
+            services.AddTransient<IRequestHandler<DeleteMetricListCommand<ProductionOrder>, bool>, DeleteMetricListCommandHandler<ProductionOrder>>();
             return services;
         }
     }

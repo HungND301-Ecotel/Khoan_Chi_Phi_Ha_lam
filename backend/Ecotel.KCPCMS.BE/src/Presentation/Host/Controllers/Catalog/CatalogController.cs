@@ -1023,6 +1023,74 @@ public class CatalogController : BaseNoAuthController
     }
     #endregion
 
+    #region ProductionOrder
+
+    [HttpGet("ProductionOrder")]
+    [OpenApiOperation("Get All ProductionOrder", "")]
+    public async Task<IActionResult> GetAllProductionOrder([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMetricQuery<ProductionOrder>(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ProductionOrder/export")]
+    [OpenApiOperation("Export ProductionOrder", "")]
+    public async Task<IActionResult> ExportProductionOrder()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelProductionOrderQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chen.xlsx");
+        return result;
+    }
+
+    [HttpPost("ProductionOrder/import")]
+    [OpenApiOperation("Import ProductionOrder", "")]
+    public async Task<IActionResult> ImportProductionOrder([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportProductionOrderExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("ProductionOrder/{id:guid}")]
+    [OpenApiOperation("Get ProductionOrder By Id", "")]
+    public async Task<IActionResult> GetProductionOrderById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMetricByIdQuery<ProductionOrder>(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("ProductionOrder")]
+    [OpenApiOperation("Create New ProductionOrder", "")]
+    public async Task<IActionResult> CreateProductionOrder([FromBody] CreateMetricDto createModel)
+    {
+        var result = await Mediator.Send(new CreateMetricCommand<ProductionOrder>(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ProductionOrder")]
+    [OpenApiOperation("Update ProductionOrder", "")]
+    public async Task<IActionResult> UpdateProductionOrder([FromBody] MetricDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateMetricCommand<ProductionOrder>(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("ProductionOrder/{deleteId:guid}")]
+    [OpenApiOperation("Delete ProductionOrder", "")]
+    public async Task<IActionResult> DeleteProductionOrder([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMetricCommand<ProductionOrder>(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("ProductionOrder")]
+    [OpenApiOperation("Delete Many ProductionOrder", "")]
+    public async Task<IActionResult> DeleteProductionOrderList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteMetricListCommand<ProductionOrder>(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
     #region Technology
 
     [HttpGet("Technology")]

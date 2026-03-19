@@ -30,6 +30,13 @@ namespace Application.Dto.Catalog.Metric
         public string Value { get; set; }
     }
 
+    public class ProductioOrderExcelDto
+    {
+        public Guid Id { get; set; }
+        [Display(Name = "Quyết định, lệnh sản xuất")]
+        public string Value { get; set; }
+    }
+
     public class TechnologyExcelDto
     {
         public Guid Id { get; set; }
