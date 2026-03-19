@@ -30,7 +30,7 @@ public class GetAllProductionProcessQueryHandler(IPaginationService paginationSe
             cancellationToken: cancellationToken);
         result.Data = result.Data.OrderBy(d => d.Name).ToList();
 
-        return result
+        return result;
     }
 }
 
