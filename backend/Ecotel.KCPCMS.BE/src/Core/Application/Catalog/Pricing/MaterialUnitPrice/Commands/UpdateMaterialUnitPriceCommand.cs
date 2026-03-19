@@ -24,6 +24,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
 
@@ -55,7 +56,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
 
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
             predicate: m => m.Id == request.UpdateModel.Id,
-            include: m => m.Include(m => m.Code),
+            include: m => m.Include(m => m.Code).Include(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
@@ -78,6 +79,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
+            _materialUnitPriceAssignmentCodeRepository.Delete(materialUnitPrice.MaterialUnitPriceAssignmentCodes);
             materialUnitPrice.Update(
                 request.UpdateModel.Code,
                 request.UpdateModel.ProcessId,
