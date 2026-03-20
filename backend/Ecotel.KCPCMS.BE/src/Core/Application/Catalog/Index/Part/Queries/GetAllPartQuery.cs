@@ -49,6 +49,7 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
             .SelectMany(e => e.EquipmentParts, (e, ep) => new PartDto
             {
                 Id = ep.Part.Id,
+                EquipmentPartId = ep.Id,
                 Code = ep.Part.Code?.Value ?? string.Empty,
                 EquipmentCode = e.Code?.Value ?? string.Empty,
                 EquipmentId = e.Id,

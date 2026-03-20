@@ -3,6 +3,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export type Part = {
 	id: string;
+	equipmentPartId: string;
 	code: string;
 	name: string;
 	unitOfMeasureId: string;

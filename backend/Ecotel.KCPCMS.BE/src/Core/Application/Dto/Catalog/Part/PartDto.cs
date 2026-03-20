@@ -7,6 +7,7 @@ namespace Application.Dto.Catalog.Part
     public class PartDto : IDto
     {
         public Guid Id { get; set; }
+        public Guid EquipmentPartId { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }

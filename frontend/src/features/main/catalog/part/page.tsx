@@ -16,7 +16,7 @@ export function MainCatalogPartPage() {
 	const handleDelete = async ({ data }: ActionDialogProps<Part>) => {
 		try {
 			const selected = data.table.getFilteredSelectedRowModel();
-			const rows = selected.rows.map((row) => row.original.id);
+			const rows = selected.rows.map((row) => row.original.equipmentPartId);
 
 			const res = await api.delete(API.CATALOG.PART.DELETES, rows);
 
