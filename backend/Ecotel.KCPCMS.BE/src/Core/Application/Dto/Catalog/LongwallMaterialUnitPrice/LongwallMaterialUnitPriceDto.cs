@@ -18,6 +18,7 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DefaultIdType CuttingThicknessId { get; set; }
         public DefaultIdType SeamFaceId { get; set; }
         public DefaultIdType? TechnologyId { get; set; }
+        public string TechnologyName { get; set; } = "";
         public LongwallParametersDto LongwallParameters { get; set; }
         public CuttingThicknessDto CuttingThickness { get; set; }
         public string SeamFaceName { get; set; } = string.Empty;
@@ -65,6 +66,7 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public string ProcessCode { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
-        public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 }

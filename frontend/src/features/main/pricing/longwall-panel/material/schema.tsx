@@ -26,9 +26,19 @@ export const longwallMaterialFormSchema = z.object({
 			message: 'Tháng không hợp lệ.',
 		})
 		.nonempty('Không được để trống'),
-	totalPrice: z
-		.number()
-		.min(0, { message: 'Giá trị tối thiểu là 0' })
+	costs: z.array(
+		z.object({
+			assignmentCodeId: z
+				.string()
+				.nonempty({ error: 'ID mã giao khoán không được để trống' }),
+			totalPrice: z
+				.number({ message: 'Đơn giá không được để trống' })
+				.min(0, { message: 'Đơn giá phải lớn hơn hoặc bằng 0' }),
+		}),
+	),
+	otherMaterialValue: z
+		.number({ message: 'Tỷ lệ vật tư khác không được để trống' })
+		.min(0, { message: 'Tỷ lệ phải lớn hơn hoặc bằng 0' })
 		.optional(),
 });
 
@@ -45,5 +55,6 @@ export const LONGWALL_MATERIAL_FORM_DEFAULT: LongwallMaterialFormSchema = {
 	technologyId: '',
 	startMonth: '',
 	endMonth: '',
-	totalPrice: 0,
+	costs: [],
+	otherMaterialValue: undefined,
 };

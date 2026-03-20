@@ -36,7 +36,8 @@ public class DeleteLongwallMaterialUnitPriceListCommandHandler(IUnitOfWork unitO
                 predicate: t => request.DeleteIds.Contains(t.Id),
                 include: t => t
                     .Include(t => t.Code)
-                    .Include(t => t.PlannedMaterialCosts),
+                    .Include(t => t.PlannedMaterialCosts)
+                    .Include(m => m.MaterialUnitPriceAssignmentCodes),
                 disableTracking: true);
 
             if (materialsToDelete.Count == 0)

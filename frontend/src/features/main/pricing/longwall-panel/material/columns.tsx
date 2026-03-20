@@ -29,10 +29,7 @@ export type LongwallMaterial = {
 	longwallParameters?: LongwallParameters;
 	cuttingThickness?: CuttingThickness;
 	seamFaceName?: string;
-	// Legacy field names for backward compatibility
-	passportId?: string;
 	cuttingthicknessId?: string;
-	mValue?: string;
 	technologyName?: string;
 };
 
@@ -50,17 +47,15 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 		header: 'Thông số',
 		cell: ({ row }) => {
 			const {
-				technologyName,
 				seamFaceName,
-				mValue,
 				longwallParameters,
 				cuttingThickness,
+				technologyName,
 			} = row.original;
 
 			const longwallParameterText = longwallParameters
 				? `Llc ${longwallParameters.llc}; Lkc ${longwallParameters.lkc}; Mk ${longwallParameters.mk}`
-				: (mValue ?? '-');
-
+				: '-';
 			const cuttingThicknessText = cuttingThickness
 				? cuttingThickness.value
 				: '-';

@@ -4,6 +4,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Dto.Catalog.LongwallParameters;
+using Application.Dto.Catalog.MaterialUnitPrice;
 using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,8 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
                 .Include(u => u.LongwallParameters)
                 .Include(u => u.CuttingThickness)
                 .Include(u => u.SeamFace)
-                .Include(u => u.Technology),
+                .Include(u => u.Technology)
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         string seamFaceName = materialUnitPrice.SeamFace?.Value ?? string.Empty;
@@ -42,7 +44,8 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
             ProcessCode = materialUnitPrice.ProductionProcess!.Code!.Value,
             StartMonth = materialUnitPrice.StartMonth,
             EndMonth = materialUnitPrice.EndMonth,
-            TotalPrice = materialUnitPrice.TotalPrice
+            OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
         };
     }
 }

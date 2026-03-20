@@ -24,6 +24,7 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
     private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
 
@@ -53,7 +54,7 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
 
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
             predicate: m => m.Id == request.UpdateModel.Id,
-            include: m => m.Include(m => m.Code),
+            include: m => m.Include(m => m.Code).Include(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
@@ -81,6 +82,7 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
+            _materialUnitPriceAssignmentCodeRepository.Delete(materialUnitPrice.MaterialUnitPriceAssignmentCodes);
             materialUnitPrice.Update(
                 request.UpdateModel.Code,
                 request.UpdateModel.ProcessId,
@@ -94,7 +96,6 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
                 request.UpdateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>()
                 );
 
-            _materialUnitPriceRepository.Update(materialUnitPrice);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
 
