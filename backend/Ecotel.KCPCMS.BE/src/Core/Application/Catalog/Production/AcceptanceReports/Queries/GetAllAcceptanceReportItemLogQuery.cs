@@ -125,6 +125,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 IssuedQuantity = log.IssuedQuantity,
                 UnitPrice = log.UnitPrice,
                 TotalAmount = log.TotalAmount,
+                OriginAmount = log.OriginAmount,
                 TotalValueToAccount = log.TotalValueToAccount,
                 UsageTime = log.UsageTime,
                 AllocatedTime = log.AllocatedTime,
@@ -137,7 +138,8 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 AccountedValueThisPeriod = log.AccountedValueThisPeriod,
                 PendingValueEndPeriod = log.PendingValueEndPeriod,
                 Note = log.Note,
-                IsNewItem = isNewItem
+                IsNewItem = isNewItem,
+                IsFullAccounting = log.IsFullAccounting
             });
         }
 
@@ -164,6 +166,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
 
             // Log mới nhất của item này → lấy PendingValueEndPeriod làm PendingValueStart kỳ này
             var latestLog = group.OrderByDescending(l => l.PeriodEndMonth).First();
+            var earliestLog = group.OrderBy(l => l.PeriodEndMonth).First();
 
             // Cộng dồn AllocationRatio của TẤT CẢ các kỳ trước để tính AllocatedTime chính xác
             var totalAllocatedTime = group.Sum(l => l.AllocationRatio);
@@ -261,6 +264,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 IssuedQuantity = 0,
                 UnitPrice = 0,
                 TotalAmount = 0,
+                OriginAmount = overrideLog?.OriginAmount ?? earliestLog.OriginAmount,
                 TotalValueToAccount = totalValueToAccount,
                 UsageTime = usageTime,
                 AllocatedTime = totalAllocatedTime,
@@ -273,7 +277,8 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 AccountedValueThisPeriod = accountedValueThisPeriod,
                 PendingValueEndPeriod = pendingValueEnd,
                 Note = overrideLog?.Note,
-                IsNewItem = false
+                IsNewItem = false,
+                IsFullAccounting = overrideLog?.IsFullAccounting ?? false
             });
         }
 

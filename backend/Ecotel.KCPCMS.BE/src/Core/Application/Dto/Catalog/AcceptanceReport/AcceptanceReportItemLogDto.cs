@@ -16,6 +16,7 @@ public record AcceptanceReportItemLogDto
     public double IssuedQuantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal TotalAmount { get; init; }
+    public decimal OriginAmount { get; init; }
     public decimal TotalValueToAccount { get; init; }
 
     // Time tracking
@@ -36,6 +37,7 @@ public record AcceptanceReportItemLogDto
 
     // Status
     public bool IsNewItem { get; init; } // TH1 or TH2
+    public bool IsFullAccounting { get; init; }
 
 
     // Additional info

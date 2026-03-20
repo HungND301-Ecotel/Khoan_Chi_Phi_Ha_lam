@@ -87,8 +87,14 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                 if (log.AcceptanceReportId == currentAcceptanceReportId)
                 {
                     // Case 1: Log thuộc kỳ hiện tại → Update trực tiếp
-                    log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.Note);
+                    log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(log);
+
+                    await RecalculateFutureLogs(
+                        log.AcceptanceReportItemId,
+                        log.PeriodStartMonth,
+                        log.PendingValueEndPeriod,
+                        cancellationToken);
 
                     results.Add(new UpdateAcceptanceReportItemLogResponseDto
                     {
@@ -112,8 +118,14 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                     if (existingOverrideLog != null)
                     {
                         // Đã có log override → Update log override đó
-                        existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.Note);
+                        log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                         _logRepository.Update(existingOverrideLog);
+
+                        await RecalculateFutureLogs(
+                            log.AcceptanceReportItemId,
+                            log.PeriodStartMonth,
+                            log.PendingValueEndPeriod,
+                            cancellationToken);
 
                         results.Add(new UpdateAcceptanceReportItemLogResponseDto
                         {
@@ -140,8 +152,8 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                         var remainingTime = usageTime - totalAllocatedTime;
 
                         // Nếu RemainingTime = 0, set AllocationRatio = 1 (nếu user không override)
-                        var finalAllocationRatio = Math.Abs(remainingTime) < 0.0001 && updateModel.AllocationRatio == 0 
-                            ? 1.0 
+                        var finalAllocationRatio = Math.Abs(remainingTime) < 0.0001 && updateModel.AllocationRatio == 0
+                            ? 1.0
                             : updateModel.AllocationRatio;
 
                         var actualOutput = productionOutput.ProductionMeters;
@@ -170,6 +182,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                             plannedOutput: plannedOutput,
                             standardOutput: standardOutput,
                             allocationRatio: finalAllocationRatio,
+                            isFullAccounting: updateModel.IsFullAccounting,
                             note: updateModel.Note);
 
                         await _logRepository.InsertAsync(newLog);
@@ -235,5 +248,35 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
         }
 
         return result;
+    }
+
+    private async Task RecalculateFutureLogs(
+            Guid acceptanceReportItemId,
+            DateOnly fromPeriodStartMonth,
+            decimal newPendingValueEnd,
+            CancellationToken cancellationToken)
+    {
+        // Lấy tất cả logs tương lai, sắp xếp theo thời gian tăng dần
+        var futureLogs = await _logRepository.GetAllAsync(
+            predicate: l =>
+                l.AcceptanceReportItemId == acceptanceReportItemId &&
+                l.PeriodStartMonth > fromPeriodStartMonth,
+            disableTracking: false);
+
+        if (futureLogs == null || futureLogs.Count == 0)
+        {
+            return;
+        }
+
+        var orderedLogs = futureLogs.OrderBy(l => l.PeriodStartMonth).ToList();
+
+        var currentPendingValue = newPendingValueEnd;
+
+        foreach (var futureLog in orderedLogs)
+        {
+            futureLog.UpdatePendingValueStartPeriod(currentPendingValue);
+            _logRepository.Update(futureLog);
+            currentPendingValue = futureLog.PendingValueEndPeriod;
+        }
     }
 }

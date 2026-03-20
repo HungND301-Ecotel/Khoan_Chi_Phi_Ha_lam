@@ -17,6 +17,8 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
     public double IssuedQuantity { get; protected set; }
     public decimal UnitPrice { get; protected set; }
     public decimal TotalAmount { get; protected set; }
+    public decimal OriginAmount { get; protected set; }
+    public bool IsFullAccounting { get; protected set; }
     public decimal TotalValueToAccount { get; protected set; }
 
     // Time tracking
@@ -56,6 +58,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         double plannedOutput,
         double standardOutput,
         double allocationRatio,
+        bool isFullAccounting = false,
         string note = "")
     {
         var log = new AcceptanceReportItemLog
@@ -73,10 +76,16 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
             PlannedOutput = plannedOutput,
             StandardOutput = standardOutput,
             AllocationRatio = allocationRatio,
+            IsFullAccounting = isFullAccounting,
             Note = note
         };
 
         log.Calculate();
+
+        if (unitPrice > 0)
+        {
+            log.OriginAmount = log.TotalAmount;
+        }
         return log;
     }
 
@@ -102,11 +111,13 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         }
 
         // Nếu RemainingTime = 0 → Kỳ cuối, hạch toán hết
-        if (Math.Abs(RemainingTime) < 0.0001)
+        if (Math.Abs(RemainingTime) < 0.0001 || IsFullAccounting)
         {
             ValueByStandard = TotalValueToAccount;
             AccountedValueThisPeriod = TotalValueToAccount;
             PendingValueEndPeriod = 0;
+            RemainingTime = 0;
+            AllocatedTime = UsageTime;
         }
         else
         {
@@ -118,9 +129,10 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         }
     }
 
-    public void UpdateAllocationRatio(double allocationRatio, string note = "")
+    public void UpdateAllocationRatio(double allocationRatio, bool isFullAccounting, string note = "")
     {
         AllocationRatio = allocationRatio;
+        IsFullAccounting = isFullAccounting;
         Note = note;
         Calculate();
     }
@@ -129,6 +141,11 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
     {
         PlannedOutput = plannedOutput;
         Note = note;
+        Calculate();
+    }
+    public void UpdatePendingValueStartPeriod(decimal pendingValueStartPeriod)
+    {
+        PendingValueStartPeriod = pendingValueStartPeriod;
         Calculate();
     }
 }

@@ -156,16 +156,9 @@ export function AdjustmentMaterialCost({
 						}
 					}
 
-					const filteredClamps = selectedMaterial
-						? allClamps.filter(
-								(clamp) => clamp.hardnessId === selectedMaterial.hardnessId,
-							)
-						: allClamps;
-
 					stoneClampRatio =
-						filteredClamps.find(
-							(clamp) => clamp.id === result.stoneClampRatioId,
-						)?.value || '-';
+						allClamps.find((clamp) => clamp.id === result.stoneClampRatioId)
+							?.value || '-';
 				}
 
 				setSummary([

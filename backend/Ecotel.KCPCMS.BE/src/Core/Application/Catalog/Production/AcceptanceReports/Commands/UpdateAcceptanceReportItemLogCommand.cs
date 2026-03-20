@@ -56,8 +56,14 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
             if (log.AcceptanceReportId == updateModel.AcceptanceReportId)
             {
                 // Case 1: Log thuộc kỳ hiện tại → Update trực tiếp
-                log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.Note);
+                log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                 _logRepository.Update(log);
+
+                await RecalculateFutureLogs(
+                    log.AcceptanceReportItemId,
+                    log.PeriodStartMonth,
+                    log.PendingValueEndPeriod,
+                    cancellationToken);
 
                 await unitOfWork.SaveChangesAsync();
                 await unitOfWork.CommitAsync(cancellationToken);
@@ -84,8 +90,15 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                 if (existingOverrideLog != null)
                 {
                     // Đã có log override → Update log override đó
-                    existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.Note);
+                    log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(existingOverrideLog);
+
+                    await RecalculateFutureLogs(
+                        existingOverrideLog.AcceptanceReportItemId,
+                        existingOverrideLog.PeriodStartMonth,
+                        existingOverrideLog.PendingValueEndPeriod,
+                        cancellationToken);
+
 
                     await unitOfWork.SaveChangesAsync();
                     await unitOfWork.CommitAsync(cancellationToken);
@@ -102,7 +115,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                 else
                 {
                     // Chưa có log override → Tạo log mới cho kỳ hiện tại
-                    // Lấy tất cả logs trước đó của item này để tính AllocatedTime
+                    // Lấy tất cả logs trước đó của item này để tính AllocatedTime  
                     var allPreviousLogs = await _logRepository.GetAllAsync(
                         predicate: l =>
                             l.AcceptanceReportItemId == log.AcceptanceReportItemId &&
@@ -115,8 +128,8 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                     var remainingTime = usageTime - totalAllocatedTime;
 
                     // Nếu RemainingTime = 0, set AllocationRatio = 1 (nếu user không override)
-                    var finalAllocationRatio = Math.Abs(remainingTime) < 0.0001 && updateModel.AllocationRatio == 0 
-                        ? 1.0 
+                    var finalAllocationRatio = Math.Abs(remainingTime) < 0.0001 && updateModel.AllocationRatio == 0
+                        ? 1.0
                         : updateModel.AllocationRatio;
 
                     var actualOutput = productionOutput.ProductionMeters;
@@ -145,9 +158,16 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         plannedOutput: plannedOutput,
                         standardOutput: standardOutput,
                         allocationRatio: finalAllocationRatio,
+                        isFullAccounting: updateModel.IsFullAccounting,
                         note: updateModel.Note);
 
                     await _logRepository.InsertAsync(newLog);
+
+                    await RecalculateFutureLogs(
+                        newLog.AcceptanceReportItemId,
+                        newLog.PeriodStartMonth,
+                        newLog.PendingValueEndPeriod,
+                        cancellationToken);
 
                     await unitOfWork.SaveChangesAsync();
                     await unitOfWork.CommitAsync(cancellationToken);
@@ -207,5 +227,35 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
         }
 
         return result;
+    }
+
+    private async Task RecalculateFutureLogs(
+        Guid acceptanceReportItemId,
+        DateOnly fromPeriodStartMonth,
+        decimal newPendingValueEnd,
+        CancellationToken cancellationToken)
+    {
+        // Lấy tất cả logs tương lai, sắp xếp theo thời gian tăng dần
+        var futureLogs = await _logRepository.GetAllAsync(
+            predicate: l =>
+                l.AcceptanceReportItemId == acceptanceReportItemId &&
+                l.PeriodStartMonth > fromPeriodStartMonth,
+            disableTracking: false);
+
+        if (futureLogs == null || futureLogs.Count == 0)
+        {
+            return;
+        }
+
+        var orderedLogs = futureLogs.OrderBy(l => l.PeriodStartMonth).ToList();
+
+        var currentPendingValue = newPendingValueEnd;
+
+        foreach (var futureLog in orderedLogs)
+        {
+            futureLog.UpdatePendingValueStartPeriod(currentPendingValue);
+            _logRepository.Update(futureLog);
+            currentPendingValue = futureLog.PendingValueEndPeriod;
+        }
     }
 }

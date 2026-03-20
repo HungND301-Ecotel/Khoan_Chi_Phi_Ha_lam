@@ -131,6 +131,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 IssuedQuantity = log.IssuedQuantity,
                 UnitPrice = log.UnitPrice,
                 TotalAmount = log.TotalAmount,
+                OriginAmount = log.OriginAmount,
                 TotalValueToAccount = log.TotalValueToAccount,
                 UsageTime = log.UsageTime,
                 AllocatedTime = log.AllocatedTime,
@@ -143,7 +144,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 AccountedValueThisPeriod = log.AccountedValueThisPeriod,
                 PendingValueEndPeriod = log.PendingValueEndPeriod,
                 Note = log.Note,
-                IsNewItem = isNewItem
+                IsNewItem = isNewItem,
+                IsFullAccounting = log.IsFullAccounting,
             });
         }
 
@@ -171,6 +173,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
 
             // Log mới nhất của item này
             var latestLog = group.OrderByDescending(l => l.PeriodEndMonth).First();
+            var earliestLog = group.OrderBy(l => l.PeriodEndMonth).First();
 
             // Cộng dồn AllocationRatio của TẤT CẢ các kỳ trước
             var totalAllocatedTime = group.Sum(l => l.AllocationRatio);
@@ -273,6 +276,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 IssuedQuantity = 0,
                 UnitPrice = 0,
                 TotalAmount = 0,
+                OriginAmount = overrideLog?.OriginAmount ?? earliestLog.OriginAmount,
                 TotalValueToAccount = totalValueToAccount,
                 UsageTime = usageTime,
                 AllocatedTime = totalAllocatedTime,
@@ -285,7 +289,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 AccountedValueThisPeriod = accountedValueThisPeriod,
                 PendingValueEndPeriod = pendingValueEnd,
                 Note = overrideLog?.Note ?? latestLog.Note,
-                IsNewItem = false
+                IsNewItem = false,
+                IsFullAccounting = overrideLog?.IsFullAccounting ?? false,
             });
         }
 

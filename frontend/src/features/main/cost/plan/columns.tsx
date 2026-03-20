@@ -25,7 +25,13 @@ export const MAIN_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 	{
 		id: 'time',
 		header: () => <span>Thời gian</span>,
-		cell: ({ row }) => <span>{formatDate(row.original.startMonth)}</span>,
+		cell: ({ row }) => (
+			<span>
+				<span>{formatDate(row.original.startMonth)}</span>
+				<br />
+				<span>{formatDate(row.original.endMonth)}</span>
+			</span>
+		),
 	},
 	{
 		accessorKey: 'totalProductionMeters',

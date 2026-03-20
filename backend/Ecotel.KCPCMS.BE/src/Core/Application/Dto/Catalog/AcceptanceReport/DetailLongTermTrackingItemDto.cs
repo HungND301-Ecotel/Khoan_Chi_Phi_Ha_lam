@@ -16,6 +16,7 @@ public record DetailLongTermTrackingItemDto
     public double IssuedQuantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal TotalAmount { get; init; }
+    public decimal OriginAmount { get; init; }
     public decimal TotalValueToAccount { get; init; }
 
     // Time tracking
@@ -35,6 +36,7 @@ public record DetailLongTermTrackingItemDto
     public double PlannedOutput { get; init; }
     public double StandardOutput { get; init; }
     public bool IsNewItem { get; init; }
+    public bool IsFullAccounting { get; init; }
 }
 
 public record DetailLongTermTrackingProcessGroupDto

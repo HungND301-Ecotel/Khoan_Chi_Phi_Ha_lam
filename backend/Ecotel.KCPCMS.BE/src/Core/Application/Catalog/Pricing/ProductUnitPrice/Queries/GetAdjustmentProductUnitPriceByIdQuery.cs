@@ -268,7 +268,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             .Select(c => new
             {
                 c.MaterialUnitPriceId,
-                c.MaterialUnitPrice.TotalPrice
+                c.MaterialUnitPrice.OtherMaterialvalue,
+                AssignmentCodesTotalPrice = c.MaterialUnitPrice.MaterialUnitPriceAssignmentCodes
+                    .Sum(a => a.TotalPrice)
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -276,9 +278,15 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
         return unitPriceData.GroupBy(a => a.MaterialUnitPriceId)
             .ToDictionary(
                 g => g.Key,
-                g => new List<MaterialAssignmentData>
+                g =>
                 {
-                    new MaterialAssignmentData { Quantity = 1, Cost = g.FirstOrDefault()?.TotalPrice ?? 0 }
+                    var item = g.First();
+                    var totalPrice = item.AssignmentCodesTotalPrice * (1 + item.OtherMaterialvalue / 100);
+
+                    return new List<MaterialAssignmentData>
+                    {
+                    new MaterialAssignmentData { Quantity = 1, Cost = totalPrice }
+                    };
                 });
     }
 

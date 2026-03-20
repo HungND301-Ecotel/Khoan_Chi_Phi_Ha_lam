@@ -11,6 +11,7 @@ export type LongtermMaterialDetailItem = {
 	issuedQuantity: number; // SỐ LƯỢNG (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)
 	unitPrice: number; // ĐƠN GIÁ (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)
 	totalAmount: number; // THÀNH TIỀN (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)
+	originAmount: number; // GIÁ TRỊ GỐC (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)
 	totalValueToAccount: number; // TỔNG GIÁ TRỊ CẦN HẠCH TOÁN (Đồng)
 	usageTime: number; // THỜI GIAN SỬ DỤNG (Ti)
 	allocatedTime: number; // THỜI GIAN ĐÃ PHÂN BỔ
@@ -20,6 +21,7 @@ export type LongtermMaterialDetailItem = {
 	standardOutput?: number; // SẢN LƯỢNG TIÊU CHUẨN
 	valueByStandard: number; // GIÁ TRỊ CẦN HẠCH TOÁN THEO ĐỊNH MỨC (Đồng)
 	allocationRatio: number; // TỶ LỆ PHÂN BỔ
+	isFullAccounting: boolean; // HẠCH TOÁN HẾT
 	accountedValueThisPeriod: number; // GIÁ TRỊ DÀI KỲ HẠCH TOÁN KỲ NÀY (Đồng)
 	pendingValueEndPeriod: number; // GIÁ TRỊ CUỐI KỲ CHỜ HẠCH TOÁN KỲ SAU (Đồng)
 	isNewItem?: boolean;

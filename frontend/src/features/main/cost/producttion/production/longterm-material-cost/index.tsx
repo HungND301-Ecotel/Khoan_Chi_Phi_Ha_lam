@@ -138,8 +138,6 @@ export function LongTermMaterialCosts({
 						className='flex w-full min-w-0 flex-col gap-2'
 					>
 						{groupedItems.map((group) => {
-							const totalActualOutput = group.items[0].actualOutput || 0;
-
 							return (
 								<AccordionItem
 									key={group.processGroupId}
@@ -157,9 +155,6 @@ export function LongTermMaterialCosts({
 														? `${group.processGroupCode} - ${group.processGroupName || ''}`
 														: group.processGroupName || 'Không xác định'}
 												</ItemTitle>
-											</div>
-											<div className='flex flex-3 font-bold'>
-												{totalActualOutput.toFixed(0)}
 											</div>
 											<ItemActions>
 												<AccordionTrigger className='group p-0'>

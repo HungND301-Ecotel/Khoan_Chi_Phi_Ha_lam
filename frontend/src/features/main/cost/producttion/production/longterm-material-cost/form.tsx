@@ -7,14 +7,15 @@ import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { ProductCostFormProps } from '@/features/main/cost/plan/types';
 import {
+	LONGTERM_MATERIAL_COST_DEFAULT,
 	longtermMaterialCostSchema,
 	LongtermMaterialCostSchema,
-	LONGTERM_MATERIAL_COST_DEFAULT,
 } from '@/features/main/cost/producttion/production/longterm-material-cost/schema';
 import {
 	LongtermMaterialCostDetail,
@@ -71,6 +72,7 @@ export function LongtermMaterialCostForm({
 					items: resolvedItems.map((item) => ({
 						id: item.id,
 						allocationRate: item.allocationRatio,
+						isFullAccounting: item.isFullAccounting ?? false,
 						note: item.note ?? '',
 					})),
 				});
@@ -82,12 +84,24 @@ export function LongtermMaterialCostForm({
 		fetchDetail();
 	}, [form, id]);
 
+	const handleFullAccountingChange = (index: number, checked: boolean) => {
+		form.setValue(`items.${index}.isFullAccounting`, checked);
+
+		if (checked) {
+			form.setValue(`items.${index}.allocationRate`, 0);
+			form.setValue(`items.${index}.note`, 'Hạch toán hết');
+		} else {
+			form.setValue(`items.${index}.note`, '');
+		}
+	};
+
 	const handleSubmit = async (values: LongtermMaterialCostSchema) => {
 		try {
 			const body = values.items.map((item) => ({
 				id: item.id,
 				acceptanceReportId: acceptanceReportId,
 				allocationRatio: item.allocationRate,
+				isFullAccounting: item.isFullAccounting,
 				note: item.note ?? '',
 			}));
 
@@ -115,6 +129,8 @@ export function LongtermMaterialCostForm({
 				>
 					{(index) => {
 						const item = detailItems[index];
+						const isFullAccounting =
+							form.watch(`items.${index}.isFullAccounting`) ?? false;
 						const watchedAllocationRate = form.watch(
 							`items.${index}.allocationRate`,
 						);
@@ -135,15 +151,13 @@ export function LongtermMaterialCostForm({
 						const totalAccountingValue =
 							(item?.pendingValueStartPeriod ?? 0) + amount;
 
-						// Trường hợp đặc biệt: nếu tỷ lệ phân bổ = thời gian còn lại
-						const currentPeriodValue =
-							remainingPeriod === 0
-								? (item?.totalValueToAccount ?? 0)
-								: quotaAccountingValue * (watchedAllocationRate || 1);
-						const endingBalance =
-							remainingPeriod === 0
-								? 0
-								: totalAccountingValue - currentPeriodValue;
+						const currentPeriodValue = isFullAccounting
+							? (item?.totalValueToAccount ?? 0)
+							: quotaAccountingValue * (watchedAllocationRate || 1);
+
+						const endingBalance = isFullAccounting
+							? 0
+							: totalAccountingValue - currentPeriodValue;
 
 						return (
 							<>
@@ -207,7 +221,7 @@ export function LongtermMaterialCostForm({
 									<Label>Nguyên giá (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(item?.totalValueToAccount ?? 0, {
+										value={formatNumber(item?.originAmount ?? 0, {
 											maximumFractionDigits: 0,
 										})}
 									/>
@@ -246,8 +260,25 @@ export function LongtermMaterialCostForm({
 										control={form.control}
 										name={`items.${index}.allocationRate`}
 										label='Tỷ lệ phân bổ'
-										placeholder='Nhập tỷ lệ (0-1)'
+										placeholder='Nhập tỷ lệ phân bổ'
+										disabled={isFullAccounting}
 									/>
+								</div>
+
+								{/* Checkbox Hạch toán hết */}
+								<div className='min-w-fit flex-1 space-y-2'>
+									<Label htmlFor={`full-accounting-${index}`}>
+										Hạch toán hết
+									</Label>
+									<div className='flex h-9 items-center'>
+										<Switch
+											checked={isFullAccounting}
+											className='cursor-pointer data-[state=checked]:bg-blue-600'
+											onCheckedChange={(checked) =>
+												handleFullAccountingChange(index, checked)
+											}
+										/>
+									</div>
 								</div>
 
 								<div className='min-w-56 flex-1 space-y-2'>

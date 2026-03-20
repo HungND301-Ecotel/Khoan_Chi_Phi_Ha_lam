@@ -69,7 +69,7 @@ export function FixedColumnDataTable({
 		0,
 	);
 	const totalOriginalPrice = items.reduce(
-		(sum, item) => sum + (item.totalValueToAccount ?? 0),
+		(sum, item) => sum + (item.originAmount ?? 0),
 		0,
 	);
 	const totalQuotaAccountingValue = items.reduce(
@@ -432,7 +432,7 @@ export function FixedColumnDataTable({
 							})}
 						</TableCell>
 						<TableCell style={{ minWidth: '120px' }}>
-							{formatNumber(item.totalValueToAccount ?? 0, {
+							{formatNumber(item.originAmount ?? 0, {
 								maximumFractionDigits: 0,
 							})}
 						</TableCell>
