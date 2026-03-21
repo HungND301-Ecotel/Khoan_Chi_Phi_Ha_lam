@@ -20,6 +20,9 @@ namespace Domain.Entities.Index
         private IList<MaterialUnitPrice> _materialUnitPrices = new List<MaterialUnitPrice>();
         public virtual IReadOnlyCollection<MaterialUnitPrice> MaterialUnitPrices => _materialUnitPrices.AsReadOnly();
 
+        private IList<NormFactor> _normFactors = new List<NormFactor>();
+        public virtual IReadOnlyCollection<NormFactor> NormFactors => _normFactors.AsReadOnly();
+
         // constructor
         public static ProductionProcess Create(string code, string name, Guid processGroupId)
         {

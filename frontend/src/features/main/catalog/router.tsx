@@ -12,6 +12,7 @@ import MainCatalogUnitPage from '@/features/main/catalog/unit/page';
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { MainCatalogOtherPartPage } from './part/other/page';
 import { MainCatalogParameterProductionOrderPage } from './production-order/page';
+import { MainCatalogNormFactorPage } from './norm-factor/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -100,6 +101,14 @@ const MainCatalogRouter: RouteObject = {
 			handle: {
 				breadcrumb: 'Quyết định, lệnh sản xuất',
 				title: 'Quyết định, lệnh sản xuất',
+			},
+		},
+		{
+			path: 'norm-factors',
+			element: <MainCatalogNormFactorPage />,
+			handle: {
+				breadcrumb: 'Hệ số điều chỉnh định mức',
+				title: 'Hệ số điều chỉnh định mức',
 			},
 		},
 	],

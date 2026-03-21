@@ -18,6 +18,8 @@ namespace Domain.Entities.Index
         private IList<SlideUnitPrice> _slideUnitPrices = new List<SlideUnitPrice>();
         public virtual IReadOnlyCollection<SlideUnitPrice> SlideUnitPrices => _slideUnitPrices.AsReadOnly();
 
+        private IList<NormFactor> _normFactors = new List<NormFactor>();
+        public virtual IReadOnlyCollection<NormFactor> NormFactors => _normFactors.AsReadOnly();
         public static Hardness Create(string value)
         {
             if (string.IsNullOrWhiteSpace(value))

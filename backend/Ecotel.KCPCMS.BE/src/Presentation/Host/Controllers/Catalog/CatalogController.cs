@@ -37,6 +37,7 @@ using Application.Dto.Catalog.Equipment;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
 using Application.Dto.Catalog.Metric;
+using Application.Dto.Catalog.NormFactor;
 using Application.Dto.Catalog.Part;
 using Application.Dto.Catalog.Passport;
 using Application.Dto.Catalog.ProcessGroup;
@@ -1446,6 +1447,49 @@ public class CatalogController : BaseNoAuthController
     public async Task<IActionResult> DeleteProductList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region NormFactor
+
+    [HttpGet("NormFactor")]
+    [OpenApiOperation("Get All NormFactor", "")]
+    public async Task<IActionResult> GetAllNormFactor([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllNormFactorQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("NormFactor/{id:guid}")]
+    [OpenApiOperation("Get NormFactor By Id", "")]
+    public async Task<IActionResult> GetNormFactorById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetNormFactorByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("NormFactor")]
+    [OpenApiOperation("Create New NormFactor", "")]
+    public async Task<IActionResult> CreateNormFactor([FromBody] CreateNormFactorDto createModel)
+    {
+        var result = await Mediator.Send(new CreateNormFactorCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("NormFactor")]
+    [OpenApiOperation("Update NormFactor", "")]
+    public async Task<IActionResult> UpdateNormFactor([FromBody] UpdateNormFactorDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateNormFactorCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("NormFactor")]
+    [OpenApiOperation("Delete Many NormFactor", "")]
+    public async Task<IActionResult> DeleteNormFactorList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteNormFactorListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

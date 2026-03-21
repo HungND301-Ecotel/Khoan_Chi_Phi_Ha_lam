@@ -52,6 +52,8 @@ public class ApplicationDbContext(
     public DbSet<Product> Products => Set<Product>();
     public DbSet<AdjustmentFactorDescription> AdjustmentFactorDescriptions => Set<AdjustmentFactorDescription>();
     public DbSet<AdjustmentFactor> AdjustmentFactors => Set<AdjustmentFactor>();
+    public DbSet<NormFactor> NormFactors => Set<NormFactor>();
+    public DbSet<NormFactorAssignmentCode> NormFactorAssignmentCodes => Set<NormFactorAssignmentCode>();
     public DbSet<Code> Codes => Set<Code>();
 
     #endregion
@@ -119,6 +121,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Product>().ToTable(nameof(Product), "Index");
         modelBuilder.Entity<AdjustmentFactor>().ToTable(nameof(AdjustmentFactor), "Index");
         modelBuilder.Entity<AdjustmentFactorDescription>().ToTable(nameof(AdjustmentFactorDescription), "Index");
+        modelBuilder.Entity<NormFactor>().ToTable(nameof(NormFactor), "Index");
+        modelBuilder.Entity<NormFactorAssignmentCode>().ToTable(nameof(NormFactorAssignmentCode), "Index");
         modelBuilder.Entity<Code>().ToTable(nameof(Code), "Index");
         modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>().ToTable(nameof(PlannedMaintainCostAdjustmentFactorDescription), "Index");
         modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>().ToTable(nameof(PlannedElectricityCostAdjustmentFactorDescription), "Index");
@@ -137,6 +141,11 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssignmentCode>()
             .HasMany(s => s.MaterialUnitPriceAssignmentCodes)
+            .WithOne(h => h.AssignmentCode)
+            .HasForeignKey(s => s.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssignmentCode>()
+            .HasMany(s => s.NormFactorAssignmentCodes)
             .WithOne(h => h.AssignmentCode)
             .HasForeignKey(s => s.AssignmentCodeId)
             .OnDelete(DeleteBehavior.Cascade);
@@ -271,6 +280,33 @@ public class ApplicationDbContext(
         // Adjustment Factor Description table
         modelBuilder.Entity<AdjustmentFactorDescription>()
             .HasIndex(e => e.AdjustmentFactorId);
+
+        //NormFactor table
+        modelBuilder.Entity<NormFactor>()
+            .HasOne(s => s.ReferenceNormFactor)
+            .WithMany(h => h.ChildNormFactors)
+            .HasForeignKey(s => s.ReferenceNormFactorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NormFactor>()
+            .HasOne(s => s.ProductionProcess)
+            .WithMany(h => h.NormFactors)
+            .HasForeignKey(s => s.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NormFactor>()
+            .HasOne(s => s.StoneClampRatio)
+            .WithMany(h => h.NormFactors)
+            .HasForeignKey(s => s.StoneClampRatioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NormFactor>()
+            .HasOne(s => s.Hardness)
+            .WithMany(h => h.NormFactors)
+            .HasForeignKey(s => s.HardnessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NormFactor>()
+            .HasMany(s => s.NormFactorAssignmentCodes)
+            .WithOne(h => h.NormFactor)
+            .HasForeignKey(s => s.NormFactorId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Product table
         modelBuilder.Entity<Product>()

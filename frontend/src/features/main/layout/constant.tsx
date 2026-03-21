@@ -82,6 +82,11 @@ export const NAVIGATIONS: Navigation[] = [
 				name: 'Quyết định, lệnh sản xuất',
 				href: '/catalogs/production-orders',
 			},
+			{
+				type: 'link',
+				name: 'Hệ số điều chỉnh định mức',
+				href: '/catalogs/norm-factors',
+			},
 		],
 	},
 	{

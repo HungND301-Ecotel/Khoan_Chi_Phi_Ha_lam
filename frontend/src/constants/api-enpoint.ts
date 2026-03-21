@@ -216,6 +216,16 @@ export const API = {
 				EXPORT: '/v1/catalog/adjustmentfactordescription/export',
 			},
 		},
+
+		NORM_FACTOR: {
+			LIST: '/v1/catalog/normfactor',
+			CREATE: '/v1/catalog/normfactor',
+			UPDATE: '/v1/catalog/normfactor',
+			DELETES: '/v1/catalog/normfactor',
+			DETAIL: (id: string) => `/v1/catalog/normfactor/${id}`,
+			IMPORT: '/v1/catalog/normfactor/import',
+			EXPORT: '/v1/catalog/normfactor/export',
+		},
 	},
 
 	DASHBOARD: {

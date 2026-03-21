@@ -62,6 +62,7 @@ public static class CustomResponseMessage
     public const string ProductionProcessNotFound = "PRODUCTION_PROCESS_NOT_FOUND";
     public const string ElectricityUnitPriceNotFound = "ELECTRICITY_UNIT_PRICE_NOT_FOUND";
     public const string StoneClampRatioNotFound = "STONE_CLAMP_RATIO_NOT_FOUND";
+    public const string NormFactorNotFound = "NORM_FACTOR_NOT_FOUND";
     public const string UnitOfMeasureNameAlreadyExists = "UNIT_OF_MEASURE_NAME_ALREADY_EXISTS";
     public const string ElectricityUnitPriceEquipmentAlreadyExists = "ELECTRICITY_UNIT_PRICE_EQUIPMENT_ALREADY_EXISTS";
     public const string ElectricityUnitPriceEquipmentNotFound = "ELECTRICITY_UNIT_PRICE_EQUIPMENT_NOT_FOUND";

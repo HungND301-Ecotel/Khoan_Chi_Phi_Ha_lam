@@ -86,8 +86,8 @@ export function ProductionOrderForm({
 			<FormInput
 				control={form.control}
 				name='code'
-				label='Mã quyết định, lệnh sản xuất'
-				placeholder='Nhập mã quyết định, lệnh sản xuất'
+				label='Số quyết định, lệnh sản xuất'
+				placeholder='Nhập số quyết định, lệnh sản xuất'
 			/>
 			<FormInput
 				control={form.control}
