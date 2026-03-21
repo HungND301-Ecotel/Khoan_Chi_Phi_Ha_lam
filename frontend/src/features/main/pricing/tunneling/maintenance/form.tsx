@@ -15,7 +15,7 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
-import { Part } from '@/features/main/catalog/part/columns';
+import { Part } from '@/features/main/catalog/part/main/columns';
 import { Tunneling } from '@/features/main/pricing/tunneling/maintenance/columns';
 import { TunnelingDetail } from '@/features/main/pricing/tunneling/maintenance/page';
 import {

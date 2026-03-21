@@ -12,12 +12,12 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
-import { Part } from '@/features/main/catalog/part/columns';
+import { Part } from '@/features/main/catalog/part/main/columns';
 import {
 	PART_SCHEMA_DEFAULT,
 	partSchema,
 	PartSchema,
-} from '@/features/main/catalog/part/schema';
+} from '@/features/main/catalog/part/main/schema';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';

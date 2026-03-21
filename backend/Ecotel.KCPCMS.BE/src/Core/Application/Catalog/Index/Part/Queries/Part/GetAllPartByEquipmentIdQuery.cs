@@ -6,7 +6,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
-namespace Application.Catalog.Index.Part.Queries;
+namespace Application.Catalog.Index.Part.Queries.Part;
 
 public record GetAllPartByEquipmentIdQuery(DefaultIdType EquipmentId) : IRequest<IList<PartDetailBaseDto>>;
 

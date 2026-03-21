@@ -5,11 +5,12 @@ import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/p
 import MainCatalogEquipmentPage from '@/features/main/catalog/equipment/page';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
 import { MainCatalogParameterRouter } from '@/features/main/catalog/parameter/router';
-import { MainCatalogPartPage } from '@/features/main/catalog/part/page';
+import { MainCatalogPartPage } from '@/features/main/catalog/part/main/page';
 import { MainCatalogProcessRouter } from '@/features/main/catalog/process/router';
 import { MainCatalogProductPage } from '@/features/main/catalog/product/page';
 import MainCatalogUnitPage from '@/features/main/catalog/unit/page';
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
+import { MainCatalogOtherPartPage } from './part/other/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -65,8 +66,27 @@ const MainCatalogRouter: RouteObject = {
 		},
 		{
 			path: 'spare-parts',
-			element: <MainCatalogPartPage />,
-			handle: { breadcrumb: 'Phụ tùng', title: 'Phụ tùng' },
+			element: <Outlet />,
+			handle: { breadcrumb: 'Phụ tùng' },
+			children: [
+				{
+					index: true,
+					element: <Navigate replace to='main' />,
+				},
+				{
+					path: 'main',
+					element: <MainCatalogPartPage />,
+					handle: {
+						breadcrumb: 'Phụ tùng theo thiết bị',
+						title: 'Phụ tùng theo thiết bị',
+					},
+				},
+				{
+					path: 'other',
+					element: <MainCatalogOtherPartPage />,
+					handle: { breadcrumb: 'Phụ tùng khác', title: 'Phụ tùng khác' },
+				},
+			],
 		},
 		{
 			path: 'products',

@@ -72,6 +72,15 @@ export const API = {
 			IMPORT: '/v1/catalog/part/import',
 			EXPORT: '/v1/catalog/part/export',
 		},
+		OTHER_PART: {
+			LIST: '/v1/catalog/otherpart',
+			CREATE: '/v1/catalog/otherpart',
+			UPDATE: '/v1/catalog/otherpart',
+			DELETES: '/v1/catalog/otherpart',
+			DETAIL: (id: string) => `/v1/catalog/otherpart/${id}`,
+			IMPORT: '/v1/catalog/otherpart/import',
+			EXPORT: '/v1/catalog/otherpart/export',
+		},
 		PRODUCT: {
 			LIST: '/v1/catalog/product',
 			CREATE: '/v1/catalog/product',

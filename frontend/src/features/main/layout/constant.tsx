@@ -53,7 +53,23 @@ export const NAVIGATIONS: Navigation[] = [
 				],
 			},
 			{ type: 'link', name: 'Thiết bị', href: '/catalogs/equipments' },
-			{ type: 'link', name: 'Phụ tùng', href: '/catalogs/spare-parts' },
+			// { type: 'link', name: 'Phụ tùng', href: '/catalogs/spare-parts' },
+			{
+				type: 'sub-menu',
+				name: 'Phụ tùng',
+				items: [
+					{
+						type: 'link',
+						name: 'Phụ tùng theo thiết bị',
+						href: '/catalogs/spare-parts/main',
+					},
+					{
+						type: 'link',
+						name: 'Phụ tùng khác',
+						href: '/catalogs/spare-parts/other',
+					},
+				],
+			},
 			{ type: 'link', name: 'Sản phẩm', href: '/catalogs/products' },
 			{ type: 'link', name: 'Thông số', href: '/catalogs/parameters' },
 			{

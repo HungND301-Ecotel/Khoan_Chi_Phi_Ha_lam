@@ -5,7 +5,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
-namespace Application.Catalog.Index.Part.Commands;
+namespace Application.Catalog.Index.Part.Commands.Part;
 public record DeletePartCommand(DefaultIdType DeleteId) : IRequest<bool>;
 
 public class DeletePartCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<DeletePartCommand, bool>

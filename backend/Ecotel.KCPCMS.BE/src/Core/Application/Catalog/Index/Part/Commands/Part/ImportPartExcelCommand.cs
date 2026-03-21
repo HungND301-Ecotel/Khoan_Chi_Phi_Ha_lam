@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 using PartEntity = Domain.Entities.Index.Part;
 
-namespace Application.Catalog.Index.Part.Commands;
+namespace Application.Catalog.Index.Part.Commands.Part;
 
 public record ImportPartExcelCommand(IFormFile File) : IRequest<bool>;
 

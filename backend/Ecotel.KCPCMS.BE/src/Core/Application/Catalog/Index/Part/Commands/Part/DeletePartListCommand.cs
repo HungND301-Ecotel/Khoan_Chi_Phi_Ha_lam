@@ -6,7 +6,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
-namespace Application.Catalog.Index.Part.Commands;
+namespace Application.Catalog.Index.Part.Commands.Part;
 
 public record DeletePartListCommand(IList<DefaultIdType> DeleteIds) : IRequest<bool>;
 
@@ -75,7 +75,7 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
             if (partsToDelete.Any())
             {
                 _partRepository.Delete(partsToDelete);
-                _codeRepository.Delete(partsToDelete.Select(p => p.Code!).ToList());
+                _codeRepository.Delete(partsToDelete.Select(p => p.Code).ToList());
                 await unitOfWork.SaveChangesAsync();
             }
 

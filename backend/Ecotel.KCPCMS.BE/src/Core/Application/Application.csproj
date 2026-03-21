@@ -43,7 +43,6 @@
         <ProjectReference Include="..\Shared\Shared.csproj" />
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="Catalog\Index\Part\Specifications\" />
       <Folder Include="Dto\Catalog\ActualElectricityCost\" />
       <Folder Include="Dto\Catalog\ActualMaintainCost\" />
       <Folder Include="Dto\Catalog\ActualMaterialCost\" />

@@ -14,8 +14,8 @@ using Application.Catalog.Index.Material.Commands;
 using Application.Catalog.Index.Material.Queries;
 using Application.Catalog.Index.Metrics.Commands;
 using Application.Catalog.Index.Metrics.Queries;
-using Application.Catalog.Index.Part.Commands;
-using Application.Catalog.Index.Part.Queries;
+using Application.Catalog.Index.Part.Commands.Part;
+using Application.Catalog.Index.Part.Queries.Part;
 using Application.Catalog.Index.Passport.Commands;
 using Application.Catalog.Index.Passport.Queries;
 using Application.Catalog.Index.ProcessGroups.Commands;
@@ -399,6 +399,48 @@ public class CatalogController : BaseNoAuthController
     public async Task<IActionResult> DeletePartList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeletePartListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region OtherPart
+    [HttpGet("OtherPart")]
+    [OpenApiOperation("Get All OtherPart", "")]
+    public async Task<IActionResult> GetAllOtherPart([FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllOtherPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("OtherPart/{id:guid}")]
+    [OpenApiOperation("Get OtherPart by Id", "")]
+    public async Task<IActionResult> GetOtherPartById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetOtherPartByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("OtherPart")]
+    [OpenApiOperation("Create New OtherPart", "")]
+    public async Task<IActionResult> CreateOtherPart([FromBody] CreateOtherPartDto createModel)
+    {
+        var result = await Mediator.Send(new CreateOtherPartCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("OtherPart")]
+    [OpenApiOperation("Update OtherPart", "")]
+    public async Task<IActionResult> UpdateOtherPart([FromBody] UpdateOtherPartDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateOtherPartCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("OtherPart")]
+    [OpenApiOperation("Delete Many OtherPart", "")]
+    public async Task<IActionResult> DeleteOtherPartList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteOtherPartListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

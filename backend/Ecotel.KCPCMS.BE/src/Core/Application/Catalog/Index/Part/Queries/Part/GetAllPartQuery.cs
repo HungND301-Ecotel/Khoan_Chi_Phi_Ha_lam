@@ -7,7 +7,7 @@ using Domain.Common.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace Application.Catalog.Index.Part.Queries;
+namespace Application.Catalog.Index.Part.Queries.Part;
 
 public record GetAllPartQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination, DateTime Date) : IRequest<PaginationResponse<PartDto>>;
 

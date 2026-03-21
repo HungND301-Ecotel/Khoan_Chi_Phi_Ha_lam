@@ -8,7 +8,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
-namespace Application.Catalog.Index.Part.Queries;
+namespace Application.Catalog.Index.Part.Queries.Part;
 public record GetPartByIdQuery(DefaultIdType Id) : IRequest<PartDetailDto>;
 
 public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetPartByIdQuery, PartDetailDto>

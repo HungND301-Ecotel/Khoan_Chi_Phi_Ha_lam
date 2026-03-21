@@ -15,7 +15,7 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
-import { Part } from '@/features/main/catalog/part/columns';
+import { Part } from '@/features/main/catalog/part/main/columns';
 import { LongwallPanel } from '@/features/main/pricing/longwall-panel/maintenance/columns';
 import { LongwallPanelDetail } from '@/features/main/pricing/longwall-panel/maintenance/page';
 import {

@@ -127,3 +127,9 @@ public enum AcceptanceReportItemType
     Material = 1,
     Part = 2
 }
+
+public enum PartType
+{
+    Part = 1,
+    OtherPart = 2
+}

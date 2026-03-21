@@ -6,7 +6,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using PartEntity = Domain.Entities.Index.Part;
 
-namespace Application.Catalog.Index.Part.Queries;
+namespace Application.Catalog.Index.Part.Queries.Part;
 
 public record ExportExcelPartQuery() : IRequest<byte[]>;
 

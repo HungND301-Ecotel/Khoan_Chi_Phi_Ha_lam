@@ -3,39 +3,25 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Extensions;
 using MediatR;
 using Shared.Constants;
 
-namespace Application.Catalog.Index.Part.Commands;
+namespace Application.Catalog.Index.Part.Commands.Part;
 
-public record CreatePartCommand(CreatePartDto CreateModel) : IRequest<bool>;
+public record CreateOtherPartCommand(CreateOtherPartDto CreateModel) : IRequest<bool>;
 
-public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreatePartCommand, bool>
+public class CreateOtherPartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateOtherPartCommand, bool>
 {
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    public async Task<bool> Handle(CreatePartCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(CreateOtherPartCommand request, CancellationToken cancellationToken)
     {
-        var equipmentIds = request.CreateModel.EquipmentIds.Distinct().ToList();
-        if (!equipmentIds.Any())
-        {
-            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
-        }
-
         if (await codeService.IsPartCodeExisted(request.CreateModel.Code))
         {
             throw new ConflictException(CustomResponseMessage.PartCodeAlreadyExists);
-        }
-
-        var equipments = await _equipmentRepository.GetAllAsync(
-            predicate: x => equipmentIds.Contains(x.Id),
-            disableTracking: false);
-        if (equipments.Count != equipmentIds.Count)
-        {
-            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
         }
 
         if (request.CreateModel.UnitOfMeasureId != null)
@@ -47,14 +33,14 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             }
         }
 
-        await unitOfWork.BeginTransactionAsync();
+        await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
             var newPart = Domain.Entities.Index.Part.Create(
                 request.CreateModel.Code,
                 request.CreateModel.Name,
                 request.CreateModel.UnitOfMeasureId,
-                equipments.ToList());
+                PartType.OtherPart);
 
             var costList = new List<Cost>();
             foreach (var cost in request.CreateModel.Costs)
@@ -74,15 +60,15 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
 
             newPart.AddCost(costList);
 
-            await _partRepository.InsertAsync(newPart);
+            await _partRepository.InsertAsync(newPart, cancellationToken);
 
             await unitOfWork.SaveChangesAsync();
-            await unitOfWork.CommitAsync();
+            await unitOfWork.CommitAsync(cancellationToken);
             return true;
         }
         catch
         {
-            await unitOfWork.RollbackAsync();
+            await unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
     }

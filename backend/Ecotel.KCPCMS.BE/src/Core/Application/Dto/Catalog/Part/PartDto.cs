@@ -17,6 +17,16 @@ namespace Application.Dto.Catalog.Part
         public double CostAmount { get; set; }
     }
 
+    public class OtherPartDto : IDto
+    {
+        public Guid Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public Guid? UnitOfMeasureId { get; set; }
+        public string UnitOfMeasureName { get; set; }
+        public double CostAmount { get; set; }
+    }
+
     public class PartExcelDto
     {
         public Guid Id { get; set; }
@@ -45,6 +55,16 @@ namespace Application.Dto.Catalog.Part
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
+    public class OtherPartDetailDto
+    {
+        public Guid Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public Guid? UnitOfMeasureId { get; set; }
+        public string UnitOfMeasureName { get; set; }
+        public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
+    }
+
     public class PartDetailBaseDto : IDto
     {
         public Guid Id { get; set; }
@@ -66,6 +86,14 @@ namespace Application.Dto.Catalog.Part
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
+    public class CreateOtherPartDto
+    {
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public Guid? UnitOfMeasureId { get; set; }
+        public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
+    }
+
     public class UpdatePartDto
     {
         public Guid Id { get; set; }
@@ -73,6 +101,15 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
+        public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
+    }
+
+    public class UpdateOtherPartDto
+    {
+        public Guid Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public Guid? UnitOfMeasureId { get; set; }
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 }
