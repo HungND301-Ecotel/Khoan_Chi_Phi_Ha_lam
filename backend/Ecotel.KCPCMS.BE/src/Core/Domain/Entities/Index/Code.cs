@@ -3,6 +3,7 @@ using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 
 namespace Domain.Entities.Index;
+
 public class Code(string value) : AuditableEntity<Guid>, IAggregateRoot
 {
     public string Value { get; set; } = value;
@@ -17,4 +18,6 @@ public class Code(string value) : AuditableEntity<Guid>, IAggregateRoot
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
     public virtual MaterialUnitPrice? MaterialUnitPrice { get; protected set; }
     public virtual SlideUnitPrice? SlideUnitPrice { get; protected set; }
+    public virtual ProductionOrder? ProductionOrder { get; protected set; }
+
 }

@@ -163,6 +163,13 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.MaterialId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // ProductionOrder table
+        modelBuilder.Entity<ProductionOrder>()
+            .HasOne(s => s.Code)
+            .WithOne(h => h.ProductionOrder)
+            .HasForeignKey<ProductionOrder>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Equipment table
         modelBuilder.Entity<Equipment>()
             .HasOne(s => s.UnitOfMeasure)
@@ -327,12 +334,6 @@ public class ApplicationDbContext(
 
         //InsertItem table
         modelBuilder.Entity<InsertItem>()
-            .HasIndex(e => e.Value)
-            .IsUnique()
-            .HasFilter("\"DeletedOn\" IS NULL");
-
-        //InsertItem table
-        modelBuilder.Entity<ProductionOrder>()
             .HasIndex(e => e.Value)
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");

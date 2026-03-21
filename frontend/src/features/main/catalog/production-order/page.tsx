@@ -62,7 +62,11 @@ export function MainCatalogParameterProductionOrderPage() {
 		<DataTable
 			url={API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST}
 			columns={CATALOG_PARAMETER_PRODUCTION_ORDER_COLUMNS}
-			filters={[{ key: 'value', label: 'Quyết định, lệnh sản xuất' }]}
+			filters={[
+				{ key: 'code', label: 'Mã quyết định, lệnh sản xuất' },
+				{ key: 'name', label: 'Tên quyết định, lệnh sản xuất' },
+				{ key: 'startMonth', label: 'Thời gian' },
+			]}
 			onCreate={(props) => <ProductionOrderForm {...props} />}
 			onUpdate={(props) => <ProductionOrderForm {...props} />}
 			onDelete={handleDelete}

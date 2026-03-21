@@ -22,10 +22,6 @@ const TABS: { title: string; href: string }[] = [
 		href: '/catalogs/parameters/cuttingthicknesses',
 	},
 	{ title: 'Thông số lò chợ', href: '/catalogs/parameters/longwallparameters' },
-	{
-		title: 'Quyết định, lệnh sản xuất',
-		href: '/catalogs/parameters/production-orders',
-	},
 ] as const;
 
 export function MainCatalogParameterLayout() {

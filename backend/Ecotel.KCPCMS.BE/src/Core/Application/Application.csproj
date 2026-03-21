@@ -10,18 +10,30 @@
       <Compile Remove="Catalog\Pricing\ActualMaintainCost\**" />
       <Compile Remove="Catalog\Pricing\ActualMaterialCost\**" />
       <Compile Remove="Catalog\Users\Params\**" />
+      <Compile Remove="Dto\Catalog\ActualElectricityCost\**" />
+      <Compile Remove="Dto\Catalog\ActualMaintainCost\**" />
+      <Compile Remove="Dto\Catalog\ActualMaterialCost\**" />
+      <Compile Remove="Dto\Catalog\MaterialUnitPriceAssignmentCode\**" />
       <Compile Remove="Dto\Persistence\Catalog\Common\**" />
       <EmbeddedResource Remove="Catalog\Doctors\**" />
       <EmbeddedResource Remove="Catalog\Pricing\ActualElectricityCost\**" />
       <EmbeddedResource Remove="Catalog\Pricing\ActualMaintainCost\**" />
       <EmbeddedResource Remove="Catalog\Pricing\ActualMaterialCost\**" />
       <EmbeddedResource Remove="Catalog\Users\Params\**" />
+      <EmbeddedResource Remove="Dto\Catalog\ActualElectricityCost\**" />
+      <EmbeddedResource Remove="Dto\Catalog\ActualMaintainCost\**" />
+      <EmbeddedResource Remove="Dto\Catalog\ActualMaterialCost\**" />
+      <EmbeddedResource Remove="Dto\Catalog\MaterialUnitPriceAssignmentCode\**" />
       <EmbeddedResource Remove="Dto\Persistence\Catalog\Common\**" />
       <None Remove="Catalog\Doctors\**" />
       <None Remove="Catalog\Pricing\ActualElectricityCost\**" />
       <None Remove="Catalog\Pricing\ActualMaintainCost\**" />
       <None Remove="Catalog\Pricing\ActualMaterialCost\**" />
       <None Remove="Catalog\Users\Params\**" />
+      <None Remove="Dto\Catalog\ActualElectricityCost\**" />
+      <None Remove="Dto\Catalog\ActualMaintainCost\**" />
+      <None Remove="Dto\Catalog\ActualMaterialCost\**" />
+      <None Remove="Dto\Catalog\MaterialUnitPriceAssignmentCode\**" />
       <None Remove="Dto\Persistence\Catalog\Common\**" />
     </ItemGroup>
     <ItemGroup>
@@ -41,11 +53,5 @@
     <ItemGroup>
         <ProjectReference Include="..\Domain\Domain.csproj" />
         <ProjectReference Include="..\Shared\Shared.csproj" />
-    </ItemGroup>
-    <ItemGroup>
-      <Folder Include="Dto\Catalog\ActualElectricityCost\" />
-      <Folder Include="Dto\Catalog\ActualMaintainCost\" />
-      <Folder Include="Dto\Catalog\ActualMaterialCost\" />
-      <Folder Include="Dto\Catalog\MaterialUnitPriceAssignmentCode\" />
     </ItemGroup>
 </Project>

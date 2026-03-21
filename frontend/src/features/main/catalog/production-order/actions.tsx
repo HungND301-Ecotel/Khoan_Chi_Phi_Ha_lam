@@ -15,6 +15,7 @@ import {
 	PRODUCTION_ORDER_SCHEMA_DEFAULT,
 	ProductionOrderSchema,
 } from './schema';
+import { FormMonthYear } from '@/components/form/form-month-year';
 
 export function ProductionOrderForm({
 	data,
@@ -33,7 +34,10 @@ export function ProductionOrderForm({
 	useEffect(() => {
 		if (row) {
 			form.reset({
-				value: row.value,
+				code: row.code,
+				name: row.name,
+				startMonth: row.startMonth,
+				endMonth: row.endMonth,
 			});
 		}
 	}, [row, form]);
@@ -62,11 +66,34 @@ export function ProductionOrderForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
+			<div className='flex w-full gap-4'>
+				<FormMonthYear
+					control={form.control}
+					name='startMonth'
+					label='Thời gian bắt đầu'
+					placeholder='Nhập thời gian bắt đầu'
+					className='flex-1'
+				/>
+				<FormMonthYear
+					control={form.control}
+					name='endMonth'
+					label='Thời gian kết thúc'
+					placeholder='Nhập thời gian kết thúc'
+					className='flex-1'
+				/>
+			</div>
+
 			<FormInput
 				control={form.control}
-				name='value'
-				label='Quyết định, lệnh sản xuất'
-				placeholder='Nhập quyết định, lệnh sản xuất'
+				name='code'
+				label='Mã quyết định, lệnh sản xuất'
+				placeholder='Nhập mã quyết định, lệnh sản xuất'
+			/>
+			<FormInput
+				control={form.control}
+				name='name'
+				label='Tên quyết định, lệnh sản xuất'
+				placeholder='Nhập tên quyết định, lệnh sản xuất'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row} />

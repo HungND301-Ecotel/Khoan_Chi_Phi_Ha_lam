@@ -11,6 +11,7 @@ import { MainCatalogProductPage } from '@/features/main/catalog/product/page';
 import MainCatalogUnitPage from '@/features/main/catalog/unit/page';
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { MainCatalogOtherPartPage } from './part/other/page';
+import { MainCatalogParameterProductionOrderPage } from './production-order/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -92,6 +93,14 @@ const MainCatalogRouter: RouteObject = {
 			path: 'products',
 			element: <MainCatalogProductPage />,
 			handle: { breadcrumb: 'Sản phẩm', title: 'Sản phẩm' },
+		},
+		{
+			path: 'production-orders',
+			element: <MainCatalogParameterProductionOrderPage />,
+			handle: {
+				breadcrumb: 'Quyết định, lệnh sản xuất',
+				title: 'Quyết định, lệnh sản xuất',
+			},
 		},
 	],
 };

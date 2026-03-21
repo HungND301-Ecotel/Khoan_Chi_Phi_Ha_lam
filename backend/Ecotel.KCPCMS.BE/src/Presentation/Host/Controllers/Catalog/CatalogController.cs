@@ -22,6 +22,7 @@ using Application.Catalog.Index.ProcessGroups.Commands;
 using Application.Catalog.Index.ProcessGroups.Queries;
 using Application.Catalog.Index.Product.Commands;
 using Application.Catalog.Index.Product.Queries;
+using Application.Catalog.Index.ProductionOrder.Commands;
 using Application.Catalog.Index.ProductionProcess.Commands;
 using Application.Catalog.Index.ProductionProcess.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
@@ -40,6 +41,7 @@ using Application.Dto.Catalog.Part;
 using Application.Dto.Catalog.Passport;
 using Application.Dto.Catalog.ProcessGroup;
 using Application.Dto.Catalog.Product;
+using Application.Dto.Catalog.ProductionOrder;
 using Application.Dto.Catalog.ProductionProcess;
 using Application.Dto.Catalog.StoneClampRatio;
 using Application.Dto.Catalog.UnitOfMeasure;
@@ -1071,64 +1073,39 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Get All ProductionOrder", "")]
     public async Task<IActionResult> GetAllProductionOrder([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllMetricQuery<ProductionOrder>(pageIndex, pageSize, search, ignorePagination));
+        var result = await Mediator.Send(new GetAllProductionOrderQuery(pageIndex, pageSize, search, ignorePagination));
         return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpGet("ProductionOrder/export")]
-    [OpenApiOperation("Export ProductionOrder", "")]
-    public async Task<IActionResult> ExportProductionOrder()
-    {
-        var fileByte = await Mediator.Send(new ExportExcelProductionOrderQuery());
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chen.xlsx");
-        return result;
-    }
-
-    [HttpPost("ProductionOrder/import")]
-    [OpenApiOperation("Import ProductionOrder", "")]
-    public async Task<IActionResult> ImportProductionOrder([FromForm] ImportDto importModel)
-    {
-        var result = await Mediator.Send(new ImportProductionOrderExcelCommand(importModel.FormFile));
-        return Ok(result, MessageCommon.ImportSuccess);
     }
 
     [HttpGet("ProductionOrder/{id:guid}")]
     [OpenApiOperation("Get ProductionOrder By Id", "")]
     public async Task<IActionResult> GetProductionOrderById([FromRoute] Guid id)
     {
-        var result = await Mediator.Send(new GetMetricByIdQuery<ProductionOrder>(id));
+        var result = await Mediator.Send(new GetProductionOrderByIdQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
     [HttpPost("ProductionOrder")]
     [OpenApiOperation("Create New ProductionOrder", "")]
-    public async Task<IActionResult> CreateProductionOrder([FromBody] CreateMetricDto createModel)
+    public async Task<IActionResult> CreateProductionOrder([FromBody] CreateProductionOrderDto createModel)
     {
-        var result = await Mediator.Send(new CreateMetricCommand<ProductionOrder>(createModel));
+        var result = await Mediator.Send(new CreateProductionOrderCommand(createModel));
         return Ok(result, MessageCommon.CreateSuccess);
     }
 
     [HttpPut("ProductionOrder")]
     [OpenApiOperation("Update ProductionOrder", "")]
-    public async Task<IActionResult> UpdateProductionOrder([FromBody] MetricDto updateModel)
+    public async Task<IActionResult> UpdateProductionOrder([FromBody] ProductionOrderDto updateModel)
     {
-        var result = await Mediator.Send(new UpdateMetricCommand<ProductionOrder>(updateModel));
+        var result = await Mediator.Send(new UpdateProductionOrderCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);
-    }
-
-    [HttpDelete("ProductionOrder/{deleteId:guid}")]
-    [OpenApiOperation("Delete ProductionOrder", "")]
-    public async Task<IActionResult> DeleteProductionOrder([FromRoute] Guid deleteId)
-    {
-        var result = await Mediator.Send(new DeleteMetricCommand<ProductionOrder>(deleteId));
-        return Ok(result, MessageCommon.DeleteSuccess);
     }
 
     [HttpDelete("ProductionOrder")]
     [OpenApiOperation("Delete Many ProductionOrder", "")]
     public async Task<IActionResult> DeleteProductionOrderList([FromBody] IList<Guid> deleteIds)
     {
-        var result = await Mediator.Send(new DeleteMetricListCommand<ProductionOrder>(deleteIds));
+        var result = await Mediator.Send(new DeleteProductionOrderListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

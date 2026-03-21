@@ -9,7 +9,6 @@ import { MainCatalogParameterStepPage } from '@/features/main/catalog/parameter/
 import { MainCatalogParameterStrengthPage } from '@/features/main/catalog/parameter/strength/page';
 import { MainCatalogParameterTechnologyPage } from '@/features/main/catalog/parameter/technology/page';
 import { Navigate, RouteObject } from 'react-router-dom';
-import { MainCatalogParameterProductionOrderPage } from './production-order/page';
 
 export const MainCatalogParameterRouter: RouteObject = {
 	path: 'parameters',
@@ -42,11 +41,6 @@ export const MainCatalogParameterRouter: RouteObject = {
 			path: 'inserts',
 			element: <MainCatalogParameterInsertPage />,
 			handle: { breadcrumb: 'Chèn' },
-		},
-		{
-			path: 'production-orders',
-			element: <MainCatalogParameterProductionOrderPage />,
-			handle: { breadcrumb: 'Quyết định, lệnh sản xuất' },
 		},
 		{
 			path: 'steps',

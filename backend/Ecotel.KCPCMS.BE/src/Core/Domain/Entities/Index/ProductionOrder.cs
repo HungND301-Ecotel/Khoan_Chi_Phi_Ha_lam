@@ -5,32 +5,69 @@ namespace Domain.Entities.Index;
 
 public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
 {
-    public string Value { get; protected set; }
+    public Guid CodeId { get; protected set; }
+    public string Name { get; protected set; }
+    public DateOnly StartMonth { get; protected set; }
+    public DateOnly EndMonth { get; protected set; }
 
-    public static ProductionOrder Create(string value)
+    //Navigation Properties
+    public virtual Code Code { get; protected set; }
+
+    public static ProductionOrder Create(string code, string name, DateOnly startMonth, DateOnly endMonth)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException(CustomResponseMessage.ProductionOrderValueNullOrEmpty);
+        }
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        if (startMonth > endMonth)
+        {
+            throw new ArgumentException(CustomResponseMessage.StartDateMustBeEarlierThanEndDate);
         }
 
         return new ProductionOrder
         {
-            Value = value
+            Code = new Code(code.ToUpper()),
+            Name = name,
+            StartMonth = startMonth,
+            EndMonth = endMonth
         };
     }
 
-    public void Update(string value)
+    public void Update(string code, string name, DateOnly startMonth, DateOnly endMonth)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException(CustomResponseMessage.ProductionOrderValueNullOrEmpty);
         }
-        Value = value;
+
+        if (startMonth > endMonth)
+        {
+            throw new ArgumentException(CustomResponseMessage.StartDateMustBeEarlierThanEndDate);
+        }
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        if (Code != null)
+        {
+            Code.Value = code.ToUpper();
+        }
+
+        Name = name;
+        StartMonth = startMonth;
+        EndMonth = endMonth;
     }
 
     public bool CheckChange(ProductionOrder dto)
     {
-        return !(Value == dto.Value);
+        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && StartMonth == dto.StartMonth && EndMonth == dto.EndMonth);
     }
 }
