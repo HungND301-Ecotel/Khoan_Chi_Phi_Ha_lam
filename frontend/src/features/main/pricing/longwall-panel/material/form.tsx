@@ -10,6 +10,7 @@ import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
@@ -30,6 +31,8 @@ import { formatNumber } from '@/lib/utils';
 import { ProcessStep } from '@/features/main/catalog/process/step/columns';
 import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
 import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
+import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
+import { NumericFormat } from 'react-number-format';
 
 interface Technology {
 	id: string;
@@ -72,7 +75,20 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 	const [contracts, setContracts] = useState<ContractCode[]>([]);
 	const [selectedCodes, setSelectedCodes] = useState<MultiSelectOption[]>([]);
 
+	// Interpolation state
+	const [useInterpolation, setUseInterpolation] = useState(false);
+	const [interpolationPoint, setInterpolationPoint] = useState<
+		number | undefined
+	>(undefined);
+	const [upperNorms, setUpperNorms] = useState<LongwallMaterial[]>([]);
+	const [selectedUpperNormId, setSelectedUpperNormId] = useState<string>('');
+	const [selectedLowerNormId, setSelectedLowerNormId] = useState<string>('');
+	const [upperPoint, setUpperPoint] = useState<number | undefined>(undefined);
+	const [lowerPoint, setLowerPoint] = useState<number | undefined>(undefined);
+
 	const prevSelectedCodesRef = useRef<MultiSelectOption[]>([]);
+	// Track whether costs were set by interpolation to avoid overwriting
+	const interpolationAppliedRef = useRef(false);
 
 	const form = useForm<
 		LongwallMaterialFormSchema,
@@ -98,6 +114,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 					seamRes,
 					processRes,
 					contractsRes,
+					upperNormsRes,
 				] = await Promise.all([
 					api.pagging<Technology>(API.CATALOG.PARAMETER.TECHNOLOGY.LIST),
 					api.pagging<Longwallparameters>(
@@ -109,6 +126,9 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 					api.pagging<Seamface>(API.CATALOG.PARAMETER.SEAMFACE.LIST),
 					api.pagging<ProcessStep>(API.CATALOG.PROCESS.STEP.LIST),
 					api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST),
+					api.pagging<LongwallMaterial>(
+						API.PRICING.MATERIAL.LONGWALL_PANEL.LIST,
+					),
 				]);
 
 				setTechnologies(techRes.result.data);
@@ -116,6 +136,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				setCuttingthicknesses(cuttingRes.result.data);
 				setSeamfaces(seamRes.result.data);
 				setProcesses(processRes.result.data);
+				setUpperNorms(upperNormsRes.result.data);
 
 				const contractsData = contractsRes.result.data;
 				setContracts(contractsData);
@@ -127,7 +148,6 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 						);
 						const detail = detailRes.result;
 
-						// Populate basic fields
 						form.reset({
 							id: detail.id,
 							code: detail.code,
@@ -138,9 +158,9 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 							processId: detail.processId || row.processId || '',
 							startMonth: detail.startMonth.substring(0, 10),
 							endMonth: detail.endMonth.substring(0, 10),
+							otherMaterialValue: 0,
 						});
 
-						// Populate costs + contracts
 						const selectedFromAPI = contractsData
 							.filter((c) =>
 								detail.costs.some((mc) => mc.assignmentCodeId === c.id),
@@ -154,9 +174,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 						setSelectedCodes(selectedFromAPI);
 
 						form.setValue('costs', detail.costs);
-						form.setValue('otherMaterialValue', detail.otherMaterialValue);
 					} catch {
-						// Fallback to row data if detail fails
 						form.reset({
 							id: row.id,
 							code: row.code,
@@ -167,6 +185,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 							processId: row.processId || '',
 							startMonth: row.startMonth.substring(0, 10),
 							endMonth: row.endMonth.substring(0, 10),
+							otherMaterialValue: 0,
 						});
 					}
 				}
@@ -178,7 +197,84 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		loadData();
 	}, [row?.id]);
 
+	// Effect to apply interpolation when all required values are set
 	useEffect(() => {
+		if (!useInterpolation) return;
+		if (!selectedUpperNormId || !selectedLowerNormId) return;
+		if (upperPoint === undefined || lowerPoint === undefined) return;
+		if (interpolationPoint === undefined) return;
+		if (upperPoint <= lowerPoint) return;
+
+		const upperNorm = upperNorms.find((n) => n.id === selectedUpperNormId);
+		const lowerNorm = upperNorms.find((n) => n.id === selectedLowerNormId);
+		if (!upperNorm || !lowerNorm) return;
+
+		// Build distinct assignmentCodeIds from both norms
+		const upperCostMap = new Map(
+			(upperNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
+		);
+		const lowerCostMap = new Map(
+			(lowerNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
+		);
+
+		const allIds = new Set([...upperCostMap.keys(), ...lowerCostMap.keys()]);
+
+		const newCosts = Array.from(allIds).map((id) => {
+			const inBoth = upperCostMap.has(id) && lowerCostMap.has(id);
+			if (inBoth) {
+				const yUpper = upperCostMap.get(id)!;
+				const yLower = lowerCostMap.get(id)!;
+				// Linear interpolation
+				const totalPrice =
+					yLower +
+					((interpolationPoint - lowerPoint) / (upperPoint - lowerPoint)) *
+						(yUpper - yLower);
+				return { assignmentCodeId: id, totalPrice };
+			}
+			return { assignmentCodeId: id, totalPrice: 0 };
+		});
+
+		// Sort by contract code
+		newCosts.sort((a, b) => {
+			const aCode =
+				contracts.find((c) => c.id === a.assignmentCodeId)?.code ?? '';
+			const bCode =
+				contracts.find((c) => c.id === b.assignmentCodeId)?.code ?? '';
+			return aCode.localeCompare(bCode);
+		});
+
+		// Update MultiSelect options
+		const newSelectedCodes = Array.from(allIds)
+			.map((id) => {
+				const contract = contracts.find((c) => c.id === id);
+				if (!contract) return null;
+				return { label: `${contract.code} - ${contract.name}`, value: id };
+			})
+			.filter(Boolean) as MultiSelectOption[];
+
+		interpolationAppliedRef.current = true;
+		prevSelectedCodesRef.current = newSelectedCodes;
+		setSelectedCodes(newSelectedCodes);
+		form.setValue('costs', newCosts);
+	}, [
+		useInterpolation,
+		selectedUpperNormId,
+		selectedLowerNormId,
+		upperPoint,
+		lowerPoint,
+		interpolationPoint,
+		upperNorms,
+		contracts,
+	]);
+
+	// Effect to handle manual MultiSelect changes (non-interpolation path)
+	useEffect(() => {
+		// If interpolation just applied, skip this run
+		if (interpolationAppliedRef.current) {
+			interpolationAppliedRef.current = false;
+			return;
+		}
+
 		const prevContracts = prevSelectedCodesRef.current;
 		const prevIds = new Set(prevContracts.map((c) => c.value));
 		const currentIds = new Set(selectedCodes.map((c) => c.value));
@@ -226,7 +322,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				startMonth: values.startMonth,
 				endMonth: values.endMonth,
 				costs: values.costs,
-				otherMaterialValue: values.otherMaterialValue,
+				otherMaterialValue: 0,
 			};
 
 			if (row?.id) {
@@ -247,6 +343,14 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 			popup.error(error);
 		}
 	};
+
+	// Norm options excluding the one already selected as the other
+	const upperNormOptions = upperNorms.filter(
+		(n) => n.id !== selectedLowerNormId,
+	);
+	const lowerNormOptions = upperNorms.filter(
+		(n) => n.id !== selectedUpperNormId,
+	);
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
@@ -320,6 +424,136 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				options={seamfaces.map((s) => ({ label: s.value, value: s.id }))}
 			/>
 
+			{/* Interpolation checkbox */}
+			<div className='flex items-center gap-2'>
+				<Checkbox
+					id='use-interpolation'
+					checked={useInterpolation}
+					onCheckedChange={(checked) => {
+						setUseInterpolation(!!checked);
+						if (!checked) {
+							// Reset interpolation state
+							setSelectedUpperNormId('');
+							setSelectedLowerNormId('');
+							setUpperPoint(undefined);
+							setLowerPoint(undefined);
+							setInterpolationPoint(undefined);
+						}
+					}}
+				/>
+				<label
+					htmlFor='use-interpolation'
+					className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+				>
+					Tạo định mức bảng phương pháp nội suy
+				</label>
+			</div>
+
+			{/* Interpolation panel */}
+			{useInterpolation && (
+				<div className='flex flex-col gap-4 rounded-md border p-4'>
+					{/* Điểm nội suy */}
+					<div className='flex flex-col gap-2'>
+						<Label>Điểm nội suy</Label>
+						<InputGroup>
+							<NumericFormat
+								decimalSeparator=','
+								thousandSeparator='.'
+								placeholder='Nhập điểm nội suy'
+								value={interpolationPoint ?? ''}
+								onValueChange={(v) => setInterpolationPoint(v.floatValue)}
+								customInput={InputGroupInput}
+								type='text'
+								inputMode='decimal'
+							/>
+						</InputGroup>
+					</div>
+
+					{/* Định mức cận trên + Điểm cận trên */}
+					<div className='grid grid-cols-2 gap-4'>
+						<FormComboBox
+							label='Định mức cận trên'
+							placeholder='Chọn định mức cận trên'
+							value={selectedUpperNormId}
+							onValueChange={setSelectedUpperNormId}
+							options={upperNormOptions.map((n) => ({
+								label: n.code,
+								value: n.id,
+							}))}
+						/>
+
+						<div className='flex flex-col gap-2'>
+							<Label>Điểm cận trên</Label>
+							<InputGroup>
+								<NumericFormat
+									decimalSeparator=','
+									thousandSeparator='.'
+									placeholder='Nhập điểm cận trên'
+									value={upperPoint ?? ''}
+									onValueChange={(v) => setUpperPoint(v.floatValue)}
+									customInput={InputGroupInput}
+									type='text'
+									inputMode='decimal'
+								/>
+							</InputGroup>
+							{upperPoint !== undefined &&
+								lowerPoint !== undefined &&
+								upperPoint <= lowerPoint && (
+									<p className='text-destructive text-xs'>
+										Điểm cận trên phải lớn hơn điểm cận dưới
+									</p>
+								)}
+						</div>
+					</div>
+
+					{/* Định mức cận dưới + Điểm cận dưới */}
+					<div className='grid grid-cols-2 gap-4'>
+						<FormComboBox
+							label='Định mức cận dưới'
+							placeholder='Chọn định mức cận dưới'
+							value={selectedLowerNormId}
+							onValueChange={setSelectedLowerNormId}
+							options={lowerNormOptions.map((n) => ({
+								label: n.code,
+								value: n.id,
+							}))}
+						/>
+
+						<div className='flex flex-col gap-2'>
+							<Label>Điểm cận dưới</Label>
+							<InputGroup>
+								<NumericFormat
+									decimalSeparator=','
+									thousandSeparator='.'
+									placeholder='Nhập điểm cận dưới'
+									value={lowerPoint ?? ''}
+									onValueChange={(v) => setLowerPoint(v.floatValue)}
+									customInput={InputGroupInput}
+									type='text'
+									inputMode='decimal'
+								/>
+							</InputGroup>
+							{upperPoint !== undefined &&
+								lowerPoint !== undefined &&
+								upperPoint <= lowerPoint && (
+									<p className='text-destructive text-xs'>
+										Điểm cận dưới phải nhỏ hơn điểm cận trên
+									</p>
+								)}
+						</div>
+					</div>
+
+					{/* Validation hints */}
+					{selectedUpperNormId &&
+						selectedLowerNormId &&
+						selectedUpperNormId === selectedLowerNormId && (
+							<p className='text-destructive text-xs'>
+								Định mức cận trên và cận dưới không được trùng nhau
+							</p>
+						)}
+				</div>
+			)}
+
 			<MultiSelect
 				label='Mã giao khoán'
 				placeholder='Chọn mã giao khoán'
@@ -342,7 +576,6 @@ function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
 	const { control } = useFormContext<LongwallMaterialFormSchema>();
 
 	const costs = useWatch({ control, name: 'costs' }) ?? [];
-	const otherMaterialValue = useWatch({ control, name: 'otherMaterialValue' });
 
 	if (costs.length === 0) return null;
 
@@ -350,12 +583,6 @@ function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
 		const v = Number(c.totalPrice);
 		return acc + (isNaN(v) ? 0 : v);
 	}, 0);
-
-	const vtkValue = isNaN(Number(otherMaterialValue))
-		? 0
-		: (Number(otherMaterialValue) / 100) * sumCosts;
-
-	const total = sumCosts + vtkValue;
 
 	return (
 		<div className='flex w-full flex-col gap-4'>
@@ -365,7 +592,7 @@ function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
 				<Label>Tổng tiền (đ/tấn)</Label>
 				<Input
 					readOnly
-					value={formatNumber(total)}
+					value={formatNumber(sumCosts)}
 					className='font-semibold read-only:bg-transparent'
 				/>
 			</div>
@@ -373,8 +600,6 @@ function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
 			{costs.map((_, index) => (
 				<ContractCostRow key={index} index={index} contracts={contracts} />
 			))}
-
-			<VtkRow />
 		</div>
 	);
 }
@@ -407,32 +632,6 @@ function ContractCostRow({
 					name={`costs.${index}.totalPrice`}
 					label='Đơn giá vật liệu (đ/tấn)'
 					placeholder='Nhập đơn giá vật liệu'
-				/>
-			</div>
-		</FormRow>
-	);
-}
-
-function VtkRow() {
-	const { control } = useFormContext<LongwallMaterialFormSchema>();
-
-	return (
-		<FormRow>
-			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Mã giao khoán</Label>
-				<Input
-					readOnly
-					value='VTK - Vật tư khác'
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex flex-1 flex-col gap-2'>
-				<FormNumber
-					control={control}
-					name='otherMaterialValue'
-					label='Tỷ lệ VTK (%)'
-					placeholder='Nhập tỷ lệ VTK'
 				/>
 			</div>
 		</FormRow>

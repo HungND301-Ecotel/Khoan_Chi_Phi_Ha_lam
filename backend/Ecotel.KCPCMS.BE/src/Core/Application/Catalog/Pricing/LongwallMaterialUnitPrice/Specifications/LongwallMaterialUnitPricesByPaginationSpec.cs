@@ -3,6 +3,7 @@ using Application.Common.Specification;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Dto.Catalog.LongwallParameters;
+using Application.Dto.Catalog.MaterialUnitPrice;
 using Ardalis.Specification;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public sealed class LongwallMaterialUnitPricesByPaginationSpec
             .Include(m => m.CuttingThickness)
             .Include(m => m.SeamFace)
             .Include(m => m.Technology)
-            .Include(m => m.MaterialUnitPriceAssignmentCodes)
+            .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode)
             .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Code.Value.ToLower().Contains(searchTerm));
 
@@ -43,7 +44,13 @@ public sealed class LongwallMaterialUnitPricesByPaginationSpec
             SeamFaceName = m.SeamFace != null ? m.SeamFace.Value : string.Empty,
             StartMonth = m.StartMonth,
             EndMonth = m.EndMonth,
-            TotalPrice = m.TotalPrice
+            TotalPrice = m.TotalPrice,
+            OtherMaterialValue = m.OtherMaterialvalue,
+            Costs = m.MaterialUnitPriceAssignmentCodes.Select(m => new MaterialUnitPriceAssignmentCodeDto
+            {
+                AssignmentCodeId = m.AssignmentCodeId,
+                TotalPrice = m.TotalPrice
+            })
         });
     }
 }

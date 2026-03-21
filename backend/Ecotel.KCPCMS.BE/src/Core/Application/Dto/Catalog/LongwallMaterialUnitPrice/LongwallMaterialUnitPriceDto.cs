@@ -25,6 +25,8 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
+        public double OtherMaterialValue { get; set; }
+        public IEnumerable<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
     public class CreateLongwallMaterialUnitPriceDto

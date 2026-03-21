@@ -31,6 +31,12 @@ export type LongwallMaterial = {
 	seamFaceName?: string;
 	cuttingthicknessId?: string;
 	technologyName?: string;
+
+	costs: Array<{
+		assignmentCodeId: string;
+		totalPrice: number;
+	}>;
+	otherMaterialValue?: number;
 };
 
 export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
