@@ -209,15 +209,25 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		const lowerNorm = upperNorms.find((n) => n.id === selectedLowerNormId);
 		if (!upperNorm || !lowerNorm) return;
 
-		// Build distinct assignmentCodeIds from both norms
+		const upperIds = new Set(
+			(upperNorm.costs ?? []).map((c) => c.assignmentCodeId),
+		);
+		const lowerIds = new Set(
+			(lowerNorm.costs ?? []).map((c) => c.assignmentCodeId),
+		);
+		const allIds = new Set([...upperIds, ...lowerIds]);
+
+		// Block if any id is not shared between both norms
+		for (const id of allIds) {
+			if (!upperIds.has(id) || !lowerIds.has(id)) return;
+		}
+
 		const upperCostMap = new Map(
 			(upperNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
 		);
 		const lowerCostMap = new Map(
 			(lowerNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
 		);
-
-		const allIds = new Set([...upperCostMap.keys(), ...lowerCostMap.keys()]);
 
 		const newCosts = Array.from(allIds).map((id) => {
 			const inBoth = upperCostMap.has(id) && lowerCostMap.has(id);
@@ -351,6 +361,31 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 	const lowerNormOptions = upperNorms.filter(
 		(n) => n.id !== selectedUpperNormId,
 	);
+
+	// Check for mismatched assignmentCodeIds between the two selected norms
+	const mismatchedCodes: string[] = (() => {
+		if (!selectedUpperNormId || !selectedLowerNormId) return [];
+		const upperNorm = upperNorms.find((n) => n.id === selectedUpperNormId);
+		const lowerNorm = upperNorms.find((n) => n.id === selectedLowerNormId);
+		if (!upperNorm || !lowerNorm) return [];
+
+		const upperIds = new Set(
+			(upperNorm.costs ?? []).map((c) => c.assignmentCodeId),
+		);
+		const lowerIds = new Set(
+			(lowerNorm.costs ?? []).map((c) => c.assignmentCodeId),
+		);
+		const allIds = new Set([...upperIds, ...lowerIds]);
+		const mismatched: string[] = [];
+
+		for (const id of allIds) {
+			if (!upperIds.has(id) || !lowerIds.has(id)) {
+				const contract = contracts.find((c) => c.id === id);
+				mismatched.push(contract ? `${contract.code} - ${contract.name}` : id);
+			}
+		}
+		return mismatched;
+	})();
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
@@ -551,6 +586,19 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 								Định mức cận trên và cận dưới không được trùng nhau
 							</p>
 						)}
+
+					{mismatchedCodes.length > 0 && (
+						<div className='bg-destructive/10 border-destructive/30 rounded-md border p-3'>
+							<p className='text-destructive text-xs font-medium'>
+								2 định mức có mã giao khoán không khớp nhau:
+							</p>
+							<ul className='text-destructive mt-1 list-disc pl-4 text-xs'>
+								{mismatchedCodes.map((code) => (
+									<li key={code}>{code}</li>
+								))}
+							</ul>
+						</div>
+					)}
 				</div>
 			)}
 
