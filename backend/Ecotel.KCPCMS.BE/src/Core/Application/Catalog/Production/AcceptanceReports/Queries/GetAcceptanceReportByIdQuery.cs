@@ -26,9 +26,11 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.Costs)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.Code)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.UnitOfMeasure)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.Costs),
+                .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.Part).ThenInclude(m => m.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.Part).ThenInclude(m => m.UnitOfMeasure)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.Part).ThenInclude(m => m.Costs)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.IssuedDetails)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.ShippedDetails),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var productionOutput = acceptanceReport.ProductionOutput;
@@ -37,13 +39,14 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
         {
             Id = item.Id,
             AcceptanceReportId = item.AcceptanceReportId,
+            ProductionOrderId = item.ProductionOrderId,
             MaterialId = item.MaterialId,
-            MaintainUnitPriceEquipmentId = item.MaintainUnitPriceEquipmentId,
+            MaintainUnitPriceEquipmentId = item.PartId,
             MaterialCode = item.Material?.Code?.Value,
             MaterialName = item.Material?.Name,
-            PartCode = item.MaintainUnitPriceEquipment?.Part?.Code?.Value,
-            PartName = item.MaintainUnitPriceEquipment?.Part?.Name,
-            UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name ?? item.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
+            PartCode = item?.Part?.Code?.Value,
+            PartName = item?.Part?.Name,
+            UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name ?? item?.Part?.UnitOfMeasure?.Name,
             Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             ProcessGroupId = item.ProcessGroupId,
@@ -57,10 +60,11 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             QuotaBasedMaterialQuantity = item.QuotaBasedMaterialQuantity,
             Asset = item.Asset,
             AssetMaterialQuantity = item.AssetMaterialQuantity,
-            PlanCost = GetPlanCost(item, productionOutput),
-            ActualCost = 0,
             IssuedQuantity = item.IssuedQuantity,
-            ShippedQuantity = item.ShippedQuantity
+            ShippedQuantity = item.ShippedQuantity,
+            PlanCost = GetPlanCost(item, productionOutput),
+            ActualCost = GetActualCost(item, productionOutput),
+            ItemType = item.ItemType,
         }).ToList();
 
         return new GetAcceptanceReportDetailDto
@@ -94,11 +98,11 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 planCost = (decimal)matchingCost.Amount;
             }
         }
-        else if (item.MaintainUnitPriceEquipmentId.HasValue &&
-                 item.MaintainUnitPriceEquipment?.Part?.Costs != null)
+        else if (item.PartId.HasValue &&
+                 item?.Part?.Costs != null)
         {
             // Get cost for Part that matches the time period
-            var matchingCost = item.MaintainUnitPriceEquipment.Part.Costs.FirstOrDefault(c =>
+            var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
@@ -110,5 +114,46 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
         }
 
         return planCost;
+    }
+
+    private decimal GetActualCost(AcceptanceReportItem item, ProductionOutput productionOutput)
+    {
+        if (productionOutput == null)
+        {
+            return 0;
+        }
+
+        decimal acutalCost = 0;
+
+        if (item.MaterialId.HasValue && item.Material?.Costs != null)
+        {
+            // Get cost for Material that matches the time period
+            var matchingCost = item.Material.Costs.FirstOrDefault(c =>
+                c.CostType == CostType.Material &&
+                c.StartMonth <= productionOutput.StartMonth &&
+                c.EndMonth >= productionOutput.EndMonth);
+
+            if (matchingCost != null)
+            {
+                acutalCost = (decimal)matchingCost.ActualAmount;
+            }
+        }
+        else if (item.PartId.HasValue &&
+                 item?.Part?.Costs != null)
+        {
+            // Get cost for Part that matches the time period
+            var matchingCost = item.Part.Costs.FirstOrDefault(c =>
+                c.CostType == CostType.Part &&
+                c.StartMonth <= productionOutput.StartMonth &&
+                c.EndMonth >= productionOutput.EndMonth);
+
+            if (matchingCost != null)
+            {
+                //acutalCost = (decimal)matchingCost.Amount;
+                acutalCost = 0;
+            }
+        }
+
+        return acutalCost;
     }
 }

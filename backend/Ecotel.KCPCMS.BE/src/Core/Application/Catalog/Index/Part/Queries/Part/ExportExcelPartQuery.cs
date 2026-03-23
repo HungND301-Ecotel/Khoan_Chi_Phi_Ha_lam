@@ -49,6 +49,7 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
                 .Where(e => e.Equipment?.Code != null)
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)),
+            ReplacementTimeStandard = l.ReplacementTimeStandard,
             Cost = costService.BuildExcelCostString(l.Costs.ToList())
         });
 

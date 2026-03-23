@@ -12,6 +12,7 @@ export type AcceptanceReportItemDto = {
 	materialCode: string;
 	unitOfMeasureName: string;
 	type: number;
+	itemType: number;
 	issuedQuantity: number;
 	shippedQuantity: number;
 };
@@ -19,6 +20,14 @@ export type AcceptanceReportItemDto = {
 export type UploadAcceptanceReportResponseDto = {
 	filePath: string;
 	acceptanceReports: AcceptanceReportItemDto[];
+};
+
+export type ProductionOrder = {
+	id: string;
+	code: string;
+	name: string;
+	startMonth: string;
+	endMonth: string;
 };
 
 // Enums as const objects (for TypeScript erasableSyntaxOnly)
@@ -57,8 +66,10 @@ export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
 	materialOrPartId: string;
 	type: number;
-	issuedQuantity: number;
-	shippedQuantity: number;
+	itemType: number;
+	productionOrderId: string | null;
+	issuedDetails: QuantityDetail[];
+	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
@@ -86,7 +97,11 @@ export const CATEGORY_OPTIONS = [
 export const ADDITIONAL_COST_OPTIONS = [
 	{ value: AdditionalCost.Material, label: 'Vật liệu' },
 	{ value: AdditionalCost.Maintain, label: 'SCTX' },
-	{ value: AdditionalCost.OtherMaterial, label: 'Vật tư khác' },
+	{
+		value: AdditionalCost.OtherMaterial,
+		label:
+			'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+	},
 ];
 
 export const CONTRACT_LIMIT_OPTIONS = [
@@ -101,8 +116,57 @@ export const MaterialType = {
 	SparePart: 2, // Phụ tùng (SCTX)
 } as const;
 
+export const ItemType = {
+	InContract: 1,
+	OutContract: 2,
+} as const;
+
+export const IssuedQuantityType = {
+	LinhVatTuTraPhieu: 1,
+	VayVhuaTraPhieu: 2,
+	TraPhieuThangTruoc: 3,
+	LinhKhac: 4,
+} as const;
+
+export const ShippedQuantityType = {
+	XuatChoSanXuat: 1,
+	XuatKhac: 2,
+	QuyetToanGiaoKhoan: 3,
+} as const;
+
 // Secondary options for contract limit (MineSupport / SupportAccessories only)
 export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [
 	{ value: QuotaBasedMaterialType.New, label: 'Lĩnh mới' },
 	{ value: QuotaBasedMaterialType.Reusable, label: 'Lĩnh tái sử dụng' },
 ];
+
+export const RECEIVED_TYPE_OPTIONS = [
+	{ value: 'receipt_voucher', label: 'Lĩnh vật tư (trả phiếu)' },
+	{ value: 'loan_no_voucher', label: 'Vay chưa trả phiếu' },
+	{ value: 'prev_month_voucher', label: 'Trả phiếu tháng trước' },
+	{ value: 'other_received', label: 'Lĩnh khác' },
+];
+
+export const EXPORTED_TYPE_OPTIONS = [
+	{ value: 'production', label: 'Xuất cho sản xuất' },
+	{ value: 'other_export', label: 'Xuất khác' },
+	{ value: 'settlement', label: 'Quyết toán, giao khoán công trình' },
+];
+
+export const ISSUED_DETAIL_TYPE_BY_KEY = {
+	receipt_voucher: IssuedQuantityType.LinhVatTuTraPhieu,
+	loan_no_voucher: IssuedQuantityType.VayVhuaTraPhieu,
+	prev_month_voucher: IssuedQuantityType.TraPhieuThangTruoc,
+	other_received: IssuedQuantityType.LinhKhac,
+} as const;
+
+export const SHIPPED_DETAIL_TYPE_BY_KEY = {
+	production: ShippedQuantityType.XuatChoSanXuat,
+	other_export: ShippedQuantityType.XuatKhac,
+	settlement: ShippedQuantityType.QuyetToanGiaoKhoan,
+} as const;
+
+export type QuantityDetail = {
+	type: number;
+	quantity: number;
+};

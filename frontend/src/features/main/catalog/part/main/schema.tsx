@@ -15,6 +15,13 @@ export const partSchema = z.object({
 	equipmentIds: z.array(z.string()).min(1, {
 		message: 'Mã thiết bị không được để trống',
 	}),
+	replacementTimeStandard: z.coerce
+		.number<number>({
+			message: 'Giá trị phải là số',
+		})
+		.gt(0, {
+			message: 'Giá trị phải lớn hơn 0',
+		}),
 	costs: z
 		.array(
 			z.object({
@@ -49,6 +56,7 @@ export const PART_SCHEMA_DEFAULT: PartSchema = {
 	name: '',
 	unitOfMeasureId: '',
 	equipmentIds: [],
+	replacementTimeStandard: NaN,
 	costs: [
 		{
 			startMonth: '',

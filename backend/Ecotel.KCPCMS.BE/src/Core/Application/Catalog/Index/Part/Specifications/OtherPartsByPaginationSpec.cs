@@ -28,6 +28,7 @@ public class OtherPartsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.
                 Name = p.Name,
                 UnitOfMeasureId = p.UnitOfMeasureId,
                 UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty,
+                ReplacementTimeStandard = p.ReplacementTimeStandard,
                 CostAmount = p.Costs
                     .Where(c => c.CostType == CostType.Part &&
                                 c.StartMonth <= checkDate &&

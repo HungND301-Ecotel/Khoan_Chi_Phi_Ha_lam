@@ -76,7 +76,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                 return null;
             }
 
-            var partEntity = PartEntity.Create(d.Id, d.Code, d.Name, unitOfMeasureId, mappedEquipments);
+            var partEntity = PartEntity.Create(d.Id, d.Code, d.Name, unitOfMeasureId, d.ReplacementTimeStandard, mappedEquipments);
             var costList = costService.ParseExcelCostString(d.Cost, Domain.Common.Enums.CostType.Part, Guid.Empty);
             partEntity.AddCost(costList);
             return partEntity;
@@ -115,6 +115,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                         dto.Code!.Value,
                         dto.Name,
                         dto.UnitOfMeasureId,
+                        dto.ReplacementTimeStandard,
                         dto.EquipmentParts.Select(ep => ep.Equipment).Where(e => e != null).ToList()!);
 
                     if (isCostChanged)
@@ -139,6 +140,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                     dto.Code!.Value,
                     dto.Name,
                     dto.UnitOfMeasureId,
+                    dto.ReplacementTimeStandard,
                     dto.EquipmentParts.Select(ep => ep.Equipment).Where(e => e != null).ToList()!);
                 newPart.AddCost(dto.Costs.ToList());
                 addList.Add(newPart);

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.Part.Queries.Part;
+
 public record GetPartByIdQuery(DefaultIdType Id) : IRequest<PartDetailDto>;
 
 public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetPartByIdQuery, PartDetailDto>
@@ -36,6 +37,7 @@ public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<G
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)
                 .ToList(),
+            ReplacementTimeStandard = details.ReplacementTimeStandard,
             UnitOfMeasureId = details.UnitOfMeasureId,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
             Costs = details.Costs.Adapt<List<MaintainCostDto>>()

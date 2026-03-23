@@ -87,7 +87,6 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 						costs: maintainUnitPriceEquipment.map((cost: any) => ({
 							partId: cost.partId,
 							quantity: cost.quantity,
-							replacementTimeStandard: cost.replacementTimeStandard,
 							averageMonthlyTunnelProduction:
 								cost.averageMonthlyTunnelProduction,
 							equipmentId: cost.equipmentId,
@@ -125,7 +124,6 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 			.map(
 				(cost: {
 					partId: string;
-					replacementTimeStandard: number;
 					quantity: number;
 					averageMonthlyTunnelProduction: number;
 					equipmentId: string;
@@ -142,7 +140,6 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 
 		const newCosts = newParts.map((part) => ({
 			partId: part.id,
-			replacementTimeStandard: NaN,
 			quantity: NaN,
 			averageMonthlyTunnelProduction: NaN,
 			equipmentId: part.equipmentId,
@@ -153,7 +150,6 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 			.filter(
 				(cost: {
 					partId: string;
-					replacementTimeStandard: number;
 					quantity: number;
 					averageMonthlyTunnelProduction: number;
 					equipmentId: string;
@@ -192,14 +188,12 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 					partUnitPrices: costs.map(
 						(cost: {
 							partId: string;
-							replacementTimeStandard: number;
 							quantity: number;
 							averageMonthlyTunnelProduction: number;
 							equipmentId: string;
 						}) => ({
 							partId: cost.partId,
 							quantity: cost.quantity,
-							replacementTimeStandard: cost.replacementTimeStandard,
 							averageMonthlyTunnelProduction:
 								cost.averageMonthlyTunnelProduction,
 						}),
@@ -213,7 +207,6 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 						.filter(
 							(cost: {
 								partId: string;
-								replacementTimeStandard: number;
 								quantity: number;
 								averageMonthlyTunnelProduction: number;
 								equipmentId: string;
@@ -222,14 +215,12 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 						.map(
 							(part: {
 								partId: string;
-								replacementTimeStandard: number;
 								quantity: number;
 								averageMonthlyTunnelProduction: number;
 								equipmentId: string;
 							}) => ({
 								partId: part.partId,
 								quantity: part.quantity,
-								replacementTimeStandard: part.replacementTimeStandard,
 								averageMonthlyTunnelProduction:
 									part.averageMonthlyTunnelProduction,
 							}),
@@ -378,10 +369,6 @@ function PricingTunnelingCosts({
 	const { control, getValues, setValue } =
 		useFormContext<TunnelingFormSchema>();
 
-	const watchedReplacementTimeStandard = useWatch({
-		control,
-		name: `costs.${index}.replacementTimeStandard`,
-	});
 	const watchedQuantity = useWatch({
 		control,
 		name: `costs.${index}.quantity`,
@@ -396,7 +383,7 @@ function PricingTunnelingCosts({
 
 	const regularRepairRates =
 		watchedQuantity /
-		watchedReplacementTimeStandard /
+		(part?.replacementTimeStandard ?? 0) /
 		watchedAverageMonthlyTunnelProduction;
 
 	const regularRepairCost =
@@ -446,12 +433,15 @@ function PricingTunnelingCosts({
 				/>
 			</div>
 
-			<FormNumber
-				control={control}
-				name={`costs.${index}.replacementTimeStandard`}
-				label='Định mức thời gian thay thế (tháng)'
-				placeholder='Nhập định mức'
-			/>
+			<div className='flex flex-1 flex-col gap-2'>
+				<Label>Định mức thời gian thay thế (tháng)</Label>
+				<Input
+					readOnly
+					disabled
+					value={part?.replacementTimeStandard ?? ''}
+					className='read-only:bg-transparent'
+				/>
+			</div>
 
 			<FormNumber
 				control={control}
@@ -524,7 +514,6 @@ function groupCostsByEquipment(
 		(
 			cost: {
 				partId: string;
-				replacementTimeStandard: number;
 				quantity: number;
 				averageMonthlyTunnelProduction: number;
 				equipmentId: string;
@@ -564,7 +553,7 @@ function groupCostsByEquipment(
 
 			const regularRepairRates =
 				cost.quantity /
-				cost.replacementTimeStandard /
+				(part.replacementTimeStandard ?? 0) /
 				cost.averageMonthlyTunnelProduction;
 
 			const regularRepairCost = part.costAmount * Number(regularRepairRates);
@@ -611,7 +600,6 @@ function PricingEquipmentOtherPartCosts({
 	const equipmentCosts = watchedCosts.filter(
 		(cost: {
 			partId: string;
-			replacementTimeStandard: number;
 			quantity: number;
 			averageMonthlyTunnelProduction: number;
 			equipmentId: string;
@@ -625,7 +613,6 @@ function PricingEquipmentOtherPartCosts({
 	equipmentCosts.forEach(
 		(cost: {
 			partId: string;
-			replacementTimeStandard: number;
 			quantity: number;
 			averageMonthlyTunnelProduction: number;
 			equipmentId: string;
@@ -635,7 +622,7 @@ function PricingEquipmentOtherPartCosts({
 
 			const regularRepairRates =
 				cost.quantity /
-				cost.replacementTimeStandard /
+				(part.replacementTimeStandard ?? 0) /
 				cost.averageMonthlyTunnelProduction;
 
 			const regularRepairCost = part.costAmount * Number(regularRepairRates);

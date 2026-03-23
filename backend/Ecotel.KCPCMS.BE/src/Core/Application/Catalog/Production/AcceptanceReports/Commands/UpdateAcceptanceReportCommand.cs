@@ -62,10 +62,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             _acceptanceReportRepository.Update(acceptanceReport);
             await unitOfWork.SaveChangesAsync();
 
-            // Process items: delete or update
-            var itemsToUpdate = new Dictionary<Guid, UpdateAcceptanceReportItemDto>();
-
             // Group update model items by Id
+            var itemsToUpdate = new Dictionary<Guid, UpdateAcceptanceReportItemDto>();
             foreach (var item in updateModel.Items)
             {
                 itemsToUpdate[item.Id] = item;
@@ -83,15 +81,17 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             }
 
             // Update existing items
+            // MaterialId và PartId giữ nguyên từ entity, không cho phép thay đổi qua Update
             foreach (var existingItem in existingItems)
             {
                 if (itemsToUpdate.TryGetValue(existingItem.Id, out var updateItem))
                 {
-                    // Keep existing MaterialId and MaintainUnitPriceEquipmentId, only update other fields
                     existingItem.Update(
                         updateItem.ProcessGroupId,
                         existingItem.MaterialId,
-                        existingItem.MaintainUnitPriceEquipmentId,
+                        existingItem.PartId,
+                        updateItem.ItemType,
+                        updateItem.ProductionOrderId,
                         updateItem.MaterialsIncludedInContractRevenue,
                         updateItem.MaterialsIncludedInContractRevenueQuantity,
                         updateItem.AdditionalCost,
@@ -101,8 +101,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.QuotaBasedMaterialQuantity,
                         updateItem.Asset,
                         updateItem.AssetMaterialQuantity,
-                        updateItem.IssuedQuantity,
-                        updateItem.ShippedQuantity);
+                        updateItem.IssuedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
+                        updateItem.ShippedDetails.Select(x => (x.Type, x.Quantity)).ToList());
 
                     if (updateItem.MaterialsIncludedInContractRevenue != Domain.Common.Enums.MaterialsIncludedInContractRevenue.None)
                     {

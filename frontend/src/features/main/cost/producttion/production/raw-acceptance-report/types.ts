@@ -38,6 +38,8 @@ export type AcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string;
+	itemType?: number;
+	productionOrderId?: string | null;
 	maintainUnitPriceEquipmentId: string | null;
 	materialCode: string | null;
 	materialName: string | null;
@@ -48,6 +50,8 @@ export type AcceptanceReportItem = {
 	actualCost: number;
 	issuedQuantity: number;
 	shippedQuantity: number;
+	issuedDetails?: QuantityDetail[];
+	shippedDetails?: QuantityDetail[];
 	type: number;
 	materialsIncludedInContractRevenue: number;
 	processGroupId: string | null;
@@ -68,6 +72,14 @@ export type AcceptanceReportDetail = {
 	productionOutputId: string;
 	filePath: string;
 	items: AcceptanceReportItem[];
+};
+
+export type ProductionOrder = {
+	id: string;
+	code: string;
+	name: string;
+	startMonth: string;
+	endMonth: string;
 };
 
 // Enums as const objects
@@ -102,6 +114,24 @@ export const MaterialType = {
 	SparePart: 2, // Phụ tùng (SCTX)
 } as const;
 
+export const IssuedQuantityType = {
+	LinhVatTuTraPhieu: 1,
+	VayVhuaTraPhieu: 2,
+	TraPhieuThangTruoc: 3,
+	LinhKhac: 4,
+} as const;
+
+export const ShippedQuantityType = {
+	XuatChoSanXuat: 1,
+	XuatKhac: 2,
+	QuyetToanGiaoKhoan: 3,
+} as const;
+
+export type QuantityDetail = {
+	type: number;
+	quantity: number;
+};
+
 // Dropdown options
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
@@ -124,6 +154,45 @@ export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [
 	{ value: 1, label: 'Lĩnh mới' },
 	{ value: 2, label: 'Lĩnh tái sử dụng' },
 ];
+
+export const RECEIVED_TYPE_OPTIONS = [
+	{ value: 'receipt_voucher', label: 'Lĩnh vật tư (trả phiếu)' },
+	{ value: 'loan_no_voucher', label: 'Vay chưa trả phiếu' },
+	{ value: 'prev_month_voucher', label: 'Trả phiếu tháng trước' },
+	{ value: 'other_received', label: 'Lĩnh khác' },
+];
+
+export const EXPORTED_TYPE_OPTIONS = [
+	{ value: 'production', label: 'Xuất cho sản xuất' },
+	{ value: 'other_export', label: 'Xuất khác' },
+	{ value: 'settlement', label: 'Quyết toán, giao khoán công trình' },
+];
+
+export const ISSUED_DETAIL_TYPE_BY_KEY = {
+	receipt_voucher: IssuedQuantityType.LinhVatTuTraPhieu,
+	loan_no_voucher: IssuedQuantityType.VayVhuaTraPhieu,
+	prev_month_voucher: IssuedQuantityType.TraPhieuThangTruoc,
+	other_received: IssuedQuantityType.LinhKhac,
+} as const;
+
+export const SHIPPED_DETAIL_TYPE_BY_KEY = {
+	production: ShippedQuantityType.XuatChoSanXuat,
+	other_export: ShippedQuantityType.XuatKhac,
+	settlement: ShippedQuantityType.QuyetToanGiaoKhoan,
+} as const;
+
+export const ISSUED_DETAIL_KEY_BY_TYPE: Record<number, string> = {
+	[IssuedQuantityType.LinhVatTuTraPhieu]: 'receipt_voucher',
+	[IssuedQuantityType.VayVhuaTraPhieu]: 'loan_no_voucher',
+	[IssuedQuantityType.TraPhieuThangTruoc]: 'prev_month_voucher',
+	[IssuedQuantityType.LinhKhac]: 'other_received',
+};
+
+export const SHIPPED_DETAIL_KEY_BY_TYPE: Record<number, string> = {
+	[ShippedQuantityType.XuatChoSanXuat]: 'production',
+	[ShippedQuantityType.XuatKhac]: 'other_export',
+	[ShippedQuantityType.QuyetToanGiaoKhoan]: 'settlement',
+};
 
 // export const ASSET_OPTIONS = [
 // 	{ value: 'Vật liệu', label: 'Vật liệu' },

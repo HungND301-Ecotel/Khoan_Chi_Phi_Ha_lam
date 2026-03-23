@@ -29,6 +29,14 @@ export const rawAcceptanceReportItemSchema = z
 			.refine((val) => val >= 0, {
 				message: 'Số lượng xuất phải >= 0',
 			}),
+		receivedTypes: z.array(z.string()).optional(),
+		exportedTypes: z.array(z.string()).optional(),
+		receivedBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
+		exportedBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
 		// Checkbox flags
 		showCategoryDropdown: z.boolean(),
 		showAdditionalCostDropdown: z.boolean(),
@@ -37,9 +45,12 @@ export const rawAcceptanceReportItemSchema = z
 		// Dropdown values
 		category: z.number().nullable().optional(),
 		categoryProcessGroup: z.string().nullable().optional(),
+		categoryProductionOrderId: z.string().nullable().optional(),
 		additionalCostCategory: z.number().nullable().optional(),
+		additionalCostProductionOrderId: z.string().nullable().optional(),
 		contractLimitCategory: z.number().nullable().optional(),
 		contractLimitSubCategory: z.number().nullable().optional(),
+		productionOrderId: z.string().nullable().optional(),
 		// Quantity fields
 		categoryQuantity: z.number().nullable().optional(),
 		additionalCostQuantity: z.number().nullable().optional(),
@@ -47,6 +58,7 @@ export const rawAcceptanceReportItemSchema = z
 		assetQuantity: z.number().nullable().optional(),
 		// Material type for internal use
 		type: z.number().optional(),
+		itemType: z.number().optional(),
 	})
 	.refine(
 		(data) => {
@@ -66,11 +78,44 @@ export const rawAcceptanceReportItemSchema = z
 	)
 	.refine(
 		(data) => {
+			if (!data.showCategoryDropdown || data.category !== 3) return true;
+			return data.categoryProductionOrderId != null;
+		},
+		{
+			message: 'Phải chọn quyết định, lệnh sản xuất',
+			path: ['categoryProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
+			if (
+				!data.showAdditionalCostDropdown ||
+				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
+			) {
+				return true;
+			}
+
+			return data.additionalCostProductionOrderId != null;
+		},
+		{
+			message: 'Phải chọn quyết định, lệnh sản xuất',
+			path: ['additionalCostProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
 			// Only validate if at least one checkbox and dropdown is selected
 			const hasCategoryActive =
-				data.showCategoryDropdown && data.category && data.categoryProcessGroup;
+				data.showCategoryDropdown &&
+				data.category &&
+				data.categoryProcessGroup &&
+				(data.category !== 3 || data.categoryProductionOrderId != null);
 			const hasAdditionalCostActive =
-				data.showAdditionalCostDropdown && data.additionalCostCategory;
+				data.showAdditionalCostDropdown &&
+				data.additionalCostCategory &&
+				((data.additionalCostCategory !== 2 &&
+					data.additionalCostCategory !== 3) ||
+					data.additionalCostProductionOrderId != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown && data.contractLimitCategory;
 			const hasAssetActive = data.showAssetDropdown;

@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260322102546_updateAcceptanceReportItemItemType")]
+    partial class updateAcceptanceReportItemItemType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1045,10 +1048,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("ReplacementTimeStandard")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -1688,6 +1687,10 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<double>("Quantity")
                         .HasColumnType("double precision");
+
+                    b.Property<decimal>("ReplacementTimeStandard")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
 
@@ -2340,6 +2343,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double>("IssuedQuantity")
+                        .HasColumnType("double precision");
+
                     b.Property<int>("ItemType")
                         .HasColumnType("integer");
 
@@ -2349,6 +2355,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("MaintainUnitPriceEquipmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("MaterialId")
                         .HasColumnType("uuid");
 
@@ -2357,9 +2366,6 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<double>("MaterialsIncludedInContractRevenueQuantity")
                         .HasColumnType("double precision");
-
-                    b.Property<Guid?>("PartId")
-                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("ProcessGroupId")
                         .HasColumnType("uuid");
@@ -2376,59 +2382,22 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<int>("QuotaBasedMaterialType")
                         .HasColumnType("integer");
 
+                    b.Property<double>("ShippedQuantity")
+                        .HasColumnType("double precision");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AcceptanceReportId");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("MaintainUnitPriceEquipmentId");
 
-                    b.HasIndex("PartId");
+                    b.HasIndex("MaterialId");
 
                     b.HasIndex("ProcessGroupId");
 
                     b.HasIndex("ProductionOrderId");
 
                     b.ToTable("AcceptanceReportItem", "Production");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemIssuedDetail", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AcceptanceReportItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("DeletedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("LastModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<double>("Quantity")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AcceptanceReportItemId");
-
-                    b.ToTable("AcceptanceReportItemIssuedDetail", "Production");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemLog", b =>
@@ -2543,46 +2512,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("AcceptanceReportItemLog", "Production");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemShippedDetail", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("AcceptanceReportItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("DeletedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("LastModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<double>("Quantity")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AcceptanceReportItemId");
-
-                    b.ToTable("AcceptanceReportItemShippedDetail", "Production");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>
@@ -3527,14 +3456,14 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Pricing.MaintainUnitPriceEquipment", "MaintainUnitPriceEquipment")
+                        .WithMany("AcceptanceReportItems")
+                        .HasForeignKey("MaintainUnitPriceEquipmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Domain.Entities.Index.Material", "Material")
                         .WithMany("AcceptanceReportItems")
                         .HasForeignKey("MaterialId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Entities.Index.Part", "Part")
-                        .WithMany("AcceptanceReportItems")
-                        .HasForeignKey("PartId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
@@ -3548,24 +3477,13 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Navigation("AcceptanceReport");
 
-                    b.Navigation("Material");
+                    b.Navigation("MaintainUnitPriceEquipment");
 
-                    b.Navigation("Part");
+                    b.Navigation("Material");
 
                     b.Navigation("ProcessGroup");
 
                     b.Navigation("ProductionOrder");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemIssuedDetail", b =>
-                {
-                    b.HasOne("Domain.Entities.Production.AcceptanceReportItem", "AcceptanceReportItem")
-                        .WithMany("IssuedDetails")
-                        .HasForeignKey("AcceptanceReportItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AcceptanceReportItem");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemLog", b =>
@@ -3591,17 +3509,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReportItem");
 
                     b.Navigation("PreviousLog");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemShippedDetail", b =>
-                {
-                    b.HasOne("Domain.Entities.Production.AcceptanceReportItem", "AcceptanceReportItem")
-                        .WithMany("ShippedDetails")
-                        .HasForeignKey("AcceptanceReportItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AcceptanceReportItem");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutputProcessGroup", b =>
@@ -3815,8 +3722,6 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Index.Part", b =>
                 {
-                    b.Navigation("AcceptanceReportItems");
-
                     b.Navigation("Costs");
 
                     b.Navigation("EquipmentParts");
@@ -3908,6 +3813,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("PlannedMaintainCostAdjustmentFactors");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Pricing.MaintainUnitPriceEquipment", b =>
+                {
+                    b.Navigation("AcceptanceReportItems");
+                });
+
             modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice", b =>
                 {
                     b.Navigation("MaterialUnitPriceAssignmentCodes");
@@ -3977,10 +3887,6 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItem", b =>
                 {
                     b.Navigation("AcceptanceReportItemLogs");
-
-                    b.Navigation("IssuedDetails");
-
-                    b.Navigation("ShippedDetails");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>

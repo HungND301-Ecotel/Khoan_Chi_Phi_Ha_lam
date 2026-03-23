@@ -32,6 +32,7 @@ public class GetOtherPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
             Name = details.Name,
             UnitOfMeasureId = details.UnitOfMeasureId,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
+            ReplacementTimeStandard = details.ReplacementTimeStandard,
             Costs = details.Costs.Adapt<List<MaintainCostDto>>()
         };
     }

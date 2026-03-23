@@ -187,7 +187,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    m.ReplacementTimeStandard,
+                    m.Part.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),

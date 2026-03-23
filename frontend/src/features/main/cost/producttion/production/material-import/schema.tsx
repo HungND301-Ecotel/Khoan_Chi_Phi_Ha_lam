@@ -1,5 +1,11 @@
 import z from 'zod';
 
+function getDefaultCategoryByMaterialType(type?: number | null): number | null {
+	if (type === 1) return 2; // Material -> Vật liệu
+	if (type === 2) return 3; // SparePart -> SCTX
+	return null;
+}
+
 export const materialFormSchema = z
 	.object({
 		id: z.string().optional(),
@@ -8,12 +14,21 @@ export const materialFormSchema = z
 		materialCode: z.string().min(1, { message: 'Mã vật tư là bắt buộc' }),
 		unitOfMeasureName: z.string().optional(),
 		type: z.number().optional(),
+		itemType: z.number().optional(),
 		quantityReceived: z
 			.number()
 			.min(0, { message: 'Số lượng lĩnh phải lớn hơn 0' }),
 		quantityExported: z
 			.number()
 			.min(0, { message: 'Số lượng xuất phải lớn hơn 0' }),
+		receivedTypes: z.array(z.string()).optional(),
+		exportedTypes: z.array(z.string()).optional(),
+		receivedBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
+		exportedBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
 		quantity: z.number().min(0, { message: 'Số lượng phải lớn hơn 0' }),
 		categoryQuantity: z.number().nullable().optional(),
 		additionalCostQuantity: z.number().nullable().optional(),
@@ -21,9 +36,11 @@ export const materialFormSchema = z
 		// Category: Vật tư đã tính vào doanh thu khoán
 		category: z.number().nullable(),
 		categoryProcessGroup: z.string().nullable(),
+		categoryProductionOrderId: z.string().nullable(),
 		showCategoryDropdown: z.boolean(),
 		// Decision to supplement costs: QUYẾT ĐỊNH BỔ SUNG CHI PHÍ
 		additionalCostCategory: z.number().nullable(),
+		additionalCostProductionOrderId: z.string().nullable(),
 		showAdditionalCostDropdown: z.boolean(),
 		// Materials/Supplies with contract limits: VẬT TƯ KHOÁN THEO HẠN MỨC
 		contractLimitCategory: z.number().nullable(),
@@ -51,8 +68,10 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			// If category checkbox is selected, must have dropdown selected
-			if (data.showCategoryDropdown && !data.category) {
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			// If category checkbox is selected, category is auto-resolved from type
+			if (data.showCategoryDropdown && !categoryValue) {
 				return false;
 			}
 			return true;
@@ -64,10 +83,12 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			// If category checkbox and first dropdown are selected, must have process group
 			if (
 				data.showCategoryDropdown &&
-				data.category &&
+				categoryValue &&
 				!data.categoryProcessGroup
 			) {
 				return false;
@@ -81,13 +102,37 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			// If category checkbox and dropdown are selected, must have quantity
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			const requiresProductionOrder = categoryValue === 3;
+			// If category is SCTX, must have production order (allow empty-string sentinel)
 			if (
 				data.showCategoryDropdown &&
-				data.category &&
-				data.categoryProcessGroup &&
-				data.categoryQuantity == null
+				requiresProductionOrder &&
+				data.categoryProductionOrderId == null
 			) {
+				return false;
+			}
+			return true;
+		},
+		{
+			message: 'Phải chọn quyết định, lệnh sản xuất',
+			path: ['categoryProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
+			// If category checkbox and dropdown are selected, must have quantity
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			const requiresProductionOrder = categoryValue === 3;
+			const hasCategoryReady =
+				data.showCategoryDropdown &&
+				categoryValue &&
+				data.categoryProcessGroup &&
+				(!requiresProductionOrder || data.categoryProductionOrderId != null);
+
+			if (hasCategoryReady && data.categoryQuantity == null) {
 				return false;
 			}
 			return true;
@@ -112,12 +157,35 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			// If additional cost checkbox and dropdown are selected, must have quantity
+			const requiresProductionOrder =
+				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
+			// If additional cost category is Vật liệu/SCTX, must have production order (allow empty-string sentinel)
 			if (
 				data.showAdditionalCostDropdown &&
-				data.additionalCostCategory &&
-				data.additionalCostQuantity == null
+				requiresProductionOrder &&
+				data.additionalCostProductionOrderId == null
 			) {
+				return false;
+			}
+			return true;
+		},
+		{
+			message: 'Phải chọn quyết định, lệnh sản xuất',
+			path: ['additionalCostProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
+			// If additional cost checkbox and dropdown are selected, must have quantity
+			const requiresProductionOrder =
+				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
+			const hasAdditionalCostReady =
+				data.showAdditionalCostDropdown &&
+				data.additionalCostCategory &&
+				(!requiresProductionOrder ||
+					data.additionalCostProductionOrderId != null);
+
+			if (hasAdditionalCostReady && data.additionalCostQuantity == null) {
 				return false;
 			}
 			return true;
@@ -195,10 +263,23 @@ export const materialFormSchema = z
 	.refine(
 		(data) => {
 			// Only validate total if at least one checkbox and dropdown is selected
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			const categoryRequiresProductionOrder = categoryValue === 3;
 			const hasCategoryActive =
-				data.showCategoryDropdown && data.category && data.categoryProcessGroup;
+				data.showCategoryDropdown &&
+				categoryValue &&
+				data.categoryProcessGroup &&
+				(!categoryRequiresProductionOrder ||
+					data.categoryProductionOrderId != null);
+
+			const additionalRequiresProductionOrder =
+				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
 			const hasAdditionalCostActive =
-				data.showAdditionalCostDropdown && data.additionalCostCategory;
+				data.showAdditionalCostDropdown &&
+				data.additionalCostCategory &&
+				(!additionalRequiresProductionOrder ||
+					data.additionalCostProductionOrderId != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown && data.contractLimitCategory;
 			const hasAssetActive = data.showAssetDropdown;
@@ -249,16 +330,23 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	materialCode: '',
 	unitOfMeasureName: undefined,
 	type: undefined,
+	itemType: undefined,
 	quantityReceived: 0,
 	quantityExported: 0,
+	receivedTypes: undefined,
+	exportedTypes: undefined,
+	receivedBreakdown: undefined,
+	exportedBreakdown: undefined,
 	quantity: 0,
 	categoryQuantity: null,
 	additionalCostQuantity: null,
 	contractLimitQuantity: null,
 	category: null,
 	categoryProcessGroup: null,
+	categoryProductionOrderId: null,
 	showCategoryDropdown: false,
 	additionalCostCategory: null,
+	additionalCostProductionOrderId: null,
 	showAdditionalCostDropdown: false,
 	contractLimitCategory: null,
 	contractLimitSubCategory: null,

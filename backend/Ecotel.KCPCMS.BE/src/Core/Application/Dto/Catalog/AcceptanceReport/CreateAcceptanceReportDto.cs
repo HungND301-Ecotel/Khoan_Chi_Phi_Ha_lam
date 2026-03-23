@@ -4,19 +4,18 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record CreateAcceptanceReportItemDto
 {
-    /// <summary>
-    /// Id của AcceptanceReportItem để update, null nếu là create
-    /// </summary>
+
     public Guid? AcceptanceReportItemId { get; init; }
 
-    /// <summary>
-    /// Id của Material nếu Type = Material, hoặc Id của Part nếu Type = Part
-    /// </summary>
     public required Guid MaterialOrPartId { get; init; }
     public required AcceptanceReportItemType Type { get; init; }
+    public required ItemType ItemType { get; init; }
 
-    public required double IssuedQuantity { get; init; }
-    public required double ShippedQuantity { get; init; }
+
+    public Guid? ProductionOrderId { get; init; }
+
+    public required List<IssuedDetailDto> IssuedDetails { get; init; }
+    public required List<ShippedDetailDto> ShippedDetails { get; init; }
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
@@ -36,12 +35,23 @@ public record CreateAcceptanceReportItemDto
     public required Asset Asset { get; init; }
     public required double AssetMaterialQuantity { get; init; }
 }
-
 public record CreateAcceptanceReportDto
 {
     public required Guid ProductionOutputId { get; init; }
     public required string FilePath { get; init; }
     public required List<CreateAcceptanceReportItemDto> Items { get; init; }
+}
+
+public record IssuedDetailDto
+{
+    public required IssuedQuantityType Type { get; init; }
+    public required double Quantity { get; init; }
+}
+
+public record ShippedDetailDto
+{
+    public required ShippedQuantityType Type { get; init; }
+    public required double Quantity { get; init; }
 }
 
 public record CreateAcceptanceReportResponseDto

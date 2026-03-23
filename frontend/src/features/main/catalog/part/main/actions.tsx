@@ -32,6 +32,7 @@ export type PartDetail = {
 	unitOfMeasureName: string;
 	equipmentIds: string[];
 	equipmentCodes: string[];
+	replacementTimeStandard: number;
 	costs: Array<{
 		startMonth: string;
 		endMonth: string;
@@ -162,6 +163,13 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 					value: unit.id,
 					label: unit.name,
 				}))}
+			/>
+
+			<FormNumber
+				control={form.control}
+				name={`replacementTimeStandard`}
+				label='Định mức thời gian thay thế (tháng)'
+				placeholder='Nhập định mức thời gian thay thế (tháng)'
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>

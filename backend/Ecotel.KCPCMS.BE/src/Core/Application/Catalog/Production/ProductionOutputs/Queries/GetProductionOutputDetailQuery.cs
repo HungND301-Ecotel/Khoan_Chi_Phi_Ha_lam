@@ -48,20 +48,17 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                     .ThenInclude(i => i.Material)
                         .ThenInclude(m => m.Costs)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment)
                         .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment)
-                        .ThenInclude(m => m.MaintainUnitPrice)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(m => m.EquipmentParts)
                             .ThenInclude(p => p.Equipment)
                                 .ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment)
                         .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment)
                         .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.Costs)
                 .Include(a => a.AcceptanceReportItems)
@@ -82,20 +79,17 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                     include: q => q
                         .Include(a => a.ProductionOutput)
                         .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.MaintainUnitPriceEquipment)
                                 .ThenInclude(m => m.Part)
                                     .ThenInclude(p => p.Code)
                         .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.MaintainUnitPriceEquipment)
-                                .ThenInclude(m => m.MaintainUnitPrice)
+                            .ThenInclude(i => i.Part)
+                                .ThenInclude(m => m.EquipmentParts)
                                     .ThenInclude(p => p.Equipment)
                                         .ThenInclude(e => e.Code)
                         .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.MaintainUnitPriceEquipment)
                                 .ThenInclude(m => m.Part)
                                     .ThenInclude(p => p.UnitOfMeasure)
                         .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.MaintainUnitPriceEquipment)
                                 .ThenInclude(m => m.Part)
                                     .ThenInclude(p => p.Costs)
                         .Include(a => a.AcceptanceReportItems)
@@ -215,16 +209,16 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
         }
 
         // Process SCTX (Parts) từ current month (TH1)
-        var sctxItems = categoryItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue).ToList();
+        var sctxItems = categoryItems.Where(i => i.PartId.HasValue).ToList();
         foreach (var item in sctxItems)
         {
-            if (item.MaintainUnitPriceEquipment?.Part == null)
+            if (item?.Part == null)
             {
                 continue;
             }
 
-            var part = item.MaintainUnitPriceEquipment.Part;
-            var equipment = item.MaintainUnitPriceEquipment.MaintainUnitPrice?.Equipment;
+            var part = item.Part;
+            var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
             var groupCode = equipment?.Code?.Value ?? "VTK";
             var groupName = equipment?.Name ?? "Vật tư khác";
 
@@ -319,16 +313,16 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
                 .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain)
                 .ToList();
 
-            var prevSctxItems = prevCategoryItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue).ToList();
+            var prevSctxItems = prevCategoryItems.Where(i => i.PartId.HasValue).ToList();
             foreach (var item in prevSctxItems)
             {
-                if (item.MaintainUnitPriceEquipment?.Part == null)
+                if (item?.Part == null)
                 {
                     continue;
                 }
 
-                var part = item.MaintainUnitPriceEquipment.Part;
-                var equipment = item.MaintainUnitPriceEquipment.MaintainUnitPrice?.Equipment;
+                var part = item.Part;
+                var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
                 var groupCode = equipment?.Code?.Value ?? "VTK";
                 var groupName = equipment?.Name ?? "Vật tư khác";
 
@@ -537,15 +531,15 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
         }
 
         // Process SCTX
-        var sctxItems = categoryItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue).ToList();
+        var sctxItems = categoryItems.Where(i => i.PartId.HasValue).ToList();
         foreach (var item in sctxItems)
         {
-            if (item.MaintainUnitPriceEquipment?.Part == null)
+            if (item?.Part == null)
             {
                 continue;
             }
 
-            var part = item.MaintainUnitPriceEquipment.Part;
+            var part = item.Part;
             var groupCode = "ADDITIONAL_SCTX";
             var groupName = "Bổ sung chi phí";
 

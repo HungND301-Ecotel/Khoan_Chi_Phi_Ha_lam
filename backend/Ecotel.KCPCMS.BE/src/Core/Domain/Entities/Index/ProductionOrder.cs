@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Entities.Production;
 using Shared.Constants;
 
 namespace Domain.Entities.Index;
@@ -12,6 +13,9 @@ public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
 
     //Navigation Properties
     public virtual Code Code { get; protected set; }
+
+    private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
+    public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
 
     public static ProductionOrder Create(string code, string name, DateOnly startMonth, DateOnly endMonth)
     {

@@ -40,6 +40,7 @@ public class CreateOtherPartCommandHandler(IUnitOfWork unitOfWork, ICodeService 
                 request.CreateModel.Code,
                 request.CreateModel.Name,
                 request.CreateModel.UnitOfMeasureId,
+                request.CreateModel.ReplacementTimeStandard,
                 PartType.OtherPart);
 
             var costList = new List<Cost>();

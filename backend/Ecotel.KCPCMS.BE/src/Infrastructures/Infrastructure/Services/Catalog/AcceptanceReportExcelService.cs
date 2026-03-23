@@ -87,11 +87,13 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     // If material not found, check part
                     var materialsOrPartsId = material?.Id;
                     var type = AcceptanceReportItemType.Material;
+                    var itemType = (int)(material?.MaterialType ?? MaterialType.MaterialOutContract);
                     if (material == null)
                     {
                         var part = parts.FirstOrDefault(p =>
                             p.Code.Value.Equals(materialCode, StringComparison.OrdinalIgnoreCase));
                         type = AcceptanceReportItemType.Part;
+                        itemType = (int)(part?.Type ?? PartType.OtherPart);
                         materialsOrPartsId = part?.Id;
                         if (part == null)
                         {
@@ -110,6 +112,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                         ReportItemId = reportItemId,
                         MaterialOrPartId = materialsOrPartsId ?? Guid.Empty,
                         Type = type,
+                        ItemType = (ItemType)itemType,
                         MaterialCode = materialCode,
                         UnitOfMeasureName = unitOfMeasureName,
                         IssuedQuantity = receivedValue,
@@ -122,23 +125,9 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     throw new BadRequestException(CustomResponseMessage.ExcelFileHasNoValidData);
                 }
 
-                // Save file to disk
-                var uploadPath = CreateUploadDirectory();
-                var fileNameGuid = OutputId.ToString();
-                var filePath = Path.Combine(uploadPath, fileNameGuid);
-
-                using (var file = File.Create(filePath))
-                {
-                    fileStream.Seek(0, SeekOrigin.Begin);
-                    await fileStream.CopyToAsync(file);
-                }
-
-                var relativePath = Path.Combine(UploadFolder, AcceptanceReportFolder, fileNameGuid)
-                    .Replace("\\", "/");
-
                 return new UploadAcceptanceReportResponseDto
                 {
-                    FilePath = relativePath,
+                    FilePath = "",
                     AcceptanceReports = acceptanceReports.OrderBy(a => a.MaterialCode).ToList()
                 };
             }
@@ -147,18 +136,5 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         {
             throw new BadRequestException(CustomResponseMessage.ErrorProcessingExcelFile);
         }
-    }
-
-    private string CreateUploadDirectory()
-    {
-        var basePath = Directory.GetCurrentDirectory();
-        var uploadPath = Path.Combine(basePath, UploadFolder, AcceptanceReportFolder);
-
-        if (!Directory.Exists(uploadPath))
-        {
-            Directory.CreateDirectory(uploadPath);
-        }
-
-        return uploadPath;
     }
 }

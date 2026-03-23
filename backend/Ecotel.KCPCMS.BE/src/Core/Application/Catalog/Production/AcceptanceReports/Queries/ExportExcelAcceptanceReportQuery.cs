@@ -26,7 +26,6 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
                     .ThenInclude(i => i.Material)
                     .ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment)
                     .ThenInclude(m => m.Part)
                     .ThenInclude(p => p.Code),
             disableTracking: true);
@@ -54,7 +53,7 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
         var excelData = items.Select(item => new AcceptanceReportExcelTemplateDto
         {
             Id = item.Id,
-            MaterialCode = item.Material?.Code?.Value ?? item.MaintainUnitPriceEquipment?.Part?.Code?.Value ?? "",
+            MaterialCode = item.Material?.Code?.Value ?? item?.Part?.Code?.Value ?? "",
             IssuedQuantity = item.IssuedQuantity,
             ShippedQuantity = item.ShippedQuantity
         }).ToList();

@@ -56,6 +56,7 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
                 Name = ep.Part.Name,
                 UnitOfMeasureId = ep.Part.UnitOfMeasureId,
                 UnitOfMeasureName = ep.Part.UnitOfMeasure?.Name ?? string.Empty,
+                ReplacementTimeStandard = ep.Part.ReplacementTimeStandard,
                 CostAmount = ep.Part.Costs
                     .Where(c => c.CostType == CostType.Part &&
                                 c.StartMonth <= checkDate &&

@@ -53,7 +53,6 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
     {
         public Guid PartId { get; set; }
         public double? Quantity { get; set; }
-        public decimal ReplacementTimeStandard { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
     }
 
@@ -73,7 +72,6 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
     {
         public Guid PartId { get; set; }
         public double Quantity { get; set; }
-        public decimal ReplacementTimeStandard { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
     }
 }

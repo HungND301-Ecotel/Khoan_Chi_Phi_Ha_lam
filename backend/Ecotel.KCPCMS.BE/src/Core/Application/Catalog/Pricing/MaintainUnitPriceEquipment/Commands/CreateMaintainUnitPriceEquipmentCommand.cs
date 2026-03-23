@@ -70,7 +70,6 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
                     null,
                     part.Id,
                     cost?.Quantity ?? 0,
-                    cost?.ReplacementTimeStandard ?? 0,
                     cost?.AverageMonthlyTunnelProduction ?? 0
                 ));
             }

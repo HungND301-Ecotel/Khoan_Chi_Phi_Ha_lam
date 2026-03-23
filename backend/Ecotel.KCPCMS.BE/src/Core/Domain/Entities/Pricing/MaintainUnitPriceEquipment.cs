@@ -1,6 +1,5 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Entities.Index;
-using Domain.Entities.Production;
 using Shared.Constants;
 
 namespace Domain.Entities.Pricing
@@ -10,7 +9,6 @@ namespace Domain.Entities.Pricing
         public Guid MaintainUnitPriceId { get; protected set; }
         public Guid PartId { get; protected set; }
         public double Quantity { get; protected set; }
-        public decimal ReplacementTimeStandard { get; protected set; }
         public decimal AverageMonthlyTunnelProduction { get; protected set; }
 
         private double? CachedTotal { get; set; }
@@ -19,20 +17,12 @@ namespace Domain.Entities.Pricing
         public virtual MaintainUnitPrice? MaintainUnitPrice { get; protected set; } = null!;
         public virtual Part? Part { get; protected set; } = null!;
 
-        private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
-        public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
-
         //Constructor
-        public static MaintainUnitPriceEquipment Create(Guid? maintainUnitPrice, Guid partId, double quantity, decimal replacementTimeStandard, decimal averageMonthlyTunnelProduction)
+        public static MaintainUnitPriceEquipment Create(Guid? maintainUnitPrice, Guid partId, double quantity, decimal averageMonthlyTunnelProduction)
         {
             if (quantity < 0)
             {
                 throw new ArgumentException(CustomResponseMessage.QuantityCannotBeNegative);
-            }
-
-            if (replacementTimeStandard < 0)
-            {
-                throw new ArgumentException(CustomResponseMessage.ReplacementTimeStandardCannotBeNegative);
             }
 
             if (averageMonthlyTunnelProduction < 0)
@@ -40,20 +30,18 @@ namespace Domain.Entities.Pricing
                 throw new ArgumentException(CustomResponseMessage.AverageMonthlyTunnelProductionCannotBeNegative);
             }
 
-            double materialRate = quantity / (double)(replacementTimeStandard * averageMonthlyTunnelProduction);
             return new MaintainUnitPriceEquipment
             {
                 MaintainUnitPriceId = maintainUnitPrice ?? Guid.Empty,
                 PartId = partId,
                 Quantity = quantity,
-                ReplacementTimeStandard = replacementTimeStandard,
                 AverageMonthlyTunnelProduction = averageMonthlyTunnelProduction,
             };
         }
 
         public double GetMaterialRate()
         {
-            return Quantity / (double)(ReplacementTimeStandard * AverageMonthlyTunnelProduction);
+            return Quantity / (double)(Part?.ReplacementTimeStandard ?? 1 * AverageMonthlyTunnelProduction);
         }
 
         public double GetMaterialCostPerMetres(DateOnly effectiveMonth)
@@ -71,16 +59,11 @@ namespace Domain.Entities.Pricing
         }
 
 
-        public void Update(Guid equipmentId, Guid partId, double quantity, decimal replacementTimeStandard, decimal averageMonthlyTunnelProduction)
+        public void Update(Guid equipmentId, Guid partId, double quantity, decimal averageMonthlyTunnelProduction)
         {
             if (quantity < 0)
             {
                 throw new ArgumentException(CustomResponseMessage.QuantityCannotBeNegative);
-            }
-
-            if (replacementTimeStandard < 0)
-            {
-                throw new ArgumentException(CustomResponseMessage.ReplacementTimeStandardCannotBeNegative);
             }
 
             if (averageMonthlyTunnelProduction < 0)
@@ -88,12 +71,9 @@ namespace Domain.Entities.Pricing
                 throw new ArgumentException(CustomResponseMessage.AverageMonthlyTunnelProductionCannotBeNegative);
             }
 
-            double materialRate = quantity / (double)(replacementTimeStandard * averageMonthlyTunnelProduction);
-
             MaintainUnitPriceId = equipmentId;
             PartId = partId;
             Quantity = quantity;
-            ReplacementTimeStandard = replacementTimeStandard;
             AverageMonthlyTunnelProduction = averageMonthlyTunnelProduction;
         }
     }

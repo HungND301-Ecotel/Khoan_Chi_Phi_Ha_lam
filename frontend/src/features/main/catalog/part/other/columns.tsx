@@ -7,6 +7,7 @@ export type OtherPart = {
 	name: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	replacementTimeStandard: number;
 	costAmount: number;
 };
 
@@ -22,6 +23,10 @@ export const CATALOG_OTHER_PART_COLUMNS: ColumnDef<OtherPart>[] = [
 	{
 		accessorKey: 'unitOfMeasureName',
 		header: 'Đơn vị tính',
+	},
+	{
+		accessorKey: 'replacementTimeStandard',
+		header: 'Định mức thời gian thay thế (tháng)',
 	},
 	{
 		accessorKey: 'costAmount',

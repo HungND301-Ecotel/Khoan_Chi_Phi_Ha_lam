@@ -1,7 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Domain.Entities.Production;
@@ -10,11 +9,15 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
-    public Guid? MaintainUnitPriceEquipmentId { get; protected set; }
+    public Guid? PartId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
 
-    public double IssuedQuantity { get; protected set; }
-    public double ShippedQuantity { get; protected set; }
+    public ItemType ItemType { get; protected set; }
+    public Guid? ProductionOrderId { get; protected set; }
+
+    public double IssuedQuantity => _issuedDetails.Sum(x => x.Quantity);   // tự tính tổng
+
+    public double ShippedQuantity => _shippedDetails.Sum(x => x.Quantity);  // tự tính tổng
 
     //Vật tư tính vào doanh thu khoán
     public MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; protected set; }
@@ -36,9 +39,15 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual MaintainUnitPriceEquipment? MaintainUnitPriceEquipment { get; protected set; }
+    public virtual Part? Part { get; protected set; }
     public virtual Material? Material { get; protected set; }
+    public virtual ProductionOrder ProductionOrder { get; protected set; }
 
+    private IList<AcceptanceReportItemIssuedDetail> _issuedDetails = new List<AcceptanceReportItemIssuedDetail>();
+    public virtual IReadOnlyCollection<AcceptanceReportItemIssuedDetail> IssuedDetails => _issuedDetails.AsReadOnly();
+
+    private IList<AcceptanceReportItemShippedDetail> _shippedDetails = new List<AcceptanceReportItemShippedDetail>();
+    public virtual IReadOnlyCollection<AcceptanceReportItemShippedDetail> ShippedDetails => _shippedDetails.AsReadOnly();
 
     private IList<AcceptanceReportItemLog> _acceptanceReportItemLogs = new List<AcceptanceReportItemLog>();
     public virtual IReadOnlyCollection<AcceptanceReportItemLog> AcceptanceReportItemLogs => _acceptanceReportItemLogs.AsReadOnly();
@@ -46,7 +55,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     private static void ValidateIds(
         Guid? processGroupId,
         Guid? materialId,
-        Guid? maintainUnitPriceEquipmentId,
+        Guid? partId,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         AdditionalCost additionalCost,
         QuotaBasedMaterial quotaBasedMaterial)
@@ -61,7 +70,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             additionalCost == AdditionalCost.OtherMaterial ||
             quotaBasedMaterial != QuotaBasedMaterial.None;
 
-        if (requiresMaintain && maintainUnitPriceEquipmentId == null)
+        if (requiresMaintain && partId == null)
         {
             throw new ArgumentException(CustomResponseMessage.MaintainIdRequired);
         }
@@ -71,9 +80,50 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             throw new ArgumentException(CustomResponseMessage.MaterialIdRequired);
         }
 
-        if (materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None && processGroupId == null)
+        if ((materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None) && processGroupId == null)
         {
             throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
+        }
+    }
+
+    private static void ValidateQuantityDetails(
+        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails)
+    {
+        if (issuedDetails == null || !issuedDetails.Any())
+        {
+            throw new ArgumentException("Phải có ít nhất 1 dòng số lượng lĩnh");
+        }
+
+        if (issuedDetails.Any(x => x.Quantity < 0))
+        {
+            throw new ArgumentException("Số lượng lĩnh không được âm");
+        }
+
+        if (shippedDetails == null || !shippedDetails.Any())
+        {
+            throw new ArgumentException("Phải có ít nhất 1 dòng số lượng xuất");
+        }
+
+        if (shippedDetails.Any(x => x.Quantity < 0))
+        {
+            throw new ArgumentException("Số lượng xuất không được âm");
+        }
+
+        var duplicateIssued = issuedDetails
+            .GroupBy(x => x.Type)
+            .Any(g => g.Count() > 1);
+        if (duplicateIssued)
+        {
+            throw new ArgumentException("Không được trùng loại số lượng lĩnh");
+        }
+
+        var duplicateShipped = shippedDetails
+            .GroupBy(x => x.Type)
+            .Any(g => g.Count() > 1);
+        if (duplicateShipped)
+        {
+            throw new ArgumentException("Không được trùng loại số lượng xuất");
         }
     }
 
@@ -81,7 +131,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid acceptanceReportId,
         Guid? processGroupId,
         Guid? materialId,
-        Guid? maintainUnitPriceEquipmentId,
+        Guid? partId,
+        ItemType itemType,
+        Guid? productionOrderId,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
@@ -91,17 +143,20 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         double quotaBasedMaterialQuantity,
         Asset asset,
         double assetMaterialQuantity,
-        double issuedQuantity,
-        double shippedQuantity)
+        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails)
     {
-        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
+        ValidateIds(processGroupId, materialId, partId,
+            materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
-        return new AcceptanceReportItem
+        ValidateQuantityDetails(issuedDetails, shippedDetails);
+
+        var item = new AcceptanceReportItem
         {
             AcceptanceReportId = acceptanceReportId,
             ProcessGroupId = processGroupId,
             MaterialId = materialId,
-            MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
+            PartId = partId,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
             AdditionalCost = additionalCost,
@@ -111,15 +166,29 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             QuotaBasedMaterialQuantity = quotaBasedMaterialQuantity,
             Asset = asset,
             AssetMaterialQuantity = assetMaterialQuantity,
-            IssuedQuantity = issuedQuantity,
-            ShippedQuantity = shippedQuantity
+            ItemType = itemType,
+            ProductionOrderId = productionOrderId,
         };
+
+        foreach (var detail in issuedDetails)
+        {
+            item._issuedDetails.Add(AcceptanceReportItemIssuedDetail.Create(item.Id, detail.Type, detail.Quantity));
+        }
+
+        foreach (var detail in shippedDetails)
+        {
+            item._shippedDetails.Add(AcceptanceReportItemShippedDetail.Create(item.Id, detail.Type, detail.Quantity));
+        }
+
+        return item;
     }
 
     public void Update(
         Guid? processGroupId,
         Guid? materialId,
-        Guid? maintainUnitPriceEquipmentId,
+        Guid? partId,
+        ItemType itemType,
+        Guid? productionOrderId,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
@@ -129,14 +198,17 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         double quotaBasedMaterialQuantity,
         Asset asset,
         double assetMaterialQuantity,
-        double issuedQuantity,
-        double shippedQuantity)
+        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails)
     {
-        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
+        ValidateIds(processGroupId, materialId, partId,
+            materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
+
+        ValidateQuantityDetails(issuedDetails, shippedDetails);
 
         ProcessGroupId = processGroupId;
         MaterialId = materialId;
-        MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId;
+        PartId = partId;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;
         AdditionalCost = additionalCost;
@@ -146,7 +218,20 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         QuotaBasedMaterialQuantity = quotaBasedMaterialQuantity;
         Asset = asset;
         AssetMaterialQuantity = assetMaterialQuantity;
-        IssuedQuantity = issuedQuantity;
-        ShippedQuantity = shippedQuantity;
+        ItemType = itemType;
+        ProductionOrderId = productionOrderId;
+
+        // Clear và rebuild toàn bộ details (replace strategy)
+        _issuedDetails.Clear();
+        foreach (var detail in issuedDetails)
+        {
+            _issuedDetails.Add(AcceptanceReportItemIssuedDetail.Create(Id, detail.Type, detail.Quantity));
+        }
+
+        _shippedDetails.Clear();
+        foreach (var detail in shippedDetails)
+        {
+            _shippedDetails.Add(AcceptanceReportItemShippedDetail.Create(Id, detail.Type, detail.Quantity));
+        }
     }
 }

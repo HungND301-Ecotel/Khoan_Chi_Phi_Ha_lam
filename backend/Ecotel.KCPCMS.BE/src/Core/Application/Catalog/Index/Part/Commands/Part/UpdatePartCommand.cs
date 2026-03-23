@@ -63,6 +63,7 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
                 request.UpdateModel.Code,
                 request.UpdateModel.Name,
                 request.UpdateModel.UnitOfMeasureId,
+                request.UpdateModel.ReplacementTimeStandard,
                 equipments.ToList());
 
             var costList = new List<Cost>();

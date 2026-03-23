@@ -20,8 +20,12 @@ import {
 	CreateAcceptanceReportRequest,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
+	ProductionOrder,
+	QuantityDetail,
 	QuotaBasedMaterial,
 	QuotaBasedMaterialType,
+	ISSUED_DETAIL_TYPE_BY_KEY,
+	SHIPPED_DETAIL_TYPE_BY_KEY,
 	UploadAcceptanceReportResponseDto,
 } from './types';
 
@@ -34,6 +38,16 @@ type MaterialImportDialogProps = {
 type ProcessGroupOption = {
 	value: string;
 	label: string;
+};
+
+type ProductionOrderOption = {
+	value: string;
+	label: string;
+};
+
+const DEFAULT_NO_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
+	value: '',
+	label: 'Không theo quyết định, lệnh sản xuất',
 };
 
 type ProductionOutputScopeResponse = {
@@ -68,6 +82,18 @@ function getDefaultAdditionalCostByMaterialType(
 	return null;
 }
 
+function normalizeProductionOrderId(value?: string | null): string | null {
+	if (!value) return null;
+	const trimmedValue = value.trim();
+	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function parseQuantity(value: number | string | null | undefined): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
 export function MaterialImportDialog({
 	onSave,
 	productionOutputId,
@@ -77,6 +103,9 @@ export function MaterialImportDialog({
 	const [isLoading, setIsLoading] = useState(false);
 	const [processGroupOptions, setProcessGroupOptions] = useState<
 		ProcessGroupOption[]
+	>([]);
+	const [productionOrderOptions, setProductionOrderOptions] = useState<
+		ProductionOrderOption[]
 	>([]);
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -89,6 +118,47 @@ export function MaterialImportDialog({
 		mode: 'onChange',
 		shouldUnregister: false,
 	});
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchProductionOrders = async () => {
+			try {
+				const response = await api.pagging<ProductionOrder>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				const options = response.result.data
+					.sort((a, b) => a.code.localeCompare(b.code))
+					.map((item) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					}));
+
+				const optionsWithSentinel: ProductionOrderOption[] = [
+					DEFAULT_NO_PRODUCTION_ORDER_OPTION,
+					...options,
+				];
+
+				setProductionOrderOptions(optionsWithSentinel);
+			} catch (error) {
+				if (!isMounted) return;
+				setProductionOrderOptions([DEFAULT_NO_PRODUCTION_ORDER_OPTION]);
+				console.error('Failed to fetch production orders:', error);
+			}
+		};
+
+		fetchProductionOrders();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!productionOutputId) {
@@ -173,6 +243,7 @@ export function MaterialImportDialog({
 						materialCode: item.materialCode,
 						unitOfMeasureName: item.unitOfMeasureName,
 						type: item.type,
+						itemType: item.itemType,
 						quantityReceived: item.issuedQuantity,
 						quantityExported: item.shippedQuantity,
 						quantity: item.issuedQuantity + item.shippedQuantity,
@@ -195,25 +266,28 @@ export function MaterialImportDialog({
 
 	const handleSave = async (data: MaterialFormSchema[]) => {
 		try {
-			if (!productionOutputId || !filePath) {
-				popup.error('Thiếu thông tin cần thiết');
+			if (!productionOutputId) {
+				popup.error('Không tìm thấy mã sản xuất');
 				return;
 			}
 
 			// Transform form data to API request
 			const requestData: CreateAcceptanceReportRequest = {
 				productionOutputId,
-				filePath,
+				filePath: filePath ?? '',
 				items: data.map((item) => {
+					const resolvedCategory =
+						item.category ?? getDefaultCategoryByMaterialType(item.type);
+
 					// Map category to enum
 					let materialsIncludedInContractRevenue: number =
 						MaterialsIncludedInContractRevenue.None;
-					if (item.showCategoryDropdown && item.category) {
-						materialsIncludedInContractRevenue = item.category;
+					if (item.showCategoryDropdown && resolvedCategory) {
+						materialsIncludedInContractRevenue = resolvedCategory;
 					}
 
 					const processGroupId =
-						item.showCategoryDropdown && item.category
+						item.showCategoryDropdown && resolvedCategory
 							? item.categoryProcessGroup || null
 							: null;
 
@@ -222,6 +296,25 @@ export function MaterialImportDialog({
 					if (item.showAdditionalCostDropdown && item.additionalCostCategory) {
 						additionalCost = item.additionalCostCategory;
 					}
+
+					const categoryProductionOrderId =
+						item.showCategoryDropdown &&
+						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
+							? normalizeProductionOrderId(item.categoryProductionOrderId)
+							: null;
+
+					const additionalCostProductionOrderId =
+						item.showAdditionalCostDropdown &&
+						(item.additionalCostCategory === AdditionalCost.Material ||
+							item.additionalCostCategory === AdditionalCost.Maintain)
+							? normalizeProductionOrderId(item.additionalCostProductionOrderId)
+							: null;
+
+					// Backend expects one unified productionOrderId
+					const productionOrderId =
+						categoryProductionOrderId ??
+						additionalCostProductionOrderId ??
+						null;
 
 					// Map quota based material to enum
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
@@ -244,12 +337,61 @@ export function MaterialImportDialog({
 						: Asset.None;
 					const assetMaterialQuantity: number = item.assetQuantity || 0;
 
+					const receivedTypes =
+						item.receivedTypes && item.receivedTypes.length > 0
+							? item.receivedTypes
+							: ['receipt_voucher'];
+					const exportedTypes =
+						item.exportedTypes && item.exportedTypes.length > 0
+							? item.exportedTypes
+							: ['production'];
+
+					const issuedDetails: QuantityDetail[] = [];
+					for (const key of receivedTypes) {
+						const detailType =
+							ISSUED_DETAIL_TYPE_BY_KEY[
+								key as keyof typeof ISSUED_DETAIL_TYPE_BY_KEY
+							];
+						if (!detailType) continue;
+
+						const quantity =
+							receivedTypes.length > 1
+								? parseQuantity(item.receivedBreakdown?.[key])
+								: parseQuantity(item.quantityReceived);
+
+						issuedDetails.push({
+							type: detailType,
+							quantity,
+						});
+					}
+
+					const shippedDetails: QuantityDetail[] = [];
+					for (const key of exportedTypes) {
+						const detailType =
+							SHIPPED_DETAIL_TYPE_BY_KEY[
+								key as keyof typeof SHIPPED_DETAIL_TYPE_BY_KEY
+							];
+						if (!detailType) continue;
+
+						const quantity =
+							exportedTypes.length > 1
+								? parseQuantity(item.exportedBreakdown?.[key])
+								: parseQuantity(item.quantityExported);
+
+						shippedDetails.push({
+							type: detailType,
+							quantity,
+						});
+					}
+
 					return {
 						acceptanceReportItemId: item.acceptanceReportItemId || null,
 						materialOrPartId: item.materialOrPartId || '',
-						type: item.type || 0,
-						issuedQuantity: item.quantityReceived || 0,
-						shippedQuantity: item.quantityExported || 0,
+						type: item.type || 1,
+						itemType: item.itemType || 1,
+						productionOrderId,
+						issuedDetails,
+						shippedDetails,
 						materialsIncludedInContractRevenue,
 						processGroupId,
 						materialsIncludedInContractRevenueQuantity:
@@ -291,16 +433,14 @@ export function MaterialImportDialog({
 		<>
 			{!showForm ? (
 				<div className='flex flex-col gap-4'>
-					<DataTableImport
-						onImport={handleImport}
-						isLoading={isLoading}
-					/>
+					<DataTableImport onImport={handleImport} isLoading={isLoading} />
 				</div>
 			) : (
 				<FormProvider context={form} onSubmit={handleFormSubmit}>
 					<MaterialImportForm
 						onCancel={() => setShowForm(false)}
 						processGroupOptions={processGroupOptions}
+						productionOrderOptions={productionOrderOptions}
 					/>
 				</FormProvider>
 			)}

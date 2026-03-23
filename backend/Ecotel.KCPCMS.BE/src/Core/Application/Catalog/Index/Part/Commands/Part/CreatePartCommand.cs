@@ -54,6 +54,7 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
                 request.CreateModel.Code,
                 request.CreateModel.Name,
                 request.CreateModel.UnitOfMeasureId,
+                request.CreateModel.ReplacementTimeStandard,
                 equipments.ToList());
 
             var costList = new List<Cost>();

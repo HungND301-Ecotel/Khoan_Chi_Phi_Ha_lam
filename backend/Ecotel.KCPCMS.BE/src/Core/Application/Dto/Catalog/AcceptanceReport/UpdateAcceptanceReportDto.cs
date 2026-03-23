@@ -4,13 +4,14 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record UpdateAcceptanceReportItemDto
 {
-    /// <summary>
-    /// Id của AcceptanceReportItem
-    /// </summary>
     public required Guid Id { get; init; }
 
-    public required double IssuedQuantity { get; init; }
-    public required double ShippedQuantity { get; init; }
+    // Thay IssuedQuantity / ShippedQuantity bằng lists
+    public required List<IssuedDetailDto> IssuedDetails { get; init; }
+    public required List<ShippedDetailDto> ShippedDetails { get; init; }
+
+    public required ItemType ItemType { get; init; }
+    public Guid? ProductionOrderId { get; init; }
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }

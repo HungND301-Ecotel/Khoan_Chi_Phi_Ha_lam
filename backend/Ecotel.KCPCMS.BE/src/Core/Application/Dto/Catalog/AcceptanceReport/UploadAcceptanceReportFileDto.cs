@@ -24,6 +24,7 @@ public record AcceptanceReportItemDto
     public required string MaterialCode { get; init; }
     public required string UnitOfMeasureName { get; init; }
     public required AcceptanceReportItemType Type { get; init; }
+    public required ItemType ItemType { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
 }

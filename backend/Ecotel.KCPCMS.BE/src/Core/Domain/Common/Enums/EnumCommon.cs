@@ -128,8 +128,29 @@ public enum AcceptanceReportItemType
     Part = 2
 }
 
+public enum ItemType
+{
+    InContract = 1,
+    OutContract = 2
+}
+
 public enum PartType
 {
     Part = 1,
     OtherPart = 2
+}
+
+public enum IssuedQuantityType
+{
+    LinhVatTuTraPhieu = 1,
+    VayVhuaTraPhieu = 2,
+    TraPhieuThangTruoc = 3,
+    LinhKhac = 4
+}
+
+public enum ShippedQuantityType
+{
+    XuatChoSanXuat = 1,
+    XuatKhac = 2,
+    QuyetToanGiaoKhoan = 3
 }

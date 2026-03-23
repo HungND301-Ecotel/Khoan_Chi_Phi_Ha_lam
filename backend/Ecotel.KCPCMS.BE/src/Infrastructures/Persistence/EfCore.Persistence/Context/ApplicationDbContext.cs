@@ -81,6 +81,8 @@ public class ApplicationDbContext(
     public DbSet<ProductionOutputProduct> ProductionOutputProducts => Set<ProductionOutputProduct>();
     public DbSet<AcceptanceReport> AcceptanceReports => Set<AcceptanceReport>();
     public DbSet<AcceptanceReportItem> AcceptanceReportItems => Set<AcceptanceReportItem>();
+    public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
+    public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
     public DbSet<AcceptanceReportItemLog> AcceptanceReportItemLogs => Set<AcceptanceReportItemLog>();
     #endregion
 
@@ -734,6 +736,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOutputProduct>().ToTable(nameof(ProductionOutputProduct), "Production");
         modelBuilder.Entity<AcceptanceReport>().ToTable(nameof(AcceptanceReport), "Production");
         modelBuilder.Entity<AcceptanceReportItem>().ToTable(nameof(AcceptanceReportItem), "Production");
+        modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
+        modelBuilder.Entity<AcceptanceReportItemShippedDetail>().ToTable(nameof(AcceptanceReportItemShippedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemLog>().ToTable(nameof(AcceptanceReportItemLog), "Production");
 
         modelBuilder.Entity<ProductionOutput>()
@@ -790,15 +794,25 @@ public class ApplicationDbContext(
             .HasForeignKey(i => i.ProcessGroupId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
-            .HasOne(i => i.MaintainUnitPriceEquipment)
+            .HasOne(i => i.Part)
             .WithMany(i => i.AcceptanceReportItems)
-            .HasForeignKey(i => i.MaintainUnitPriceEquipmentId)
+            .HasForeignKey(i => i.PartId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
             .HasOne(i => i.Material)
             .WithMany(i => i.AcceptanceReportItems)
             .HasForeignKey(i => i.MaterialId)
             .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasMany(i => i.ShippedDetails)
+            .WithOne(i => i.AcceptanceReportItem)
+            .HasForeignKey(i => i.AcceptanceReportItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasMany(i => i.IssuedDetails)
+            .WithOne(i => i.AcceptanceReportItem)
+            .HasForeignKey(i => i.AcceptanceReportItemId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // AcceptanceReportItemLog table
         modelBuilder.Entity<AcceptanceReportItemLog>()

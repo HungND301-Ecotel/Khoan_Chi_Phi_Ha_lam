@@ -226,7 +226,8 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
 
                     if (partEquipment != null)
                     {
-                        worksheet.Cell(currentRow, currentCol).Value = (double)partEquipment.ReplacementTimeStandard;
+                        //worksheet.Cell(currentRow, currentCol).Value = (double)partEquipment.ReplacementTimeStandard;
+                        worksheet.Cell(currentRow, currentCol).Value = 0;
                         worksheet.Cell(currentRow, currentCol + 1).Value = partEquipment.Quantity;
                         worksheet.Cell(currentRow, currentCol + 2).Value = (double)partEquipment.AverageMonthlyTunnelProduction;
 

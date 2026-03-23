@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/incompatible-library */
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,6 @@ import {
 import { AcceptanceReportDetail } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import {
 	ADDITIONAL_COST_OPTIONS,
-	CATEGORY_OPTIONS,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
 	MaterialsIncludedInContractRevenue,
@@ -34,6 +34,14 @@ import {
 	QuotaBasedMaterial,
 	Asset,
 	MaterialType,
+	EXPORTED_TYPE_OPTIONS,
+	ISSUED_DETAIL_KEY_BY_TYPE,
+	ISSUED_DETAIL_TYPE_BY_KEY,
+	QuantityDetail,
+	RECEIVED_TYPE_OPTIONS,
+	SHIPPED_DETAIL_KEY_BY_TYPE,
+	SHIPPED_DETAIL_TYPE_BY_KEY,
+	ProductionOrder,
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import { formatNumber, cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,11 +64,77 @@ type ProcessGroupOption = {
 	label: string;
 };
 
+type ProductionOrderOption = {
+	value: string;
+	label: string;
+};
+
+const DEFAULT_NO_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
+	value: '',
+	label: 'Không theo quyết định, lệnh sản xuất',
+};
+
 type ProductionOutputScopeResponse = {
 	processGroups?: {
 		processGroupId: string;
 	}[];
 };
+
+type QuantityBreakdown = Record<string, number | string>;
+
+function normalizeProductionOrderId(value?: string | null): string | null {
+	if (!value) return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseQuantity(value: number | string | null | undefined): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function mapIssuedDetailsToBreakdown(details?: QuantityDetail[]) {
+	const breakdown: QuantityBreakdown = {};
+	const selectedKeys: string[] = [];
+	for (const detail of details || []) {
+		const key = ISSUED_DETAIL_KEY_BY_TYPE[detail.type];
+		if (!key) continue;
+		selectedKeys.push(key);
+		breakdown[key] = detail.quantity ?? 0;
+	}
+
+	return {
+		selectedKeys:
+			selectedKeys.length > 0 ? selectedKeys : [RECEIVED_TYPE_OPTIONS[0].value],
+		breakdown,
+		total: (details || []).reduce(
+			(acc, item) => acc + (Number(item.quantity) || 0),
+			0,
+		),
+	};
+}
+
+function mapShippedDetailsToBreakdown(details?: QuantityDetail[]) {
+	const breakdown: QuantityBreakdown = {};
+	const selectedKeys: string[] = [];
+	for (const detail of details || []) {
+		const key = SHIPPED_DETAIL_KEY_BY_TYPE[detail.type];
+		if (!key) continue;
+		selectedKeys.push(key);
+		breakdown[key] = detail.quantity ?? 0;
+	}
+
+	return {
+		selectedKeys:
+			selectedKeys.length > 0 ? selectedKeys : [EXPORTED_TYPE_OPTIONS[0].value],
+		breakdown,
+		total: (details || []).reduce(
+			(acc, item) => acc + (Number(item.quantity) || 0),
+			0,
+		),
+	};
+}
 
 function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	if (type === MaterialType.Material) {
@@ -102,6 +176,9 @@ export function RawAcceptanceReportForm({
 	const [processGroupOptions, setProcessGroupOptions] = useState<
 		ProcessGroupOption[]
 	>([]);
+	const [productionOrderOptions, setProductionOrderOptions] = useState<
+		ProductionOrderOption[]
+	>([]);
 
 	const form = useForm<RawAcceptanceReportFormSchema>({
 		resolver: zodResolver(rawAcceptanceReportFormSchema),
@@ -111,6 +188,45 @@ export function RawAcceptanceReportForm({
 			productionId: id || '',
 		},
 	});
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchProductionOrders = async () => {
+			try {
+				const response = await api.pagging<ProductionOrder>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				const options = response.result.data
+					.sort((a, b) => a.code.localeCompare(b.code))
+					.map((item) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					}));
+
+				setProductionOrderOptions([
+					DEFAULT_NO_PRODUCTION_ORDER_OPTION,
+					...options,
+				]);
+			} catch (err) {
+				if (!isMounted) return;
+				setProductionOrderOptions([DEFAULT_NO_PRODUCTION_ORDER_OPTION]);
+				console.error('Failed to fetch production orders:', err);
+			}
+		};
+
+		fetchProductionOrders();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!id) {
@@ -163,6 +279,12 @@ export function RawAcceptanceReportForm({
 	}, [id]);
 
 	useEffect(() => {
+		if (output?.acceptanceReportId) {
+			setAcceptanceReportId(output.acceptanceReportId);
+		}
+	}, [output?.acceptanceReportId]);
+
+	useEffect(() => {
 		if (!id || !output?.acceptanceReportId) return;
 
 		// Load existing data from API
@@ -184,12 +306,16 @@ export function RawAcceptanceReportForm({
 						// Map enum values to form field values
 						const showCategoryDropdown =
 							item.materialsIncludedInContractRevenue !==
-							MaterialsIncludedInContractRevenue.None;
+								MaterialsIncludedInContractRevenue.None &&
+							item.materialsIncludedInContractRevenue !== 0;
 						const showAdditionalCostDropdown =
-							item.additionalCost !== AdditionalCost.None;
+							item.additionalCost !== AdditionalCost.None &&
+							item.additionalCost !== 0;
 						const showContractLimitDropdown =
-							item.quotaBasedMaterial !== QuotaBasedMaterial.None;
-						const showAssetDropdown = item.asset !== Asset.None;
+							item.quotaBasedMaterial !== QuotaBasedMaterial.None &&
+							item.quotaBasedMaterial !== 0;
+						const showAssetDropdown =
+							item.asset !== Asset.None && item.asset !== 0;
 
 						// Determine material code and name based on type
 						// type = 1: Material, type = 2: Spare Part
@@ -197,6 +323,20 @@ export function RawAcceptanceReportForm({
 							item.type === 1 ? item.materialCode : item.partCode;
 						const materialName =
 							item.type === 1 ? item.materialName : item.partName;
+						const issuedBreakdown = mapIssuedDetailsToBreakdown(
+							item.issuedDetails,
+						);
+						const shippedBreakdown = mapShippedDetailsToBreakdown(
+							item.shippedDetails,
+						);
+						const receivedQuantity =
+							item.issuedDetails && item.issuedDetails.length > 0
+								? issuedBreakdown.total
+								: item.issuedQuantity || 0;
+						const exportedQuantity =
+							item.shippedDetails && item.shippedDetails.length > 0
+								? shippedBreakdown.total
+								: item.shippedQuantity || 0;
 
 						return {
 							id: item.id || '',
@@ -205,8 +345,12 @@ export function RawAcceptanceReportForm({
 							unit: item.unitOfMeasureName || '',
 							plannedUnitPrice: item.planCost || 0,
 							actualUnitPrice: item.actualCost || 0,
-							receivedQuantity: item.issuedQuantity || 0,
-							exportedQuantity: item.shippedQuantity || 0,
+							receivedQuantity,
+							exportedQuantity,
+							receivedTypes: issuedBreakdown.selectedKeys,
+							exportedTypes: shippedBreakdown.selectedKeys,
+							receivedBreakdown: issuedBreakdown.breakdown,
+							exportedBreakdown: shippedBreakdown.breakdown,
 							showCategoryDropdown,
 							showAdditionalCostDropdown,
 							showContractLimitDropdown,
@@ -217,9 +361,22 @@ export function RawAcceptanceReportForm({
 							categoryProcessGroup: showCategoryDropdown
 								? item.processGroupId || null
 								: null,
+							categoryProductionOrderId:
+								showCategoryDropdown &&
+								item.materialsIncludedInContractRevenue ===
+									MaterialsIncludedInContractRevenue.Maintain
+									? item.productionOrderId || ''
+									: null,
 							additionalCostCategory: showAdditionalCostDropdown
 								? item.additionalCost
 								: null,
+							additionalCostProductionOrderId:
+								showAdditionalCostDropdown &&
+								(item.additionalCost === AdditionalCost.Material ||
+									item.additionalCost === AdditionalCost.Maintain)
+									? item.productionOrderId || ''
+									: null,
+							productionOrderId: item.productionOrderId || null,
 							contractLimitCategory: showContractLimitDropdown
 								? item.quotaBasedMaterial
 								: null,
@@ -239,6 +396,7 @@ export function RawAcceptanceReportForm({
 								? item.assetMaterialQuantity || null
 								: null,
 							type: item.type,
+							itemType: item.itemType ?? 0,
 						};
 					});
 
@@ -264,54 +422,112 @@ export function RawAcceptanceReportForm({
 
 	const handleSubmit = async (values: RawAcceptanceReportFormSchema) => {
 		try {
-			if (!acceptanceReportId || !filePath) {
+			const reportId = acceptanceReportId || output?.acceptanceReportId || '';
+			if (!reportId) {
 				error('Thiếu thông tin cần thiết');
 				return;
 			}
 
 			// Transform form data to API request
 			const requestData = {
-				id: acceptanceReportId,
-				filePath,
+				id: reportId,
+				filePath: filePath ?? '',
 				items: values.items.map((item) => {
-					// Map category to enum
-					let materialsIncludedInContractRevenue: number =
-						MaterialsIncludedInContractRevenue.None;
-					if (item.showCategoryDropdown && item.category) {
-						materialsIncludedInContractRevenue = item.category;
-					}
+					const resolvedCategory =
+						item.category ?? getDefaultCategoryByMaterialType(item.type);
+
+					const materialsIncludedInContractRevenue =
+						item.showCategoryDropdown && resolvedCategory
+							? resolvedCategory
+							: MaterialsIncludedInContractRevenue.None;
 
 					const processGroupId =
-						item.showCategoryDropdown && item.category
+						item.showCategoryDropdown && resolvedCategory
 							? item.categoryProcessGroup || null
 							: null;
 
-					// Map additional cost to enum
-					let additionalCost: number = AdditionalCost.None;
-					if (item.showAdditionalCostDropdown && item.additionalCostCategory) {
-						additionalCost = item.additionalCostCategory;
-					}
+					const additionalCost =
+						item.showAdditionalCostDropdown && item.additionalCostCategory
+							? item.additionalCostCategory
+							: 0;
 
-					// Map quota based material to enum
+					const categoryProductionOrderId =
+						item.showCategoryDropdown &&
+						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
+							? normalizeProductionOrderId(item.categoryProductionOrderId)
+							: null;
+
+					const additionalCostProductionOrderId =
+						item.showAdditionalCostDropdown &&
+						(item.additionalCostCategory === AdditionalCost.Material ||
+							item.additionalCostCategory === AdditionalCost.Maintain)
+							? normalizeProductionOrderId(item.additionalCostProductionOrderId)
+							: null;
+
+					const productionOrderId =
+						categoryProductionOrderId ??
+						additionalCostProductionOrderId ??
+						normalizeProductionOrderId(item.productionOrderId) ??
+						null;
+
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
-					let quotaBasedMaterialType: number = 1;
+					let quotaBasedMaterialType = 0;
 					if (item.showContractLimitDropdown && item.contractLimitCategory) {
 						quotaBasedMaterial = item.contractLimitCategory;
-						// Set quotaBasedMaterialType from contractLimitSubCategory
-						if (item.contractLimitSubCategory) {
-							quotaBasedMaterialType = item.contractLimitSubCategory;
-						}
+						quotaBasedMaterialType = item.contractLimitSubCategory || 0;
 					}
 
-					// Map asset to enum
-					const asset: number = item.showAssetDropdown
-						? Asset.True
-						: Asset.None;
+					const asset = item.showAssetDropdown ? Asset.True : 0;
+
+					const receivedTypes =
+						item.receivedTypes && item.receivedTypes.length > 0
+							? item.receivedTypes
+							: [RECEIVED_TYPE_OPTIONS[0].value];
+					const exportedTypes =
+						item.exportedTypes && item.exportedTypes.length > 0
+							? item.exportedTypes
+							: [EXPORTED_TYPE_OPTIONS[0].value];
+
+					const issuedDetails: QuantityDetail[] = [];
+					for (const key of receivedTypes) {
+						const detailType =
+							ISSUED_DETAIL_TYPE_BY_KEY[
+								key as keyof typeof ISSUED_DETAIL_TYPE_BY_KEY
+							];
+						if (!detailType) continue;
+						const quantity =
+							receivedTypes.length > 1
+								? parseQuantity(item.receivedBreakdown?.[key])
+								: parseQuantity(item.receivedQuantity);
+						issuedDetails.push({
+							type: detailType,
+							quantity,
+						});
+					}
+
+					const shippedDetails: QuantityDetail[] = [];
+					for (const key of exportedTypes) {
+						const detailType =
+							SHIPPED_DETAIL_TYPE_BY_KEY[
+								key as keyof typeof SHIPPED_DETAIL_TYPE_BY_KEY
+							];
+						if (!detailType) continue;
+						const quantity =
+							exportedTypes.length > 1
+								? parseQuantity(item.exportedBreakdown?.[key])
+								: parseQuantity(item.exportedQuantity);
+						shippedDetails.push({
+							type: detailType,
+							quantity,
+						});
+					}
 
 					return {
 						id: item.id || '',
-						issuedQuantity: item.receivedQuantity || 0,
-						shippedQuantity: item.exportedQuantity || 0,
+						itemType: item.itemType ?? 0,
+						productionOrderId,
+						issuedDetails,
+						shippedDetails,
 						materialsIncludedInContractRevenue,
 						processGroupId,
 						materialsIncludedInContractRevenueQuantity:
@@ -397,6 +613,7 @@ export function RawAcceptanceReportForm({
 								<TableBody>
 									<RawAcceptanceReportRows
 										processGroupOptions={processGroupOptions}
+										productionOrderOptions={productionOrderOptions}
 									/>
 								</TableBody>
 							</Table>
@@ -431,8 +648,10 @@ export function RawAcceptanceReportForm({
 
 function RawAcceptanceReportRows({
 	processGroupOptions,
+	productionOrderOptions,
 }: {
 	processGroupOptions: ProcessGroupOption[];
+	productionOrderOptions: ProductionOrderOption[];
 }) {
 	const form = useFormContext<{
 		items: RawAcceptanceReportFormSchema['items'];
@@ -449,6 +668,7 @@ function RawAcceptanceReportRows({
 					key={field.id}
 					index={index}
 					processGroupOptions={processGroupOptions}
+					productionOrderOptions={productionOrderOptions}
 				/>
 			))}
 		</>
@@ -464,6 +684,7 @@ function resetCellFields(
 		checkbox: string;
 		dropdown?: string;
 		dropdownSecondary?: string;
+		dropdownTertiary?: string;
 		quantity?: string;
 	}[],
 ) {
@@ -478,18 +699,72 @@ function resetCellFields(
 				null,
 			);
 		}
+		if (field.dropdownTertiary) {
+			form.setValue(`${basename}.${field.dropdownTertiary}` as FieldName, null);
+		}
 		if (field.quantity) {
 			form.setValue(`${basename}.${field.quantity}` as FieldName, null);
 		}
 	}
 }
 
+function QuantityBreakdownInputs({
+	selectedKeys,
+	allOptions,
+	values,
+	onChange,
+	isValid,
+}: {
+	selectedKeys: string[];
+	allOptions: { value: string; label: string }[];
+	values: QuantityBreakdown;
+	onChange: (key: string, value: number | string) => void;
+	isValid: boolean;
+}) {
+	return (
+		<>
+			{selectedKeys.map((key) => {
+				const option = allOptions.find((entry) => entry.value === key);
+				return (
+					<div key={key} className='flex w-24 shrink-0 flex-col gap-0.5'>
+						<label
+							className='truncate text-[10px] leading-tight font-medium text-slate-500'
+							title={option?.label}
+						>
+							{option?.label}
+						</label>
+						<Input
+							type='number'
+							min={0}
+							step='any'
+							value={values[key] ?? ''}
+							onChange={(event) =>
+								onChange(
+									key,
+									event.target.value === '' ? '' : Number(event.target.value),
+								)
+							}
+							placeholder='0'
+							className={cn(
+								'text-center',
+								!isValid && 'border-red-400 focus-visible:ring-red-300',
+							)}
+						/>
+					</div>
+				);
+			})}
+		</>
+	);
+}
+
 function RawAcceptanceReportRow({
 	index,
 	processGroupOptions,
+	productionOrderOptions,
 }: {
 	index: number;
 	processGroupOptions: ProcessGroupOption[];
+	productionOrderOptions: ProductionOrderOption[];
 }) {
 	const form = useFormContext<{
 		items: RawAcceptanceReportFormSchema['items'];
@@ -520,9 +795,17 @@ function RawAcceptanceReportRow({
 		control: form.control,
 		name: `${basename}.categoryProcessGroup` as FieldName,
 	});
+	const categoryProductionOrderId = useWatch({
+		control: form.control,
+		name: `${basename}.categoryProductionOrderId` as FieldName,
+	});
 	const additionalCostCategoryValue = useWatch({
 		control: form.control,
 		name: `${basename}.additionalCostCategory` as FieldName,
+	});
+	const additionalCostProductionOrderId = useWatch({
+		control: form.control,
+		name: `${basename}.additionalCostProductionOrderId` as FieldName,
 	});
 	const contractLimitCategoryValue = useWatch({
 		control: form.control,
@@ -540,11 +823,36 @@ function RawAcceptanceReportRow({
 		control: form.control,
 		name: `${basename}.type` as FieldName,
 	});
+	const receivedTypes = useWatch({
+		control: form.control,
+		name: `${basename}.receivedTypes` as FieldName,
+	}) as string[] | undefined;
+	const exportedTypes = useWatch({
+		control: form.control,
+		name: `${basename}.exportedTypes` as FieldName,
+	}) as string[] | undefined;
+	const receivedBreakdown = useWatch({
+		control: form.control,
+		name: `${basename}.receivedBreakdown` as FieldName,
+	}) as QuantityBreakdown | undefined;
+	const exportedBreakdown = useWatch({
+		control: form.control,
+		name: `${basename}.exportedBreakdown` as FieldName,
+	}) as QuantityBreakdown | undefined;
 
 	const defaultCategoryByType =
 		getDefaultCategoryByMaterialType(materialTypeValue);
 	const defaultAdditionalCostByType =
 		getDefaultAdditionalCostByMaterialType(materialTypeValue);
+	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
+	const additionalCostOptionsByType =
+		defaultAdditionalCostByType == null
+			? ADDITIONAL_COST_OPTIONS
+			: ADDITIONAL_COST_OPTIONS.filter(
+					(option) =>
+						option.value === defaultAdditionalCostByType ||
+						option.value === AdditionalCost.OtherMaterial,
+				);
 
 	const prevState = useRef({
 		showCategoryDropdown: false,
@@ -556,7 +864,9 @@ function RawAcceptanceReportRow({
 	const prevDropdownState = useRef({
 		category: null as number | null | undefined,
 		categoryProcessGroup: null as string | null | undefined,
+		categoryProductionOrderId: null as string | null | undefined,
 		additionalCostCategory: null as number | null | undefined,
+		additionalCostProductionOrderId: null as string | null | undefined,
 		contractLimitCategory: null as number | null | undefined,
 		showCategoryDropdown: false,
 		showAdditionalCostDropdown: false,
@@ -567,6 +877,69 @@ function RawAcceptanceReportRow({
 	const needsSecondComboBox =
 		contractLimitCategoryValue === QuotaBasedMaterial.MineSupport ||
 		contractLimitCategoryValue === QuotaBasedMaterial.SupportAccessories;
+	const categoryNeedsProductionOrder =
+		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+	const additionalCostNeedsProductionOrder =
+		additionalCostCategoryValue === AdditionalCost.Material ||
+		additionalCostCategoryValue === AdditionalCost.Maintain;
+
+	useEffect(() => {
+		if (!receivedTypes || receivedTypes.length === 0) {
+			form.setValue(`${basename}.receivedTypes` as FieldName, [
+				RECEIVED_TYPE_OPTIONS[0].value,
+			]);
+		}
+		if (!exportedTypes || exportedTypes.length === 0) {
+			form.setValue(`${basename}.exportedTypes` as FieldName, [
+				EXPORTED_TYPE_OPTIONS[0].value,
+			]);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	useEffect(() => {
+		if (!receivedTypes) return;
+		const current = receivedBreakdown ?? {};
+		if (
+			Object.keys(current).sort().join(',') ===
+			[...receivedTypes].sort().join(',')
+		) {
+			return;
+		}
+
+		const count = receivedTypes.length;
+		const divided =
+			count > 0
+				? (Number(
+						form.getValues(`${basename}.receivedQuantity` as FieldName),
+					) || 0) / count
+				: 0;
+		const next: QuantityBreakdown = {};
+		for (const key of receivedTypes) {
+			next[key] = divided;
+		}
+		form.setValue(`${basename}.receivedBreakdown` as FieldName, next);
+	}, [receivedTypes, receivedBreakdown, form, basename]);
+
+	useEffect(() => {
+		if (!exportedTypes) return;
+		const current = exportedBreakdown ?? {};
+		if (
+			Object.keys(current).sort().join(',') ===
+			[...exportedTypes].sort().join(',')
+		) {
+			return;
+		}
+
+		const count = exportedTypes.length;
+		const divided =
+			count > 0 ? (Number(exportedQuantityWatch) || 0) / count : 0;
+		const next: QuantityBreakdown = {};
+		for (const key of exportedTypes) {
+			next[key] = divided;
+		}
+		form.setValue(`${basename}.exportedBreakdown` as FieldName, next);
+	}, [exportedTypes, exportedBreakdown, exportedQuantityWatch, form, basename]);
 
 	useEffect(() => {
 		const prev = prevState.current;
@@ -593,11 +966,13 @@ function RawAcceptanceReportRow({
 					checkbox: 'showCategoryDropdown',
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
+					dropdownTertiary: 'categoryProductionOrderId',
 					quantity: 'categoryQuantity',
 				},
 				{
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
+					dropdownSecondary: 'additionalCostProductionOrderId',
 					quantity: 'additionalCostQuantity',
 				},
 				{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
@@ -608,11 +983,13 @@ function RawAcceptanceReportRow({
 					checkbox: 'showCategoryDropdown',
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
+					dropdownTertiary: 'categoryProductionOrderId',
 					quantity: 'categoryQuantity',
 				},
 				{
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
+					dropdownSecondary: 'additionalCostProductionOrderId',
 					quantity: 'additionalCostQuantity',
 				},
 				{
@@ -637,7 +1014,7 @@ function RawAcceptanceReportRow({
 				]);
 			}
 
-			if (!categoryValue && defaultCategoryByType != null) {
+			if (categoryValue == null && defaultCategoryByType != null) {
 				form.setValue(
 					`${basename}.category` as FieldName,
 					defaultCategoryByType,
@@ -648,6 +1025,16 @@ function RawAcceptanceReportRow({
 				form.setValue(
 					`${basename}.categoryProcessGroup` as FieldName,
 					processGroupOptions[0].value,
+				);
+			}
+
+			if (
+				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
+				categoryProductionOrderId == null
+			) {
+				form.setValue(
+					`${basename}.categoryProductionOrderId` as FieldName,
+					productionOrderOptions[0]?.value ?? '',
 				);
 			}
 		} else if (justEnabledAdditional) {
@@ -666,10 +1053,24 @@ function RawAcceptanceReportRow({
 				]);
 			}
 
-			if (!additionalCostCategoryValue && defaultAdditionalCostByType != null) {
+			if (
+				additionalCostCategoryValue == null &&
+				defaultAdditionalCostByType != null
+			) {
 				form.setValue(
 					`${basename}.additionalCostCategory` as FieldName,
 					defaultAdditionalCostByType,
+				);
+			}
+
+			if (
+				(additionalCostCategoryValue === AdditionalCost.Material ||
+					additionalCostCategoryValue === AdditionalCost.Maintain) &&
+				additionalCostProductionOrderId == null
+			) {
+				form.setValue(
+					`${basename}.additionalCostProductionOrderId` as FieldName,
+					productionOrderOptions[0]?.value ?? '',
 				);
 			}
 		}
@@ -678,10 +1079,15 @@ function RawAcceptanceReportRow({
 		if (justDisabledCategory) {
 			form.setValue(`${basename}.category` as FieldName, null);
 			form.setValue(`${basename}.categoryProcessGroup` as FieldName, null);
+			form.setValue(`${basename}.categoryProductionOrderId` as FieldName, null);
 			form.setValue(`${basename}.categoryQuantity` as FieldName, null);
 		}
 		if (justDisabledAdditional) {
 			form.setValue(`${basename}.additionalCostCategory` as FieldName, null);
+			form.setValue(
+				`${basename}.additionalCostProductionOrderId` as FieldName,
+				null,
+			);
 			form.setValue(`${basename}.additionalCostQuantity` as FieldName, null);
 		}
 		if (justDisabledContractLimit) {
@@ -711,6 +1117,10 @@ function RawAcceptanceReportRow({
 		defaultCategoryByType,
 		defaultAdditionalCostByType,
 		processGroupOptions,
+		productionOrderOptions,
+		resolvedCategoryValue,
+		categoryProductionOrderId,
+		additionalCostProductionOrderId,
 		form,
 		basename,
 	]);
@@ -718,18 +1128,38 @@ function RawAcceptanceReportRow({
 	// Auto-calculate quantity values when dropdowns are selected
 	useEffect(() => {
 		const prev = prevDropdownState.current;
+		const categoryRequiresProductionOrder =
+			resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+		const additionalRequiresProductionOrder =
+			additionalCostCategoryValue === AdditionalCost.Material ||
+			additionalCostCategoryValue === AdditionalCost.Maintain;
 
 		const hasCategoryActiveNow = Boolean(
-			showCategoryDropdown && categoryValue && categoryProcessGroupValue,
+			showCategoryDropdown &&
+				resolvedCategoryValue &&
+				categoryProcessGroupValue &&
+				(!categoryRequiresProductionOrder || categoryProductionOrderId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
-			showAdditionalCostDropdown && additionalCostCategoryValue,
+			showAdditionalCostDropdown &&
+				additionalCostCategoryValue &&
+				(!additionalRequiresProductionOrder ||
+					additionalCostProductionOrderId != null),
 		);
 		const hasCategoryActiveBefore = Boolean(
-			prev.showCategoryDropdown && prev.category && prev.categoryProcessGroup,
+			prev.showCategoryDropdown &&
+				prev.category &&
+				prev.categoryProcessGroup &&
+				(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
+					prev.categoryProductionOrderId != null),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
-			prev.showAdditionalCostDropdown && prev.additionalCostCategory,
+			prev.showAdditionalCostDropdown &&
+				prev.additionalCostCategory &&
+				(prev.additionalCostCategory !== AdditionalCost.Material &&
+				prev.additionalCostCategory !== AdditionalCost.Maintain
+					? true
+					: prev.additionalCostProductionOrderId != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
@@ -775,7 +1205,9 @@ function RawAcceptanceReportRow({
 		prevDropdownState.current = {
 			category: categoryValue,
 			categoryProcessGroup: categoryProcessGroupValue,
+			categoryProductionOrderId,
 			additionalCostCategory: additionalCostCategoryValue,
+			additionalCostProductionOrderId,
 			contractLimitCategory: contractLimitCategoryValue,
 			showCategoryDropdown: showCategoryDropdown,
 			showAdditionalCostDropdown: showAdditionalCostDropdown,
@@ -783,8 +1215,11 @@ function RawAcceptanceReportRow({
 		};
 	}, [
 		categoryValue,
+		resolvedCategoryValue,
 		categoryProcessGroupValue,
+		categoryProductionOrderId,
 		additionalCostCategoryValue,
+		additionalCostProductionOrderId,
 		contractLimitCategoryValue,
 		exportedQuantityWatch,
 		form,
@@ -796,7 +1231,7 @@ function RawAcceptanceReportRow({
 	]);
 
 	useEffect(() => {
-		if (!showCategoryDropdown || !categoryValue) return;
+		if (!showCategoryDropdown || !resolvedCategoryValue) return;
 		if (processGroupOptions.length !== 1) return;
 		if (categoryProcessGroupValue) return;
 
@@ -806,9 +1241,76 @@ function RawAcceptanceReportRow({
 		);
 	}, [
 		showCategoryDropdown,
-		categoryValue,
+		resolvedCategoryValue,
 		categoryProcessGroupValue,
 		processGroupOptions,
+		form,
+		basename,
+	]);
+
+	useEffect(() => {
+		if (!showCategoryDropdown) return;
+		if (categoryValue == null && defaultCategoryByType != null) {
+			form.setValue(`${basename}.category` as FieldName, defaultCategoryByType);
+			return;
+		}
+
+		if (resolvedCategoryValue !== MaterialsIncludedInContractRevenue.Maintain) {
+			if (categoryProductionOrderId != null) {
+				form.setValue(
+					`${basename}.categoryProductionOrderId` as FieldName,
+					null,
+				);
+			}
+			return;
+		}
+
+		if (
+			productionOrderOptions.length > 0 &&
+			categoryProductionOrderId == null
+		) {
+			form.setValue(
+				`${basename}.categoryProductionOrderId` as FieldName,
+				productionOrderOptions[0].value,
+			);
+		}
+	}, [
+		showCategoryDropdown,
+		categoryValue,
+		defaultCategoryByType,
+		resolvedCategoryValue,
+		categoryProductionOrderId,
+		productionOrderOptions,
+		form,
+		basename,
+	]);
+
+	useEffect(() => {
+		if (!showAdditionalCostDropdown) return;
+		if (!additionalCostNeedsProductionOrder) {
+			if (additionalCostProductionOrderId != null) {
+				form.setValue(
+					`${basename}.additionalCostProductionOrderId` as FieldName,
+					null,
+				);
+			}
+			return;
+		}
+
+		if (
+			productionOrderOptions.length > 0 &&
+			additionalCostProductionOrderId == null
+		) {
+			form.setValue(
+				`${basename}.additionalCostProductionOrderId` as FieldName,
+				productionOrderOptions[0].value,
+			);
+		}
+	}, [
+		showAdditionalCostDropdown,
+		additionalCostNeedsProductionOrder,
+		additionalCostProductionOrderId,
+		productionOrderOptions,
 		form,
 		basename,
 	]);
@@ -852,9 +1354,15 @@ function RawAcceptanceReportRow({
 	const calculateTotal = () => {
 		let total = 0;
 		const hasCategoryActive =
-			showCategoryDropdown && categoryValue && categoryProcessGroupValue;
+			showCategoryDropdown &&
+			resolvedCategoryValue &&
+			categoryProcessGroupValue &&
+			(!categoryNeedsProductionOrder || categoryProductionOrderId != null);
 		const hasAdditionalCostActive =
-			showAdditionalCostDropdown && additionalCostCategoryValue;
+			showAdditionalCostDropdown &&
+			additionalCostCategoryValue &&
+			(!additionalCostNeedsProductionOrder ||
+				additionalCostProductionOrderId != null);
 		const hasContractLimitActive =
 			showContractLimitDropdown &&
 			contractLimitCategoryValue &&
@@ -880,11 +1388,38 @@ function RawAcceptanceReportRow({
 	const totalQuantity = calculateTotal();
 	const exportedQty = Number(watchedExportedQuantity) || 0;
 	const hasActiveColumns =
-		(showCategoryDropdown && categoryValue && categoryProcessGroupValue) ||
-		(showAdditionalCostDropdown && additionalCostCategoryValue) ||
+		(showCategoryDropdown &&
+			resolvedCategoryValue &&
+			categoryProcessGroupValue &&
+			(!categoryNeedsProductionOrder || categoryProductionOrderId != null)) ||
+		(showAdditionalCostDropdown &&
+			additionalCostCategoryValue &&
+			(!additionalCostNeedsProductionOrder ||
+				additionalCostProductionOrderId != null)) ||
 		(showContractLimitDropdown && contractLimitCategoryValue) ||
 		showAssetDropdown;
 	const isValidTotal = Math.abs(totalQuantity - exportedQty) < 0.01;
+	const activeReceivedKeys =
+		receivedTypes && receivedTypes.length > 0
+			? receivedTypes
+			: [RECEIVED_TYPE_OPTIONS[0].value];
+	const activeExportedKeys =
+		exportedTypes && exportedTypes.length > 0
+			? exportedTypes
+			: [EXPORTED_TYPE_OPTIONS[0].value];
+	const showReceivedBreakdown = activeReceivedKeys.length > 1;
+	const showExportedBreakdown = activeExportedKeys.length > 1;
+
+	const handleReceivedBreakdownChange = (key: string, value: number | string) =>
+		form.setValue(`${basename}.receivedBreakdown` as FieldName, {
+			...(receivedBreakdown ?? {}),
+			[key]: value,
+		});
+	const handleExportedBreakdownChange = (key: string, value: number | string) =>
+		form.setValue(`${basename}.exportedBreakdown` as FieldName, {
+			...(exportedBreakdown ?? {}),
+			[key]: value,
+		});
 
 	return (
 		<TableRow
@@ -951,19 +1486,112 @@ function RawAcceptanceReportRow({
 					className='border-slate-300 bg-slate-100 text-right text-slate-500'
 				/>
 			</TableCell>
-			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4 text-center'>
-				<Input
-					readOnly
-					value={receivedQuantity || ''}
-					className='border-slate-300 bg-slate-100 text-center text-slate-500'
-				/>
+			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4'>
+				{(() => {
+					const receivedQty = Number(receivedQuantity) || 0;
+					const subTotal = activeReceivedKeys.reduce(
+						(acc, key) => acc + (Number((receivedBreakdown ?? {})[key]) || 0),
+						0,
+					);
+					const isReceivedValid =
+						!showReceivedBreakdown || Math.abs(subTotal - receivedQty) < 0.01;
+
+					return (
+						<div className='flex flex-col gap-2'>
+							<div className='flex items-end gap-2'>
+								<div
+									className={cn(
+										'flex shrink-0 flex-col gap-0.5',
+										showReceivedBreakdown ? 'w-24' : 'w-full',
+									)}
+								>
+									<label className='text-[10px] font-medium text-slate-500'>
+										Tổng
+									</label>
+									<Input
+										readOnly
+										value={receivedQty}
+										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+									/>
+								</div>
+								{showReceivedBreakdown && (
+									<QuantityBreakdownInputs
+										selectedKeys={activeReceivedKeys}
+										allOptions={RECEIVED_TYPE_OPTIONS}
+										values={receivedBreakdown ?? {}}
+										onChange={handleReceivedBreakdownChange}
+										isValid={isReceivedValid}
+									/>
+								)}
+							</div>
+							<FormMultiSelect
+								control={form.control}
+								name={`${basename}.receivedTypes` as FieldName}
+								options={RECEIVED_TYPE_OPTIONS}
+								placeholder='Chọn loại lĩnh'
+							/>
+							{showReceivedBreakdown && !isReceivedValid && (
+								<p className='text-[11px] font-medium text-red-500'>
+									Tổng các mục ({subTotal}) phải bằng số lượng lĩnh (
+									{receivedQty})
+								</p>
+							)}
+						</div>
+					);
+				})()}
 			</TableCell>
-			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4 text-center'>
-				<Input
-					readOnly
-					value={watchedExportedQuantity || ''}
-					className='border-slate-300 bg-slate-100 text-center text-slate-500'
-				/>
+			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4'>
+				{(() => {
+					const subTotal = activeExportedKeys.reduce(
+						(acc, key) => acc + (Number((exportedBreakdown ?? {})[key]) || 0),
+						0,
+					);
+					const isExportedValid =
+						!showExportedBreakdown || Math.abs(subTotal - exportedQty) < 0.01;
+
+					return (
+						<div className='flex flex-col gap-2'>
+							<div className='flex items-end gap-2'>
+								<div
+									className={cn(
+										'flex shrink-0 flex-col gap-0.5',
+										showExportedBreakdown ? 'w-24' : 'w-full',
+									)}
+								>
+									<label className='text-[10px] font-medium text-slate-500'>
+										Tổng
+									</label>
+									<Input
+										readOnly
+										value={exportedQty}
+										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+									/>
+								</div>
+								{showExportedBreakdown && (
+									<QuantityBreakdownInputs
+										selectedKeys={activeExportedKeys}
+										allOptions={EXPORTED_TYPE_OPTIONS}
+										values={exportedBreakdown ?? {}}
+										onChange={handleExportedBreakdownChange}
+										isValid={isExportedValid}
+									/>
+								)}
+							</div>
+							<FormMultiSelect
+								control={form.control}
+								name={`${basename}.exportedTypes` as FieldName}
+								options={EXPORTED_TYPE_OPTIONS}
+								placeholder='Chọn loại xuất'
+							/>
+							{showExportedBreakdown && !isExportedValid && (
+								<p className='text-[11px] font-medium text-red-500'>
+									Tổng các mục ({subTotal}) phải bằng số lượng xuất (
+									{exportedQty})
+								</p>
+							)}
+						</div>
+					);
+				})()}
 			</TableCell>
 
 			{/* Vật tư tính vào doanh thu khoán */}
@@ -977,15 +1605,7 @@ function RawAcceptanceReportRow({
 					</div>
 					{showCategoryDropdown && (
 						<>
-							<div className='w-full'>
-								<FormComboBox
-									control={form.control}
-									name={`${basename}.category` as FieldName}
-									options={CATEGORY_OPTIONS}
-									placeholder='Chọn danh mục'
-								/>
-							</div>
-							{categoryValue && (
+							{resolvedCategoryValue && (
 								<div className='w-full'>
 									<FormComboBox
 										control={form.control}
@@ -995,23 +1615,37 @@ function RawAcceptanceReportRow({
 									/>
 								</div>
 							)}
-							{categoryValue && categoryProcessGroupValue && (
+							{resolvedCategoryValue ===
+								MaterialsIncludedInContractRevenue.Maintain && (
 								<div className='w-full'>
-									<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-										Số lượng vật tư
-									</label>
-									<FormNumber
+									<FormComboBox
 										control={form.control}
-										name={`${basename}.categoryQuantity` as FieldName}
-										placeholder='Nhập số lượng'
+										name={`${basename}.categoryProductionOrderId` as FieldName}
+										options={productionOrderOptions}
+										placeholder='Chọn quyết định, lệnh sản xuất'
 									/>
-									{hasActiveColumns && !isValidTotal && (
-										<p className='mt-1 text-xs text-red-600'>
-											Tổng: {totalQuantity} / {exportedQty}
-										</p>
-									)}
 								</div>
 							)}
+							{resolvedCategoryValue &&
+								categoryProcessGroupValue &&
+								(!categoryNeedsProductionOrder ||
+									categoryProductionOrderId != null) && (
+									<div className='w-full'>
+										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+											Số lượng vật tư
+										</label>
+										<FormNumber
+											control={form.control}
+											name={`${basename}.categoryQuantity` as FieldName}
+											placeholder='Nhập số lượng'
+										/>
+										{hasActiveColumns && !isValidTotal && (
+											<p className='mt-1 text-xs text-red-600'>
+												Tổng: {totalQuantity} / {exportedQty}
+											</p>
+										)}
+									</div>
+								)}
 						</>
 					)}
 				</div>
@@ -1032,26 +1666,43 @@ function RawAcceptanceReportRow({
 								<FormComboBox
 									control={form.control}
 									name={`${basename}.additionalCostCategory` as FieldName}
-									options={ADDITIONAL_COST_OPTIONS}
+									options={additionalCostOptionsByType}
 									placeholder='Chọn danh mục'
 								/>
 							</div>
 							{additionalCostCategoryValue && (
-								<div className='w-full'>
-									<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-										Số lượng vật tư
-									</label>
-									<FormNumber
-										control={form.control}
-										name={`${basename}.additionalCostQuantity` as FieldName}
-										placeholder='Nhập số lượng'
-									/>
-									{hasActiveColumns && !isValidTotal && (
-										<p className='mt-1 text-xs text-red-600'>
-											Tổng: {totalQuantity} / {exportedQty}
-										</p>
+								<>
+									{additionalCostNeedsProductionOrder && (
+										<div className='w-full'>
+											<FormComboBox
+												control={form.control}
+												name={
+													`${basename}.additionalCostProductionOrderId` as FieldName
+												}
+												options={productionOrderOptions}
+												placeholder='Chọn quyết định, lệnh sản xuất'
+											/>
+										</div>
 									)}
-								</div>
+									{(!additionalCostNeedsProductionOrder ||
+										additionalCostProductionOrderId != null) && (
+										<div className='w-full'>
+											<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+												Số lượng vật tư
+											</label>
+											<FormNumber
+												control={form.control}
+												name={`${basename}.additionalCostQuantity` as FieldName}
+												placeholder='Nhập số lượng'
+											/>
+											{hasActiveColumns && !isValidTotal && (
+												<p className='mt-1 text-xs text-red-600'>
+													Tổng: {totalQuantity} / {exportedQty}
+												</p>
+											)}
+										</div>
+									)}
+								</>
 							)}
 						</>
 					)}

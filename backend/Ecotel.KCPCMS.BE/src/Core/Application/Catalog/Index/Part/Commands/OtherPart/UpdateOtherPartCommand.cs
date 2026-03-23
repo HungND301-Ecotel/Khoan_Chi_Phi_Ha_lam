@@ -49,6 +49,7 @@ public class UpdateOtherPartCommandHandler(IUnitOfWork unitOfWork, ICodeService 
                 request.UpdateModel.Code,
                 request.UpdateModel.Name,
                 request.UpdateModel.UnitOfMeasureId,
+                request.UpdateModel.ReplacementTimeStandard,
                 PartType.OtherPart);
 
             var costList = new List<Cost>();

@@ -14,6 +14,7 @@ namespace Application.Dto.Catalog.Part
         public string UnitOfMeasureName { get; set; }
         public Guid EquipmentId { get; set; }
         public string EquipmentCode { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public double CostAmount { get; set; }
     }
 
@@ -24,6 +25,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public double CostAmount { get; set; }
     }
 
@@ -38,6 +40,8 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         [Display(Name = "Đơn vị tính")]
         public string UnitOfMeasureName { get; set; }
+        [Display(Name = "Định mức thời gian thay thế (tháng)")]
+        public decimal ReplacementTimeStandard { get; set; }
 
         [Display(Name = "Đơn giá")]
         public string Cost { get; set; }
@@ -50,6 +54,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<string> EquipmentCodes { get; set; } = new List<string>();
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
@@ -62,6 +67,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
@@ -72,6 +78,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<string> EquipmentCodes { get; set; } = new List<string>();
         public double CurrentCost { get; set; }
@@ -82,6 +89,7 @@ namespace Application.Dto.Catalog.Part
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
@@ -91,6 +99,7 @@ namespace Application.Dto.Catalog.Part
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
@@ -100,6 +109,7 @@ namespace Application.Dto.Catalog.Part
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
@@ -110,6 +120,7 @@ namespace Application.Dto.Catalog.Part
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 }

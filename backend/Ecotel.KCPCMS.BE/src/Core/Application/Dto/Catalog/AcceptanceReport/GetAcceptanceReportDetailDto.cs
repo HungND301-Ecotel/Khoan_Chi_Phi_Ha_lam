@@ -6,6 +6,7 @@ public record AcceptanceReportDetailItemDto
 {
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
+    public required Guid? ProductionOrderId { get; init; }
     public Guid? MaterialId { get; init; }
     public Guid? MaintainUnitPriceEquipmentId { get; init; }
     public string? MaterialCode { get; init; }
@@ -19,6 +20,8 @@ public record AcceptanceReportDetailItemDto
 
     public double IssuedQuantity { get; init; }
     public double ShippedQuantity { get; init; }
+
+    public required ItemType ItemType { get; init; }
 
     public required AcceptanceReportItemType Type { get; init; }
 
