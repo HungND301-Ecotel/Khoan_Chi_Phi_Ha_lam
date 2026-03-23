@@ -6,6 +6,12 @@ function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	return null;
 }
 
+function parseSchemaNumber(value: number | string | null | undefined): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
 export const materialFormSchema = z
 	.object({
 		id: z.string().optional(),
@@ -15,12 +21,8 @@ export const materialFormSchema = z
 		unitOfMeasureName: z.string().optional(),
 		type: z.number().optional(),
 		itemType: z.number().optional(),
-		quantityReceived: z
-			.number()
-			.min(0, { message: 'Số lượng lĩnh phải lớn hơn 0' }),
-		quantityExported: z
-			.number()
-			.min(0, { message: 'Số lượng xuất phải lớn hơn 0' }),
+		quantityReceived: z.number().min(0, { message: 'Số lượng lĩnh phải >= 0' }),
+		quantityExported: z.number().min(0, { message: 'Số lượng xuất phải >= 0' }),
 		receivedTypes: z.array(z.string()).optional(),
 		exportedTypes: z.array(z.string()).optional(),
 		receivedBreakdown: z
@@ -29,38 +31,35 @@ export const materialFormSchema = z
 		exportedBreakdown: z
 			.record(z.string(), z.union([z.number(), z.string()]))
 			.optional(),
-		quantity: z.number().min(0, { message: 'Số lượng phải lớn hơn 0' }),
+		quantity: z.number().min(0, { message: 'Số lượng phải >= 0' }),
 		categoryQuantity: z.number().nullable().optional(),
 		additionalCostQuantity: z.number().nullable().optional(),
 		contractLimitQuantity: z.number().nullable().optional(),
-		// Category: Vật tư đã tính vào doanh thu khoán
 		category: z.number().nullable(),
 		categoryProcessGroup: z.string().nullable(),
 		categoryProductionOrderId: z.string().nullable(),
 		showCategoryDropdown: z.boolean(),
-		// Decision to supplement costs: QUYẾT ĐỊNH BỔ SUNG CHI PHÍ
 		additionalCostCategory: z.number().nullable(),
 		additionalCostProductionOrderId: z.string().nullable(),
+		otherMaterialDetail: z.number().nullable().optional(),
 		showAdditionalCostDropdown: z.boolean(),
-		// Materials/Supplies with contract limits: VẬT TƯ KHOÁN THEO HẠN MỨC
 		contractLimitCategory: z.number().nullable(),
 		contractLimitSubCategory: z.number().nullable(),
+		contractLimitSubCategories: z.array(z.string()).optional(),
+		contractLimitBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
 		showContractLimitDropdown: z.boolean(),
-		// Assets: Tài sản
 		assetCategory: z.number().nullable(),
 		assetQuantity: z.number().nullable().optional(),
 		showAssetDropdown: z.boolean(),
 	})
 	.refine(
-		(data) => {
-			// Require at least one checkbox to be selected
-			return (
-				data.showCategoryDropdown ||
-				data.showAdditionalCostDropdown ||
-				data.showContractLimitDropdown ||
-				data.showAssetDropdown
-			);
-		},
+		(data) =>
+			data.showCategoryDropdown ||
+			data.showAdditionalCostDropdown ||
+			data.showContractLimitDropdown ||
+			data.showAssetDropdown,
 		{
 			message: 'Phải chọn ít nhất một phân loại cho vật tư này',
 			path: ['showCategoryDropdown'],
@@ -70,30 +69,8 @@ export const materialFormSchema = z
 		(data) => {
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			// If category checkbox is selected, category is auto-resolved from type
-			if (data.showCategoryDropdown && !categoryValue) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: 'Phải chọn danh mục khi đã tích checkbox',
-			path: ['category'],
-		},
-	)
-	.refine(
-		(data) => {
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			// If category checkbox and first dropdown are selected, must have process group
-			if (
-				data.showCategoryDropdown &&
-				categoryValue &&
-				!data.categoryProcessGroup
-			) {
-				return false;
-			}
-			return true;
+			if (!data.showCategoryDropdown || !categoryValue) return true;
+			return !!data.categoryProcessGroup;
 		},
 		{
 			message: 'Phải chọn nhóm công đoạn',
@@ -104,16 +81,8 @@ export const materialFormSchema = z
 		(data) => {
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const requiresProductionOrder = categoryValue === 3;
-			// If category is SCTX, must have production order (allow empty-string sentinel)
-			if (
-				data.showCategoryDropdown &&
-				requiresProductionOrder &&
-				data.categoryProductionOrderId == null
-			) {
-				return false;
-			}
-			return true;
+			if (!data.showCategoryDropdown || categoryValue !== 3) return true;
+			return data.categoryProductionOrderId != null;
 		},
 		{
 			message: 'Phải chọn quyết định, lệnh sản xuất',
@@ -122,52 +91,13 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			// If category checkbox and dropdown are selected, must have quantity
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const requiresProductionOrder = categoryValue === 3;
-			const hasCategoryReady =
-				data.showCategoryDropdown &&
-				categoryValue &&
-				data.categoryProcessGroup &&
-				(!requiresProductionOrder || data.categoryProductionOrderId != null);
-
-			if (hasCategoryReady && data.categoryQuantity == null) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: 'Phải nhập số lượng',
-			path: ['categoryQuantity'],
-		},
-	)
-	.refine(
-		(data) => {
-			// If additional cost checkbox is selected, must have dropdown selected
-			if (data.showAdditionalCostDropdown && !data.additionalCostCategory) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: 'Phải chọn danh mục khi đã tích checkbox',
-			path: ['additionalCostCategory'],
-		},
-	)
-	.refine(
-		(data) => {
-			const requiresProductionOrder =
-				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
-			// If additional cost category is Vật liệu/SCTX, must have production order (allow empty-string sentinel)
 			if (
-				data.showAdditionalCostDropdown &&
-				requiresProductionOrder &&
-				data.additionalCostProductionOrderId == null
+				!data.showAdditionalCostDropdown ||
+				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
 			) {
-				return false;
+				return true;
 			}
-			return true;
+			return data.additionalCostProductionOrderId != null;
 		},
 		{
 			message: 'Phải chọn quyết định, lệnh sản xuất',
@@ -176,112 +106,79 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			// If additional cost checkbox and dropdown are selected, must have quantity
-			const requiresProductionOrder =
-				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
-			const hasAdditionalCostReady =
-				data.showAdditionalCostDropdown &&
-				data.additionalCostCategory &&
-				(!requiresProductionOrder ||
-					data.additionalCostProductionOrderId != null);
-
-			if (hasAdditionalCostReady && data.additionalCostQuantity == null) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: 'Phải nhập số lượng',
-			path: ['additionalCostQuantity'],
-		},
-	)
-	.refine(
-		(data) => {
-			// If contract limit checkbox is selected, must have dropdown selected
-			if (data.showContractLimitDropdown && !data.contractLimitCategory) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: 'Phải chọn danh mục khi đã tích checkbox',
-			path: ['contractLimitCategory'],
-		},
-	)
-	.refine(
-		(data) => {
-			// If contract limit category requires sub-category (MineSupport=2 or SupportAccessories=3)
 			if (
-				data.showContractLimitDropdown &&
-				data.contractLimitCategory &&
-				(data.contractLimitCategory === 2 ||
-					data.contractLimitCategory === 3) &&
-				!data.contractLimitSubCategory
+				!data.showAdditionalCostDropdown ||
+				data.additionalCostCategory !== 4
 			) {
-				return false;
+				return true;
 			}
-			return true;
+			return data.otherMaterialDetail != null;
 		},
 		{
-			message: 'Phải chọn danh mục phụ (Lĩnh mới/Tái sử dụng)',
-			path: ['contractLimitSubCategory'],
+			message: 'Phải chọn loại vật tư',
+			path: ['otherMaterialDetail'],
 		},
 	)
 	.refine(
 		(data) => {
-			// If contract limit is fully selected, must have quantity
-			if (data.showContractLimitDropdown && data.contractLimitCategory) {
-				const needsSubCategory =
-					data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
-				if (needsSubCategory && !data.contractLimitSubCategory) {
-					return true; // Will be caught by previous validation
-				}
-				if (data.contractLimitQuantity == null) {
-					return false;
-				}
+			const requiresSubCategory =
+				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
+			if (!data.showContractLimitDropdown || !requiresSubCategory) {
+				return true;
 			}
-			return true;
+			return (data.contractLimitSubCategories?.length ?? 0) > 0;
 		},
 		{
-			message: 'Phải nhập số lượng',
-			path: ['contractLimitQuantity'],
+			message: 'Phải chọn ít nhất 1 loại (Lĩnh mới/Tái sử dụng)',
+			path: ['contractLimitSubCategories'],
 		},
 	)
 	.refine(
 		(data) => {
-			// If asset checkbox is selected, must have quantity
-			if (data.showAssetDropdown && data.assetQuantity == null) {
-				return false;
+			const requiresSubCategory =
+				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
+			if (!data.showContractLimitDropdown || !requiresSubCategory) {
+				return true;
 			}
-			return true;
+
+			const selectedKeys = data.contractLimitSubCategories ?? [];
+			const total = selectedKeys.reduce(
+				(acc, key) =>
+					acc + parseSchemaNumber(data.contractLimitBreakdown?.[key]),
+				0,
+			);
+			const exportedQty = Number(data.quantityExported);
+			return Math.abs(total - exportedQty) < 0.01;
 		},
 		{
-			message: 'Phải nhập số lượng',
-			path: ['assetQuantity'],
+			message:
+				'Tổng số lượng lĩnh mới và lĩnh tái sử dụng phải bằng số lượng xuất',
+			path: ['contractLimitBreakdown'],
 		},
 	)
 	.refine(
 		(data) => {
-			// Only validate total if at least one checkbox and dropdown is selected
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const categoryRequiresProductionOrder = categoryValue === 3;
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
 				categoryValue &&
 				data.categoryProcessGroup &&
-				(!categoryRequiresProductionOrder ||
-					data.categoryProductionOrderId != null);
-
-			const additionalRequiresProductionOrder =
-				data.additionalCostCategory === 2 || data.additionalCostCategory === 3;
+				(categoryValue !== 3 || data.categoryProductionOrderId != null);
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
-				(!additionalRequiresProductionOrder ||
-					data.additionalCostProductionOrderId != null);
+				((data.additionalCostCategory !== 2 &&
+					data.additionalCostCategory !== 3) ||
+					data.additionalCostProductionOrderId != null) &&
+				(data.additionalCostCategory !== 4 ||
+					data.otherMaterialDetail != null);
 			const hasContractLimitActive =
-				data.showContractLimitDropdown && data.contractLimitCategory;
+				data.showContractLimitDropdown &&
+				data.contractLimitCategory &&
+				((data.contractLimitCategory !== 2 &&
+					data.contractLimitCategory !== 3) ||
+					((data.contractLimitSubCategories?.length ?? 0) > 0));
 			const hasAssetActive = data.showAssetDropdown;
 
 			if (
@@ -290,34 +187,29 @@ export const materialFormSchema = z
 				!hasContractLimitActive &&
 				!hasAssetActive
 			) {
-				return true; // No validation needed if nothing is selected
+				return true;
 			}
 
-			// Calculate sum of quantities where checkbox and dropdown are selected
 			let totalQuantity = 0;
-
 			if (hasCategoryActive && data.categoryQuantity != null) {
 				totalQuantity += data.categoryQuantity;
 			}
-
 			if (hasAdditionalCostActive && data.additionalCostQuantity != null) {
 				totalQuantity += data.additionalCostQuantity;
 			}
-
 			if (hasContractLimitActive && data.contractLimitQuantity != null) {
 				totalQuantity += data.contractLimitQuantity;
 			}
-
 			if (hasAssetActive && data.assetQuantity != null) {
 				totalQuantity += data.assetQuantity;
 			}
 
 			const exportedQty = Number(data.quantityExported);
-			return Math.abs(totalQuantity - exportedQty) < 0.01; // Allow small floating point difference
+			return Math.abs(totalQuantity - exportedQty) < 0.01;
 		},
 		{
 			message: 'Tổng số lượng vật tư phải bằng số lượng xuất',
-			path: ['categoryQuantity'], // Show error on first quantity field
+			path: ['categoryQuantity'],
 		},
 	);
 
@@ -347,16 +239,18 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	showCategoryDropdown: false,
 	additionalCostCategory: null,
 	additionalCostProductionOrderId: null,
+	otherMaterialDetail: null,
 	showAdditionalCostDropdown: false,
 	contractLimitCategory: null,
 	contractLimitSubCategory: null,
+	contractLimitSubCategories: [],
+	contractLimitBreakdown: {},
 	showContractLimitDropdown: false,
 	assetCategory: null,
 	assetQuantity: null,
 	showAssetDropdown: false,
 };
 
-// Wrapper schema for the array of materials
 export const materialsFormSchema = z.object({
 	materials: z.array(materialFormSchema),
 });

@@ -61,6 +61,12 @@ export const Asset = {
 	True: 2,
 } as const;
 
+export const OtherMaterialDetail = {
+	None: 1,
+	BaoHoLaoDong: 2,
+	VatTuPhucVuCongTacAnToan: 3,
+} as const;
+
 // Create request types
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
@@ -74,10 +80,12 @@ export type CreateAcceptanceReportItem = {
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	otherMaterialDetail: number;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
 	quotaBasedMaterialType: number;
 	quotaBasedMaterialQuantity: number;
+	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	asset: number;
 	assetMaterialQuantity: number;
 };
@@ -140,6 +148,14 @@ export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [
 	{ value: QuotaBasedMaterialType.Reusable, label: 'Lĩnh tái sử dụng' },
 ];
 
+export const OTHER_MATERIAL_DETAIL_OPTIONS = [
+	{ value: OtherMaterialDetail.BaoHoLaoDong, label: 'Bảo hộ lao động' },
+	{
+		value: OtherMaterialDetail.VatTuPhucVuCongTacAnToan,
+		label: 'Vật tư phục vụ công tác an toàn',
+	},
+];
+
 export const RECEIVED_TYPE_OPTIONS = [
 	{ value: 'receipt_voucher', label: 'Lĩnh vật tư (trả phiếu)' },
 	{ value: 'loan_no_voucher', label: 'Vay chưa trả phiếu' },
@@ -167,6 +183,11 @@ export const SHIPPED_DETAIL_TYPE_BY_KEY = {
 } as const;
 
 export type QuantityDetail = {
+	type: number;
+	quantity: number;
+};
+
+export type QuotaBasedMaterialQuantityDetail = {
 	type: number;
 	quantity: number;
 };

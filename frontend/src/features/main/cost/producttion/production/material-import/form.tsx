@@ -26,6 +26,7 @@ import {
 	ItemType,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
+	OTHER_MATERIAL_DETAIL_OPTIONS,
 	QuotaBasedMaterial,
 	RECEIVED_TYPE_OPTIONS,
 } from './types';
@@ -40,6 +41,8 @@ type MaterialRowValues = MaterialFormSchema & {
 	exportedTypes?: string[];
 	receivedBreakdown?: Record<string, number | string>;
 	exportedBreakdown?: Record<string, number | string>;
+	contractLimitSubCategories?: string[];
+	contractLimitBreakdown?: Record<string, number | string>;
 };
 
 type MaterialsExtendedForm = { materials: MaterialRowValues[] };
@@ -141,6 +144,16 @@ function getMaterialBadge(
 			'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
 	};
 }
+
+const CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS =
+	CONTRACT_LIMIT_SECONDARY_OPTIONS.map((option) => ({
+		value: String(option.value),
+		label: option.label,
+	}));
+const DEFAULT_CONTRACT_LIMIT_SECONDARY_VALUE =
+	CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS[0]?.value ?? '';
+const DEFAULT_OTHER_MATERIAL_DETAIL_VALUE =
+	OTHER_MATERIAL_DETAIL_OPTIONS[0]?.value ?? null;
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 
@@ -276,6 +289,7 @@ type QuantityBreakdownInputsProps = {
 	values: Record<string, number | string>;
 	onChange: (key: string, val: number | string) => void;
 	isValid: boolean;
+	equalWidth?: boolean;
 };
 
 function QuantityBreakdownInputs({
@@ -284,13 +298,20 @@ function QuantityBreakdownInputs({
 	values,
 	onChange,
 	isValid,
+	equalWidth = false,
 }: QuantityBreakdownInputsProps) {
 	return (
 		<>
 			{selectedKeys.map((key) => {
 				const opt = allOptions.find((o) => o.value === key);
 				return (
-					<div key={key} className='flex w-24 shrink-0 flex-col gap-0.5'>
+					<div
+						key={key}
+						className={cn(
+							'flex flex-col gap-0.5',
+							equalWidth ? 'min-w-0 flex-1' : 'w-24 shrink-0',
+						)}
+					>
 						<label
 							className='truncate text-[10px] leading-tight font-medium text-slate-500'
 							title={opt?.label}
@@ -355,13 +376,19 @@ function MaterialImportRow({
 	const categoryProductionOrderId = w('categoryProductionOrderId');
 	const additionalCostCategory = w('additionalCostCategory');
 	const additionalCostProductionOrderId = w('additionalCostProductionOrderId');
+	const otherMaterialDetailValue = w('otherMaterialDetail');
 	const contractLimitCategoryValue = w('contractLimitCategory');
 	const quantityExported = w('quantityExported');
 	const quantityReceived = w('quantityReceived');
 	const categoryQuantity = w('categoryQuantity');
 	const additionalCostQuantity = w('additionalCostQuantity');
 	const contractLimitQuantity = w('contractLimitQuantity');
-	const contractLimitSubCategoryValue = w('contractLimitSubCategory');
+	const contractLimitSubCategoriesValue = w('contractLimitSubCategories') as
+		| string[]
+		| undefined;
+	const contractLimitBreakdown = w('contractLimitBreakdown') as
+		| Record<string, number | string>
+		| undefined;
 	const assetQuantity = w('assetQuantity');
 	const materialTypeValue = w('type');
 	const itemTypeValue = w('itemType');
@@ -399,6 +426,20 @@ function MaterialImportRow({
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
+	const additionalCostNeedsOtherMaterialDetail =
+		additionalCostCategory === AdditionalCost.OtherMaterial;
+	const contractLimitSelectedKeys =
+		contractLimitSubCategoriesValue &&
+		contractLimitSubCategoriesValue.length > 0
+			? contractLimitSubCategoriesValue
+			: [];
+	const contractLimitSelectedTypes = contractLimitSelectedKeys.map((type) =>
+		Number(type),
+	);
+	const contractLimitBreakdownTotal = contractLimitSelectedKeys.reduce(
+		(acc, key) => acc + (Number(contractLimitBreakdown?.[key]) || 0),
+		0,
+	);
 
 	// ── Helper to set a field value ──────────────────────────────────────────
 	const set = <K extends keyof MaterialRowValues>(
@@ -464,6 +505,7 @@ function MaterialImportRow({
 		categoryProductionOrderId: null as string | null | undefined,
 		additionalCostCategory: null as number | null | undefined,
 		additionalCostProductionOrderId: null as string | null | undefined,
+		otherMaterialDetail: null as number | null | undefined,
 		contractLimitCategory: null as number | null | undefined,
 		showCategoryDropdown: false,
 		showAdditionalCostDropdown: false,
@@ -501,6 +543,7 @@ function MaterialImportRow({
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
 					dropdownSecondary: 'additionalCostProductionOrderId',
+					dropdownTertiary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
@@ -518,6 +561,7 @@ function MaterialImportRow({
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
 					dropdownSecondary: 'additionalCostProductionOrderId',
+					dropdownTertiary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{
@@ -571,6 +615,13 @@ function MaterialImportRow({
 				productionOrderOptions.length > 0
 			)
 				set('additionalCostProductionOrderId', productionOrderOptions[0].value);
+			if (
+				additionalCostCategory === AdditionalCost.OtherMaterial &&
+				otherMaterialDetailValue == null &&
+				DEFAULT_OTHER_MATERIAL_DETAIL_VALUE != null
+			) {
+				set('otherMaterialDetail', DEFAULT_OTHER_MATERIAL_DETAIL_VALUE);
+			}
 		}
 
 		if (justDisabledCategory) {
@@ -582,12 +633,15 @@ function MaterialImportRow({
 		if (justDisabledAdditional) {
 			set('additionalCostCategory', null);
 			set('additionalCostProductionOrderId', null);
+			set('otherMaterialDetail', null);
 			set('additionalCostQuantity', null);
 		}
 		if (justDisabledContractLimit) {
 			set('contractLimitCategory', null);
 			set('contractLimitQuantity', null);
 			set('contractLimitSubCategory', null);
+			set('contractLimitSubCategories', []);
+			set('contractLimitBreakdown', {});
 		}
 		if (justDisabledAsset) set('assetQuantity', null);
 
@@ -608,6 +662,7 @@ function MaterialImportRow({
 		categoryProductionOrderId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
+		otherMaterialDetailValue,
 		defaultCategoryByType,
 		defaultAdditionalCostByType,
 		processGroupOptions,
@@ -658,21 +713,34 @@ function MaterialImportRow({
 		const requiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
+		const requiresOtherMaterialDetail =
+			additionalCostCategory === AdditionalCost.OtherMaterial;
 		if (!requiresProductionOrder) {
 			if (additionalCostProductionOrderId != null)
 				set('additionalCostProductionOrderId', null);
+		} else if (
+			productionOrderOptions.length > 0 &&
+			additionalCostProductionOrderId == null
+		) {
+			set('additionalCostProductionOrderId', productionOrderOptions[0].value);
+		}
+
+		if (!requiresOtherMaterialDetail) {
+			if (otherMaterialDetailValue != null) set('otherMaterialDetail', null);
 			return;
 		}
+
 		if (
-			productionOrderOptions.length === 0 ||
-			additionalCostProductionOrderId != null
-		)
-			return;
-		set('additionalCostProductionOrderId', productionOrderOptions[0].value);
+			otherMaterialDetailValue == null &&
+			DEFAULT_OTHER_MATERIAL_DETAIL_VALUE != null
+		) {
+			set('otherMaterialDetail', DEFAULT_OTHER_MATERIAL_DETAIL_VALUE);
+		}
 	}, [
 		showAdditionalCostDropdown,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
+		otherMaterialDetailValue,
 		productionOrderOptions,
 	]);
 
@@ -683,6 +751,8 @@ function MaterialImportRow({
 		const additionalRequiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
+		const additionalRequiresOtherDetail =
+			additionalCostCategory === AdditionalCost.OtherMaterial;
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
 				resolvedCategoryValue &&
@@ -693,7 +763,8 @@ function MaterialImportRow({
 			showAdditionalCostDropdown &&
 				additionalCostCategory &&
 				(!additionalRequiresProductionOrder ||
-					additionalCostProductionOrderId != null),
+					additionalCostProductionOrderId != null) &&
+				(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
 		);
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
@@ -708,7 +779,9 @@ function MaterialImportRow({
 				(prev.additionalCostCategory !== AdditionalCost.Material &&
 				prev.additionalCostCategory !== AdditionalCost.Maintain
 					? true
-					: prev.additionalCostProductionOrderId != null),
+					: prev.additionalCostProductionOrderId != null) &&
+				(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
+					prev.otherMaterialDetail != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
@@ -739,6 +812,7 @@ function MaterialImportRow({
 			categoryProductionOrderId,
 			additionalCostCategory,
 			additionalCostProductionOrderId,
+			otherMaterialDetail: otherMaterialDetailValue,
 			contractLimitCategory: contractLimitCategoryValue,
 			showCategoryDropdown,
 			showAdditionalCostDropdown,
@@ -751,6 +825,7 @@ function MaterialImportRow({
 		categoryProductionOrderId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
+		otherMaterialDetailValue,
 		contractLimitCategoryValue,
 		quantityExported,
 		showCategoryDropdown,
@@ -760,12 +835,88 @@ function MaterialImportRow({
 	]);
 
 	const prevContractLimitCategoryRef = useRef(contractLimitCategoryValue);
+	const prevContractLimitSelectionSignatureRef = useRef('');
 	useEffect(() => {
 		if (prevContractLimitCategoryRef.current !== contractLimitCategoryValue) {
 			set('contractLimitSubCategory', null);
+			set('contractLimitSubCategories', []);
+			set('contractLimitBreakdown', {});
+			set('contractLimitQuantity', null);
+			prevContractLimitSelectionSignatureRef.current = '';
 			prevContractLimitCategoryRef.current = contractLimitCategoryValue;
 		}
 	}, [contractLimitCategoryValue]);
+
+	useEffect(() => {
+		if (!showContractLimitDropdown || !contractLimitCategoryValue) return;
+		if (needsSecondComboBox) return;
+
+		const exportedQty = Number(quantityExported) || 0;
+		if (Math.abs((Number(contractLimitQuantity) || 0) - exportedQty) < 0.0001) {
+			return;
+		}
+
+		set('contractLimitQuantity', exportedQty);
+	}, [
+		showContractLimitDropdown,
+		contractLimitCategoryValue,
+		needsSecondComboBox,
+		quantityExported,
+		contractLimitQuantity,
+	]);
+
+	useEffect(() => {
+		if (!showContractLimitDropdown || !needsSecondComboBox) return;
+		const selectedKeys =
+			contractLimitSubCategoriesValue &&
+			contractLimitSubCategoriesValue.length > 0
+				? contractLimitSubCategoriesValue
+				: [];
+
+		if (selectedKeys.length === 0) {
+			if (!DEFAULT_CONTRACT_LIMIT_SECONDARY_VALUE) return;
+			set('contractLimitSubCategories', [
+				DEFAULT_CONTRACT_LIMIT_SECONDARY_VALUE,
+			]);
+			return;
+		}
+
+		const selectedSignature = [...selectedKeys].sort().join(',');
+		if (prevContractLimitSelectionSignatureRef.current === selectedSignature) {
+			return;
+		}
+
+		const exportedQty = Number(quantityExported) || 0;
+		const divided = exportedQty / selectedKeys.length;
+		const nextBreakdown: Record<string, number | string> = {};
+		for (const key of selectedKeys) {
+			nextBreakdown[key] = divided;
+		}
+		set('contractLimitBreakdown', nextBreakdown);
+		prevContractLimitSelectionSignatureRef.current = selectedSignature;
+	}, [
+		showContractLimitDropdown,
+		needsSecondComboBox,
+		contractLimitSubCategoriesValue,
+		quantityExported,
+	]);
+
+	useEffect(() => {
+		if (!showContractLimitDropdown || !needsSecondComboBox) return;
+		if (
+			Math.abs(
+				(Number(contractLimitQuantity) || 0) - contractLimitBreakdownTotal,
+			) < 0.0001
+		) {
+			return;
+		}
+		set('contractLimitQuantity', contractLimitBreakdownTotal);
+	}, [
+		showContractLimitDropdown,
+		needsSecondComboBox,
+		contractLimitQuantity,
+		contractLimitBreakdownTotal,
+	]);
 
 	// ── Total validation ─────────────────────────────────────────────────────
 	const totalQuantity = (() => {
@@ -783,13 +934,15 @@ function MaterialImportRow({
 			additionalCostCategory &&
 			(!additionalCostNeedsProductionOrder ||
 				additionalCostProductionOrderId != null) &&
+			(!additionalCostNeedsOtherMaterialDetail ||
+				otherMaterialDetailValue != null) &&
 			additionalCostQuantity != null
 		)
 			total += Number(additionalCostQuantity);
 		if (
 			showContractLimitDropdown &&
 			contractLimitCategoryValue &&
-			(!needsSecondComboBox || contractLimitSubCategoryValue) &&
+			(!needsSecondComboBox || contractLimitSelectedTypes.length > 0) &&
 			contractLimitQuantity != null
 		)
 			total += Number(contractLimitQuantity);
@@ -801,6 +954,9 @@ function MaterialImportRow({
 	const exportedQty = Number(quantityExported) || 0;
 	const receivedQty = Number(quantityReceived) || 0;
 	const isValidTotal = Math.abs(totalQuantity - exportedQty) < 0.01;
+	const isContractLimitBreakdownValid =
+		!needsSecondComboBox ||
+		Math.abs(contractLimitBreakdownTotal - exportedQty) < 0.01;
 
 	// ── Breakdown change handlers ────────────────────────────────────────────
 	const handleReceivedBreakdownChange = (key: string, val: number | string) =>
@@ -808,6 +964,14 @@ function MaterialImportRow({
 
 	const handleExportedBreakdownChange = (key: string, val: number | string) =>
 		set('exportedBreakdown', { ...(exportedBreakdown ?? {}), [key]: val });
+	const handleContractLimitBreakdownChange = (
+		key: string,
+		val: number | string,
+	) =>
+		set('contractLimitBreakdown', {
+			...(contractLimitBreakdown ?? {}),
+			[key]: val,
+		});
 
 	const activeReceivedKeys = receivedTypes ?? [RECEIVED_TYPE_OPTIONS[0].value];
 	const activeExportedKeys = exportedTypes ?? [EXPORTED_TYPE_OPTIONS[0].value];
@@ -1077,11 +1241,23 @@ function MaterialImportRow({
 											/>
 										</div>
 									)}
+									{additionalCostNeedsOtherMaterialDetail && (
+										<div className='w-full'>
+											<FormComboBox
+												control={form.control}
+												name={`${basename}.otherMaterialDetail` as RowPath}
+												options={OTHER_MATERIAL_DETAIL_OPTIONS}
+												placeholder='Chọn loại vật tư'
+											/>
+										</div>
+									)}
 								</>
 							)}
 							{additionalCostCategory &&
 								(!additionalCostNeedsProductionOrder ||
-									additionalCostProductionOrderId != null) && (
+									additionalCostProductionOrderId != null) &&
+								(!additionalCostNeedsOtherMaterialDetail ||
+									otherMaterialDetailValue != null) && (
 									<div className='w-full'>
 										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
 											Số lượng vật tư
@@ -1126,26 +1302,53 @@ function MaterialImportRow({
 								/>
 							</div>
 							{contractLimitCategoryValue && needsSecondComboBox && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.contractLimitSubCategory` as RowPath}
-										options={CONTRACT_LIMIT_SECONDARY_OPTIONS}
-										placeholder='Chọn danh mục phụ'
-									/>
-								</div>
+								<>
+									<div className='w-full'>
+										<FormMultiSelect
+											control={form.control}
+											name={`${basename}.contractLimitSubCategories` as RowPath}
+											options={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
+											placeholder='Chọn loại (Lĩnh mới/Tái sử dụng)'
+										/>
+									</div>
+									{contractLimitSelectedKeys.length > 0 && (
+										<div className='w-full space-y-2'>
+											<div className='flex w-full items-end gap-2'>
+												<QuantityBreakdownInputs
+													selectedKeys={contractLimitSelectedKeys}
+													allOptions={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
+													values={contractLimitBreakdown ?? {}}
+													onChange={handleContractLimitBreakdownChange}
+													isValid={isContractLimitBreakdownValid}
+													equalWidth
+												/>
+											</div>
+											{!isContractLimitBreakdownValid && (
+												<p className='text-xs text-red-600'>
+													Tổng lĩnh mới + lĩnh tái sử dụng phải bằng số lượng
+													xuất ({contractLimitBreakdownTotal} / {exportedQty})
+												</p>
+											)}
+										</div>
+									)}
+								</>
 							)}
 							{contractLimitCategoryValue &&
-								(!needsSecondComboBox || contractLimitSubCategoryValue) && (
+								(!needsSecondComboBox ||
+									contractLimitSelectedTypes.length > 0) && (
 									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.contractLimitQuantity` as RowPath}
-											placeholder='Nhập số lượng'
-										/>
+										{!needsSecondComboBox && (
+											<>
+												<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+													Số lượng vật tư
+												</label>
+												<FormNumber
+													control={form.control}
+													name={`${basename}.contractLimitQuantity` as RowPath}
+													placeholder='Nhập số lượng'
+												/>
+											</>
+										)}
 										<div
 											className={cn(
 												'mt-1 text-xs',

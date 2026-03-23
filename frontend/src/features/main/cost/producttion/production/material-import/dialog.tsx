@@ -20,6 +20,7 @@ import {
 	CreateAcceptanceReportRequest,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
+	OtherMaterialDetail,
 	ProductionOrder,
 	QuantityDetail,
 	QuotaBasedMaterial,
@@ -296,6 +297,11 @@ export function MaterialImportDialog({
 					if (item.showAdditionalCostDropdown && item.additionalCostCategory) {
 						additionalCost = item.additionalCostCategory;
 					}
+					const otherMaterialDetail =
+						item.showAdditionalCostDropdown &&
+						item.additionalCostCategory === AdditionalCost.OtherMaterial
+							? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
+							: OtherMaterialDetail.None;
 
 					const categoryProductionOrderId =
 						item.showCategoryDropdown &&
@@ -319,15 +325,40 @@ export function MaterialImportDialog({
 					// Map quota based material to enum
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
 					let quotaBasedMaterialType: number = QuotaBasedMaterialType.New;
+					let quotaBasedMaterialQuantities:
+						| {
+								type: number;
+								quantity: number;
+						  }[]
+						| null = null;
 					if (item.showContractLimitDropdown && item.contractLimitCategory) {
 						quotaBasedMaterial = item.contractLimitCategory;
-						// Only set type if category requires it (MineSupport or SupportAccessories)
-						if (
-							(quotaBasedMaterial === QuotaBasedMaterial.MineSupport ||
-								quotaBasedMaterial === QuotaBasedMaterial.SupportAccessories) &&
-							item.contractLimitSubCategory
-						) {
-							quotaBasedMaterialType = item.contractLimitSubCategory;
+						const selectedSubCategories =
+							item.contractLimitSubCategories &&
+							item.contractLimitSubCategories.length > 0
+								? item.contractLimitSubCategories.map((type) => Number(type))
+								: item.contractLimitSubCategory != null
+									? [item.contractLimitSubCategory]
+									: [];
+
+						quotaBasedMaterialType =
+							selectedSubCategories[0] ?? QuotaBasedMaterialType.New;
+						if (selectedSubCategories.length > 0) {
+							quotaBasedMaterialQuantities = selectedSubCategories.map(
+								(type) => ({
+									type,
+									quantity: parseQuantity(
+										item.contractLimitBreakdown?.[String(type)],
+									),
+								}),
+							);
+						} else if (item.contractLimitQuantity != null) {
+							quotaBasedMaterialQuantities = [
+								{
+									type: quotaBasedMaterialType,
+									quantity: parseQuantity(item.contractLimitQuantity),
+								},
+							];
 						}
 					}
 
@@ -397,10 +428,12 @@ export function MaterialImportDialog({
 						materialsIncludedInContractRevenueQuantity:
 							item.categoryQuantity || 0,
 						additionalCost,
+						otherMaterialDetail,
 						additionalCostQuantity: item.additionalCostQuantity || 0,
 						quotaBasedMaterial,
 						quotaBasedMaterialType,
 						quotaBasedMaterialQuantity: item.contractLimitQuantity || 0,
+						quotaBasedMaterialQuantities,
 						asset,
 						assetMaterialQuantity,
 					};

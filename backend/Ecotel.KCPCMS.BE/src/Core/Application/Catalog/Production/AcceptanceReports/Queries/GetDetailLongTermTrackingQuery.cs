@@ -100,7 +100,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             }
 
             // Phân biệt log thật sự mới vs log override
-            var isNewItem = log.IssuedQuantity > 0 || log.TotalAmount > 0 || log.PendingValueStartPeriod == 0;
+            var isNewItem = log.IssuedQuantity > 0 || log.TotalAmount > 0;
 
             var currentActualOutput = log.ActualOutput;
             var currentPlannedOutput = log.PlannedOutput;
@@ -186,7 +186,10 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             var pendingValueStart = latestLog.PendingValueEndPeriod;
 
             // Nếu đã hết thời gian sử dụng VÀ không còn giá trị để hạch toán thì bỏ qua
-            if (remainingTime < 0 || (Math.Abs(remainingTime) < 0.0001 && pendingValueStart == 0))
+            if (remainingTime < 0
+                || (Math.Abs(remainingTime) < 0.0001 && pendingValueStart == 0)
+                || ((overrideLog?.IsFullAccounting == true || latestLog.IsFullAccounting) && pendingValueStart == 0)
+                || (pendingValueStart == 0 && (overrideLog == null || overrideLog.TotalAmount == 0))) // ✅ thêm dòng này
             {
                 continue;
             }

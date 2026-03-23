@@ -24,6 +24,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
     // Time tracking
     public double UsageTime { get; protected set; }
     public double AllocatedTime { get; protected set; }
+    public double OriginalAllocatedTime { get; protected set; }
     public double RemainingTime { get; protected set; }
 
     // Output tracking
@@ -72,6 +73,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
             UnitPrice = unitPrice,
             UsageTime = usageTime,
             AllocatedTime = allocatedTime,
+            OriginalAllocatedTime = allocatedTime,
             ActualOutput = actualOutput,
             PlannedOutput = plannedOutput,
             StandardOutput = standardOutput,
@@ -91,16 +93,12 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
 
     private void Calculate()
     {
-        // Thành tiền = Số lượng lĩnh * đơn giá
         TotalAmount = (decimal)IssuedQuantity * UnitPrice;
-
-        // TỔNG GIÁ TRỊ CẦN HẠCH TOÁN (Nguyên giá)
         TotalValueToAccount = PendingValueStartPeriod + TotalAmount;
 
-        // Thời gian còn lại
-        RemainingTime = UsageTime - AllocatedTime;
+        // ✅ Luôn dùng OriginalAllocatedTime để tính RemainingTime
+        RemainingTime = UsageTime - OriginalAllocatedTime;
 
-        // GIÁ TRỊ CẦN HẠCH TOÁN THEO ĐỊNH MỨC
         if (UsageTime > 0 && StandardOutput > 0)
         {
             ValueByStandard = (TotalValueToAccount / (decimal)UsageTime) * (decimal)ActualOutput / (decimal)StandardOutput;
@@ -110,21 +108,19 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
             ValueByStandard = 0;
         }
 
-        // Nếu RemainingTime = 0 → Kỳ cuối, hạch toán hết
         if (Math.Abs(RemainingTime) < 0.0001 || IsFullAccounting)
         {
             ValueByStandard = TotalValueToAccount;
             AccountedValueThisPeriod = TotalValueToAccount;
             PendingValueEndPeriod = 0;
             RemainingTime = 0;
-            AllocatedTime = UsageTime;
+            AllocatedTime = UsageTime; // chỉ dùng cho display, không ảnh hưởng Calculate lần sau
         }
         else
         {
-            // GIÁ TRỊ DÀI KỲ HẠCH TOÁN KỲ NÀY
+            // ✅ Restore AllocatedTime về đúng giá trị gốc khi không phải kỳ cuối
+            AllocatedTime = OriginalAllocatedTime;
             AccountedValueThisPeriod = Math.Min(TotalValueToAccount, ValueByStandard * (decimal)AllocationRatio);
-
-            // GIÁ TRỊ CUỐI KỲ CHỜ HẠCH TOÁN KỲ SAU
             PendingValueEndPeriod = TotalValueToAccount - AccountedValueThisPeriod;
         }
     }

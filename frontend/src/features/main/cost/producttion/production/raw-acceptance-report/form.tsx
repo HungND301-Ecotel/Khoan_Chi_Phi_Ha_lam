@@ -803,19 +803,27 @@ function QuantityBreakdownInputs({
 	values,
 	onChange,
 	isValid,
+	equalWidth = false,
 }: {
 	selectedKeys: string[];
 	allOptions: { value: string; label: string }[];
 	values: QuantityBreakdown;
 	onChange: (key: string, value: number | string) => void;
 	isValid: boolean;
+	equalWidth?: boolean;
 }) {
 	return (
 		<>
 			{selectedKeys.map((key) => {
 				const option = allOptions.find((entry) => entry.value === key);
 				return (
-					<div key={key} className='flex w-24 shrink-0 flex-col gap-0.5'>
+					<div
+						key={key}
+						className={cn(
+							'flex flex-col gap-0.5',
+							equalWidth ? 'min-w-0 flex-1' : 'w-24 shrink-0',
+						)}
+					>
 						<label
 							className='truncate text-[10px] leading-tight font-medium text-slate-500'
 							title={option?.label}
@@ -1510,6 +1518,28 @@ function RawAcceptanceReportRow({
 	}, [contractLimitCategoryValue, form, basename]);
 
 	useEffect(() => {
+		if (!showContractLimitDropdown || !contractLimitCategoryValue) return;
+		if (needsSecondComboBox) return;
+
+		const currentValue = form.getValues(
+			`${basename}.contractLimitQuantity` as FieldName,
+		);
+		if (currentValue != null && currentValue !== '') return;
+
+		form.setValue(
+			`${basename}.contractLimitQuantity` as FieldName,
+			Number(exportedQuantityWatch) || 0,
+		);
+	}, [
+		showContractLimitDropdown,
+		contractLimitCategoryValue,
+		needsSecondComboBox,
+		exportedQuantityWatch,
+		form,
+		basename,
+	]);
+
+	useEffect(() => {
 		if (!showContractLimitDropdown || !needsSecondComboBox) return;
 		const selectedKeys =
 			contractLimitSubCategoriesValue &&
@@ -2022,13 +2052,14 @@ function RawAcceptanceReportRow({
 									</div>
 									{contractLimitSelectedTypes.length > 0 && (
 										<div className='w-full space-y-2'>
-											<div className='flex items-end gap-2'>
+											<div className='flex w-full items-end gap-2'>
 												<QuantityBreakdownInputs
 													selectedKeys={contractLimitSelectedKeys}
 													allOptions={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
 													values={contractLimitBreakdown ?? {}}
 													onChange={handleContractLimitBreakdownChange}
 													isValid={isContractLimitBreakdownValid}
+													equalWidth
 												/>
 											</div>
 											{!isContractLimitBreakdownValid && (

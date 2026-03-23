@@ -24,7 +24,7 @@ import {
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 export function LongtermMaterialCostForm({
@@ -39,6 +39,7 @@ export function LongtermMaterialCostForm({
 		[],
 	);
 	const [acceptanceReportId, setAcceptanceReportId] = useState<string>('');
+	const previousAllocationRateRef = useRef<Record<number, number>>({});
 
 	const form = useForm<LongtermMaterialCostSchema>({
 		resolver: zodResolver(longtermMaterialCostSchema),
@@ -67,14 +68,23 @@ export function LongtermMaterialCostForm({
 
 				setDetailItems(resolvedItems);
 				setAcceptanceReportId(detail.acceptanceReportId);
+				previousAllocationRateRef.current = {};
 
 				form.reset({
-					items: resolvedItems.map((item) => ({
-						id: item.id,
-						allocationRate: item.allocationRatio,
-						isFullAccounting: item.isFullAccounting ?? false,
-						note: item.note ?? '',
-					})),
+					items: resolvedItems.map((item, index) => {
+						const normalizedRate =
+							item.isFullAccounting && (!item.allocationRatio || item.allocationRatio <= 0)
+								? 1
+								: item.allocationRatio;
+						previousAllocationRateRef.current[index] = normalizedRate;
+
+						return {
+							id: item.id,
+							allocationRate: normalizedRate,
+							isFullAccounting: item.isFullAccounting ?? false,
+							note: item.note ?? '',
+						};
+					}),
 				});
 			} catch (err) {
 				error(err);
@@ -85,12 +95,24 @@ export function LongtermMaterialCostForm({
 	}, [form, id]);
 
 	const handleFullAccountingChange = (index: number, checked: boolean) => {
+		const currentAllocationRate = form.getValues(`items.${index}.allocationRate`);
 		form.setValue(`items.${index}.isFullAccounting`, checked);
 
 		if (checked) {
-			form.setValue(`items.${index}.allocationRate`, 0);
+			if (typeof currentAllocationRate === 'number') {
+				previousAllocationRateRef.current[index] = currentAllocationRate;
+			}
+			const normalizedAllocationRate =
+				typeof currentAllocationRate === 'number' && currentAllocationRate > 0
+					? currentAllocationRate
+					: 1;
+			form.setValue(`items.${index}.allocationRate`, normalizedAllocationRate);
 			form.setValue(`items.${index}.note`, 'Hạch toán hết');
 		} else {
+			const previousAllocationRate = previousAllocationRateRef.current[index];
+			if (typeof previousAllocationRate === 'number') {
+				form.setValue(`items.${index}.allocationRate`, previousAllocationRate);
+			}
 			form.setValue(`items.${index}.note`, '');
 		}
 	};
@@ -153,11 +175,14 @@ export function LongtermMaterialCostForm({
 
 						const currentPeriodValue = isFullAccounting
 							? (item?.totalValueToAccount ?? 0)
-							: quotaAccountingValue * (watchedAllocationRate || 1);
+							: Math.min(
+									item?.totalValueToAccount ?? 0,
+									quotaAccountingValue * (watchedAllocationRate ?? 1),
+								);
 
 						const endingBalance = isFullAccounting
 							? 0
-							: totalAccountingValue - currentPeriodValue;
+							: Math.max(0, totalAccountingValue - currentPeriodValue);
 
 						return (
 							<>

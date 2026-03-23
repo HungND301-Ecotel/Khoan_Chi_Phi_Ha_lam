@@ -179,7 +179,9 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             var pendingValueStart = latestLog.PendingValueEndPeriod;
 
             // Nếu đã hết thời gian sử dụng VÀ không còn giá trị để hạch toán thì bỏ qua
-            if (remainingTime < 0 || (Math.Abs(remainingTime) < 0.0001 && pendingValueStart == 0))
+            if (remainingTime < 0
+                || (Math.Abs(remainingTime) < 0.0001 && pendingValueStart == 0)
+                || (pendingValueStart == 0 && overrideLog == null))  // ✅ thêm dòng này
             {
                 continue;
             }
