@@ -13,11 +13,11 @@ export const CATALOG_PARAMETER_PRODUCTION_ORDER_COLUMNS: ColumnDef<ProductionOrd
 	[
 		{
 			accessorKey: 'code',
-			header: 'Số quyết định, lệnh sản xuất',
+			header: 'Số Quyết định, lệnh sản xuất',
 		},
 		{
 			accessorKey: 'name',
-			header: 'Tên quyết định, lệnh sản xuất',
+			header: 'Tên Quyết định, lệnh sản xuất',
 		},
 		{
 			accessorKey: 'startMonth',

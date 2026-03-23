@@ -2,10 +2,10 @@ import z from 'zod';
 
 export const ProductionOrderSchema = z.object({
 	code: z.string().nonempty({
-		error: 'Mã quyết định, lệnh sản xuất không được để trống.',
+		error: 'Mã Quyết định, lệnh sản xuất không được để trống.',
 	}),
 	name: z.string().nonempty({
-		error: 'Tên quyết định, lệnh sản xuất không được để trống.',
+		error: 'Tên Quyết định, lệnh sản xuất không được để trống.',
 	}),
 	startMonth: z.string().nonempty({
 		error: 'Thời gian bắt đầu không được để trống.',
