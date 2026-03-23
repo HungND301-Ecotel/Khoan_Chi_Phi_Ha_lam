@@ -38,6 +38,7 @@ export type PartDetail = {
 		endMonth: string;
 		costType: number;
 		amount: number;
+		actualAmount: number;
 	}>;
 };
 
@@ -87,6 +88,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 								startMonth: cost.startMonth.substring(0, 10),
 								endMonth: cost.endMonth.substring(0, 10),
 								amount: cost.amount,
+								actualAmount: cost.actualAmount,
 							}))
 						: PART_SCHEMA_DEFAULT.costs,
 				});
@@ -191,8 +193,16 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá vật tư (đ)'
-								placeholder='Nhập đơn giá vật tư (đ)'
+								label='Đơn giá kế hoạch (đ)'
+								placeholder='Nhập đơn giá kế hoạch (đ)'
+							/>
+						</div>
+						<div className='flex-1'>
+							<FormNumber
+								control={form.control}
+								name={`costs.${index}.actualAmount`}
+								label='Đơn giá thực tế (đ)'
+								placeholder='Nhập đơn giá thực tế (đ)'
 							/>
 						</div>
 					</div>

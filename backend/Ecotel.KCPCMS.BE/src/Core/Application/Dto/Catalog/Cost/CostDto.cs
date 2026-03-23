@@ -25,6 +25,7 @@ namespace Application.Dto.Catalog.Cost
         public DateOnly EndMonth { get; set; }
         public CostType CostType { get; } = CostType.Part;
         public double Amount { get; set; }
+        public double ActualAmount { get; set; }
     }
 
     public class CostDto

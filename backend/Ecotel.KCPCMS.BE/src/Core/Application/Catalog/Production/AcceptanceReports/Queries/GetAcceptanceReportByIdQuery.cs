@@ -149,8 +149,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
 
             if (matchingCost != null)
             {
-                //acutalCost = (decimal)matchingCost.Amount;
-                acutalCost = 0;
+                acutalCost = (decimal)matchingCost.ActualAmount;
             }
         }
 

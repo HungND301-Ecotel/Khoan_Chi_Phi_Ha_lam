@@ -39,6 +39,13 @@ export const otherPartSchema = z.object({
 					.gt(0, {
 						message: 'Giá trị phải lớn hơn 0',
 					}),
+				actualAmount: z.coerce
+					.number<number>({
+						message: 'Giá trị phải là số',
+					})
+					.gt(0, {
+						message: 'Giá trị phải lớn hơn 0',
+					}),
 			}),
 		)
 		.min(1, {
@@ -58,6 +65,7 @@ export const OTHER_PART_SCHEMA_DEFAULT: OtherPartSchema = {
 			startMonth: '',
 			endMonth: '',
 			amount: NaN,
+			actualAmount: NaN,
 		},
 	],
 };

@@ -12,6 +12,7 @@ export type Part = {
 	equipmentCode: string;
 	replacementTimeStandard: number;
 	costAmount: number;
+	actualAmount: number;
 };
 
 export const CATALOG_PART_COLUMNS: ColumnDef<Part>[] = [
@@ -37,7 +38,12 @@ export const CATALOG_PART_COLUMNS: ColumnDef<Part>[] = [
 	},
 	{
 		accessorKey: 'costAmount',
-		header: 'Đơn giá vật tư (đ)',
+		header: 'Đơn giá kế hoạch (đ)',
 		cell: ({ row }) => formatNumber(row.original.costAmount),
+	},
+	{
+		accessorKey: 'actualAmount',
+		header: 'Đơn giá thực tế (đ)',
+		cell: ({ row }) => formatNumber(row.original.actualAmount),
 	},
 ];

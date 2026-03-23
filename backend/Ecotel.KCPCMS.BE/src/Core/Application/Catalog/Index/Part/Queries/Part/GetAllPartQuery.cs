@@ -62,7 +62,13 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
                                 c.StartMonth <= checkDate &&
                                 c.EndMonth >= checkDate)
                     .Select(c => c.Amount)
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
+                ActualAmount = ep.Part.Costs
+                    .Where(c => c.CostType == CostType.Part &&
+                                c.StartMonth <= checkDate &&
+                                c.EndMonth >= checkDate)
+                    .Select(c => c.ActualAmount)
+                    .FirstOrDefault(),
             })
             .OrderBy(p => p.EquipmentCode)
             .ThenBy(p => p.Name)

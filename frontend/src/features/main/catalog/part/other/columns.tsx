@@ -9,6 +9,7 @@ export type OtherPart = {
 	unitOfMeasureName: string;
 	replacementTimeStandard: number;
 	costAmount: number;
+	actualAmount: number;
 };
 
 export const CATALOG_OTHER_PART_COLUMNS: ColumnDef<OtherPart>[] = [
@@ -30,7 +31,12 @@ export const CATALOG_OTHER_PART_COLUMNS: ColumnDef<OtherPart>[] = [
 	},
 	{
 		accessorKey: 'costAmount',
-		header: 'Đơn giá vật tư (đ)',
+		header: 'Đơn giá kế hoạch (đ)',
 		cell: ({ row }) => formatNumber(row.original.costAmount),
+	},
+	{
+		accessorKey: 'actualAmount',
+		header: 'Đơn giá thực tế (đ)',
+		cell: ({ row }) => formatNumber(row.original.actualAmount),
 	},
 ];

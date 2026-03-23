@@ -16,6 +16,7 @@ namespace Application.Dto.Catalog.Part
         public string EquipmentCode { get; set; }
         public decimal ReplacementTimeStandard { get; set; }
         public double CostAmount { get; set; }
+        public double ActualAmount { get; set; }
     }
 
     public class OtherPartDto : IDto
@@ -27,6 +28,7 @@ namespace Application.Dto.Catalog.Part
         public string UnitOfMeasureName { get; set; }
         public decimal ReplacementTimeStandard { get; set; }
         public double CostAmount { get; set; }
+        public double ActualAmount { get; set; }
     }
 
     public class PartExcelDto
@@ -82,6 +84,7 @@ namespace Application.Dto.Catalog.Part
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<string> EquipmentCodes { get; set; } = new List<string>();
         public double CurrentCost { get; set; }
+        public double ActualAmount { get; set; }
     }
 
     public class CreatePartDto

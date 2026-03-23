@@ -51,7 +51,8 @@ public class CreateOtherPartCommandHandler(IUnitOfWork unitOfWork, ICodeService 
                     endMonth: cost.EndMonth,
                     costType: cost.CostType,
                     amount: cost.Amount,
-                    costTypeId: newPart.Id));
+                    costTypeId: newPart.Id,
+                    actualAmount: cost.ActualAmount));
             }
 
             if (costList.HasOverlap())

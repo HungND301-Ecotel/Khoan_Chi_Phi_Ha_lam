@@ -34,7 +34,13 @@ public class OtherPartsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.
                                 c.StartMonth <= checkDate &&
                                 c.EndMonth >= checkDate)
                     .Select(c => c.Amount)
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
+                ActualAmount = p.Costs
+                    .Where(c => c.CostType == CostType.Part &&
+                                c.StartMonth <= checkDate &&
+                                c.EndMonth >= checkDate)
+                    .Select(c => c.ActualAmount)
+                    .FirstOrDefault(),
             });
     }
 }
