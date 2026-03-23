@@ -73,6 +73,10 @@ export type FinancialFields = {
 	// Tồn cuối kỳ - Giá trị cuối kỳ chờ hạch toán
 	closingBalancePendingQty: number;
 	closingBalancePendingAmount: number;
+
+	// Tồn cuối kỳ - Quyết định, giao khoán công trình
+	closingBalanceContractQty: number;
+	closingBalanceContractAmount: number;
 };
 
 // Base item type for materials

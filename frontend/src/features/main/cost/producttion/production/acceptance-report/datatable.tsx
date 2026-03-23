@@ -26,6 +26,73 @@ type DataTableProps = {
 
 export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
+
+	const toRoman = (value: number): string => {
+		const romanMap = [
+			{ value: 1000, numeral: 'M' },
+			{ value: 900, numeral: 'CM' },
+			{ value: 500, numeral: 'D' },
+			{ value: 400, numeral: 'CD' },
+			{ value: 100, numeral: 'C' },
+			{ value: 90, numeral: 'XC' },
+			{ value: 50, numeral: 'L' },
+			{ value: 40, numeral: 'XL' },
+			{ value: 10, numeral: 'X' },
+			{ value: 9, numeral: 'IX' },
+			{ value: 5, numeral: 'V' },
+			{ value: 4, numeral: 'IV' },
+			{ value: 1, numeral: 'I' },
+		];
+
+		let remaining = value;
+		let result = '';
+
+		romanMap.forEach(({ value: romanValue, numeral }) => {
+			while (remaining >= romanValue) {
+				result += numeral;
+				remaining -= romanValue;
+			}
+		});
+
+		return result;
+	};
+
+	const buildSttByRowId = (rows: HierarchicalRow[]) => {
+		const sttMap = new Map<string, string>();
+		let categoryIndex = 0;
+		let typeIndex = 0;
+		let groupIndex = 0;
+
+		rows.forEach((row) => {
+			if (row.rowType === 'category') {
+				categoryIndex += 1;
+				typeIndex = 0;
+				groupIndex = 0;
+				sttMap.set(row.id, `${String.fromCharCode(64 + categoryIndex)}.`);
+				return;
+			}
+
+			if (row.rowType === 'type') {
+				typeIndex += 1;
+				groupIndex = 0;
+				sttMap.set(row.id, `${toRoman(typeIndex)}.`);
+				return;
+			}
+
+			if (row.rowType === 'group') {
+				groupIndex += 1;
+				sttMap.set(row.id, `${toRoman(typeIndex)}.${groupIndex}`);
+				return;
+			}
+
+			sttMap.set(row.id, '');
+		});
+
+		return sttMap;
+	};
+
+	const sttByRowId = buildSttByRowId(data);
+
 	// Get row styling based on row type
 	const getRowClassName = (row: HierarchicalRow): string => {
 		switch (row.rowType) {
@@ -48,16 +115,39 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		return indents[level] || 'pl-2';
 	};
 
-	// Render first column (Mã Vật tư or label)
-	const renderFirstColumn = (row: HierarchicalRow) => {
+	// Render danh mục column
+	const renderCategoryColumn = (row: HierarchicalRow) => {
 		if (row.rowType === 'item') {
-			return <span className={getIndentClass(row.level)}>{row.itemCode}</span>;
+			const itemLabel = row.itemCode
+				? `${row.itemCode} - ${row.itemName || ''}`
+				: row.itemName || '';
+			return <span className={getIndentClass(row.level)}>{itemLabel}</span>;
 		}
-		// Category, type, or group rows show label
 		return <span className={getIndentClass(row.level)}>{row.label}</span>;
 	};
 
-	// List of "Thành tiền" (amount) fields that should be shown in totals
+	// Amount-like fields rendered on totals rows (category/type/group)
+	const quantityFields = [
+		'openingBalanceTotalQty',
+		'openingBalanceOnSiteQty',
+		'openingBalancePendingQty',
+		'openingBalanceContractQty',
+		'receiptTotalQty',
+		'receiptWithReceiptQty',
+		'receiptBorrowedQty',
+		'receiptReturnPrevMonthQty',
+		'receiptHandoverQty',
+		'issueTotalQty',
+		'issueForProductionQty',
+		'issueLongtermQty',
+		'issueOtherQty',
+		'issueContractQty',
+		'closingBalanceTotalQty',
+		'closingBalanceOnSiteQty',
+		'closingBalancePendingQty',
+		'closingBalanceContractQty',
+	] as const;
+
 	const amountFields = [
 		'openingBalanceTotalAmount',
 		'openingBalanceOnSiteAmount',
@@ -77,72 +167,81 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		'closingBalanceTotalAmount',
 		'closingBalanceOnSiteAmount',
 		'closingBalancePendingAmount',
-	];
+		'closingBalanceContractAmount',
+	] as const;
 
-	// Render financial cell
+	const totalRowVisibleFields = [...quantityFields, ...amountFields];
+
+	// Render numeric cell
 	const renderFinancialCell = (
 		row: HierarchicalRow,
 		field: keyof NonNullable<HierarchicalRow['data']>,
 	) => {
-		// Empty if no data
 		if (!row.data) return null;
 
-		// Group rows: show totals only if group has data (showTotals flag)
-		// Category/Type rows: only show "Thành tiền" (amount) columns
 		if (
 			row.rowType === 'category' ||
 			row.rowType === 'type' ||
 			row.rowType === 'group'
 		) {
-			if (!amountFields.includes(field)) return null;
+			if (
+				!totalRowVisibleFields.includes(
+					field as (typeof totalRowVisibleFields)[number],
+				)
+			)
+				return null;
 		}
 
-		// Get value
 		const value = row.data[field] as number;
-
-		// Don't show 0 values (leave empty)
 		if (!value || value === 0) return null;
 
-		return formatNumber(value, { maximumFractionDigits: 0 });
+		const isQuantityField = quantityFields.includes(
+			field as (typeof quantityFields)[number],
+		);
+		return formatNumber(value, {
+			maximumFractionDigits: isQuantityField ? 3 : 0,
+		});
 	};
 
 	const renderTableContent = () => (
 		<Table className='text-xs'>
 			<TableHeader>
-				{/* Header Row 1: Main groups */}
 				<TableRow>
-					<TableHead rowSpan={3} className='min-w-[120px] border-r text-center'>
-						MÃ VẬT TƯ
+					<TableHead rowSpan={3} className='min-w-14 border-r text-center'>
+						STT
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[180px] border-r text-center'>
-						TÊN VẬT TƯ
+					<TableHead rowSpan={3} className='min-w-[220px] border-r text-center'>
+						DANH MỤC VẬT TƯ, HÀNG HÓA
 					</TableHead>
 					<TableHead rowSpan={3} className='min-w-[60px] border-r text-center'>
 						ĐVT
 					</TableHead>
+					<TableHead rowSpan={3} className='min-w-[90px] border-r text-center'>
+						CÁCH TÍNH
+					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center font-bold'>
 						ĐƠN GIÁ
 					</TableHead>
+
 					<TableHead colSpan={8} className='border-r text-center font-bold'>
 						TỒN ĐẦU KỲ
 					</TableHead>
-					<TableHead colSpan={12} className='border-r text-center font-bold'>
+					<TableHead colSpan={11} className='border-r text-center font-bold'>
 						LĨNH TRONG KỲ
 					</TableHead>
 					<TableHead colSpan={10} className='border-r text-center font-bold'>
 						XUẤT TRONG KỲ
 					</TableHead>
-					<TableHead colSpan={6} className='text-center font-bold'>
+					<TableHead colSpan={8} className='text-center font-bold'>
 						TỒN CUỐI KỲ
 					</TableHead>
 				</TableRow>
 
-				{/* Header Row 2: Sub-groups */}
 				<TableRow>
-					<TableHead rowSpan={2} className='min-w-[90px] border-r text-center'>
+					<TableHead rowSpan={2} className='min-w-[100px] border-r text-center'>
 						Kế hoạch
 					</TableHead>
-					<TableHead rowSpan={2} className='min-w-[90px] border-r text-center'>
+					<TableHead rowSpan={2} className='min-w-[100px] border-r text-center'>
 						Thực tế
 					</TableHead>
 
@@ -156,14 +255,14 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 						Chi phí chờ hạch toán
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center'>
-						Quyết định giao khoán công trình
+						Quyết định, giao khoán công trình
 					</TableHead>
 
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tổng cộng
 					</TableHead>
 					<TableHead colSpan={3} className='border-r text-center'>
-						Lĩnh vật tư (trả phiếu)
+						Lĩnh vật tư (Trả phiếu)
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center'>
 						Vay chưa trả phiếu
@@ -171,8 +270,8 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center'>
 						Trả phiếu tháng trước
 					</TableHead>
-					<TableHead colSpan={3} className='border-r text-center'>
-						Nhận bàn giao
+					<TableHead colSpan={2} className='border-r text-center'>
+						Lĩnh khác
 					</TableHead>
 
 					<TableHead colSpan={2} className='border-r text-center'>
@@ -185,7 +284,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 						Chi phí vật tư dài kỳ hạch toán
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center'>
-						Xuất khác số
+						Xuất khác
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center'>
 						Quyết định, giao khoán công trình
@@ -197,118 +296,127 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tồn tại khai trường
 					</TableHead>
+					<TableHead colSpan={2} className='border-r text-center'>
+						Chi phí chờ hạch toán
+					</TableHead>
 					<TableHead colSpan={2} className='text-center'>
-						Giá trị cuối kỳ chờ hạch toán
+						Quyết định, giao khoán công trình
 					</TableHead>
 				</TableRow>
 
-				{/* Header Row 3: Final columns */}
 				<TableRow>
-					{/* Tồn đầu kỳ - Tổng cộng */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					{/* Tồn đầu kỳ - Tồn tại khai trường */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
 					</TableHead>
-
-					{/* Tồn đầu kỳ - Chi phí chờ hạch toán */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Tồn đầu kỳ - Quyết định giao khoán công trình */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Lĩnh trong kỳ - Tổng cộng */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền KH
 					</TableHead>
-
-					{/* Lĩnh trong kỳ - Lĩnh vật tư (trả phiếu) */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền KH
 					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền TT
 					</TableHead>
-
-					{/* Lĩnh trong kỳ - Vay chưa trả phiếu */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					{/* Lĩnh trong kỳ - Trả phiếu tháng trước */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
+						Thành tiền
+					</TableHead>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					{/* Lĩnh trong kỳ - Nhận bàn giao */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>
-						% còn lại
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
 					</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-
-					{/* Xuất trong kỳ - Tổng cộng */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-
-					{/* Xuất trong kỳ - Xuất cho sản xuất */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
+					</TableHead>
+					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-
-					{/* Xuất trong kỳ - Chi phí vật tư dài kỳ hạch toán */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
+					<TableHead className='min-w-[80px] border-r text-center'>
+						SL
 					</TableHead>
-
-					{/* Xuất trong kỳ - Xuất khác số */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Xuất trong kỳ - Quyết định, giao khoán công trình */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Tồn cuối kỳ - Tổng cộng */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Tồn cuối kỳ - Tồn tại khai trường */}
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] border-r text-center'>
-						Thành tiền
-					</TableHead>
-
-					{/* Tồn cuối kỳ - Giá trị cuối kỳ chờ hạch toán */}
-					<TableHead className='min-w-20 text-center'>SL</TableHead>
-					<TableHead className='min-w-[100px] text-center'>
+					<TableHead className='min-w-[120px] text-center'>
 						Thành tiền
 					</TableHead>
 				</TableRow>
@@ -318,7 +426,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				{data.length === 0 ? (
 					<TableRow>
 						<TableCell
-							colSpan={41}
+							colSpan={43}
 							className='text-muted-foreground py-8 text-center'
 						>
 							Không có dữ liệu
@@ -327,22 +435,19 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				) : (
 					data.map((row) => (
 						<TableRow key={row.id} className={getRowClassName(row)}>
-							{/* Column 1: Mã Vật tư (or label for category/type/group) */}
-							<TableCell className='border-r'>
-								{renderFirstColumn(row)}
+							<TableCell className='border-r text-center'>
+								{sttByRowId.get(row.id)}
 							</TableCell>
 
-							{/* Column 2: Tên Vật tư (only for items) */}
 							<TableCell className='border-r'>
-								{row.rowType === 'item' && row.itemName}
+								{renderCategoryColumn(row)}
 							</TableCell>
 
-							{/* Column 3: ĐVT (only for items) */}
 							<TableCell className='border-r text-center'>
 								{row.rowType === 'item' && row.unit}
 							</TableCell>
 
-							{/* Đơn giá */}
+							<TableCell className='border-r text-center' />
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'priceKH')}
 							</TableCell>
@@ -350,7 +455,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 								{renderFinancialCell(row, 'priceTT')}
 							</TableCell>
 
-							{/* Tồn đầu kỳ */}
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'openingBalanceTotalQty')}
 							</TableCell>
@@ -376,7 +480,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 								{renderFinancialCell(row, 'openingBalanceContractAmount')}
 							</TableCell>
 
-							{/* Lĩnh trong kỳ */}
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'receiptTotalQty')}
 							</TableCell>
@@ -408,13 +511,9 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 								{renderFinancialCell(row, 'receiptHandoverQty')}
 							</TableCell>
 							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptHandoverPercent')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'receiptHandoverAmount')}
 							</TableCell>
 
-							{/* Xuất trong kỳ */}
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'issueTotalQty')}
 							</TableCell>
@@ -446,7 +545,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 								{renderFinancialCell(row, 'issueContractAmount')}
 							</TableCell>
 
-							{/* Tồn cuối kỳ */}
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'closingBalanceTotalQty')}
 							</TableCell>
@@ -459,11 +557,17 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'closingBalanceOnSiteAmount')}
 							</TableCell>
-							<TableCell className='text-right'>
+							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'closingBalancePendingQty')}
 							</TableCell>
-							<TableCell className='text-right'>
+							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'closingBalancePendingAmount')}
+							</TableCell>
+							<TableCell className='border-r text-right'>
+								{renderFinancialCell(row, 'closingBalanceContractQty')}
+							</TableCell>
+							<TableCell className='text-right'>
+								{renderFinancialCell(row, 'closingBalanceContractAmount')}
 							</TableCell>
 						</TableRow>
 					))

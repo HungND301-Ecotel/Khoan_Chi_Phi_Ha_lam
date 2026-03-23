@@ -13,115 +13,65 @@ namespace Application.Catalog.Production.ProductionOutputs.Queries;
 
 public record GetProductionOutputDetailQuery(Guid ProductionOutputId) : IRequest<ProductionOutputDetailResponseDto>;
 
-public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetProductionOutputDetailQuery, ProductionOutputDetailResponseDto>
+public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
+    : IRequestHandler<GetProductionOutputDetailQuery, ProductionOutputDetailResponseDto>
 {
-    private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
-    private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
+    private readonly IWriteRepository<ProductionOutput> _productionOutputRepository =
+        unitOfWork.GetRepository<ProductionOutput>();
 
-    public async Task<ProductionOutputDetailResponseDto> Handle(GetProductionOutputDetailQuery request, CancellationToken cancellationToken)
+    private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository =
+        unitOfWork.GetRepository<AcceptanceReport>();
+
+    public async Task<ProductionOutputDetailResponseDto> Handle(
+        GetProductionOutputDetailQuery request, CancellationToken cancellationToken)
     {
-        // Get ProductionOutput
         var productionOutput = await _productionOutputRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == request.ProductionOutputId,
-            disableTracking: true);
+            disableTracking: true)
+            ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        if (productionOutput == null)
-        {
-            throw new NotFoundException(CustomResponseMessage.EntityNotFound);
-        }
-
-        // Get AcceptanceReport for this ProductionOutput
         var acceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
             predicate: a => a.ProductionOutputId == request.ProductionOutputId,
             include: q => q
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Material)
-                        .ThenInclude(m => m.Code)
+                    .ThenInclude(i => i.Material).ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Material)
-                        .ThenInclude(m => m.AssignmentCode)
-                            .ThenInclude(ac => ac.Code)
+                    .ThenInclude(i => i.Material).ThenInclude(m => m.AssignmentCode).ThenInclude(ac => ac.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Material)
-                        .ThenInclude(m => m.UnitOfMeasure)
+                    .ThenInclude(i => i.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Material)
-                        .ThenInclude(m => m.Costs)
+                    .ThenInclude(i => i.Material).ThenInclude(m => m.Costs)
                 .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(m => m.Part)
-                            .ThenInclude(p => p.Code)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Part)
-                        .ThenInclude(m => m.EquipmentParts)
-                            .ThenInclude(p => p.Equipment)
-                                .ThenInclude(e => e.Code)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
+                        .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(m => m.Part)
-                            .ThenInclude(p => p.UnitOfMeasure)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(m => m.Part)
-                            .ThenInclude(p => p.Costs)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.IssuedDetails)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.ShippedDetails)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.AcceptanceReportItemLogs)
                 .Include(a => a.ProductionOutput),
             disableTracking: true);
 
-        var items = new List<ProductionOutputDetailItemDto>();
+        var sectionA = new List<MaterialGroupDto>();
+        var sectionB = new List<MaterialGroupDto>();
+        var sectionC = new List<MaterialGroupDto>();
+        var sectionD = new List<MaterialGroupDto>();
 
         if (acceptanceReport != null)
         {
-            // Get all AcceptanceReports from previous months to get TH2 data
-            var allPreviousAcceptanceReports = new List<AcceptanceReport>();
-            try
-            {
-                // Lấy tất cả AcceptanceReports để filter trong memory
-                var allAcceptanceReports = await _acceptanceReportRepository.GetAllAsync(
-                    include: q => q
-                        .Include(a => a.ProductionOutput)
-                        .Include(a => a.AcceptanceReportItems)
-                                .ThenInclude(m => m.Part)
-                                    .ThenInclude(p => p.Code)
-                        .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.Part)
-                                .ThenInclude(m => m.EquipmentParts)
-                                    .ThenInclude(p => p.Equipment)
-                                        .ThenInclude(e => e.Code)
-                        .Include(a => a.AcceptanceReportItems)
-                                .ThenInclude(m => m.Part)
-                                    .ThenInclude(p => p.UnitOfMeasure)
-                        .Include(a => a.AcceptanceReportItems)
-                                .ThenInclude(m => m.Part)
-                                    .ThenInclude(p => p.Costs)
-                        .Include(a => a.AcceptanceReportItems)
-                            .ThenInclude(i => i.AcceptanceReportItemLogs),
-                    disableTracking: true);
+            var previousReports = await GetPreviousReportsAsync(productionOutput);
 
-                allPreviousAcceptanceReports = allAcceptanceReports
-                    .Where(a => a.ProductionOutput != null && a.ProductionOutput.StartMonth < productionOutput.StartMonth)
-                    .OrderByDescending(a => a.ProductionOutput.StartMonth)
-                    .ToList();
-            }
-            catch
-            {
-                // If there's any error, continue with empty list
-                allPreviousAcceptanceReports = new List<AcceptanceReport>();
-            }
-
-            // Category I: Materials in Contract Revenue
-            items.Add(await BuildMaterialsInContractRevenueCategory(
-                acceptanceReport, allPreviousAcceptanceReports, productionOutput, cancellationToken));
-
-            // Category II: Additional Cost
-            items.Add(await BuildAdditionalCostCategory(
-                acceptanceReport, allPreviousAcceptanceReports, productionOutput, cancellationToken));
-
-            // Category III: Quota-Based Material
-            items.Add(await BuildQuotaBasedMaterialCategory(
-                acceptanceReport, allPreviousAcceptanceReports, productionOutput, cancellationToken));
-
-            // Category IV: Asset
-            items.Add(await BuildAssetCategory(
-                acceptanceReport, allPreviousAcceptanceReports, productionOutput, cancellationToken));
+            sectionA = BuildSectionA(acceptanceReport, previousReports, productionOutput);
+            sectionB = BuildSectionB(acceptanceReport, previousReports, productionOutput);
+            sectionC = BuildSectionC(acceptanceReport, productionOutput);
+            sectionD = BuildSectionD(acceptanceReport, productionOutput);
         }
 
         return new ProductionOutputDetailResponseDto
@@ -131,762 +81,763 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork) : IRe
             EndMonth = productionOutput.EndMonth,
             ProductionMeters = productionOutput.ProductionMeters,
             StandardProductionMeters = productionOutput.StandardProductionMeters,
-            Items = items
+            SectionA = sectionA,
+            SectionB = sectionB,
+            SectionC = sectionC,
+            SectionD = sectionD,
         };
     }
 
-    private async Task<ProductionOutputDetailItemDto> BuildMaterialsInContractRevenueCategory(
-        AcceptanceReport acceptanceReport, List<AcceptanceReport> previousAcceptanceReports, ProductionOutput productionOutput, CancellationToken cancellationToken)
+    // =========================================================================
+    // SECTION A — Vật tư tính vào doanh thu khoán
+    //
+    //  Sub-section 1 (SectionAType=1): Vật liệu
+    //    Group theo AssignmentCode | "VTK"
+    //
+    //  Sub-section 2 (SectionAType=2): SCTX TH1 — lĩnh kỳ này
+    //    PartType=OtherPart               → group "VTK"
+    //    Có ProductionOrderId             → group theo ProductionOrderId
+    //    Không có ProductionOrderId       → group theo Equipment.Code
+    //
+    //  Sub-section 3 (SectionAType=3): SCTX TH2 — chi phí dài kỳ phân bổ
+    //    Group theo Equipment.Code | "VTK"
+    // =========================================================================
+    private List<MaterialGroupDto> BuildSectionA(
+        AcceptanceReport report,
+        List<AcceptanceReport> previousReports,
+        ProductionOutput productionOutput)
     {
-        var categoryItems = acceptanceReport.AcceptanceReportItems
+        var groups = new Dictionary<string, MaterialGroupDto>();
+
+        var sectionItems = report.AcceptanceReportItems
             .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
             .ToList();
 
-        var materialGroups = new Dictionary<string, MaterialGroupDto>();
-
-        // Process Materials từ current month (TH1)
-        var materials = categoryItems.Where(i => i.MaterialId.HasValue).ToList();
-        foreach (var item in materials)
+        // ── Sub-section 1: Vật liệu ──────────────────────────────────────────
+        foreach (var item in sectionItems.Where(i => i.MaterialId.HasValue && i.Material != null))
         {
-            if (item.Material == null)
+            var groupKey = $"A1_{item.Material!.AssignmentCode?.Code?.Value ?? "VTK"}";
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
-                continue;
-            }
+                GroupCode = item.Material.AssignmentCode?.Code?.Value ?? "VTK",
+                GroupName = item.Material.AssignmentCode?.Name ?? "Vật tư khác",
+                MaterialType = MatTypeLabel.VatLieu,
+                SectionAType = SecAType.VatLieu,
+                Materials = new(),
+                SubGroups = new()
+            });
 
-            var groupCode = item.Material.AssignmentCode?.Code?.Value ?? "VTK";
-            var groupName = item.Material.AssignmentCode?.Name ?? "Vật tư khác";
-
-            if (!materialGroups.ContainsKey(groupCode))
-            {
-                materialGroups[groupCode] = new MaterialGroupDto
-                {
-                    GroupCode = groupCode,
-                    GroupName = groupName,
-                    MaterialType = "Vật liệu",
-                    Materials = new()
-                };
-            }
-
-            var plannedUnitPrice = GetUnitPrice(item.Material.Costs, productionOutput.StartMonth);
-            var materialDetail = new MaterialDetailDto
-            {
-                MaterialId = item.Material.Id,
-                MaterialCode = item.Material.Code?.Value ?? "",
-                MaterialName = item.Material.Name,
-                UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? "",
-                PlannedUnitPrice = plannedUnitPrice,
-                ActualUnitPrice = 0,
-                IssuedInPeriod = new IssuedInPeriodDto
-                {
-                    Received = new ReceivedSuppliesDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        PlannedAmount = (decimal)item.IssuedQuantity * plannedUnitPrice,
-                        ActualAmount = 0
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
-                    }
-                },
-                ExportedInPeriod = new ExportedInPeriodDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    }
-                }
-            };
-
-            materialGroups[groupCode].Materials.Add(materialDetail);
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material.Costs, productionOutput.StartMonth);
+            group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
         }
 
-        // Process SCTX (Parts) từ current month (TH1)
-        var sctxItems = categoryItems.Where(i => i.PartId.HasValue).ToList();
-        foreach (var item in sctxItems)
+        // ── Sub-section 2: SCTX TH1 ──────────────────────────────────────────
+        foreach (var item in sectionItems.Where(i => i.PartId.HasValue && i.Part != null))
         {
-            if (item?.Part == null)
-            {
-                continue;
-            }
-
-            var part = item.Part;
-            var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
-            var groupCode = equipment?.Code?.Value ?? "VTK";
-            var groupName = equipment?.Name ?? "Vật tư khác";
-
-            if (!materialGroups.ContainsKey(groupCode))
-            {
-                materialGroups[groupCode] = new MaterialGroupDto
-                {
-                    GroupCode = groupCode,
-                    GroupName = groupName,
-                    MaterialType = "SCTX",
-                    Materials = new()
-                };
-            }
-
-            var plannedUnitPrice = GetUnitPrice(part.Costs, productionOutput.StartMonth);
-
-            // TH1: Logs từ current AcceptanceReport
-            var th1Logs = item.AcceptanceReportItemLogs
-                .Where(l => l.AcceptanceReportId == acceptanceReport.Id)
-                .ToList();
-
-            // Process TH1: Item mới lĩnh - CHỈ có IssuedInPeriod + ExportedInPeriod, KHÔNG có BeginningInventory
-            foreach (var log in th1Logs)
-            {
-                var materialDetail = new MaterialDetailDto
-                {
-                    MaterialId = part.Id,
-                    MaterialCode = part.Code?.Value ?? "",
-                    MaterialName = part.Name,
-                    UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
-                    PlannedUnitPrice = plannedUnitPrice,
-                    ActualUnitPrice = 0,
-                    IssuedInPeriod = new IssuedInPeriodDto
-                    {
-                        Received = new ReceivedSuppliesDto
-                        {
-                            Quantity = log.IssuedQuantity,
-                            PlannedAmount = (decimal)log.IssuedQuantity * plannedUnitPrice,
-                            ActualAmount = 0
-                        },
-                        Total = new TotalDto
-                        {
-                            Quantity = log.IssuedQuantity,
-                            Amount = (decimal)log.IssuedQuantity * plannedUnitPrice
-                        }
-                    },
-                    ExportedInPeriod = new ExportedInPeriodDto
-                    {
-                        ExportedToProduction = new ExportedToProductionDto
-                        {
-                            Quantity = item.ShippedQuantity,
-                            Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                        },
-                        LongTermExpense = new LongTermExpenseDto
-                        {
-                            Amount = log.AccountedValueThisPeriod
-                        },
-                        Total = new TotalDto
-                        {
-                            Quantity = 0,
-                            Amount = log.AccountedValueThisPeriod
-                        }
-                    }
-                    // NO BeginningInventory, NO EndingInventory
-                };
-
-                materialGroups[groupCode].Materials.Add(materialDetail);
-            }
-
-            // TH2: Item cũ từ kỳ trước - Có BeginningInventory + EndingInventory
-            // Lấy logs cũ với RemainingTime >= 0 (exclude logs từ current AcceptanceReport)
-            var previousLogs = item.AcceptanceReportItemLogs
-                .Where(l => l.RemainingTime >= 0)
-                .OrderByDescending(l => l.PeriodEndMonth)
-                .ToList();
-
-            // Loại bỏ logs từ current AcceptanceReport để chỉ lấy logs từ kỳ trước
-            var oldLogs = previousLogs
-                .Where(l => l.AcceptanceReportId != acceptanceReport.Id)
-                .ToList();
-
-            if (oldLogs.Any())
-            {
-                ProcessOldLog(oldLogs, item, part, groupCode, materialGroups, plannedUnitPrice, productionOutput);
-            }
-        }
-
-        // Process items từ các tháng trước (TH2) - lấy items từ previous AcceptanceReports
-        foreach (var prevAcceptanceReport in previousAcceptanceReports)
-        {
-            var prevCategoryItems = prevAcceptanceReport.AcceptanceReportItems
-                .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain)
-                .ToList();
-
-            var prevSctxItems = prevCategoryItems.Where(i => i.PartId.HasValue).ToList();
-            foreach (var item in prevSctxItems)
-            {
-                if (item?.Part == null)
-                {
-                    continue;
-                }
-
-                var part = item.Part;
-                var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
-                var groupCode = equipment?.Code?.Value ?? "VTK";
-                var groupName = equipment?.Name ?? "Vật tư khác";
-
-                if (!materialGroups.ContainsKey(groupCode))
-                {
-                    materialGroups[groupCode] = new MaterialGroupDto
-                    {
-                        GroupCode = groupCode,
-                        GroupName = groupName,
-                        MaterialType = "SCTX",
-                        Materials = new()
-                    };
-                }
-
-                var plannedUnitPrice = GetUnitPrice(part.Costs, productionOutput.StartMonth);
-
-                // Lấy logs từ previous AcceptanceReport
-                var previousLogs = item.AcceptanceReportItemLogs
-                    .Where(l => l.RemainingTime >= 0)
-                    .OrderByDescending(l => l.PeriodEndMonth)
-                    .ToList();
-
-                if (previousLogs.Any())
-                {
-                    ProcessOldLog(previousLogs, item, part, groupCode, materialGroups, plannedUnitPrice, productionOutput);
-                }
-            }
-        }
-
-        return new ProductionOutputDetailItemDto
-        {
-            CategoryType = 1,
-            CategoryName = "Vật tư tính vào doanh thu khoán",
-            MaterialGroups = materialGroups.Values.OrderBy(g => g.GroupCode).ToList()
-        };
-    }
-
-    private void ProcessOldLog(List<AcceptanceReportItemLog> oldLogs, AcceptanceReportItem item,
-        Part part, string groupCode, Dictionary<string, MaterialGroupDto> materialGroups,
-        decimal plannedUnitPrice, ProductionOutput productionOutput)
-    {
-        var latestLog = oldLogs.First();
-        var totalAllocatedTime = oldLogs.Sum(l => l.AllocationRatio);
-
-        var usageTime = latestLog.UsageTime;
-        var remainingTime = usageTime - totalAllocatedTime;
-
-        if (remainingTime > 0)
-        {
-            var pendingValueStart = latestLog.PendingValueEndPeriod;
-            var totalValueToAccount = pendingValueStart;
-
-            var actualOutput = productionOutput.ProductionMeters;
-            var standardOutput = productionOutput.StandardProductionMeters;
-
-            decimal valueByStandard = 0;
-            if (usageTime > 0 && standardOutput > 0)
-            {
-                valueByStandard = (totalValueToAccount / (decimal)usageTime)
-                                  * ((decimal)actualOutput / (decimal)standardOutput);
-            }
-
-            var allocationRatio = latestLog.AllocationRatio;
-            var accountedValueThisPeriod = valueByStandard * (decimal)allocationRatio;
-            var pendingValueEnd = totalValueToAccount - accountedValueThisPeriod;
-            var endingQuantity = item.IssuedQuantity - item.ShippedQuantity;
-
-            var materialDetail = new MaterialDetailDto
-            {
-                MaterialId = part.Id,
-                MaterialCode = part.Code?.Value ?? "",
-                MaterialName = part.Name,
-                UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
-                PlannedUnitPrice = plannedUnitPrice,
-                ActualUnitPrice = 0,
-                BeginningInventory = new BeginningInventoryDto
-                {
-                    PendingValue = pendingValueStart,
-                    Total = new TotalDto
-                    {
-                        Quantity = 0,
-                        Amount = pendingValueStart
-                    }
-                },
-                IssuedInPeriod = new IssuedInPeriodDto
-                {
-                    Received = new ReceivedSuppliesDto
-                    {
-                        Quantity = 0,
-                        PlannedAmount = 0,
-                        ActualAmount = 0
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = 0,
-                        Amount = 0
-                    }
-                },
-                ExportedInPeriod = new ExportedInPeriodDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    },
-                    LongTermExpense = new LongTermExpenseDto
-                    {
-                        Amount = accountedValueThisPeriod
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = 0,
-                        Amount = accountedValueThisPeriod
-                    }
-                },
-                EndingInventory = new EndingInventoryDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = endingQuantity,
-                        Amount = (decimal)endingQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = endingQuantity,
-                        Amount = pendingValueEnd
-                    }
-                }
-            };
-
-            materialGroups[groupCode].Materials.Add(materialDetail);
-        }
-    }
-
-    private async Task<ProductionOutputDetailItemDto> BuildAdditionalCostCategory(
-        AcceptanceReport acceptanceReport, List<AcceptanceReport> previousAcceptanceReports, ProductionOutput productionOutput, CancellationToken cancellationToken)
-    {
-        var categoryItems = acceptanceReport.AcceptanceReportItems
-            .Where(i => i.AdditionalCost != AdditionalCost.None)
-            .ToList();
-
-        var materialGroups = new Dictionary<string, MaterialGroupDto>();
-
-        // Process Materials
-        var materials = categoryItems.Where(i => i.MaterialId.HasValue).ToList();
-        foreach (var item in materials)
-        {
-            if (item.Material == null)
-            {
-                continue;
-            }
-
-            var groupCode = "ADDITIONAL_MATERIAL";
-            var groupName = "Bổ sung chi phí";
-
-            if (!materialGroups.ContainsKey(groupCode))
-            {
-                materialGroups[groupCode] = new MaterialGroupDto
-                {
-                    GroupCode = groupCode,
-                    GroupName = groupName,
-                    MaterialType = "Vật liệu",
-                    Materials = new()
-                };
-            }
-
-            var plannedUnitPrice = GetUnitPrice(item.Material.Costs, productionOutput.StartMonth);
-            var materialDetail = new MaterialDetailDto
-            {
-                MaterialId = item.Material.Id,
-                MaterialCode = item.Material.Code?.Value ?? "",
-                MaterialName = item.Material.Name,
-                UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? "",
-                PlannedUnitPrice = plannedUnitPrice,
-                ActualUnitPrice = 0,
-                IssuedInPeriod = new IssuedInPeriodDto
-                {
-                    Received = new ReceivedSuppliesDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        PlannedAmount = (decimal)item.IssuedQuantity * plannedUnitPrice,
-                        ActualAmount = 0
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
-                    }
-                },
-                ExportedInPeriod = new ExportedInPeriodDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    }
-                }
-            };
-
-            materialGroups[groupCode].Materials.Add(materialDetail);
-        }
-
-        // Process SCTX
-        var sctxItems = categoryItems.Where(i => i.PartId.HasValue).ToList();
-        foreach (var item in sctxItems)
-        {
-            if (item?.Part == null)
-            {
-                continue;
-            }
-
-            var part = item.Part;
-            var groupCode = "ADDITIONAL_SCTX";
-            var groupName = "Bổ sung chi phí";
-
-            if (!materialGroups.ContainsKey(groupCode))
-            {
-                materialGroups[groupCode] = new MaterialGroupDto
-                {
-                    GroupCode = groupCode,
-                    GroupName = groupName,
-                    MaterialType = "SCTX",
-                    Materials = new()
-                };
-            }
-
-            var plannedUnitPrice = GetUnitPrice(part.Costs, productionOutput.StartMonth);
-            var materialDetail = new MaterialDetailDto
-            {
-                MaterialId = part.Id,
-                MaterialCode = part.Code?.Value ?? "",
-                MaterialName = part.Name,
-                UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
-                PlannedUnitPrice = plannedUnitPrice,
-                ActualUnitPrice = 0,
-                IssuedInPeriod = new IssuedInPeriodDto
-                {
-                    Received = new ReceivedSuppliesDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        PlannedAmount = (decimal)item.IssuedQuantity * plannedUnitPrice,
-                        ActualAmount = 0
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
-                    }
-                },
-                ExportedInPeriod = new ExportedInPeriodDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    }
-                }
-            };
-
-            materialGroups[groupCode].Materials.Add(materialDetail);
-        }
-
-        return new ProductionOutputDetailItemDto
-        {
-            CategoryType = 2,
-            CategoryName = "Bổ sung chi phí",
-            MaterialGroups = materialGroups.Values.OrderBy(g => g.GroupCode).ToList()
-        };
-    }
-
-    private async Task<ProductionOutputDetailItemDto> BuildQuotaBasedMaterialCategory(
-        AcceptanceReport acceptanceReport, List<AcceptanceReport> previousAcceptanceReports, ProductionOutput productionOutput, CancellationToken cancellationToken)
-    {
-        var categoryItems = acceptanceReport.AcceptanceReportItems
-            .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None)
-            .ToList();
-
-        var materialGroups = new Dictionary<string, MaterialGroupDto>();
-
-        foreach (var item in categoryItems)
-        {
-            if (item.Material == null)
-            {
-                continue;
-            }
-
-            // Xác định groupCode và cấu trúc dựa trên QuotaBasedMaterial
-            string groupCode;
-            string groupName;
-            string materialTypeName;
-            string? subGroupCode = null;
-            string? subGroupName = null;
-            string? state = null;
-            bool hasSubGroups = false;
-
-            switch (item.QuotaBasedMaterial)
-            {
-                case QuotaBasedMaterial.MineSupport:
-                    groupCode = "MineSupport";
-                    groupName = "Vì chống lò";
-                    materialTypeName = "Vì chống lò";
-                    hasSubGroups = true;
-
-                    if (item.QuotaBasedMaterialType == QuotaBasedMaterialType.New)
-                    {
-                        subGroupCode = "New";
-                        subGroupName = "Lĩnh mới";
-                        state = "Lĩnh mới";
-                    }
-                    else // Reusable
-                    {
-                        subGroupCode = "Reusable";
-                        subGroupName = "Lĩnh tái sử dụng";
-                        state = "Lĩnh tái sử dụng";
-                    }
-                    break;
-
-                case QuotaBasedMaterial.SupportAccessories:
-                    groupCode = "SupportAccessories";
-                    groupName = "Phụ kiện chống lò";
-                    materialTypeName = "Phụ kiện chống lò";
-                    hasSubGroups = true;
-
-                    if (item.QuotaBasedMaterialType == QuotaBasedMaterialType.New)
-                    {
-                        subGroupCode = "New";
-                        subGroupName = "Lĩnh mới";
-                        state = "Lĩnh mới";
-                    }
-                    else // Reusable
-                    {
-                        subGroupCode = "Reusable";
-                        subGroupName = "Lĩnh tái sử dụng";
-                        state = "Lĩnh tái sử dụng";
-                    }
-                    break;
-
-                case QuotaBasedMaterial.MineTimber:
-                    groupCode = "MineTimber";
-                    groupName = "Gỗ lò";
-                    materialTypeName = "Gỗ lò";
-                    hasSubGroups = false;
-                    break;
-
-                default:
-                    groupCode = "VTK";
-                    groupName = "Vật tư khác";
-                    materialTypeName = "Vật tư theo hạn mức";
-                    hasSubGroups = false;
-                    break;
-            }
-
-            // Tạo hoặc lấy MaterialGroup
-            if (!materialGroups.ContainsKey(groupCode))
-            {
-                materialGroups[groupCode] = new MaterialGroupDto
-                {
-                    GroupCode = groupCode,
-                    GroupName = groupName,
-                    MaterialType = materialTypeName,
-                    Materials = new(),
-                    SubGroups = new()
-                };
-            }
-
-            var plannedUnitPrice = GetUnitPrice(item.Material.Costs, productionOutput.StartMonth);
-            var endingQuantity = item.IssuedQuantity - item.ShippedQuantity;
-
-            var materialDetail = new MaterialDetailDto
-            {
-                MaterialId = item.Material.Id,
-                MaterialCode = item.Material.Code?.Value ?? "",
-                MaterialName = item.Material.Name,
-                UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? "",
-                PlannedUnitPrice = plannedUnitPrice,
-                ActualUnitPrice = 0,
-                State = state,
-                IssuedInPeriod = new IssuedInPeriodDto
-                {
-                    Received = new ReceivedSuppliesDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        PlannedAmount = (decimal)item.IssuedQuantity * plannedUnitPrice,
-                        ActualAmount = 0
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.IssuedQuantity,
-                        Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
-                    }
-                },
-                ExportedInPeriod = new ExportedInPeriodDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = item.ShippedQuantity,
-                        Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                    }
-                },
-                EndingInventory = new EndingInventoryDto
-                {
-                    ExportedToProduction = new ExportedToProductionDto
-                    {
-                        Quantity = endingQuantity,
-                        Amount = (decimal)endingQuantity * plannedUnitPrice
-                    },
-                    Total = new TotalDto
-                    {
-                        Quantity = endingQuantity,
-                        Amount = (decimal)endingQuantity * plannedUnitPrice
-                    }
-                }
-            };
-
-            // Thêm vào SubGroup hoặc Materials trực tiếp
-            if (hasSubGroups && subGroupCode != null && subGroupName != null)
-            {
-                // Tìm hoặc tạo SubGroup
-                var subGroup = materialGroups[groupCode].SubGroups
-                    .FirstOrDefault(sg => sg.SubGroupCode == subGroupCode);
-
-                if (subGroup == null)
-                {
-                    subGroup = new SubGroupDto
-                    {
-                        SubGroupCode = subGroupCode,
-                        SubGroupName = subGroupName,
-                        Materials = new()
-                    };
-                    materialGroups[groupCode].SubGroups.Add(subGroup);
-                }
-
-                subGroup.Materials.Add(materialDetail);
-            }
-            else
-            {
-                // Không có subgroup (MineTimber) → thêm trực tiếp vào Materials
-                materialGroups[groupCode].Materials.Add(materialDetail);
-            }
-        }
-
-        // Sắp xếp SubGroups theo thứ tự: New trước, Reusable sau
-        foreach (var group in materialGroups.Values)
-        {
-            if (group.SubGroups.Any())
-            {
-                var sortedSubGroups = group.SubGroups
-                    .OrderBy(sg => sg.SubGroupCode == "New" ? 0 : 1)
-                    .ToList();
-
-                group.SubGroups.Clear();
-                foreach (var sg in sortedSubGroups)
-                {
-                    group.SubGroups.Add(sg);
-                }
-            }
-        }
-
-        return new ProductionOutputDetailItemDto
-        {
-            CategoryType = 3,
-            CategoryName = "Vật tư theo hạn mức",
-            MaterialGroups = materialGroups.Values
-                .OrderBy(g => g.GroupCode)
-                .ToList()
-        };
-    }
-
-    private async Task<ProductionOutputDetailItemDto> BuildAssetCategory(
-        AcceptanceReport acceptanceReport, List<AcceptanceReport> previousAcceptanceReports, ProductionOutput productionOutput, CancellationToken cancellationToken)
-    {
-        var categoryItems = acceptanceReport.AcceptanceReportItems
-            .Where(i => i.Asset != Asset.None)
-            .ToList();
-
-        var materialGroups = new Dictionary<string, MaterialGroupDto>();
-        var groupCode = "ASSET";
-        var groupName = "Tài sản";
-
-        if (categoryItems.Any())
-        {
-            materialGroups[groupCode] = new MaterialGroupDto
+            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
                 GroupName = groupName,
-                MaterialType = "Tài sản",
-                Materials = new()
-            };
+                MaterialType = MatTypeLabel.Sctx,
+                SectionAType = SecAType.SctxTh1,
+                ProductionOrderId = item.ProductionOrderId,
+                Materials = new(),
+                SubGroups = new()
+            });
 
-            foreach (var item in categoryItems)
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Part!.Costs, productionOutput.StartMonth);
+            var th1Logs = item.AcceptanceReportItemLogs
+                .Where(l => l.AcceptanceReportId == report.Id)
+                .ToList();
+
+            foreach (var log in th1Logs)
             {
-                if (item.Material == null)
+                group.Materials.Add(BuildSctxTh1Detail(item, item.Part, plannedPrice, actualPrice, log));
+            }
+        }
+
+        // ── Sub-section 3: SCTX TH2 (từ current report — logs kỳ trước còn tồn) ──
+        foreach (var item in sectionItems.Where(i => i.PartId.HasValue && i.Part != null))
+        {
+            var part = item.Part!;
+            var oldLogs = item.AcceptanceReportItemLogs
+                .Where(l => l.AcceptanceReportId != report.Id && l.RemainingTime > 0)
+                .OrderByDescending(l => l.PeriodEndMonth)
+                .ToList();
+
+            if (!oldLogs.Any())
+            {
+                continue;
+            }
+
+            var equipment = part.EquipmentParts?.FirstOrDefault()?.Equipment;
+            var groupCode = equipment?.Code?.Value ?? "VTK";
+            var groupKey = $"A3_{groupCode}";
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = groupCode,
+                GroupName = equipment?.Name ?? "Vật tư khác",
+                MaterialType = MatTypeLabel.Sctx,
+                SectionAType = SecAType.SctxTh2,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
+            group.Materials.Add(BuildSctxTh2Detail(item, part, plannedPrice, actualPrice, oldLogs, productionOutput));
+        }
+
+        // SCTX TH2 từ previous reports
+        foreach (var prevReport in previousReports)
+        {
+            var prevItems = prevReport.AcceptanceReportItems
+                .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+                         && i.PartId.HasValue && i.Part != null)
+                .ToList();
+
+            foreach (var item in prevItems)
+            {
+                var oldLogs = item.AcceptanceReportItemLogs
+                    .Where(l => l.RemainingTime > 0)
+                    .OrderByDescending(l => l.PeriodEndMonth)
+                    .ToList();
+
+                if (!oldLogs.Any())
                 {
                     continue;
                 }
 
-                var plannedUnitPrice = GetUnitPrice(item.Material.Costs, productionOutput.StartMonth);
-                var materialDetail = new MaterialDetailDto
+                var equipment = item.Part!.EquipmentParts?.FirstOrDefault()?.Equipment;
+                var groupCode = equipment?.Code?.Value ?? "VTK";
+                var groupKey = $"A3_{groupCode}";
+                var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
-                    MaterialId = item.Material.Id,
-                    MaterialCode = item.Material.Code?.Value ?? "",
-                    MaterialName = item.Material.Name,
-                    UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? "",
-                    PlannedUnitPrice = plannedUnitPrice,
-                    ActualUnitPrice = 0,
-                    IssuedInPeriod = new IssuedInPeriodDto
-                    {
-                        Received = new ReceivedSuppliesDto
-                        {
-                            Quantity = item.IssuedQuantity,
-                            PlannedAmount = (decimal)item.IssuedQuantity * plannedUnitPrice,
-                            ActualAmount = 0
-                        },
-                        Total = new TotalDto
-                        {
-                            Quantity = item.IssuedQuantity,
-                            Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
-                        }
-                    },
-                    ExportedInPeriod = new ExportedInPeriodDto
-                    {
-                        ExportedToProduction = new ExportedToProductionDto
-                        {
-                            Quantity = item.ShippedQuantity,
-                            Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                        },
-                        Total = new TotalDto
-                        {
-                            Quantity = item.ShippedQuantity,
-                            Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
-                        }
-                    }
-                };
+                    GroupCode = groupCode,
+                    GroupName = equipment?.Name ?? "Vật tư khác",
+                    MaterialType = MatTypeLabel.Sctx,
+                    SectionAType = SecAType.SctxTh2,
+                    Materials = new(),
+                    SubGroups = new()
+                });
 
-                materialGroups[groupCode].Materials.Add(materialDetail);
+                var (plannedPrice, actualPrice) = GetUnitPrices(item.Part.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildSctxTh2Detail(item, item.Part, plannedPrice, actualPrice, oldLogs, productionOutput));
             }
         }
 
-        return new ProductionOutputDetailItemDto
+        return groups.Values
+            .OrderBy(g => g.SectionAType)
+            .ThenBy(g => g.GroupCode)
+            .ToList();
+    }
+
+    // =========================================================================
+    // SECTION B — Quyết định bổ sung chi phí
+    //
+    //  AdditionalCost = Material:
+    //    Có ProductionOrderId → group theo ProductionOrderId
+    //    Không có             → group "NO_ORDER" (flat)
+    //
+    //  AdditionalCost = Maintain (SCTX):
+    //    Giống SectionA SCTX TH1:
+    //    PartType=OtherPart   → "VTK"
+    //    Có ProductionOrder   → group theo ProductionOrderId
+    //    Không có             → group theo Equipment.Code
+    //
+    //  AdditionalCost = OtherMaterial:
+    //    Group theo OtherMaterialDetail enum
+    // =========================================================================
+    private List<MaterialGroupDto> BuildSectionB(
+        AcceptanceReport report,
+        List<AcceptanceReport> previousReports,
+        ProductionOutput productionOutput)
+    {
+        var groups = new Dictionary<string, MaterialGroupDto>();
+
+        var sectionItems = report.AcceptanceReportItems
+            .Where(i => i.AdditionalCost != AdditionalCost.None)
+            .ToList();
+
+        // ── Vật liệu ─────────────────────────────────────────────────────────
+        foreach (var item in sectionItems
+            .Where(i => i.AdditionalCost == AdditionalCost.Material
+                     && i.MaterialId.HasValue && i.Material != null))
         {
-            CategoryType = 4,
-            CategoryName = "Tài sản",
-            MaterialGroups = materialGroups.Values.ToList()
+            string groupCode, groupName, groupKey;
+            Guid? productionOrderId = null;
+
+            if (item.ProductionOrderId.HasValue)
+            {
+                groupCode = item.ProductionOrderId.Value.ToString();
+                groupName = groupCode; // FE tự resolve tên từ ProductionOrderId
+                groupKey = $"BM_{groupCode}";
+                productionOrderId = item.ProductionOrderId;
+            }
+            else
+            {
+                groupCode = "NO_ORDER";
+                groupName = "";
+                groupKey = "BM_NO_ORDER";
+            }
+
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = groupCode,
+                GroupName = groupName,
+                MaterialType = MatTypeLabel.VatLieu,
+                AdditionalCostType = AdditionalCost.Material,
+                ProductionOrderId = productionOrderId,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
+            group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
+        }
+
+        // ── SCTX TH1 ─────────────────────────────────────────────────────────
+        foreach (var item in sectionItems
+            .Where(i => i.AdditionalCost == AdditionalCost.Maintain
+                     && i.PartId.HasValue && i.Part != null))
+        {
+            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item);
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = groupCode,
+                GroupName = groupName,
+                MaterialType = MatTypeLabel.Sctx,
+                AdditionalCostType = AdditionalCost.Maintain,
+                ProductionOrderId = item.ProductionOrderId,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Part!.Costs, productionOutput.StartMonth);
+            var th1Logs = item.AcceptanceReportItemLogs
+                .Where(l => l.AcceptanceReportId == report.Id)
+                .ToList();
+            foreach (var log in th1Logs)
+            {
+                group.Materials.Add(BuildSctxTh1Detail(item, item.Part, plannedPrice, actualPrice, log));
+            }
+
+            var oldLogs = item.AcceptanceReportItemLogs
+                .Where(l => l.AcceptanceReportId != report.Id && l.RemainingTime > 0)
+                .OrderByDescending(l => l.PeriodEndMonth)
+                .ToList();
+            if (oldLogs.Any())
+            {
+                group.Materials.Add(BuildSctxTh2Detail(item, item.Part, plannedPrice, actualPrice, oldLogs, productionOutput));
+            }
+        }
+
+        // SCTX TH2 từ previous reports
+        foreach (var prevReport in previousReports)
+        {
+            var prevItems = prevReport.AcceptanceReportItems
+                .Where(i => i.AdditionalCost == AdditionalCost.Maintain
+                         && i.PartId.HasValue && i.Part != null)
+                .ToList();
+
+            foreach (var item in prevItems)
+            {
+                var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item);
+                var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+                {
+                    GroupCode = groupCode,
+                    GroupName = groupName,
+                    MaterialType = MatTypeLabel.Sctx,
+                    AdditionalCostType = AdditionalCost.Maintain,
+                    ProductionOrderId = item.ProductionOrderId,
+                    Materials = new(),
+                    SubGroups = new()
+                });
+
+                var oldLogs = item.AcceptanceReportItemLogs
+                    .Where(l => l.RemainingTime > 0)
+                    .OrderByDescending(l => l.PeriodEndMonth)
+                    .ToList();
+                if (!oldLogs.Any())
+                {
+                    continue;
+                }
+
+                var (plannedPrice, actualPrice) = GetUnitPrices(item.Part!.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildSctxTh2Detail(item, item.Part, plannedPrice, actualPrice, oldLogs, productionOutput));
+            }
+        }
+
+        // ── OtherMaterial ─────────────────────────────────────────────────────
+        foreach (var item in sectionItems
+            .Where(i => i.AdditionalCost == AdditionalCost.OtherMaterial
+                     && i.MaterialId.HasValue && i.Material != null))
+        {
+            var groupKey = $"BO_{item.OtherMaterialDetail}";
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = item.OtherMaterialDetail.ToString()!,
+                GroupName = "",
+                MaterialType = MatTypeLabel.VatLieu,
+                AdditionalCostType = AdditionalCost.OtherMaterial,
+                OtherMaterialDetail = item.OtherMaterialDetail,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
+            group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
+        }
+
+        return groups.Values
+            .OrderBy(g => (int)(g.AdditionalCostType ?? AdditionalCost.None))
+            .ThenBy(g => g.GroupCode)
+            .ToList();
+    }
+
+    // =========================================================================
+    // SECTION C — Vật tư khoán theo hạn mức
+    //   MineSupport / SupportAccessories → SubGroups: New / Reusable
+    //   MineTimber                       → Materials trực tiếp
+    // =========================================================================
+    private List<MaterialGroupDto> BuildSectionC(
+        AcceptanceReport report, ProductionOutput productionOutput)
+    {
+        var groups = new Dictionary<string, MaterialGroupDto>();
+
+        var sectionItems = report.AcceptanceReportItems
+            .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None
+                     && i.MaterialId.HasValue && i.Material != null)
+            .ToList();
+
+        foreach (var item in sectionItems)
+        {
+            var (groupKey, groupName, hasSubGroup) = item.QuotaBasedMaterial switch
+            {
+                QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
+                QuotaBasedMaterial.SupportAccessories => ("SupportAccessories", "Phụ kiện chống lò", true),
+                QuotaBasedMaterial.MineTimber => ("MineTimber", "Gỗ lò", false),
+                _ => ("VTK", "Vật tư khác", false)
+            };
+
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = groupKey,
+                GroupName = groupName,
+                MaterialType = groupName,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
+            var detail = BuildQuotaBasedDetail(item, item.Material, plannedPrice, actualPrice);
+
+            if (hasSubGroup)
+            {
+                var subCode = item.QuotaBasedMaterialType == QuotaBasedMaterialType.New ? "New" : "Reusable";
+                var subGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == subCode);
+                if (subGroup == null)
+                {
+                    subGroup = new SubGroupDto { SubGroupCode = subCode, Materials = new() };
+                    group.SubGroups.Add(subGroup);
+                }
+                subGroup.Materials.Add(detail);
+            }
+            else
+            {
+                group.Materials.Add(detail);
+            }
+        }
+
+        foreach (var g in groups.Values.Where(g => g.SubGroups.Any()))
+        {
+            var sorted = g.SubGroups.OrderBy(s => s.SubGroupCode == "New" ? 0 : 1).ToList();
+            g.SubGroups.Clear();
+            foreach (var s in sorted)
+            {
+                g.SubGroups.Add(s);
+            }
+        }
+
+        return groups.Values
+            .OrderBy(g => g.GroupCode == "MineSupport" ? 0
+                        : g.GroupCode == "SupportAccessories" ? 1
+                        : g.GroupCode == "MineTimber" ? 2 : 3)
+            .ToList();
+    }
+
+    // =========================================================================
+    // SECTION D — Tài sản
+    // =========================================================================
+    private List<MaterialGroupDto> BuildSectionD(
+        AcceptanceReport report, ProductionOutput productionOutput)
+    {
+        var sectionItems = report.AcceptanceReportItems
+            .Where(i => i.Asset != Asset.None && i.MaterialId.HasValue && i.Material != null)
+            .ToList();
+
+        if (sectionItems.Any())
+        {
+            var group = new MaterialGroupDto
+            {
+                GroupCode = "ASSET",
+                GroupName = "Tài sản",
+                MaterialType = "Tài sản",
+                Materials = new(),
+                SubGroups = new()
+            };
+
+            foreach (var item in sectionItems)
+            {
+                var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
+            }
+
+            return new() { group };
+        }
+
+        return new();
+    }
+
+    // =========================================================================
+    // SCTX group key resolver
+    //   PartType=OtherPart   → "VTK"
+    //   Có ProductionOrder   → ProductionOrderId.ToString()
+    //   Không có             → Equipment.Code
+    // =========================================================================
+    private static (string key, string code, string name) ResolveSctxGroupKey(
+        string prefix, AcceptanceReportItem item)
+    {
+        if (item.Part!.Type == PartType.OtherPart)
+        {
+            return ($"{prefix}_VTK", "VTK", "Vật tư khác (phụ tùng khác)");
+        }
+
+        if (item.ProductionOrderId.HasValue)
+        {
+            var id = item.ProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id); // FE resolve tên từ id
+        }
+
+        var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
+        var code = equipment?.Code?.Value ?? "VTK";
+        var name = equipment?.Name ?? "Vật tư khác";
+        return ($"{prefix}_EQ_{code}", code, name);
+    }
+
+    // =========================================================================
+    // Detail builders
+    // =========================================================================
+
+    private static MaterialDetailDto BuildVatLieuDetail(
+        AcceptanceReportItem item, Material material, decimal plannedPrice, decimal actualPrice)
+    {
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        var exported = BuildExportedInPeriod(item, plannedPrice);
+        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var hasProductionOrder = item.ProductionOrderId.HasValue;
+
+        return new MaterialDetailDto
+        {
+            MaterialId = material.Id,
+            MaterialCode = material.Code?.Value ?? "",
+            MaterialName = material.Name,
+            UnitOfMeasureName = material.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = exported,
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+            }
         };
     }
 
-    private decimal GetUnitPrice(IReadOnlyCollection<Cost> costs, DateOnly month)
+    private static MaterialDetailDto BuildSctxTh1Detail(
+        AcceptanceReportItem item, Part part, decimal plannedPrice, decimal actualPrice, AcceptanceReportItemLog log)
     {
-        return (decimal)(costs?.FirstOrDefault(c =>
-            c.StartMonth <= month && c.EndMonth >= month)?.Amount ?? 0);
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        var exported = BuildExportedInPeriod(item, plannedPrice);
+        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var hasProductionOrder = item.ProductionOrderId.HasValue;
+
+        // Keep TH1 behavior: total exported reflects long-term accounted this period.
+        exported.LongTermExpense = new LongTermExpenseDto { Amount = log.AccountedValueThisPeriod };
+        exported.Total = new TotalDto { Quantity = 0, Amount = log.AccountedValueThisPeriod };
+
+        return new MaterialDetailDto
+        {
+            MaterialId = part.Id,
+            MaterialCode = part.Code?.Value ?? "",
+            MaterialName = part.Name,
+            UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = exported,
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+            }
+        };
+    }
+
+    private static MaterialDetailDto BuildSctxTh2Detail(
+        AcceptanceReportItem item, Part part, decimal plannedPrice, decimal actualPrice,
+        List<AcceptanceReportItemLog> oldLogs, ProductionOutput productionOutput)
+    {
+        var latestLog = oldLogs.First();
+        var pendingStart = latestLog.PendingValueEndPeriod;
+
+        decimal accountedThisPeriod = 0;
+        if (latestLog.UsageTime > 0 && productionOutput.StandardProductionMeters > 0)
+        {
+            var valueByStandard = (pendingStart / (decimal)latestLog.UsageTime)
+                * ((decimal)productionOutput.ProductionMeters
+                   / (decimal)productionOutput.StandardProductionMeters);
+            accountedThisPeriod = Math.Min(pendingStart, valueByStandard * (decimal)latestLog.AllocationRatio);
+        }
+
+        var pendingEnd = pendingStart - accountedThisPeriod;
+        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var hasProductionOrder = item.ProductionOrderId.HasValue;
+
+        // BeginningInventory: carry-forward từ tồn cuối kỳ tháng trước
+        // Tách RemainingAtSite vs RemainingByOrder theo ProductionOrderId
+        var beginningInventory = new BeginningInventoryDto
+        {
+            RemainingAtSite = !hasProductionOrder
+                ? new InventoryQuantityDto { Quantity = 0, Amount = pendingStart }
+                : null,
+            RemainingByOrder = hasProductionOrder
+                ? new InventoryQuantityDto { Quantity = 0, Amount = pendingStart }
+                : null,
+            PendingValue = pendingStart,
+            Total = new TotalDto { Quantity = 0, Amount = pendingStart }
+        };
+
+        // EndingInventory: tách tương tự
+        var endingInventory = new EndingInventoryDto
+        {
+            RemainingAtSite = !hasProductionOrder
+                ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                : null,
+            RemainingByOrder = hasProductionOrder
+                ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                : null,
+            PendingValue = pendingEnd,
+            Total = new TotalDto { Quantity = endingQty, Amount = pendingEnd }
+        };
+
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        issued.Received = new ReceivedSuppliesDto { Quantity = 0, PlannedAmount = 0, ActualAmount = 0 };
+        issued.Total = new TotalDto { Quantity = 0, Amount = 0 };
+
+        var exported = BuildExportedInPeriod(item, plannedPrice);
+        exported.LongTermExpense = new LongTermExpenseDto { Amount = accountedThisPeriod };
+        exported.Total = new TotalDto { Quantity = 0, Amount = accountedThisPeriod };
+
+        return new MaterialDetailDto
+        {
+            MaterialId = part.Id,
+            MaterialCode = part.Code?.Value ?? "",
+            MaterialName = part.Name,
+            UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            BeginningInventory = beginningInventory,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = exported,
+            EndingInventory = endingInventory
+        };
+    }
+
+    private static MaterialDetailDto BuildQuotaBasedDetail(
+        AcceptanceReportItem item, Material material, decimal plannedPrice, decimal actualPrice)
+    {
+        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var hasProductionOrder = item.ProductionOrderId.HasValue;
+
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        var exported = BuildExportedInPeriod(item, plannedPrice);
+
+        return new MaterialDetailDto
+        {
+            MaterialId = material.Id,
+            MaterialCode = material.Code?.Value ?? "",
+            MaterialName = material.Name,
+            UnitOfMeasureName = material.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = exported,
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+            }
+        };
+    }
+
+    // =========================================================================
+    // Utilities
+    // =========================================================================
+
+    private async Task<List<AcceptanceReport>> GetPreviousReportsAsync(ProductionOutput productionOutput)
+    {
+        try
+        {
+            var all = await _acceptanceReportRepository.GetAllAsync(
+                include: q => q
+                    .Include(a => a.ProductionOutput)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
+                            .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.AcceptanceReportItemLogs),
+                disableTracking: true);
+
+            return all
+                .Where(a => a.ProductionOutput != null
+                         && a.ProductionOutput.StartMonth < productionOutput.StartMonth)
+                .OrderByDescending(a => a.ProductionOutput.StartMonth)
+                .ToList();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private static MaterialGroupDto GetOrAddGroup(
+        Dictionary<string, MaterialGroupDto> dict,
+        string key,
+        MaterialGroupDto newGroup)
+    {
+        if (!dict.ContainsKey(key))
+        {
+            dict[key] = newGroup;
+        }
+
+        return dict[key];
+    }
+
+    private static IssuedInPeriodDto BuildIssuedInPeriod(
+        AcceptanceReportItem item,
+        decimal plannedUnitPrice,
+        decimal actualUnitPrice)
+    {
+        var receiptQty = GetIssuedQuantity(item, IssuedQuantityType.LinhVatTuTraPhieu);
+        var borrowedQty = GetIssuedQuantity(item, IssuedQuantityType.VayVhuaTraPhieu);
+        var returnPrevQty = GetIssuedQuantity(item, IssuedQuantityType.TraPhieuThangTruoc);
+        var otherQty = GetIssuedQuantity(item, IssuedQuantityType.LinhKhac);
+
+        return new IssuedInPeriodDto
+        {
+            Received = new ReceivedSuppliesDto
+            {
+                Quantity = receiptQty,
+                PlannedAmount = (decimal)receiptQty * plannedUnitPrice,
+                ActualAmount = (decimal)receiptQty * actualUnitPrice
+            },
+            BorrowedNoVoucher = new QuantityAmountDto
+            {
+                Quantity = borrowedQty,
+                Amount = (decimal)borrowedQty * plannedUnitPrice
+            },
+            ReturnPreviousMonthVoucher = new QuantityAmountDto
+            {
+                Quantity = returnPrevQty,
+                Amount = (decimal)returnPrevQty * plannedUnitPrice
+            },
+            OtherReceipt = new QuantityAmountDto
+            {
+                Quantity = otherQty,
+                Amount = (decimal)otherQty * plannedUnitPrice
+            },
+            Total = new TotalDto
+            {
+                Quantity = item.IssuedQuantity,
+                Amount = (decimal)item.IssuedQuantity * plannedUnitPrice
+            }
+        };
+    }
+
+    private static ExportedInPeriodDto BuildExportedInPeriod(
+        AcceptanceReportItem item,
+        decimal plannedUnitPrice)
+    {
+        var productionQty = GetShippedQuantity(item, ShippedQuantityType.XuatChoSanXuat);
+        var otherQty = GetShippedQuantity(item, ShippedQuantityType.XuatKhac);
+        var contractQty = GetShippedQuantity(item, ShippedQuantityType.QuyetToanGiaoKhoan);
+
+        return new ExportedInPeriodDto
+        {
+            ExportedToProduction = new ExportedToProductionDto
+            {
+                Quantity = productionQty,
+                Amount = (decimal)productionQty * plannedUnitPrice
+            },
+            OtherExport = new QuantityAmountDto
+            {
+                Quantity = otherQty,
+                Amount = (decimal)otherQty * plannedUnitPrice
+            },
+            ContractSettlement = new QuantityAmountDto
+            {
+                Quantity = contractQty,
+                Amount = (decimal)contractQty * plannedUnitPrice
+            },
+            Total = new TotalDto
+            {
+                Quantity = item.ShippedQuantity,
+                Amount = (decimal)item.ShippedQuantity * plannedUnitPrice
+            }
+        };
+    }
+
+    private static double GetIssuedQuantity(AcceptanceReportItem item, IssuedQuantityType type)
+        => item.IssuedDetails
+            .Where(d => d.Type == type)
+            .Sum(d => d.Quantity);
+
+    private static double GetShippedQuantity(AcceptanceReportItem item, ShippedQuantityType type)
+        => item.ShippedDetails
+            .Where(d => d.Type == type)
+            .Sum(d => d.Quantity);
+
+    private static (decimal planned, decimal actual) GetUnitPrices(IReadOnlyCollection<Cost> costs, DateOnly month)
+    {
+        var cost = costs?.FirstOrDefault(c => c.StartMonth <= month && c.EndMonth >= month);
+        if (cost == null)
+        {
+            return (0, 0);
+        }
+
+        return ((decimal)cost.Amount, (decimal)cost.ActualAmount);
     }
 }

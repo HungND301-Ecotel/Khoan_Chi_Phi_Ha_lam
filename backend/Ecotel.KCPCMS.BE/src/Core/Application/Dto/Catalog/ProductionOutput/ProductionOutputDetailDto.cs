@@ -1,120 +1,235 @@
+using Domain.Common.Enums;
+
 namespace Application.Dto.Catalog.ProductionOutput;
 
-#region Main Response
+// ============================================================
+// Main Response
+// ============================================================
 
 public record ProductionOutputDetailResponseDto
 {
-    public Guid ProductionOutputId { get; init; }
-    public DateOnly StartMonth { get; init; }
-    public DateOnly EndMonth { get; init; }
-    public double ProductionMeters { get; init; }
-    public double StandardProductionMeters { get; init; }
-    public List<ProductionOutputDetailItemDto> Items { get; init; } = new();
+    public Guid ProductionOutputId { get; set; }
+    public DateOnly StartMonth { get; set; }
+    public DateOnly EndMonth { get; set; }
+    public double ProductionMeters { get; set; }
+    public double StandardProductionMeters { get; set; }
+
+    /// A. Vật tư tính vào doanh thu khoán
+    /// FE phân biệt sub-section qua SectionAType:
+    ///   1 = Vật liệu
+    ///   2 = Chi phí SCTX (theo kế hoạch vật tư) — TH1
+    ///   3 = Chi phí SCTX dài kỳ phân bổ — TH2
+    public List<MaterialGroupDto> SectionA { get; set; } = new();
+
+    /// B. Quyết định bổ sung chi phí
+    /// FE phân biệt sub-section qua AdditionalCostType:
+    ///   Material     = Vật liệu
+    ///   Maintain     = Sửa chữa thường xuyên
+    ///   OtherMaterial = Vật tư theo chế độ NLĐ / PCCC / mưa bão
+    public List<MaterialGroupDto> SectionB { get; set; } = new();
+
+    /// C. Vật tư khoán theo hạn mức
+    public List<MaterialGroupDto> SectionC { get; set; } = new();
+
+    /// D. Tài sản
+    public List<MaterialGroupDto> SectionD { get; set; } = new();
 }
 
-public record ProductionOutputDetailItemDto
-{
-    public int CategoryType { get; init; } // 1: Materials in Contract Revenue, 2: Additional Cost, 3: Quota-Based Material, 4: Asset
-    public string CategoryName { get; init; } // "Vật tư tính vào doanh thu khoán", "Bổ sung chi phí", etc.
-    public List<MaterialGroupDto> MaterialGroups { get; init; } = new();
-}
-
-#endregion
-
-#region Material Group
+// ============================================================
+// Material Group
+// ============================================================
 
 public record MaterialGroupDto
 {
-    public string GroupCode { get; init; } // AssignmentCode.Code or Equipment.Code or "VTK"
-    public string GroupName { get; init; } // AssignmentCode.Name or Equipment.Name or "Vật tư khác"
-    public string MaterialType { get; init; } // "Vật liệu", "SCTX", etc.
-    public List<MaterialDetailDto> Materials { get; init; } = new(); // Direct materials (for categories without subgroups)
-    public List<SubGroupDto> SubGroups { get; init; } = new(); // Subgroups (for quota-based materials with New/Reusable)
+    /// Mã định danh nhóm (FE dùng làm key):
+    ///
+    /// SectionA Vật liệu (SectionAType=1):
+    ///   AssignmentCode.Code | "VTK"
+    ///
+    /// SectionA SCTX TH1 (SectionAType=2):
+    ///   PartType=OtherPart           → "VTK"
+    ///   Có ProductionOrderId         → ProductionOrderId.ToString()
+    ///   Không có ProductionOrderId   → Equipment.Code
+    ///
+    /// SectionA SCTX TH2 (SectionAType=3):
+    ///   Equipment.Code | "VTK"
+    ///
+    /// SectionB Vật liệu (AdditionalCostType=Material):
+    ///   Có ProductionOrderId         → ProductionOrderId.ToString()
+    ///   Không có                     → "NO_ORDER"
+    ///
+    /// SectionB SCTX (AdditionalCostType=Maintain):
+    ///   Giống SectionA SCTX TH1
+    ///
+    /// SectionB OtherMaterial:
+    ///   OtherMaterialDetail enum name
+    ///
+    /// SectionC: "MineSupport" | "SupportAccessories" | "MineTimber"
+    /// SectionD: "ASSET"
+    public string GroupCode { get; set; } = "";
+
+    /// Tên hiển thị (Equipment.Name / AssignmentCode.Name / ...)
+    public string GroupName { get; set; } = "";
+
+    /// Loại vật tư: "Vật liệu" | "SCTX" | "Vì chống lò" | "Phụ kiện chống lò" | "Gỗ lò" | "Tài sản"
+    public string MaterialType { get; set; } = "";
+
+    // ── Sub-section discriminators ──────────────────────────
+    /// Chỉ set ở SectionA. Giá trị: 1=VatLieu, 2=SctxTh1, 3=SctxTh2
+    public int? SectionAType { get; set; }
+
+    /// Chỉ set ở SectionB.
+    public AdditionalCost? AdditionalCostType { get; set; }
+
+    // ── Metadata ─────────────────────────────────────────────
+    /// Set khi group được tạo theo ProductionOrder thay vì Equipment/Assignment.
+    public Guid? ProductionOrderId { get; set; }
+
+    /// Chỉ set ở SectionB OtherMaterial.
+    public OtherMaterialDetail? OtherMaterialDetail { get; set; }
+
+    // ── Content ───────────────────────────────────────────────
+    public List<MaterialDetailDto> Materials { get; set; } = new();
+
+    /// SubGroups — chỉ dùng cho SectionC MineSupport / SupportAccessories
+    /// SubGroupCode: "New" | "Reusable"
+    public List<SubGroupDto> SubGroups { get; set; } = new();
 }
 
 public record SubGroupDto
 {
-    public string SubGroupCode { get; init; } // "New" or "Reusable"
-    public string SubGroupName { get; init; } // "Lĩnh mới" or "Lĩnh tái sử dụng"
-    public List<MaterialDetailDto> Materials { get; init; } = new();
+    public string SubGroupCode { get; set; } = "";
+    public List<MaterialDetailDto> Materials { get; set; } = new();
 }
 
-#endregion
-
-#region Material Detail
+// ============================================================
+// Material Detail
+// ============================================================
 
 public record MaterialDetailDto
 {
-    public Guid MaterialId { get; init; }
-    public string MaterialCode { get; init; }
-    public string MaterialName { get; init; }
-    public string UnitOfMeasureName { get; init; }
-    public decimal PlannedUnitPrice { get; init; }
-    public decimal ActualUnitPrice { get; init; } // Default = 0
+    public Guid MaterialId { get; set; }
+    public string MaterialCode { get; set; } = "";
+    public string MaterialName { get; set; } = "";
+    public string UnitOfMeasureName { get; set; } = "";
+    public decimal PlannedUnitPrice { get; set; }
+    public decimal ActualUnitPrice { get; set; }
 
-    // For Materials in Contract Revenue
-    public IssuedInPeriodDto? IssuedInPeriod { get; init; }
-    public ExportedInPeriodDto? ExportedInPeriod { get; init; }
+    /// Tồn đầu kỳ — chỉ có ở SCTX TH2
+    public BeginningInventoryDto? BeginningInventory { get; set; }
 
-    // For SCTX (Materials in Contract Revenue)
-    public BeginningInventoryDto? BeginningInventory { get; init; }
-    public EndingInventoryDto? EndingInventory { get; init; }
+    /// Lĩnh trong kỳ — có ở mọi item
+    public IssuedInPeriodDto? IssuedInPeriod { get; set; }
 
-    // For Quota-Based Material
-    public string? State { get; init; } // "Lĩnh mới", "Lĩnh tái sử dụng", etc.
+    /// Xuất trong kỳ — có ở mọi item
+    public ExportedInPeriodDto? ExportedInPeriod { get; set; }
+
+    /// Tồn cuối kỳ — SCTX TH2 và SectionC
+    public EndingInventoryDto? EndingInventory { get; set; }
 }
 
-#endregion
+// ============================================================
+// Period Data
+// ============================================================
 
-#region Period Data
+public record BeginningInventoryDto
+{
+    /// Tồn tại khai trường đầu kỳ — carry-forward từ EndingInventory.RemainingAtSite tháng trước
+    /// (item không có ProductionOrderId)
+    public InventoryQuantityDto? RemainingAtSite { get; set; }
+
+    /// Quyết định, giao khoán công trình đầu kỳ — carry-forward từ EndingInventory.RemainingByOrder tháng trước
+    /// (item có ProductionOrderId)
+    public InventoryQuantityDto? RemainingByOrder { get; set; }
+
+    /// Chi phí chờ hạch toán đầu kỳ — chỉ có ở SCTX TH2
+    public decimal? PendingValue { get; set; }
+
+    public TotalDto Total { get; set; } = new();
+}
 
 public record IssuedInPeriodDto
 {
-    public ReceivedSuppliesDto Received { get; init; }
-    public TotalDto Total { get; init; }
+    public ReceivedSuppliesDto Received { get; set; } = new();
+    public QuantityAmountDto BorrowedNoVoucher { get; set; } = new();
+    public QuantityAmountDto ReturnPreviousMonthVoucher { get; set; } = new();
+    public QuantityAmountDto OtherReceipt { get; set; } = new();
+    public TotalDto Total { get; set; } = new();
 }
 
 public record ExportedInPeriodDto
 {
-    public ExportedToProductionDto ExportedToProduction { get; init; }
-    public LongTermExpenseDto? LongTermExpense { get; init; } // Only for SCTX
-    public TotalDto Total { get; init; }
-}
-
-public record ReceivedSuppliesDto
-{
-    public double Quantity { get; init; }
-    public decimal PlannedAmount { get; init; } // Số lượng lĩnh * đơn giá kế hoạch
-    public decimal ActualAmount { get; init; } // Số lượng lĩnh * đơn giá thực tế
-}
-
-public record ExportedToProductionDto
-{
-    public double Quantity { get; init; }
-    public decimal Amount { get; init; } // Số lượng xuất * đơn giá kế hoạch
-}
-
-public record LongTermExpenseDto
-{
-    public decimal Amount { get; init; } // Chi phí vật tư dài kỳ hạch toán (cumulative)
-}
-
-public record TotalDto
-{
-    public double Quantity { get; init; }
-    public decimal Amount { get; init; } // Thành tiền KH or cumulative amount
-}
-
-public record BeginningInventoryDto
-{
-    public decimal PendingValue { get; init; } // Chi phí chờ hạch toán đầu kỳ (cumulative from previous periods)
-    public TotalDto Total { get; init; }
+    public ExportedToProductionDto ExportedToProduction { get; set; } = new();
+    public QuantityAmountDto OtherExport { get; set; } = new();
+    public QuantityAmountDto ContractSettlement { get; set; } = new();
+    /// Chi phí vật tư dài kỳ hạch toán — chỉ có ở SCTX
+    public LongTermExpenseDto? LongTermExpense { get; set; }
+    public TotalDto Total { get; set; } = new();
 }
 
 public record EndingInventoryDto
 {
-    public ExportedToProductionDto ExportedToProduction { get; init; }
-    public TotalDto Total { get; init; }
+    /// Tồn tại khai trường — item KHÔNG có ProductionOrderId
+    public InventoryQuantityDto? RemainingAtSite { get; set; }
+
+    /// Quyết định, giao khoán công trình — item CÓ ProductionOrderId
+    public InventoryQuantityDto? RemainingByOrder { get; set; }
+
+    /// Chi phí chờ hạch toán cuối kỳ — chỉ có ở SCTX TH2
+    public decimal? PendingValue { get; set; }
+
+    public TotalDto Total { get; set; } = new();
 }
 
-#endregion
+/// Số lượng + thành tiền tồn kho tại một vị trí cụ thể
+public record InventoryQuantityDto
+{
+    public double Quantity { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public record QuantityAmountDto
+{
+    public double Quantity { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public record ReceivedSuppliesDto
+{
+    public double Quantity { get; set; }
+    public decimal PlannedAmount { get; set; }
+    public decimal ActualAmount { get; set; }
+}
+
+public record ExportedToProductionDto
+{
+    public double Quantity { get; set; }
+    public decimal Amount { get; set; }
+}
+
+public record LongTermExpenseDto
+{
+    public decimal Amount { get; set; }
+}
+
+public record TotalDto
+{
+    public double Quantity { get; set; }
+    public decimal Amount { get; set; }
+}
+
+// ============================================================
+// Internal constants (không expose ra contract)
+// ============================================================
+internal static class MatTypeLabel
+{
+    public const string VatLieu = "Vật liệu";
+    public const string Sctx = "SCTX";
+}
+
+internal static class SecAType
+{
+    public const int VatLieu = 1;
+    public const int SctxTh1 = 2;
+    public const int SctxTh2 = 3;
+}

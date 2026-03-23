@@ -15,6 +15,18 @@ export type IssuedInPeriodInfo = {
 		plannedAmount: number;
 		actualAmount: number;
 	};
+	borrowedNoVoucher?: {
+		quantity: number;
+		amount: number;
+	};
+	returnPreviousMonthVoucher?: {
+		quantity: number;
+		amount: number;
+	};
+	otherReceipt?: {
+		quantity: number;
+		amount: number;
+	};
 	total: {
 		quantity: number;
 		amount: number;
@@ -23,6 +35,14 @@ export type IssuedInPeriodInfo = {
 
 export type ExportedInPeriodInfo = {
 	exportedToProduction: {
+		quantity: number;
+		amount: number;
+	};
+	otherExport?: {
+		quantity: number;
+		amount: number;
+	};
+	contractSettlement?: {
 		quantity: number;
 		amount: number;
 	};
@@ -41,6 +61,14 @@ export type InventoryBalanceInfo = {
 };
 
 export type BeginningInventoryInfo = {
+	remainingAtSite?: {
+		quantity: number;
+		amount: number;
+	} | null;
+	remainingByOrder?: {
+		quantity: number;
+		amount: number;
+	} | null;
 	pendingValue: number;
 	total: {
 		quantity: number;
@@ -49,10 +77,15 @@ export type BeginningInventoryInfo = {
 } | null;
 
 export type EndingInventoryInfo = {
-	exportedToProduction: {
+	remainingAtSite?: {
 		quantity: number;
 		amount: number;
-	};
+	} | null;
+	remainingByOrder?: {
+		quantity: number;
+		amount: number;
+	} | null;
+	pendingValue?: number | null;
 	total: {
 		quantity: number;
 		amount: number;
@@ -77,7 +110,7 @@ export type MaterialDetailDto = {
 // Sub group for materials (used in category type 3)
 export type SubGroupDto = {
 	subGroupCode: string;
-	subGroupName: string;
+	subGroupName?: string;
 	materials: MaterialDetailDto[];
 };
 
@@ -86,6 +119,10 @@ export type MaterialGroupDto = {
 	groupCode: string;
 	groupName: string;
 	materialType: string;
+	sectionAType?: number | null;
+	additionalCostType?: number | null;
+	productionOrderId?: string | null;
+	otherMaterialDetail?: string | number | null;
 	materials: MaterialDetailDto[];
 	subGroups: SubGroupDto[];
 };
@@ -113,6 +150,12 @@ export type ProductionOutputProcessGroupDto = {
 	products?: ProductionOutputProcessGroupProductDto[];
 };
 
+export type AcceptanceReportSectionKey =
+	| 'sectionA'
+	| 'sectionB'
+	| 'sectionC'
+	| 'sectionD';
+
 // Production output information
 export type ProductionOutputDto = {
 	productionOutputId: string;
@@ -120,6 +163,10 @@ export type ProductionOutputDto = {
 	endMonth: string;
 	productionMeters: number;
 	standardProductionMeters: number;
+	sectionA?: MaterialGroupDto[];
+	sectionB?: MaterialGroupDto[];
+	sectionC?: MaterialGroupDto[];
+	sectionD?: MaterialGroupDto[];
 	items?: ProductionOutputDetailItemDto[];
 	processGroups?: ProductionOutputProcessGroupDto[];
 };

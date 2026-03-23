@@ -257,38 +257,59 @@ function createEmptyFinancialFields(): FinancialFields {
 		closingBalanceOnSiteAmount: 0,
 		closingBalancePendingQty: 0,
 		closingBalancePendingAmount: 0,
+		closingBalanceContractQty: 0,
+		closingBalanceContractAmount: 0,
 	};
 }
 
 /**
  * Sum financial fields from multiple items
- * Only sums "Thành tiền" (Amount) columns, leaves quantities and prices at 0
+ * Sums quantity + amount columns; leaves prices at 0 for total rows
  */
 function sumFinancialFields(items: UnifiedItem[]): FinancialFields {
 	const result = createEmptyFinancialFields();
 
 	items.forEach((item) => {
-		// Only accumulate "Thành tiền" (Amount) fields, not quantities or prices
+		result.openingBalanceTotalQty += item.openingBalanceTotalQty || 0;
 		result.openingBalanceTotalAmount += item.openingBalanceTotalAmount || 0;
+		result.openingBalanceOnSiteQty += item.openingBalanceOnSiteQty || 0;
 		result.openingBalanceOnSiteAmount += item.openingBalanceOnSiteAmount || 0;
+		result.openingBalancePendingQty += item.openingBalancePendingQty || 0;
 		result.openingBalancePendingAmount += item.openingBalancePendingAmount || 0;
+		result.openingBalanceContractQty += item.openingBalanceContractQty || 0;
 		result.openingBalanceContractAmount +=
 			item.openingBalanceContractAmount || 0;
+		result.receiptTotalQty += item.receiptTotalQty || 0;
 		result.receiptTotalAmountKH += item.receiptTotalAmountKH || 0;
+		result.receiptWithReceiptQty += item.receiptWithReceiptQty || 0;
 		result.receiptWithReceiptAmountKH += item.receiptWithReceiptAmountKH || 0;
 		result.receiptWithReceiptAmountTT += item.receiptWithReceiptAmountTT || 0;
+		result.receiptBorrowedQty += item.receiptBorrowedQty || 0;
 		result.receiptBorrowedAmount += item.receiptBorrowedAmount || 0;
+		result.receiptReturnPrevMonthQty += item.receiptReturnPrevMonthQty || 0;
 		result.receiptReturnPrevMonthAmount +=
 			item.receiptReturnPrevMonthAmount || 0;
+		result.receiptHandoverQty += item.receiptHandoverQty || 0;
 		result.receiptHandoverAmount += item.receiptHandoverAmount || 0;
+		result.issueTotalQty += item.issueTotalQty || 0;
 		result.issueTotalAmount += item.issueTotalAmount || 0;
+		result.issueForProductionQty += item.issueForProductionQty || 0;
 		result.issueForProductionAmount += item.issueForProductionAmount || 0;
+		result.issueLongtermQty += item.issueLongtermQty || 0;
 		result.issueLongtermAmount += item.issueLongtermAmount || 0;
+		result.issueOtherQty += item.issueOtherQty || 0;
 		result.issueOtherAmount += item.issueOtherAmount || 0;
+		result.issueContractQty += item.issueContractQty || 0;
 		result.issueContractAmount += item.issueContractAmount || 0;
+		result.closingBalanceTotalQty += item.closingBalanceTotalQty || 0;
 		result.closingBalanceTotalAmount += item.closingBalanceTotalAmount || 0;
+		result.closingBalanceOnSiteQty += item.closingBalanceOnSiteQty || 0;
 		result.closingBalanceOnSiteAmount += item.closingBalanceOnSiteAmount || 0;
+		result.closingBalancePendingQty += item.closingBalancePendingQty || 0;
 		result.closingBalancePendingAmount += item.closingBalancePendingAmount || 0;
+		result.closingBalanceContractQty += item.closingBalanceContractQty || 0;
+		result.closingBalanceContractAmount +=
+			item.closingBalanceContractAmount || 0;
 	});
 
 	return result;

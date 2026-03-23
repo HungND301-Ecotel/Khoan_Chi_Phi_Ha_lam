@@ -6,7 +6,16 @@ import { API } from '@/constants/api-enpoint';
 import { api } from '@/lib/api';
 import { ProductionOutputDto } from './api-types';
 import { HierarchicalAcceptanceReport } from './types';
-import { transformApiResponseToHierarchical } from './api-transformer';
+import {
+	applyProductionOrderNames,
+	transformApiResponseToHierarchical,
+} from './api-transformer';
+
+type ProductionOrderLookupDto = {
+	id: string;
+	code: string;
+	name: string;
+};
 
 export type UseAcceptanceReportDetailResult = {
 	data: HierarchicalAcceptanceReport | null;
@@ -36,14 +45,26 @@ export function useAcceptanceReportDetail(
 			setError(null);
 
 			const endpoint = API.PRODUCTION.PRODUCTION_OUTPUT.DETAIL(reportId);
-
-			const response = await api.get<ProductionOutputDto>(endpoint);
+			const [response, productionOrderResponse] = await Promise.all([
+				api.get<ProductionOutputDto>(endpoint),
+				api.pagging<ProductionOrderLookupDto>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{ ignorePagination: true },
+				),
+			]);
 
 			if (response && response.result) {
-				const hierarchicData = transformApiResponseToHierarchical(
-					response.result,
+				const hierarchicData = transformApiResponseToHierarchical(response.result);
+				const productionOrderNameById = Object.fromEntries(
+					(productionOrderResponse.result.data ?? []).map((item) => [
+						item.id,
+						[item.code, item.name].filter(Boolean).join(' - ') || item.id,
+					]),
 				);
-				setData(hierarchicData);
+
+				setData(
+					applyProductionOrderNames(hierarchicData, productionOrderNameById),
+				);
 			}
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
