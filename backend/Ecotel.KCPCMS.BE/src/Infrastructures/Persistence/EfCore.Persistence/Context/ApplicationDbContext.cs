@@ -813,6 +813,11 @@ public class ApplicationDbContext(
             .WithOne(i => i.AcceptanceReportItem)
             .HasForeignKey(i => i.AcceptanceReportItemId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasMany(i => i.QuotaBasedMaterialQuantities)
+            .WithOne(i => i.AcceptanceReportItem)
+            .HasForeignKey(i => i.AcceptanceReportItemId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // AcceptanceReportItemLog table
         modelBuilder.Entity<AcceptanceReportItemLog>()

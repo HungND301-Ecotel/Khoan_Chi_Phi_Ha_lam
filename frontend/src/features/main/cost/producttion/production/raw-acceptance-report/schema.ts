@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+function parseSchemaNumber(value: number | string | null | undefined): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
 export const rawAcceptanceReportItemSchema = z
 	.object({
 		id: z.string().optional(),
@@ -48,8 +54,13 @@ export const rawAcceptanceReportItemSchema = z
 		categoryProductionOrderId: z.string().nullable().optional(),
 		additionalCostCategory: z.number().nullable().optional(),
 		additionalCostProductionOrderId: z.string().nullable().optional(),
+		otherMaterialDetail: z.number().nullable().optional(),
 		contractLimitCategory: z.number().nullable().optional(),
 		contractLimitSubCategory: z.number().nullable().optional(),
+		contractLimitSubCategories: z.array(z.string()).optional(),
+		contractLimitBreakdown: z
+			.record(z.string(), z.union([z.number(), z.string()]))
+			.optional(),
 		productionOrderId: z.string().nullable().optional(),
 		// Quantity fields
 		categoryQuantity: z.number().nullable().optional(),
@@ -104,6 +115,60 @@ export const rawAcceptanceReportItemSchema = z
 	)
 	.refine(
 		(data) => {
+			if (
+				!data.showAdditionalCostDropdown ||
+				data.additionalCostCategory !== 4
+			) {
+				return true;
+			}
+
+			return data.otherMaterialDetail != null;
+		},
+		{
+			message: 'Phải chọn loại vật tư',
+			path: ['otherMaterialDetail'],
+		},
+	)
+	.refine(
+		(data) => {
+			const requiresSubCategory =
+				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
+			if (!data.showContractLimitDropdown || !requiresSubCategory) {
+				return true;
+			}
+
+			return (data.contractLimitSubCategories?.length ?? 0) > 0;
+		},
+		{
+			message: 'Phải chọn ít nhất 1 loại (Lĩnh mới/Tái sử dụng)',
+			path: ['contractLimitSubCategories'],
+		},
+	)
+	.refine(
+		(data) => {
+			const requiresSubCategory =
+				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
+			if (!data.showContractLimitDropdown || !requiresSubCategory) {
+				return true;
+			}
+
+			const selectedKeys = data.contractLimitSubCategories ?? [];
+			const total = selectedKeys.reduce(
+				(acc, key) =>
+					acc + parseSchemaNumber(data.contractLimitBreakdown?.[key]),
+				0,
+			);
+			const exportedQty = Number(data.exportedQuantity);
+			return Math.abs(total - exportedQty) < 0.01;
+		},
+		{
+			message:
+				'Tổng số lượng lĩnh mới và lĩnh tái sử dụng phải bằng số lượng xuất',
+			path: ['contractLimitBreakdown'],
+		},
+	)
+	.refine(
+		(data) => {
 			// Only validate if at least one checkbox and dropdown is selected
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
@@ -115,9 +180,15 @@ export const rawAcceptanceReportItemSchema = z
 				data.additionalCostCategory &&
 				((data.additionalCostCategory !== 2 &&
 					data.additionalCostCategory !== 3) ||
-					data.additionalCostProductionOrderId != null);
+					data.additionalCostProductionOrderId != null) &&
+				(data.additionalCostCategory !== 4 ||
+					data.otherMaterialDetail != null);
 			const hasContractLimitActive =
-				data.showContractLimitDropdown && data.contractLimitCategory;
+				data.showContractLimitDropdown &&
+				data.contractLimitCategory &&
+				((data.contractLimitCategory !== 2 &&
+					data.contractLimitCategory !== 3) ||
+					((data.contractLimitSubCategories?.length ?? 0) > 0));
 			const hasAssetActive = data.showAssetDropdown;
 
 			if (

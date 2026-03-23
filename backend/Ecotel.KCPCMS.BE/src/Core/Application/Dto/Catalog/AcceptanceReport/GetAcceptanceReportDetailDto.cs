@@ -21,6 +21,9 @@ public record AcceptanceReportDetailItemDto
     public double IssuedQuantity { get; init; }
     public double ShippedQuantity { get; init; }
 
+    public required List<IssuedDetailDto> IssuedDetails { get; init; }
+    public required List<ShippedDetailDto> ShippedDetails { get; init; }
+
     public required ItemType ItemType { get; init; }
 
     public required AcceptanceReportItemType Type { get; init; }
@@ -34,12 +37,13 @@ public record AcceptanceReportDetailItemDto
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }
+    public required OtherMaterialDetail OtherMaterialDetail { get; init; }
     public required double AdditionalCostQuantity { get; init; }
 
     // Vật tư theo hạn mức
     public required QuotaBasedMaterial QuotaBasedMaterial { get; init; }
     public required QuotaBasedMaterialType QuotaBasedMaterialType { get; init; }
-    public required double QuotaBasedMaterialQuantity { get; init; }
+    public List<QuotaBasedMaterialQuantityDto>? QuotaBasedMaterialQuantities { get; init; }
 
     // Tài sản
     public required Asset Asset { get; init; }

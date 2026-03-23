@@ -49,9 +49,12 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             .Select(x => x.ProcessGroupId)
             .ToHashSet();
 
-        // Get existing items for comparison
+        // Get existing items for comparison (include QuotaBasedMaterialQuantities for EF tracking)
         var existingItems = await _acceptanceReportItemRepository.GetAllAsync(
             predicate: i => i.AcceptanceReportId == updateModel.Id,
+            include: q => q.Include(i => i.IssuedDetails)
+                           .Include(i => i.ShippedDetails)
+                           .Include(i => i.QuotaBasedMaterialQuantities),
             disableTracking: false);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -95,14 +98,15 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.MaterialsIncludedInContractRevenue,
                         updateItem.MaterialsIncludedInContractRevenueQuantity,
                         updateItem.AdditionalCost,
+                        updateItem.OtherMaterialDetail,
                         updateItem.AdditionalCostQuantity,
                         updateItem.QuotaBasedMaterial,
                         updateItem.QuotaBasedMaterialType,
-                        updateItem.QuotaBasedMaterialQuantity,
                         updateItem.Asset,
                         updateItem.AssetMaterialQuantity,
                         updateItem.IssuedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
-                        updateItem.ShippedDetails.Select(x => (x.Type, x.Quantity)).ToList());
+                        updateItem.ShippedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
+                        updateItem.QuotaBasedMaterialQuantities?.Select(x => (x.Type, x.Quantity)).ToList());
 
                     if (updateItem.MaterialsIncludedInContractRevenue != Domain.Common.Enums.MaterialsIncludedInContractRevenue.None)
                     {

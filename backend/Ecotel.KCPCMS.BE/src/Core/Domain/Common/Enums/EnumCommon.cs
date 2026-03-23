@@ -103,6 +103,13 @@ public enum AdditionalCost
     OtherMaterial = 4
 }
 
+public enum OtherMaterialDetail
+{
+    None = 1,
+    BaoHoLaoDong = 2,
+    VatTuPhucVuCongTacAnToan = 3,
+}
+
 public enum QuotaBasedMaterial
 {
     None = 1,

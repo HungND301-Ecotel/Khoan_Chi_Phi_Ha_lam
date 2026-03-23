@@ -6,7 +6,6 @@ public record UpdateAcceptanceReportItemDto
 {
     public required Guid Id { get; init; }
 
-    // Thay IssuedQuantity / ShippedQuantity bằng lists
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }
 
@@ -20,12 +19,13 @@ public record UpdateAcceptanceReportItemDto
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }
+    public required OtherMaterialDetail OtherMaterialDetail { get; init; }
     public required double AdditionalCostQuantity { get; init; }
 
-    // Vật tư theo hạn mức
+    // Vật tư theo hạn mức — chỉ cần khi QuotaBasedMaterial != None
     public required QuotaBasedMaterial QuotaBasedMaterial { get; init; }
     public required QuotaBasedMaterialType QuotaBasedMaterialType { get; init; }
-    public required double QuotaBasedMaterialQuantity { get; init; }
+    public List<QuotaBasedMaterialQuantityDto>? QuotaBasedMaterialQuantities { get; init; }
 
     // Tài sản
     public required Asset Asset { get; init; }

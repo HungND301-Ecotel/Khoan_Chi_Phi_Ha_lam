@@ -102,7 +102,9 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 existingItemsByIds = (await _acceptanceReportItemRepository.GetAllAsync(
                     predicate: p => requestItemIds.Contains(p.Id),
-                    include: p => p.Include(p => p.IssuedDetails).Include(p => p.ShippedDetails),
+                    include: p => p.Include(p => p.IssuedDetails)
+                                   .Include(p => p.ShippedDetails)
+                                   .Include(p => p.QuotaBasedMaterialQuantities),
                     disableTracking: false)).ToList();
             }
 
@@ -129,7 +131,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
                 else if (item.Type == AcceptanceReportItemType.Part)
                 {
-                    // Find Part directly by Id
                     var part = allParts.FirstOrDefault(p => p.Id == item.MaterialOrPartId);
                     if (part == null)
                     {
@@ -157,14 +158,16 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.MaterialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
                         item.AdditionalCost,
+                        item.OtherMaterialDetail,
                         item.AdditionalCostQuantity,
                         item.QuotaBasedMaterial,
                         item.QuotaBasedMaterialType,
-                        item.QuotaBasedMaterialQuantity,
                         item.Asset,
                         item.AssetMaterialQuantity,
                         MapIssuedDetails(item.IssuedDetails),
-                        MapShippedDetails(item.ShippedDetails));
+                        MapShippedDetails(item.ShippedDetails),
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
+
                     itemsToUpdate.Add(existingItem);
                 }
                 else
@@ -180,14 +183,15 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.MaterialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
                         item.AdditionalCost,
+                        item.OtherMaterialDetail,
                         item.AdditionalCostQuantity,
                         item.QuotaBasedMaterial,
                         item.QuotaBasedMaterialType,
-                        item.QuotaBasedMaterialQuantity,
                         item.Asset,
                         item.AssetMaterialQuantity,
                         MapIssuedDetails(item.IssuedDetails),
-                        MapShippedDetails(item.ShippedDetails));
+                        MapShippedDetails(item.ShippedDetails),
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
 
                     itemsToCreate.Add(reportItem);
                 }
@@ -245,7 +249,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain &&
                     item.IssuedQuantity > 0)
                 {
-                    // Get Part directly
                     var part = allParts.FirstOrDefault(p => p.Id == item.PartId);
                     if (part == null)
                     {
@@ -258,7 +261,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                     if (existingLog == null)
                     {
-                        // Calculate unit price from Cost
                         var cost = part.Costs?.FirstOrDefault(c =>
                             c.StartMonth <= productionOutput.StartMonth &&
                             c.EndMonth >= productionOutput.EndMonth);
@@ -364,4 +366,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
     private static IList<(ShippedQuantityType Type, double Quantity)> MapShippedDetails(List<ShippedDetailDto> dtos)
         => dtos.Select(x => (x.Type, x.Quantity)).ToList();
+
+    private static IList<(QuotaBasedMaterialType Type, double Quantity)>? MapQuotaBasedMaterialQuantities(List<QuotaBasedMaterialQuantityDto>? dtos)
+        => dtos?.Select(x => (x.Type, x.Quantity)).ToList();
 }

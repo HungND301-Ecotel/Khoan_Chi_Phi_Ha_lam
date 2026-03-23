@@ -19,10 +19,12 @@ export type RawAcceptanceReportItem = {
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	otherMaterialDetail: number;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
 	quotaBasedMaterialType: number;
-	quotaBasedMaterialQuantity: number;
+	quotaBasedMaterialQuantity?: number;
+	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	assetMaterialQuantity: number;
 	asset: number;
 };
@@ -59,10 +61,12 @@ export type AcceptanceReportItem = {
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	otherMaterialDetail: number;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
 	quotaBasedMaterialType: number;
-	quotaBasedMaterialQuantity: number;
+	quotaBasedMaterialQuantity?: number;
+	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	assetMaterialQuantity: number;
 	asset: number;
 };
@@ -103,9 +107,20 @@ export const QuotaBasedMaterial = {
 	MineTimber: 4,
 } as const;
 
+export const QuotaBasedMaterialType = {
+	New: 1,
+	Reusable: 2,
+} as const;
+
 export const Asset = {
 	None: 1,
 	True: 2,
+} as const;
+
+export const OtherMaterialDetail = {
+	None: 1,
+	BaoHoLaoDong: 2,
+	VatTuPhucVuCongTacAnToan: 3,
 } as const;
 
 // Material type for row highlighting
@@ -132,6 +147,11 @@ export type QuantityDetail = {
 	quantity: number;
 };
 
+export type QuotaBasedMaterialQuantityDetail = {
+	type: number;
+	quantity: number;
+};
+
 // Dropdown options
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
@@ -141,7 +161,11 @@ export const CATEGORY_OPTIONS = [
 export const ADDITIONAL_COST_OPTIONS = [
 	{ value: AdditionalCost.Material, label: 'Vật liệu' },
 	{ value: AdditionalCost.Maintain, label: 'SCTX' },
-	{ value: AdditionalCost.OtherMaterial, label: 'Vật tư khác' },
+	{
+		value: AdditionalCost.OtherMaterial,
+		label:
+			'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+	},
 ];
 
 export const CONTRACT_LIMIT_OPTIONS = [
@@ -151,8 +175,16 @@ export const CONTRACT_LIMIT_OPTIONS = [
 ];
 
 export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [
-	{ value: 1, label: 'Lĩnh mới' },
-	{ value: 2, label: 'Lĩnh tái sử dụng' },
+	{ value: QuotaBasedMaterialType.New, label: 'Lĩnh mới' },
+	{ value: QuotaBasedMaterialType.Reusable, label: 'Lĩnh tái sử dụng' },
+];
+
+export const OTHER_MATERIAL_DETAIL_OPTIONS = [
+	{ value: OtherMaterialDetail.BaoHoLaoDong, label: 'Bảo hộ lao động' },
+	{
+		value: OtherMaterialDetail.VatTuPhucVuCongTacAnToan,
+		label: 'Vật tư phục vụ công tác an toàn',
+	},
 ];
 
 export const RECEIVED_TYPE_OPTIONS = [

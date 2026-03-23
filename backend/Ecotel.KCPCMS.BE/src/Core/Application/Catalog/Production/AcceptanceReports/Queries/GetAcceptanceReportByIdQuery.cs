@@ -30,7 +30,8 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.Part).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.Part).ThenInclude(m => m.Costs)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.IssuedDetails)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.ShippedDetails),
+                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.ShippedDetails)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.QuotaBasedMaterialQuantities),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var productionOutput = acceptanceReport.ProductionOutput;
@@ -54,14 +55,25 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             ProcessGroupName = item.ProcessGroup?.Name,
             MaterialsIncludedInContractRevenueQuantity = item.MaterialsIncludedInContractRevenueQuantity,
             AdditionalCost = item.AdditionalCost,
+            OtherMaterialDetail = item.OtherMaterialDetail,
             AdditionalCostQuantity = item.AdditionalCostQuantity,
             QuotaBasedMaterial = item.QuotaBasedMaterial,
             QuotaBasedMaterialType = item.QuotaBasedMaterialType,
-            QuotaBasedMaterialQuantity = item.QuotaBasedMaterialQuantity,
+            QuotaBasedMaterialQuantities = item.QuotaBasedMaterial != QuotaBasedMaterial.None
+                ? item.QuotaBasedMaterialQuantities
+                    .Select(q => new QuotaBasedMaterialQuantityDto { Type = q.Type, Quantity = q.Quantity })
+                    .ToList()
+                : null,
             Asset = item.Asset,
             AssetMaterialQuantity = item.AssetMaterialQuantity,
             IssuedQuantity = item.IssuedQuantity,
             ShippedQuantity = item.ShippedQuantity,
+            IssuedDetails = item.IssuedDetails
+                .Select(d => new IssuedDetailDto { Type = d.Type, Quantity = d.Quantity })
+                .ToList(),
+            ShippedDetails = item.ShippedDetails
+                .Select(d => new ShippedDetailDto { Type = d.Type, Quantity = d.Quantity })
+                .ToList(),
             PlanCost = GetPlanCost(item, productionOutput),
             ActualCost = GetActualCost(item, productionOutput),
             ItemType = item.ItemType,
@@ -76,83 +88,63 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
         };
     }
 
-    private decimal GetPlanCost(AcceptanceReportItem item, ProductionOutput productionOutput)
+    private static decimal GetPlanCost(AcceptanceReportItem item, ProductionOutput productionOutput)
     {
         if (productionOutput == null)
         {
             return 0;
         }
 
-        decimal planCost = 0;
-
         if (item.MaterialId.HasValue && item.Material?.Costs != null)
         {
-            // Get cost for Material that matches the time period
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
 
-            if (matchingCost != null)
-            {
-                planCost = (decimal)matchingCost.Amount;
-            }
+            return matchingCost != null ? (decimal)matchingCost.Amount : 0;
         }
-        else if (item.PartId.HasValue &&
-                 item?.Part?.Costs != null)
+
+        if (item.PartId.HasValue && item?.Part?.Costs != null)
         {
-            // Get cost for Part that matches the time period
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
 
-            if (matchingCost != null)
-            {
-                planCost = (decimal)matchingCost.Amount;
-            }
+            return matchingCost != null ? (decimal)matchingCost.Amount : 0;
         }
 
-        return planCost;
+        return 0;
     }
 
-    private decimal GetActualCost(AcceptanceReportItem item, ProductionOutput productionOutput)
+    private static decimal GetActualCost(AcceptanceReportItem item, ProductionOutput productionOutput)
     {
         if (productionOutput == null)
         {
             return 0;
         }
 
-        decimal acutalCost = 0;
-
         if (item.MaterialId.HasValue && item.Material?.Costs != null)
         {
-            // Get cost for Material that matches the time period
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
 
-            if (matchingCost != null)
-            {
-                acutalCost = (decimal)matchingCost.ActualAmount;
-            }
+            return matchingCost != null ? (decimal)matchingCost.ActualAmount : 0;
         }
-        else if (item.PartId.HasValue &&
-                 item?.Part?.Costs != null)
+
+        if (item.PartId.HasValue && item?.Part?.Costs != null)
         {
-            // Get cost for Part that matches the time period
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
 
-            if (matchingCost != null)
-            {
-                acutalCost = (decimal)matchingCost.ActualAmount;
-            }
+            return matchingCost != null ? (decimal)matchingCost.ActualAmount : 0;
         }
 
-        return acutalCost;
+        return 0;
     }
 }
