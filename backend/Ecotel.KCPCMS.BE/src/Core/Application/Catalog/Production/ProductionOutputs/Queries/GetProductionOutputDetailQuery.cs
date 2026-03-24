@@ -120,7 +120,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = item.Material.AssignmentCode?.Code?.Value ?? "VTK",
-                GroupName = item.Material.AssignmentCode?.Name ?? "Vật tư khác",
+                GroupName = item.Material.AssignmentCode?.Name ?? "Vật liệu khác",
                 MaterialType = MatTypeLabel.VatLieu,
                 SectionAType = SecAType.VatLieu,
                 Materials = new(),
@@ -415,7 +415,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             var (groupKey, groupName, hasSubGroup) = item.QuotaBasedMaterial switch
             {
                 QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
-                QuotaBasedMaterial.SupportAccessories => ("SupportAccessories", "Phụ kiện chống lò", true),
+                QuotaBasedMaterial.SupportAccessories => ("SupportAccessories", "Phụ kiện", true),
                 QuotaBasedMaterial.MineTimber => ("MineTimber", "Gỗ lò", false),
                 _ => ("VTK", "Vật tư khác", false)
             };
@@ -510,7 +510,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         if (item.Part!.Type == PartType.OtherPart)
         {
-            return ($"{prefix}_VTK", "VTK", "Vật tư khác (phụ tùng khác)");
+            return ($"{prefix}_VTK", "VTK", "Vật tư khác");
         }
 
         if (item.ProductionOrderId.HasValue)

@@ -412,6 +412,8 @@ export function flattenHierarchicalData(
 	// Level 0: Categories
 	report.categories.forEach((category, catIndex) => {
 		const categoryTotals = calculateCategoryTotals(category);
+		const isAssetCategory =
+			category.categoryName.trim().toLocaleLowerCase() === 'tài sản';
 
 		// Category row with totals
 		result.push({
@@ -421,6 +423,44 @@ export function flattenHierarchicalData(
 			level: 0,
 			data: categoryTotals,
 		});
+
+		if (isAssetCategory) {
+			let assetItemIndex = 0;
+
+			category.types.forEach((type) => {
+				type.groups.forEach((group) => {
+					group.items.forEach((item) => {
+						result.push({
+							id: `cat-${catIndex}-asset-item-${assetItemIndex}`,
+							rowType: 'item',
+							label: '',
+							level: 1,
+							itemCode: getItemCode(item),
+							itemName: getItemName(item),
+							unit: item.unit,
+							data: item,
+						});
+						assetItemIndex += 1;
+					});
+				});
+
+				type.flatItems?.forEach((item) => {
+					result.push({
+						id: `cat-${catIndex}-asset-flat-item-${assetItemIndex}`,
+						rowType: 'item',
+						label: '',
+						level: 1,
+						itemCode: getItemCode(item),
+						itemName: getItemName(item),
+						unit: item.unit,
+						data: item,
+					});
+					assetItemIndex += 1;
+				});
+			});
+
+			return;
+		}
 
 		// Level 1: Types
 		category.types.forEach((type, typeIndex) => {

@@ -185,6 +185,13 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 			row.rowType === 'group'
 		) {
 			if (
+				row.rowType === 'category' &&
+				quantityFields.includes(field as (typeof quantityFields)[number])
+			) {
+				return null;
+			}
+
+			if (
 				!totalRowVisibleFields.includes(
 					field as (typeof totalRowVisibleFields)[number],
 				)
@@ -305,117 +312,81 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				</TableRow>
 
 				<TableRow>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền KH
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền KH
 					</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền TT
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
 
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] border-r text-center'>
 						Thành tiền
 					</TableHead>
-					<TableHead className='min-w-[80px] border-r text-center'>
-						SL
-					</TableHead>
+					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-[120px] text-center'>
 						Thành tiền
 					</TableHead>
