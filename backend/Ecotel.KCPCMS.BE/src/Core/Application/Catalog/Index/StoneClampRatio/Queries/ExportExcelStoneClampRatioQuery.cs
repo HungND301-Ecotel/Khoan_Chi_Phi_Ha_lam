@@ -20,9 +20,6 @@ public class ExportExcelStoneClampRatioQueryHandler(IExcelService excelService, 
         listHiddenProperty.Add(nameof(StoneClampRatioExcelDto.Id));
 
         var list = await _stoneClampRatioRepository.GetAllAsync(
-            include: s => s
-                .Include(s => s.ProductionProcess).ThenInclude(p => p.Code)
-                .Include(s => s.Hardness!),
             disableTracking: true);
 
         var process = await _processRepository.GetAllAsync(
@@ -34,21 +31,12 @@ public class ExportExcelStoneClampRatioQueryHandler(IExcelService excelService, 
             selector: u => u.Value,
             disableTracking: true);
 
-        var dropdownConfigs = new Dictionary<string, List<string>>
-        {
-            { nameof(StoneClampRatioExcelDto.ProcessCode), process.ToList() },
-            { nameof(StoneClampRatioExcelDto.HardnessValue), hardness.ToList() }
-        };
-
         var dtoList = list.Select(s => new StoneClampRatioExcelDto
         {
             Id = s.Id,
-            CoefficientValue = s.CoefficientValue,
-            HardnessValue = s.Hardness?.Value ?? "",
             Value = s.Value,
-            ProcessCode = s.ProductionProcess?.Code?.Value ?? ""
         });
 
-        return excelService.ExportToExcel(dtoList, "Đơn vị tính", listHiddenProperty, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList, "Đơn vị tính", listHiddenProperty);
     }
 }

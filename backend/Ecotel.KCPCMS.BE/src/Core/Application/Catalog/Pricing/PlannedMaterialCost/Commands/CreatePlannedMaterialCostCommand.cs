@@ -18,7 +18,7 @@ public class CreatePlannedMaterialCostCommandHandler(
 {
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
-    private readonly IWriteRepository<StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<StoneClampRatio>();
+    private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<SlideUnitPriceAssignmentCode> _slideUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<SlideUnitPriceAssignmentCode>();
     public async Task<bool> Handle(CreatePlannedMaterialCostCommand request, CancellationToken cancellationToken)
@@ -28,13 +28,13 @@ public class CreatePlannedMaterialCostCommandHandler(
         {
             throw new ConflictException(CustomResponseMessage.PlannedMaterialUnitPriceAlreadyExists);
         }
-        if (request.CreateModel.StoneClampRatioId != null)
+        if (request.CreateModel.NormFactorId != null)
         {
-            bool checkStoneClampRatio =
-                await _stoneClampRatioRepository.ExistsAsync(p => p.Id == request.CreateModel.StoneClampRatioId);
-            if (!checkStoneClampRatio)
+            bool checkNormFactor =
+                await _normFactorRepository.ExistsAsync(p => p.Id == request.CreateModel.NormFactorId);
+            if (!checkNormFactor)
             {
-                throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
+                throw new NotFoundException(CustomResponseMessage.NormFactorNotFound);
             }
         }
 
@@ -54,7 +54,7 @@ public class CreatePlannedMaterialCostCommandHandler(
             }
         }
 
-        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.StoneClampRatioId, request.CreateModel.OutputId);
+        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.NormFactorId, request.CreateModel.OutputId);
 
         await _plannedMaterialCostRepository.InsertAsync(newPlannedMaterialCost, cancellationToken);
         await unitOfWork.SaveChangesAsync();

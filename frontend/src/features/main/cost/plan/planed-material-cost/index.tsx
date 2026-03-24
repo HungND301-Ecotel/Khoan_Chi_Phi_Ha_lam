@@ -16,7 +16,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { ProcessGroupType } from '@/constants/process-group';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
-import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
+import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
 import {
 	PLANED_MATERIAL_COST_SUMMARY_COLUMNS,
 	PlanedMaterialCostSummary,
@@ -61,12 +61,12 @@ export function PlanedMaterialCost({
 			setLoading(true);
 
 			try {
-				const [detailRes, clampsRes, materialsRes, slidesRes] =
+				const [detailRes, normFactorsRes, materialsRes, slidesRes] =
 					await Promise.all([
 						api.get<PlanedMaterialCostType>(
 							API.COST.PLANNED_MATERIAL.DETAIL(id),
 						),
-						api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
+						api.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST),
 						api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 						api.pagging<Slide>(API.PRICING.SLIDE.LIST),
 					]);
@@ -76,7 +76,7 @@ export function PlanedMaterialCost({
 					result.totalPlannedMaterialPrice * (output?.productionMeters || 1),
 				);
 
-				const allClamps = clampsRes.result.data;
+				const allNormFactors = normFactorsRes.result.data;
 				const allMaterials = materialsRes.result.data;
 				const allSlides = slidesRes.result.data;
 
@@ -145,9 +145,14 @@ export function PlanedMaterialCost({
 						}
 					}
 
+					const normFactorId =
+						result.normFactorId ||
+						(result as unknown as { stoneClampRatioId?: string })
+							.stoneClampRatioId;
+
 					stoneClampRatio =
-						allClamps.find((clamp) => clamp.id === result.stoneClampRatioId)
-							?.value || '-';
+						allNormFactors.find((normFactor) => normFactor.id === normFactorId)
+							?.stoneClampRatioName || '-';
 				}
 
 				setSummary([

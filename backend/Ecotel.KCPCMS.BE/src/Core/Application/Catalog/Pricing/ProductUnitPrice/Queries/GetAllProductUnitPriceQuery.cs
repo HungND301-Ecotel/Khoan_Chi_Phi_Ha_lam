@@ -2,9 +2,11 @@
 using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
+using Application.Catalog.Pricing.Common;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Domain.Common.Enums;
 using Domain.Entities.Pricing;
+using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +20,8 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
+    private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
 
@@ -122,15 +126,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductionMeters = o.ProductionMeters,
                 PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                 PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
-                PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null,
-                PlannedMaterialStoneClamp = o.PlannedMaterialCost != null && o.PlannedMaterialCost.StoneClampRatio != null ? o.PlannedMaterialCost.StoneClampRatio.CoefficientValue : 1,
-                PlannedMaterialSlideQuantity = o.PlannedMaterialCost != null && o.PlannedMaterialCost.SlideUnitPriceAssignmentCode != null
-                    ? 1 : 0,
-                PlannedMaterialSlideCost = o.PlannedMaterialCost != null && o.PlannedMaterialCost.SlideUnitPriceAssignmentCode != null
-                    ? o.PlannedMaterialCost.SlideUnitPriceAssignmentCode.Amount
-                    : 0,
-                PlannedMaterialUnitPriceId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.MaterialUnitPriceId : (Guid?)null,
-                PlannedMaterialUnitPriceStartMonth = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.MaterialUnitPrice.StartMonth : (DateOnly?)null
+                PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -143,11 +139,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var allPlannedOutputs = outputs.Where(o => o.OutputType == OutputType.PlanOutput).ToList();
         var plannedMaintainCostIds = allPlannedOutputs.Where(o => o.PlannedMaintainCostId.HasValue).Select(o => o.PlannedMaintainCostId!.Value).Distinct().ToList();
         var plannedElectricityCostIds = allPlannedOutputs.Where(o => o.PlannedElectricityCostId.HasValue).Select(o => o.PlannedElectricityCostId!.Value).Distinct().ToList();
-        var plannedMaterialUnitPriceIds = allPlannedOutputs.Where(o => o.PlannedMaterialUnitPriceId.HasValue).Select(o => o.PlannedMaterialUnitPriceId!.Value).Distinct().ToList();
+        var plannedMaterialCostIds = allPlannedOutputs.Where(o => o.PlannedMaterialCostId.HasValue).Select(o => o.PlannedMaterialCostId!.Value).Distinct().ToList();
 
         var plannedMaintainFactors = await LoadPlannedMaintainFactors(plannedMaintainCostIds, cancellationToken);
         var plannedElectricityFactors = await LoadPlannedElectricityFactors(plannedElectricityCostIds, cancellationToken);
-        var plannedMaterialAssignments = await LoadPlannedMaterialAssignments(plannedMaterialUnitPriceIds, allPlannedOutputs, cancellationToken);
+        var plannedMaterialCosts = await LoadPlannedMaterialCosts(plannedMaterialCostIds, cancellationToken);
 
         // STEP 4: Load ProductionOutput data for ActualOutput
         var adjustmentIdsByProductId = await _productUnitPriceRepository.GetAll()
@@ -182,7 +178,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 .Where(o => o.StartMonth != DateOnly.MinValue && o.EndMonth != DateOnly.MinValue)
                 .ToList();
 
-            var plannedTotalCost = CalculatePlannedTotalCost(productOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialAssignments);
+            var plannedTotalCost = CalculatePlannedTotalCost(productOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialCosts);
 
             var adjustmentIdForBase = request.ScenarioType == ProductUnitPriceScenarioType.Adjustment
                 ? baseData.Id
@@ -192,7 +188,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ? new List<ProductionOutputData>()
                 : adjustmentProductionByAdjustmentId.GetValueOrDefault(adjustmentIdForBase) ?? new List<ProductionOutputData>();
 
-            var adjustmentTotalCost = CalculateAdjustmentTotalCost(productOutputs, productionOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialAssignments);
+            var adjustmentTotalCost = CalculateAdjustmentTotalCost(productOutputs, productionOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialCosts);
 
             double totalProductionMeters;
             DateOnly? startMonth;
@@ -329,57 +325,53 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 }).ToList());
     }
 
-    private async Task<Dictionary<Guid, List<MaterialAssignmentData>>> LoadPlannedMaterialAssignments(
-        List<Guid> materialUnitPriceIds, List<OutputData> plannedOutputs, CancellationToken cancellationToken)
+    private async Task<Dictionary<Guid, double>> LoadPlannedMaterialCosts(
+        List<Guid> plannedMaterialCostIds, CancellationToken cancellationToken)
     {
-        if (!materialUnitPriceIds.Any())
+        if (!plannedMaterialCostIds.Any())
         {
-            return new Dictionary<Guid, List<MaterialAssignmentData>>();
+            return new Dictionary<Guid, double>();
         }
 
-        var outputsByMaterialUnitPrice = plannedOutputs
-            .Where(o => o.PlannedMaterialUnitPriceId.HasValue)
-            .GroupBy(o => o.PlannedMaterialUnitPriceId!.Value)
-            .ToDictionary(g => g.Key, g => g.First().StartMonth);
-
-        var unitPriceData = await _productUnitPriceRepository.GetAll()
-            .SelectMany(p => p.PlannedMaterialCosts)
-            .Where(c => materialUnitPriceIds.Contains(c.MaterialUnitPriceId))
-            .Select(c => new
-            {
-                c.MaterialUnitPriceId,
-                c.Output.StartMonth,
-                c.MaterialUnitPrice.OtherMaterialvalue,
-                MaterialStartMonth = c.MaterialUnitPrice.StartMonth,
-                MaterialEndMonth = c.MaterialUnitPrice.EndMonth,
-                AssignmentCodesTotalPrice = c.MaterialUnitPrice.MaterialUnitPriceAssignmentCodes
-                    .Sum(a => a.TotalPrice)
-            })
+        var plannedMaterialCosts = await _plannedMaterialCostRepository.GetAll()
+            .Where(c => plannedMaterialCostIds.Contains(c.Id))
+            .Include(c => c.Output)
+            .Include(c => c.SlideUnitPriceAssignmentCode)
+            .Include(c => c.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
+            .Include(c => c.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return unitPriceData.GroupBy(a => a.MaterialUnitPriceId)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    var item = g.First();
-                    double cost = 0;
+        var currentTunnelMaterials = plannedMaterialCosts
+            .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
+            .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
+            .ToList();
 
-                    if (item.MaterialStartMonth <= item.StartMonth && item.MaterialEndMonth >= item.StartMonth)
-                    {
-                        cost = item.AssignmentCodesTotalPrice * (1 + item.OtherMaterialvalue / 100);
-                    }
+        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
+        if (currentTunnelMaterials.Any())
+        {
+            var targetHardnessIds = plannedMaterialCosts
+                .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true)
+                .Select(c => c.NormFactor!.TargetHardnessId!.Value)
+                .Distinct()
+                .ToList();
+            var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();
+            var passportIds = currentTunnelMaterials.Select(x => x.PassportId).Distinct().ToList();
+            var insertItemIds = currentTunnelMaterials.Select(x => x.InsertItemId).Distinct().ToList();
+            var supportStepIds = currentTunnelMaterials.Select(x => x.SupportStepId).Distinct().ToList();
 
-                    return new List<MaterialAssignmentData>
-                    {
-                new MaterialAssignmentData
-                {
-                    Quantity = 1,
-                    Cost = cost
-                }
-                    };
-                });
+            tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
+                .Where(x => targetHardnessIds.Contains(x.HardnessId)
+                    && processIds.Contains(x.ProcessId)
+                    && passportIds.Contains(x.PassportId)
+                    && insertItemIds.Contains(x.InsertItemId)
+                    && supportStepIds.Contains(x.SupportStepId))
+                .Include(x => x.MaterialUnitPriceAssignmentCodes)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+        }
+
+        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(plannedMaterialCosts, tunnelMaterials);
     }
 
     #endregion
@@ -390,7 +382,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         List<OutputData> outputs,
         Dictionary<Guid, List<MaintainFactorData>> plannedMaintainFactors,
         Dictionary<Guid, List<PlannedElectricityFactorData>> plannedElectricityFactors,
-        Dictionary<Guid, List<MaterialAssignmentData>> plannedMaterialAssignments)
+        Dictionary<Guid, double> plannedMaterialCosts)
     {
         var plannedOutputs = outputs.Where(o => o.OutputType == OutputType.PlanOutput).ToList();
         if (!plannedOutputs.Any())
@@ -400,7 +392,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
 
         return plannedOutputs.Sum(output =>
         {
-            var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialAssignments);
+            var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(output.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(output.PlannedElectricityCostId, plannedElectricityFactors);
             return output.ProductionMeters * (materialCost + maintainCost + electricityCost);
@@ -412,7 +404,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         List<ProductionOutputData> productionOutputs,
         Dictionary<Guid, List<MaintainFactorData>> plannedMaintainFactors,
         Dictionary<Guid, List<PlannedElectricityFactorData>> plannedElectricityFactors,
-        Dictionary<Guid, List<MaterialAssignmentData>> plannedMaterialAssignments)
+        Dictionary<Guid, double> plannedMaterialCosts)
     {
         var plannedOutputsDict = outputs
             .Where(o => o.OutputType == OutputType.PlanOutput)
@@ -431,7 +423,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 return 0;
             }
 
-            var materialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialAssignments);
+            var materialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
             return productionOutput.ProductionMeters * (materialCost + maintainCost + electricityCost);
@@ -440,18 +432,14 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
 
     private static double CalculatePlannedMaterialCost(
         OutputData output,
-        Dictionary<Guid, List<MaterialAssignmentData>> plannedMaterialAssignments)
+        Dictionary<Guid, double> plannedMaterialCosts)
     {
-        if (!output.PlannedMaterialUnitPriceId.HasValue ||
-            !plannedMaterialAssignments.TryGetValue(output.PlannedMaterialUnitPriceId.Value, out var matAssignments))
+        if (!output.PlannedMaterialCostId.HasValue)
         {
             return 0;
         }
 
-        var slideCost = output.PlannedMaterialSlideCost * output.PlannedMaterialSlideQuantity;
-        var materialTotal = matAssignments.Sum(m => m.Cost * m.Quantity);
-
-        return (slideCost + materialTotal) * output.PlannedMaterialStoneClamp;
+        return plannedMaterialCosts.GetValueOrDefault(output.PlannedMaterialCostId.Value, 0);
     }
 
     private static double CalculateMaintainCost(
@@ -506,17 +494,6 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }
-        public double PlannedMaterialStoneClamp { get; set; }
-        public double PlannedMaterialSlideQuantity { get; set; }
-        public double PlannedMaterialSlideCost { get; set; }
-        public Guid? PlannedMaterialUnitPriceId { get; set; }
-        public DateOnly? PlannedMaterialUnitPriceStartMonth { get; set; }
-    }
-
-    private class MaterialAssignmentData
-    {
-        public double Quantity { get; set; }
-        public double Cost { get; set; }
     }
 
     private class MaintainFactorData

@@ -7,7 +7,7 @@ public class AdjustmentMaterialCostDetailDto
     public Guid MaterialUnitPriceId { get; set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; set; }
     public double? OtherMaterialValue { get; set; }
-    public Guid? StoneClampRatioId { get; set; }
+    public Guid? NormFactorId { get; set; }
     public Guid OutputId { get; set; }
     public double TotalPlannedMaterialPrice { get; set; }
     public IList<AdjustmentMaterialCostAssignmentCode> AdjustmentMaterialCostAssignmentCodes { get; set; } = new List<AdjustmentMaterialCostAssignmentCode>();

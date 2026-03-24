@@ -3,7 +3,6 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.StoneClampRatio;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.StoneClampRatio.Commands;
@@ -18,14 +17,9 @@ public class UpdateStoneClampRatioCommandHandler(IUnitOfWork unitOfWork) : IRequ
     {
         var existedModel = await _stoneClampRatioRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == request.UpdateModel.Id,
-            include: p => p.Include(p => p.Hardness).Include(p => p.ProductionProcess),
             disableTracking: true
         ) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
-
-        var productionProcess = await _productProcessRepository.GetFirstOrDefaultAsync(predicate: p => p.Id == request.UpdateModel.ProcessId) ?? throw new NotFoundException(CustomResponseMessage.ProductionProcessNotFound); ;
-
-        existedModel.Update(request.UpdateModel.Value,
-            request.UpdateModel.CoefficientValue, request.UpdateModel.HardnessId, request.UpdateModel.ProcessId);
+        existedModel.Update(request.UpdateModel.Value);
 
         _stoneClampRatioRepository.Update(existedModel);
         await unitOfWork.SaveChangesAsync();

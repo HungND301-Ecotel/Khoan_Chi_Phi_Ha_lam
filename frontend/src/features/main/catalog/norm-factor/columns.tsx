@@ -14,8 +14,8 @@ export type NormFactor = {
 	stoneClampRatioName: string;
 	affectAssignmentCodeIds: string[];
 	value: number;
-	referenceNormAdjustmentFactorId: string;
-	referenceNormAdjustmentFactorName: string;
+	targetHardnessId: string;
+	targetHardnessName: string;
 };
 
 export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
@@ -41,13 +41,7 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 		accessorKey: 'value',
 		header: 'Hệ số điều chỉnh định mức',
 		cell: ({ row }) => (
-			<span className='whitespace-normal'>
-				{row.original.value}
-				{/* {' lần '}{' '}
-				{row.original.referenceNormAdjustmentFactorName === ''
-					? row.original.hardnessName
-					: row.original.referenceNormAdjustmentFactorName} */}
-			</span>
+			<span className='whitespace-normal'>{row.original.value}</span>
 		),
 	},
 ];

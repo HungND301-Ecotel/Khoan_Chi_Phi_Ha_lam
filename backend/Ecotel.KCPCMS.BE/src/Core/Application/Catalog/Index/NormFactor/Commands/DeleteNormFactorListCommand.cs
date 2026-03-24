@@ -29,7 +29,7 @@ public class DeleteNormFactorListCommandHandler(IUnitOfWork unitOfWork) : IReque
 
         var factorsToDelete = await _normFactorRepository.GetAllAsync(
             predicate: x => distinctIds.Contains(x.Id),
-            include: q => q.Include(nf => nf.NormFactorAssignmentCodes).Include(nf => nf.ChildNormFactors),
+            include: q => q.Include(nf => nf.NormFactorAssignmentCodes),
             disableTracking: true);
 
         if (factorsToDelete == null || !factorsToDelete.Any())

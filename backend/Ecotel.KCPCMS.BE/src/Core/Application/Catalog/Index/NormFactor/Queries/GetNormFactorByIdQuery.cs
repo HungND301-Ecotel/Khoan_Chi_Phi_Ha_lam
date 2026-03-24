@@ -27,8 +27,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             .Include(p => p.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.Code)
             .Include(p => p.Hardness)
             .Include(p => p.StoneClampRatio)
-            .Include(p => p.ReferenceNormFactor).ThenInclude(p => p.ProductionProcess)
-            .Include(p => p.ReferenceNormFactor).ThenInclude(p => p.Hardness)
+            .Include(p => p.Hardness)
             .Include(p => p.NormFactorAssignmentCodes),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -38,7 +37,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
         dto.ProductionProcessName = normFactor.ProductionProcess?.Name ?? string.Empty;
         dto.HardnessName = normFactor.Hardness?.Value ?? string.Empty;
         dto.StoneClampRatioName = normFactor.StoneClampRatio?.Value ?? string.Empty;
-        dto.ReferenceNormAdjustmentFactorName = normFactor.ReferenceNormFactor != null ? $"{normFactor.ReferenceNormFactor.ProductionProcess!.Name.ToString()} {normFactor.ReferenceNormFactor.Hardness!.Value}" : string.Empty;
+        dto.TargetHardnessName = normFactor.TargetHardness != null ? normFactor.TargetHardness.Value : string.Empty;
         dto.ProcessGroupId = normFactor.ProductionProcess!.ProcessGroupId;
         dto.ProcessGroupName = normFactor.ProductionProcess!.ProcessGroup!.Name;
         dto.ProcessGroupCode = normFactor.ProductionProcess!.ProcessGroup!.Code!.Value;

@@ -285,10 +285,10 @@ public class ApplicationDbContext(
 
         //NormFactor table
         modelBuilder.Entity<NormFactor>()
-            .HasOne(s => s.ReferenceNormFactor)
-            .WithMany(h => h.ChildNormFactors)
-            .HasForeignKey(s => s.ReferenceNormFactorId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .HasOne(s => s.TargetHardness)
+            .WithMany(h => h.TargetedNormFactors)
+            .HasForeignKey(s => s.TargetHardnessId)
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<NormFactor>()
             .HasOne(s => s.ProductionProcess)
             .WithMany(h => h.NormFactors)
@@ -324,15 +324,8 @@ public class ApplicationDbContext(
 
         // StoneClampRatio table
         modelBuilder.Entity<StoneClampRatio>()
-            .HasOne(s => s.Hardness)
-            .WithMany(s => s.StoneClampRatios)
-            .HasForeignKey(s => s.HardnessId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<StoneClampRatio>()
-            .HasOne(s => s.ProductionProcess)
-            .WithMany(s => s.StoneClampRatios)
-            .HasForeignKey(s => s.ProcessId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasIndex(e => e.Value)
+            .HasFilter("\"DeletedOn\" IS NULL");
 
 
         //Code table
@@ -656,9 +649,9 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.SlideUnitPriceAssignmentCodeId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<PlannedMaterialCost>()
-            .HasOne(m => m.StoneClampRatio)
+            .HasOne(m => m.NormFactor)
             .WithMany(h => h.PlannedMaterialCosts)
-            .HasForeignKey(s => s.StoneClampRatioId)
+            .HasForeignKey(s => s.NormFactorId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Output>()
             .HasOne(o => o.PlannedMaterialCost)

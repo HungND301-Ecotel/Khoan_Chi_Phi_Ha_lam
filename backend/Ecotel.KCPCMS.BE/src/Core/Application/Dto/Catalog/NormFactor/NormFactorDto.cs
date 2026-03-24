@@ -9,7 +9,7 @@ public class CreateNormFactorDto
     public Guid StoneClampRatioId { get; set; }
     public double Value { get; set; }
     public IList<Guid> AssignmentCodeIds { get; set; }
-    public Guid? ReferenceNormAdjustmentFactorId { get; set; }
+    public Guid? TargetHardnessId { get; set; }
 }
 
 public class NormFactorDto : IDto
@@ -32,8 +32,8 @@ public class NormFactorDto : IDto
 
     public double Value { get; set; }
 
-    public Guid ReferenceNormAdjustmentFactorId { get; set; }
-    public string ReferenceNormAdjustmentFactorName { get; set; }
+    public Guid TargetHardnessId { get; set; }
+    public string TargetHardnessName { get; set; }
 }
 
 public class UpdateNormFactorDto
@@ -44,5 +44,5 @@ public class UpdateNormFactorDto
     public Guid StoneClampRatioId { get; set; }
     public double Value { get; set; }
     public IList<Guid> AssignmentCodeIds { get; set; }
-    public Guid? ReferenceNormAdjustmentFactorId { get; set; }
+    public Guid? TargetHardnessId { get; set; }
 }

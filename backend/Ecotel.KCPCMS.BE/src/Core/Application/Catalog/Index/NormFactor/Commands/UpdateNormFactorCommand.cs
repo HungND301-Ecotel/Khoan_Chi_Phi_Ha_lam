@@ -29,9 +29,10 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         var uniqueAssignmentIds = request.UpdateModel.AssignmentCodeIds.Distinct().ToList();
 
         var checkProductionProcessTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.UpdateModel.ProductionProcessId);
-        var checkHardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.UpdateModel.HardnessId);
+        var checkHardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.UpdateModel.HardnessId)
+              && (!request.UpdateModel.TargetHardnessId.HasValue
+                  || await _hardnessRepository.AnyAsync(p => p.Id == request.UpdateModel.TargetHardnessId.Value));
         var checkStoneClampRatioTask = await _stoneClampRatioRepository.AnyAsync(p => p.Id == request.UpdateModel.StoneClampRatioId);
-        var checkReferenceNormFactor = request.UpdateModel.ReferenceNormAdjustmentFactorId == null ? true : await _normFactorRepository.AnyAsync(p => p.Id == request.UpdateModel.ReferenceNormAdjustmentFactorId);
         var countExistingTask = await _assignmentCodeRepository.CountAsync(predicate: a => uniqueAssignmentIds.Contains(a.Id));
 
         if (!checkProductionProcessTask)
@@ -49,18 +50,13 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
         }
 
-        if (!checkReferenceNormFactor)
-        {
-            throw new NotFoundException(CustomResponseMessage.NormFactorNotFound);
-        }
-
         if (countExistingTask != uniqueAssignmentIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
         // update main properties
-        existNormFactor.Update(request.UpdateModel.ProductionProcessId, request.UpdateModel.HardnessId, request.UpdateModel.StoneClampRatioId, request.UpdateModel.Value, request.UpdateModel.ReferenceNormAdjustmentFactorId);
+        existNormFactor.Update(request.UpdateModel.ProductionProcessId, request.UpdateModel.HardnessId, request.UpdateModel.StoneClampRatioId, request.UpdateModel.Value, request.UpdateModel.TargetHardnessId);
 
         // determine assignment codes to add / keep / remove
         var existingAssignmentCodes = existNormFactor.NormFactorAssignmentCodes.ToList();

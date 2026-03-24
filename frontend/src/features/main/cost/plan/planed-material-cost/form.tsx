@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
+import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
+import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { PlanedMaterialCostType } from '@/features/main/cost/plan/planed-material-cost/columns';
 import {
 	PLAN_MATERIAL_COST_DEFAULT,
@@ -37,8 +38,9 @@ export function PlanMaterialCostForm({
 	callback,
 }: ProductCostFormProps) {
 	const [isInit, setIsInit] = useState<boolean>(!!id);
-	const [clamps, setClamps] = useState<Clamp[]>([]);
-	const [allClamps, setAllClamps] = useState<Clamp[]>([]);
+	const [normFactors, setNormFactors] = useState<NormFactor[]>([]);
+	const [allNormFactors, setAllNormFactors] = useState<NormFactor[]>([]);
+	const [hardnesses, setHardnesses] = useState<Strength[]>([]);
 	const [materials, setMaterials] = useState<UnifiedMaterial[]>([]);
 	const [slides, setSlides] = useState<Slide[]>([]);
 	const [slideDetailMaterialCosts, setSlideDetailMaterialCosts] = useState<
@@ -60,7 +62,7 @@ export function PlanMaterialCostForm({
 		},
 	});
 
-	const watchedStoneClampRatioId = form.watch('stoneClampRatioId');
+	const watchedNormFactorId = form.watch('normFactorId');
 	const watchedMaterialUnitPriceId = form.watch('materialUnitPriceId');
 
 	// Filter materials based on processGroupType
@@ -77,14 +79,16 @@ export function PlanMaterialCostForm({
 
 	useEffect(() => {
 		const promises = Promise.all([
-			api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
+			api.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST),
+			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 			api.pagging<Slide>(API.PRICING.SLIDE.LIST),
 		]);
 
-		promises.then(([clamps, materials, slides]) => {
-			setAllClamps(clamps.result.data);
-			setClamps(clamps.result.data);
+		promises.then(([normFactors, hardnesses, materials, slides]) => {
+			setAllNormFactors(normFactors.result.data);
+			setNormFactors(normFactors.result.data);
+			setHardnesses(hardnesses.result.data);
 			setMaterials(materials.result.data);
 			setSlides(slides.result.data);
 
@@ -93,13 +97,17 @@ export function PlanMaterialCostForm({
 				.get<PlanedMaterialCostType>(API.COST.PLANNED_MATERIAL.DETAIL(id))
 				.then((detail) => {
 					const {
-						stoneClampRatioId,
+						normFactorId,
 						materialUnitPriceId,
 						slideUnitPriceAssignmentCodeId,
 					} = detail.result;
 
 					form.reset({
-						stoneClampRatioId,
+						normFactorId:
+							normFactorId ||
+							(detail.result as unknown as { stoneClampRatioId?: string })
+								.stoneClampRatioId ||
+							null,
 						materialUnitPriceId,
 						slideUnitPriceAssignmentCodeId:
 							slideUnitPriceAssignmentCodeId || '',
@@ -123,10 +131,23 @@ export function PlanMaterialCostForm({
 		);
 
 		if (!selectedMaterial) {
-			// setSlideDetailMaterialCosts([]);
-			// restore clamps to full list when no material selected
-			setClamps(allClamps);
+			setNormFactors(allNormFactors);
 			return;
+		}
+
+		const filteredNormFactors = allNormFactors.filter(
+			(f) =>
+				f.productionProcessId === selectedMaterial.processId &&
+				f.hardnessId === selectedMaterial.hardnessId,
+		);
+		setNormFactors(filteredNormFactors);
+
+		const currentNormFactorId = form.getValues('normFactorId');
+		if (
+			currentNormFactorId &&
+			!filteredNormFactors.some((f) => f.id === currentNormFactorId)
+		) {
+			form.setValue('normFactorId', null);
 		}
 
 		const { processGroupId } = plan;
@@ -149,12 +170,6 @@ export function PlanMaterialCostForm({
 
 		if (!matchedSlide) return setSlideDetailMaterialCosts([]);
 
-		// filter clamps to only those matching material.hardnessId
-		const filteredClamps = allClamps.filter(
-			(clamp) => clamp.hardnessId === selectedMaterial.hardnessId,
-		);
-		setClamps(filteredClamps);
-
 		api
 			.get<SlideDetail>(API.PRICING.SLIDE.DETAIL(matchedSlide.id))
 			.then((res) => {
@@ -166,7 +181,15 @@ export function PlanMaterialCostForm({
 				});
 				setSlideDetailMaterialCosts(slideDetailMaterialCosts);
 			});
-	}, [watchedMaterialUnitPriceId, materials, plan, slides, form, isInit]);
+	}, [
+		watchedMaterialUnitPriceId,
+		materials,
+		plan,
+		slides,
+		form,
+		isInit,
+		allNormFactors,
+	]);
 
 	const handleMaterialCostSubmit = async (values: PlanMaterialCostSchema) => {
 		const submitValues = {
@@ -232,6 +255,32 @@ export function PlanMaterialCostForm({
 			error(err);
 		}
 	};
+
+	const selectedMaterial = materials.find(
+		(material) => material.id === watchedMaterialUnitPriceId,
+	);
+	const selectedNormFactor = normFactors.find(
+		(normFactor) => normFactor.id === watchedNormFactorId,
+	);
+
+	const referenceHardnessValue = (() => {
+		if (!selectedMaterial) return '';
+
+		const targetHardnessId = selectedNormFactor?.targetHardnessId;
+		const isCurrentHardness =
+			!targetHardnessId ||
+			targetHardnessId === '00000000-0000-0000-0000-000000000000';
+
+		if (isCurrentHardness) {
+			return selectedMaterial.hardnessName || '';
+		}
+
+		return (
+			hardnesses.find((hardness) => hardness.id === targetHardnessId)?.value ||
+			selectedMaterial.hardnessName ||
+			''
+		);
+	})();
 
 	return (
 		<FormProvider context={form} onSubmit={handleMaterialCostSubmit}>
@@ -311,24 +360,23 @@ export function PlanMaterialCostForm({
 				<FormRow>
 					<FormComboBox
 						control={form.control}
-						name='stoneClampRatioId'
+						name='normFactorId'
 						label='Tỷ lệ đá kẹp (Ckep)'
 						placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
-						options={clamps.map((clamp) => ({
-							label: clamp.value,
-							value: clamp.id,
+						options={normFactors.map((normFactor) => ({
+							label: normFactor.stoneClampRatioName,
+							value: normFactor.id,
 						}))}
 					/>
 
 					<div className='flex-1 space-y-2'>
 						<Label>Hệ số điều chỉnh định mức</Label>
-						<Input
-							readOnly
-							value={
-								clamps.find((clamp) => clamp.id === watchedStoneClampRatioId)
-									?.coefficientValue ?? ''
-							}
-						/>
+						<Input readOnly value={selectedNormFactor?.value ?? ''} />
+					</div>
+
+					<div className='flex-1 space-y-2'>
+						<Label>Định mức tham chiếu</Label>
+						<Input readOnly value={referenceHardnessValue} />
 					</div>
 				</FormRow>
 			)}

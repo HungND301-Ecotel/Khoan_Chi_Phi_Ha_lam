@@ -21,7 +21,7 @@ export const normFactorSchema = z.object({
 		.min(0, {
 			error: 'Hệ số điều chỉnh định mức không được để trống.',
 		}),
-	referenceNormAdjustmentFactorId: z.string().optional(),
+	targetHardnessId: z.string().optional(),
 });
 
 export type NormFactorSchema = z.infer<typeof normFactorSchema>;
@@ -32,5 +32,5 @@ export const NORM_FACTOR_SCHEMA_DEFAULT: NormFactorSchema = {
 	stoneClampRatioId: '',
 	assignmentCodeIds: [],
 	value: NaN,
-	referenceNormAdjustmentFactorId: '',
+	targetHardnessId: '',
 };

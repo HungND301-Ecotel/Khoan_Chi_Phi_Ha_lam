@@ -30,7 +30,7 @@ public class GetAllStoneClampRatioQueryHandler(IPaginationService paginationServ
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.ProcessCode).ThenBy(d => d.Value).ToList();
+        result.Data = result.Data.OrderBy(d => d.Value).ToList();
         return result;
     }
 }

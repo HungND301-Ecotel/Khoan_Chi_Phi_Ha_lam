@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324094759_NormFactorTargetHardnessId")]
+    partial class NormFactorTargetHardnessId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1406,6 +1409,9 @@ namespace Migrators.PostgreSQL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<double>("CoefficientValue")
+                        .HasColumnType("double precision");
+
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
 
@@ -1418,7 +1424,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("HardnessId")
+                    b.Property<Guid>("HardnessId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("LastModifiedBy")
@@ -1427,7 +1433,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("ProductionProcessId")
+                    b.Property<Guid>("ProcessId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Value")
@@ -1438,10 +1444,7 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("HardnessId");
 
-                    b.HasIndex("ProductionProcessId");
-
-                    b.HasIndex("Value")
-                        .HasFilter("\"DeletedOn\" IS NULL");
+                    b.HasIndex("ProcessId");
 
                     b.ToTable("StoneClampRatio", "Index");
                 });
@@ -2054,9 +2057,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("MaterialUnitPriceId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("NormFactorId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("OutputId")
                         .HasColumnType("uuid");
 
@@ -2066,16 +2066,19 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid?>("SlideUnitPriceAssignmentCodeId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("StoneClampRatioId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MaterialUnitPriceId");
-
-                    b.HasIndex("NormFactorId");
 
                     b.HasIndex("OutputId")
                         .IsUnique();
 
                     b.HasIndex("SlideUnitPriceAssignmentCodeId");
+
+                    b.HasIndex("StoneClampRatioId");
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -3081,7 +3084,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.Hardness", "TargetHardness")
                         .WithMany("TargetedNormFactors")
                         .HasForeignKey("TargetHardnessId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Hardness");
 
@@ -3229,13 +3232,21 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Index.StoneClampRatio", b =>
                 {
-                    b.HasOne("Domain.Entities.Index.Hardness", null)
+                    b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
                         .WithMany("StoneClampRatios")
-                        .HasForeignKey("HardnessId");
+                        .HasForeignKey("HardnessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("Domain.Entities.Index.ProductionProcess", null)
+                    b.HasOne("Domain.Entities.Index.ProductionProcess", "ProductionProcess")
                         .WithMany("StoneClampRatios")
-                        .HasForeignKey("ProductionProcessId");
+                        .HasForeignKey("ProcessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hardness");
+
+                    b.Navigation("ProductionProcess");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment", b =>
@@ -3419,11 +3430,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Index.NormFactor", "NormFactor")
-                        .WithMany("PlannedMaterialCosts")
-                        .HasForeignKey("NormFactorId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("Domain.Entities.Pricing.Output", "Output")
                         .WithOne("PlannedMaterialCost")
                         .HasForeignKey("Domain.Entities.Pricing.PlannedMaterialCost", "OutputId")
@@ -3441,15 +3447,20 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasForeignKey("SlideUnitPriceAssignmentCodeId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.Navigation("MaterialUnitPrice");
+                    b.HasOne("Domain.Entities.Index.StoneClampRatio", "StoneClampRatio")
+                        .WithMany("PlannedMaterialCosts")
+                        .HasForeignKey("StoneClampRatioId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
-                    b.Navigation("NormFactor");
+                    b.Navigation("MaterialUnitPrice");
 
                     b.Navigation("Output");
 
                     b.Navigation("ProductUnitPrice");
 
                     b.Navigation("SlideUnitPriceAssignmentCode");
+
+                    b.Navigation("StoneClampRatio");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
@@ -3857,8 +3868,6 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Index.NormFactor", b =>
                 {
                     b.Navigation("NormFactorAssignmentCodes");
-
-                    b.Navigation("PlannedMaterialCosts");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Part", b =>
@@ -3917,6 +3926,8 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Index.StoneClampRatio", b =>
                 {
                     b.Navigation("NormFactors");
+
+                    b.Navigation("PlannedMaterialCosts");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.SupportStep", b =>

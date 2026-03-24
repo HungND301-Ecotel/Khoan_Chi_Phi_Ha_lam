@@ -9,7 +9,7 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
     public Guid ProductUnitPriceId { get; protected set; }
     public Guid MaterialUnitPriceId { get; protected set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; protected set; }
-    public Guid? StoneClampRatioId { get; protected set; }
+    public Guid? NormFactorId { get; protected set; }
     public Guid OutputId { get; protected set; }
 
     private double? CachedPlannedMaterialTotal { get; set; }
@@ -19,7 +19,7 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
     public virtual Output Output { get; protected set; }
     public virtual MaterialUnitPriceEntity? MaterialUnitPrice { get; protected set; }
     public virtual SlideUnitPriceAssignmentCode? SlideUnitPriceAssignmentCode { get; protected set; }
-    public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
+    public virtual NormFactor? NormFactor { get; protected set; }
 
     //Constructor
     public double GetTotalPrice()
@@ -33,29 +33,29 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         {
             SlideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
         }
-        CachedPlannedMaterialTotal = (SlideCost + MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0) * (StoneClampRatio?.CoefficientValue ?? 1);
+        CachedPlannedMaterialTotal = (SlideCost + MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0) * (NormFactor?.Value ?? 1);
 
         return CachedPlannedMaterialTotal.Value;
     }
 
-    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? stoneClampRatioId, Guid outputId)
+    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid outputId)
     {
         return new PlannedMaterialCost
         {
             ProductUnitPriceId = productUnitPriceId,
             MaterialUnitPriceId = materialUnitPriceId,
             SlideUnitPriceAssignmentCodeId = slideUnitPriceAssignmentCodeId,
-            StoneClampRatioId = stoneClampRatioId,
+            NormFactorId = normFactorId,
             OutputId = outputId
         };
     }
 
     public void Update(Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId,
-        Guid? stoneClampRatioId, Guid outputId)
+        Guid? normFactorId, Guid outputId)
     {
         MaterialUnitPriceId = materialUnitPriceId;
         SlideUnitPriceAssignmentCodeId = slideUnitPriceAssignmentCodeId;
-        StoneClampRatioId = stoneClampRatioId;
+        NormFactorId = normFactorId;
         OutputId = outputId;
     }
 }

@@ -25,7 +25,7 @@ export type PlanedMaterialCostType = {
 	productUnitPriceId: string;
 	materialUnitPriceId: string;
 	slideUnitPriceAssignmentCodeId: string;
-	stoneClampRatioId: string;
+	normFactorId: string;
 	outputId: string;
 	otherMaterialValue?: number;
 	totalPlannedMaterialPrice: number;

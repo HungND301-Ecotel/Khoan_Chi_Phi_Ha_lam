@@ -32,7 +32,7 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 	const [hardnesses, setHardnesses] = useState<Strength[]>([]);
 	const [stoneClampRatios, setStoneClampRatios] = useState<Clamp[]>([]);
 	const [assignmentCodes, setAssignmentCodes] = useState<ContractCode[]>([]);
-	const [referenceFactors, setReferenceFactors] = useState<NormFactor[]>([]);
+	const [targetHardnesses, setTargetHardnesses] = useState<Strength[]>([]);
 
 	const form = useForm<NormFactorSchema>({
 		resolver: zodResolver(normFactorSchema),
@@ -54,9 +54,10 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 			.pagging<ProcessStep>(API.CATALOG.PROCESS.STEP.LIST)
 			.then((res) => setProductionProcesses(res.result.data ?? []));
 
-		api
-			.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST)
-			.then((res) => setHardnesses(res.result.data ?? []));
+		api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST).then((res) => {
+			setHardnesses(res.result.data ?? []);
+			setTargetHardnesses(res.result.data ?? []);
+		});
 
 		api
 			.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST)
@@ -65,38 +66,32 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 		api
 			.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST)
 			.then((res) => setAssignmentCodes(res.result.data ?? []));
-
-		api
-			.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST)
-			.then((res) => setReferenceFactors(res.result.data ?? []));
 	}, [row, form]);
 
 	// Ensure reference dropdown defaults to 'Định mức hiện tại' when editing
 	// if the referenced factor cannot be mapped to available referenceFactors.
 	useEffect(() => {
 		if (!row) return;
-		const refId = (row as any).referenceNormAdjustmentFactorId;
+		const refId = row.targetHardnessId;
 		if (!refId) {
-			form.setValue('referenceNormAdjustmentFactorId', '');
+			form.setValue('targetHardnessId', '');
 			return;
 		}
 		// treat all-zero guid or missing in fetched list as unmapped
-		const isAllZeroGuid =
-			refId === '00000000-0000-0000-0000-000000000000';
-		const found = referenceFactors.some((r) => r.id === refId);
+		const isAllZeroGuid = refId === '00000000-0000-0000-0000-000000000000';
+		const found = targetHardnesses.some((r) => r.id === refId);
 		if (isAllZeroGuid || !found) {
-			form.setValue('referenceNormAdjustmentFactorId', '');
+			form.setValue('targetHardnessId', '');
 		} else {
-			form.setValue('referenceNormAdjustmentFactorId', refId);
+			form.setValue('targetHardnessId', refId);
 		}
-	}, [referenceFactors, row, form]);
+	}, [targetHardnesses, row, form]);
 
 	const handleSubmit = async (values: NormFactorSchema) => {
 		try {
 			const payload = {
 				...values,
-				referenceNormAdjustmentFactorId:
-					values.referenceNormAdjustmentFactorId || null,
+				targetHardnessId: values.targetHardnessId || null,
 			};
 
 			if (row?.id) {
@@ -127,24 +122,18 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 		)
 		.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }));
 
-	const selectedProductionProcessId = form.watch('productionProcessId');
 	const selectedHardnessId = form.watch('hardnessId');
 
-	const stoneClampOptions = stoneClampRatios
-		.filter((s) => {
-			if (selectedProductionProcessId && selectedHardnessId) {
-				return (
-					s.processId === selectedProductionProcessId &&
-					s.hardnessId === selectedHardnessId
-				);
-			}
-
-			if (selectedProductionProcessId)
-				return s.processId === selectedProductionProcessId;
-			if (selectedHardnessId) return s.hardnessId === selectedHardnessId;
-			return true;
-		})
-		.map((s) => ({ label: s.value, value: s.id }));
+	useEffect(() => {
+		const currentTargetHardnessId = form.getValues('targetHardnessId');
+		if (
+			selectedHardnessId &&
+			currentTargetHardnessId &&
+			currentTargetHardnessId === selectedHardnessId
+		) {
+			form.setValue('targetHardnessId', '');
+		}
+	}, [selectedHardnessId, form]);
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
@@ -180,7 +169,7 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 				name='stoneClampRatioId'
 				label='Tỷ lệ đá kẹp (Ckẹp)'
 				placeholder='Chọn tỷ lệ đá kẹp (Ckẹp)'
-				options={stoneClampOptions}
+				options={stoneClampRatios.map((s) => ({ label: s.value, value: s.id }))}
 			/>
 
 			<FormMultiSelect
@@ -204,15 +193,15 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 
 				<FormComboBox
 					control={form.control}
-					name='referenceNormAdjustmentFactorId'
+					name='targetHardnessId'
 					label='Định mức tham chiếu'
 					placeholder='Chọn định mức tham chiếu'
 					options={[
 						{ label: 'Định mức hiện tại', value: '' },
-						...referenceFactors
-							.filter((r) => r.id !== row?.id)
+						...targetHardnesses
+							.filter((r) => r.id !== selectedHardnessId)
 							.map((r) => ({
-								label: `${r.productionProcessName} - ${r.hardnessName}`,
+								label: r.value,
 								value: r.id,
 							})),
 					]}

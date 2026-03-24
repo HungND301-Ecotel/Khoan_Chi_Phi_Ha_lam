@@ -22,7 +22,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             predicate: o => o.Id == request.Id,
             include: o => o
                 .Include(o => o.ProductUnitPrice)
-                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.StoneClampRatio)
+                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.AssignmentCode).ThenInclude(a => a.Code)
@@ -57,7 +57,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         {
             var currentSlide = plannedMaterialCost.SlideUnitPriceAssignmentCode.Material;
             var originalAmount = plannedMaterialCost.SlideUnitPriceAssignmentCode.Amount;
-            var coefficientValue = plannedMaterialCost.StoneClampRatio?.CoefficientValue ?? 1;
+            var coefficientValue = plannedMaterialCost.NormFactor?.Value ?? 1;
             var materialCost = currentSlide.Costs.FirstOrDefault(cc =>
                 cc.StartMonth <= plannedMaterialCost.Output.StartMonth && cc.EndMonth >= plannedMaterialCost.Output.EndMonth)?.Amount ?? 0;
             mCost.Add(new AdjustmentMaterialCostAssignmentCode
@@ -87,7 +87,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             MaterialUnitPriceId = plannedMaterialCost.MaterialUnitPriceId,
             ProductUnitPriceId = plannedMaterialCost.ProductUnitPriceId,
             SlideUnitPriceAssignmentCodeId = plannedMaterialCost.SlideUnitPriceAssignmentCodeId,
-            StoneClampRatioId = plannedMaterialCost.StoneClampRatioId,
+            NormFactorId = plannedMaterialCost.NormFactorId,
             AdjustmentMaterialCostAssignmentCodes = mCost,
             TotalPlannedMaterialPrice = plannedMaterialCost.GetTotalPrice()
         };

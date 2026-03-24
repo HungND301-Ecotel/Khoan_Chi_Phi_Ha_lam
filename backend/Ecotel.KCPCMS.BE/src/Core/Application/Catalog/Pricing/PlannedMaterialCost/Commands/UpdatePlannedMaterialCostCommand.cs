@@ -18,18 +18,18 @@ public class UpdatePlannedMaterialCostCommandHandler(
 {
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
-    private readonly IWriteRepository<StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<StoneClampRatio>();
+    private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<SlideUnitPriceAssignmentCode> _slideUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<SlideUnitPriceAssignmentCode>();
     public async Task<bool> Handle(UpdatePlannedMaterialCostCommand request, CancellationToken cancellationToken)
     {
-        if (request.UpdateModel.StoneClampRatioId != null)
+        if (request.UpdateModel.NormFactorId != null)
         {
-            bool checkStoneClampRatio =
-                await _stoneClampRatioRepository.ExistsAsync(p => p.Id == request.UpdateModel.StoneClampRatioId);
-            if (!checkStoneClampRatio)
+            bool checkNormFactor =
+                await _normFactorRepository.ExistsAsync(p => p.Id == request.UpdateModel.NormFactorId);
+            if (!checkNormFactor)
             {
-                throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
+                throw new NotFoundException(CustomResponseMessage.NormFactorNotFound);
             }
         }
 
@@ -62,7 +62,7 @@ public class UpdatePlannedMaterialCostCommandHandler(
         }
 
         existPlannedMaterial.Update(request.UpdateModel.MaterialUnitPriceId,
-            request.UpdateModel.SlideUnitPriceAssignmentCodeId, request.UpdateModel.StoneClampRatioId,
+            request.UpdateModel.SlideUnitPriceAssignmentCodeId, request.UpdateModel.NormFactorId,
             request.UpdateModel.OutputId);
 
         _plannedMaterialCostRepository.Update(existPlannedMaterial);

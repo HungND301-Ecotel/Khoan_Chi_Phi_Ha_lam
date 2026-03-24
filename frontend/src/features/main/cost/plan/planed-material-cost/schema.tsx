@@ -13,7 +13,7 @@ export const planMaterialCostSchema = z
 			.string()
 			.nullable()
 			.transform((val) => (val === '' ? null : val)),
-		stoneClampRatioId: z
+		normFactorId: z
 			.string()
 			.nullable()
 			.transform((val) => (val === '' ? null : val)),
@@ -25,13 +25,13 @@ export const planMaterialCostSchema = z
 	.refine(
 		(data) => {
 			if (data.processGroupType === ProcessGroupType.DL) {
-				return data.stoneClampRatioId !== null && data.stoneClampRatioId !== '';
+				return data.normFactorId !== null && data.normFactorId !== '';
 			}
 			return true;
 		},
 		{
 			message: 'Độ kiên cố đá không được để trống',
-			path: ['stoneClampRatioId'],
+			path: ['normFactorId'],
 		},
 	);
 
@@ -41,6 +41,6 @@ export const PLAN_MATERIAL_COST_DEFAULT: PlanMaterialCostSchema = {
 	productUnitPriceId: '',
 	materialUnitPriceId: '',
 	slideUnitPriceAssignmentCodeId: null,
-	stoneClampRatioId: null,
+	normFactorId: null,
 	outputId: '',
 };

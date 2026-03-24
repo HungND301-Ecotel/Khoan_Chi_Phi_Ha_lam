@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Entities.Pricing;
 
 namespace Domain.Entities.Index;
 
@@ -8,23 +9,22 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
     public Guid HardnessId { get; protected set; }
     public Guid StoneClampRatioId { get; protected set; }
     public double Value { get; protected set; }
-    public Guid? ReferenceNormFactorId { get; protected set; }
+    public Guid? TargetHardnessId { get; protected set; }
 
 
     //Navigation Properties
-    public virtual NormFactor? ReferenceNormFactor { get; protected set; }
+    public virtual Hardness? TargetHardness { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
     public virtual Hardness? Hardness { get; protected set; }
     public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
+    private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
+    public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
 
     private IList<NormFactorAssignmentCode> _normFactorAssignmentCodes = new List<NormFactorAssignmentCode>();
     public IReadOnlyList<NormFactorAssignmentCode> NormFactorAssignmentCodes => _normFactorAssignmentCodes.ToList();
 
-    private IList<NormFactor> _childNormFactors = new List<NormFactor>();
-    public IReadOnlyList<NormFactor> ChildNormFactors => _childNormFactors.ToList();
 
-
-    public static NormFactor Create(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? referenceNormFactorId = null)
+    public static NormFactor Create(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null)
     {
         return new NormFactor
         {
@@ -32,7 +32,7 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
             HardnessId = hardnessId,
             StoneClampRatioId = stoneClampRatioId,
             Value = value,
-            ReferenceNormFactorId = referenceNormFactorId
+            TargetHardnessId = targetHardnessId
         };
     }
 
@@ -45,12 +45,12 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         }
     }
 
-    public void Update(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? referenceNormFactorId = null)
+    public void Update(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null)
     {
         ProductionProcessId = productionProcessId;
         HardnessId = hardnessId;
         StoneClampRatioId = stoneClampRatioId;
         Value = value;
-        ReferenceNormFactorId = referenceNormFactorId;
+        TargetHardnessId = targetHardnessId;
     }
 }

@@ -12,18 +12,19 @@ public record CreateNormFactorCommand(CreateNormFactorDto CreateModel) : IReques
 
 public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<CreateNormFactorCommand, bool>
 {
-    private readonly IWriteRepository<Domain.Entities.Index.NormFactor> _normFactorRepository = unitOfWork.GetRepository<Domain.Entities.Index.NormFactor>();
-    private readonly IWriteRepository<Domain.Entities.Index.AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<Domain.Entities.Index.AssignmentCode>();
+    private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<Domain.Entities.Index.ProductionProcess>();
-    private readonly IWriteRepository<Domain.Entities.Index.Hardness> _hardnessRepository = unitOfWork.GetRepository<Domain.Entities.Index.Hardness>();
+    private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<Domain.Entities.Index.StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<Domain.Entities.Index.StoneClampRatio>();
     public async Task<bool> Handle(CreateNormFactorCommand request, CancellationToken cancellationToken)
     {
         var uniqueAssignmentIds = request.CreateModel.AssignmentCodeIds.Distinct().ToList();
         var checkProductionProcessTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProductionProcessId);
-        var checkHardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.CreateModel.HardnessId);
+        var checkHardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.CreateModel.HardnessId)
+              && (!request.CreateModel.TargetHardnessId.HasValue
+                  || await _hardnessRepository.AnyAsync(p => p.Id == request.CreateModel.TargetHardnessId.Value));
         var checkStoneClampRatioTask = await _stoneClampRatioRepository.AnyAsync(p => p.Id == request.CreateModel.StoneClampRatioId);
-        var checkReferenceNormFactor = request.CreateModel.ReferenceNormAdjustmentFactorId == null ? true : await _normFactorRepository.AnyAsync(p => p.Id == request.CreateModel.ReferenceNormAdjustmentFactorId);
         var countExistingTask = await _assignmentCodeRepository.CountAsync(predicate: a => uniqueAssignmentIds.Contains(a.Id));
 
         if (!checkProductionProcessTask)
@@ -41,17 +42,12 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
         }
 
-        if (!checkReferenceNormFactor)
-        {
-            throw new NotFoundException(CustomResponseMessage.NormFactorNotFound);
-        }
-
         if (countExistingTask != uniqueAssignmentIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
-        var normFactor = Domain.Entities.Index.NormFactor.Create(request.CreateModel.ProductionProcessId, request.CreateModel.HardnessId, request.CreateModel.StoneClampRatioId, request.CreateModel.Value, request.CreateModel.ReferenceNormAdjustmentFactorId);
+        var normFactor = NormFactor.Create(request.CreateModel.ProductionProcessId, request.CreateModel.HardnessId, request.CreateModel.StoneClampRatioId, request.CreateModel.Value, request.CreateModel.TargetHardnessId);
         normFactor.AddNormFactorAssignmentCode(uniqueAssignmentIds.Select(a => NormFactorAssignmentCode.Create(a, Guid.Empty)).ToList());
         await _normFactorRepository.InsertAsync(normFactor, cancellationToken);
         await unitOfWork.SaveChangesAsync();

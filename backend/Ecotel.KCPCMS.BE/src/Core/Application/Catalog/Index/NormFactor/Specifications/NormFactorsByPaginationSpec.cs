@@ -38,8 +38,8 @@ public class NormFactorsByPaginationSpec
                 StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
                 AffectAssignmentCodeIds = nf.NormFactorAssignmentCodes.Select(a => a.AssignmentCodeId).ToList(),
                 Value = nf.Value,
-                ReferenceNormAdjustmentFactorId = nf.ReferenceNormFactorId ?? Guid.Empty,
-                ReferenceNormAdjustmentFactorName = nf.ReferenceNormFactor != null ? nf.ReferenceNormFactor.Value.ToString() : string.Empty
+                TargetHardnessId = nf.TargetHardnessId ?? Guid.Empty,
+                TargetHardnessName = nf.TargetHardness != null ? nf.TargetHardness.Value.ToString() : string.Empty
             });
 
     }

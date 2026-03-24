@@ -20,6 +20,8 @@ namespace Domain.Entities.Index
 
         private IList<NormFactor> _normFactors = new List<NormFactor>();
         public virtual IReadOnlyCollection<NormFactor> NormFactors => _normFactors.AsReadOnly();
+        private IList<NormFactor> _targetedNormFactors = new List<NormFactor>();
+        public IReadOnlyList<NormFactor> TargetedNormFactors => _targetedNormFactors.ToList();
         public static Hardness Create(string value)
         {
             if (string.IsNullOrWhiteSpace(value))

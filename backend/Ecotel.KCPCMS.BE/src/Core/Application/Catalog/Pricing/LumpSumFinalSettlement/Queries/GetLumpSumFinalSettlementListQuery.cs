@@ -58,7 +58,7 @@ public class GetLumpSumFinalSettlementListQueryHandler(IUnitOfWork unitOfWork) :
                                     .ThenInclude(m => m!.Costs)
                 .Include(p => p.Outputs)
                     .ThenInclude(o => o.PlannedMaterialCost)
-                        .ThenInclude(pmc => pmc!.StoneClampRatio)
+                        .ThenInclude(pmc => pmc!.NormFactor)
                 .Include(p => p.Outputs)
                     .ThenInclude(o => o.PlannedMaintainCost)
                         .ThenInclude(pmc => pmc!.PlannedMaintainCostAdjustmentFactors)
