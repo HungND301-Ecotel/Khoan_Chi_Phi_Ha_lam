@@ -45,7 +45,7 @@ import {
 	SHIPPED_DETAIL_TYPE_BY_KEY,
 	ProductionOrder,
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
-import { formatNumber, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -173,6 +173,73 @@ function getDefaultAdditionalCostByMaterialType(
 	}
 
 	return null;
+}
+
+const ItemType = {
+	InContract: 1,
+	OutContract: 2,
+} as const;
+
+function getMaterialBadge(
+	type?: number | null,
+	itemType?: number | null,
+): {
+	label: string;
+	className: string;
+} {
+	if (type === MaterialType.Material && itemType === ItemType.InContract) {
+		return {
+			label: 'Vật tư, tài sản trong khoán',
+			className:
+				'rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700',
+		};
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
+		return {
+			label: 'Vật tư, tài sản khác',
+			className:
+				'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
+		};
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
+		return {
+			label: 'Phụ tùng theo thiết bị',
+			className:
+				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
+		};
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
+		return {
+			label: 'Phụ tùng khác',
+			className:
+				'rounded bg-orange-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-orange-700',
+		};
+	}
+
+	if (type === MaterialType.Material) {
+		return {
+			label: 'Vật liệu',
+			className:
+				'rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700',
+		};
+	}
+
+	if (type === MaterialType.SparePart) {
+		return {
+			label: 'Phụ tùng',
+			className:
+				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
+		};
+	}
+
+	return {
+		label: 'Vật tư',
+		className:
+			'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
+	};
 }
 
 export function RawAcceptanceReportForm({
@@ -661,40 +728,31 @@ export function RawAcceptanceReportForm({
 							<Table className='w-full'>
 								<TableHeader className='bg-linear-to-r from-slate-50 to-slate-100'>
 									<TableRow className='bg-linear-to-r from-slate-50 to-slate-100'>
-										<TableCell className='sticky left-0 z-20 w-[3%] min-w-12 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											STT
 										</TableCell>
-										<TableCell className='sticky left-12 z-20 w-[8%] min-w-28 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+										<TableCell className='sticky left-16 z-20 w-[8%] min-w-32 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 											Mã vật tư
 										</TableCell>
-										<TableCell className='w-[10%] min-w-32 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
-											Tên vật tư
+										<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+											Đơn vị tính
 										</TableCell>
-										<TableCell className='w-[8%] min-w-24 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
-											DVT
-										</TableCell>
-										<TableCell className='w-[12%] min-w-32 border-b-2 border-slate-200 px-4 py-4 text-right text-sm font-semibold text-slate-700'>
-											Đơn giá kế hoạch (đ)
-										</TableCell>
-										<TableCell className='w-[12%] min-w-32 border-b-2 border-slate-200 px-4 py-4 text-right text-sm font-semibold text-slate-700'>
-											Đơn giá thực tế (đ)
-										</TableCell>
-										<TableCell className='w-[10%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Số lượng lĩnh
 										</TableCell>
-										<TableCell className='w-[10%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Số lượng xuất
 										</TableCell>
-										<TableCell className='w-[15%] min-w-40 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Vật tư tính vào doanh thu khoán
 										</TableCell>
-										<TableCell className='w-[15%] min-w-40 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Bổ sung chi phí
 										</TableCell>
-										<TableCell className='w-[15%] min-w-40 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Vật tư theo hạn mức
 										</TableCell>
-										<TableCell className='w-[12%] min-w-32 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Tài sản
 										</TableCell>
 									</TableRow>
@@ -1604,14 +1662,8 @@ function RawAcceptanceReportRow({
 	]);
 
 	const materialCode = form.watch(`${basename}.materialCode` as FieldName);
-	const materialName = form.watch(`${basename}.materialName` as FieldName);
 	const unit = form.watch(`${basename}.unit` as FieldName);
-	const plannedUnitPrice = form.watch(
-		`${basename}.plannedUnitPrice` as FieldName,
-	);
-	const actualUnitPrice = form.watch(
-		`${basename}.actualUnitPrice` as FieldName,
-	);
+	const itemTypeValue = form.watch(`${basename}.itemType` as FieldName);
 	const receivedQuantity = form.watch(
 		`${basename}.receivedQuantity` as FieldName,
 	);
@@ -1694,6 +1746,7 @@ function RawAcceptanceReportRow({
 			: [EXPORTED_TYPE_OPTIONS[0].value];
 	const showReceivedBreakdown = activeReceivedKeys.length > 1;
 	const showExportedBreakdown = activeExportedKeys.length > 1;
+	const materialBadge = getMaterialBadge(materialTypeValue, itemTypeValue);
 
 	const handleReceivedBreakdownChange = (key: string, value: number | string) =>
 		form.setValue(`${basename}.receivedBreakdown` as FieldName, {
@@ -1728,61 +1781,27 @@ function RawAcceptanceReportRow({
 						: 'hover:bg-slate-50/50',
 			)}
 		>
-			<TableCell className='sticky left-0 z-20 w-[3%] min-w-12 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
+			<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
 				{index + 1}
 			</TableCell>
-			<TableCell className='sticky left-12 z-20 w-[8%] min-w-28 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
+			<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
 				<div className='flex flex-col gap-1'>
 					<Input
 						readOnly
 						value={materialCode || ''}
 						className='border-slate-300 bg-slate-100 font-medium text-slate-500'
 					/>
-					{materialTypeValue === MaterialType.Material && (
-						<span className='rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700'>
-							Vật liệu
-						</span>
-					)}
-					{materialTypeValue === MaterialType.SparePart && (
-						<span className='rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700'>
-							Phụ tùng
-						</span>
-					)}
+					<span className={materialBadge.className}>{materialBadge.label}</span>
 				</div>
 			</TableCell>
-			<TableCell className='w-[10%] min-w-32 border-b border-slate-200 px-4 py-4'>
-				<Input
-					readOnly
-					value={materialName || ''}
-					className='border-slate-300 bg-slate-100 text-slate-500'
-				/>
-			</TableCell>
-			<TableCell className='w-[8%] min-w-24 border-b border-slate-200 px-4 py-4 text-center'>
+			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 				<Input
 					readOnly
 					value={unit || ''}
-					className='border-slate-300 bg-slate-100 text-center text-slate-500'
+					className='border-slate-300 bg-slate-100 text-slate-500'
 				/>
 			</TableCell>
-			<TableCell className='w-[12%] min-w-32 border-b border-slate-200 px-4 py-4 text-right'>
-				<Input
-					readOnly
-					value={formatNumber(plannedUnitPrice || 0, {
-						maximumFractionDigits: 0,
-					})}
-					className='border-slate-300 bg-slate-100 text-right text-slate-500'
-				/>
-			</TableCell>
-			<TableCell className='w-[12%] min-w-32 border-b border-slate-200 px-4 py-4 text-right'>
-				<Input
-					readOnly
-					value={formatNumber(actualUnitPrice || 0, {
-						maximumFractionDigits: 0,
-					})}
-					className='border-slate-300 bg-slate-100 text-right text-slate-500'
-				/>
-			</TableCell>
-			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='border-b border-slate-200 px-4 py-4'>
 				{(() => {
 					const receivedQty = Number(receivedQuantity) || 0;
 					const subTotal = activeReceivedKeys.reduce(
@@ -1836,7 +1855,7 @@ function RawAcceptanceReportRow({
 					);
 				})()}
 			</TableCell>
-			<TableCell className='w-[10%] min-w-28 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='border-b border-slate-200 px-4 py-4'>
 				{(() => {
 					const subTotal = activeExportedKeys.reduce(
 						(acc, key) => acc + (Number((exportedBreakdown ?? {})[key]) || 0),
@@ -1891,7 +1910,7 @@ function RawAcceptanceReportRow({
 			</TableCell>
 
 			{/* Vật tư tính vào doanh thu khoán */}
-			<TableCell className='w-[15%] min-w-40 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='flex justify-center *:w-auto!'>
 						<FormCheckBox
@@ -1899,6 +1918,18 @@ function RawAcceptanceReportRow({
 							name={`${basename}.showCategoryDropdown` as FieldName}
 						/>
 					</div>
+					{!showCategoryDropdown &&
+						!showAdditionalCostDropdown &&
+						!showContractLimitDropdown &&
+						!showAssetDropdown &&
+						form.formState.errors?.items?.[index]?.showCategoryDropdown && (
+							<p className='text-xs text-red-600'>
+								{
+									form.formState.errors.items[index]?.showCategoryDropdown
+										?.message
+								}
+							</p>
+						)}
 					{showCategoryDropdown && (
 						<>
 							{resolvedCategoryValue && (
@@ -1948,7 +1979,7 @@ function RawAcceptanceReportRow({
 			</TableCell>
 
 			{/* Bổ sung chi phí */}
-			<TableCell className='w-[15%] min-w-40 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='flex justify-center *:w-auto!'>
 						<FormCheckBox
@@ -2020,7 +2051,7 @@ function RawAcceptanceReportRow({
 			</TableCell>
 
 			{/* Vật tư theo hạn mức */}
-			<TableCell className='w-[15%] min-w-40 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='flex justify-center *:w-auto!'>
 						<FormCheckBox
@@ -2103,7 +2134,7 @@ function RawAcceptanceReportRow({
 			</TableCell>
 
 			{/* Tài sản */}
-			<TableCell className='w-[12%] min-w-32 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='flex justify-center *:w-auto!'>
 						<FormCheckBox
