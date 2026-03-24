@@ -52,7 +52,8 @@ public record MaterialGroupDto
     ///   Không có ProductionOrderId   → Equipment.Code
     ///
     /// SectionA SCTX TH2 (SectionAType=3):
-    ///   Equipment.Code | "VTK"
+    ///   Có ProductionOrderId         → ProductionOrderId.ToString()
+    ///   Không có ProductionOrderId   → Equipment.Code | "VTK"
     ///
     /// SectionB Vật liệu (AdditionalCostType=Material):
     ///   Có ProductionOrderId         → ProductionOrderId.ToString()

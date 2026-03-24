@@ -100,7 +100,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     //    Không có ProductionOrderId       → group theo Equipment.Code
     //
     //  Sub-section 3 (SectionAType=3): SCTX TH2 — chi phí dài kỳ phân bổ
-    //    Group theo Equipment.Code | "VTK"
+    //    Thuộc kỳ trước + có ProductionOrderId → group theo ProductionOrderId
+    //    Còn lại                               → group theo Equipment.Code | "VTK"
     // =========================================================================
     private List<MaterialGroupDto> BuildSectionA(
         AcceptanceReport report,
@@ -171,15 +172,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 continue;
             }
 
-            var equipment = part.EquipmentParts?.FirstOrDefault()?.Equipment;
-            var groupCode = equipment?.Code?.Value ?? "VTK";
-            var groupKey = $"A3_{groupCode}";
+            var (groupKey, groupCode, groupName) = ResolveSctxTh2GroupKey("A3", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
-                GroupName = equipment?.Name ?? "Vật tư khác",
+                GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
                 SectionAType = SecAType.SctxTh2,
+                ProductionOrderId = item.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
             });
@@ -208,15 +208,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     continue;
                 }
 
-                var equipment = item.Part!.EquipmentParts?.FirstOrDefault()?.Equipment;
-                var groupCode = equipment?.Code?.Value ?? "VTK";
-                var groupKey = $"A3_{groupCode}";
+                var (groupKey, groupCode, groupName) = ResolveSctxTh2GroupKey("A3", item);
                 var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
                     GroupCode = groupCode,
-                    GroupName = equipment?.Name ?? "Vật tư khác",
+                    GroupName = groupName,
                     MaterialType = MatTypeLabel.Sctx,
                     SectionAType = SecAType.SctxTh2,
+                    ProductionOrderId = item.ProductionOrderId,
                     Materials = new(),
                     SubGroups = new()
                 });
@@ -520,6 +519,26 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         }
 
         var equipment = item.Part.EquipmentParts?.FirstOrDefault()?.Equipment;
+        var code = equipment?.Code?.Value ?? "VTK";
+        var name = equipment?.Name ?? "Vật tư khác";
+        return ($"{prefix}_EQ_{code}", code, name);
+    }
+
+    /// <summary>
+    /// TH2 grouping rule:
+    /// - Nếu có ProductionOrderId (chi phí kéo dài từ kỳ trước theo lệnh/quyết định) thì group theo ProductionOrderId.
+    /// - Nếu không thì group theo Equipment.Code (fallback "VTK").
+    /// </summary>
+    private static (string key, string code, string name) ResolveSctxTh2GroupKey(
+        string prefix, AcceptanceReportItem item)
+    {
+        if (item.ProductionOrderId.HasValue)
+        {
+            var id = item.ProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id); // FE resolve tên từ id
+        }
+
+        var equipment = item.Part!.EquipmentParts?.FirstOrDefault()?.Equipment;
         var code = equipment?.Code?.Value ?? "VTK";
         var name = equipment?.Name ?? "Vật tư khác";
         return ($"{prefix}_EQ_{code}", code, name);

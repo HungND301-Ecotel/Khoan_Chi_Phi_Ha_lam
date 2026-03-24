@@ -193,8 +193,10 @@ function transformMaterialDetail(
 		receiptWithReceiptQty: material.issuedInPeriod.received.quantity,
 		receiptWithReceiptAmountKH: material.issuedInPeriod.received.plannedAmount,
 		receiptWithReceiptAmountTT: material.issuedInPeriod.received.actualAmount,
-		receiptBorrowedQty: material.issuedInPeriod.borrowedNoVoucher?.quantity ?? 0,
-		receiptBorrowedAmount: material.issuedInPeriod.borrowedNoVoucher?.amount ?? 0,
+		receiptBorrowedQty:
+			material.issuedInPeriod.borrowedNoVoucher?.quantity ?? 0,
+		receiptBorrowedAmount:
+			material.issuedInPeriod.borrowedNoVoucher?.amount ?? 0,
 		receiptReturnPrevMonthQty:
 			material.issuedInPeriod.returnPreviousMonthVoucher?.quantity ?? 0,
 		receiptReturnPrevMonthAmount:
@@ -209,7 +211,8 @@ function transformMaterialDetail(
 			material.exportedInPeriod.exportedToProduction.amount,
 		issueOtherQty: material.exportedInPeriod.otherExport?.quantity ?? 0,
 		issueOtherAmount: material.exportedInPeriod.otherExport?.amount ?? 0,
-		issueContractQty: material.exportedInPeriod.contractSettlement?.quantity ?? 0,
+		issueContractQty:
+			material.exportedInPeriod.contractSettlement?.quantity ?? 0,
 		issueContractAmount:
 			material.exportedInPeriod.contractSettlement?.amount ?? 0,
 
@@ -224,7 +227,8 @@ function transformMaterialDetail(
 		// Tồn cuối kỳ - Tổng cộng
 		closingBalanceTotalQty: material.endingInventory?.total?.quantity ?? 0,
 		closingBalanceTotalAmount: material.endingInventory?.total?.amount ?? 0,
-		closingBalanceOnSiteQty: material.endingInventory?.remainingAtSite?.quantity ?? 0,
+		closingBalanceOnSiteQty:
+			material.endingInventory?.remainingAtSite?.quantity ?? 0,
 		closingBalanceOnSiteAmount:
 			material.endingInventory?.remainingAtSite?.amount ?? 0,
 		closingBalancePendingQty: 0,
@@ -370,8 +374,32 @@ function createMaterialTypeGroups(
 		{ order: number; groups: GroupCodeGroup[]; flatItems: UnifiedItem[] }
 	>();
 
+	const orderedMaterialGroups =
+		sectionKey === 'sectionA'
+			? [
+					...categoryItem.materialGroups.filter(
+						(matGroup) =>
+							!(
+								(resolveSectionAType(matGroup) === 2 ||
+									resolveSectionAType(matGroup) === 3) &&
+								trimText(matGroup.productionOrderId).length > 0
+							),
+					),
+					...categoryItem.materialGroups.filter(
+						(matGroup) =>
+							resolveSectionAType(matGroup) === 2 &&
+							trimText(matGroup.productionOrderId).length > 0,
+					),
+					...categoryItem.materialGroups.filter(
+						(matGroup) =>
+							resolveSectionAType(matGroup) === 3 &&
+							trimText(matGroup.productionOrderId).length > 0,
+					),
+				]
+			: categoryItem.materialGroups;
+
 	// Group materials by materialType
-	categoryItem.materialGroups.forEach((matGroup) => {
+	orderedMaterialGroups.forEach((matGroup) => {
 		const matType = resolveTypeName(matGroup, sectionKey);
 		const order = resolveTypeOrder(matGroup, sectionKey);
 
