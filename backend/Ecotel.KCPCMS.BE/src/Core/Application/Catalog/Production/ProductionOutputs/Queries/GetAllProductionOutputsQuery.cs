@@ -23,12 +23,15 @@ public class GetAllProductionOutputsQueryHandler(IPaginationService paginationSe
 
         var spec = new ProductionOutputsByPaginationSpec(filter);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: productionOutputRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderByDescending(d => d.StartMonth).ToList();
+        return result;
     }
 }

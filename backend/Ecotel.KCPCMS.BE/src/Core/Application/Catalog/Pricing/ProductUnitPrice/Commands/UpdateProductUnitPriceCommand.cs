@@ -64,8 +64,26 @@ public class UpdateProductUnitPriceCommandHandler(
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            var ouputMaps = request.UpdateModel.Outputs.ToDictionary(o => o.Id, o => o);
-            var insertOutputList = request.UpdateModel.Outputs.ToList();
+            var requestOutputs = request.UpdateModel.Outputs.ToList();
+            var duplicatedOutputIds = requestOutputs
+                .Where(o => o.Id != Guid.Empty)
+                .GroupBy(o => o.Id)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicatedOutputIds.Any())
+            {
+                throw new BadRequestException("Duplicate output id in request");
+            }
+
+            var ouputMaps = requestOutputs
+                .Where(o => o.Id != Guid.Empty)
+                .ToDictionary(o => o.Id, o => o);
+
+            var insertOutputList = requestOutputs
+                .Where(o => o.Id == Guid.Empty)
+                .ToList();
             var deleteOutputs = new List<Output>();
             var updateOutputs = new List<Output>();
             foreach (var item in exitedProductUnitPrice.Outputs.Where(o => o.OutputType == request.UpdateModel.Type))
@@ -74,7 +92,6 @@ public class UpdateProductUnitPriceCommandHandler(
                 {
                     updateOutputs.Add(Output.Create(item.Id, item.ProductionMeters, item.StartMonth, item.EndMonth, item.OutputType));
                     item.Update(updateOutput.ProductionMeters, updateOutput.StartMonth, updateOutput.EndMonth);
-                    insertOutputList.Remove(updateOutput);
                 }
                 else
                 {
