@@ -1,5 +1,7 @@
 import { MainCostLayout } from '@/features/main/cost/layout';
 import { MainCostLumpSumFinalSettlementPage } from '@/features/main/cost/lump-sum-final-settlement/page';
+import { MainCostLumpSumFinalSettlementQuarterPage } from '@/features/main/cost/lump-sum-final-settlement/quarter/page';
+import { MainCostLumpSumFinalSettlementMonthPage } from '@/features/main/cost/lump-sum-final-settlement/month/page';
 import { MainCostPlanPage } from '@/features/main/cost/plan/page';
 import { MainCostProductionRouter } from '@/features/main/cost/producttion/router';
 import { Navigate, RouteObject } from 'react-router-dom';
@@ -29,6 +31,22 @@ export const MainCostRouter: RouteObject = {
 				title: 'Quyết toán giao khoán',
 			},
 			element: <MainCostLumpSumFinalSettlementPage />,
+			children: [
+				{
+					index: true,
+					element: (
+						<Navigate replace to='/cost/lump-sum-final-settlement/month' />
+					),
+				},
+				{
+					path: 'month',
+					element: <MainCostLumpSumFinalSettlementMonthPage />,
+				},
+				{
+					path: 'quarter',
+					element: <MainCostLumpSumFinalSettlementQuarterPage />,
+				},
+			],
 		},
 	],
 };

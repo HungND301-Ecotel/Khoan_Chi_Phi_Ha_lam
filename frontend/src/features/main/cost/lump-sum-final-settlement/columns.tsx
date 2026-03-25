@@ -2,13 +2,25 @@ import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 import { LumpSumFinalSettlement } from './types';
 
+const renderNumber = (
+	value: number | null | undefined,
+	options?: Intl.NumberFormatOptions,
+) => {
+	if (value == null) {
+		return '';
+	}
+	return formatNumber(value, options);
+};
+
 export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement>[] =
 	[
 		{
 			id: 'stt',
 			header: () => <div className='text-center font-bold'>STT</div>,
 			cell: ({ row }) => (
-				<div className='text-center font-semibold'>{row.index + 1}</div>
+				<div className='text-center'>
+					{row.original.sttLabel || row.index + 1}
+				</div>
 			),
 			size: 50,
 		},
@@ -33,7 +45,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 			header: () => <div className='text-center font-bold'>KH</div>,
 			cell: ({ row }) => (
 				<div className='text-left'>
-					{formatNumber(row.original.plannedQuantity ?? 0, {
+					{renderNumber(row.original.plannedQuantity, {
 						maximumFractionDigits: 3,
 					})}
 				</div>
@@ -45,7 +57,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 			header: () => <div className='text-center font-bold'>TH</div>,
 			cell: ({ row }) => (
 				<div className='text-left'>
-					{formatNumber(row.original.actualQuantity ?? 0, {
+					{renderNumber(row.original.actualQuantity, {
 						maximumFractionDigits: 3,
 					})}
 				</div>
@@ -67,7 +79,11 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 					),
 					cell: ({ row }) => (
 						<div className='text-left'>
-							{formatNumber(Math.round(row.original.materials?.unitPrice ?? 0))}
+							{renderNumber(
+								row.original.materials?.unitPrice == null
+									? undefined
+									: Math.round(row.original.materials.unitPrice),
+							)}
 						</div>
 					),
 					size: 120,
@@ -78,9 +94,11 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 						<div className='text-center text-xs font-bold'>THÀNH TIỀN</div>
 					),
 					cell: ({ row }) => (
-						<div className='text-left font-bold'>
-							{formatNumber(
-								Math.round(row.original.materials?.totalAmount ?? 0),
+						<div className='text-left'>
+							{renderNumber(
+								row.original.materials?.totalAmount == null
+									? undefined
+									: Math.round(row.original.materials.totalAmount),
 							)}
 						</div>
 					),
@@ -103,7 +121,11 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 					),
 					cell: ({ row }) => (
 						<div className='text-left'>
-							{formatNumber(Math.round(row.original.maintains?.unitPrice ?? 0))}
+							{renderNumber(
+								row.original.maintains?.unitPrice == null
+									? undefined
+									: Math.round(row.original.maintains.unitPrice),
+							)}
 						</div>
 					),
 					size: 120,
@@ -114,9 +136,11 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 						<div className='text-center text-xs font-bold'>THÀNH TIỀN</div>
 					),
 					cell: ({ row }) => (
-						<div className='text-left font-bold'>
-							{formatNumber(
-								Math.round(row.original.maintains?.totalAmount ?? 0),
+						<div className='text-left'>
+							{renderNumber(
+								row.original.maintains?.totalAmount == null
+									? undefined
+									: Math.round(row.original.maintains.totalAmount),
 							)}
 						</div>
 					),
@@ -139,8 +163,10 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 					),
 					cell: ({ row }) => (
 						<div className='text-left'>
-							{formatNumber(
-								Math.round(row.original.electricities?.unitPrice ?? 0),
+							{renderNumber(
+								row.original.electricities?.unitPrice == null
+									? undefined
+									: Math.round(row.original.electricities.unitPrice),
 							)}
 						</div>
 					),
@@ -152,9 +178,11 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 						<div className='text-center text-xs font-bold'>THÀNH TIỀN</div>
 					),
 					cell: ({ row }) => (
-						<div className='text-left font-bold'>
-							{formatNumber(
-								Math.round(row.original.electricities?.totalAmount ?? 0),
+						<div className='text-left'>
+							{renderNumber(
+								row.original.electricities?.totalAmount == null
+									? undefined
+									: Math.round(row.original.electricities.totalAmount),
 							)}
 						</div>
 					),
@@ -176,8 +204,12 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 						<div className='text-center text-xs font-bold'>THÀNH TIỀN</div>
 					),
 					cell: ({ row }) => (
-						<div className='text-left font-semibold'>
-							{formatNumber(Math.round(row.original.totalAmount ?? 0))}
+						<div className='text-left'>
+							{renderNumber(
+								row.original.totalAmount == null
+									? undefined
+									: Math.round(row.original.totalAmount),
+							)}
 						</div>
 					),
 					size: 150,

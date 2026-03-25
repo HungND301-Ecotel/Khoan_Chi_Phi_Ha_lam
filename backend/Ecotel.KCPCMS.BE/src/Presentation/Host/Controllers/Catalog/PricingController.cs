@@ -705,5 +705,13 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpPost("lump-sum-final-settlement/quarter-list")]
+    [OpenApiOperation("Get Lump Sum Final Settlement Quarter List", "")]
+    public async Task<IActionResult> GetLumpSumFinalSettlementQuarterList([FromBody] LumpSumFinalSettlementQuarterListRequest request)
+    {
+        var result = await Mediator.Send(new GetLumpSumFinalSettlementQuarterListQuery(request.Quarter, request.Year, request.ProcessGroupId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     #endregion
 }

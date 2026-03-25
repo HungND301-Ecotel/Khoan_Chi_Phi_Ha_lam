@@ -37,28 +37,35 @@ export function LumpSumDataTable({
 
 	// Calculate totals
 	const totals = useMemo(() => {
+		const sourceData = data.filter(
+			(item) => !item.isProcessGroupRow && !item.excludeFromSummary,
+		);
+
 		return {
-			plannedQuantity: data.reduce(
+			plannedQuantity: sourceData.reduce(
 				(sum, item) => sum + (item.plannedQuantity || 0),
 				0,
 			),
-			actualQuantity: data.reduce(
+			actualQuantity: sourceData.reduce(
 				(sum, item) => sum + (item.actualQuantity || 0),
 				0,
 			),
-			materialsTotal: data.reduce(
+			materialsTotal: sourceData.reduce(
 				(sum, item) => sum + (item.materials?.totalAmount || 0),
 				0,
 			),
-			maintainsTotal: data.reduce(
+			maintainsTotal: sourceData.reduce(
 				(sum, item) => sum + (item.maintains?.totalAmount || 0),
 				0,
 			),
-			electricitiesTotal: data.reduce(
+			electricitiesTotal: sourceData.reduce(
 				(sum, item) => sum + (item.electricities?.totalAmount || 0),
 				0,
 			),
-			totalAmount: data.reduce((sum, item) => sum + (item.totalAmount || 0), 0),
+			totalAmount: sourceData.reduce(
+				(sum, item) => sum + (item.totalAmount || 0),
+				0,
+			),
 		};
 	}, [data]);
 
@@ -152,24 +159,73 @@ export function LumpSumDataTable({
 							</TableCell>
 						</TableRow>
 					) : table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
-								key={row.id}
-								className='border-b border-gray-200 hover:bg-gray-50'
-							>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell
-										key={cell.id}
-										className='border-r-2 border-gray-200 p-2 text-left last:border-r-0'
-										style={{
-											width: cell.column.getSize(),
-										}}
+						table.getRowModel().rows.map((row) => {
+							if (row.original.isMergedValueRow) {
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 hover:bg-gray-50'
 									>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
-								))}
-							</TableRow>
-						))
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												row.original.isBold && 'font-bold',
+											)}
+										>
+											{row.original.sttLabel || row.index + 1}
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												row.original.isBold && 'font-bold',
+											)}
+										>
+											{row.original.productName}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
+											{row.original.unitOfMeasureName}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell
+											colSpan={5}
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-center',
+												row.original.isBold && 'font-bold',
+											)}
+										>
+											{formatNumber(row.original.mergedValue ?? 0, {
+												maximumFractionDigits: 0,
+											})}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
+							return (
+								<TableRow
+									key={row.id}
+									className='border-b border-gray-200 hover:bg-gray-50'
+								>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell
+											key={cell.id}
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left last:border-r-0',
+												row.original.isBold && 'font-bold',
+											)}
+											style={{
+												width: cell.column.getSize(),
+											}}
+										>
+											{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										</TableCell>
+									))}
+								</TableRow>
+							);
+						})
 					) : (
 						<TableRow>
 							<TableCell colSpan={actualColumnCount} className='h-30 p-0'>

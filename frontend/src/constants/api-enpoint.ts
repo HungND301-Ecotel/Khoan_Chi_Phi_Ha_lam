@@ -370,6 +370,7 @@ export const API = {
 		},
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
+			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
 		},
 	},
 

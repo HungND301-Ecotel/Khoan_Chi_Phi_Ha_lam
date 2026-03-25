@@ -30,7 +30,6 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
 
     public async Task<bool> Handle(UpdateMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
-
         if (await _materialUnitPriceRepository.AnyAsync(m =>
             m.StartMonth < request.UpdateModel.EndMonth &&
             m.EndMonth > request.UpdateModel.StartMonth &&
