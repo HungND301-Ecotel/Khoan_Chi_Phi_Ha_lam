@@ -12,16 +12,14 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { Production } from '@/features/main/cost/producttion/production/columns';
-import { FixedColumnDataTable } from '@/features/main/cost/producttion/production/longterm-material-cost/datatable';
 import {
 	LongtermMaterialDetailItem,
 	LongTermTrackingResponse,
 } from '@/features/main/cost/producttion/production/longterm-material-cost/types';
 import { api } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const UNGROUPED_PROCESS_GROUP = '__ungrouped';
@@ -58,10 +56,341 @@ interface LongtermMaterialCostDataTableProps {
 	largeText?: boolean;
 }
 
+interface ExcelReportHeaderProps {
+	qkh: number;
+	qdm: number;
+	month: string;
+	year: string;
+}
+
+interface ExcelStructuredTableProps {
+	items: LongtermMaterialDetailItem[];
+	largeText?: boolean;
+	startIndex?: number;
+}
+
+const borderCellClass =
+	'border border-black px-0.5 py-1 align-middle leading-tight whitespace-normal break-words';
+
+const formatPeriodLabel = (month: string, year: string) => {
+	return `Tháng ${Number(month)} năm ${year}`;
+};
+
+const ExcelReportHeader = ({
+	qkh,
+	qdm,
+	month,
+	year,
+}: ExcelReportHeaderProps) => {
+	return (
+		<div className='font-["Times_New_Roman",Times,serif]'>
+			<div className='flex items-start justify-between gap-10'>
+				<div className='space-y-1 text-left font-bold'>
+					<p className='text-lg leading-tight md:text-2xl'>CÔNG TY CỔ PHẦN THAN HÀ LẦM - VINACOMIN</p>
+					 <p className='text-center text-sm leading-tight md:text-xl border-b border-black pb-1'>
+						CÔNG TRƯỜNG KHAI THÁC 1
+					</p>
+				</div>
+				<div className='space-y-1 text-right text-sm font-bold md:text-base'>
+					<p>
+						<span className='mr-2'>Qkh:</span>
+						{formatNumber(qkh, { maximumFractionDigits: 2 })}
+						<span className='ml-2'>Tấn</span>
+					</p>
+					<p>
+						<span className='mr-2'>Qđm:</span>
+						{formatNumber(qdm, { maximumFractionDigits: 2 })}
+						<span className='ml-2'>Tấn</span>
+					</p>
+					<p className='pt-1'>Bảng số: 03</p>
+				</div>
+			</div>
+
+			<div className='mt-6 text-center'>
+				<p className='text-lg font-bold uppercase md:text-2xl'>
+					Bảng hạch toán chi phí vật tư dài kỳ
+				</p>
+				<p className='mt-2 text-sm font-bold md:text-base'>
+					{formatPeriodLabel(month, year)}
+				</p>
+			</div>
+		</div>
+	);
+};
+
+const ExcelStructuredTable = ({
+	items,
+	largeText = true,
+	startIndex = 1,
+}: ExcelStructuredTableProps) => {
+	const textClass = largeText ? 'text-[11px] md:text-[12px]' : 'text-[10px] md:text-[11px]';
+
+	const totalOpeningBalance = items.reduce(
+		(sum, item) => sum + (item.pendingValueStartPeriod ?? 0),
+		0,
+	);
+	const totalAmount = items.reduce(
+		(sum, item) => sum + (item.totalAmount ?? 0),
+		0,
+	);
+	const totalValueToAccount = items.reduce(
+		(sum, item) => sum + (item.totalValueToAccount ?? 0),
+		0,
+	);
+	const totalOriginAmount = items.reduce(
+		(sum, item) => sum + (item.originAmount ?? 0),
+		0,
+	);
+	const totalValueByStandard = items.reduce(
+		(sum, item) => sum + (item.valueByStandard ?? 0),
+		0,
+	);
+	const totalAccountedValue = items.reduce(
+		(sum, item) => sum + (item.accountedValueThisPeriod ?? 0),
+		0,
+	);
+	const totalEndingBalance = items.reduce(
+		(sum, item) => sum + (item.pendingValueEndPeriod ?? 0),
+		0,
+	);
+
+	return (
+		<div className='overflow-x-hidden border border-black bg-white font-["Times_New_Roman",Times,serif]'>
+			<table
+				className={cn(
+					'w-full table-fixed border-collapse text-center font-semibold',
+					textClass,
+				)}
+			>
+				<thead>
+					<tr className='bg-white'>
+						<th rowSpan={2} className={borderCellClass}>
+							STT
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							MÃ PHỤ TÙNG
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							TÊN PHỤ TÙNG
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							ĐVT
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							GIÁ TRỊ CHỜ HẠCH TOÁN ĐẦU KỲ (Đồng)
+						</th>
+						<th colSpan={3} className={borderCellClass}>
+							GIÁ TRỊ PHÁT SINH TRONG KỲ
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							TỔNG GIÁ TRỊ CẦN HẠCH TOÁN (Đồng)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							NGUYÊN GIÁ (đồng)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							THỜI GIAN SỬ DỤNG (Ti)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							THỜI GIAN ĐÃ PHÂN BỔ
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							THỜI GIAN CÒN LẠI
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							GIÁ TRỊ CẦN HẠCH TOÁN THEO ĐỊNH MỨC (Đồng)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							TỶ LỆ PHÂN BỔ
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							GIÁ TRỊ DÀI KỲ HẠCH TOÁN KỲ NÀY (Đồng)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							GIÁ TRỊ CUỐI KỲ CHỜ HẠCH TOÁN KỲ SAU (Đồng)
+						</th>
+						<th rowSpan={2} className={borderCellClass}>
+							GHI CHÚ
+						</th>
+					</tr>
+					<tr className='bg-white'>
+						<th className={borderCellClass}>SỐ LƯỢNG</th>
+						<th className={borderCellClass}>ĐƠN GIÁ</th>
+						<th className={borderCellClass}>THÀNH TIỀN</th>
+					</tr>
+				</thead>
+				<tbody className='font-normal'>
+					<tr className='bg-[#f7f7f7] font-semibold'>
+						<td colSpan={4} className={cn(borderCellClass, 'text-left')}>
+							TỔNG CỘNG
+						</td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalOpeningBalance, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={borderCellClass}></td>
+						<td className={borderCellClass}></td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalAmount, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalValueToAccount, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalOriginAmount, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={borderCellClass}></td>
+						<td className={borderCellClass}></td>
+						<td className={borderCellClass}></td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalValueByStandard, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={borderCellClass}></td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalAccountedValue, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={cn(borderCellClass, 'text-right')}>
+							{formatNumber(totalEndingBalance, {
+								maximumFractionDigits: 0,
+							})}
+						</td>
+						<td className={borderCellClass}></td>
+					</tr>
+
+					{items.length === 0 ? (
+						<tr>
+							<td colSpan={17} className='border border-black py-8 text-center'>
+								Không có dữ liệu
+							</td>
+						</tr>
+					) : (
+						items.map((item, index) => (
+							<tr key={item.id || `${item.partCode}-${index}`} className='bg-white'>
+								<td className={borderCellClass}>{startIndex + index}</td>
+								<td className={cn(borderCellClass, 'text-left')}>
+									{item.partCode}
+								</td>
+								<td className={cn(borderCellClass, 'text-left')}>
+									{item.partName}
+								</td>
+								<td className={borderCellClass}>{item.unitOfMeasureName}</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.pendingValueStartPeriod ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.issuedQuantity ?? 0)}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.unitPrice ?? 0)}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.totalAmount ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.totalValueToAccount ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.originAmount ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.usageTime ?? 0)}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.allocatedTime ?? 0)}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.remainingTime ?? 0)}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.valueByStandard ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.allocationRatio ?? 0, {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.accountedValueThisPeriod ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-right')}>
+									{formatNumber(item.pendingValueEndPeriod ?? 0, {
+										maximumFractionDigits: 0,
+									})}
+								</td>
+								<td className={cn(borderCellClass, 'text-left')}>
+									{item.note || ''}
+								</td>
+							</tr>
+						))
+					)}
+				</tbody>
+			</table>
+		</div>
+	);
+};
+
+const ExcelReportFooter = () => {
+	return (
+		<div className='mt-10 font-["Times_New_Roman",Times,serif] text-[13px] md:text-[14px]'>
+			<div className='mb-3 flex justify-end'>
+				<p className='pr-8 text-right text-[15px] italic font-semibold'>
+					Hà Lầm, ngày 18 tháng 7 năm 2024
+				</p>
+			</div>
+
+			<div className='grid grid-cols-2 gap-12 font-semibold'>
+				<div className='grid grid-cols-2 text-center'>
+					<p>NGƯỜI LẬP</p>
+					<div>
+						<p>ĐẠI DIỆN BÊN NHẬN KHOÁN</p>
+						<p className='mt-2'>QUẢN ĐỐC</p>
+					</div>
+				</div>
+
+				<div className='grid grid-cols-1 text-center'>
+					<div>
+						<p>ĐẠI DIỆN BÊN GIAO KHOÁN</p>
+						<p className='mt-2'>PHÒNG KẾ HOẠCH</p>
+					</div>
+				</div>
+			</div>
+
+			<div className='mt-16 grid grid-cols-2 gap-12 font-semibold'>
+				<div className='grid grid-cols-2 text-center'>
+					
+				</div>
+				<div></div>
+			</div>
+		</div>
+	);
+};
+
 export function LongtermMaterialCostDataTable({
 	enableSearch = true,
-	enablePagination = true,
-	pageSize = 10,
 	largeText = true,
 }: LongtermMaterialCostDataTableProps) {
 	const now = new Date();
@@ -79,8 +408,6 @@ export function LongtermMaterialCostDataTable({
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [currentPage, setCurrentPage] = useState(1);
-	const [currentPageSize, setCurrentPageSize] = useState(pageSize);
 
 	const monthOptions = useMemo(
 		() =>
@@ -103,10 +430,6 @@ export function LongtermMaterialCostDataTable({
 			};
 		});
 	}, [currentYear]);
-
-	useEffect(() => {
-		setCurrentPageSize(pageSize);
-	}, [pageSize]);
 
 	const processGroupOptions = useMemo(() => {
 		const groups = new Map<string, string>();
@@ -174,57 +497,10 @@ export function LongtermMaterialCostDataTable({
 		});
 	}, [enableSearch, processGroupFilteredItems, searchQuery]);
 
-	const totalPages = useMemo(() => {
-		if (!enablePagination) return 1;
-		return Math.max(1, Math.ceil(filteredItems.length / currentPageSize));
-	}, [enablePagination, filteredItems.length, currentPageSize]);
-
-	const page = useMemo(() => {
-		if (!enablePagination) return 1;
-		return Math.min(currentPage, totalPages);
-	}, [enablePagination, currentPage, totalPages]);
-
-	const pagedItems = useMemo(() => {
-		if (!enablePagination) return filteredItems;
-		const startIndex = (page - 1) * currentPageSize;
-		return filteredItems.slice(startIndex, startIndex + currentPageSize);
-	}, [enablePagination, filteredItems, page, currentPageSize]);
-
-	const startItem = useMemo(() => {
-		if (filteredItems.length === 0) return 0;
-		if (!enablePagination) return 1;
-		return (page - 1) * currentPageSize + 1;
-	}, [enablePagination, filteredItems.length, page, currentPageSize]);
-
-	const endItem = useMemo(() => {
-		if (filteredItems.length === 0) return 0;
-		if (!enablePagination) return filteredItems.length;
-		return Math.min(page * currentPageSize, filteredItems.length);
-	}, [enablePagination, filteredItems.length, page, currentPageSize]);
-
-	const pageNumbers = useMemo(() => {
-		if (!enablePagination) return [] as number[];
-		if (totalPages <= 5)
-			return Array.from({ length: totalPages }, (_, index) => index + 1);
-		if (page <= 3) return [1, 2, 3, 4, 5];
-		if (page >= totalPages - 2) {
-			return [
-				totalPages - 4,
-				totalPages - 3,
-				totalPages - 2,
-				totalPages - 1,
-				totalPages,
-			];
-		}
-
-		return [page - 2, page - 1, page, page + 1, page + 2];
-	}, [enablePagination, page, totalPages]);
-
 	const fetchLongtermMaterialCost = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
 		setActiveAcceptanceReportId(null);
-		setCurrentPage(1);
 
 		try {
 			const outputResponse = await api.pagging<Production>(
@@ -317,7 +593,14 @@ export function LongtermMaterialCostDataTable({
 		}
 	};
 
-	const showPagination = enablePagination && filteredItems.length > 0;
+	const totalQkh = filteredItems.reduce(
+		(sum, item) => sum + (item.actualOutput ?? item.plannedOutput ?? 0),
+		0,
+	);
+	const totalQdm = filteredItems.reduce(
+		(sum, item) => sum + (item.standardOutput ?? 0),
+		0,
+	);
 
 	return (
 		<div className='relative flex min-h-0 min-w-0 flex-1 flex-col gap-3'>
@@ -361,7 +644,6 @@ export function LongtermMaterialCostDataTable({
 							value={selectedProcessGroup}
 							onValueChange={(value) => {
 								setSelectedProcessGroup(value);
-								setCurrentPage(1);
 							}}
 						>
 							<SelectTrigger className='w-[260px] bg-white'>
@@ -389,7 +671,6 @@ export function LongtermMaterialCostDataTable({
 									value={searchQuery}
 									onChange={(event) => {
 										setSearchQuery(event.target.value);
-										setCurrentPage(1);
 									}}
 									placeholder='Tìm theo mã, tên phụ tùng, nhóm công đoạn...'
 									className='h-10 w-[340px] bg-white pl-8 text-base'
@@ -430,76 +711,28 @@ export function LongtermMaterialCostDataTable({
 				</div>
 			) : (
 				<>
-					<FixedColumnDataTable items={pagedItems} compact={!largeText} />
+					<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
+						<div className='mx-auto w-full overflow-auto'>
+							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
+							<ExcelReportHeader
+								qkh={totalQkh}
+								qdm={totalQdm}
+								month={month}
+								year={year}
+							/>
 
-					{showPagination && (
-						<div className='absolute top-full right-0 left-0 mt-3 flex w-full items-center justify-center gap-4 bg-transparent px-4'>
-							<span className='text-[14px]'>
-								Hiển thị {startItem}-{endItem} trên {filteredItems.length} mục
-							</span>
-
-							<Button
-								variant='ghost'
-								size='icon'
-								className='size-8 bg-transparent shadow-none hover:bg-[#e3e4e7] hover:shadow-none disabled:text-[#b5b5b7]'
-								onClick={() =>
-									setCurrentPage((value) => Math.max(1, value - 1))
-								}
-								disabled={page === 1}
-							>
-								<ChevronLeft />
-							</Button>
-
-							<div className='flex items-center gap-2'>
-								{pageNumbers.map((pageNumber) => (
-									<Button
-										key={pageNumber}
-										variant='ghost'
-										size='icon'
-										className={cn(
-											'h-8 w-8 rounded-sm bg-white shadow-none hover:bg-[#e3e4e7] hover:shadow-none',
-											pageNumber === page &&
-												'border-primary text-primary border font-semibold',
-										)}
-										onClick={() => setCurrentPage(pageNumber)}
-									>
-										{pageNumber}
-									</Button>
-								))}
+							<div className='mt-10'>
+								<ExcelStructuredTable
+									items={filteredItems}
+									largeText={largeText}
+									startIndex={1}
+								/>
 							</div>
 
-							<Button
-								variant='ghost'
-								size='icon'
-								className='size-8 bg-transparent shadow-none hover:bg-[#e3e4e7] hover:shadow-none disabled:text-[#b5b5b7]'
-								onClick={() =>
-									setCurrentPage((value) => Math.min(totalPages, value + 1))
-								}
-								disabled={page === totalPages}
-							>
-								<ChevronRight />
-							</Button>
-
-							<Select
-								value={`${currentPageSize}`}
-								onValueChange={(value) => {
-									setCurrentPageSize(Number(value));
-									setCurrentPage(1);
-								}}
-							>
-								<SelectTrigger className='hover:border-primary h-8 min-w-28 border shadow-none hover:shadow-none'>
-									<SelectValue placeholder={currentPageSize} />
-								</SelectTrigger>
-								<SelectContent side='top' className='mb-2'>
-									{[10, 20, 50, 100].map((size) => (
-										<SelectItem key={size} value={`${size}`}>
-											{`${size} / trang`}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<ExcelReportFooter />
+							</div>
 						</div>
-					)}
+					</div>
 				</>
 			)}
 		</div>

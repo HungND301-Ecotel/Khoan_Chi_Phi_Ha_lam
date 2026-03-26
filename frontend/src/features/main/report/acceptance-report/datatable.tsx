@@ -53,6 +53,92 @@ interface AcceptanceReportDataTableProps {
 	largeText?: boolean;
 }
 
+const formatPeriodLabel = (month: string, year: string) => {
+	return `THÁNG ${Number(month)} NĂM ${year}`;
+};
+
+const ExcelAcceptanceReportHeader = ({
+	month,
+	year,
+}: {
+	month: string;
+	year: string;
+}) => {
+	return (
+		<div className='font-["Times_New_Roman",Times,serif]'>
+			<div className='inline-block text-left font-bold'>
+				<p className='text-base leading-tight md:text-lg'>
+					CÔNG TY CỔ PHẦN THAN HÀ LẦM - VINACOMIN
+				</p>
+				<p className='w-full text-center text-sm leading-tight md:text-base'>
+					CÔNG TRƯỜNG KHAI THÁC 1
+				</p>
+			</div>
+
+			<div className='mt-4 text-center'>
+				<p className='text-base font-bold uppercase md:text-lg'>
+					Bảng nghiệm thu vật tư sử dụng và kết chuyển chi phí
+				</p>
+				<p className='mt-1 text-sm font-bold md:text-base'>
+					{formatPeriodLabel(month, year)}
+				</p>
+			</div>
+		</div>
+	);
+};
+
+const ExcelAcceptanceReportFooter = () => {
+	return (
+		<div className='mt-6 font-["Times_New_Roman",Times,serif] text-[12px] font-semibold'>
+			{/* Ngày tháng năm */}
+			<div className='mb-4 text-right italic font-normal'>
+				Hà lầm, ngày 18 tháng 7 năm 2024
+			</div>
+
+			{/* Kết luận */}
+			<div className='max-w-[520px] border border-[#2f9f62] p-2 text-center leading-tight'>
+				Kết luận: Toàn bộ số vật tư trên đã được sử dụng đúng mục đích, đảm bảo
+				kỹ thuật an toàn. Hội đồng nghiệm thu thống nhất nghiệm thu làm cơ sở
+				thanh toán.
+			</div>
+
+			{/* Tiêu đề đại diện hai bên */}
+			<div className='mt-4 flex justify-between'>
+				<p className='w-[48%] text-center'>ĐẠI DIỆN BÊN NHẬN KHOÁN</p>
+				<p className='w-[48%] text-center'>ĐẠI DIỆN BÊN GIAO KHOÁN</p>
+			</div>
+
+			{/* Hàng chức danh */}
+			<div className='mt-2 flex justify-between'>
+				{/* Bên nhận khoán: NGƯỜI LẬP + QUẢN ĐỐC */}
+				<div className='flex w-[48%] justify-around'>
+					<p>NGƯỜI LẬP</p>
+					<p>QUẢN ĐỐC</p>
+					<p>PHÒNG KH</p>
+					<p>PHÒNG KTTC</p>
+					<p>PHÒNG CV</p>
+					<p>PHÒNG VẬT TƯ</p>
+					<p>PHÒNG KCM</p>
+				</div>
+
+				{/* Bên giao khoán: PHÒNG KCM + KT.GIÁM ĐỐC */}
+				<div className='flex w-[48%] justify-around'>
+					<div className='text-center'>
+						<p>KT. GIÁM ĐỐC</p>
+						<p>PHÓ GIÁM ĐỐC</p>
+					</div>
+				</div>
+			</div>
+			{/* Chữ ký */}
+			<div className='mt-14 flex justify-between'>
+				<div className='w-[48%]'>{/* chỗ ký bên nhận khoán */}</div>
+				<div className='flex w-[48%] justify-end pr-8'>
+				</div>
+			</div>
+		</div>
+	);
+};
+
 export function AcceptanceReportDataTable({
 	enableSearch = true,
 	largeText = true,
@@ -284,13 +370,25 @@ export function AcceptanceReportDataTable({
 				</div>
 			) : (
 				<>
-					<AcceptanceReportGrid
-						data={filteredRows}
-						className={cn(
-							'max-h-[70vh] overflow-y-auto rounded-t-md shadow',
-							largeText && '[&_table]:text-sm',
-						)}
-					/>
+					<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
+						<div className='mx-auto w-full overflow-auto'>
+							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
+								<ExcelAcceptanceReportHeader month={month} year={year} />
+
+								<div className='mt-6'>
+									<AcceptanceReportGrid
+										data={filteredRows}
+										className={cn(
+											'overflow-auto rounded-none border border-black shadow-none [&>button]:hidden [&_table]:font-["Times_New_Roman",Times,serif] [&_table]:text-[10px] [&_td]:px-1 [&_td]:py-1 [&_th]:px-1 [&_th]:py-1',
+											largeText && '[&_table]:text-[11px]',
+										)}
+									/>
+								</div>
+
+								<ExcelAcceptanceReportFooter />
+							</div>
+						</div>
+					</div>
 				</>
 			)}
 		</div>
