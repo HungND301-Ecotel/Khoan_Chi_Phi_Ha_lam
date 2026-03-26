@@ -19,6 +19,7 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
+    private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
 
     public async Task<LumpSumFinalSettlementQuarterResponseDto> Handle(GetLumpSumFinalSettlementQuarterListQuery request, CancellationToken cancellationToken)
     {
@@ -393,6 +394,12 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
         var transferredMaintainDouble = (double)transferredMaintain;
         var transferredElectricityDouble = 0.0;
 
+        var customCosts = await _customCostRepository.GetAllAsync(
+            predicate: x => x.Quarter == quarter
+                && x.Year == year
+                && (!hasProcessGroupFilter || x.ProcessGroupId == processGroupId),
+            disableTracking: true);
+
         return new LumpSumFinalSettlementQuarterResponseDto
         {
             Items = result,
@@ -404,7 +411,22 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 Maintains = new LumpSumCostDetailDto { TotalAmount = transferredMaintainDouble },
                 Electricities = new LumpSumCostDetailDto { TotalAmount = transferredElectricityDouble },
                 TotalAmount = transferredMaterialDouble + transferredMaintainDouble + transferredElectricityDouble,
-            }
+            },
+            CustomCosts = customCosts
+                .OrderBy(x => x.CreatedOn)
+                .Select(x => new LumpSumQuarterCustomCostDto
+                {
+                    Id = x.Id,
+                    Quarter = x.Quarter,
+                    Year = x.Year,
+                    ProcessGroupId = x.ProcessGroupId,
+                    CustomName = x.CustomName,
+                    ActualQuantity = x.ActualQuantity,
+                    MaterialUnitPrice = x.MaterialUnitPrice,
+                    MaintainUnitPrice = x.MaintainUnitPrice,
+                    ElectricityUnitPrice = x.ElectricityUnitPrice
+                })
+                .ToList()
         };
     }
 

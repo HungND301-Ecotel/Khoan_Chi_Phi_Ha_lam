@@ -371,6 +371,14 @@ export const API = {
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
 			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
+			QUARTER_CUSTOM_COST_LIST:
+				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/list',
+			QUARTER_CUSTOM_COST_CREATE:
+				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost',
+			QUARTER_CUSTOM_COST_UPDATE:
+				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost',
+			QUARTER_CUSTOM_COST_DELETE: (id: string) =>
+				`/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/${id}`,
 		},
 	},
 

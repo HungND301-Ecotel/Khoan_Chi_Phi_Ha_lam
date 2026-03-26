@@ -23,8 +23,18 @@ export type FormNumberProps<T extends FieldValues> = FormControlProps<T> &
 		| 'pattern'
 		| 'defaultValue'
 	> & {
-		disabled?: boolean;
-	};
+	disabled?: boolean;
+};
+
+export type FormNumberInputProps = Omit<
+	ComponentProps<'input'>,
+	'id' | 'type' | 'inputMode' | 'pattern' | 'defaultValue'
+> & {
+	value?: number;
+	onValueChange?: (value?: number) => void;
+	className?: string;
+	disabled?: boolean;
+};
 
 export function FormNumber<T extends FieldValues>({
 	control,
@@ -70,5 +80,33 @@ export function FormNumber<T extends FieldValues>({
 			</InputGroup>
 			{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
 		</div>
+	);
+}
+
+export function FormNumberInput({
+	value,
+	onValueChange,
+	className,
+	autoComplete = 'off',
+	disabled,
+	...props
+}: FormNumberInputProps) {
+	return (
+		<InputGroup className={cn(className, disabled && 'bg-transparent')}>
+			<NumericFormat
+				decimalSeparator=','
+				thousandSeparator='.'
+				value={value}
+				onValueChange={(values) => {
+					onValueChange?.(values.floatValue);
+				}}
+				customInput={InputGroupInput}
+				autoComplete={autoComplete}
+				type='text'
+				inputMode='decimal'
+				disabled={disabled}
+				{...props}
+			/>
+		</InputGroup>
 	);
 }

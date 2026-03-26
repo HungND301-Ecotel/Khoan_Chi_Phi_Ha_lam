@@ -6,6 +6,7 @@ using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Queries;
 using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
+using Application.Catalog.Pricing.LumpSumFinalSettlement.Commands;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.MaterialUnitPrice.Commands;
@@ -711,6 +712,38 @@ public class PricingController : BaseNoAuthController
     {
         var result = await Mediator.Send(new GetLumpSumFinalSettlementQuarterListQuery(request.Quarter, request.Year, request.ProcessGroupId));
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("lump-sum-final-settlement/quarter-custom-cost/list")]
+    [OpenApiOperation("Get Lump Sum Quarter Custom Cost List", "")]
+    public async Task<IActionResult> GetLumpSumQuarterCustomCostList([FromBody] LumpSumQuarterCustomCostListRequest request)
+    {
+        var result = await Mediator.Send(new GetLumpSumQuarterCustomCostListQuery(request.Quarter, request.Year, request.ProcessGroupId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("lump-sum-final-settlement/quarter-custom-cost")]
+    [OpenApiOperation("Create Lump Sum Quarter Custom Cost", "")]
+    public async Task<IActionResult> CreateLumpSumQuarterCustomCost([FromBody] CreateLumpSumQuarterCustomCostRequest request)
+    {
+        var result = await Mediator.Send(new CreateLumpSumQuarterCustomCostCommand(request));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("lump-sum-final-settlement/quarter-custom-cost")]
+    [OpenApiOperation("Update Lump Sum Quarter Custom Cost", "")]
+    public async Task<IActionResult> UpdateLumpSumQuarterCustomCost([FromBody] UpdateLumpSumQuarterCustomCostRequest request)
+    {
+        var result = await Mediator.Send(new UpdateLumpSumQuarterCustomCostCommand(request));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("lump-sum-final-settlement/quarter-custom-cost/{id:guid}")]
+    [OpenApiOperation("Delete Lump Sum Quarter Custom Cost", "")]
+    public async Task<IActionResult> DeleteLumpSumQuarterCustomCost([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new DeleteLumpSumQuarterCustomCostCommand(id));
+        return Ok(result, MessageCommon.DeleteSuccess);
     }
 
     #endregion
