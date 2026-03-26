@@ -149,9 +149,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			electricities: transferredCost?.electricities?.totalAmount ?? 0,
 			total: transferredCost?.totalAmount ?? 0,
 		};
-		const customCostRows = customCosts.map((item, idx) =>
-			buildCustomCostRow(item, idx),
-		);
+		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
 
 		const makeZeroRow = (
 			productName: string,
