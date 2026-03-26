@@ -13,16 +13,20 @@ import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS } from '@/features/main/cost/lump-sum-final-settlement/columns';
 import { LumpSumDataTable } from '@/features/main/cost/lump-sum-final-settlement/components/datatable';
+import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlement/grouping';
 import {
 	LumpSumFinalSettlement,
-	LumpSumFinalSettlementListRequest,
+	LumpSumFinalSettlementQuarterListRequest,
+	LumpSumFinalSettlementQuarterResponse,
+	LumpSumQuarterCustomCost,
+	LumpSumQuarterRevenueByMonth,
+	LumpSumQuarterTransferredCost,
 	ProcessGroup,
 } from '@/features/main/cost/lump-sum-final-settlement/types';
 import { api } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ALL_PROCESS_GROUP = '__all_process_group__';
@@ -36,21 +40,113 @@ const escapeCsvCell = (value: string | number | null | undefined) => {
 	return cell;
 };
 
+const quarterToMonthRange = (quarter: string) => {
+	const quarterNumber = Number(quarter);
+	const startMonth = (quarterNumber - 1) * 3 + 1;
+	return [startMonth, startMonth + 1, startMonth + 2];
+};
+
+const quarterEndMonth = (quarter: number) => {
+	return (quarter - 1) * 3 + 3;
+};
+
 interface LumpSumFinalSettlementReportTableProps {
 	enableSearch?: boolean;
 	enablePagination?: boolean;
-	pageSize?: number;
 }
+
+interface ExcelReportHeaderProps {
+	quarter: string;
+	year: string;
+}
+
+interface ExcelReportFooterProps {
+	quarter: string;
+	year: string;
+}
+
+const formatDateString = (date: Date) => {
+	return `${date.getDate().toString().padStart(2, '0')} tháng ${(date.getMonth() + 1)
+		.toString()
+		.padStart(2, '0')} năm ${date.getFullYear()}`;
+};
+
+const ExcelReportHeader = ({ quarter, year }: ExcelReportHeaderProps) => {
+	return (
+		<div className='font-["Times_New_Roman",Times,serif]'>
+			<div className='flex items-start justify-between gap-10'>
+				<div className='space-y-1 text-left font-bold'>
+					<p className='text-base leading-tight md:text-lg'>
+						CÔNG TY CỔ PHẦN THAN HÀ LẦM - VINACOMIN
+					</p>
+					<p className='border-b border-black pb-1 text-center text-sm leading-tight md:text-base'>
+						CÔNG TRƯỜNG KHAI THÁC 1
+					</p>
+				</div>
+				<div className='space-y-1 pt-1 text-right text-sm font-bold md:text-base'>
+					<p>ĐVT: Đồng</p>
+					<p>Bảng số: 05</p>
+				</div>
+			</div>
+
+			<div className='mt-4 text-center'>
+				<p className='text-lg font-bold uppercase md:text-2xl'>
+					Bảng quyết toán khoán chi phí lũy kế
+				</p>
+				<p className='mt-2 text-base font-bold uppercase md:text-xl'>
+					Quý {quarter} năm {year}
+				</p>
+			</div>
+		</div>
+	);
+};
+
+const ExcelReportFooter = ({ quarter, year }: ExcelReportFooterProps) => {
+	const signDate = formatDateString(new Date());
+
+	return (
+		<div className='mt-10 font-["Times_New_Roman",Times,serif] text-[14px] md:text-[16px]'>
+			<div className='mb-3 flex justify-end'>
+				<p className='pr-8 text-right italic font-semibold'>Hà Lầm, ngày {signDate}</p>
+			</div>
+
+			<div className='grid grid-cols-2 gap-12 font-semibold'>
+				<div className='grid grid-cols-3 text-center'>
+					<p className='col-span-3'>ĐẠI DIỆN BÊN NHẬN KHOÁN</p>
+					<p className='mt-2'>NGƯỜI LẬP</p>
+					<p className='mt-2'>QUẢN ĐỐC</p>
+					<p className='mt-2'>PHÒNG KTTC</p>
+				</div>
+
+				<div className='grid grid-cols-1 text-center'>
+					<p>ĐẠI DIỆN BÊN GIAO KHOÁN</p>
+					<div className='mt-2 grid grid-cols-2 gap-4'>
+						<p>PHÒNG KH</p>
+						<div>
+							<p>KT.GIÁM ĐỐC</p>
+							<p className='mt-2'>PHÓ GIÁM ĐỐC</p>
+						</div>
+					</div>
+					<p className='mt-20'>Đinh Trung Kiên</p>
+				</div>
+			</div>
+
+			<p className='mt-4 text-xs italic'>
+				Biểu mẫu quý {quarter}/{year}
+			</p>
+		</div>
+	);
+};
 
 export function LumpSumFinalSettlementReportTable({
 	enableSearch = true,
-	enablePagination = true,
-	pageSize = 10,
 }: LumpSumFinalSettlementReportTableProps) {
 	const now = new Date();
 	const currentYear = now.getFullYear();
 
-	const [month, setMonth] = useState(String(now.getMonth() + 1));
+	const [quarter, setQuarter] = useState(
+		String(Math.floor(now.getMonth() / 3) + 1),
+	);
 	const [year, setYear] = useState(String(currentYear));
 	const [selectedProcessGroup, setSelectedProcessGroup] =
 		useState(ALL_PROCESS_GROUP);
@@ -58,21 +154,25 @@ export function LumpSumFinalSettlementReportTable({
 		{ value: string; label: string }[]
 	>([{ value: ALL_PROCESS_GROUP, label: 'Tất cả nhóm công đoạn' }]);
 	const [rows, setRows] = useState<LumpSumFinalSettlement[]>([]);
+	const [revenuesByMonth, setRevenuesByMonth] = useState<
+		LumpSumQuarterRevenueByMonth[]
+	>([]);
+	const [transferredCost, setTransferredCost] =
+		useState<LumpSumQuarterTransferredCost | null>(null);
+	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [currentPage, setCurrentPage] = useState(1);
-	const [currentPageSize, setCurrentPageSize] = useState(pageSize);
 
-	const monthOptions = useMemo(
+	const quarterOptions = useMemo(
 		() =>
-			Array.from({ length: 12 }, (_, index) => {
+			Array.from({ length: 4 }, (_, index) => {
 				const value = String(index + 1);
 				return {
 					value,
-					label: `Tháng ${value.padStart(2, '0')}`,
+					label: `Quý ${value}`,
 				};
 			}),
 		[],
@@ -87,10 +187,6 @@ export function LumpSumFinalSettlementReportTable({
 			};
 		});
 	}, [currentYear]);
-
-	useEffect(() => {
-		setCurrentPageSize(pageSize);
-	}, [pageSize]);
 
 	useEffect(() => {
 		const fetchProcessGroups = async () => {
@@ -120,13 +216,13 @@ export function LumpSumFinalSettlementReportTable({
 		fetchProcessGroups();
 	}, []);
 
-	const fetchLumpSumFinalSettlement = useCallback(async () => {
+	const fetchLumpSumFinalSettlementQuarter = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
 
 		try {
-			const payload: LumpSumFinalSettlementListRequest = {
-				month,
+			const payload: LumpSumFinalSettlementQuarterListRequest = {
+				quarter,
 				year,
 				processGroupId:
 					selectedProcessGroup === ALL_PROCESS_GROUP
@@ -135,35 +231,251 @@ export function LumpSumFinalSettlementReportTable({
 			};
 
 			const response = await api.post<
-				LumpSumFinalSettlement[],
-				LumpSumFinalSettlementListRequest
-			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
+				LumpSumFinalSettlementQuarterResponse,
+				LumpSumFinalSettlementQuarterListRequest
+			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload);
 
-			setRows(response.result ?? []);
+			setRows(groupByProcessGroup(response.result.items ?? []));
+			setRevenuesByMonth(response.result.revenuesByMonth ?? []);
+			setTransferredCost(response.result.transferredCost ?? null);
+			setCustomCosts(response.result.customCosts ?? []);
 		} catch (err) {
 			setRows([]);
+			setRevenuesByMonth([]);
+			setTransferredCost(null);
+			setCustomCosts([]);
 			setError(
 				err instanceof Error
 					? err.message
-					: 'Không thể tải dữ liệu bảng quyết toán',
+					: 'Không thể tải dữ liệu quyết toán khoán theo quý',
 			);
 		} finally {
 			setIsLoading(false);
 		}
-	}, [month, year, selectedProcessGroup]);
+	}, [quarter, year, selectedProcessGroup]);
 
 	useEffect(() => {
-		fetchLumpSumFinalSettlement();
-	}, [fetchLumpSumFinalSettlement]);
+		fetchLumpSumFinalSettlementQuarter();
+	}, [fetchLumpSumFinalSettlementQuarter]);
+
+	const reportRows = useMemo(() => {
+		const quarterNumber = Number(quarter);
+		const months = quarterToMonthRange(quarter);
+		const revenueByMonthMap = new Map(
+			revenuesByMonth.map((item) => [item.month, item]),
+		);
+
+		const revenueRows = months.map((monthNumber) => {
+			const value = revenueByMonthMap.get(monthNumber);
+			return {
+				month: monthNumber,
+				materials: value?.materials?.totalAmount ?? 0,
+				maintains: value?.maintains?.totalAmount ?? 0,
+				electricities: value?.electricities?.totalAmount ?? 0,
+				total: value?.totalAmount ?? 0,
+			};
+		});
+
+		const revenueQuarter = revenueRows.reduce(
+			(acc, item) => ({
+				materials: acc.materials + item.materials,
+				maintains: acc.maintains + item.maintains,
+				electricities: acc.electricities + item.electricities,
+				total: acc.total + item.total,
+			}),
+			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
+		);
+
+		const transferred = {
+			month: transferredCost?.month ?? quarterEndMonth(quarterNumber),
+			materials: transferredCost?.materials?.totalAmount ?? 0,
+			maintains: transferredCost?.maintains?.totalAmount ?? 0,
+			electricities: transferredCost?.electricities?.totalAmount ?? 0,
+			total: transferredCost?.totalAmount ?? 0,
+		};
+
+		const customCostRows: LumpSumFinalSettlement[] = customCosts.map((item) => {
+			const quantity = item.actualQuantity || 0;
+			const materialUnit = item.materialUnitPrice || 0;
+			const maintainUnit = item.maintainUnitPrice || 0;
+			const electricityUnit = item.electricityUnitPrice || 0;
+			const materialTotal = quantity * materialUnit;
+			const maintainTotal = quantity * maintainUnit;
+			const electricityTotal = quantity * electricityUnit;
+
+			return {
+				id: item.id,
+				sttLabel: '-',
+				productName: item.customName || '',
+				unitOfMeasureName: 'Đồng',
+				plannedQuantity: undefined,
+				actualQuantity: quantity,
+				materials: {
+					unitPrice: materialUnit,
+					totalAmount: materialTotal,
+				},
+				maintains: {
+					unitPrice: maintainUnit,
+					totalAmount: maintainTotal,
+				},
+				electricities: {
+					unitPrice: electricityUnit,
+					totalAmount: electricityTotal,
+				},
+				totalAmount: materialTotal + maintainTotal + electricityTotal,
+				excludeFromSummary: true,
+			};
+		});
+
+		const makeZeroRow = (
+			productName: string,
+			options?: {
+				sttLabel?: string;
+				isBold?: boolean;
+				unitOfMeasureName?: string;
+				materialsTotalAmount?: number;
+				maintainsTotalAmount?: number;
+				electricitiesTotalAmount?: number;
+				totalAmount?: number;
+				hidePlanActual?: boolean;
+				hideUnitPrice?: boolean;
+				isMergedValueRow?: boolean;
+				mergedValue?: number;
+			},
+		): LumpSumFinalSettlement => ({
+			sttLabel: options?.sttLabel,
+			isBold: options?.isBold,
+			excludeFromSummary: true,
+			isMergedValueRow: options?.isMergedValueRow,
+			mergedValue: options?.mergedValue ?? options?.totalAmount ?? 0,
+			productName,
+			unitOfMeasureName: options?.unitOfMeasureName ?? '',
+			plannedQuantity: options?.hidePlanActual ? undefined : 0,
+			actualQuantity: options?.hidePlanActual ? undefined : 0,
+			materials: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.materialsTotalAmount ?? 0,
+			},
+			maintains: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.maintainsTotalAmount ?? 0,
+			},
+			electricities: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.electricitiesTotalAmount ?? 0,
+			},
+			totalAmount: options?.totalAmount ?? 0,
+		});
+
+		const defaultRows: LumpSumFinalSettlement[] = [
+			makeZeroRow(`Doanh thu quý ${quarter}/${year}`, {
+				sttLabel: 'I',
+				isBold: true,
+				materialsTotalAmount: revenueQuarter.materials,
+				maintainsTotalAmount: revenueQuarter.maintains,
+				electricitiesTotalAmount: revenueQuarter.electricities,
+				totalAmount: revenueQuarter.total,
+				hidePlanActual: true,
+				hideUnitPrice: true,
+			}),
+			...months.map((monthNumber, idx) =>
+				makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+					sttLabel: `I.${idx + 1}`,
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: revenueRows[idx]?.materials ?? 0,
+					maintainsTotalAmount: revenueRows[idx]?.maintains ?? 0,
+					electricitiesTotalAmount: revenueRows[idx]?.electricities ?? 0,
+					totalAmount: revenueRows[idx]?.total ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+			),
+			makeZeroRow(`Chi phí quý ${quarter}/${year}`, {
+				sttLabel: 'II',
+				isBold: true,
+				hidePlanActual: true,
+				hideUnitPrice: true,
+			}),
+			...months.map((monthNumber, idx) =>
+				makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+					sttLabel: `II.${idx + 1}`,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+			),
+			makeZeroRow(`Chi phí kết chuyển T${transferred.month}/${year}`, {
+				sttLabel: '-',
+				unitOfMeasureName: '',
+				materialsTotalAmount: transferred.materials,
+				maintainsTotalAmount: transferred.maintains,
+				electricitiesTotalAmount: transferred.electricities,
+				totalAmount: transferred.total,
+				hidePlanActual: true,
+				hideUnitPrice: true,
+			}),
+			...customCostRows,
+			makeZeroRow(`Giá trị tiết kiệm, bội chi quý ${quarter}/${year}`, {
+				sttLabel: 'III',
+				isBold: true,
+				hidePlanActual: true,
+				hideUnitPrice: true,
+			}),
+			...months.map((monthNumber, idx) =>
+				makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+					sttLabel: `III.${idx + 1}`,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+			),
+			makeZeroRow(
+				`Tổng giá trị tiết kiệm được chấp nhận quý ${quarter}/${year}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: 0,
+				},
+			),
+			makeZeroRow(
+				`Giá trị tiết kiệm được cộng vào thu nhập quý ${quarter}/${year}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: 0,
+				},
+			),
+			...months.map((monthNumber) =>
+				makeZeroRow(`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`, {
+					sttLabel: '*',
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: 0,
+				}),
+			),
+		];
+
+		return [...rows, ...defaultRows];
+	}, [customCosts, quarter, revenuesByMonth, rows, transferredCost, year]);
 
 	const filteredRows = useMemo(() => {
 		if (!enableSearch || !searchQuery.trim()) {
-			return rows;
+			return reportRows;
 		}
 
 		const query = searchQuery.toLowerCase();
 
-		return rows.filter((row) => {
+		return reportRows.filter((row) => {
 			const keywords = [row.productCode, row.productName, row.unitOfMeasureName]
 				.filter(Boolean)
 				.join(' ')
@@ -171,53 +483,7 @@ export function LumpSumFinalSettlementReportTable({
 
 			return keywords.includes(query);
 		});
-	}, [enableSearch, rows, searchQuery]);
-
-	const totalPages = useMemo(() => {
-		if (!enablePagination) return 1;
-		return Math.max(1, Math.ceil(filteredRows.length / currentPageSize));
-	}, [enablePagination, filteredRows.length, currentPageSize]);
-
-	const page = useMemo(() => {
-		if (!enablePagination) return 1;
-		return Math.min(currentPage, totalPages);
-	}, [enablePagination, currentPage, totalPages]);
-
-	const pagedRows = useMemo(() => {
-		if (!enablePagination) return filteredRows;
-		const startIndex = (page - 1) * currentPageSize;
-		return filteredRows.slice(startIndex, startIndex + currentPageSize);
-	}, [enablePagination, filteredRows, page, currentPageSize]);
-
-	const startItem = useMemo(() => {
-		if (filteredRows.length === 0) return 0;
-		if (!enablePagination) return 1;
-		return (page - 1) * currentPageSize + 1;
-	}, [enablePagination, filteredRows.length, page, currentPageSize]);
-
-	const endItem = useMemo(() => {
-		if (filteredRows.length === 0) return 0;
-		if (!enablePagination) return filteredRows.length;
-		return Math.min(page * currentPageSize, filteredRows.length);
-	}, [enablePagination, filteredRows.length, page, currentPageSize]);
-
-	const pageNumbers = useMemo(() => {
-		if (!enablePagination) return [] as number[];
-		if (totalPages <= 5)
-			return Array.from({ length: totalPages }, (_, index) => index + 1);
-		if (page <= 3) return [1, 2, 3, 4, 5];
-		if (page >= totalPages - 2) {
-			return [
-				totalPages - 4,
-				totalPages - 3,
-				totalPages - 2,
-				totalPages - 1,
-				totalPages,
-			];
-		}
-
-		return [page - 2, page - 1, page, page + 1, page + 2];
-	}, [enablePagination, page, totalPages]);
+	}, [enableSearch, reportRows, searchQuery]);
 
 	const handleExport = async () => {
 		if (filteredRows.length === 0 || isExporting) {
@@ -244,19 +510,19 @@ export function LumpSumFinalSettlementReportTable({
 			];
 
 			const records = filteredRows.map((row, index) => [
-				index + 1,
+				row.sttLabel ?? index + 1,
 				row.productCode ?? '',
 				row.productName ?? '',
 				row.unitOfMeasureName ?? '',
-				row.plannedQuantity ?? 0,
-				row.actualQuantity ?? 0,
-				row.materials?.unitPrice ?? 0,
-				row.materials?.totalAmount ?? 0,
-				row.maintains?.unitPrice ?? 0,
-				row.maintains?.totalAmount ?? 0,
-				row.electricities?.unitPrice ?? 0,
-				row.electricities?.totalAmount ?? 0,
-				row.totalAmount ?? 0,
+				row.plannedQuantity ?? '',
+				row.actualQuantity ?? '',
+				row.materials?.unitPrice ?? '',
+				row.materials?.totalAmount ?? '',
+				row.maintains?.unitPrice ?? '',
+				row.maintains?.totalAmount ?? '',
+				row.electricities?.unitPrice ?? '',
+				row.electricities?.totalAmount ?? '',
+				row.totalAmount ?? '',
 			]);
 
 			const csvText = [headers, ...records]
@@ -268,41 +534,41 @@ export function LumpSumFinalSettlementReportTable({
 			});
 			const downloadUrl = window.URL.createObjectURL(blob);
 			const link = document.createElement('a');
-			const monthLabel = month.padStart(2, '0');
 
 			link.href = downloadUrl;
-			link.download = `bang-quyet-toan-${monthLabel}-${year}.csv`;
+			link.download = `bao-cao-quyet-toan-quy-${quarter}-${year}.csv`;
 			document.body.appendChild(link);
 			link.click();
 			window.URL.revokeObjectURL(downloadUrl);
 			document.body.removeChild(link);
 		} catch (err) {
-			console.error('Failed to export lump-sum final settlement:', err);
+			console.error('Failed to export lump-sum quarter report:', err);
 		} finally {
 			setIsExporting(false);
 		}
 	};
 
-	const showPagination = enablePagination && filteredRows.length > 0;
+	const totalReportValue = useMemo(() => {
+		return filteredRows.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0);
+	}, [filteredRows]);
 
 	return (
 		<div className='relative flex min-h-0 min-w-0 flex-1 flex-col gap-3'>
 			<div className='flex flex-wrap items-end justify-between gap-3'>
 				<div className='flex flex-wrap items-end gap-2'>
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Tháng</p>
+						<p className='text-sm font-medium'>Quý</p>
 						<Select
-							value={month}
+							value={quarter}
 							onValueChange={(value) => {
-								setMonth(value);
-								setCurrentPage(1);
+								setQuarter(value);
 							}}
 						>
-							<SelectTrigger className='w-[150px] bg-white'>
-								<SelectValue placeholder='Chọn tháng' />
+							<SelectTrigger className='w-[120px] bg-white'>
+								<SelectValue placeholder='Chọn quý' />
 							</SelectTrigger>
 							<SelectContent>
-								{monthOptions.map((option) => (
+								{quarterOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>
@@ -317,7 +583,6 @@ export function LumpSumFinalSettlementReportTable({
 							value={year}
 							onValueChange={(value) => {
 								setYear(value);
-								setCurrentPage(1);
 							}}
 						>
 							<SelectTrigger className='w-[120px] bg-white'>
@@ -339,7 +604,6 @@ export function LumpSumFinalSettlementReportTable({
 							value={selectedProcessGroup}
 							onValueChange={(value) => {
 								setSelectedProcessGroup(value);
-								setCurrentPage(1);
 							}}
 							disabled={isLoadingProcessGroups}
 						>
@@ -368,7 +632,6 @@ export function LumpSumFinalSettlementReportTable({
 									value={searchQuery}
 									onChange={(event) => {
 										setSearchQuery(event.target.value);
-										setCurrentPage(1);
 									}}
 									placeholder='Tìm theo mã, tên sản phẩm...'
 									className='h-10 w-[320px] bg-white pl-8 text-base'
@@ -403,90 +666,39 @@ export function LumpSumFinalSettlementReportTable({
 						<p className='text-sm'>{error}</p>
 					</div>
 				</div>
-			) : isLoading && rows.length === 0 ? (
+			) : isLoading ? (
 				<div className='border-border flex h-96 items-center justify-center rounded-t-md border bg-white shadow'>
 					<Spinner />
 				</div>
 			) : (
-				<>
-					<div className='min-h-0 overflow-auto rounded-t-md shadow'>
-						<LumpSumDataTable
-							columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
-							data={pagedRows}
-							isLoading={isLoading}
-							className='border-border rounded-t-md border shadow-none [&_table]:text-sm'
-						/>
-					</div>
+				<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
+					<div className='mx-auto w-full overflow-auto'>
+						<div className='mx-auto min-h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
+							<ExcelReportHeader quarter={quarter} year={year} />
 
-					{showPagination && (
-						<div className='flex w-full items-center justify-center gap-4 px-4 pt-1 pb-6'>
-							<span className='text-[14px]'>
-								Hiển thị {startItem}-{endItem} trên {filteredRows.length} mục
-							</span>
-
-							<Button
-								variant='ghost'
-								size='icon'
-								className='size-8 bg-transparent shadow-none hover:bg-[#e3e4e7] hover:shadow-none disabled:text-[#b5b5b7]'
-								onClick={() =>
-									setCurrentPage((value) => Math.max(1, value - 1))
-								}
-								disabled={page === 1}
-							>
-								<ChevronLeft />
-							</Button>
-
-							<div className='flex items-center gap-2'>
-								{pageNumbers.map((pageNumber) => (
-									<Button
-										key={pageNumber}
-										variant='ghost'
-										size='icon'
-										className={cn(
-											'h-8 w-8 rounded-sm bg-white shadow-none hover:bg-[#e3e4e7] hover:shadow-none',
-											pageNumber === page &&
-												'border-primary text-primary border font-semibold',
-										)}
-										onClick={() => setCurrentPage(pageNumber)}
-									>
-										{pageNumber}
-									</Button>
-								))}
+							<div className='mt-6 min-h-0 overflow-auto rounded-t-md shadow'>
+								<LumpSumDataTable
+									columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
+									data={filteredRows}
+									isLoading={isLoading}
+									className={cn(
+										'border-border rounded-none border shadow-none',
+										'[&_table]:font-["Times_New_Roman",Times,serif]',
+										'[&_thead_tr]:bg-white',
+										'[&_thead_th]:bg-white',
+										'[&_tbody_button]:hidden',
+									)}
+								/>
 							</div>
 
-							<Button
-								variant='ghost'
-								size='icon'
-								className='size-8 bg-transparent shadow-none hover:bg-[#e3e4e7] hover:shadow-none disabled:text-[#b5b5b7]'
-								onClick={() =>
-									setCurrentPage((value) => Math.min(totalPages, value + 1))
-								}
-								disabled={page === totalPages}
-							>
-								<ChevronRight />
-							</Button>
+							<div className='mt-2 text-right font-["Times_New_Roman",Times,serif] text-sm italic'>
+								Tổng giá trị bảng: {formatNumber(totalReportValue, { maximumFractionDigits: 0 })} Đồng
+							</div>
 
-							<Select
-								value={`${currentPageSize}`}
-								onValueChange={(value) => {
-									setCurrentPageSize(Number(value));
-									setCurrentPage(1);
-								}}
-							>
-								<SelectTrigger className='hover:border-primary h-8 min-w-28 border bg-white shadow-none hover:shadow-none'>
-									<SelectValue placeholder={currentPageSize} />
-								</SelectTrigger>
-								<SelectContent side='top' className='mb-2'>
-									{[10, 20, 50, 100].map((size) => (
-										<SelectItem key={size} value={`${size}`}>
-											{`${size} / trang`}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<ExcelReportFooter quarter={quarter} year={year} />
 						</div>
-					)}
-				</>
+					</div>
+				</div>
 			)}
 		</div>
 	);

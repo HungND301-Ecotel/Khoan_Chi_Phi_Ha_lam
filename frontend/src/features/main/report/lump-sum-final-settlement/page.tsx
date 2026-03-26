@@ -6,8 +6,7 @@ export function LumpSumFinalSettlementPage() {
 	return (
 		<LumpSumFinalSettlementReportTable
 			enableSearch
-			enablePagination
-			pageSize={10}
+			enablePagination={false}
 		/>
 	);
 }
