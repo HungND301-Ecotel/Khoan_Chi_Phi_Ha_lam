@@ -31,6 +31,7 @@ public class LumpSumFinalSettlementQuarterResponseDto
     public List<LumpSumFinalSettlementDto> Items { get; set; } = new();
     public List<LumpSumQuarterRevenueByMonthDto> RevenuesByMonth { get; set; } = new();
     public LumpSumQuarterTransferredCostDto TransferredCost { get; set; } = new();
+    public List<LumpSumQuarterCustomCostDto> CustomCosts { get; set; } = new();
 }
 
 public class LumpSumQuarterRevenueByMonthDto
@@ -49,4 +50,17 @@ public class LumpSumQuarterTransferredCostDto
     public LumpSumCostDetailDto Maintains { get; set; } = new();
     public LumpSumCostDetailDto Electricities { get; set; } = new();
     public double TotalAmount { get; set; }
+}
+
+public class LumpSumQuarterCustomCostDto
+{
+    public Guid Id { get; set; }
+    public int Quarter { get; set; }
+    public int Year { get; set; }
+    public Guid? ProcessGroupId { get; set; }
+    public string CustomName { get; set; } = string.Empty;
+    public double ActualQuantity { get; set; }
+    public double MaterialUnitPrice { get; set; }
+    public double MaintainUnitPrice { get; set; }
+    public double ElectricityUnitPrice { get; set; }
 }

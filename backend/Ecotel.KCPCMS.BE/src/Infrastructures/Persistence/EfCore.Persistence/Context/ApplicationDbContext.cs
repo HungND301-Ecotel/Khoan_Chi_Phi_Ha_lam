@@ -84,6 +84,7 @@ public class ApplicationDbContext(
     public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
     public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
     public DbSet<AcceptanceReportItemLog> AcceptanceReportItemLogs => Set<AcceptanceReportItemLog>();
+    public DbSet<LumpSumQuarterCustomCost> LumpSumQuarterCustomCosts => Set<LumpSumQuarterCustomCost>();
     #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -732,6 +733,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemShippedDetail>().ToTable(nameof(AcceptanceReportItemShippedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemLog>().ToTable(nameof(AcceptanceReportItemLog), "Production");
+        modelBuilder.Entity<LumpSumQuarterCustomCost>().ToTable(nameof(LumpSumQuarterCustomCost), "Production");
 
         modelBuilder.Entity<ProductionOutput>()
             .HasMany(p => p.ProductionOutputProcessGroups)
@@ -827,6 +829,16 @@ public class ApplicationDbContext(
 
         modelBuilder.Entity<AcceptanceReportItemLog>()
             .HasIndex(l => new { l.AcceptanceReportItemId, l.AcceptanceReportId })
+            .HasFilter("\"DeletedOn\" IS NULL");
+
+        modelBuilder.Entity<LumpSumQuarterCustomCost>()
+            .HasOne(l => l.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(l => l.ProcessGroupId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<LumpSumQuarterCustomCost>()
+            .HasIndex(l => new { l.Year, l.Quarter, l.ProcessGroupId })
             .HasFilter("\"DeletedOn\" IS NULL");
         #endregion
 
