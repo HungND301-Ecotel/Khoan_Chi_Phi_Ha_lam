@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import {
-	Table,
 	TableBody,
 	TableCell,
 	TableHead,
@@ -539,16 +538,16 @@ export function ElectricityAndMaintainanceReportPage() {
 				</div>
 			) : (
 				<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
-					<div className='mx-auto w-full overflow-auto'>
-						<div className='mx-auto min-h-[210mm] overflow-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
+					<div className='mx-auto w-full'>
+						<div className='mx-auto min-h-[210mm] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 							<ElectricityMaintainHeader month={month} year={year} />
-							<div className='mt-6 overflow-auto border border-black'>
+							<div className='mt-6 border border-black'>
 								{reportBlocks.length === 0 ? (
 									<div className='py-12 text-center text-sm'>
 										Không có dữ liệu
 									</div>
 								) : (
-									<Table className='border-collapse font-["Times_New_Roman",Times,serif] text-[13px]'>
+									<table className='w-full table-fixed border-collapse font-["Times_New_Roman",Times,serif] text-[12px] [&_td]:wrap-break-word [&_td]:whitespace-normal! [&_th]:wrap-break-word [&_th]:whitespace-normal!'>
 										<TableHeader>
 											<TableRow className='bg-white'>
 												<ReportHead rowSpan={2}>STT</ReportHead>
@@ -585,7 +584,7 @@ export function ElectricityAndMaintainanceReportPage() {
 												/>
 											))}
 										</TableBody>
-									</Table>
+									</table>
 								)}
 							</div>
 
@@ -672,7 +671,7 @@ function ReportHead({
 		<TableHead
 			rowSpan={rowSpan}
 			colSpan={colSpan}
-			className='h-auto border border-black px-1 py-2 text-center font-bold text-black'
+			className='h-auto border border-black px-1 py-1.5 text-center text-[11px] leading-tight font-bold wrap-break-word whitespace-normal text-black'
 		>
 			{children}
 		</TableHead>

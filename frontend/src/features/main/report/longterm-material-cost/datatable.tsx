@@ -86,8 +86,10 @@ const ExcelReportHeader = ({
 		<div className='font-["Times_New_Roman",Times,serif]'>
 			<div className='flex items-start justify-between gap-10'>
 				<div className='space-y-1 text-left font-bold'>
-					<p className='text-lg leading-tight md:text-2xl'>CÔNG TY CỔ PHẦN THAN HÀ LẦM - VINACOMIN</p>
-					 <p className='text-center text-sm leading-tight md:text-xl border-b border-black pb-1'>
+					<p className='text-lg leading-tight md:text-2xl'>
+						CÔNG TY CỔ PHẦN THAN HÀ LẦM - VINACOMIN
+					</p>
+					<p className='border-b border-black pb-1 text-center text-sm leading-tight md:text-xl'>
 						CÔNG TRƯỜNG KHAI THÁC 1
 					</p>
 				</div>
@@ -123,7 +125,9 @@ const ExcelStructuredTable = ({
 	largeText = true,
 	startIndex = 1,
 }: ExcelStructuredTableProps) => {
-	const textClass = largeText ? 'text-[11px] md:text-[12px]' : 'text-[10px] md:text-[11px]';
+	const textClass = largeText
+		? 'text-[11px] md:text-[12px]'
+		: 'text-[10px] md:text-[11px]';
 
 	const totalOpeningBalance = items.reduce(
 		(sum, item) => sum + (item.pendingValueStartPeriod ?? 0),
@@ -276,7 +280,10 @@ const ExcelStructuredTable = ({
 						</tr>
 					) : (
 						items.map((item, index) => (
-							<tr key={item.id || `${item.partCode}-${index}`} className='bg-white'>
+							<tr
+								key={item.id || `${item.partCode}-${index}`}
+								className='bg-white'
+							>
 								<td className={borderCellClass}>{startIndex + index}</td>
 								<td className={cn(borderCellClass, 'text-left')}>
 									{item.partCode}
@@ -353,12 +360,19 @@ const ExcelStructuredTable = ({
 	);
 };
 
-const ExcelReportFooter = () => {
+const ExcelReportFooter = ({
+	month,
+	year,
+}: {
+	month: string;
+	year: string;
+}) => {
 	return (
 		<div className='mt-10 font-["Times_New_Roman",Times,serif] text-[13px] md:text-[14px]'>
 			<div className='mb-3 flex justify-end'>
-				<p className='pr-8 text-right text-[15px] italic font-semibold'>
-					Hà Lầm, ngày 18 tháng 7 năm 2024
+				<p className='pr-8 text-right text-[15px] font-semibold italic'>
+					{/* Hà Lầm, ngày 18 tháng 7 năm 2024 */}
+					{`Hà lầm, tháng ${Number(month)} năm ${year}`}
 				</p>
 			</div>
 
@@ -380,9 +394,7 @@ const ExcelReportFooter = () => {
 			</div>
 
 			<div className='mt-16 grid grid-cols-2 gap-12 font-semibold'>
-				<div className='grid grid-cols-2 text-center'>
-					
-				</div>
+				<div className='grid grid-cols-2 text-center'></div>
 				<div></div>
 			</div>
 		</div>
@@ -593,14 +605,9 @@ export function LongtermMaterialCostDataTable({
 		}
 	};
 
-	const totalQkh = filteredItems.reduce(
-		(sum, item) => sum + (item.actualOutput ?? item.plannedOutput ?? 0),
-		0,
-	);
-	const totalQdm = filteredItems.reduce(
-		(sum, item) => sum + (item.standardOutput ?? 0),
-		0,
-	);
+	const totalQkh = filteredItems[0].actualOutput ?? 0;
+
+	const totalQdm = filteredItems[0].standardOutput ?? 0;
 
 	return (
 		<div className='relative flex min-h-0 min-w-0 flex-1 flex-col gap-3'>
@@ -713,23 +720,23 @@ export function LongtermMaterialCostDataTable({
 				<>
 					<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
 						<div className='mx-auto w-full overflow-auto'>
-							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
-							<ExcelReportHeader
-								qkh={totalQkh}
-								qdm={totalQdm}
-								month={month}
-								year={year}
-							/>
-
-							<div className='mt-10'>
-								<ExcelStructuredTable
-									items={filteredItems}
-									largeText={largeText}
-									startIndex={1}
+							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
+								<ExcelReportHeader
+									qkh={totalQkh}
+									qdm={totalQdm}
+									month={month}
+									year={year}
 								/>
-							</div>
 
-							<ExcelReportFooter />
+								<div className='mt-10'>
+									<ExcelStructuredTable
+										items={filteredItems}
+										largeText={largeText}
+										startIndex={1}
+									/>
+								</div>
+
+								<ExcelReportFooter month={month} year={year} />
 							</div>
 						</div>
 					</div>

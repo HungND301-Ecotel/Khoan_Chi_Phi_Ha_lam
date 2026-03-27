@@ -66,7 +66,9 @@ interface ExcelReportFooterProps {
 }
 
 const formatDateString = (date: Date) => {
-	return `${date.getDate().toString().padStart(2, '0')} tháng ${(date.getMonth() + 1)
+	return `${date.getDate().toString().padStart(2, '0')} tháng ${(
+		date.getMonth() + 1
+	)
 		.toString()
 		.padStart(2, '0')} năm ${date.getFullYear()}`;
 };
@@ -107,7 +109,9 @@ const ExcelReportFooter = ({ quarter, year }: ExcelReportFooterProps) => {
 	return (
 		<div className='mt-10 font-["Times_New_Roman",Times,serif] text-[14px] md:text-[16px]'>
 			<div className='mb-3 flex justify-end'>
-				<p className='pr-8 text-right italic font-semibold'>Hà Lầm, ngày {signDate}</p>
+				<p className='pr-8 text-right font-semibold italic'>
+					Hà Lầm, ngày {signDate}
+				</p>
 			</div>
 
 			<div className='grid grid-cols-2 gap-12 font-semibold'>
@@ -127,7 +131,6 @@ const ExcelReportFooter = ({ quarter, year }: ExcelReportFooterProps) => {
 							<p className='mt-2'>PHÓ GIÁM ĐỐC</p>
 						</div>
 					</div>
-					<p className='mt-20'>Đinh Trung Kiên</p>
 				</div>
 			</div>
 
@@ -159,7 +162,9 @@ export function LumpSumFinalSettlementReportTable({
 	>([]);
 	const [transferredCost, setTransferredCost] =
 		useState<LumpSumQuarterTransferredCost | null>(null);
-	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
+	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>(
+		[],
+	);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
@@ -454,14 +459,17 @@ export function LumpSumFinalSettlementReportTable({
 				},
 			),
 			...months.map((monthNumber) =>
-				makeZeroRow(`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`, {
-					sttLabel: '*',
-					unitOfMeasureName: 'Đồng',
-					hidePlanActual: true,
-					hideUnitPrice: true,
-					isMergedValueRow: true,
-					mergedValue: 0,
-				}),
+				makeZeroRow(
+					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`,
+					{
+						sttLabel: '*',
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: 0,
+					},
+				),
 			),
 		];
 
@@ -672,11 +680,11 @@ export function LumpSumFinalSettlementReportTable({
 				</div>
 			) : (
 				<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
-					<div className='mx-auto w-full overflow-auto'>
-						<div className='mx-auto min-h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
+					<div className='mx-auto w-full overflow-x-auto'>
+						<div className='mx-auto min-h-[210mm] min-w-[1680px] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 							<ExcelReportHeader quarter={quarter} year={year} />
 
-							<div className='mt-6 min-h-0 overflow-auto rounded-t-md shadow'>
+							<div className='mt-6 rounded-t-md shadow'>
 								<LumpSumDataTable
 									columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
 									data={filteredRows}
@@ -687,12 +695,15 @@ export function LumpSumFinalSettlementReportTable({
 										'[&_thead_tr]:bg-white',
 										'[&_thead_th]:bg-white',
 										'[&_tbody_button]:hidden',
+										'**:data-[slot=table-container]:overflow-visible',
 									)}
 								/>
 							</div>
 
 							<div className='mt-2 text-right font-["Times_New_Roman",Times,serif] text-sm italic'>
-								Tổng giá trị bảng: {formatNumber(totalReportValue, { maximumFractionDigits: 0 })} Đồng
+								Tổng giá trị bảng:{' '}
+								{formatNumber(totalReportValue, { maximumFractionDigits: 0 })}{' '}
+								Đồng
 							</div>
 
 							<ExcelReportFooter quarter={quarter} year={year} />

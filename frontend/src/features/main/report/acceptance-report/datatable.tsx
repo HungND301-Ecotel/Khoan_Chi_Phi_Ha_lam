@@ -87,12 +87,19 @@ const ExcelAcceptanceReportHeader = ({
 	);
 };
 
-const ExcelAcceptanceReportFooter = () => {
+const ExcelAcceptanceReportFooter = ({
+	month,
+	year,
+}: {
+	month: string;
+	year: string;
+}) => {
 	return (
 		<div className='mt-6 font-["Times_New_Roman",Times,serif] text-[12px] font-semibold'>
 			{/* Ngày tháng năm */}
-			<div className='mb-4 text-right italic font-normal'>
-				Hà lầm, ngày 18 tháng 7 năm 2024
+			<div className='mb-4 text-right font-normal italic'>
+				{/* Hà lầm, ngày 18 tháng 7 năm 2024 */}
+				{`Hà lầm, tháng ${Number(month)} năm ${year}`}
 			</div>
 
 			{/* Kết luận */}
@@ -132,8 +139,7 @@ const ExcelAcceptanceReportFooter = () => {
 			{/* Chữ ký */}
 			<div className='mt-14 flex justify-between'>
 				<div className='w-[48%]'>{/* chỗ ký bên nhận khoán */}</div>
-				<div className='flex w-[48%] justify-end pr-8'>
-				</div>
+				<div className='flex w-[48%] justify-end pr-8'></div>
 			</div>
 		</div>
 	);
@@ -372,20 +378,20 @@ export function AcceptanceReportDataTable({
 				<>
 					<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
 						<div className='mx-auto w-full overflow-auto'>
-							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 md:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.14)]'>
+							<div className='mx-auto h-[210mm] overflow-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 								<ExcelAcceptanceReportHeader month={month} year={year} />
 
 								<div className='mt-6'>
 									<AcceptanceReportGrid
 										data={filteredRows}
 										className={cn(
-											'overflow-auto rounded-none border border-black shadow-none [&>button]:hidden [&_table]:font-["Times_New_Roman",Times,serif] [&_table]:text-[10px] [&_td]:px-1 [&_td]:py-1 [&_th]:px-1 [&_th]:py-1',
+											'overflow-auto rounded-none border border-black shadow-none [&_table]:font-["Times_New_Roman",Times,serif] [&_table]:text-[10px] [&_td]:px-1 [&_td]:py-1 [&_th]:px-1 [&_th]:py-1 [&>button]:hidden',
 											largeText && '[&_table]:text-[11px]',
 										)}
 									/>
 								</div>
 
-								<ExcelAcceptanceReportFooter />
+								<ExcelAcceptanceReportFooter month={month} year={year} />
 							</div>
 						</div>
 					</div>
