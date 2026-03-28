@@ -28,7 +28,7 @@ public class NormFactorDto : IDto
     public Guid StoneClampRatioId { get; set; }
     public string StoneClampRatioName { get; set; }
 
-    public IList<Guid> AffectAssignmentCodeIds { get; set; }
+    public IList<AssignmentCode.ShortAssignmentCodeDto> AffectAssignmentCodes { get; set; }
 
     public double Value { get; set; }
 

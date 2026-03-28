@@ -80,6 +80,8 @@ public class ApplicationDbContext(
     public DbSet<ProductionOutputProcessGroup> ProductionOutputProcessGroups => Set<ProductionOutputProcessGroup>();
     public DbSet<ProductionOutputProduct> ProductionOutputProducts => Set<ProductionOutputProduct>();
     public DbSet<AcceptanceReport> AcceptanceReports => Set<AcceptanceReport>();
+    public DbSet<ActualElectricityCost> ActualElectricityCosts => Set<ActualElectricityCost>();
+    public DbSet<ActualEletricityEquipment> ActualEletricityEquipments => Set<ActualEletricityEquipment>();
     public DbSet<AcceptanceReportItem> AcceptanceReportItems => Set<AcceptanceReportItem>();
     public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
     public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
@@ -202,6 +204,11 @@ public class ApplicationDbContext(
             .HasMany(s => s.EquipmentParts)
             .WithOne(h => h.Equipment)
             .HasForeignKey(s => s.EquipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Equipment>()
+            .HasMany(l => l.ActualEletricityEquipment)
+            .WithOne(l => l.Equipment)
+            .HasForeignKey(l => l.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //Part table
@@ -740,6 +747,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOutputProduct>().ToTable(nameof(ProductionOutputProduct), "Production");
         modelBuilder.Entity<AcceptanceReport>().ToTable(nameof(AcceptanceReport), "Production");
         modelBuilder.Entity<AcceptanceReportItem>().ToTable(nameof(AcceptanceReportItem), "Production");
+        modelBuilder.Entity<ActualElectricityCost>().ToTable(nameof(ActualElectricityCost), "Production");
+        modelBuilder.Entity<ActualEletricityEquipment>().ToTable(nameof(ActualEletricityEquipment), "Production");
         modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemShippedDetail>().ToTable(nameof(AcceptanceReportItemShippedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemLog>().ToTable(nameof(AcceptanceReportItemLog), "Production");
@@ -777,6 +786,11 @@ public class ApplicationDbContext(
                   .WithOne(p => p.AcceptanceReport)
                   .HasForeignKey<AcceptanceReport>(a => a.ProductionOutputId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(a => a.ActualElectricityCost)
+              .WithOne(p => p.AcceptanceReport)
+              .HasForeignKey<ActualElectricityCost>(a => a.AcceptanceReportId)
+              .OnDelete(DeleteBehavior.Cascade);
 
             // 2. Cấu hình Index có điều kiện (Partial Index)
             // Phải ghi đè Index mặc định mà EF tự tạo cho Foreign Key
@@ -850,6 +864,16 @@ public class ApplicationDbContext(
         modelBuilder.Entity<LumpSumQuarterCustomCost>()
             .HasIndex(l => new { l.Year, l.Quarter, l.ProcessGroupId })
             .HasFilter("\"DeletedOn\" IS NULL");
+
+        // ActualElectricityCost table
+        modelBuilder.Entity<ActualElectricityCost>()
+            .HasIndex(l => l.AcceptanceReportId)
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<ActualElectricityCost>()
+            .HasMany(l => l.ActualEletricityEquipment)
+            .WithOne(l => l.ActualElectricityCost)
+            .HasForeignKey(l => l.ActualElectricityCostId)
+            .OnDelete(DeleteBehavior.Cascade);
         #endregion
 
         base.OnModelCreating(modelBuilder);

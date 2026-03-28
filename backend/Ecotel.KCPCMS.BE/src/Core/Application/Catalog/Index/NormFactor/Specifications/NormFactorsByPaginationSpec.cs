@@ -1,6 +1,7 @@
 ﻿// File: Application/Catalog/AdjustmentFactor/Specifications/NormFactorsByPaginationSpec.cs
 using Application.Common.Models;
 using Application.Common.Specification;
+using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.NormFactor;
 using Ardalis.Specification;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ public class NormFactorsByPaginationSpec
         var searchTerm = (search ?? "").Trim().ToLower();
 
         Query
+            .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.AssignmentCode).ThenInclude(a => a.Code)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.Code)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.Code)
             .Include(nf => nf.Hardness)
@@ -36,7 +38,12 @@ public class NormFactorsByPaginationSpec
                 HardnessName = nf.Hardness != null ? nf.Hardness.Value : string.Empty,
                 StoneClampRatioId = nf.StoneClampRatioId,
                 StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
-                AffectAssignmentCodeIds = nf.NormFactorAssignmentCodes.Select(a => a.AssignmentCodeId).ToList(),
+                AffectAssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new ShortAssignmentCodeDto
+                {
+                    Id = a.AssignmentCodeId,
+                    Code = a.AssignmentCode.Code!.Value,
+                    Name = a.AssignmentCode.Name
+                }).ToList(),
                 Value = nf.Value,
                 TargetHardnessId = nf.TargetHardnessId ?? Guid.Empty,
                 TargetHardnessName = nf.TargetHardness != null ? nf.TargetHardness.Value.ToString() : string.Empty

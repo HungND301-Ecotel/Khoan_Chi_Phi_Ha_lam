@@ -1,4 +1,11 @@
 import { ColumnDef } from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+
+type AffectAssignmentCode = {
+	id: string;
+	code: string;
+	name: string;
+};
 
 export type NormFactor = {
 	id: string;
@@ -12,7 +19,7 @@ export type NormFactor = {
 	hardnessName: string;
 	stoneClampRatioId: string;
 	stoneClampRatioName: string;
-	affectAssignmentCodeIds: string[];
+	affectAssignmentCodes: AffectAssignmentCode[];
 	value: number;
 	targetHardnessId: string;
 	targetHardnessName: string;
@@ -38,10 +45,36 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 		header: 'Tỷ lệ đá kẹp (Ckẹp)',
 	},
 	{
+		accessorKey: 'affectAssignmentCodes',
+		header: 'Thành phần điều chỉnh định mức',
+		cell: ({ row }) => (
+			<div className='flex flex-wrap gap-1'>
+				{(row.original.affectAssignmentCodes ?? []).map((item) => (
+					<Badge
+						key={item.id}
+						variant='secondary'
+						className='whitespace-normal'
+					>
+						{item.code} - {item.name}
+					</Badge>
+				))}
+			</div>
+		),
+	},
+	{
 		accessorKey: 'value',
 		header: 'Hệ số điều chỉnh định mức',
 		cell: ({ row }) => (
 			<span className='whitespace-normal'>{row.original.value}</span>
+		),
+	},
+	{
+		accessorKey: 'targetHardnessName',
+		header: 'Định mức tham chiếu',
+		cell: ({ row }) => (
+			<span className='whitespace-normal'>
+				{row.original.targetHardnessName || 'Định mức hiện tại'}
+			</span>
 		),
 	},
 ];

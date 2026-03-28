@@ -480,7 +480,7 @@ function ElectricityCostRow({
 			<FormNumber
 				control={form.control}
 				name={`costs.${costIndex}.averageMonthlyTunnelProduction`}
-				label='Sản lượng than bình quân tháng (tấn)'
+				label='Sản lượng than bình quân tháng (1000 tấn)'
 				placeholder='Nhập sản lượng'
 			/>
 
@@ -503,7 +503,7 @@ function ElectricityCostRow({
 			</div>
 
 			<div className='flex-1 space-y-2'>
-				<Label>Chi phí điện năng cho 1 thiết bị/ 1 tấn (đ/tấn)</Label>
+				<Label>Chi phí điện năng cho 1 thiết bị/ 1 tấn than (đ/tấn)</Label>
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>

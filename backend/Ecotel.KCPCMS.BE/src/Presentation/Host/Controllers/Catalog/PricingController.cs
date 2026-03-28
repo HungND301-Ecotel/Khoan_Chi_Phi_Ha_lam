@@ -1,6 +1,8 @@
-﻿using Application.Catalog.Pricing.AdjustmentElectricityCost.Queries;
+using Application.Catalog.Pricing.AdjustmentElectricityCost.Queries;
 using Application.Catalog.Pricing.AdjustmentMaterialCost.Queries;
 using Application.Catalog.Pricing.AdjustmnetMaintainCost.Queries;
+using Application.Catalog.Pricing.ActualElectricityCost.Commands;
+using Application.Catalog.Pricing.ActualElectricityCost.Queries;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
@@ -22,6 +24,7 @@ using Application.Catalog.Pricing.ProductUnitPrice.Queries;
 using Application.Catalog.Pricing.SlideUnitPrice.Commands;
 using Application.Catalog.Pricing.SlideUnitPrice.Queries;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
+using Application.Dto.Catalog.ActualElectricityCost;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
 using Application.Dto.Catalog.MaintainUnitPriceEquipment;
@@ -678,6 +681,33 @@ public class PricingController : BaseNoAuthController
     }
     #endregion
 
+    #region ActualElectricityCost
+
+    [HttpGet("ActualElectricityCost/{id:guid}")]
+    [OpenApiOperation("Get ActualElectricityCost By AcceptanceReport Id", "")]
+    public async Task<IActionResult> GetActualElectricityCost([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetActualElectricityCostByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("ActualElectricityCost")]
+    [OpenApiOperation("Update ActualElectricityCost", "")]
+    public async Task<IActionResult> UpdateActualElectricityCost([FromBody] UpdateActualElectricityCostDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateActualElectricityCostCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("ActualElectricityCost")]
+    [OpenApiOperation("Create New ActualElectricityCost", "")]
+    public async Task<IActionResult> CreateActualElectricityCost([FromBody] CreateActualElectricityCostDto createModel)
+    {
+        var result = await Mediator.Send(new CreateActualElectricityCostCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    #endregion
     #region AdjustmentCost
     [HttpGet("AdjustmnetMaterialCost/{id:guid}")]
     [OpenApiOperation("Get AdjustmnetMaterialCost By Id", "")]
@@ -756,3 +786,5 @@ public class PricingController : BaseNoAuthController
 
     #endregion
 }
+
+

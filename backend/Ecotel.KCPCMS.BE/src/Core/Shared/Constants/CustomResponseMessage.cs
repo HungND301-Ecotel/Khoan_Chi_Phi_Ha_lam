@@ -97,7 +97,7 @@ public static class CustomResponseMessage
     public const string ActualMaterialCostNotFound = "ACTUAL_MATERIAL_COST_NOT_FOUND";
     public const string PleaseProvideOnlyTheTypeOutput = "PLEASE_PROVIDE_ONLY_THE_TYPE_OUTPUT";
     public const string PleaseProvideTheActualOutputProductionMeters = "PLEASE_PROVIDE_THE_ACTUAL_OUTPUT_PRODUCTION_METERS";
-    public const string ActualElectricityCostNotFound = "ACTUAL_MAINTAIN_COST_NOT_FOUND";
+    public const string ActualElectricityCostNotFound = "ACTUAL_ELECTRICITY_COST_NOT_FOUND";
     public const string HardnessNotFound = "HARDNESS_NOT_FOUND";
     public const string CannotGetHardnessOrProcessValue = "CANNOT_GET_HARDNESS_OR_PROCESS_VALUE";
     public const string HardnessValueNullOrEmpty = "HARDNESS_VALUE_IS_NULL_OR_EMPTY";

@@ -567,8 +567,8 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 								control={form.control}
 								quarter='quarter'
 								year='year'
-								label='Quý và Năm'
-								placeholder='Chọn quý và năm'
+								label='Thời gian'
+								placeholder='Chọn thời gian'
 							/>
 							<FormComboBox
 								control={form.control}

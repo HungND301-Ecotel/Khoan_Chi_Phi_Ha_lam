@@ -20,6 +20,7 @@ public class ProductionOutputsByPaginationSpec : EntitiesByPaginationFilterSpec<
             ProductionMeters = po.ProductionMeters,
             StandardProductionMeters = po.StandardProductionMeters,
             AcceptanceReportId = po.AcceptanceReport != null ? po.AcceptanceReport.Id : null
+
         });
     }
 }

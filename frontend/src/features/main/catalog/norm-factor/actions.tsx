@@ -40,7 +40,9 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 		defaultValues: row
 			? {
 					...row,
-					assignmentCodeIds: row.affectAssignmentCodeIds ?? [],
+					assignmentCodeIds: (row.affectAssignmentCodes ?? []).map(
+						(item) => item.id,
+					),
 				}
 			: NORM_FACTOR_SCHEMA_DEFAULT,
 	});

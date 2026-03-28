@@ -12,6 +12,13 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string UnitOfMeasureName { get; set; }
     }
 
+    public class ShortAssignmentCodeDto
+    {
+        public Guid Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+    }
+
     public class AssignmentCodeExcelDto
     {
         public Guid Id { get; set; }

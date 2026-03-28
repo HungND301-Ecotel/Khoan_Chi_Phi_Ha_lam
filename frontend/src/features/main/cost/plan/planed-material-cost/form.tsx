@@ -98,8 +98,8 @@ export function PlanMaterialCostForm({
 	const [slideDetailList, setSlideDetailList] = useState<SlideDetailListItem[]>(
 		[],
 	);
-	const [slideCode, setSlideCode] = useState<string>('');
-	const [slideCodeDraft, setSlideCodeDraft] = useState<string>('');
+	const [slideCode, setSlideCode] = useState<string>('MT');
+	const [slideCodeDraft, setSlideCodeDraft] = useState<string>('MT');
 	const [isEditingSlideCode, setIsEditingSlideCode] = useState<boolean>(false);
 
 	const { setOpen } = useDialog();
@@ -257,11 +257,16 @@ export function PlanMaterialCostForm({
 	]);
 
 	const filteredSlideAssets = assets.filter((asset) => {
-		if (!asset.isSlideAssignmentCode) return false;
-		if (!slideCode.trim()) return true;
+		const normalizedSlideCode = slideCode.trim().toLowerCase();
+
+		// Khi mã máng trượt rỗng: chỉ lấy asset có isSlideAssignmentCode = true
+		if (!normalizedSlideCode) {
+			return asset.isSlideAssignmentCode;
+		}
+
+		// Khi có mã máng trượt: lấy toàn bộ asset và lọc theo assignmentCode
 		return (
-			asset.assignmentCode.trim().toLowerCase() ===
-			slideCode.trim().toLowerCase()
+			asset.assignmentCode.trim().toLowerCase() === normalizedSlideCode
 		);
 	});
 
