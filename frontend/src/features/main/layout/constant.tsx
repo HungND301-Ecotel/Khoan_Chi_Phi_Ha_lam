@@ -50,6 +50,16 @@ export const NAVIGATIONS: Navigation[] = [
 						name: 'Vật tư, tài sản khác',
 						href: '/catalogs/assets/external',
 					},
+					{
+						type: 'link',
+						name: 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+						href: '/catalogs/assets/safety-and-welfare',
+					},
+					{
+						type: 'link',
+						name: 'Tài sản',
+						href: '/catalogs/assets/resource',
+					},
 				],
 			},
 			{ type: 'link', name: 'Thiết bị', href: '/catalogs/equipments' },

@@ -1,6 +1,8 @@
 import { MainCatalogAdjustmentRouter } from '@/features/main/catalog/adjustment/router';
 import MainCatalogAssetExternalPage from '@/features/main/catalog/asset/external/page';
 import MainCatalogAssetInternalPage from '@/features/main/catalog/asset/internal/page';
+import MainCatalogAssetResourcePage from '@/features/main/catalog/asset/resource/page';
+import MainCatalogAssetSafetyAndWelfarePage from '@/features/main/catalog/asset/safety-and-welfare/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
 import MainCatalogEquipmentPage from '@/features/main/catalog/equipment/page';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
@@ -57,6 +59,24 @@ const MainCatalogRouter: RouteObject = {
 					handle: {
 						breadcrumb: 'Vật tư, tài sản khác',
 						title: 'Vật tư, tài sản khác',
+					},
+				},
+				{
+					path: 'safety-and-welfare',
+					element: <MainCatalogAssetSafetyAndWelfarePage />,
+					handle: {
+						breadcrumb:
+							'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+						title:
+							'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+					},
+				},
+				{
+					path: 'resource',
+					element: <MainCatalogAssetResourcePage />,
+					handle: {
+						breadcrumb: 'Tài sản',
+						title: 'Tài sản',
 					},
 				},
 			],

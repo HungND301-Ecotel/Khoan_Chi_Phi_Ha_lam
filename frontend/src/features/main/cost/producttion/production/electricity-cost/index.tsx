@@ -12,6 +12,7 @@ import {
 	ItemContent,
 	ItemTitle,
 } from '@/components/ui/item';
+import { API } from '@/constants/api-enpoint';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
 import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import { PRODUCTION_ELECTRICITY_COST_COLUMNS } from '@/features/main/cost/producttion/production/electricity-cost/columns';
@@ -20,14 +21,12 @@ import {
 	ProductionActualElectricityCostDetail,
 	ProductionElectricityCostItem,
 } from '@/features/main/cost/producttion/production/electricity-cost/types';
-import { API } from '@/constants/api-enpoint';
 import { api, ErrorResponse } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CreateIcon from '@mui/icons-material/Create';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const EMPTY_ITEMS: ProductionElectricityCostItem[] = [];
 
@@ -78,10 +77,6 @@ export function ProductionElectricityCost({
 	}, [output?.acceptanceReportId, reloadKey]);
 
 	const hasCreated = !!actualElectricityCostId && items.length > 0;
-	const totalCost = useMemo(
-		() => items.reduce((sum, item) => sum + item.electricityCost, 0),
-		[items],
-	);
 
 	return (
 		<AccordionItem
@@ -91,9 +86,6 @@ export function ProductionElectricityCost({
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
 					<ItemTitle>Chi phí điện năng</ItemTitle>
-				</ItemContent>
-				<ItemContent className='me-7.5 w-24'>
-					<ItemTitle>{formatNumber(Math.round(totalCost))}</ItemTitle>
 				</ItemContent>
 				<ItemActions>
 					<DialogProvider>

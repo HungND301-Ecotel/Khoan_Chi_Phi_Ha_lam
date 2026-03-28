@@ -43,10 +43,10 @@ namespace Domain.Entities.Index
                 throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
             }
 
-            if (usageTime <= 0)
-            {
-                throw new ArgumentException(CustomResponseMessage.UsageTimeCannotBeNegative);
-            }
+            //if (usageTime <= 0)
+            //{
+            //    throw new ArgumentException(CustomResponseMessage.UsageTimeCannotBeNegative);
+            //}
 
             return new Material
             {
@@ -71,10 +71,10 @@ namespace Domain.Entities.Index
                 throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
             }
 
-            if (usageTime <= 0)
-            {
-                throw new ArgumentException(CustomResponseMessage.UsageTimeCannotBeNegative);
-            }
+            //if (usageTime <= 0)
+            //{
+            //    throw new ArgumentException(CustomResponseMessage.UsageTimeCannotBeNegative);
+            //}
 
             return new Material
             {

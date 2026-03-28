@@ -73,6 +73,12 @@ public enum MaterialType
 
     [Display(Name = "Ngoài khoán")]
     MaterialOutContract = 2,
+
+    [Display(Name = "Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão")]
+    SafetyAndWelfareMaterials = 3,
+
+    [Display(Name = "Tài sản")]
+    Resource = 4,
 }
 
 public enum MaterialUnitPriceType
