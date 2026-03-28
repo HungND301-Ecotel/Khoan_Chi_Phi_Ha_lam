@@ -16,7 +16,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { ProcessGroupType } from '@/constants/process-group';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
-import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
+import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
 import {
 	PLANED_MATERIAL_COST_SUMMARY_COLUMNS,
 	PlanedMaterialCostSummary,
@@ -61,12 +61,12 @@ export function PlanedMaterialCost({
 			setLoading(true);
 
 			try {
-				const [detailRes, normFactorsRes, materialsRes, slidesRes] =
+				const [detailRes, clampsRes, materialsRes, slidesRes] =
 					await Promise.all([
 						api.get<PlanedMaterialCostType>(
 							API.COST.PLANNED_MATERIAL.DETAIL(id),
 						),
-						api.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST),
+						api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
 						api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 						api.pagging<Slide>(API.PRICING.SLIDE.LIST),
 					]);
@@ -76,7 +76,7 @@ export function PlanedMaterialCost({
 					result.totalPlannedMaterialPrice * (output?.productionMeters || 1),
 				);
 
-				const allNormFactors = normFactorsRes.result.data;
+				const allClamps = clampsRes.result.data;
 				const allMaterials = materialsRes.result.data;
 				const allSlides = slidesRes.result.data;
 
@@ -100,6 +100,7 @@ export function PlanedMaterialCost({
 					);
 
 				let slideUsage = '-';
+				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
 				let stoneClampRatio = '-';
 
 				if (plan?.processGroupType === ProcessGroupType.DL) {
@@ -142,24 +143,31 @@ export function PlanedMaterialCost({
 								slideDetailMaterialCosts.find(
 									(item) => item.id === result.slideUnitPriceAssignmentCodeId,
 								)?.materialName || '-';
+							if (!slideUnitPriceCost) {
+								slideUnitPriceCost =
+									slideDetailMaterialCosts.find(
+										(item) => item.id === result.slideUnitPriceAssignmentCodeId,
+									)?.cost || 0;
+							}
 						}
 					}
-
-					const normFactorId =
-						result.normFactorId ||
+					const stoneClampRatioReferenceId =
+						result.stoneClampRatioReferenceId ||
 						(result as unknown as { stoneClampRatioId?: string })
 							.stoneClampRatioId;
-
 					stoneClampRatio =
-						allNormFactors.find((normFactor) => normFactor.id === normFactorId)
-							?.stoneClampRatioName || '-';
+						allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
+							?.value || '-';
 				}
 
 				setSummary([
 					{
 						materialCode: selectedMaterial?.code || '-',
+						materialUnitPriceCost: result.materialCost || 0,
 						slideUsage,
+						slideUnitPriceCost,
 						stoneClampRatio,
+						normFactorValue: result.normFactorValue || '-',
 					},
 				]);
 			} finally {

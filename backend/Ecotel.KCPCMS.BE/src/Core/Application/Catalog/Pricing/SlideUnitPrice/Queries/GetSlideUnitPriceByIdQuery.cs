@@ -51,11 +51,12 @@ public class GetSlideUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
                 {
                     AssignmentCodeId = group.Key ?? Guid.Empty,
                     AssignmentCode = group.First().Material?.AssignmentCode?.Code?.Value ?? "",
+                    IsSlideAssignmentCode = group.First().Material?.AssignmentCode.IsSlideAssignmentCode ?? false,
                     AssignmentCodeName = group.First().Material?.AssignmentCode?.Name ?? "",
                     Costs = costs
                 };
             }).ToList();
-        
+
         string passportName =
             $"H/c {slideUnitPrice.Passport!.Name}; {slideUnitPrice.Passport!.Sd}; {slideUnitPrice.Passport!.Sc}";
         return new SlideUnitPriceDetailDto

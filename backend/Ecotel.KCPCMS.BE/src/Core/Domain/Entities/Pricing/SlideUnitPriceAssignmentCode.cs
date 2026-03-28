@@ -4,7 +4,7 @@ using Shared.Constants;
 
 namespace Domain.Entities.Pricing
 {
-    public class SlideUnitPriceAssignmentCode : AuditableEntity<Guid>
+    public class SlideUnitPriceAssignmentCode : AuditableEntity<Guid>, IAggregateRoot
     {
         public Guid SlideUnitPriceId { get; protected set; }
         public Guid MaterialId { get; protected set; }

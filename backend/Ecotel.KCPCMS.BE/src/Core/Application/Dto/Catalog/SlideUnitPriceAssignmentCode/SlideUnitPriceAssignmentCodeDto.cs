@@ -11,6 +11,7 @@
     public class SlideUnitPriceAssignmentCodeDetailDto
     {
         public Guid AssignmentCodeId { get; set; }
+        public bool IsSlideAssignmentCode { get; set; } = false;
         public string AssignmentCode { get; set; } = string.Empty;
         public string AssignmentCodeName { get; set; } = string.Empty;
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();

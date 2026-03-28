@@ -5,8 +5,8 @@ using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Queries;
-using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 using Application.Catalog.Pricing.LumpSumFinalSettlement.Commands;
+using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.MaterialUnitPrice.Commands;
@@ -194,6 +194,14 @@ public class PricingController : BaseNoAuthController
     public async Task<IActionResult> GetAllSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("SlideUnitPrice/Details")]
+    [OpenApiOperation("Get All SlideUnitPrice Detail list", "")]
+    public async Task<IActionResult> GetAllSlideUnitPriceAssignmentCode([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllSlideUnitPriceAssignmentCodeQuery(pageIndex, pageSize, search, ignorePagination));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 

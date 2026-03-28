@@ -64,6 +64,7 @@ export function MainCatalogPartPage() {
 			getRowId={(row) => `${row.id}-${row.equipmentId}`}
 			filters={[
 				{ key: 'code', label: 'Mã phụ tùng' },
+				{ key: 'equipmentCode', label: 'Mã thiết bị' },
 				{ key: 'name', label: 'Tên phụ tùng' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}

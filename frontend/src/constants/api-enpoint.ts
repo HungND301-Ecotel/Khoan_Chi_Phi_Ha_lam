@@ -263,6 +263,7 @@ export const API = {
 			DELETES: '/v1/pricing/slideunitprice',
 			DELETE: (id: string) => `/v1/pricing/slideunitprice/${id}`,
 			DETAIL: (id: string) => `/v1/pricing/slideunitprice/${id}`,
+			DETAIL_LIST: `/v1/pricing/slideunitprice/details`,
 			IMPORT: '/v1/pricing/slideunitprice/import',
 			EXPORT: '/v1/pricing/slideunitprice/export',
 		},

@@ -28,6 +28,8 @@ namespace Domain.Entities.Index
 
         private IList<SlideUnitPriceAssignmentCode> _slideUnitPriceAssignmentCodes = new List<SlideUnitPriceAssignmentCode>();
         public virtual IReadOnlyCollection<SlideUnitPriceAssignmentCode> SlideUnitPriceAssignmentCodes => _slideUnitPriceAssignmentCodes.AsReadOnly();
+        private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
+        public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
         //constructor
         public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, decimal usageTime, MaterialType materialType)
         {

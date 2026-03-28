@@ -1,6 +1,6 @@
+using Application.Catalog.Pricing.Common;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Pricing.Common;
 using Application.Dto.Catalog.Dashboard;
 using Domain.Common.Enums;
 using Domain.Entities.Pricing;
@@ -16,7 +16,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 {
     private readonly IWriteRepository<ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
-    private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
+    private readonly IWriteRepository<PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
@@ -24,6 +24,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     public async Task<CostSummaryDto> Handle(GetCostSummaryQuery request, CancellationToken cancellationToken)
     {
         var year = request.Year;
+        var startOfYear = new DateOnly(year, 1, 1);
+        var endOfYear = new DateOnly(year, 12, 31);
 
         // STEP 1: Get Plan outputs for requested year and process group
         var outputs = await _outputRepository.GetAll()
@@ -31,8 +33,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 && o.ProductUnitPrice != null
                 && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                 && (!request.ProcessGroupId.HasValue || o.ProductUnitPrice.Product!.ProcessGroupId == request.ProcessGroupId)
-                && o.StartMonth.Year <= year
-                && o.EndMonth.Year >= year)
+                && o.StartMonth <= endOfYear
+                && o.EndMonth >= startOfYear)
             .Select(o => new OutputData
             {
                 ProductUnitPriceId = o.ProductUnitPriceId,
@@ -95,8 +97,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 && (!request.ProcessGroupId.HasValue || p.Product!.ProcessGroupId == request.ProcessGroupId))
             .SelectMany(p => p.ProductUnitPriceProductionOutputs
                 .Where(link => link.ProductionOutput != null
-                    && link.ProductionOutput.StartMonth.Year <= year
-                    && link.ProductionOutput.EndMonth.Year >= year)
+                    && link.ProductionOutput.StartMonth <= endOfYear
+                    && link.ProductionOutput.EndMonth >= startOfYear)
                 .Select(link => new AdjustmentProductionData
                 {
                     ProductId = p.ProductId,
@@ -230,7 +232,6 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    //m.ReplacementTimeStandard,
                     m.Part.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
@@ -246,7 +247,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 g => g.Key,
                 g => g.Select(f => new MaintainFactorData
                 {
-                    Quantity = (double)f.Quantity,
+                    Quantity = Convert.ToDouble(f.Quantity),
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
@@ -291,7 +292,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 
                     return new PlannedElectricityFactorData
                     {
-                        Quantity = (double)f.Quantity,
+                        Quantity = Convert.ToDouble(f.Quantity),
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };

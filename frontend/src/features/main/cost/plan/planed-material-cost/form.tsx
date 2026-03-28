@@ -4,13 +4,16 @@ import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { usePopup } from '@/components/popup';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
+import { Asset } from '@/features/main/catalog/asset/types';
+import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
+import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
 import { PlanedMaterialCostType } from '@/features/main/cost/plan/planed-material-cost/columns';
 import {
 	PLAN_MATERIAL_COST_DEFAULT,
@@ -18,18 +21,68 @@ import {
 	PlanMaterialCostSchema,
 } from '@/features/main/cost/plan/planed-material-cost/schema';
 import { ProductCostFormProps } from '@/features/main/cost/plan/types';
-import {
-	Slide,
-	SlideDetail,
-	SlideDetailMaterialCost,
-} from '@/features/main/pricing/tunneling/slide/columns';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Check, Pencil, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { UnifiedMaterial } from './type';
 import { ProcessGroupType } from '@/constants/process-group';
+
+type SlideDetailListItem = {
+	id: string;
+	processGroupId?: string;
+	passportId?: string;
+	hardnessId?: string;
+	materialId?: string;
+	startMonth?: string;
+	endMonth?: string;
+	startDate?: string;
+	endDate?: string;
+};
+
+function findMatchedNormFactor(
+	normFactors: NormFactor[],
+	params: {
+		stoneClampRatioId: string;
+		materialProcessId: string;
+		materialHardnessId: string;
+	},
+) {
+	const { stoneClampRatioId, materialProcessId, materialHardnessId } = params;
+
+	// Strict rule:
+	// Chỉ map khi đồng thời đúng productionProcessId + hardnessId + stoneClampRatioId
+	return (
+		normFactors.find(
+			(normFactor) =>
+				normFactor.productionProcessId === materialProcessId &&
+				normFactor.hardnessId === materialHardnessId &&
+				normFactor.stoneClampRatioId === stoneClampRatioId,
+		) || null
+	);
+}
+
+function parseMonth(value?: string) {
+	if (!value) return null;
+	return new Date(value.slice(0, 7));
+}
+
+function isTimeCovered(
+	targetStart?: string,
+	targetEnd?: string,
+	sourceStart?: string,
+	sourceEnd?: string,
+) {
+	const tStart = parseMonth(targetStart);
+	const tEnd = parseMonth(targetEnd);
+	const sStart = parseMonth(sourceStart);
+	const sEnd = parseMonth(sourceEnd);
+
+	if (!tStart || !tEnd || !sStart || !sEnd) return false;
+	return sStart <= tStart && sEnd >= tEnd;
+}
 
 export function PlanMaterialCostForm({
 	id,
@@ -37,15 +90,17 @@ export function PlanMaterialCostForm({
 	output,
 	callback,
 }: ProductCostFormProps) {
-	const [isInit, setIsInit] = useState<boolean>(!!id);
-	const [normFactors, setNormFactors] = useState<NormFactor[]>([]);
 	const [allNormFactors, setAllNormFactors] = useState<NormFactor[]>([]);
-	const [hardnesses, setHardnesses] = useState<Strength[]>([]);
+	const [stoneClampRatios, setStoneClampRatios] = useState<Clamp[]>([]);
+	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [materials, setMaterials] = useState<UnifiedMaterial[]>([]);
-	const [slides, setSlides] = useState<Slide[]>([]);
-	const [slideDetailMaterialCosts, setSlideDetailMaterialCosts] = useState<
-		SlideDetailMaterialCost[]
-	>([]);
+	const [assets, setAssets] = useState<Asset[]>([]);
+	const [slideDetailList, setSlideDetailList] = useState<SlideDetailListItem[]>(
+		[],
+	);
+	const [slideCode, setSlideCode] = useState<string>('');
+	const [slideCodeDraft, setSlideCodeDraft] = useState<string>('');
+	const [isEditingSlideCode, setIsEditingSlideCode] = useState<boolean>(false);
 
 	const { setOpen } = useDialog();
 	const { success, error } = usePopup();
@@ -59,11 +114,16 @@ export function PlanMaterialCostForm({
 			outputId: output?.id,
 			productUnitPriceId: plan?.id,
 			slideUnitPriceAssignmentCodeId: '',
+			materialReferenceId: '',
 		},
 	});
 
+	const watchedStoneClampRatioReferenceId = form.watch(
+		'stoneClampRatioReferenceId',
+	);
 	const watchedNormFactorId = form.watch('normFactorId');
 	const watchedMaterialUnitPriceId = form.watch('materialUnitPriceId');
+	const watchedMaterialReferenceId = form.watch('materialReferenceId');
 
 	// Filter materials based on processGroupType
 	const filteredMaterials = materials.filter((material) => {
@@ -80,124 +140,187 @@ export function PlanMaterialCostForm({
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST),
+			api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
 			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
-			api.pagging<Slide>(API.PRICING.SLIDE.LIST),
+			api.pagging<Asset>(API.CATALOG.ASSET.LIST, { ignorePagination: true }),
+			api.pagging<SlideDetailListItem>(API.PRICING.SLIDE.DETAIL_LIST, {
+				ignorePagination: true,
+			}),
 		]);
 
-		promises.then(([normFactors, hardnesses, materials, slides]) => {
-			setAllNormFactors(normFactors.result.data);
-			setNormFactors(normFactors.result.data);
-			setHardnesses(hardnesses.result.data);
-			setMaterials(materials.result.data);
-			setSlides(slides.result.data);
-
-			if (!id) return;
-			api
-				.get<PlanedMaterialCostType>(API.COST.PLANNED_MATERIAL.DETAIL(id))
-				.then((detail) => {
-					const {
-						normFactorId,
-						materialUnitPriceId,
-						slideUnitPriceAssignmentCodeId,
-					} = detail.result;
-
-					form.reset({
-						normFactorId:
-							normFactorId ||
+		promises.then(
+			([
+				normFactors,
+				stoneClampRatios,
+				strengths,
+				materials,
+				assets,
+				slideDetailList,
+			]) => {
+				const normFactorsData = normFactors.result.data;
+				setAllNormFactors(normFactorsData);
+				setStoneClampRatios(stoneClampRatios.result.data);
+				const strengthsData = strengths.result.data;
+				setStrengths(strengthsData);
+				setMaterials(materials.result.data);
+				const assetData = assets.result.data;
+				setAssets(assetData);
+				const slideDetailData = slideDetailList.result.data;
+				setSlideDetailList(slideDetailData);
+				if (!id) return;
+				api
+					.get<PlanedMaterialCostType>(API.COST.PLANNED_MATERIAL.DETAIL(id))
+					.then((detail) => {
+						const {
+							normFactorId,
+							materialUnitPriceId,
+							slideUnitPriceAssignmentCodeId,
+						} = detail.result;
+						const materialReferenceIdFromDetail =
+							(
+								detail.result as unknown as {
+									materialReferenceId?: string;
+									materialId?: string;
+								}
+							).materialReferenceId ||
+							(detail.result as unknown as { materialId?: string })
+								.materialId ||
+							slideDetailData.find(
+								(item) => item.id === slideUnitPriceAssignmentCodeId,
+							)?.materialId ||
+							null;
+						const stoneClampRatioReferenceId =
+							(
+								detail.result as unknown as {
+									stoneClampRatioReferenceId?: string;
+									stoneClampRatioId?: string;
+								}
+							).stoneClampRatioReferenceId ||
 							(detail.result as unknown as { stoneClampRatioId?: string })
 								.stoneClampRatioId ||
-							null,
-						materialUnitPriceId,
-						slideUnitPriceAssignmentCodeId:
-							slideUnitPriceAssignmentCodeId || '',
-						outputId: output?.id,
-						productUnitPriceId: plan?.id,
+							normFactorsData.find((item) => item.id === normFactorId)
+								?.stoneClampRatioId ||
+							null;
+
+						form.reset({
+							normFactorId: normFactorId || null,
+							stoneClampRatioReferenceId,
+							materialUnitPriceId,
+							slideUnitPriceAssignmentCodeId:
+								slideUnitPriceAssignmentCodeId || '',
+							materialReferenceId: materialReferenceIdFromDetail || '',
+							outputId: output?.id,
+							productUnitPriceId: plan?.id,
+						});
+
+						const matchedAsset = assetData.find(
+							(asset) => asset.id === materialReferenceIdFromDetail,
+						);
+						const assignmentCode = matchedAsset?.assignmentCode || '';
+						setSlideCode(assignmentCode);
+						setSlideCodeDraft(assignmentCode);
 					});
-				})
-				.finally(() => setIsInit(false));
-		});
+			},
+		);
 	}, [id, form, output, plan]);
 
 	useEffect(() => {
-		// Only clear slide selection when creating a new planned-material-cost (no `id`)
-		if (!isInit && !id) form.setValue('slideUnitPriceAssignmentCodeId', '');
+		if (isEditingSlideCode) return;
+		setSlideCodeDraft(slideCode);
+	}, [isEditingSlideCode, slideCode]);
 
-		if (!watchedMaterialUnitPriceId || !plan)
-			return setSlideDetailMaterialCosts([]);
-
+	useEffect(() => {
 		const selectedMaterial = materials.find(
 			(material) => material.id === watchedMaterialUnitPriceId,
 		);
+		const stoneClampRatioReferenceId = watchedStoneClampRatioReferenceId;
 
-		if (!selectedMaterial) {
-			setNormFactors(allNormFactors);
+		if (!selectedMaterial || !stoneClampRatioReferenceId) {
+			form.setValue('normFactorId', null);
 			return;
 		}
 
-		const filteredNormFactors = allNormFactors.filter(
-			(f) =>
-				f.productionProcessId === selectedMaterial.processId &&
-				f.hardnessId === selectedMaterial.hardnessId,
-		);
-		setNormFactors(filteredNormFactors);
-
-		const currentNormFactorId = form.getValues('normFactorId');
-		if (
-			currentNormFactorId &&
-			!filteredNormFactors.some((f) => f.id === currentNormFactorId)
-		) {
-			form.setValue('normFactorId', null);
-		}
-
-		const { processGroupId } = plan;
-		const { startMonth, endMonth, passportId, hardnessId } = selectedMaterial;
-
-		const matchedSlide = slides.find((slide) => {
-			const targetStart = new Date(startMonth.slice(0, 7));
-			const targetEnd = new Date(endMonth.slice(0, 7));
-			const slideStart = new Date(slide.startMonth.slice(0, 7));
-			const slideEnd = new Date(slide.endMonth.slice(0, 7));
-
-			if (processGroupId !== slide.processGroupId) return false;
-			if (passportId !== slide.passportId) return false;
-			if (hardnessId !== slide.hardnessId) return false;
-
-			const isTimeMatch = slideStart <= targetStart && slideEnd >= targetEnd;
-
-			return isTimeMatch;
+		const matchedNormFactor = findMatchedNormFactor(allNormFactors, {
+			stoneClampRatioId: stoneClampRatioReferenceId,
+			materialProcessId: selectedMaterial.processId,
+			materialHardnessId: selectedMaterial.hardnessId,
 		});
 
-		if (!matchedSlide) return setSlideDetailMaterialCosts([]);
-
-		api
-			.get<SlideDetail>(API.PRICING.SLIDE.DETAIL(matchedSlide.id))
-			.then((res) => {
-				const slideDetailMaterialCosts: SlideDetailMaterialCost[] = [];
-				res.result.materialCost.forEach((materialCost) => {
-					materialCost.costs.forEach((cost) =>
-						slideDetailMaterialCosts.push(cost),
-					);
-				});
-				setSlideDetailMaterialCosts(slideDetailMaterialCosts);
-			});
+		form.setValue('normFactorId', matchedNormFactor?.id || null);
 	}, [
-		watchedMaterialUnitPriceId,
-		materials,
-		plan,
-		slides,
-		form,
-		isInit,
 		allNormFactors,
+		form,
+		materials,
+		watchedMaterialUnitPriceId,
+		watchedStoneClampRatioReferenceId,
 	]);
 
+	const filteredSlideAssets = assets.filter((asset) => {
+		if (!asset.isSlideAssignmentCode) return false;
+		if (!slideCode.trim()) return true;
+		return (
+			asset.assignmentCode.trim().toLowerCase() ===
+			slideCode.trim().toLowerCase()
+		);
+	});
+
+	useEffect(() => {
+		if (!watchedMaterialReferenceId) return;
+		if (
+			filteredSlideAssets.some(
+				(asset) => asset.id === watchedMaterialReferenceId,
+			)
+		)
+			return;
+		form.setValue('materialReferenceId', '');
+	}, [filteredSlideAssets, form, watchedMaterialReferenceId]);
+
+	const resolveSlideAssignmentCodeId = (params: {
+		materialReferenceId: string;
+		material: UnifiedMaterial;
+	}) => {
+		const { materialReferenceId, material } = params;
+
+		const matched = slideDetailList.find((item) => {
+			if (item.materialId !== materialReferenceId) return false;
+			if (item.processGroupId !== plan?.processGroupId) return false;
+			if (item.passportId !== material.passportId) return false;
+			if (item.hardnessId !== material.hardnessId) return false;
+
+			return isTimeCovered(
+				material.startMonth,
+				material.endMonth,
+				item.startMonth || item.startDate,
+				item.endMonth || item.endDate,
+			);
+		});
+
+		return matched?.id || null;
+	};
+
 	const handleMaterialCostSubmit = async (values: PlanMaterialCostSchema) => {
-		const submitValues = {
+		const selectedMaterial = materials.find(
+			(material) => material.id === values.materialUnitPriceId,
+		);
+		let resolvedSlideUnitPriceAssignmentCodeId: string | null = null;
+
+		if (values.materialReferenceId && selectedMaterial) {
+			resolvedSlideUnitPriceAssignmentCodeId = resolveSlideAssignmentCodeId({
+				materialReferenceId: values.materialReferenceId,
+				material: selectedMaterial,
+			});
+		}
+
+		if (values.materialReferenceId && !resolvedSlideUnitPriceAssignmentCodeId) {
+			// Không tìm thấy định mức máng trượt phù hợp điều kiện:
+			// vẫn submit, giữ materialReferenceId theo combobox và để slideUnitPriceAssignmentCodeId = null.
+			resolvedSlideUnitPriceAssignmentCodeId = null;
+		}
+
+		const submitValues: PlanMaterialCostSchema = {
 			...values,
-			slideUnitPriceAssignmentCodeId:
-				values.slideUnitPriceAssignmentCodeId === ''
-					? null
-					: values.slideUnitPriceAssignmentCodeId,
+			slideUnitPriceAssignmentCodeId: resolvedSlideUnitPriceAssignmentCodeId,
 		};
 		return handleSubmit(submitValues);
 	};
@@ -256,13 +379,12 @@ export function PlanMaterialCostForm({
 		}
 	};
 
+	const selectedNormFactor = allNormFactors.find(
+		(normFactor) => normFactor.id === watchedNormFactorId,
+	);
 	const selectedMaterial = materials.find(
 		(material) => material.id === watchedMaterialUnitPriceId,
 	);
-	const selectedNormFactor = normFactors.find(
-		(normFactor) => normFactor.id === watchedNormFactorId,
-	);
-
 	const referenceHardnessValue = (() => {
 		if (!selectedMaterial) return '';
 
@@ -276,7 +398,7 @@ export function PlanMaterialCostForm({
 		}
 
 		return (
-			hardnesses.find((hardness) => hardness.id === targetHardnessId)?.value ||
+			strengths.find((strength) => strength.id === targetHardnessId)?.value ||
 			selectedMaterial.hardnessName ||
 			''
 		);
@@ -341,31 +463,80 @@ export function PlanMaterialCostForm({
 				}))}
 			/>
 			{plan?.processGroupType === ProcessGroupType.DL && (
-				<FormComboBox
-					control={form.control}
-					name='slideUnitPriceAssignmentCodeId'
-					label='Sử dụng máng trượt'
-					placeholder='Chọn máng trượt'
-					options={[
-						{ label: 'Không sử dụng máng trượt', value: '' },
-						...slideDetailMaterialCosts.map((opt) => ({
-							label: opt.materialName,
-							value: opt.id,
-						})),
-					]}
-				/>
+				<FormRow>
+					<div className='flex-2'>
+						<FormComboBox
+							control={form.control}
+							name='materialReferenceId'
+							label='Sử dụng máng trượt'
+							placeholder='Chọn máng trượt'
+							options={[
+								{ label: 'Không sử dụng máng trượt', value: '' },
+								...filteredSlideAssets.map((asset) => ({
+									label: `${asset.code} - ${asset.name}`,
+									value: asset.id,
+								})),
+							]}
+						/>
+					</div>
+					<div className='flex-1 space-y-2'>
+						<Label>Mã máng trượt</Label>
+						<div className='flex gap-2'>
+							<Input
+								readOnly={!isEditingSlideCode}
+								value={isEditingSlideCode ? slideCodeDraft : slideCode}
+								onChange={(e) => setSlideCodeDraft(e.target.value)}
+							/>
+							{isEditingSlideCode ? (
+								<>
+									<Button
+										type='button'
+										variant='outline'
+										size='icon'
+										onClick={() => {
+											setSlideCode(slideCodeDraft.trim());
+											setIsEditingSlideCode(false);
+										}}
+									>
+										<Check className='size-4' />
+									</Button>
+									<Button
+										type='button'
+										variant='outline'
+										size='icon'
+										onClick={() => {
+											setSlideCodeDraft(slideCode);
+											setIsEditingSlideCode(false);
+										}}
+									>
+										<X className='size-4' />
+									</Button>
+								</>
+							) : (
+								<Button
+									type='button'
+									variant='outline'
+									size='icon'
+									onClick={() => setIsEditingSlideCode(true)}
+								>
+									<Pencil className='size-4' />
+								</Button>
+							)}
+						</div>
+					</div>
+				</FormRow>
 			)}
 
 			{plan?.processGroupType === ProcessGroupType.DL && (
 				<FormRow>
 					<FormComboBox
 						control={form.control}
-						name='normFactorId'
+						name='stoneClampRatioReferenceId'
 						label='Tỷ lệ đá kẹp (Ckep)'
 						placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
-						options={normFactors.map((normFactor) => ({
-							label: normFactor.stoneClampRatioName,
-							value: normFactor.id,
+						options={stoneClampRatios.map((clamp) => ({
+							label: clamp.value,
+							value: clamp.id,
 						}))}
 					/>
 

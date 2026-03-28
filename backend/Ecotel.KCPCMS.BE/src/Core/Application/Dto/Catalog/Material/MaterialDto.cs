@@ -11,6 +11,7 @@ namespace Application.Dto.Catalog.Material
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid AssignmentCodeId { get; set; } = Guid.Empty;
+        public bool IsSlideAssignmentCode { get; set; } = false;
         public string AssignmentCode { get; set; } = "";
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }

@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327040333_UpdateAssignmentCode")]
+    partial class UpdateAssignmentCode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2054,9 +2057,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("MaterialReferenceId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("MaterialUnitPriceId")
                         .HasColumnType("uuid");
 
@@ -2076,8 +2076,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("MaterialReferenceId");
 
                     b.HasIndex("MaterialUnitPriceId");
 
@@ -3485,11 +3483,6 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Pricing.PlannedMaterialCost", b =>
                 {
-                    b.HasOne("Domain.Entities.Index.Material", "Material")
-                        .WithMany("PlannedMaterialCosts")
-                        .HasForeignKey("MaterialReferenceId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice", "MaterialUnitPrice")
                         .WithMany("PlannedMaterialCosts")
                         .HasForeignKey("MaterialUnitPriceId")
@@ -3522,8 +3515,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .WithMany("PlannedMaterialCosts")
                         .HasForeignKey("StoneClampRatioReferenceId")
                         .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Material");
 
                     b.Navigation("MaterialUnitPrice");
 
@@ -3946,8 +3937,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReportItems");
 
                     b.Navigation("Costs");
-
-                    b.Navigation("PlannedMaterialCosts");
 
                     b.Navigation("SlideUnitPriceAssignmentCodes");
                 });

@@ -1,12 +1,14 @@
-﻿using Application.Common.Exceptions;
+﻿using System.Globalization;
+using Application.Catalog.Pricing.Common;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Pricing.Common;
 using Application.Dto.Catalog.PlannedMaterialCost;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
+using MaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice;
 
 namespace Application.Catalog.Pricing.PlannedMaterialCost.Queries;
 
@@ -22,6 +24,8 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             predicate: t => t.Id == request.Id,
             include: t => t
                 .Include(m => m.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
+                .Include(m => m.NormFactor).ThenInclude(n => n.TargetHardness)
+                .Include(m => m.NormFactor).ThenInclude(n => n.Hardness)
                 .Include(m => m.Output)
                 .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
@@ -36,8 +40,6 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             var currentSlide = materialUnitPrice.SlideUnitPriceAssignmentCode.Material;
             var originalAmount = materialUnitPrice.SlideUnitPriceAssignmentCode.Amount;
             var coefficientValue = materialUnitPrice.NormFactor?.Value ?? 1;
-            var materialCost = currentSlide.Costs.FirstOrDefault(cc =>
-                cc.StartMonth <= materialUnitPrice.Output.StartMonth && cc.EndMonth >= materialUnitPrice.Output.EndMonth)?.Amount ?? 0;
             mCost.Add(new PlannedMaterialCostAssignmentCode
             {
                 AssignmentCodeId = currentSlide.AssigmentCodeId,
@@ -72,6 +74,65 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                 .ToListAsync(cancellationToken);
         }
 
+        static double SumMaterialUnitPriceCost(MaterialUnitPriceEntity? unitPrice)
+        {
+            if (unitPrice == null)
+            {
+                return 0;
+            }
+
+            return unitPrice.MaterialUnitPriceAssignmentCodes?.Sum(x => x.TotalPrice) ?? 0;
+        }
+
+        TunnelExcavationMaterialUnitPrice? ResolveTargetTunnelMaterialUnitPrice(
+            TunnelExcavationMaterialUnitPrice currentMaterial,
+            Guid targetHardnessId,
+            IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> candidates)
+        {
+            var outputStart = materialUnitPrice.Output.StartMonth;
+            var outputEnd = materialUnitPrice.Output.EndMonth;
+
+            return candidates
+                .Where(x =>
+                    x.ProcessId == currentMaterial.ProcessId &&
+                    x.PassportId == currentMaterial.PassportId &&
+                    x.InsertItemId == currentMaterial.InsertItemId &&
+                    x.SupportStepId == currentMaterial.SupportStepId &&
+                    x.HardnessId == targetHardnessId &&
+                    x.StartMonth <= outputStart &&
+                    x.EndMonth >= outputEnd)
+                .OrderByDescending(x => x.StartMonth)
+                .ThenByDescending(x => x.EndMonth)
+                .FirstOrDefault();
+        }
+
+        var materialCost = SumMaterialUnitPriceCost(materialUnitPrice.MaterialUnitPrice);
+        if (materialUnitPrice.NormFactor?.TargetHardnessId.HasValue == true && materialUnitPrice.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
+        {
+            var targetMaterial = ResolveTargetTunnelMaterialUnitPrice(
+                currentTunnelMaterialForCost,
+                materialUnitPrice.NormFactor.TargetHardnessId.Value,
+                tunnelMaterials);
+
+            if (targetMaterial != null)
+            {
+                materialCost = SumMaterialUnitPriceCost(targetMaterial);
+            }
+        }
+
+        var normFactorValue = string.Empty;
+        if (materialUnitPrice.NormFactor != null)
+        {
+            var hardnessValue = materialUnitPrice.NormFactor.TargetHardness?.Value
+                ?? materialUnitPrice.NormFactor.Hardness?.Value
+                ?? string.Empty;
+
+            normFactorValue =
+                $"{materialUnitPrice.NormFactor.Value.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
+        }
+
+        var slideUnitPriceCost = materialUnitPrice.SlideUnitPriceAssignmentCode?.Amount ?? 0;
+
         var totalByCostId = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
             new List<Domain.Entities.Pricing.PlannedMaterialCost> { materialUnitPrice },
             tunnelMaterials);
@@ -84,7 +145,12 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             ProductUnitPriceId = materialUnitPrice.ProductUnitPriceId,
             SlideUnitPriceAssignmentCodeId = materialUnitPrice.SlideUnitPriceAssignmentCodeId,
             NormFactorId = materialUnitPrice.NormFactorId,
+            StoneClampRatioReferenceId = materialUnitPrice.StoneClampRatioReferenceId,
+            MaterialReferenceId = materialUnitPrice.MaterialReferenceId,
             PlannedMaterialCostAssignmentCodes = mCost,
+            MaterialCost = materialCost,
+            SlideUnitPriceCost = slideUnitPriceCost,
+            NormFactorValue = normFactorValue,
             TotalPlannedMaterialPrice = totalByCostId.GetValueOrDefault(materialUnitPrice.Id, 0)
         };
         return result;

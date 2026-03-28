@@ -21,6 +21,8 @@ public class UpdatePlannedMaterialCostCommandHandler(
     private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<SlideUnitPriceAssignmentCode> _slideUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<SlideUnitPriceAssignmentCode>();
+    private readonly IWriteRepository<StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<StoneClampRatio>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     public async Task<bool> Handle(UpdatePlannedMaterialCostCommand request, CancellationToken cancellationToken)
     {
         if (request.UpdateModel.NormFactorId != null)
@@ -33,6 +35,25 @@ public class UpdatePlannedMaterialCostCommandHandler(
             }
         }
 
+        if (request.UpdateModel.StoneClampRatioReferenceId != null)
+        {
+            bool checkStoneClampRatio =
+                await _stoneClampRatioRepository.ExistsAsync(p => p.Id == request.UpdateModel.StoneClampRatioReferenceId);
+            if (!checkStoneClampRatio)
+            {
+                throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
+            }
+        }
+
+        if (request.UpdateModel.MaterialReferenceId != null)
+        {
+            bool checkStoneClampRatio =
+                await _materialRepository.ExistsAsync(p => p.Id == request.UpdateModel.MaterialReferenceId);
+            if (!checkStoneClampRatio)
+            {
+                throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
+            }
+        }
 
         bool checkOutput = await _outputRepository.ExistsAsync(p => p.Id == request.UpdateModel.OutputId && p.OutputType == Domain.Common.Enums.OutputType.PlanOutput);
         if (!checkOutput)
@@ -63,6 +84,8 @@ public class UpdatePlannedMaterialCostCommandHandler(
 
         existPlannedMaterial.Update(request.UpdateModel.MaterialUnitPriceId,
             request.UpdateModel.SlideUnitPriceAssignmentCodeId, request.UpdateModel.NormFactorId,
+            request.UpdateModel.StoneClampRatioReferenceId,
+            request.UpdateModel.MaterialReferenceId,
             request.UpdateModel.OutputId);
 
         _plannedMaterialCostRepository.Update(existPlannedMaterial);

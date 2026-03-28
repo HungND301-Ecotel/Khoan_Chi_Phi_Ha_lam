@@ -640,6 +640,16 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.MaterialUnitPriceId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<PlannedMaterialCost>()
+            .HasOne(m => m.StoneClampRatio)
+            .WithMany(h => h.PlannedMaterialCosts)
+            .HasForeignKey(s => s.StoneClampRatioReferenceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedMaterialCost>()
+            .HasOne(m => m.Material)
+            .WithMany(h => h.PlannedMaterialCosts)
+            .HasForeignKey(s => s.MaterialReferenceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedMaterialCost>()
             .HasOne(m => m.ProductUnitPrice)
             .WithMany(h => h.PlannedMaterialCosts)
             .HasForeignKey(s => s.ProductUnitPriceId)
