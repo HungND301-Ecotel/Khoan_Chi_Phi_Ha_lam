@@ -139,6 +139,16 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         Note = note;
         Calculate();
     }
+
+    public void UpdateOutputMetrics(double actualOutput, double plannedOutput, double standardOutput, string note = "")
+    {
+        ActualOutput = actualOutput;
+        PlannedOutput = plannedOutput;
+        StandardOutput = standardOutput;
+        Note = note;
+        Calculate();
+    }
+
     public void UpdatePendingValueStartPeriod(decimal pendingValueStartPeriod)
     {
         PendingValueStartPeriod = pendingValueStartPeriod;

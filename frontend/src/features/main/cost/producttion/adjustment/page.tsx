@@ -8,10 +8,18 @@ import {
 } from '@/features/main/cost/producttion/adjustment/columns';
 import { AdjustmentExpand } from '@/features/main/cost/producttion/production/production-expand';
 import { api } from '@/lib/api';
+import { useMemo } from 'react';
 
 export function MainCostProductionRevenueAdjustmentPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
+	const query = useMemo(
+		() => ({
+			ignorePagination: true,
+			scenarioType: 2,
+		}),
+		[],
+	);
 
 	const handleDeleteAdjustment = async ({
 		data,
@@ -34,10 +42,8 @@ export function MainCostProductionRevenueAdjustmentPage() {
 		<DataTable
 			columns={MAIN_COST_ADJUSTMENT_COLUMNS}
 			url={API.COST.PRODUCT.LIST}
-			query={{
-				ignorePagination: true,
-				scenarioType: 2,
-			}}
+			query={query}
+			getRowId={(row) => row.id}
 			importCrumb='Doanh thu điều chỉnh'
 			filters={[
 				{ key: 'productCode', label: 'Mã sản phẩm' },

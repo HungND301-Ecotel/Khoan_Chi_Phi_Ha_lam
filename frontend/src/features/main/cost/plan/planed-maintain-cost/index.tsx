@@ -36,6 +36,7 @@ export function PlanedMaintainCost({
 	plan,
 	callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [planedMaintainCost, setPlanedMaintainCost] =
 		useState<PlanedMaintainCostDetail>();
@@ -43,7 +44,13 @@ export function PlanedMaintainCost({
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
-		if (!id) return;
+		if (!id) {
+			setPlanedMaintainCost(undefined);
+			setTotal(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
 		api
 			.get<PlanedMaintainCostDetail>(API.COST.PLANNED_MAINTAIN.DETAIL(id))
 			.then((res) => {
@@ -56,7 +63,7 @@ export function PlanedMaintainCost({
 				setTotal(total * (output?.productionMeters || 1));
 			})
 			.finally(() => setLoading(false));
-	}, [id]);
+	}, [id, reloadKey, output?.productionMeters]);
 
 	return (
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>

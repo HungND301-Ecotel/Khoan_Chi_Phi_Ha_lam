@@ -49,7 +49,6 @@ export type AdjustmentCostExpandProps = {
 export function AdjustmentMaterialCost({
 	id,
 	isOpen,
-	output,
 	adjustment,
 	productionOutput,
 }: AdjustmentCostExpandProps) {
@@ -80,7 +79,6 @@ export function AdjustmentMaterialCost({
 					]);
 
 				const { result } = detailRes;
-				console.log(output);
 
 				setTotal(
 					result.totalPlannedMaterialPrice *
@@ -174,7 +172,7 @@ export function AdjustmentMaterialCost({
 		};
 
 		fetchData();
-	}, [id, adjustment]);
+	}, [id, adjustment, productionOutput?.productionMeters]);
 
 	return (
 		<AccordionItem value={'adjustment-material-cost'} className='border-none'>

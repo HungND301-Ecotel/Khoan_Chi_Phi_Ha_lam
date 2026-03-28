@@ -16,10 +16,18 @@ import { MAIN_COST_PRODUCTION_COLUMNS, Production } from './production/columns';
 import { ProductionForm } from './production/production-form';
 import { AdjustmentForm } from './adjustment/form';
 import { CostProduct } from '../plan/types';
+import { useMemo } from 'react';
 
 export function MainCostProductionPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
+	const adjustmentQuery = useMemo(
+		() => ({
+			ignorePagination: true,
+			outputType: 2,
+		}),
+		[],
+	);
 
 	const handleDeleteProduction = async ({
 		data,
@@ -66,6 +74,7 @@ export function MainCostProductionPage() {
 				<DataTable
 					columns={MAIN_COST_PRODUCTION_COLUMNS}
 					url={API.PRODUCTION.PRODUCTION_OUTPUT.LIST}
+					getRowId={(row) => row.id}
 					onExpand={(props) => <ProductionExpand {...props} />}
 					onDelete={handleDeleteProduction}
 					importCrumb='Biên bản nghiệm thu'
@@ -86,10 +95,8 @@ export function MainCostProductionPage() {
 				<DataTable
 					columns={MAIN_COST_ADJUSTMENT_COLUMNS}
 					url={API.COST.PRODUCT.LIST}
-					query={{
-						ignorePagination: true,
-						outputType: 2,
-					}}
+					query={adjustmentQuery}
+					getRowId={(row) => row.id}
 					importCrumb='Doanh thu điều chỉnh'
 					filters={[
 						{ key: 'productCode', label: 'Mã sản phẩm' },

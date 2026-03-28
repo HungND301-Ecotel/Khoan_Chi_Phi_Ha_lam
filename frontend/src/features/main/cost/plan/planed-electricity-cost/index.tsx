@@ -34,6 +34,7 @@ export function PlanedElectricityCost({
 	plan,
 	callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [planedElectricityCost, setPlanedElectricityCost] =
 		useState<PlanedElectricityCostDetail>();
@@ -41,7 +42,13 @@ export function PlanedElectricityCost({
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
-		if (!id) return;
+		if (!id) {
+			setPlanedElectricityCost(undefined);
+			setTotal(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
 		api
 			.get<PlanedElectricityCostDetail>(API.COST.PLANNED_ELECTRICITY.DETAIL(id))
 			.then((res) => {
@@ -53,7 +60,7 @@ export function PlanedElectricityCost({
 				setTotal(total * (output?.productionMeters || 1));
 			})
 			.finally(() => setLoading(false));
-	}, [id]);
+	}, [id, reloadKey, output?.productionMeters]);
 
 	return (
 		<AccordionItem value={'planed-electricity-cost'} className='border-none'>

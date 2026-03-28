@@ -23,16 +23,24 @@ import { AdjustmentMaintainCost } from './adjustment-maintain-cost';
 import { AdjustmentElectricityCost } from './adjustment-electricity-cost';
 import { ProductionAdjustment } from './columns';
 
+const ADJUSTMENT_MATERIAL_COST_VALUE = 'adjustment-material-cost';
+const ADJUSTMENT_MAINTAIN_COST_VALUE = 'adjustment-maintain-cost';
+const ADJUSTMENT_ELECTRICITY_COST_VALUE = 'adjustment-electricity-cost';
+
 export function AdjustmentExpand({
 	row,
 	data,
 }: ActionDialogProps<ProductionAdjustment>) {
 	const [adjustment, setAdjustment] = useState<AdjustmentCostProductDetail>();
-	const [opened, setOpened] = useState<string[]>([]);
+	const [openedOutputs, setOpenedOutputs] = useState<string[]>([]);
+	const [openedCostsByOutput, setOpenedCostsByOutput] = useState<
+		Record<string, string[]>
+	>({});
 	const [loading, setLoading] = useState<boolean>(!!row);
 
 	useEffect(() => {
-		if (!row) return;
+		if (!row?.id) return;
+		setLoading(true);
 
 		const promises = Promise.all([
 			api.get<AdjustmentCostProductDetail>(
@@ -45,7 +53,23 @@ export function AdjustmentExpand({
 				setAdjustment(adjustment.result);
 			})
 			.finally(() => setLoading(false));
-	}, [row]);
+	}, [row?.id]);
+
+	useEffect(() => {
+		const items =
+			adjustment?.outputs && adjustment.outputs.length > 0
+				? adjustment.outputs
+				: adjustment?.productionOutputs;
+		if (!items?.length) return;
+
+		const validIds = new Set(items.map((item) => item.id));
+		setOpenedOutputs((prev) => prev.filter((id) => validIds.has(id)));
+		setOpenedCostsByOutput((prev) =>
+			Object.fromEntries(
+				Object.entries(prev).filter(([outputId]) => validIds.has(outputId)),
+			),
+		);
+	}, [adjustment?.outputs, adjustment?.productionOutputs]);
 
 	const hasOutputs = adjustment?.outputs && adjustment.outputs.length > 0;
 	const displayItems = hasOutputs
@@ -61,8 +85,14 @@ export function AdjustmentExpand({
 		);
 
 	return (
-		<Accordion type='multiple' className='mx-2 space-y-4'>
+		<Accordion
+			type='multiple'
+			className='mx-2 space-y-4'
+			value={openedOutputs}
+			onValueChange={setOpenedOutputs}
+		>
 			{displayItems?.map((item) => {
+				const openedCosts = openedCostsByOutput[item.id] || [];
 				const matchedProductionOutput = hasOutputs
 					? adjustment?.productionOutputs.find(
 							(po) =>
@@ -100,8 +130,13 @@ export function AdjustmentExpand({
 							<Accordion
 								type='multiple'
 								className='flex flex-col gap-2 px-2'
-								value={opened}
-								onValueChange={setOpened}
+								value={openedCosts}
+								onValueChange={(values) =>
+									setOpenedCostsByOutput((prev) => ({
+										...prev,
+										[item.id]: values,
+									}))
+								}
 							>
 								<AdjustmentMaterialCost
 									id={item.id}
@@ -109,7 +144,9 @@ export function AdjustmentExpand({
 									output={hasOutputs ? (item as AdjustmentOutput) : undefined}
 									productionOutput={matchedProductionOutput}
 									callback={data.refresh}
-									isOpen={opened.includes('adjustment-material-cost')}
+									isOpen={openedCosts.includes(
+										ADJUSTMENT_MATERIAL_COST_VALUE,
+									)}
 								/>
 
 								<AdjustmentMaintainCost
@@ -118,7 +155,9 @@ export function AdjustmentExpand({
 									output={hasOutputs ? (item as AdjustmentOutput) : undefined}
 									productionOutput={matchedProductionOutput}
 									callback={data.refresh}
-									isOpen={opened.includes('adjustment-maintain-cost')}
+									isOpen={openedCosts.includes(
+										ADJUSTMENT_MAINTAIN_COST_VALUE,
+									)}
 								/>
 
 								<AdjustmentElectricityCost
@@ -127,7 +166,9 @@ export function AdjustmentExpand({
 									output={hasOutputs ? (item as AdjustmentOutput) : undefined}
 									productionOutput={matchedProductionOutput}
 									callback={data.refresh}
-									isOpen={opened.includes('adjustment-electricity-cost')}
+									isOpen={openedCosts.includes(
+										ADJUSTMENT_ELECTRICITY_COST_VALUE,
+									)}
 								/>
 							</Accordion>
 						</AccordionContent>

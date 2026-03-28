@@ -7,10 +7,18 @@ import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
 import { CostProduct } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
+import { useMemo } from 'react';
 
 export function MainCostPlanPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
+	const query = useMemo(
+		() => ({
+			ignorePagination: true,
+			scenarioType: 1,
+		}),
+		[],
+	);
 
 	const handleDelete = async ({ data }: ActionDialogProps<CostProduct>) => {
 		try {
@@ -31,10 +39,8 @@ export function MainCostPlanPage() {
 		<DataTable
 			columns={MAIN_COST_PLAN_COLUMNS}
 			url={API.COST.PRODUCT.LIST}
-			query={{
-				ignorePagination: true,
-				scenarioType: 1,
-			}}
+			query={query}
+			getRowId={(row) => row.id}
 			filters={[
 				{ key: 'productCode', label: 'Mã sản phẩm' },
 				{ key: 'productName', label: 'Tên sản phẩm' },

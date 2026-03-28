@@ -67,6 +67,7 @@ export function MainPricingSlidePage() {
 		<DataTable
 			url={API.PRICING.SLIDE.LIST}
 			columns={MAIN_PRICING_SLIDE_COLUMNS}
+			getRowId={(row) => row.id}
 			filters={[
 				{ key: 'code', label: 'Mã định mức máng trượt' },
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },

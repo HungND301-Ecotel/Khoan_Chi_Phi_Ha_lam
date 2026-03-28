@@ -19,26 +19,56 @@ import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+const PLANED_MATERIAL_COST_VALUE = 'planed-material-cost';
+const PLANED_MAINTAIN_COST_VALUE = 'planed-maintain-cost';
+const PLANED_ELECTRICITY_COST_VALUE = 'planed-electricity-cost';
 
 export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 	const [plan, setPlan] = useState<CostProductDetail>();
-	const [opened, setOpened] = useState<string[]>([]);
+	const [openedOutputs, setOpenedOutputs] = useState<string[]>([]);
+	const [openedCostsByOutput, setOpenedCostsByOutput] = useState<
+		Record<string, string[]>
+	>({});
+	const [reloadKey, setReloadKey] = useState(0);
 	const [loading, setLoading] = useState<boolean>(!!row);
 
+	const loadPlanDetail = useCallback(async () => {
+		if (!row?.id) return;
+		setLoading(true);
+		try {
+			const planDetail = await api.get<CostProductDetail>(
+				API.COST.PRODUCT.DETAIL_PLANNED(row.id),
+			);
+			setPlan(planDetail.result);
+		} finally {
+			setLoading(false);
+		}
+	}, [row?.id]);
+
 	useEffect(() => {
-		if (!row) return;
+		loadPlanDetail();
+	}, [loadPlanDetail]);
 
-		const promises = Promise.all([
-			api.get<CostProductDetail>(API.COST.PRODUCT.DETAIL_PLANNED(row.id)),
-		]);
+	const handleRefreshExpandData = useCallback(async () => {
+		await Promise.all([data.refresh(), loadPlanDetail()]);
+		setReloadKey((prev) => prev + 1);
+	}, [data, loadPlanDetail]);
 
-		promises
-			.then(([plan]) => {
-				setPlan(plan.result);
-			})
-			.finally(() => setLoading(false));
-	}, [row]);
+	useEffect(() => {
+		if (!plan?.outputs?.length) return;
+
+		const validOutputIds = new Set(plan.outputs.map((output) => output.id));
+		setOpenedOutputs((prev) => prev.filter((id) => validOutputIds.has(id)));
+		setOpenedCostsByOutput((prev) =>
+			Object.fromEntries(
+				Object.entries(prev).filter(([outputId]) =>
+					validOutputIds.has(outputId),
+				),
+			),
+		);
+	}, [plan?.outputs]);
 
 	if (loading)
 		return (
@@ -49,8 +79,15 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 		);
 
 	return (
-		<Accordion type='multiple' className='mx-2 space-y-4'>
+		<Accordion
+			type='multiple'
+			className='mx-2 space-y-4'
+			value={openedOutputs}
+			onValueChange={setOpenedOutputs}
+		>
 			{plan?.outputs.map((output) => {
+				const openedCosts = openedCostsByOutput[output.id] || [];
+
 				return (
 					<AccordionItem
 						key={output.id}
@@ -80,31 +117,41 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 							<Accordion
 								type='multiple'
 								className='flex flex-col gap-2 px-2'
-								value={opened}
-								onValueChange={setOpened}
+								value={openedCosts}
+								onValueChange={(values) =>
+									setOpenedCostsByOutput((prev) => ({
+										...prev,
+										[output.id]: values,
+									}))
+								}
 							>
 								<PlanedMaterialCost
 									id={output.plannedMaterialCostId}
 									plan={plan}
 									output={output}
-									callback={data.refresh}
-									isOpen={opened.includes('planed-material-cost')}
+									callback={handleRefreshExpandData}
+									isOpen={openedCosts.includes(PLANED_MATERIAL_COST_VALUE)}
+									reloadKey={reloadKey}
 								/>
 
 								<PlanedMaintainCost
 									id={output.plannedMaintainCostId}
 									plan={plan}
 									output={output}
-									callback={data.refresh}
-									isOpen={opened.includes('planed-maintain-cost')}
+									callback={handleRefreshExpandData}
+									isOpen={openedCosts.includes(PLANED_MAINTAIN_COST_VALUE)}
+									reloadKey={reloadKey}
 								/>
 
 								<PlanedElectricityCost
 									id={output.plannedElectricityCostId}
 									plan={plan}
 									output={output}
-									callback={data.refresh}
-									isOpen={opened.includes('planed-electricity-cost')}
+									callback={handleRefreshExpandData}
+									isOpen={openedCosts.includes(
+										PLANED_ELECTRICITY_COST_VALUE,
+									)}
+									reloadKey={reloadKey}
 								/>
 							</Accordion>
 						</AccordionContent>

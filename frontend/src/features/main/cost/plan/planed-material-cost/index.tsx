@@ -44,6 +44,7 @@ export function PlanedMaterialCost({
 	plan,
 	callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [summary, setSummary] = useState<PlanedMaterialCostSummary[]>([]);
 	const [total, setTotal] = useState<number>(0);
@@ -176,7 +177,7 @@ export function PlanedMaterialCost({
 		};
 
 		fetchData();
-	}, [id, plan]);
+	}, [id, plan, reloadKey, output?.productionMeters]);
 
 	return (
 		<AccordionItem value={'planed-material-cost'} className='border-none'>

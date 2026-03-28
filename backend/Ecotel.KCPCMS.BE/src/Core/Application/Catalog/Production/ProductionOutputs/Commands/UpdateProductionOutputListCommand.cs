@@ -17,6 +17,8 @@ public record UpdateProductionOutputListCommand(IList<ProductionOutputDto> Updat
 public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<UpdateProductionOutputListCommand, bool>
 {
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
+    private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
+    private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
@@ -95,6 +97,8 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                         updateModel.ProductionMeters,
                         updateModel.StandardProductionMeters);
                 }
+
+                await UpdateAffectedAcceptanceReportItemLogs(existProductionOutput, cancellationToken);
 
                 updateProductOutputs.Add(existProductionOutput);
             }
@@ -217,5 +221,64 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
             newProductUnitPrice.AddProductionOutput(productionOutputId, remaining.Value);
             await _productUnitPriceRepository.InsertAsync(newProductUnitPrice, cancellationToken);
         }
+    }
+
+    private async Task UpdateAffectedAcceptanceReportItemLogs(ProductionOutput productionOutput, CancellationToken cancellationToken)
+    {
+        var acceptanceReportIds = (await _acceptanceReportRepository.GetAllAsync(
+            predicate: x => x.ProductionOutputId == productionOutput.Id,
+            disableTracking: true))
+            .Select(x => x.Id)
+            .ToList();
+
+        if (!acceptanceReportIds.Any())
+        {
+            return;
+        }
+
+        var logs = await _acceptanceReportItemLogRepository.GetAllAsync(
+            predicate: x => acceptanceReportIds.Contains(x.AcceptanceReportId),
+            include: q => q.Include(x => x.AcceptanceReportItem),
+            disableTracking: false);
+
+        if (!logs.Any())
+        {
+            return;
+        }
+
+        var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
+
+        foreach (var log in logs)
+        {
+            var actualOutput = productionOutput.ProductionMeters;
+            var plannedOutput = log.PlannedOutput;
+            var standardOutput = productionOutput.StandardProductionMeters;
+
+            if (log.AcceptanceReportItem?.ProcessGroupId.HasValue == true &&
+                outputByProcessGroup.TryGetValue(log.AcceptanceReportItem.ProcessGroupId.Value, out var metrics))
+            {
+                actualOutput = metrics.ActualOutput;
+                standardOutput = metrics.StandardOutput;
+            }
+
+            log.UpdateOutputMetrics(actualOutput, plannedOutput, standardOutput, log.Note);
+        }
+
+        _acceptanceReportItemLogRepository.Update(logs);
+    }
+
+    private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(ProductionOutput productionOutput)
+    {
+        var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
+
+        foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
+        {
+            result[processGroup.ProcessGroupId] = (
+                processGroup.ProductionMeters,
+                0,
+                processGroup.StandardProductionMeters);
+        }
+
+        return result;
     }
 }

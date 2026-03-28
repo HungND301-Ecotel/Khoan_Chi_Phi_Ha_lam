@@ -9,7 +9,7 @@ import {
 } from '@/features/main/pricing/tunneling/maintenance/columns';
 import { TunnelingForm } from '@/features/main/pricing/tunneling/maintenance/form';
 import { api } from '@/lib/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export type MaintainUnitPriceEquipment = {
 	id: string;
@@ -42,6 +42,7 @@ export type TunnelingDetail = {
 export function MainPricingMaintenanceTunnelingPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
+	const query = useMemo(() => ({ maintainType: 1 }), []);
 
 	const handleDelete = async ({ data }: ActionDialogProps<Tunneling>) => {
 		try {
@@ -92,7 +93,8 @@ export function MainPricingMaintenanceTunnelingPage() {
 			<DataTable
 				columns={MAIN_PRICING_TUNNELING_COLUMNS}
 				url={API.PRICING.MAINTENANCE.LIST}
-				query={{ maintainType: 1 }}
+				query={query}
+				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <TunnelingForm {...props} />}
 				onUpdate={(props) => <TunnelingForm {...props} />}

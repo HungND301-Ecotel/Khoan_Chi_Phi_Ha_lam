@@ -25,6 +25,7 @@ export function AcceptanceReport({
 	plan: _plan,
 	callback: _callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [flattenedData, setFlattenedData] = useState<HierarchicalRow[]>([]);
 
@@ -33,7 +34,7 @@ export function AcceptanceReport({
 		data: hierarchicalData,
 		loading,
 		error,
-	} = useAcceptanceReportDetail(id, isOpen);
+	} = useAcceptanceReportDetail(id, isOpen, reloadKey);
 
 	// Flatten and update data when hierarchical data changes
 	useEffect(() => {

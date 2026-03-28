@@ -34,6 +34,7 @@ export function LongTermMaterialCosts({
 	plan,
 	callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [additionalCostData, setAdditionalCostData] =
 		useState<LongtermMaterialCostDetail>();
@@ -65,7 +66,7 @@ export function LongTermMaterialCosts({
 		};
 
 		fetchLongTermTracking();
-	}, [isOpen, output?.acceptanceReportId]);
+	}, [isOpen, output?.acceptanceReportId, reloadKey]);
 
 	const groupedItems: LongTermTrackingProcessGroup[] =
 		additionalCostData?.processGroups &&

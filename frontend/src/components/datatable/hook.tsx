@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 export type UseDataTable<TData> = {
 	data: TData[];
 	loading: boolean;
+	refreshVersion: number;
 	refresh: () => Promise<void>;
 	table: Table<TData>;
 };
@@ -35,6 +36,7 @@ export function useDataTable<TData>(
 ): UseDataTable<TData> {
 	const [data, setData] = useState<TData[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [refreshVersion, setRefreshVersion] = useState(0);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const [expanded, setExpanded] = useState<ExpandedState>({});
@@ -50,6 +52,7 @@ export function useDataTable<TData>(
 			const response = await api.pagging<TData>(url, query);
 			const result = response.result.data || [];
 			setData(transformData ? transformData(result) : result);
+			setRefreshVersion((prev) => prev + 1);
 		} finally {
 			setLoading(false);
 			// bỏ setExpanded({}) để không tự đóng expand
@@ -104,6 +107,7 @@ export function useDataTable<TData>(
 	return {
 		data,
 		loading,
+		refreshVersion,
 		refresh,
 		table,
 	};

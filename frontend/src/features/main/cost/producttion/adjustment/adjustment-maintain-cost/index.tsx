@@ -36,7 +36,13 @@ export function AdjustmentMaintainCost({
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
-		if (!id) return;
+		if (!id) {
+			setAdjustmentMaintainCost(undefined);
+			setTotal(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
 		api
 			.get<AdjustmentMaintainCostDetail>(
 				API.COST.ADJUSTMENT_MAINTAIN.DETAIL(id),
@@ -55,7 +61,7 @@ export function AdjustmentMaintainCost({
 				);
 			})
 			.finally(() => setLoading(false));
-	}, [id]);
+	}, [id, productionOutput?.productionMeters, multiplyByProductionMeters]);
 
 	return (
 		<AccordionItem value={'adjustment-maintain-cost'} className='border-none'>
