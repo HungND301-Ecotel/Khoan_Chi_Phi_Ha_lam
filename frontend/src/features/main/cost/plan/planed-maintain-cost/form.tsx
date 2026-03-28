@@ -337,7 +337,7 @@ export function PlanMaintainCostForm({
 								})()}
 
 								<div className='flex-1 space-y-2'>
-									<Label>Chi phí SCTX kế hoạch ban đầu (đ)</Label>
+									<Label>Doanh thu SCTX kế hoạch ban đầu (đ)</Label>
 									<Input
 										readOnly
 										value={formatNumber(

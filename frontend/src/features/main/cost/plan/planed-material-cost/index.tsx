@@ -183,7 +183,7 @@ export function PlanedMaterialCost({
 		<AccordionItem value={'planed-material-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí vật liệu kế hoạch ban đầu</ItemTitle>
+					<ItemTitle>Doanh thu vật liệu kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
@@ -194,7 +194,7 @@ export function PlanedMaterialCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
-							crumb='Chi phí vật liệu kế hoạch ban đầu'
+							crumb='Doanh thu vật liệu kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}
@@ -227,7 +227,7 @@ export function PlanedMaterialCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
-							crumb='Chi phí vật liệu kế hoạch ban đầu'
+							crumb='Doanh thu vật liệu kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}

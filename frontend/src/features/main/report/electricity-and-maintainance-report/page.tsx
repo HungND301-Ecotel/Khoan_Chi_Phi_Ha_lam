@@ -208,7 +208,7 @@ export function ElectricityAndMaintainanceReportPage() {
 			setError(
 				err instanceof Error
 					? err.message
-					: 'Không thể tải dữ liệu chi phí SCTX và điện năng điều chỉnh',
+					: 'Không thể tải dữ liệu doanh thu SCTX và điện năng điều chỉnh',
 			);
 		} finally {
 			setLoading(false);

@@ -69,7 +69,7 @@ export function PlanedMaintainCost({
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí SCTX kế hoạch ban đầu</ItemTitle>
+					<ItemTitle>Doanh thu SCTX kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
 
 				<ItemContent className='me-7.5 w-24'>
@@ -82,7 +82,7 @@ export function PlanedMaintainCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
-							crumb='Chi phí SCTX kế hoạch ban đầu'
+							crumb='Doanh thu SCTX kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}
@@ -116,7 +116,7 @@ export function PlanedMaintainCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
-							crumb='Chi phí SCTX kế hoạch ban đầu'
+							crumb='Doanh thu SCTX kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}

@@ -66,7 +66,7 @@ export function PlanedElectricityCost({
 		<AccordionItem value={'planed-electricity-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí điện năng kế hoạch ban đầu</ItemTitle>
+					<ItemTitle>Doanh thu điện năng kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
@@ -77,7 +77,7 @@ export function PlanedElectricityCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
-							crumb='Chi phí điện năng kế hoạch ban đầu'
+							crumb='Doanh thu điện năng kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}
@@ -111,7 +111,7 @@ export function PlanedElectricityCost({
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
-							crumb='Chi phí điện năng kế hoạch ban đầu'
+							crumb='Doanh thu điện năng kế hoạch ban đầu'
 							trigger={
 								<Button
 									variant={'ghost'}

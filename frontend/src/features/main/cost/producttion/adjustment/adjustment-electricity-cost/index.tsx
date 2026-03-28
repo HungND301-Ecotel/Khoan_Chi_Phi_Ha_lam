@@ -66,7 +66,7 @@ export function AdjustmentElectricityCost({
 		>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí điện năng điều chỉnh</ItemTitle>
+					<ItemTitle>Doanh thu điện năng điều chỉnh</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>

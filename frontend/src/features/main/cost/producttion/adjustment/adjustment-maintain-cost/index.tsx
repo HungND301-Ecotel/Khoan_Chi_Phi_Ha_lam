@@ -67,7 +67,7 @@ export function AdjustmentMaintainCost({
 		<AccordionItem value={'adjustment-maintain-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí SCTX điều chỉnh</ItemTitle>
+					<ItemTitle>Doanh thu SCTX điều chỉnh</ItemTitle>
 				</ItemContent>
 
 				<ItemContent className='me-7.5 w-24'>

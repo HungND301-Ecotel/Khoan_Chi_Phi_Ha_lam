@@ -178,7 +178,7 @@ export function AdjustmentMaterialCost({
 		<AccordionItem value={'adjustment-material-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí vật liệu điều chỉnh</ItemTitle>
+					<ItemTitle>Doanh thu vật liệu điều chỉnh</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
