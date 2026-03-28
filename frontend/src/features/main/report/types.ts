@@ -20,11 +20,11 @@ export const REPORT_CATEGORY_GROUPS = [
 
 // Sample categories - replace with your actual categories
 export const REPORT_CATEGORIES: ReportCategory[] = [
-	{
-		id: 'raw-acceptance-report',
-		label: 'Biên bản nghiệm thu',
-		group: 'reports',
-	},
+	// {
+	// 	id: 'raw-acceptance-report',
+	// 	label: 'Biên bản nghiệm thu',
+	// 	group: 'reports',
+	// },
 	{
 		id: 'electricity-and-maintainance-report',
 		label: 'Bảng tính đơn giá SCTX và điện năng',

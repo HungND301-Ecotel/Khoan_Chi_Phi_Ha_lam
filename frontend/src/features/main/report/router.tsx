@@ -1,13 +1,12 @@
 import { Navigate, RouteObject } from 'react-router-dom';
-import { MainReportLayout } from './layout';
 import { AcceptanceReportPage } from './acceptance-report/page';
 import { ElectricityAndMaintainanceReportPage } from './electricity-and-maintainance-report/page';
+import { MainReportLayout } from './layout';
+import { LongtermMaterialCostPage } from './longterm-material-cost/page';
 import { LumpSumFinalSettlementPage } from './lump-sum-final-settlement/page';
 import { MainReportPage } from './page';
-import { LongtermMaterialCostPage } from './longterm-material-cost/page';
-import { RawAcceptanceReportPage } from './raw-acceptance-report/page';
-import { REPORT_CATEGORIES } from './types';
 import { ReportCategoryPlaceholderPage } from './placeholder-page';
+import { REPORT_CATEGORIES } from './types';
 
 const defaultCategoryId = REPORT_CATEGORIES[0]?.id || 'raw-acceptance-report';
 
@@ -19,9 +18,10 @@ const reportCategoryRoutes: RouteObject[] = REPORT_CATEGORIES.map(
 			title: category.label,
 		},
 		element:
-			category.id === 'raw-acceptance-report' ? (
-				<RawAcceptanceReportPage />
-			) : category.id === 'acceptance-report' ? (
+			// category.id === 'raw-acceptance-report' ? (
+			// 	<RawAcceptanceReportPage />
+			// ) :
+			category.id === 'acceptance-report' ? (
 				<AcceptanceReportPage />
 			) : category.id === 'electricity-and-maintainance-report' ? (
 				<ElectricityAndMaintainanceReportPage />
