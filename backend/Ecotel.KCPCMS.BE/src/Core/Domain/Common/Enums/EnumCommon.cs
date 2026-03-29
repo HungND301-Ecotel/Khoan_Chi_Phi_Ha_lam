@@ -79,6 +79,9 @@ public enum MaterialType
 
     [Display(Name = "Tài sản")]
     Resource = 4,
+
+    [Display(Name = "Vật tư theo hạn mức")]
+    QuotaMaterials = 5,
 }
 
 public enum MaterialUnitPriceType

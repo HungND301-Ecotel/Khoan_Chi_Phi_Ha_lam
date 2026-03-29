@@ -1,6 +1,7 @@
 import { MainCatalogAdjustmentRouter } from '@/features/main/catalog/adjustment/router';
 import MainCatalogAssetExternalPage from '@/features/main/catalog/asset/external/page';
 import MainCatalogAssetInternalPage from '@/features/main/catalog/asset/internal/page';
+import MainCatalogAssetQuotaMaterialsPage from '@/features/main/catalog/asset/quota-materials/page';
 import MainCatalogAssetResourcePage from '@/features/main/catalog/asset/resource/page';
 import MainCatalogAssetSafetyAndWelfarePage from '@/features/main/catalog/asset/safety-and-welfare/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
@@ -77,6 +78,14 @@ const MainCatalogRouter: RouteObject = {
 					handle: {
 						breadcrumb: 'Tài sản',
 						title: 'Tài sản',
+					},
+				},
+				{
+					path: 'quota-materials',
+					element: <MainCatalogAssetQuotaMaterialsPage />,
+					handle: {
+						breadcrumb: 'Vật tư theo hạn mức',
+						title: 'Vật tư theo hạn mức',
 					},
 				},
 			],

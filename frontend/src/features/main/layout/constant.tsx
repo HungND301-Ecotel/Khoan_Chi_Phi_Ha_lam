@@ -60,6 +60,11 @@ export const NAVIGATIONS: Navigation[] = [
 						name: 'Tài sản',
 						href: '/catalogs/assets/resource',
 					},
+					{
+						type: 'link',
+						name: 'Vật tư theo hạn mức',
+						href: '/catalogs/assets/quota-materials',
+					},
 				],
 			},
 			{ type: 'link', name: 'Thiết bị', href: '/catalogs/equipments' },

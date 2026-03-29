@@ -73,14 +73,18 @@ export function LongtermMaterialCostForm({
 				form.reset({
 					items: resolvedItems.map((item, index) => {
 						const normalizedRate =
-							item.isFullAccounting && (!item.allocationRatio || item.allocationRatio <= 0)
+							item.isFullAccounting &&
+							(!item.allocationRatio || item.allocationRatio <= 0)
 								? 1
 								: item.allocationRatio;
 						previousAllocationRateRef.current[index] = normalizedRate;
 
 						return {
 							id: item.id,
-							allocationRate: normalizedRate,
+							// Khi isFullAccounting = true thì để trống tỷ lệ phân bổ
+							allocationRate: item.isFullAccounting
+								? undefined
+								: normalizedRate,
 							isFullAccounting: item.isFullAccounting ?? false,
 							note: item.note ?? '',
 						};
@@ -95,20 +99,21 @@ export function LongtermMaterialCostForm({
 	}, [form, id]);
 
 	const handleFullAccountingChange = (index: number, checked: boolean) => {
-		const currentAllocationRate = form.getValues(`items.${index}.allocationRate`);
+		const currentAllocationRate = form.getValues(
+			`items.${index}.allocationRate`,
+		);
 		form.setValue(`items.${index}.isFullAccounting`, checked);
 
 		if (checked) {
+			// Lưu lại tỷ lệ hiện tại trước khi xóa
 			if (typeof currentAllocationRate === 'number') {
 				previousAllocationRateRef.current[index] = currentAllocationRate;
 			}
-			const normalizedAllocationRate =
-				typeof currentAllocationRate === 'number' && currentAllocationRate > 0
-					? currentAllocationRate
-					: 1;
-			form.setValue(`items.${index}.allocationRate`, normalizedAllocationRate);
+			// Bỏ trống tỷ lệ phân bổ khi hạch toán hết
+			form.setValue(`items.${index}.allocationRate`, 1);
 			form.setValue(`items.${index}.note`, 'Hạch toán hết');
 		} else {
+			// Khôi phục tỷ lệ phân bổ trước đó
 			const previousAllocationRate = previousAllocationRateRef.current[index];
 			if (typeof previousAllocationRate === 'number') {
 				form.setValue(`items.${index}.allocationRate`, previousAllocationRate);
@@ -159,6 +164,14 @@ export function LongtermMaterialCostForm({
 
 						const remainingPeriod =
 							(item?.usageTime ?? 0) - (item?.allocatedTime ?? 0);
+
+						// Khi hạch toán hết: thời gian còn lại = 0, thời gian đã phân bổ = thời gian sử dụng
+						const displayAllocatedTime = isFullAccounting
+							? (item?.usageTime ?? 0)
+							: (item?.allocatedTime ?? 0);
+						const displayRemainingPeriod = isFullAccounting
+							? 0
+							: remainingPeriod;
 
 						const quotaAccountingValue =
 							remainingPeriod > 0
@@ -257,17 +270,19 @@ export function LongtermMaterialCostForm({
 									<Input readOnly value={formatNumber(item?.usageTime ?? 0)} />
 								</div>
 
+								{/* Thời gian đã phân bổ: hiển thị = usageTime khi hạch toán hết */}
 								<div className='min-w-44 flex-1 space-y-2'>
 									<Label>Thời gian đã phân bổ</Label>
-									<Input
-										readOnly
-										value={formatNumber(item?.allocatedTime ?? 0)}
-									/>
+									<Input readOnly value={formatNumber(displayAllocatedTime)} />
 								</div>
 
+								{/* Thời gian còn lại: hiển thị = 0 khi hạch toán hết */}
 								<div className='min-w-40 flex-1 space-y-2'>
 									<Label>Thời gian còn lại</Label>
-									<Input readOnly value={formatNumber(remainingPeriod)} />
+									<Input
+										readOnly
+										value={formatNumber(displayRemainingPeriod)}
+									/>
 								</div>
 
 								<div className='min-w-60 flex-1 space-y-2'>
