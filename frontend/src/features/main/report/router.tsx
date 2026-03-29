@@ -3,7 +3,8 @@ import { AcceptanceReportPage } from './acceptance-report/page';
 import { ElectricityAndMaintainanceReportPage } from './electricity-and-maintainance-report/page';
 import { MainReportLayout } from './layout';
 import { LongtermMaterialCostPage } from './longterm-material-cost/page';
-import { LumpSumFinalSettlementPage } from './lump-sum-final-settlement/page';
+import { LumpSumFinalSettlementPage } from './lump-sum-final-settlement/quarter-page';
+import { LumpSumFinalSettlementMonthPage } from './lump-sum-final-settlement/month-page';
 import { MainReportPage } from './page';
 import { ReportCategoryPlaceholderPage } from './placeholder-page';
 import { REPORT_CATEGORIES } from './types';
@@ -29,6 +30,8 @@ const reportCategoryRoutes: RouteObject[] = REPORT_CATEGORIES.map(
 				<LongtermMaterialCostPage />
 			) : category.id === 'lump-sum-final-settlement' ? (
 				<LumpSumFinalSettlementPage />
+			) : category.id === 'lump-sum-final-settlement-month' ? (
+				<LumpSumFinalSettlementMonthPage />
 			) : (
 				<ReportCategoryPlaceholderPage categoryLabel={category.label} />
 			),

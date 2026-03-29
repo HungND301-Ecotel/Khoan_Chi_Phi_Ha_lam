@@ -552,7 +552,7 @@ export function ElectricityAndMaintainanceReportPage() {
 											<TableRow className='bg-white'>
 												<ReportHead rowSpan={2}>STT</ReportHead>
 												<ReportHead rowSpan={2}>Tên sản phẩm</ReportHead>
-												<ReportHead rowSpan={2}>Đơn vị tính</ReportHead>
+												<ReportHead rowSpan={2}>ĐVT</ReportHead>
 												<ReportHead rowSpan={2}>Sản lượng</ReportHead>
 												<ReportHead rowSpan={2}>Tên chủng loại</ReportHead>
 												<ReportHead rowSpan={2}>ĐVT</ReportHead>

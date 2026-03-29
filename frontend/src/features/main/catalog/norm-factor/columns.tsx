@@ -1,5 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
+import { formatNumber } from '@/lib/utils';
 
 type AffectAssignmentCode = {
 	id: string;
@@ -65,7 +66,9 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 		accessorKey: 'value',
 		header: 'Hệ số điều chỉnh định mức',
 		cell: ({ row }) => (
-			<span className='whitespace-normal'>{row.original.value}</span>
+			<span className='whitespace-normal'>
+				{formatNumber(row.original.value)}
+			</span>
 		),
 	},
 	{

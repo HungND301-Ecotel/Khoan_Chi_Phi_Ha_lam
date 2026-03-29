@@ -214,16 +214,28 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		<Table className='text-xs'>
 			<TableHeader>
 				<TableRow>
-					<TableHead rowSpan={3} className='min-w-14 border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-14 border-r text-center font-bold'
+					>
 						STT
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[220px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[220px] border-r text-center font-bold'
+					>
 						DANH MỤC VẬT TƯ, HÀNG HÓA
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[60px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[60px] border-r text-center font-bold'
+					>
 						ĐVT
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[90px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[90px] border-r text-center font-bold'
+					>
 						CÁCH TÍNH
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center font-bold'>
