@@ -103,7 +103,7 @@ const ExcelAcceptanceReportFooter = ({
 			</div>
 
 			{/* Kết luận */}
-			<div className='max-w-[520px] border border-[#2f9f62] p-2 text-center leading-tight'>
+			<div className='max-w-[500px] border border-[#2f9f62] p-2 text-center leading-tight'>
 				Kết luận: Toàn bộ số vật tư trên đã được sử dụng đúng mục đích, đảm bảo
 				kỹ thuật an toàn. Hội đồng nghiệm thu thống nhất nghiệm thu làm cơ sở
 				thanh toán.
