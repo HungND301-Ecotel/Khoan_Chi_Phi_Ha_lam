@@ -1,3 +1,4 @@
+import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export type AdjustmentMaterialCostItem = {
@@ -25,9 +26,14 @@ export type AdjustmentMaterialCostType = {
 	productUnitPriceId: string;
 	materialUnitPriceId: string;
 	slideUnitPriceAssignmentCodeId: string;
-	stoneClampRatioId: string;
+	materialReferenceId?: string;
+	normFactorId: string;
+	stoneClampRatioReferenceId?: string;
 	outputId: string;
 	otherMaterialValue?: number;
+	materialCost?: number;
+	slideUnitPriceCost?: number;
+	normFactorValue?: string;
 	totalPlannedMaterialPrice: number;
 	adjustmentMaterialCostAssignmentCodes: AdjustmentMaterialContract[];
 };
@@ -51,8 +57,11 @@ export type FlatAdjustmentMaterialCost = {
 
 export type AdjustmentMaterialCostSummary = {
 	materialCode: string;
+	materialUnitPriceCost: number;
 	slideUsage: string;
+	slideUnitPriceCost: number;
 	stoneClampRatio: string;
+	normFactorValue: string;
 };
 
 export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMaterialCostSummary>[] =
@@ -70,7 +79,27 @@ export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMater
 			),
 		},
 		{
+			accessorKey: 'slideUnitPriceCost',
+			header: () => (
+				<span className='whitespace-normal'>Đơn giá máng trượt (đ/m)</span>
+			),
+			cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
+		},
+		{
 			accessorKey: 'stoneClampRatio',
 			header: () => <span className='whitespace-normal'>Tỷ lệ đá kẹp</span>,
+		},
+		{
+			accessorKey: 'normFactorValue',
+			header: () => (
+				<span className='whitespace-normal'>Hệ số điều chỉnh định mức</span>
+			),
+		},
+		{
+			accessorKey: 'materialUnitPriceCost',
+			header: () => (
+				<span className='whitespace-normal'>Đơn giá vật liệu (đ/m)</span>
+			),
+			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
 		},
 	];

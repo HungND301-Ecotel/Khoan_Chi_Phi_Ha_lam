@@ -109,6 +109,7 @@ export function AdjustmentMaterialCost({
 					);
 
 				let slideUsage = '-';
+				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
 				let stoneClampRatio = '-';
 
 				if (adjustment?.processGroupType === ProcessGroupType.DL) {
@@ -151,19 +152,33 @@ export function AdjustmentMaterialCost({
 								slideDetailMaterialCosts.find(
 									(item) => item.id === result.slideUnitPriceAssignmentCodeId,
 								)?.materialName || '-';
+
+							if (!slideUnitPriceCost) {
+								slideUnitPriceCost =
+									slideDetailMaterialCosts.find(
+										(item) => item.id === result.slideUnitPriceAssignmentCodeId,
+									)?.cost || 0;
+							}
 						}
 					}
 
+					const stoneClampRatioReferenceId =
+						result.stoneClampRatioReferenceId ||
+						(result as unknown as { stoneClampRatioId?: string })
+							.stoneClampRatioId;
 					stoneClampRatio =
-						allClamps.find((clamp) => clamp.id === result.stoneClampRatioId)
+						allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
 							?.value || '-';
 				}
 
 				setSummary([
 					{
 						materialCode: selectedMaterial?.code || '-',
+						materialUnitPriceCost: result.materialCost || 0,
 						slideUsage,
+						slideUnitPriceCost,
 						stoneClampRatio,
+						normFactorValue: result.normFactorValue || '-',
 					},
 				]);
 			} finally {

@@ -73,13 +73,6 @@ export const PLANED_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<PlanedMaterialCostS
 			),
 		},
 		{
-			accessorKey: 'materialUnitPriceCost',
-			header: () => (
-				<span className='whitespace-normal'>Đơn giá vật liệu (đ/m)</span>
-			),
-			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
-		},
-		{
 			accessorKey: 'slideUsage',
 			header: () => (
 				<span className='whitespace-normal'>Sử dụng máng trượt</span>
@@ -101,5 +94,12 @@ export const PLANED_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<PlanedMaterialCostS
 			header: () => (
 				<span className='whitespace-normal'>Hệ số điều chỉnh định mức</span>
 			),
+		},
+		{
+			accessorKey: 'materialUnitPriceCost',
+			header: () => (
+				<span className='whitespace-normal'>Đơn giá vật liệu (đ/m)</span>
+			),
+			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
 		},
 	];

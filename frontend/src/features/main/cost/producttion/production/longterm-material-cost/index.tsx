@@ -22,6 +22,7 @@ import {
 	LongTermTrackingResponse,
 } from '@/features/main/cost/producttion/production/longterm-material-cost/types';
 import { api } from '@/lib/api';
+import { formatNumber } from '@/lib/utils';
 import CreateIcon from '@mui/icons-material/Create';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -139,6 +140,11 @@ export function LongTermMaterialCosts({
 						className='flex w-full min-w-0 flex-col gap-2'
 					>
 						{groupedItems.map((group) => {
+							const totalAccountedValueThisPeriod = group.items.reduce(
+								(total, item) => total + (item.accountedValueThisPeriod ?? 0),
+								0,
+							);
+
 							return (
 								<AccordionItem
 									key={group.processGroupId}
@@ -156,6 +162,11 @@ export function LongTermMaterialCosts({
 														? `${group.processGroupCode} - ${group.processGroupName || ''}`
 														: group.processGroupName || 'Không xác định'}
 												</ItemTitle>
+											</div>
+											<div className='me-40 text-sm font-semibold'>
+												{formatNumber(totalAccountedValueThisPeriod, {
+													maximumFractionDigits: 0,
+												})}
 											</div>
 											<ItemActions>
 												<AccordionTrigger className='group p-0'>

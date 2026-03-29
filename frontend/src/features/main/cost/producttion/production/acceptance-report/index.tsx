@@ -11,12 +11,13 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
+import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AcceptanceReportDataTable } from './datatable';
 import { HierarchicalRow } from './types';
-import { flattenHierarchicalData } from './utils';
+import { calculateTypeTotals, flattenHierarchicalData } from './utils';
 import { useAcceptanceReportDetail } from './use-acceptance-report-detail';
 
 export function AcceptanceReport({
@@ -34,7 +35,54 @@ export function AcceptanceReport({
 		data: hierarchicalData,
 		loading,
 		error,
-	} = useAcceptanceReportDetail(id, isOpen, reloadKey);
+	} = useAcceptanceReportDetail(id, !!id, reloadKey);
+
+	const { materialCost, sctxCost } = useMemo(() => {
+		const normalize = (value?: string | null) =>
+			(value || '')
+				.trim()
+				.toLowerCase()
+				.replace(/đ/g, 'd')
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, '');
+
+		const contractedRevenueCategory = hierarchicalData?.categories.find(
+			(category) =>
+				normalize(category.categoryName) ===
+				'vat tu da tinh vao doanh thu khoan',
+		);
+
+		if (!contractedRevenueCategory) {
+			return { materialCost: 0, sctxCost: 0 };
+		}
+
+		const materialType = contractedRevenueCategory.types.find(
+			(type) => normalize(type.typeName) === 'vat lieu',
+		);
+		const sctxPlannedType = contractedRevenueCategory.types.find((type) =>
+			normalize(type.typeName).includes(
+				'chi phi sua chua thuong xuyen (cac loai vat tu sctx theo ke hoach vat tu)',
+			),
+		);
+		const sctxLongtermType = contractedRevenueCategory.types.find((type) =>
+			normalize(type.typeName).includes(
+				'chi phi sua chua thuong xuyen dai ky phan bo',
+			),
+		);
+
+		return {
+			materialCost: materialType
+				? calculateTypeTotals(materialType).issueForProductionAmount
+				: 0,
+			sctxCost:
+				(sctxPlannedType
+					? calculateTypeTotals(sctxPlannedType).issueTotalAmount
+					: 0) +
+				(sctxLongtermType
+					? calculateTypeTotals(sctxLongtermType).issueTotalAmount
+					: 0),
+		};
+	}, [hierarchicalData]);
 
 	// Flatten and update data when hierarchical data changes
 	useEffect(() => {
@@ -50,10 +98,17 @@ export function AcceptanceReport({
 				<ItemContent>
 					<ItemTitle>Bảng nghiệm thu vật tư và kết chuyển chi phí</ItemTitle>
 				</ItemContent>
+				<ItemContent className='w-64'>
+					<ItemTitle className='text-right text-sm'>
+						{loading ? <Spinner /> : formatNumber(Math.round(materialCost))}
+					</ItemTitle>
+				</ItemContent>
+				<ItemContent className='w-64'>
+					<ItemTitle className='text-right text-sm'>
+						{loading ? <Spinner /> : formatNumber(Math.round(sctxCost))}
+					</ItemTitle>
+				</ItemContent>
 				<ItemActions>
-					<div className='size-5'></div>
-					<div className='size-5'></div>
-					<div className='size-5'></div>
 					<AccordionTrigger
 						disabled={false}
 						className='group p-0 disabled:opacity-50'

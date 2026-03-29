@@ -89,7 +89,7 @@ export const getPlanedMaintainCostColumns = (
 		}),
 		{
 			accessorKey: 'totalPrice',
-			header: 'Thành tiền (đ)',
+			header: 'Đơn giá SCTX (đ/m) ',
 			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 		},
 	];
