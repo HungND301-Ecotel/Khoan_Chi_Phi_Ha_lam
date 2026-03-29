@@ -80,6 +80,7 @@ public class ProductUnitPriceDto : IDto
     public string UnitOfMeasureName { get; set; }
     public Guid ProcessGroupId { get; set; }
     public string ProcessGroupCode { get; set; }
+    public string ProcessGroupName { get; set; }
     public ProcessGroupType ProcessGroupType { get; set; }
     public double TotalProductionMeters { get; set; }
     public double PlannedTotalCost { get; set; }

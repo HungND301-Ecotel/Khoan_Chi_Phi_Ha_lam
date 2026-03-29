@@ -8,6 +8,8 @@ export type ProductionAdjustment = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
+	processGroupName?: string;
+	processGroupType?: number;
 	totalProductionMeters: number;
 	plannedTotalCost: number;
 	actualTotalCost: number;

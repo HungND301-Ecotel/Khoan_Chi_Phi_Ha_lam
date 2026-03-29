@@ -57,6 +57,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductCode = m.Product.Code.Value,
                 ProcessGroupId = m.Product.ProcessGroupId,
                 ProcessGroupCode = m.Product.ProcessGroup!.Code.Value,
+                ProcessGroupName = m.Product.ProcessGroup.Name,
                 ProcessGroupType = m.Product.ProcessGroup!.Type,
                 UnitOfMeasureId = m.UnitOfMeasureId,
                 UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : null
@@ -217,6 +218,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductCode = baseData.ProductCode,
                 ProcessGroupId = baseData.ProcessGroupId,
                 ProcessGroupCode = baseData.ProcessGroupCode,
+                ProcessGroupName = baseData.ProcessGroupName,
                 ProcessGroupType = baseData.ProcessGroupType,
                 UnitOfMeasureId = baseData.UnitOfMeasureId ?? Guid.Empty,
                 UnitOfMeasureName = baseData.UnitOfMeasureName,
@@ -478,6 +480,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public string ProductCode { get; set; } = "";
         public Guid ProcessGroupId { get; set; }
         public string ProcessGroupCode { get; set; } = "";
+        public string ProcessGroupName { get; set; } = "";
         public ProcessGroupType ProcessGroupType { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string? UnitOfMeasureName { get; set; }
