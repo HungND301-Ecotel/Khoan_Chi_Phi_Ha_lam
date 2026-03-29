@@ -109,7 +109,7 @@ public enum AdditionalCost
     None = 1,
     Material = 2,
     Maintain = 3,
-    OtherMaterial = 4
+    SafeAndWelfare = 4
 }
 
 public enum OtherMaterialDetail
@@ -126,6 +126,7 @@ public enum QuotaBasedMaterial
     SupportAccessories = 3,
     MineTimber = 4,
 }
+
 public enum QuotaBasedMaterialType
 {
     New = 1,
@@ -147,7 +148,10 @@ public enum AcceptanceReportItemType
 public enum ItemType
 {
     InContract = 1,
-    OutContract = 2
+    OutContract = 2,
+    SafetyAndWelfare = 3,
+    Resource = 4,
+    QuotaMaterials = 5
 }
 
 public enum PartType

@@ -52,8 +52,10 @@ export const rawAcceptanceReportItemSchema = z
 		category: z.number().nullable().optional(),
 		categoryProcessGroup: z.string().nullable().optional(),
 		categoryProductionOrderId: z.string().nullable().optional(),
+		categoryEquipmentId: z.string().nullable().optional(),
 		additionalCostCategory: z.number().nullable().optional(),
 		additionalCostProductionOrderId: z.string().nullable().optional(),
+		additionalCostEquipmentId: z.string().nullable().optional(),
 		otherMaterialDetail: z.number().nullable().optional(),
 		contractLimitCategory: z.number().nullable().optional(),
 		contractLimitSubCategory: z.number().nullable().optional(),
@@ -61,7 +63,7 @@ export const rawAcceptanceReportItemSchema = z
 		contractLimitBreakdown: z
 			.record(z.string(), z.union([z.number(), z.string()]))
 			.optional(),
-		productionOrderId: z.string().nullable().optional(),
+		materialOrPartId: z.string().optional(),
 		// Quantity fields
 		categoryQuantity: z.number().nullable().optional(),
 		additionalCostQuantity: z.number().nullable().optional(),

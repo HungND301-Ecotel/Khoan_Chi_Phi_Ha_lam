@@ -10,7 +10,10 @@ public record UpdateAcceptanceReportItemDto
     public required List<ShippedDetailDto> ShippedDetails { get; init; }
 
     public required ItemType ItemType { get; init; }
-    public Guid? ProductionOrderId { get; init; }
+    public Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostEquipmentId { get; init; }
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }

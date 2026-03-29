@@ -10,7 +10,10 @@ public record CreateAcceptanceReportItemDto
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
 
-    public Guid? ProductionOrderId { get; init; }
+    public Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostEquipmentId { get; init; }
 
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }

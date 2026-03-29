@@ -373,6 +373,14 @@ public class CatalogController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("Part/{id:guid}/Equipments")]
+    [OpenApiOperation("Get Equipments by PartId", "")]
+    public async Task<IActionResult> GetEquipmentsByPartId([FromRoute] Guid id, [FromQuery] DateTime? date)
+    {
+        var result = await Mediator.Send(new GetEquipmentsByPartIdQuery(id, date ?? DateTime.UtcNow));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpPost("Part")]
     [OpenApiOperation("Create New Part", "")]
     public async Task<IActionResult> CreatePart([FromBody] CreatePartDto createModel)

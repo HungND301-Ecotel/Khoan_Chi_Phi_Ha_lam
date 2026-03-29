@@ -30,6 +30,12 @@ export type ProductionOrder = {
 	endMonth: string;
 };
 
+export type Equipment = {
+	id: string;
+	code: string;
+	name: string;
+};
+
 // Enums as const objects (for TypeScript erasableSyntaxOnly)
 export const MaterialsIncludedInContractRevenue = {
 	None: 1,
@@ -73,7 +79,10 @@ export type CreateAcceptanceReportItem = {
 	materialOrPartId: string;
 	type: number;
 	itemType: number;
-	productionOrderId: string | null;
+	categoryProductionOrderId: string | null;
+	categoryEquipmentId: string | null;
+	additionalCostProductionOrderId: string | null;
+	additionalCostEquipmentId: string | null;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
@@ -127,6 +136,9 @@ export const MaterialType = {
 export const ItemType = {
 	InContract: 1,
 	OutContract: 2,
+	SafetyAndWelfare: 3,
+	Resource: 4,
+	QuotaMaterials: 5,
 } as const;
 
 export const IssuedQuantityType = {

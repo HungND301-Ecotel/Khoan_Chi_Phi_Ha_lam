@@ -71,10 +71,62 @@ type ProductionOrderOption = {
 	label: string;
 };
 
-const DEFAULT_NO_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
-	value: '',
-	label: 'Không theo quyết định, lệnh sản xuất',
+type ImportedItemMeta = {
+	materialOrPartId: string;
+	type: number;
 };
+
+type Equipment = {
+	id: string;
+	code: string;
+	name: string;
+};
+
+const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
+const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+
+function toProductionOrderOptionValue(id: string): string {
+	return `${PRODUCTION_ORDER_OPTION_PREFIX}${id}`;
+}
+
+function toEquipmentOptionValue(id: string): string {
+	return `${EQUIPMENT_OPTION_PREFIX}${id}`;
+}
+
+function resolveSelectionIds(value?: string | null): {
+	productionOrderId: string | null;
+	equipmentId: string | null;
+} {
+	if (!value) {
+		return {
+			productionOrderId: null,
+			equipmentId: null,
+		};
+	}
+
+	if (value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX)) {
+		const parsedId = normalizeProductionOrderId(
+			value.slice(PRODUCTION_ORDER_OPTION_PREFIX.length),
+		);
+		return {
+			productionOrderId: parsedId,
+			equipmentId: null,
+		};
+	}
+
+	if (value.startsWith(EQUIPMENT_OPTION_PREFIX)) {
+		const equipmentId = value.slice(EQUIPMENT_OPTION_PREFIX.length).trim();
+		return {
+			productionOrderId: null,
+			equipmentId: equipmentId.length > 0 ? equipmentId : null,
+		};
+	}
+
+	return {
+		productionOrderId: normalizeProductionOrderId(value),
+		equipmentId: null,
+	};
+}
 
 type ProductionOutputScopeResponse = {
 	processGroups?: {
@@ -178,6 +230,9 @@ function getDefaultAdditionalCostByMaterialType(
 const ItemType = {
 	InContract: 1,
 	OutContract: 2,
+	SafetyAndWelfare: 3,
+	Resource: 4,
+	QuotaMaterials: 5,
 } as const;
 
 function getMaterialBadge(
@@ -187,6 +242,34 @@ function getMaterialBadge(
 	label: string;
 	className: string;
 } {
+	if (
+		type === MaterialType.Material &&
+		itemType === ItemType.SafetyAndWelfare
+	) {
+		return {
+			label:
+				'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+			className:
+				'rounded bg-emerald-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-emerald-700',
+		};
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.Resource) {
+		return {
+			label: 'Tài sản',
+			className:
+				'rounded bg-violet-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-violet-700',
+		};
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
+		return {
+			label: 'Vật tư theo hạn mức',
+			className:
+				'rounded bg-cyan-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-cyan-700',
+		};
+	}
+
 	if (type === MaterialType.Material && itemType === ItemType.InContract) {
 		return {
 			label: 'Vật tư, tài sản trong khoán',
@@ -259,6 +342,12 @@ export function RawAcceptanceReportForm({
 	const [productionOrderOptions, setProductionOrderOptions] = useState<
 		ProductionOrderOption[]
 	>([]);
+	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
+	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
+		Record<string, ProductionOrderOption[]>
+	>({});
+	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
+		useState<Record<string, ProductionOrderOption[]>>({});
 
 	const form = useForm<RawAcceptanceReportFormSchema>({
 		resolver: zodResolver(rawAcceptanceReportFormSchema),
@@ -286,17 +375,14 @@ export function RawAcceptanceReportForm({
 				const options = response.result.data
 					.sort((a, b) => a.code.localeCompare(b.code))
 					.map((item) => ({
-						value: item.id,
-						label: `${item.code} - ${item.name}`,
+						value: toProductionOrderOptionValue(item.id),
+						label: `[Lệnh sản xuất] ${item.code} - ${item.name}`,
 					}));
 
-				setProductionOrderOptions([
-					DEFAULT_NO_PRODUCTION_ORDER_OPTION,
-					...options,
-				]);
+				setProductionOrderOptions(options);
 			} catch (err) {
 				if (!isMounted) return;
-				setProductionOrderOptions([DEFAULT_NO_PRODUCTION_ORDER_OPTION]);
+				setProductionOrderOptions([]);
 				console.error('Failed to fetch production orders:', err);
 			}
 		};
@@ -307,6 +393,23 @@ export function RawAcceptanceReportForm({
 			isMounted = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		const nextOptionsByItemId: Record<string, ProductionOrderOption[]> = {};
+
+		for (const item of importedItems) {
+			const isPartItem = item.type === MaterialType.SparePart;
+			const equipmentOptions = isPartItem
+				? (equipmentOptionsByPartId[item.materialOrPartId] ?? [])
+				: [];
+			nextOptionsByItemId[item.materialOrPartId] = [
+				...productionOrderOptions,
+				...equipmentOptions,
+			];
+		}
+
+		setOrderOrEquipmentOptionsByItemId(nextOptionsByItemId);
+	}, [importedItems, productionOrderOptions, equipmentOptionsByPartId]);
 
 	useEffect(() => {
 		if (!id) {
@@ -382,6 +485,51 @@ export function RawAcceptanceReportForm({
 					setAcceptanceReportId(response.result.id);
 					setFilePath(response.result.filePath);
 
+					const importedItemMetas: ImportedItemMeta[] = response.result.items
+						.map((item) => ({
+							materialOrPartId: item.partId ?? item.materialId ?? '',
+							type: item.type,
+						}))
+						.filter((item) => item.materialOrPartId.length > 0);
+					setImportedItems(importedItemMetas);
+
+					const partIds = Array.from(
+						new Set(
+							response.result.items
+								.map((item) => item.partId)
+								.filter((partId): partId is string => Boolean(partId)),
+						),
+					);
+					const fetchedEquipmentOptionsByPartId: Record<
+						string,
+						ProductionOrderOption[]
+					> = {};
+
+					await Promise.all(
+						partIds.map(async (partId) => {
+							try {
+								const equipmentRes = await api.get<Equipment[]>(
+									API.CATALOG.PART.PART_EQUIPMENT(partId),
+								);
+								const options = (equipmentRes.result ?? [])
+									.sort((a, b) => a.code.localeCompare(b.code))
+									.map((equipment) => ({
+										value: toEquipmentOptionValue(equipment.id),
+										label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+									}));
+								fetchedEquipmentOptionsByPartId[partId] = options;
+							} catch (error) {
+								fetchedEquipmentOptionsByPartId[partId] = [];
+								console.error(
+									`Failed to fetch equipments by partId (${partId}):`,
+									error,
+								);
+							}
+						}),
+					);
+
+					setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+
 					const items = response.result.items.map((item) => {
 						// Map enum values to form field values
 						const showCategoryDropdown =
@@ -442,9 +590,25 @@ export function RawAcceptanceReportForm({
 										0,
 									)
 								: item.quotaBasedMaterialQuantity || 0;
+						const categoryOrderOrEquipmentValue =
+							item.categoryEquipmentId
+								? toEquipmentOptionValue(item.categoryEquipmentId)
+								: item.categoryProductionOrderId
+									? toProductionOrderOptionValue(item.categoryProductionOrderId)
+									: null;
+						const additionalOrderOrEquipmentValue =
+							item.additionalCostEquipmentId
+								? toEquipmentOptionValue(item.additionalCostEquipmentId)
+								: item.additionalCostProductionOrderId
+									? toProductionOrderOptionValue(
+											item.additionalCostProductionOrderId,
+										)
+									: null;
+						const materialOrPartId = item.partId ?? item.materialId ?? '';
 
 						return {
 							id: item.id || '',
+							materialOrPartId,
 							materialCode: materialCode || '',
 							materialName: materialName || '',
 							unit: item.unitOfMeasureName || '',
@@ -470,7 +634,7 @@ export function RawAcceptanceReportForm({
 								showCategoryDropdown &&
 								item.materialsIncludedInContractRevenue ===
 									MaterialsIncludedInContractRevenue.Maintain
-									? item.productionOrderId || ''
+									? categoryOrderOrEquipmentValue
 									: null,
 							additionalCostCategory: showAdditionalCostDropdown
 								? item.additionalCost
@@ -479,7 +643,7 @@ export function RawAcceptanceReportForm({
 								showAdditionalCostDropdown &&
 								(item.additionalCost === AdditionalCost.Material ||
 									item.additionalCost === AdditionalCost.Maintain)
-									? item.productionOrderId || ''
+									? additionalOrderOrEquipmentValue
 									: null,
 							otherMaterialDetail:
 								showAdditionalCostDropdown &&
@@ -489,7 +653,8 @@ export function RawAcceptanceReportForm({
 										? item.otherMaterialDetail
 										: DEFAULT_OTHER_MATERIAL_DETAIL_VALUE
 									: null,
-							productionOrderId: item.productionOrderId || null,
+							productionOrderId: null,
+							equipmentId: null,
 							contractLimitCategory: showContractLimitDropdown
 								? item.quotaBasedMaterial
 								: null,
@@ -572,24 +737,24 @@ export function RawAcceptanceReportForm({
 								DEFAULT_OTHER_MATERIAL_DETAIL_VALUE)
 							: OtherMaterialDetail.None;
 
-					const categoryProductionOrderId =
+					const categorySelection =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? normalizeProductionOrderId(item.categoryProductionOrderId)
-							: null;
+							? resolveSelectionIds(item.categoryProductionOrderId)
+							: {
+									productionOrderId: null,
+									equipmentId: null,
+								};
 
-					const additionalCostProductionOrderId =
+					const additionalSelection =
 						item.showAdditionalCostDropdown &&
 						(item.additionalCostCategory === AdditionalCost.Material ||
 							item.additionalCostCategory === AdditionalCost.Maintain)
-							? normalizeProductionOrderId(item.additionalCostProductionOrderId)
-							: null;
-
-					const productionOrderId =
-						categoryProductionOrderId ??
-						additionalCostProductionOrderId ??
-						normalizeProductionOrderId(item.productionOrderId) ??
-						null;
+							? resolveSelectionIds(item.additionalCostProductionOrderId)
+							: {
+									productionOrderId: null,
+									equipmentId: null,
+								};
 
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
 					let quotaBasedMaterialType: number =
@@ -680,7 +845,11 @@ export function RawAcceptanceReportForm({
 					return {
 						id: item.id || '',
 						itemType: item.itemType ?? 0,
-						productionOrderId,
+						categoryProductionOrderId: categorySelection.productionOrderId,
+						categoryEquipmentId: categorySelection.equipmentId,
+						additionalCostProductionOrderId:
+							additionalSelection.productionOrderId,
+						additionalCostEquipmentId: additionalSelection.equipmentId,
 						issuedDetails,
 						shippedDetails,
 						materialsIncludedInContractRevenue,
@@ -761,6 +930,9 @@ export function RawAcceptanceReportForm({
 									<RawAcceptanceReportRows
 										processGroupOptions={processGroupOptions}
 										productionOrderOptions={productionOrderOptions}
+										orderOrEquipmentOptionsByItemId={
+											orderOrEquipmentOptionsByItemId
+										}
 									/>
 								</TableBody>
 							</Table>
@@ -796,9 +968,11 @@ export function RawAcceptanceReportForm({
 function RawAcceptanceReportRows({
 	processGroupOptions,
 	productionOrderOptions,
+	orderOrEquipmentOptionsByItemId,
 }: {
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 }) {
 	const form = useFormContext<{
 		items: RawAcceptanceReportFormSchema['items'];
@@ -816,6 +990,7 @@ function RawAcceptanceReportRows({
 					index={index}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
+					orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
 				/>
 			))}
 		</>
@@ -916,10 +1091,12 @@ function RawAcceptanceReportRow({
 	index,
 	processGroupOptions,
 	productionOrderOptions,
+	orderOrEquipmentOptionsByItemId,
 }: {
 	index: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 }) {
 	const form = useFormContext<{
 		items: RawAcceptanceReportFormSchema['items'];
@@ -986,6 +1163,14 @@ function RawAcceptanceReportRow({
 		control: form.control,
 		name: `${basename}.type` as FieldName,
 	});
+	const materialOrPartId = useWatch({
+		control: form.control,
+		name: `${basename}.materialOrPartId` as FieldName,
+	}) as string | undefined;
+	const itemTypeValue = useWatch({
+		control: form.control,
+		name: `${basename}.itemType` as FieldName,
+	});
 	const receivedTypes = useWatch({
 		control: form.control,
 		name: `${basename}.receivedTypes` as FieldName,
@@ -1007,7 +1192,14 @@ function RawAcceptanceReportRow({
 		getDefaultCategoryByMaterialType(materialTypeValue);
 	const defaultAdditionalCostByType =
 		getDefaultAdditionalCostByMaterialType(materialTypeValue);
+	const isSafetyAndWelfareMaterial =
+		materialTypeValue === MaterialType.Material &&
+		itemTypeValue === ItemType.SafetyAndWelfare;
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
+	const orderOrEquipmentOptions =
+		(materialOrPartId
+			? orderOrEquipmentOptionsByItemId[materialOrPartId]
+			: undefined) ?? productionOrderOptions;
 	const additionalCostOptionsByType =
 		defaultAdditionalCostByType == null
 			? ADDITIONAL_COST_OPTIONS
@@ -1152,6 +1344,7 @@ function RawAcceptanceReportRow({
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
 					dropdownSecondary: 'additionalCostProductionOrderId',
+					dropdownTertiary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
@@ -1169,6 +1362,7 @@ function RawAcceptanceReportRow({
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
 					dropdownSecondary: 'additionalCostProductionOrderId',
+					dropdownTertiary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{
@@ -1213,7 +1407,7 @@ function RawAcceptanceReportRow({
 			) {
 				form.setValue(
 					`${basename}.categoryProductionOrderId` as FieldName,
-					productionOrderOptions[0]?.value ?? '',
+					orderOrEquipmentOptions[0]?.value ?? '',
 				);
 			}
 		} else if (justEnabledAdditional) {
@@ -1233,6 +1427,14 @@ function RawAcceptanceReportRow({
 			}
 
 			if (
+				isSafetyAndWelfareMaterial &&
+				additionalCostCategoryValue !== AdditionalCost.OtherMaterial
+			) {
+				form.setValue(
+					`${basename}.additionalCostCategory` as FieldName,
+					AdditionalCost.OtherMaterial,
+				);
+			} else if (
 				additionalCostCategoryValue == null &&
 				defaultAdditionalCostByType != null
 			) {
@@ -1249,7 +1451,7 @@ function RawAcceptanceReportRow({
 			) {
 				form.setValue(
 					`${basename}.additionalCostProductionOrderId` as FieldName,
-					productionOrderOptions[0]?.value ?? '',
+					orderOrEquipmentOptions[0]?.value ?? '',
 				);
 			} else if (
 				additionalCostCategoryValue === AdditionalCost.OtherMaterial &&
@@ -1307,12 +1509,28 @@ function RawAcceptanceReportRow({
 		additionalCostCategoryValue,
 		defaultCategoryByType,
 		defaultAdditionalCostByType,
+		isSafetyAndWelfareMaterial,
 		processGroupOptions,
-		productionOrderOptions,
+		orderOrEquipmentOptions,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
+		form,
+		basename,
+	]);
+
+	useEffect(() => {
+		if (!showAdditionalCostDropdown || !isSafetyAndWelfareMaterial) return;
+		if (additionalCostCategoryValue === AdditionalCost.OtherMaterial) return;
+		form.setValue(
+			`${basename}.additionalCostCategory` as FieldName,
+			AdditionalCost.OtherMaterial,
+		);
+	}, [
+		showAdditionalCostDropdown,
+		isSafetyAndWelfareMaterial,
+		additionalCostCategoryValue,
 		form,
 		basename,
 	]);
@@ -1488,12 +1706,12 @@ function RawAcceptanceReportRow({
 		}
 
 		if (
-			productionOrderOptions.length > 0 &&
+			orderOrEquipmentOptions.length > 0 &&
 			categoryProductionOrderId == null
 		) {
 			form.setValue(
 				`${basename}.categoryProductionOrderId` as FieldName,
-				productionOrderOptions[0].value,
+				orderOrEquipmentOptions[0].value,
 			);
 		}
 	}, [
@@ -1502,7 +1720,7 @@ function RawAcceptanceReportRow({
 		defaultCategoryByType,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
-		productionOrderOptions,
+		orderOrEquipmentOptions,
 		form,
 		basename,
 	]);
@@ -1512,12 +1730,12 @@ function RawAcceptanceReportRow({
 
 		if (additionalCostNeedsProductionOrder) {
 			if (
-				productionOrderOptions.length > 0 &&
+				orderOrEquipmentOptions.length > 0 &&
 				additionalCostProductionOrderId == null
 			) {
 				form.setValue(
 					`${basename}.additionalCostProductionOrderId` as FieldName,
-					productionOrderOptions[0].value,
+					orderOrEquipmentOptions[0].value,
 				);
 			}
 			if (otherMaterialDetailValue != null) {
@@ -1557,7 +1775,7 @@ function RawAcceptanceReportRow({
 		additionalCostNeedsOtherMaterialDetail,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
-		productionOrderOptions,
+		orderOrEquipmentOptions,
 		form,
 		basename,
 	]);
@@ -1663,7 +1881,6 @@ function RawAcceptanceReportRow({
 
 	const materialCode = form.watch(`${basename}.materialCode` as FieldName);
 	const unit = form.watch(`${basename}.unit` as FieldName);
-	const itemTypeValue = form.watch(`${basename}.itemType` as FieldName);
 	const receivedQuantity = form.watch(
 		`${basename}.receivedQuantity` as FieldName,
 	);
@@ -1720,21 +1937,6 @@ function RawAcceptanceReportRow({
 
 	const totalQuantity = calculateTotal();
 	const exportedQty = Number(watchedExportedQuantity) || 0;
-	const hasActiveColumns =
-		(showCategoryDropdown &&
-			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
-			(!categoryNeedsProductionOrder || categoryProductionOrderId != null)) ||
-		(showAdditionalCostDropdown &&
-			additionalCostCategoryValue &&
-			(!additionalCostNeedsProductionOrder ||
-				additionalCostProductionOrderId != null) &&
-			(!additionalCostNeedsOtherMaterialDetail ||
-				otherMaterialDetailValue != null)) ||
-		(showContractLimitDropdown &&
-			contractLimitCategoryValue &&
-			(!needsSecondComboBox || contractLimitSelectedTypes.length > 0)) ||
-		showAssetDropdown;
 	const isValidTotal = Math.abs(totalQuantity - exportedQty) < 0.01;
 	const activeReceivedKeys =
 		receivedTypes && receivedTypes.length > 0
@@ -1948,7 +2150,7 @@ function RawAcceptanceReportRow({
 									<FormComboBox
 										control={form.control}
 										name={`${basename}.categoryProductionOrderId` as FieldName}
-										options={productionOrderOptions}
+										options={orderOrEquipmentOptions}
 										placeholder='Chọn quyết định, lệnh sản xuất'
 									/>
 								</div>
@@ -1966,11 +2168,14 @@ function RawAcceptanceReportRow({
 											name={`${basename}.categoryQuantity` as FieldName}
 											placeholder='Nhập số lượng'
 										/>
-										{hasActiveColumns && !isValidTotal && (
-											<p className='mt-1 text-xs text-red-600'>
-												Tổng: {totalQuantity} / {exportedQty}
-											</p>
-										)}
+										<div
+											className={cn(
+												'mt-1 text-xs',
+												isValidTotal ? 'text-green-600' : 'text-red-600',
+											)}
+										>
+											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+										</div>
 									</div>
 								)}
 						</>
@@ -1989,14 +2194,16 @@ function RawAcceptanceReportRow({
 					</div>
 					{showAdditionalCostDropdown && (
 						<>
-							<div className='w-full'>
-								<FormComboBox
-									control={form.control}
-									name={`${basename}.additionalCostCategory` as FieldName}
-									options={additionalCostOptionsByType}
-									placeholder='Chọn danh mục'
-								/>
-							</div>
+							{!isSafetyAndWelfareMaterial && (
+								<div className='w-full'>
+									<FormComboBox
+										control={form.control}
+										name={`${basename}.additionalCostCategory` as FieldName}
+										options={additionalCostOptionsByType}
+										placeholder='Chọn danh mục'
+									/>
+								</div>
+							)}
 							{additionalCostCategoryValue && (
 								<>
 									{additionalCostNeedsProductionOrder && (
@@ -2006,7 +2213,7 @@ function RawAcceptanceReportRow({
 												name={
 													`${basename}.additionalCostProductionOrderId` as FieldName
 												}
-												options={productionOrderOptions}
+												options={orderOrEquipmentOptions}
 												placeholder='Chọn quyết định, lệnh sản xuất'
 											/>
 										</div>
@@ -2036,11 +2243,14 @@ function RawAcceptanceReportRow({
 													}
 													placeholder='Nhập số lượng'
 												/>
-												{hasActiveColumns && !isValidTotal && (
-													<p className='mt-1 text-xs text-red-600'>
-														Tổng: {totalQuantity} / {exportedQty}
-													</p>
-												)}
+												<div
+													className={cn(
+														'mt-1 text-xs',
+														isValidTotal ? 'text-green-600' : 'text-red-600',
+													)}
+												>
+													Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+												</div>
 											</div>
 										)}
 								</>
@@ -2121,11 +2331,14 @@ function RawAcceptanceReportRow({
 												/>
 											</>
 										)}
-										{hasActiveColumns && !isValidTotal && (
-											<p className='mt-1 text-xs text-red-600'>
-												Tổng: {totalQuantity} / {exportedQty}
-											</p>
-										)}
+										<div
+											className={cn(
+												'mt-1 text-xs',
+												isValidTotal ? 'text-green-600' : 'text-red-600',
+											)}
+										>
+											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+										</div>
 									</div>
 								)}
 						</>
@@ -2145,18 +2358,21 @@ function RawAcceptanceReportRow({
 					{showAssetDropdown && (
 						<div className='w-full'>
 							<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-								Số lượng tài sản
+								Số lượng
 							</label>
 							<FormNumber
 								control={form.control}
 								name={`${basename}.assetQuantity` as FieldName}
 								placeholder='Nhập số lượng'
 							/>
-							{hasActiveColumns && !isValidTotal && (
-								<p className='mt-1 text-xs text-red-600'>
-									Tổng: {totalQuantity} / {exportedQty}
-								</p>
-							)}
+							<div
+								className={cn(
+									'mt-1 text-xs',
+									isValidTotal ? 'text-green-600' : 'text-red-600',
+								)}
+							>
+								Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+							</div>
 						</div>
 					)}
 				</div>

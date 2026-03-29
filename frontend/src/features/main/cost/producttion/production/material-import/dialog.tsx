@@ -18,6 +18,8 @@ import {
 	AdditionalCost,
 	Asset,
 	CreateAcceptanceReportRequest,
+	Equipment,
+	ItemType,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
 	OtherMaterialDetail,
@@ -46,10 +48,56 @@ type ProductionOrderOption = {
 	label: string;
 };
 
-const DEFAULT_NO_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
-	value: '',
-	label: 'Không theo quyết định, lệnh sản xuất',
+type ImportedItemMeta = {
+	materialOrPartId: string;
+	type: number;
 };
+
+const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
+const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+
+function toProductionOrderOptionValue(id: string): string {
+	return `${PRODUCTION_ORDER_OPTION_PREFIX}${id}`;
+}
+
+function toEquipmentOptionValue(id: string): string {
+	return `${EQUIPMENT_OPTION_PREFIX}${id}`;
+}
+
+function resolveSelectionIds(value?: string | null): {
+	productionOrderId: string | null;
+	equipmentId: string | null;
+} {
+	if (!value) {
+		return {
+			productionOrderId: null,
+			equipmentId: null,
+		};
+	}
+
+	if (value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX)) {
+		const parsedId = normalizeProductionOrderId(
+			value.slice(PRODUCTION_ORDER_OPTION_PREFIX.length),
+		);
+		return {
+			productionOrderId: parsedId,
+			equipmentId: null,
+		};
+	}
+
+	if (value.startsWith(EQUIPMENT_OPTION_PREFIX)) {
+		const equipmentId = value.slice(EQUIPMENT_OPTION_PREFIX.length).trim();
+		return {
+			productionOrderId: null,
+			equipmentId: equipmentId.length > 0 ? equipmentId : null,
+		};
+	}
+
+	return {
+		productionOrderId: normalizeProductionOrderId(value),
+		equipmentId: null,
+	};
+}
 
 type ProductionOutputScopeResponse = {
 	processGroups?: {
@@ -108,6 +156,12 @@ export function MaterialImportDialog({
 	const [productionOrderOptions, setProductionOrderOptions] = useState<
 		ProductionOrderOption[]
 	>([]);
+	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
+	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
+		Record<string, ProductionOrderOption[]>
+	>({});
+	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
+		useState<Record<string, ProductionOrderOption[]>>({});
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 
@@ -137,19 +191,14 @@ export function MaterialImportDialog({
 				const options = response.result.data
 					.sort((a, b) => a.code.localeCompare(b.code))
 					.map((item) => ({
-						value: item.id,
-						label: `${item.code} - ${item.name}`,
+						value: toProductionOrderOptionValue(item.id),
+						label: `[Lệnh sản xuất] ${item.code} - ${item.name}`,
 					}));
 
-				const optionsWithSentinel: ProductionOrderOption[] = [
-					DEFAULT_NO_PRODUCTION_ORDER_OPTION,
-					...options,
-				];
-
-				setProductionOrderOptions(optionsWithSentinel);
+				setProductionOrderOptions(options);
 			} catch (error) {
 				if (!isMounted) return;
-				setProductionOrderOptions([DEFAULT_NO_PRODUCTION_ORDER_OPTION]);
+				setProductionOrderOptions([]);
 				console.error('Failed to fetch production orders:', error);
 			}
 		};
@@ -160,6 +209,23 @@ export function MaterialImportDialog({
 			isMounted = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		const nextOptionsByItemId: Record<string, ProductionOrderOption[]> = {};
+
+		for (const item of importedItems) {
+			const isPartItem = item.type === MaterialType.SparePart;
+			const equipmentOptions = isPartItem
+				? (equipmentOptionsByPartId[item.materialOrPartId] ?? [])
+				: [];
+			nextOptionsByItemId[item.materialOrPartId] = [
+				...productionOrderOptions,
+				...equipmentOptions,
+			];
+		}
+
+		setOrderOrEquipmentOptionsByItemId(nextOptionsByItemId);
+	}, [importedItems, productionOrderOptions, equipmentOptionsByPartId]);
 
 	useEffect(() => {
 		if (!productionOutputId) {
@@ -228,13 +294,67 @@ export function MaterialImportDialog({
 			// Store filePath for later use
 			setFilePath(response.result.filePath);
 
+			const importedItemMetas: ImportedItemMeta[] =
+				response.result.acceptanceReports.map((item) => ({
+					materialOrPartId: item.materialOrPartId,
+					type: item.type,
+				}));
+			setImportedItems(importedItemMetas);
+
+			const partIds = Array.from(
+				new Set(
+					response.result.acceptanceReports
+						.filter((item) => item.type === MaterialType.SparePart)
+						.map((item) => item.materialOrPartId),
+				),
+			);
+
+			const fetchedEquipmentOptionsByPartId: Record<
+				string,
+				ProductionOrderOption[]
+			> = {};
+
+			await Promise.all(
+				partIds.map(async (partId) => {
+					try {
+						const equipmentRes = await api.get<Equipment[]>(
+							API.CATALOG.PART.PART_EQUIPMENT(partId),
+						);
+						const options = (equipmentRes.result ?? [])
+							.sort((a, b) => a.code.localeCompare(b.code))
+							.map((equipment) => ({
+								value: toEquipmentOptionValue(equipment.id),
+								label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+							}));
+						fetchedEquipmentOptionsByPartId[partId] = options;
+					} catch (error) {
+						fetchedEquipmentOptionsByPartId[partId] = [];
+						console.error(
+							`Failed to fetch equipments by partId (${partId}):`,
+							error,
+						);
+					}
+				}),
+			);
+
+			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+
 			// Transform API response to form schema
 			const formattedData: MaterialFormSchema[] =
 				response.result.acceptanceReports.map((item) => {
+					const isSafetyAndWelfareMaterial =
+						item.type === MaterialType.Material &&
+						item.itemType === ItemType.SafetyAndWelfare;
+					const isAssetMaterial =
+						item.type === MaterialType.Material &&
+						item.itemType === ItemType.Resource;
+					const isQuotaMaterial =
+						item.type === MaterialType.Material &&
+						item.itemType === ItemType.QuotaMaterials;
 					const defaultCategory = getDefaultCategoryByMaterialType(item.type);
-					const defaultAdditionalCost = getDefaultAdditionalCostByMaterialType(
-						item.type,
-					);
+					const defaultAdditionalCost = isSafetyAndWelfareMaterial
+						? AdditionalCost.OtherMaterial
+						: getDefaultAdditionalCostByMaterialType(item.type);
 
 					return {
 						...MATERIAL_FORM_DEFAULT,
@@ -250,6 +370,9 @@ export function MaterialImportDialog({
 						quantity: item.issuedQuantity + item.shippedQuantity,
 						category: defaultCategory,
 						additionalCostCategory: defaultAdditionalCost,
+						showAdditionalCostDropdown: isSafetyAndWelfareMaterial,
+						showAssetDropdown: isAssetMaterial,
+						showContractLimitDropdown: isQuotaMaterial,
 					};
 				});
 
@@ -292,35 +415,46 @@ export function MaterialImportDialog({
 							? item.categoryProcessGroup || null
 							: null;
 
+					const isSafetyAndWelfareMaterial =
+						item.type === MaterialType.Material &&
+						item.itemType === ItemType.SafetyAndWelfare;
+					const resolvedAdditionalCostCategory =
+						item.showAdditionalCostDropdown && isSafetyAndWelfareMaterial
+							? AdditionalCost.OtherMaterial
+							: item.additionalCostCategory;
+
 					// Map additional cost to enum
 					let additionalCost: number = AdditionalCost.None;
-					if (item.showAdditionalCostDropdown && item.additionalCostCategory) {
-						additionalCost = item.additionalCostCategory;
+					if (
+						item.showAdditionalCostDropdown &&
+						resolvedAdditionalCostCategory
+					) {
+						additionalCost = resolvedAdditionalCostCategory;
 					}
 					const otherMaterialDetail =
 						item.showAdditionalCostDropdown &&
-						item.additionalCostCategory === AdditionalCost.OtherMaterial
+						resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
 							? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 							: OtherMaterialDetail.None;
 
-					const categoryProductionOrderId =
+					const categorySelection =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? normalizeProductionOrderId(item.categoryProductionOrderId)
-							: null;
+							? resolveSelectionIds(item.categoryProductionOrderId)
+							: {
+									productionOrderId: null,
+									equipmentId: null,
+								};
 
-					const additionalCostProductionOrderId =
+					const additionalSelection =
 						item.showAdditionalCostDropdown &&
-						(item.additionalCostCategory === AdditionalCost.Material ||
-							item.additionalCostCategory === AdditionalCost.Maintain)
-							? normalizeProductionOrderId(item.additionalCostProductionOrderId)
-							: null;
-
-					// Backend expects one unified productionOrderId
-					const productionOrderId =
-						categoryProductionOrderId ??
-						additionalCostProductionOrderId ??
-						null;
+						(resolvedAdditionalCostCategory === AdditionalCost.Material ||
+							resolvedAdditionalCostCategory === AdditionalCost.Maintain)
+							? resolveSelectionIds(item.additionalCostProductionOrderId)
+							: {
+									productionOrderId: null,
+									equipmentId: null,
+								};
 
 					// Map quota based material to enum
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
@@ -420,7 +554,11 @@ export function MaterialImportDialog({
 						materialOrPartId: item.materialOrPartId || '',
 						type: item.type || 1,
 						itemType: item.itemType || 1,
-						productionOrderId,
+						categoryProductionOrderId: categorySelection.productionOrderId,
+						categoryEquipmentId: categorySelection.equipmentId,
+						additionalCostProductionOrderId:
+							additionalSelection.productionOrderId,
+						additionalCostEquipmentId: additionalSelection.equipmentId,
 						issuedDetails,
 						shippedDetails,
 						materialsIncludedInContractRevenue,
@@ -447,6 +585,9 @@ export function MaterialImportDialog({
 			setShowForm(false);
 			form.reset();
 			setFilePath('');
+			setImportedItems([]);
+			setEquipmentOptionsByPartId({});
+			setOrderOrEquipmentOptionsByItemId({});
 			setOpen(false);
 			popup.success('Dữ liệu được lưu thành công');
 		} catch (error) {
@@ -474,6 +615,7 @@ export function MaterialImportDialog({
 						onCancel={() => setShowForm(false)}
 						processGroupOptions={processGroupOptions}
 						productionOrderOptions={productionOrderOptions}
+						orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
 					/>
 				</FormProvider>
 			)}
