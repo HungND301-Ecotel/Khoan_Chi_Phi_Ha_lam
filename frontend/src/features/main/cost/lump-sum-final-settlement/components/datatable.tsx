@@ -24,7 +24,7 @@ interface LumpSumDataTableProps {
 	data: LumpSumFinalSettlement[];
 	className?: string;
 	isLoading?: boolean;
-	onAddCustomCost?: () => void;
+	onAddCustomCost?: (row?: LumpSumFinalSettlement) => void;
 	onEditCustomCost?: (row: LumpSumFinalSettlement) => void;
 	onCancelCustomCost?: (row: LumpSumFinalSettlement) => void;
 	onSaveCustomCost?: (row: LumpSumFinalSettlement) => void;
@@ -53,6 +53,13 @@ export function LumpSumDataTable({
 	onDeleteCustomCost,
 	onCustomCostChange,
 }: LumpSumDataTableProps) {
+	const renderUnitPrice = (value: number | null | undefined) => {
+		if (value == null || value === 0) {
+			return '';
+		}
+		return formatNumber(Math.round(value));
+	};
+
 	const table = useReactTable({
 		data,
 		columns,
@@ -405,7 +412,7 @@ export function LumpSumDataTable({
 													variant='default'
 													size='sm'
 													className='w-full px-0'
-													onClick={onAddCustomCost}
+													onClick={() => onAddCustomCost?.(r)}
 												>
 													+
 												</Button>
@@ -420,21 +427,19 @@ export function LumpSumDataTable({
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.materials?.unitPrice ?? 0))}
+											{renderUnitPrice(r.materials?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{formatNumber(Math.round(r.materials?.totalAmount ?? 0))}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.maintains?.unitPrice ?? 0))}
+											{renderUnitPrice(r.maintains?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{formatNumber(Math.round(r.maintains?.totalAmount ?? 0))}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(
-												Math.round(r.electricities?.unitPrice ?? 0),
-											)}
+											{renderUnitPrice(r.electricities?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{formatNumber(

@@ -27,8 +27,9 @@ public class GetLumpSumQuarterCustomCostListQueryHandler(IUnitOfWork unitOfWork)
 
         var hasProcessGroup = Guid.TryParse(request.ProcessGroupId, out var processGroupId);
 
+        var monthList = GetMonthListByQuarter(quarter);
         var items = await customCostRepository.GetAllAsync(
-            predicate: x => x.Quarter == quarter
+            predicate: x => monthList.Contains(x.Month)
                 && x.Year == year
                 && (!hasProcessGroup || x.ProcessGroupId == processGroupId),
             disableTracking: true);
@@ -38,7 +39,7 @@ public class GetLumpSumQuarterCustomCostListQueryHandler(IUnitOfWork unitOfWork)
             .Select(x => new LumpSumQuarterCustomCostDto
             {
                 Id = x.Id,
-                Quarter = x.Quarter,
+                Month = x.Month,
                 Year = x.Year,
                 ProcessGroupId = x.ProcessGroupId,
                 CustomName = x.CustomName,
@@ -48,5 +49,23 @@ public class GetLumpSumQuarterCustomCostListQueryHandler(IUnitOfWork unitOfWork)
                 ElectricityUnitPrice = x.ElectricityUnitPrice
             })
             .ToList();
+    }
+
+    public static List<int> GetMonthListByQuarter(int quarter)
+    {
+        switch (quarter)
+        {
+            case 1:
+                return [1, 2, 3];
+            case 2:
+                return [4, 5, 6];
+            case 3:
+                return [7, 8, 9];
+            case 4:
+                return [10, 11, 12];
+            default:
+                throw new BadRequestException("Invalid quarter or year");
+                break;
+        }
     }
 }

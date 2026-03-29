@@ -15,7 +15,7 @@ public class CreateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
 
     public async Task<bool> Handle(CreateLumpSumQuarterCustomCostCommand request, CancellationToken cancellationToken)
     {
-        if (!int.TryParse(request.CreateModel.Quarter, out var quarter) || quarter < 1 || quarter > 4)
+        if (!int.TryParse(request.CreateModel.Month, out var month) || month < 1 || month > 12)
         {
             throw new BadRequestException("Invalid quarter");
         }
@@ -37,7 +37,7 @@ public class CreateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
         }
 
         var entity = LumpSumQuarterCustomCost.Create(
-            quarter,
+            month,
             year,
             processGroupId,
             request.CreateModel.CustomName?.Trim() ?? string.Empty,

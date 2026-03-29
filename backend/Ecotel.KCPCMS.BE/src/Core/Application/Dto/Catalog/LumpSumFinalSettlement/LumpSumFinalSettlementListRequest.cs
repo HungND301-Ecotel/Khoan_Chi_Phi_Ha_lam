@@ -23,7 +23,7 @@ public class LumpSumQuarterCustomCostListRequest
 
 public class CreateLumpSumQuarterCustomCostRequest
 {
-    public string Quarter { get; set; } = string.Empty;
+    public string Month { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
     public string ProcessGroupId { get; set; } = string.Empty;
     public string CustomName { get; set; } = string.Empty;
@@ -36,7 +36,7 @@ public class CreateLumpSumQuarterCustomCostRequest
 public class UpdateLumpSumQuarterCustomCostRequest
 {
     public Guid Id { get; set; }
-    public string Quarter { get; set; } = string.Empty;
+    public string Month { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
     public string ProcessGroupId { get; set; } = string.Empty;
     public string CustomName { get; set; } = string.Empty;

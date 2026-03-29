@@ -16,7 +16,7 @@ public class UpdateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
 
     public async Task<bool> Handle(UpdateLumpSumQuarterCustomCostCommand request, CancellationToken cancellationToken)
     {
-        if (!int.TryParse(request.UpdateModel.Quarter, out var quarter) || quarter < 1 || quarter > 4)
+        if (!int.TryParse(request.UpdateModel.Month, out var month) || month < 1 || month > 12)
         {
             throw new BadRequestException("Invalid quarter");
         }
@@ -43,7 +43,7 @@ public class UpdateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
             ?? throw new NotFoundException(MessageCommon.DataNotFound);
 
         entity.Update(
-            quarter,
+            month,
             year,
             processGroupId,
             request.UpdateModel.CustomName?.Trim() ?? string.Empty,

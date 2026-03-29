@@ -862,7 +862,7 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<LumpSumQuarterCustomCost>()
-            .HasIndex(l => new { l.Year, l.Quarter, l.ProcessGroupId })
+            .HasIndex(l => new { l.Year, l.Month, l.ProcessGroupId })
             .HasFilter("\"DeletedOn\" IS NULL");
 
         // ActualElectricityCost table

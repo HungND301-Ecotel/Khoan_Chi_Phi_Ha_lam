@@ -5,7 +5,7 @@ namespace Domain.Entities.Production;
 
 public class LumpSumQuarterCustomCost : AuditableEntity<Guid>, IAggregateRoot
 {
-    public int Quarter { get; protected set; }
+    public int Month { get; protected set; }
     public int Year { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
     public string CustomName { get; protected set; } = string.Empty;
@@ -17,7 +17,7 @@ public class LumpSumQuarterCustomCost : AuditableEntity<Guid>, IAggregateRoot
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
 
     public static LumpSumQuarterCustomCost Create(
-        int quarter,
+        int month,
         int year,
         Guid? processGroupId,
         string customName,
@@ -28,7 +28,7 @@ public class LumpSumQuarterCustomCost : AuditableEntity<Guid>, IAggregateRoot
     {
         return new LumpSumQuarterCustomCost
         {
-            Quarter = quarter,
+            Month = month,
             Year = year,
             ProcessGroupId = processGroupId,
             CustomName = customName,
@@ -40,7 +40,7 @@ public class LumpSumQuarterCustomCost : AuditableEntity<Guid>, IAggregateRoot
     }
 
     public void Update(
-        int quarter,
+        int month,
         int year,
         Guid? processGroupId,
         string customName,
@@ -49,7 +49,7 @@ public class LumpSumQuarterCustomCost : AuditableEntity<Guid>, IAggregateRoot
         double maintainUnitPrice,
         double electricityUnitPrice)
     {
-        Quarter = quarter;
+        Month = month;
         Year = year;
         ProcessGroupId = processGroupId;
         CustomName = customName;

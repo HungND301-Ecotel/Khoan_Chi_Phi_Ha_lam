@@ -12,11 +12,11 @@ public class LumpSumFinalSettlementDto
     public string UnitOfMeasureName { get; set; } = string.Empty;
     public double PlannedQuantity { get; set; }
     public double ActualQuantity { get; set; }
-    
+
     public LumpSumCostDetailDto Materials { get; set; } = new();
     public LumpSumCostDetailDto Maintains { get; set; } = new();
     public LumpSumCostDetailDto Electricities { get; set; } = new();
-    
+
     public double TotalAmount { get; set; }
 }
 
@@ -30,6 +30,7 @@ public class LumpSumFinalSettlementQuarterResponseDto
 {
     public List<LumpSumFinalSettlementDto> Items { get; set; } = new();
     public List<LumpSumQuarterRevenueByMonthDto> RevenuesByMonth { get; set; } = new();
+    public List<LumpSumQuarterTransferredCostDto> TransferredCosts { get; set; } = new();
     public LumpSumQuarterTransferredCostDto TransferredCost { get; set; } = new();
     public List<LumpSumQuarterCustomCostDto> CustomCosts { get; set; } = new();
 }
@@ -55,7 +56,7 @@ public class LumpSumQuarterTransferredCostDto
 public class LumpSumQuarterCustomCostDto
 {
     public Guid Id { get; set; }
-    public int Quarter { get; set; }
+    public int Month { get; set; }
     public int Year { get; set; }
     public Guid? ProcessGroupId { get; set; }
     public string CustomName { get; set; } = string.Empty;
