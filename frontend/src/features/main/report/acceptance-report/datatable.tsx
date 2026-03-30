@@ -156,9 +156,6 @@ export function AcceptanceReportDataTable({
 	);
 	const [year, setYear] = useState(String(currentYear));
 	const [rows, setRows] = useState<HierarchicalRow[]>([]);
-	const [activeAcceptanceReportId, setActiveAcceptanceReportId] = useState<
-		string | null
-	>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -206,7 +203,6 @@ export function AcceptanceReportDataTable({
 	const fetchAcceptanceReport = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
-		setActiveAcceptanceReportId(null);
 
 		try {
 			const outputResponse = await api.pagging<Production>(
@@ -229,10 +225,6 @@ export function AcceptanceReportDataTable({
 				setRows([]);
 				return;
 			}
-
-			setActiveAcceptanceReportId(
-				outputsByPeriod[0]?.acceptanceReportId ?? null,
-			);
 
 			const detailResponses = await Promise.all(
 				outputsByPeriod.map((output) =>
@@ -274,13 +266,11 @@ export function AcceptanceReportDataTable({
 	}, [fetchAcceptanceReport]);
 
 	const handleExport = async () => {
-		if (!activeAcceptanceReportId) return;
+		if (rows.length === 0) return;
 
 		setIsExporting(true);
 		try {
-			await api.export(
-				API.PRODUCTION.ACCEPTANCE_REPORT.DOWNLOAD(activeAcceptanceReportId),
-			);
+			await api.export(API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_PERIOD(month, year));
 		} catch (err) {
 			console.error('Failed to export acceptance report:', err);
 		} finally {
@@ -348,7 +338,7 @@ export function AcceptanceReportDataTable({
 				<Button
 					variant='outline'
 					size='sm'
-					disabled={!activeAcceptanceReportId || isLoading || isExporting}
+					disabled={rows.length === 0 || isLoading || isExporting}
 					onClick={handleExport}
 					className='h-10 gap-1.5'
 				>

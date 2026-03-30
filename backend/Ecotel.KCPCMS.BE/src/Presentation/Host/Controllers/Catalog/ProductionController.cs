@@ -137,6 +137,14 @@ public class ProductionController : BaseNoAuthController
         return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"AcceptanceReport_{id:N}.xlsx");
     }
 
+    [HttpGet("AcceptanceReport/export")]
+    [OpenApiOperation("Export AcceptanceReport By Period", "Export acceptance report excel by month and year")]
+    public async Task<IActionResult> ExportAcceptanceReportByPeriod([FromQuery] string? month, [FromQuery] string? year)
+    {
+        var result = await Mediator.Send(new ExportAcceptanceReportByPeriodExcelQuery(month, year));
+        return File(result.FileBytes.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     [HttpGet("AcceptanceReport/{id:guid}/additional-cost")]
     [OpenApiOperation("Get All Additional Costs", "Get all additional cost items grouped by type")]
     public async Task<IActionResult> GetAllAcceptanceReportAdditionalCost([FromRoute] Guid id)
