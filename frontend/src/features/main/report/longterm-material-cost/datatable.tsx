@@ -613,10 +613,28 @@ export function LongtermMaterialCostDataTable({
 	const handleExport = async () => {
 		if (!activeAcceptanceReportId) return;
 
+		const processGroupId =
+			selectedProcessGroup !== 'all' &&
+			selectedProcessGroup !== UNGROUPED_PROCESS_GROUP
+				? selectedProcessGroup
+				: undefined;
+
 		setIsExporting(true);
 		try {
+			const exportFileName = `bang-hach-toan-chi-phi-vat-tu-dai-ky-thang-${month}-nam-${year}.xlsx`;
+
 			await api.export(
-				API.PRODUCTION.ACCEPTANCE_REPORT.DOWNLOAD(activeAcceptanceReportId),
+				`${API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_LONG_TERM_MATERIAL_COST(activeAcceptanceReportId)}?${new URLSearchParams(
+					Object.entries({
+						month,
+						year,
+						...(processGroupId ? { processGroupId } : {}),
+					}) as [string, string][],
+				).toString()}`,
+				{
+					fileName: exportFileName,
+					forceFileName: true,
+				},
 			);
 		} catch (err) {
 			console.error('Failed to export long-term material cost:', err);

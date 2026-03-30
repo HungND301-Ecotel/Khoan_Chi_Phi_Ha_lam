@@ -161,6 +161,18 @@ public class ProductionController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("AcceptanceReport/{acceptanceReportId:guid}/export-longterm-material-cost")]
+    [OpenApiOperation("Export Long-term Material Cost Excel", "Export long-term material cost accounting report in Excel format")]
+    public async Task<IActionResult> ExportLongTermMaterialCostExcel(
+        [FromRoute] Guid acceptanceReportId,
+        [FromQuery] string? month,
+        [FromQuery] string? year,
+        [FromQuery] Guid? processGroupId)
+    {
+        var result = await Mediator.Send(new ExportLongTermMaterialCostExcelQuery(acceptanceReportId, month, year, processGroupId));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     [HttpPut("AcceptanceReport/long-term-tracking")]
     [OpenApiOperation("Update Allocation Ratio", "Update allocation ratio and recalculate log values")]
     public async Task<IActionResult> UpdateAcceptanceReportItemLog([FromBody] UpdateAcceptanceReportItemLogDto updateModel)
