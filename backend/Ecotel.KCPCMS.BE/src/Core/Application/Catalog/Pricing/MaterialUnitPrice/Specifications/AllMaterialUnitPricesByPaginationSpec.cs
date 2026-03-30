@@ -66,7 +66,9 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
 
             // TunnelExcavation Properties
             PassportId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).PassportId : null,
-            PassportName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Name : null,
+            PassportName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ?
+                $"H/c {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Name}; {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Sd}; {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Sc} "
+                : null,
             HardnessId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).HardnessId : null,
             HardnessName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Hardness!.Value : null,
             InsertItemId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).InsertItemId : null,

@@ -105,6 +105,6 @@ public static class PlannedMaterialCostCalculator
 
     private static double ApplyOtherMaterialValue(double total, double otherMaterialValue)
     {
-        return total * (1 + otherMaterialValue / 100.0);
+        return total + otherMaterialValue;
     }
 }

@@ -52,6 +52,11 @@ export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 			</span>
 		),
 	},
+	{
+		accessorKey: 'totalPrice',
+		header: 'Đơn giá máng trượt (đ/m)',
+		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+	},
 ];
 
 export type ExpandSlideDetail = {
