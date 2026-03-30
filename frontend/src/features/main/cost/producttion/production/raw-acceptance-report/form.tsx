@@ -1195,11 +1195,26 @@ function RawAcceptanceReportRow({
 	const isSafetyAndWelfareMaterial =
 		materialTypeValue === MaterialType.Material &&
 		itemTypeValue === ItemType.SafetyAndWelfare;
+	const isSparePartByEquipment =
+		materialTypeValue === MaterialType.SparePart &&
+		itemTypeValue === ItemType.InContract;
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrEquipmentOptions =
 		(materialOrPartId
 			? orderOrEquipmentOptionsByItemId[materialOrPartId]
 			: undefined) ?? productionOrderOptions;
+	const equipmentOptions = orderOrEquipmentOptions.filter((option) =>
+		option.value.startsWith(EQUIPMENT_OPTION_PREFIX),
+	);
+	const productionOrderOnlyOptions = orderOrEquipmentOptions.filter((option) =>
+		option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
+	);
+	const categoryOrderOrEquipmentOptions = isSparePartByEquipment
+		? [...equipmentOptions, ...productionOrderOnlyOptions]
+		: orderOrEquipmentOptions;
+	const additionalCostOrderOrEquipmentOptions = isSparePartByEquipment
+		? productionOrderOnlyOptions
+		: orderOrEquipmentOptions;
 	const additionalCostOptionsByType =
 		defaultAdditionalCostByType == null
 			? ADDITIONAL_COST_OPTIONS
@@ -1403,11 +1418,12 @@ function RawAcceptanceReportRow({
 
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
-				categoryProductionOrderId == null
+				categoryProductionOrderId == null &&
+				categoryOrderOrEquipmentOptions.length > 0
 			) {
 				form.setValue(
 					`${basename}.categoryProductionOrderId` as FieldName,
-					orderOrEquipmentOptions[0]?.value ?? '',
+					categoryOrderOrEquipmentOptions[0].value,
 				);
 			}
 		} else if (justEnabledAdditional) {
@@ -1445,15 +1461,22 @@ function RawAcceptanceReportRow({
 			}
 
 			if (
-				(additionalCostCategoryValue === AdditionalCost.Material ||
-					additionalCostCategoryValue === AdditionalCost.Maintain) &&
-				additionalCostProductionOrderId == null
+				additionalCostCategoryValue === AdditionalCost.Material ||
+				additionalCostCategoryValue === AdditionalCost.Maintain
 			) {
-				form.setValue(
-					`${basename}.additionalCostProductionOrderId` as FieldName,
-					orderOrEquipmentOptions[0]?.value ?? '',
-				);
-			} else if (
+				const hasValidSelection =
+					additionalCostProductionOrderId != null &&
+					additionalCostOrderOrEquipmentOptions.some(
+						(option) => option.value === additionalCostProductionOrderId,
+					);
+				if (!hasValidSelection) {
+					form.setValue(
+						`${basename}.additionalCostProductionOrderId` as FieldName,
+						additionalCostOrderOrEquipmentOptions[0]?.value ?? null,
+					);
+				}
+			}
+			if (
 				additionalCostCategoryValue === AdditionalCost.OtherMaterial &&
 				otherMaterialDetailValue == null
 			) {
@@ -1511,7 +1534,8 @@ function RawAcceptanceReportRow({
 		defaultAdditionalCostByType,
 		isSafetyAndWelfareMaterial,
 		processGroupOptions,
-		orderOrEquipmentOptions,
+		categoryOrderOrEquipmentOptions,
+		additionalCostOrderOrEquipmentOptions,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
 		additionalCostProductionOrderId,
@@ -1706,12 +1730,12 @@ function RawAcceptanceReportRow({
 		}
 
 		if (
-			orderOrEquipmentOptions.length > 0 &&
+			categoryOrderOrEquipmentOptions.length > 0 &&
 			categoryProductionOrderId == null
 		) {
 			form.setValue(
 				`${basename}.categoryProductionOrderId` as FieldName,
-				orderOrEquipmentOptions[0].value,
+				categoryOrderOrEquipmentOptions[0].value,
 			);
 		}
 	}, [
@@ -1720,7 +1744,7 @@ function RawAcceptanceReportRow({
 		defaultCategoryByType,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
-		orderOrEquipmentOptions,
+		categoryOrderOrEquipmentOptions,
 		form,
 		basename,
 	]);
@@ -1729,13 +1753,15 @@ function RawAcceptanceReportRow({
 		if (!showAdditionalCostDropdown) return;
 
 		if (additionalCostNeedsProductionOrder) {
-			if (
-				orderOrEquipmentOptions.length > 0 &&
-				additionalCostProductionOrderId == null
-			) {
+			const hasValidSelection =
+				additionalCostProductionOrderId != null &&
+				additionalCostOrderOrEquipmentOptions.some(
+					(option) => option.value === additionalCostProductionOrderId,
+				);
+			if (!hasValidSelection) {
 				form.setValue(
 					`${basename}.additionalCostProductionOrderId` as FieldName,
-					orderOrEquipmentOptions[0].value,
+					additionalCostOrderOrEquipmentOptions[0]?.value ?? null,
 				);
 			}
 			if (otherMaterialDetailValue != null) {
@@ -1775,7 +1801,7 @@ function RawAcceptanceReportRow({
 		additionalCostNeedsOtherMaterialDetail,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
-		orderOrEquipmentOptions,
+		additionalCostOrderOrEquipmentOptions,
 		form,
 		basename,
 	]);
@@ -2150,7 +2176,7 @@ function RawAcceptanceReportRow({
 									<FormComboBox
 										control={form.control}
 										name={`${basename}.categoryProductionOrderId` as FieldName}
-										options={orderOrEquipmentOptions}
+										options={categoryOrderOrEquipmentOptions}
 										placeholder='Chọn quyết định, lệnh sản xuất'
 									/>
 								</div>
@@ -2213,7 +2239,7 @@ function RawAcceptanceReportRow({
 												name={
 													`${basename}.additionalCostProductionOrderId` as FieldName
 												}
-												options={orderOrEquipmentOptions}
+												options={additionalCostOrderOrEquipmentOptions}
 												placeholder='Chọn quyết định, lệnh sản xuất'
 											/>
 										</div>

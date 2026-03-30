@@ -59,6 +59,9 @@ type ProductionOrderOption = {
 	label: string;
 };
 
+const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
+const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+
 type MaterialImportFormProps = {
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
@@ -447,12 +450,27 @@ function MaterialImportRow({
 	const isSafetyAndWelfareMaterial =
 		materialTypeValue === MaterialType.Material &&
 		itemTypeValue === ItemType.SafetyAndWelfare;
+	const isSparePartByEquipment =
+		materialTypeValue === MaterialType.SparePart &&
+		itemTypeValue === ItemType.InContract;
 
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrEquipmentOptions =
 		(materialOrPartId
 			? orderOrEquipmentOptionsByItemId[materialOrPartId]
 			: undefined) ?? productionOrderOptions;
+	const equipmentOptions = orderOrEquipmentOptions.filter((option) =>
+		option.value.startsWith(EQUIPMENT_OPTION_PREFIX),
+	);
+	const productionOrderOnlyOptions = orderOrEquipmentOptions.filter((option) =>
+		option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
+	);
+	const categoryOrderOrEquipmentOptions = isSparePartByEquipment
+		? [...equipmentOptions, ...productionOrderOnlyOptions]
+		: orderOrEquipmentOptions;
+	const additionalCostOrderOrEquipmentOptions = isSparePartByEquipment
+		? productionOrderOnlyOptions
+		: orderOrEquipmentOptions;
 
 	const additionalCostOptionsByType =
 		defaultAdditionalCostByType == null
@@ -635,9 +653,12 @@ function MaterialImportRow({
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
 				categoryProductionOrderId == null &&
-				orderOrEquipmentOptions.length > 0
+				categoryOrderOrEquipmentOptions.length > 0
 			)
-				set('categoryProductionOrderId', orderOrEquipmentOptions[0].value);
+				set(
+					'categoryProductionOrderId',
+					categoryOrderOrEquipmentOptions[0].value,
+				);
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown)
 				resetCellFields(form, basename, [
@@ -659,11 +680,20 @@ function MaterialImportRow({
 				set('additionalCostCategory', defaultAdditionalCostByType);
 			if (
 				(additionalCostCategory === AdditionalCost.Material ||
-					additionalCostCategory === AdditionalCost.Maintain) &&
-				additionalCostProductionOrderId == null &&
-				orderOrEquipmentOptions.length > 0
-			)
-				set('additionalCostProductionOrderId', orderOrEquipmentOptions[0].value);
+					additionalCostCategory === AdditionalCost.Maintain)
+			) {
+				const hasValidSelection =
+					additionalCostProductionOrderId != null &&
+					additionalCostOrderOrEquipmentOptions.some(
+						(option) => option.value === additionalCostProductionOrderId,
+					);
+				if (!hasValidSelection) {
+					set(
+						'additionalCostProductionOrderId',
+						additionalCostOrderOrEquipmentOptions[0]?.value ?? null,
+					);
+				}
+			}
 			if (
 				additionalCostCategory === AdditionalCost.OtherMaterial &&
 				otherMaterialDetailValue == null &&
@@ -716,7 +746,8 @@ function MaterialImportRow({
 		defaultAdditionalCostByType,
 		isSafetyAndWelfareMaterial,
 		processGroupOptions,
-		orderOrEquipmentOptions,
+		categoryOrderOrEquipmentOptions,
+		additionalCostOrderOrEquipmentOptions,
 		form,
 		basename,
 	]);
@@ -754,18 +785,18 @@ function MaterialImportRow({
 			return;
 		}
 		if (
-			orderOrEquipmentOptions.length === 0 ||
+			categoryOrderOrEquipmentOptions.length === 0 ||
 			categoryProductionOrderId != null
 		)
 			return;
-		set('categoryProductionOrderId', orderOrEquipmentOptions[0].value);
+		set('categoryProductionOrderId', categoryOrderOrEquipmentOptions[0].value);
 	}, [
 		showCategoryDropdown,
 		categoryValue,
 		defaultCategoryByType,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
-		orderOrEquipmentOptions,
+		categoryOrderOrEquipmentOptions,
 	]);
 
 	useEffect(() => {
@@ -778,11 +809,18 @@ function MaterialImportRow({
 		if (!requiresProductionOrder) {
 			if (additionalCostProductionOrderId != null)
 				set('additionalCostProductionOrderId', null);
-		} else if (
-			orderOrEquipmentOptions.length > 0 &&
-			additionalCostProductionOrderId == null
-		) {
-			set('additionalCostProductionOrderId', orderOrEquipmentOptions[0].value);
+		} else {
+			const hasValidSelection =
+				additionalCostProductionOrderId != null &&
+				additionalCostOrderOrEquipmentOptions.some(
+					(option) => option.value === additionalCostProductionOrderId,
+				);
+			if (!hasValidSelection) {
+				set(
+					'additionalCostProductionOrderId',
+					additionalCostOrderOrEquipmentOptions[0]?.value ?? null,
+				);
+			}
 		}
 
 		if (!requiresOtherMaterialDetail) {
@@ -801,7 +839,7 @@ function MaterialImportRow({
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
-		orderOrEquipmentOptions,
+		additionalCostOrderOrEquipmentOptions,
 	]);
 
 	useEffect(() => {
@@ -1242,7 +1280,7 @@ function MaterialImportRow({
 									<FormComboBox
 										control={form.control}
 										name={`${basename}.categoryProductionOrderId` as RowPath}
-										options={orderOrEquipmentOptions}
+										options={categoryOrderOrEquipmentOptions}
 										placeholder='Chọn quyết định, lệnh sản xuất'
 									/>
 								</div>
@@ -1305,7 +1343,7 @@ function MaterialImportRow({
 												name={
 													`${basename}.additionalCostProductionOrderId` as RowPath
 												}
-												options={orderOrEquipmentOptions}
+												options={additionalCostOrderOrEquipmentOptions}
 												placeholder='Chọn quyết định, lệnh sản xuất'
 											/>
 										</div>
