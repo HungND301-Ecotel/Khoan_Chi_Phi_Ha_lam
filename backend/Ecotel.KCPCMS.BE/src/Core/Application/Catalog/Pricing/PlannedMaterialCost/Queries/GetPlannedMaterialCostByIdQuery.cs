@@ -106,7 +106,7 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                 .FirstOrDefault();
         }
 
-        var materialCost = SumMaterialUnitPriceCost(materialUnitPrice.MaterialUnitPrice);
+        var materialCost = SumMaterialUnitPriceCost(materialUnitPrice.MaterialUnitPrice) + materialUnitPrice.MaterialUnitPrice.OtherMaterialvalue;
         if (materialUnitPrice.NormFactor?.TargetHardnessId.HasValue == true && materialUnitPrice.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
             var targetMaterial = ResolveTargetTunnelMaterialUnitPrice(
@@ -116,7 +116,7 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
 
             if (targetMaterial != null)
             {
-                materialCost = SumMaterialUnitPriceCost(targetMaterial);
+                materialCost = SumMaterialUnitPriceCost(targetMaterial) + targetMaterial.OtherMaterialvalue;
             }
         }
 
