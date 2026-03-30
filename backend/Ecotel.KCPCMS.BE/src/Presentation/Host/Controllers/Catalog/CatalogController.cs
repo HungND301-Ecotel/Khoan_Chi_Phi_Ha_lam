@@ -1008,6 +1008,74 @@ public class CatalogController : BaseNoAuthController
     }
     #endregion
 
+    #region Power
+
+    [HttpGet("Power")]
+    [OpenApiOperation("Get All Power", "")]
+    public async Task<IActionResult> GetAllPower([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMetricQuery<Power>(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("Power/export")]
+    [OpenApiOperation("Export Power", "")]
+    public async Task<IActionResult> ExportPower()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelPowerQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Cong_suat.xlsx");
+        return result;
+    }
+
+    [HttpPost("Power/import")]
+    [OpenApiOperation("Import Power", "")]
+    public async Task<IActionResult> ImportPower([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportPowerExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("Power/{Id:guid}")]
+    [OpenApiOperation("Get Power By Id", "")]
+    public async Task<IActionResult> GetPowerById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMetricByIdQuery<Power>(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("Power")]
+    [OpenApiOperation("Create New Power", "")]
+    public async Task<IActionResult> CreatePower([FromBody] CreateMetricDto createModel)
+    {
+        var result = await Mediator.Send(new CreateMetricCommand<Power>(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("Power")]
+    [OpenApiOperation("Update Power", "")]
+    public async Task<IActionResult> UpdatePower([FromBody] MetricDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateMetricCommand<Power>(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("Power/{deleteId:guid}")]
+    [OpenApiOperation("Delete Power", "")]
+    public async Task<IActionResult> DeletePower([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMetricCommand<Power>(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("Power")]
+    [OpenApiOperation("Delete Many Power", "")]
+    public async Task<IActionResult> DeletePowerList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteMetricListCommand<Power>(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
     #region InsertItem
 
     [HttpGet("InsertItem")]

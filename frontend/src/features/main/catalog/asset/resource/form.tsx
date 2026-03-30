@@ -26,7 +26,6 @@ export type AssetResourceDetail = {
 	id: string;
 	code: string;
 	name: string;
-	usageTime: number;
 	assigmentCodeId: string;
 	assignmentCode: string;
 	unitOfMeasureId: string;
@@ -67,7 +66,6 @@ export function AssetResourceForm({ data, row }: ActionDialogProps<Asset>) {
 
 					form.reset({
 						...formData,
-						usageTime: formData.usageTime ?? 0,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),

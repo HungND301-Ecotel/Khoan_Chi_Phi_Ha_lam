@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Common.Enums;
 using Domain.Entities.Pricing;
 
 namespace Domain.Entities.Index;
@@ -6,8 +7,9 @@ namespace Domain.Entities.Index;
 public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid ProductionProcessId { get; protected set; }
-    public Guid HardnessId { get; protected set; }
+    public Guid? HardnessId { get; protected set; }
     public Guid StoneClampRatioId { get; protected set; }
+    public SteelMeshType SteelMeshType { get; protected set; } = SteelMeshType.None;
     public double Value { get; protected set; }
     public Guid? TargetHardnessId { get; protected set; }
 
@@ -24,7 +26,7 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
     public IReadOnlyList<NormFactorAssignmentCode> NormFactorAssignmentCodes => _normFactorAssignmentCodes.ToList();
 
 
-    public static NormFactor Create(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null)
+    public static NormFactor Create(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null, SteelMeshType steelMeshType = SteelMeshType.None)
     {
         return new NormFactor
         {
@@ -32,7 +34,8 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
             HardnessId = hardnessId,
             StoneClampRatioId = stoneClampRatioId,
             Value = value,
-            TargetHardnessId = targetHardnessId
+            TargetHardnessId = targetHardnessId,
+            SteelMeshType = steelMeshType
         };
     }
 
@@ -45,12 +48,13 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         }
     }
 
-    public void Update(Guid productionProcessId, Guid hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null)
+    public void Update(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null, SteelMeshType steelMeshType = SteelMeshType.None)
     {
         ProductionProcessId = productionProcessId;
         HardnessId = hardnessId;
         StoneClampRatioId = stoneClampRatioId;
         Value = value;
         TargetHardnessId = targetHardnessId;
+        SteelMeshType = steelMeshType;
     }
 }

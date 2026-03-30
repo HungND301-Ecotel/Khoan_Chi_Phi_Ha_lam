@@ -10,7 +10,6 @@ export const assetSafetyAndWelfareFormSchema = z.object({
 	name: z.string().nonempty({
 		message: 'Tên vật tư, tài sản không được để trống',
 	}),
-	usageTime: z.coerce.number<number>(),
 	unitOfMeasureId: z
 		.string()
 		.trim()
@@ -60,7 +59,6 @@ export const ASSET_SAFETY_AND_WELFARE_FORM_DEFAULT: AssetSafetyAndWelfareFormSch
 		assigmentCodeId: '',
 		code: '',
 		name: '',
-		usageTime: 0,
 		unitOfMeasureId: '',
 		materialType: 3,
 		costs: [

@@ -7,7 +7,6 @@ export const assetResourceFormSchema = z.object({
 	name: z.string().nonempty({
 		message: 'Tên vật tư, tài sản không được để trống',
 	}),
-	usageTime: z.coerce.number<number>(),
 	unitOfMeasureId: z
 		.string()
 		.trim()
@@ -53,7 +52,6 @@ export type AssetResourceFormSchema = z.infer<typeof assetResourceFormSchema>;
 export const ASSET_RESOURCE_FORM_DEFAULT: AssetResourceFormSchema = {
 	code: '',
 	name: '',
-	usageTime: 0,
 	unitOfMeasureId: '',
 	materialType: 4,
 	costs: [

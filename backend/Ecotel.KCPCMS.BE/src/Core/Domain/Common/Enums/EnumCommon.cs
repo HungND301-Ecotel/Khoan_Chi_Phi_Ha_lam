@@ -87,7 +87,8 @@ public enum MaterialType
 public enum MaterialUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò
-    Longwall = 2           // Lò chợ
+    Longwall = 2,          // Lò chợ
+    TunnelSupportAndDrilling = 3
 }
 
 
@@ -158,6 +159,13 @@ public enum PartType
 {
     Part = 1,
     OtherPart = 2
+}
+
+public enum SteelMeshType
+{
+    None = 1,
+    SingleLayerSteelMesh = 2,
+    DoubleLayerSteelMesh = 3
 }
 
 public enum IssuedQuantityType

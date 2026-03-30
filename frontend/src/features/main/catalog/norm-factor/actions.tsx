@@ -5,13 +5,14 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
+import { Checkbox } from '@/components/ui/checkbox';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { NormFactor } from './columns';
 import { NORM_FACTOR_SCHEMA_DEFAULT, NormFactorSchema } from './schema';
@@ -20,6 +21,10 @@ import { Strength } from '../parameter/strength/columns';
 import { ProcessStep } from '../process/step/columns';
 import { ContractCode } from '../contract-code/columns';
 import { Clamp } from '../parameter/clamp/columns';
+
+const STEEL_MESH_TYPE_NONE = 1;
+const STEEL_MESH_TYPE_SINGLE_LAYER = 2;
+const STEEL_MESH_TYPE_DOUBLE_LAYER = 3;
 
 export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 	const { setOpen } = useDialog();
@@ -40,12 +45,21 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 		defaultValues: row
 			? {
 					...row,
+					hardnessId: row.hardnessId ?? '',
+					stoneClampRatioId: row.stoneClampRatioId ?? '',
+					targetHardnessId: row.targetHardnessId ?? '',
+					isMechanizedLongwall:
+						(row.steelMeshType ?? STEEL_MESH_TYPE_NONE) !==
+						STEEL_MESH_TYPE_NONE,
+					steelMeshType: row.steelMeshType ?? STEEL_MESH_TYPE_NONE,
 					assignmentCodeIds: (row.affectAssignmentCodes ?? []).map(
 						(item) => item.id,
 					),
 				}
 			: NORM_FACTOR_SCHEMA_DEFAULT,
 	});
+
+	const previousSteelMeshTypeRef = useRef<number | undefined>(undefined);
 
 	useEffect(() => {
 		api
@@ -91,8 +105,29 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 
 	const handleSubmit = async (values: NormFactorSchema) => {
 		try {
+			const steelMeshType = values.isMechanizedLongwall
+				? values.steelMeshType
+				: STEEL_MESH_TYPE_NONE;
+			const stoneClampRatioId = values.stoneClampRatioId || null;
+			const hardnessId = values.isMechanizedLongwall
+				? null
+				: values.hardnessId || null;
+
+			if (!values.isMechanizedLongwall && !hardnessId) {
+				form.setError('hardnessId', {
+					type: 'manual',
+					message: 'Độ kiên cố than đá không được để trống.',
+				});
+				return;
+			}
+
 			const payload = {
-				...values,
+				productionProcessId: values.productionProcessId,
+				hardnessId,
+				stoneClampRatioId,
+				steelMeshType,
+				assignmentCodeIds: values.assignmentCodeIds,
+				value: values.value,
 				targetHardnessId: values.targetHardnessId || null,
 			};
 
@@ -117,6 +152,8 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 	};
 
 	const selectedGroupId = form.watch('processGroupId');
+	const isMechanizedLongwall = form.watch('isMechanizedLongwall');
+	const selectedSteelMeshType = form.watch('steelMeshType');
 
 	const productionOptions = productionProcesses
 		.filter((p) =>
@@ -125,6 +162,31 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 		.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }));
 
 	const selectedHardnessId = form.watch('hardnessId');
+
+	useEffect(() => {
+		if (!isMechanizedLongwall) {
+			previousSteelMeshTypeRef.current = selectedSteelMeshType;
+			return;
+		}
+
+		if (
+			previousSteelMeshTypeRef.current === undefined ||
+			previousSteelMeshTypeRef.current === selectedSteelMeshType
+		) {
+			previousSteelMeshTypeRef.current = selectedSteelMeshType;
+			return;
+		}
+
+		if (selectedSteelMeshType === STEEL_MESH_TYPE_SINGLE_LAYER) {
+			form.setValue('value', 1);
+		}
+
+		if (selectedSteelMeshType === STEEL_MESH_TYPE_DOUBLE_LAYER) {
+			form.setValue('value', 2);
+		}
+
+		previousSteelMeshTypeRef.current = selectedSteelMeshType;
+	}, [isMechanizedLongwall, selectedSteelMeshType, hardnesses, form]);
 
 	useEffect(() => {
 		const currentTargetHardnessId = form.getValues('targetHardnessId');
@@ -158,13 +220,64 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 				options={productionOptions}
 			/>
 
-			<FormComboBox
-				control={form.control}
-				name='hardnessId'
-				label='Độ kiên cố than đá (f)'
-				placeholder='Chọn độ kiên cố'
-				options={hardnesses.map((h) => ({ label: h.value, value: h.id }))}
-			/>
+			<div className='flex items-center gap-2'>
+				<Checkbox
+					id='is-mechanized-longwall'
+					checked={isMechanizedLongwall}
+					onCheckedChange={(checked) => {
+						const isChecked = !!checked;
+						form.setValue('isMechanizedLongwall', isChecked);
+
+						if (isChecked) {
+							const currentSteelMeshType = form.getValues('steelMeshType');
+							if (
+								!currentSteelMeshType ||
+								currentSteelMeshType === STEEL_MESH_TYPE_NONE
+							) {
+								form.setValue('steelMeshType', STEEL_MESH_TYPE_SINGLE_LAYER);
+							}
+							form.setValue('hardnessId', '');
+							form.clearErrors('hardnessId');
+							previousSteelMeshTypeRef.current = STEEL_MESH_TYPE_NONE;
+						} else {
+							form.setValue('steelMeshType', STEEL_MESH_TYPE_NONE);
+						}
+					}}
+				/>
+				<label
+					htmlFor='is-mechanized-longwall'
+					className='cursor-pointer text-sm leading-none font-medium'
+				>
+					Lò chợ cơ giới hóa (CGH)
+				</label>
+			</div>
+
+			{isMechanizedLongwall ? (
+				<FormComboBox
+					control={form.control}
+					name='steelMeshType'
+					label='Chọn lớp lưới thép'
+					placeholder='Chọn lớp lưới thép'
+					options={[
+						{
+							label: 'Trải 1 lớp lưới thép',
+							value: STEEL_MESH_TYPE_SINGLE_LAYER,
+						},
+						{
+							label: 'Trải 2 lớp lưới thép',
+							value: STEEL_MESH_TYPE_DOUBLE_LAYER,
+						},
+					]}
+				/>
+			) : (
+				<FormComboBox
+					control={form.control}
+					name='hardnessId'
+					label='Độ kiên cố than đá (f)'
+					placeholder='Chọn độ kiên cố'
+					options={hardnesses.map((h) => ({ label: h.value, value: h.id }))}
+				/>
+			)}
 
 			<FormComboBox
 				control={form.control}

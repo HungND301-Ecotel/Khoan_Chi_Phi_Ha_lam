@@ -16,6 +16,13 @@ namespace Application.Dto.Catalog.Metric
         public string Value { get; set; }
     }
 
+    public class PowerExcelDto
+    {
+        public Guid Id { get; set; }
+        [Display(Name = "Công suất")]
+        public string Value { get; set; }
+    }
+
     public class SupportStepExcelDto
     {
         public Guid Id { get; set; }

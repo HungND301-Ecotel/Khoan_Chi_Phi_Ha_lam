@@ -31,7 +31,6 @@ export type AssetInternalDetail = {
 	assignmentCode: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
-	usageTime: number;
 	materialType: 1;
 	costs: Array<{
 		startMonth: string;
@@ -145,15 +144,6 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 				label='Tên vật tư, tài sản'
 				placeholder='Nhập tên vật tư, tài sản'
 			/>
-
-			<div className='flex-1'>
-				<FormNumber
-					control={form.control}
-					name={`usageTime`}
-					label='Thời gian sử dụng (tháng)'
-					placeholder='Nhập thời gian sử dụng (tháng)'
-				/>
-			</div>
 
 			<FormComboBox
 				control={form.control}

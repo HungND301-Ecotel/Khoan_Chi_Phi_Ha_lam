@@ -32,14 +32,17 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
                 .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        string seamFaceName = materialUnitPrice.SeamFace?.Value ?? string.Empty;
-
         return new LongwallMaterialUnitPriceDetailDto
         {
             Id = materialUnitPrice.Id,
             Code = materialUnitPrice.Code.Value,
             CuttingThickness = materialUnitPrice.CuttingThickness.Adapt<CuttingThicknessDto>(),
             LongwallParameters = materialUnitPrice.LongwallParameters.Adapt<LongwallParametersDto>(),
+            SeamFaceId = materialUnitPrice.SeamFaceId,
+            TechnologyId = materialUnitPrice.TechnologyId,
+            PowerId = materialUnitPrice.PowerId,
+            HardnessId = materialUnitPrice.HardnessId,
+            IsLongwallMaterialUnitPriceCGH = materialUnitPrice.IsLongwallMaterialUnitPriceCGH,
             ProcessId = materialUnitPrice.ProcessId,
             ProcessCode = materialUnitPrice.ProductionProcess!.Code!.Value,
             StartMonth = materialUnitPrice.StartMonth,

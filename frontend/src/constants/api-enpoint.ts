@@ -194,6 +194,16 @@ export const API = {
 				IMPORT: '/v1/catalog/productionorder/import',
 				EXPORT: '/v1/catalog/productionorder/export',
 			},
+			POWER: {
+				LIST: '/v1/catalog/power',
+				CREATE: '/v1/catalog/power',
+				UPDATE: '/v1/catalog/power',
+				DELETES: '/v1/catalog/power',
+				DELETE: (id: string) => `/v1/catalog/power/${id}`,
+				DETAIL: (id: string) => `/v1/catalog/power/${id}`,
+				IMPORT: '/v1/catalog/power/import',
+				EXPORT: '/v1/catalog/power/export',
+			},
 		},
 		ADJUSTMENT: {
 			FACTOR: {
@@ -256,6 +266,18 @@ export const API = {
 				DETAIL: (id: string) => `/v1/pricing/longwallmaterialunitprice/${id}`,
 				IMPORT: '/v1/pricing/longwallmaterialunitprice/import',
 				EXPORT: '/v1/pricing/longwallmaterialunitprice/export',
+			},
+			SUPPORT_AND_DRILLING: {
+				LIST: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				CREATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				UPDATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				DELETES: '/v1/pricing/tunnelsupportanddrillingmaterialunitpricelist',
+				DELETE: (id: string) =>
+					`/v1/pricing/tunnelsupportanddrillingmaterialunitprice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/tunnelsupportanddrillingmaterialunitprice/${id}`,
+				IMPORT: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice/import',
+				EXPORT: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice/export',
 			},
 		},
 		SLIDE: {

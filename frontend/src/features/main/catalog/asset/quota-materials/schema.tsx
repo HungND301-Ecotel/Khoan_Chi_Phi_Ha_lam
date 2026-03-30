@@ -10,7 +10,6 @@ export const assetQuotaMaterialsFormSchema = z.object({
 	name: z.string().nonempty({
 		message: 'Tên vật tư, tài sản không được để trống',
 	}),
-	usageTime: z.coerce.number<number>(),
 	unitOfMeasureId: z
 		.string()
 		.trim()
@@ -60,7 +59,6 @@ export const ASSET_QUOTA_MATERIALS_FORM_DEFAULT: AssetQuotaMaterialsFormSchema =
 		assigmentCodeId: '',
 		code: '',
 		name: '',
-		usageTime: 0,
 		unitOfMeasureId: '',
 		materialType: 5,
 		costs: [

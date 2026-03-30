@@ -40,6 +40,7 @@ public class ApplicationDbContext(
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
     public DbSet<ProductionProcess> ProductionProcesses => Set<ProductionProcess>();
     public DbSet<Hardness> Hardnesses => Set<Hardness>();
+    public DbSet<Power> Powers => Set<Power>();
     public DbSet<StoneClampRatio> StoneClampRatios => Set<StoneClampRatio>();
     public DbSet<InsertItem> InsertItems => Set<InsertItem>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
@@ -118,6 +119,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<InsertItem>().ToTable(nameof(InsertItem), "Index");
         modelBuilder.Entity<ProductionOrder>().ToTable(nameof(ProductionOrder), "Index");
         modelBuilder.Entity<Technology>().ToTable(nameof(Technology), "Index");
+        modelBuilder.Entity<Power>().ToTable(nameof(Power), "Index");
         modelBuilder.Entity<SupportStep>().ToTable(nameof(SupportStep), "Index");
         modelBuilder.Entity<Passport>().ToTable(nameof(Passport), "Index");
         modelBuilder.Entity<LongwallParameters>().ToTable(nameof(LongwallParameters), "Index");
@@ -371,6 +373,12 @@ public class ApplicationDbContext(
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
 
+        //Power table
+        modelBuilder.Entity<Power>()
+            .HasIndex(e => e.Value)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
         //InsertItem table
         modelBuilder.Entity<InsertItem>()
             .HasIndex(e => e.Value)
@@ -422,7 +430,8 @@ public class ApplicationDbContext(
             .ToTable(nameof(MaterialUnitPrice), "Pricing")
             .HasDiscriminator<MaterialUnitPriceType>("MaterialType")
             .HasValue<TunnelExcavationMaterialUnitPrice>(MaterialUnitPriceType.TunnelExcavation)
-            .HasValue<LongwallMaterialUnitPrice>(MaterialUnitPriceType.Longwall);
+            .HasValue<LongwallMaterialUnitPrice>(MaterialUnitPriceType.Longwall)
+            .HasValue<TunnelSupportAndDrillingMaterialUnitPrice>(MaterialUnitPriceType.TunnelSupportAndDrilling);
 
         modelBuilder.Entity<MaterialUnitPriceAssignmentCode>().ToTable(nameof(MaterialUnitPriceAssignmentCode), "Pricing");
         modelBuilder.Entity<SlideUnitPrice>().ToTable(nameof(SlideUnitPrice), "Pricing");
@@ -487,6 +496,18 @@ public class ApplicationDbContext(
             .HasOne(s => s.SupportStep)
             .WithMany(h => h.MaterialUnitPrices)
             .HasForeignKey(s => s.SupportStepId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // TunnelSupportAndDrillingMaterialUnitPrice - Chống xén specific configuration
+        modelBuilder.Entity<TunnelSupportAndDrillingMaterialUnitPrice>()
+            .HasOne(s => s.Passport)
+            .WithMany()
+            .HasForeignKey(s => s.PassportId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TunnelSupportAndDrillingMaterialUnitPrice>()
+            .HasOne(s => s.Hardness)
+            .WithMany()
+            .HasForeignKey(s => s.HardnessId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //LongwallMaterialUnitPrice - Lò chợ specific configuration

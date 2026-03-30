@@ -20,10 +20,17 @@ export type NormFactor = {
 	hardnessName: string;
 	stoneClampRatioId: string;
 	stoneClampRatioName: string;
+	steelMeshType: number;
 	affectAssignmentCodes: AffectAssignmentCode[];
 	value: number;
 	targetHardnessId: string;
 	targetHardnessName: string;
+};
+
+const STEEL_MESH_TYPE_LABEL: Record<number, string> = {
+	1: 'Không áp dụng',
+	2: 'Trải 1 lớp lưới thép',
+	3: 'Trải 2 lớp lưới thép',
 };
 
 export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
@@ -40,6 +47,23 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 	{
 		accessorKey: 'hardnessName',
 		header: 'Độ kiên cố than đá (f)',
+		cell: ({ row }) => {
+			const { hardnessName, steelMeshType } = row.original;
+
+			if (!hardnessName && steelMeshType !== 1) {
+				return (
+					<span className='whitespace-normal'>
+						{STEEL_MESH_TYPE_LABEL[steelMeshType] ?? 'Không xác định'}
+					</span>
+				);
+			}
+
+			return (
+				<span className='whitespace-normal'>
+					{hardnessName || 'Không áp dụng'}
+				</span>
+			);
+		},
 	},
 	{
 		accessorKey: 'stoneClampRatioName',

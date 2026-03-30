@@ -27,7 +27,6 @@ export type AssetQuotaMaterialsDetail = {
 	id: string;
 	code: string;
 	name: string;
-	usageTime: number;
 	assigmentCodeId: string;
 	assignmentCode: string;
 	unitOfMeasureId: string;
@@ -42,7 +41,10 @@ export type AssetQuotaMaterialsDetail = {
 	}>;
 };
 
-export function AssetQuotaMaterialsForm({ data, row }: ActionDialogProps<Asset>) {
+export function AssetQuotaMaterialsForm({
+	data,
+	row,
+}: ActionDialogProps<Asset>) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -74,7 +76,6 @@ export function AssetQuotaMaterialsForm({ data, row }: ActionDialogProps<Asset>)
 
 					form.reset({
 						...formData,
-						usageTime: formData.usageTime ?? 0,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),

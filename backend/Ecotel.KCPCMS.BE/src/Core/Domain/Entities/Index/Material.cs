@@ -12,7 +12,6 @@ namespace Domain.Entities.Index
         public string Name { get; protected set; }
         public Guid? AssigmentCodeId { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
-        public decimal UsageTime { get; protected set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
 
         // Navigation properties
@@ -31,7 +30,7 @@ namespace Domain.Entities.Index
         private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
         public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
         //constructor
-        public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, decimal usageTime, MaterialType materialType)
+        public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -54,12 +53,11 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
                 AssigmentCodeId = assigmentCodeId,
-                UsageTime = usageTime,
                 MaterialType = materialType
             };
         }
 
-        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, decimal usageTime, MaterialType materialType)
+        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -83,12 +81,11 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
                 AssigmentCodeId = assigmentCodeId,
-                UsageTime = usageTime,
                 MaterialType = materialType
             };
         }
 
-        public void Update(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, decimal usageTime, MaterialType materialType)
+        public void Update(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -100,18 +97,12 @@ namespace Domain.Entities.Index
                 throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
             }
 
-            if (usageTime <= 0)
-            {
-                throw new ArgumentException(CustomResponseMessage.UsageTimeCannotBeNegative);
-            }
-
             Name = name;
             if (Code != null)
             {
                 Code.Value = code.ToUpper();
             }
 
-            UsageTime = usageTime;
             UnitOfMeasureId = unitOfMeasureId;
             AssigmentCodeId = assigmentCodeId;
             MaterialType = materialType;

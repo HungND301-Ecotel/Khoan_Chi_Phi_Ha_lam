@@ -1,12 +1,14 @@
 ﻿using Application.Common.Interfaces;
+using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.NormFactor;
 
 public class CreateNormFactorDto
 {
     public Guid ProductionProcessId { get; set; }
-    public Guid HardnessId { get; set; }
+    public Guid? HardnessId { get; set; }
     public Guid StoneClampRatioId { get; set; }
+    public SteelMeshType SteelMeshType { get; set; }
     public double Value { get; set; }
     public IList<Guid> AssignmentCodeIds { get; set; }
     public Guid? TargetHardnessId { get; set; }
@@ -22,10 +24,11 @@ public class NormFactorDto : IDto
     public string ProductionProcessCode { get; set; }
     public string ProductionProcessName { get; set; }
 
-    public Guid HardnessId { get; set; }
+    public Guid? HardnessId { get; set; }
     public string HardnessName { get; set; }
 
     public Guid StoneClampRatioId { get; set; }
+    public SteelMeshType SteelMeshType { get; set; }
     public string StoneClampRatioName { get; set; }
 
     public IList<AssignmentCode.ShortAssignmentCodeDto> AffectAssignmentCodes { get; set; }
@@ -40,8 +43,9 @@ public class UpdateNormFactorDto
 {
     public Guid Id { get; set; }
     public Guid ProductionProcessId { get; set; }
-    public Guid HardnessId { get; set; }
+    public Guid? HardnessId { get; set; }
     public Guid StoneClampRatioId { get; set; }
+    public SteelMeshType SteelMeshType { get; set; }
     public double Value { get; set; }
     public IList<Guid> AssignmentCodeIds { get; set; }
     public Guid? TargetHardnessId { get; set; }

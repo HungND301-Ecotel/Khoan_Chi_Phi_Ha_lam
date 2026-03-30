@@ -46,6 +46,7 @@ public class NormFactorsByPaginationSpec
                 }).ToList(),
                 Value = nf.Value,
                 TargetHardnessId = nf.TargetHardnessId ?? Guid.Empty,
+                SteelMeshType = nf.SteelMeshType,
                 TargetHardnessName = nf.TargetHardness != null ? nf.TargetHardness.Value.ToString() : string.Empty
             });
 

@@ -29,16 +29,22 @@ public sealed class MaterialUnitPricesByPaginationSpec
         {
             Id = m.Id,
             Code = m.Code.Value,
+
             HardnessId = m.HardnessId,
-            HardnessName = m.Hardness!.Value,
+            HardnessName = m.Hardness != null ? m.Hardness.Value : "",
+
             InsertItemId = m.InsertItemId,
-            InsertItemName = m.InsertItem!.Value,
+            InsertItemName = m.InsertItem != null ? m.InsertItem.Value : "",
+
             PassportId = m.PassportId,
-            PassportName = m.Passport!.GetFullname(),
+            PassportName = m.Passport != null ? m.Passport.GetFullname() : "",
+
             SupportStepId = m.SupportStepId,
-            SupportStepName = m.SupportStep!.Value,
+            SupportStepName = m.SupportStep != null ? m.SupportStep.Value : "",
+
             ProcessId = m.ProcessId,
-            ProcessName = m.ProductionProcess != null ? m.ProductionProcess.Name : string.Empty,
+            ProcessName = m.ProductionProcess != null ? m.ProductionProcess.Name : "",
+
             StartMonth = m.StartMonth,
             EndMonth = m.EndMonth,
             TotalPrice = m.TotalPrice

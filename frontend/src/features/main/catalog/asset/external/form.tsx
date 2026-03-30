@@ -128,15 +128,6 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 				placeholder='Nhập tên vật tư, tài sản'
 			/>
 
-			<div className='flex-1'>
-				<FormNumber
-					control={form.control}
-					name={`usageTime`}
-					label='Thời gian sử dụng (tháng)'
-					placeholder='Nhập thời gian sử dụng (tháng)'
-				/>
-			</div>
-
 			<FormComboBox
 				control={form.control}
 				name='unitOfMeasureId'

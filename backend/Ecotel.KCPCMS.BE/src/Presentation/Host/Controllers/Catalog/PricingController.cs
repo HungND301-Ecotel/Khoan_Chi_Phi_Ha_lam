@@ -23,6 +23,8 @@ using Application.Catalog.Pricing.ProductUnitPrice.Commands;
 using Application.Catalog.Pricing.ProductUnitPrice.Queries;
 using Application.Catalog.Pricing.SlideUnitPrice.Commands;
 using Application.Catalog.Pricing.SlideUnitPrice.Queries;
+using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
+using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Queries;
 using Application.Dto.Catalog.ActualElectricityCost;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
@@ -117,6 +119,74 @@ public class PricingController : BaseNoAuthController
     public async Task<IActionResult> ImportMaterialUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportMaterialUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region TunnelSupportAndDrillingMaterialUnitPrice - Chống xén
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Get All Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> GetAllTunnelSupportAndDrillingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Tunnel Support And Drilling MaterialUnitPrice By Id", "")]
+    public async Task<IActionResult> GetTunnelSupportAndDrillingMaterialUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Update Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> UpdateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Create New Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> CreateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTunnelSupportAndDrillingMaterialUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpDelete("TunnelSupportAndDrillingMaterialUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTunnelSupportAndDrillingMaterialUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TunnelSupportAndDrillingMaterialUnitPriceList")]
+    [OpenApiOperation("Delete Multiple Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTunnelSupportAndDrillingMaterialUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/export")]
+    [OpenApiOperation("Export TunnelSupportAndDrillingMaterialUnitPrice", "")]
+    public async Task<IActionResult> ExportTunnelSupportAndDrillingMaterialUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chong_xen_don_gia_dinh_muc.xlsx");
+        return result;
+    }
+
+    [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice/import")]
+    [OpenApiOperation("Import TunnelSupportAndDrillingMaterialUnitPrice", "")]
+    public async Task<IActionResult> ImportTunnelSupportAndDrillingMaterialUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand(importModel.FormFile));
         return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion

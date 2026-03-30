@@ -48,6 +48,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
         dto.ProcessGroupId = normFactor.ProductionProcess!.ProcessGroupId;
         dto.ProcessGroupName = normFactor.ProductionProcess!.ProcessGroup!.Name;
         dto.ProcessGroupCode = normFactor.ProductionProcess!.ProcessGroup!.Code!.Value;
+        dto.SteelMeshType = normFactor.SteelMeshType;
 
 
         return dto;

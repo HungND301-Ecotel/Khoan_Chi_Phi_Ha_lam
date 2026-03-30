@@ -31,6 +31,9 @@
       <None Remove="Dto\Persistence\Catalog\Common\**" />
     </ItemGroup>
     <ItemGroup>
+      <None Include="Catalog\Index\Metrics\Commands\ImportPowerExcelCommand.cs" />
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="Ardalis.Specification" />
         <PackageReference Include="AWSSDK.S3" />
         <PackageReference Include="ClosedXML" />

@@ -31,10 +31,12 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         {
             throw new NotFoundException(CustomResponseMessage.ProductionProcessNotFound);
         }
-
-        if (!checkHardnessTask)
+        if (request.CreateModel.HardnessId != null)
         {
-            throw new NotFoundException(CustomResponseMessage.HardnessNotFound);
+            if (!checkHardnessTask)
+            {
+                throw new NotFoundException(CustomResponseMessage.HardnessNotFound);
+            }
         }
 
         if (!checkStoneClampRatioTask)
@@ -47,7 +49,7 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
-        var normFactor = NormFactor.Create(request.CreateModel.ProductionProcessId, request.CreateModel.HardnessId, request.CreateModel.StoneClampRatioId, request.CreateModel.Value, request.CreateModel.TargetHardnessId);
+        var normFactor = NormFactor.Create(request.CreateModel.ProductionProcessId, request.CreateModel.HardnessId, request.CreateModel.StoneClampRatioId, request.CreateModel.Value, request.CreateModel.TargetHardnessId, request.CreateModel.SteelMeshType);
         normFactor.AddNormFactorAssignmentCode(uniqueAssignmentIds.Select(a => NormFactorAssignmentCode.Create(a, Guid.Empty)).ToList());
         await _normFactorRepository.InsertAsync(normFactor, cancellationToken);
         await unitOfWork.SaveChangesAsync();

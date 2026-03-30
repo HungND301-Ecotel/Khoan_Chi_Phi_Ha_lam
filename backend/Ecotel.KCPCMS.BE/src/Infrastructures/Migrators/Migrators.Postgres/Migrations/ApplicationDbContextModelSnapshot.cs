@@ -910,10 +910,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid?>("UnitOfMeasureId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("UsageTime")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AssigmentCodeId");
@@ -944,7 +940,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("HardnessId")
+                    b.Property<Guid?>("HardnessId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("LastModifiedBy")
@@ -955,6 +951,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<Guid>("ProductionProcessId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("SteelMeshType")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("StoneClampRatioId")
                         .HasColumnType("uuid");
@@ -1189,6 +1188,43 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("PlannedMaintainCostAdjustmentFactorId");
 
                     b.ToTable("PlannedMaintainCostAdjustmentFactorDescription", "Index");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.Power", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("Power", "Index");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.ProcessGroup", b =>
@@ -3006,17 +3042,35 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("CuttingThicknessId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("HardnessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsLongwallMaterialUnitPriceCGH")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("LongwallParametersId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PowerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("SeamFaceId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("StoneClampRatioId")
+                        .HasColumnType("uuid");
+
                     b.HasIndex("CuttingThicknessId");
+
+                    b.HasIndex("HardnessId");
 
                     b.HasIndex("LongwallParametersId");
 
+                    b.HasIndex("PowerId");
+
                     b.HasIndex("SeamFaceId");
+
+                    b.HasIndex("StoneClampRatioId");
 
                     b.HasDiscriminator().HasValue(2);
                 });
@@ -3045,7 +3099,40 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("SupportStepId");
 
+                    b.ToTable("MaterialUnitPrice", "Pricing", t =>
+                        {
+                            t.Property("HardnessId")
+                                .HasColumnName("TunnelExcavationMaterialUnitPrice_HardnessId");
+                        });
+
                     b.HasDiscriminator().HasValue(1);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelSupportAndDrillingMaterialUnitPrice", b =>
+                {
+                    b.HasBaseType("Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice");
+
+                    b.Property<Guid>("HardnessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PassportId")
+                        .HasColumnType("uuid");
+
+                    b.HasIndex("HardnessId");
+
+                    b.HasIndex("PassportId")
+                        .HasDatabaseName("IX_MaterialUnitPrice_TunnelSupportAndDrillingMaterialUnitPric~1");
+
+                    b.ToTable("MaterialUnitPrice", "Pricing", t =>
+                        {
+                            t.Property("HardnessId")
+                                .HasColumnName("TunnelSupportAndDrillingMaterialUnitPrice_HardnessId");
+
+                            t.Property("PassportId")
+                                .HasColumnName("TunnelSupportAndDrillingMaterialUnitPrice_PassportId");
+                        });
+
+                    b.HasDiscriminator().HasValue(3);
                 });
 
             modelBuilder.Entity("Domain.Entities.Identity.RefreshToken", b =>
@@ -3224,8 +3311,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
                         .WithMany("NormFactors")
                         .HasForeignKey("HardnessId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Domain.Entities.Index.ProductionProcess", "ProductionProcess")
                         .WithMany("NormFactors")
@@ -3917,11 +4003,19 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
+                        .WithMany()
+                        .HasForeignKey("HardnessId");
+
                     b.HasOne("Domain.Entities.Index.LongwallParameters", "LongwallParameters")
                         .WithMany("MaterialUnitPrices")
                         .HasForeignKey("LongwallParametersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Power", "Power")
+                        .WithMany()
+                        .HasForeignKey("PowerId");
 
                     b.HasOne("Domain.Entities.Index.SeamFace", "SeamFace")
                         .WithMany("MaterialUnitPrices")
@@ -3929,11 +4023,21 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.StoneClampRatio", "StoneClampRatio")
+                        .WithMany()
+                        .HasForeignKey("StoneClampRatioId");
+
                     b.Navigation("CuttingThickness");
+
+                    b.Navigation("Hardness");
 
                     b.Navigation("LongwallParameters");
 
+                    b.Navigation("Power");
+
                     b.Navigation("SeamFace");
+
+                    b.Navigation("StoneClampRatio");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelExcavationMaterialUnitPrice", b =>
@@ -3969,6 +4073,25 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Passport");
 
                     b.Navigation("SupportStep");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelSupportAndDrillingMaterialUnitPrice", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
+                        .WithMany()
+                        .HasForeignKey("HardnessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Passport", "Passport")
+                        .WithMany()
+                        .HasForeignKey("PassportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hardness");
+
+                    b.Navigation("Passport");
                 });
 
             modelBuilder.Entity("Domain.Entities.Identity.Role", b =>

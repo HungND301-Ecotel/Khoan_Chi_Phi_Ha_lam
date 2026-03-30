@@ -52,8 +52,8 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 					{
 						type: 'link',
-						name: 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
-						href: '/catalogs/assets/safety-and-welfare',
+						name: 'Vật tư theo hạn mức',
+						href: '/catalogs/assets/quota-materials',
 					},
 					{
 						type: 'link',
@@ -62,8 +62,8 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 					{
 						type: 'link',
-						name: 'Vật tư theo hạn mức',
-						href: '/catalogs/assets/quota-materials',
+						name: 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+						href: '/catalogs/assets/safety-and-welfare',
 					},
 				],
 			},
