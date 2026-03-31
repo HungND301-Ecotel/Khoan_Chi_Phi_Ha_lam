@@ -379,9 +379,7 @@ export function MaterialImportDialog({
 			form.setValue('materials', formattedData);
 			setShowForm(true);
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Lỗi khi xử lý file Excel';
-			popup.error(message);
+			popup.error(error);
 			setShowForm(false);
 		} finally {
 			setIsLoading(false);
@@ -591,9 +589,7 @@ export function MaterialImportDialog({
 			setOpen(false);
 			popup.success('Dữ liệu được lưu thành công');
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Lỗi khi lưu dữ liệu';
-			popup.error(message);
+			popup.error(error);
 		}
 	};
 

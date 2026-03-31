@@ -65,17 +65,17 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     // Validate data
                     if (string.IsNullOrWhiteSpace(materialCode))
                     {
-                        throw new BadRequestException($"{CustomResponseMessage.MaterialCodeCannotBeEmpty} (row {rowCount + 1})");
+                        throw new BadRequestException($"Mã vật tư không thể trống (row {rowCount + 1})");
                     }
 
                     if (!double.TryParse(quantityReceived, out var receivedValue))
                     {
-                        throw new BadRequestException($"{CustomResponseMessage.QuantityReceivedMustBeNumber} (row {rowCount + 1})");
+                        throw new BadRequestException($"Số lượng nhập phải là số (row {rowCount + 1})");
                     }
 
                     if (!double.TryParse(quantityDispensed, out var dispensedValue))
                     {
-                        throw new BadRequestException($"{CustomResponseMessage.QuantityDispensedMustBeNumber} (row {rowCount + 1})");
+                        throw new BadRequestException($"Số lượng xuất phải là số (row {rowCount + 1})");
                     }
 
                     // Find material in database
@@ -97,7 +97,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                         materialsOrPartsId = part?.Id;
                         if (part == null)
                         {
-                            throw new NotFoundException($"{CustomResponseMessage.MaterialOrPartNotFound}: '{materialCode}' (row {rowCount + 1})");
+                            throw new NotFoundException($"Không tìm thấy vật tư: '{materialCode}' (row {rowCount + 1})");
                         }
 
                         unitOfMeasureName = part.UnitOfMeasure?.Name ?? "N/A";
