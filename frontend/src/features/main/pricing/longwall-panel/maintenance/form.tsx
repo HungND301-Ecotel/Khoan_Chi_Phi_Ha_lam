@@ -373,7 +373,8 @@ function PricingLongwallPanelCosts({
 	index: number;
 	parts: Part[];
 }) {
-	const { control, getValues } = useFormContext<LongwallPanelFormSchema>();
+	const { control, getValues, setValue } =
+		useFormContext<LongwallPanelFormSchema>();
 
 	const watchedReplacementTimeStandard = useWatch({
 		control,
@@ -398,6 +399,23 @@ function PricingLongwallPanelCosts({
 
 	const regularRepairCost =
 		(part?.costAmount ?? 0) * Number(regularRepairRates);
+
+	const handleRemove = () => {
+		const currentCosts = getValues('costs');
+		const updatedCosts = currentCosts.filter(
+			(
+				_: {
+					partId: string;
+					replacementTimeStandard: number;
+					quantity: number;
+					averageMonthlyTunnelProduction: number;
+					equipmentId: string;
+				},
+				i: number,
+			) => i !== index,
+		);
+		setValue('costs', updatedCosts, { shouldValidate: true });
+	};
 
 	return (
 		<>
@@ -482,7 +500,15 @@ function PricingLongwallPanelCosts({
 				/>
 			</div>
 
-			<div className='size-9'></div>
+			<Button
+				type='button'
+				variant='ghost'
+				size='icon'
+				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
+				onClick={handleRemove}
+			>
+				<XCircleIcon className='size-6' />
+			</Button>
 		</>
 	);
 }
