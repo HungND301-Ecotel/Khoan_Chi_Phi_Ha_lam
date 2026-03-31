@@ -33,6 +33,13 @@ export const assetExternalFormSchema = z.object({
 					.gt(0, {
 						message: 'Giá trị phải lớn hơn 0.',
 					}),
+				actualAmount: z.coerce
+					.number<number>({
+						message: 'Giá trị phải là số.',
+					})
+					.gt(0, {
+						message: 'Giá trị phải lớn hơn 0.',
+					}),
 			}),
 		)
 		.nonempty({
@@ -52,6 +59,7 @@ export const ASSET_EXTERNAL_FORM_DEFAULT: AssetExternalFormSchema = {
 			startMonth: '',
 			endMonth: '',
 			amount: NaN,
+			actualAmount: NaN,
 		},
 	],
 } as const;

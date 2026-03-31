@@ -13,7 +13,7 @@ export const CATALOG_PARAMETER_PRODUCTION_ORDER_COLUMNS: ColumnDef<ProductionOrd
 	[
 		{
 			accessorKey: 'code',
-			header: 'Số Quyết định, lệnh sản xuất',
+			header: 'Số quyết định, lệnh sản xuất',
 		},
 		{
 			accessorKey: 'name',

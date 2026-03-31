@@ -366,8 +366,7 @@ function PricingTunnelingCosts({
 	index: number;
 	parts: Part[];
 }) {
-	const { control, getValues, setValue } =
-		useFormContext<TunnelingFormSchema>();
+	const { control, getValues } = useFormContext<TunnelingFormSchema>();
 
 	const watchedQuantity = useWatch({
 		control,
@@ -388,12 +387,6 @@ function PricingTunnelingCosts({
 
 	const regularRepairCost =
 		(part?.costAmount ?? 0) * Number(regularRepairRates);
-
-	const handleRemove = () => {
-		const currentCosts = getValues('costs');
-		const updatedCosts = currentCosts.filter((_, i: number) => i !== index);
-		setValue('costs', updatedCosts, { shouldValidate: true });
-	};
 
 	return (
 		<>
@@ -437,7 +430,6 @@ function PricingTunnelingCosts({
 				<Label>Định mức thời gian thay thế (tháng)</Label>
 				<Input
 					readOnly
-					disabled
 					value={part?.replacementTimeStandard ?? ''}
 					className='read-only:bg-transparent'
 				/>
@@ -475,15 +467,7 @@ function PricingTunnelingCosts({
 				/>
 			</div>
 
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
-				onClick={handleRemove}
-			>
-				<XCircleIcon className='size-6' />
-			</Button>
+			<div className='size-9'></div>
 		</>
 	);
 }

@@ -20,8 +20,8 @@ import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 
 export type AssetInternalDetail = {
 	id: string;
@@ -52,6 +52,11 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 		resolver: zodResolver(assetInternalFormSchema),
 		mode: 'onSubmit',
 		defaultValues: ASSET_INTERNAL_FORM_DEFAULT,
+	});
+	const lastSyncedPlanRef = useRef<Record<number, number>>({});
+	const costs = useWatch({
+		control: form.control,
+		name: 'costs',
 	});
 
 	useEffect(() => {
@@ -90,6 +95,29 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 
 		fetchData();
 	}, [row]);
+
+	useEffect(() => {
+		costs?.forEach((cost, index) => {
+			const lastSyncedPlan = lastSyncedPlanRef.current[index];
+			const isActualAmountEmpty =
+				cost.actualAmount === undefined ||
+				cost.actualAmount === null ||
+				Number.isNaN(cost.actualAmount);
+			const hasPlanAmount =
+				cost.amount !== undefined &&
+				cost.amount !== null &&
+				!Number.isNaN(cost.amount);
+			const wasAutoFilled =
+				lastSyncedPlan !== undefined && cost.actualAmount === lastSyncedPlan;
+
+			if ((isActualAmountEmpty || wasAutoFilled) && hasPlanAmount) {
+				form.setValue(`costs.${index}.actualAmount`, cost.amount, {
+					shouldDirty: true,
+				});
+				lastSyncedPlanRef.current[index] = cost.amount;
+			}
+		});
+	}, [costs, form]);
 
 	const handleSubmit = async (values: AssetInternalFormSchema) => {
 		try {

@@ -12,7 +12,7 @@ export type Product = {
 export const CATALOG_PRODUCT_COLUMNS: ColumnDef<Product>[] = [
 	{
 		accessorKey: 'processGroupCode',
-		header: 'Mã nhóm CĐSX',
+		header: 'Mã nhóm công đoạn sản xuất',
 	},
 	{
 		accessorKey: 'code',

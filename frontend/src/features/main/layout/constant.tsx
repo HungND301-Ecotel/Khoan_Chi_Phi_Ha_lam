@@ -47,7 +47,7 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 					{
 						type: 'link',
-						name: 'Vật tư, tài sản khác',
+						name: 'Vật tư, tài sản ngoài khoán',
 						href: '/catalogs/assets/external',
 					},
 					{

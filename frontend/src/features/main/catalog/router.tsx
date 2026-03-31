@@ -58,8 +58,8 @@ const MainCatalogRouter: RouteObject = {
 					path: 'external',
 					element: <MainCatalogAssetExternalPage />,
 					handle: {
-						breadcrumb: 'Vật tư, tài sản khác',
-						title: 'Vật tư, tài sản khác',
+						breadcrumb: 'Vật tư, tài sản ngoài khoán',
+						title: 'Vật tư, tài sản ngoài khoán',
 					},
 				},
 				{

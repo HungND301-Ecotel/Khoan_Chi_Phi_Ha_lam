@@ -157,7 +157,7 @@ export function LongwallPanelExpand({ row }: ActionDialogProps<LongwallPanel>) {
 	}
 
 	return (
-		<div className='mx-32 flex flex-col gap-4'>
+		<div className='mx-10 flex flex-col gap-4'>
 			<DataTable
 				columns={MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS}
 				items={itemsWithOther}

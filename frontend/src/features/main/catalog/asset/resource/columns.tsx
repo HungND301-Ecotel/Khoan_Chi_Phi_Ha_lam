@@ -5,11 +5,11 @@ import { ColumnDef } from '@tanstack/react-table';
 export const CATALOG_ASSET_RESOURCE_COLUMNS: ColumnDef<Asset>[] = [
 	{
 		accessorKey: 'code',
-		header: 'Mã vật tư, tài sản',
+		header: 'Mã tài sản',
 	},
 	{
 		accessorKey: 'name',
-		header: 'Tên vật tư, tài sản',
+		header: 'Tên tài sản',
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

@@ -134,7 +134,7 @@ export default function DashboardPage() {
 		selectedGroupType === ProcessGroupType.LC
 			? [
 					{
-						title: 'Tổng sản lượng (Tấn)',
+						title: 'Tổng sản lượng (tấn)',
 						value: summary?.totalLongwallQuantity ?? 0,
 						description: `Tổng sản lượng lò chợ trong năm ${selectedYear}`,
 					},
@@ -143,19 +143,19 @@ export default function DashboardPage() {
 				  selectedGroupType === ProcessGroupType.XL
 				? [
 						{
-							title: 'Tổng sản lượng (Mét)',
+							title: 'Tổng sản lượng (mét)',
 							value: summary?.totalTunnelQuantity ?? 0,
 							description: `Tổng sản lượng đào lò trong năm ${selectedYear}`,
 						},
 					]
 				: [
 						{
-							title: 'Tổng sản lượng (Tấn)',
+							title: 'Tổng sản lượng (tấn)',
 							value: summary?.totalLongwallQuantity ?? 0,
 							description: `Tổng sản lượng lò chợ trong năm ${selectedYear}`,
 						},
 						{
-							title: 'Tổng sản lượng (Mét)',
+							title: 'Tổng sản lượng (mét)',
 							value: summary?.totalTunnelQuantity ?? 0,
 							description: `Tổng sản lượng đào lò trong năm ${selectedYear}`,
 						},
@@ -271,7 +271,7 @@ export default function DashboardPage() {
 				</Card>
 				<Card>
 					<CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-						<CardTitle className='text-sm font-medium'>Tổng Chi phí</CardTitle>
+						<CardTitle className='text-sm font-medium'>Tổng chi phí</CardTitle>
 						<TrendingDown className='h-4 w-4 text-emerald-500' />
 					</CardHeader>
 					<CardContent>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
 																	Sản lượng lò chợ:
 																</span>
 																<span className='font-semibold text-gray-900 tabular-nums'>
-																	{formatNumber(monthData.sanLuongLoCho)} Tấn
+																	{formatNumber(monthData.sanLuongLoCho)} tấn
 																</span>
 															</div>
 														)}
@@ -370,7 +370,7 @@ export default function DashboardPage() {
 																	Sản lượng đào lò:
 																</span>
 																<span className='font-semibold text-gray-900 tabular-nums'>
-																	{formatNumber(monthData.sanLuongDaoLo)} Mét
+																	{formatNumber(monthData.sanLuongDaoLo)} mét
 																</span>
 															</div>
 														)}

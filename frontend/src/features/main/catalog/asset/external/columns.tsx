@@ -17,7 +17,12 @@ export const CATALOG_ASSET_EXTERNAL_COLUMNS: ColumnDef<Asset>[] = [
 	},
 	{
 		accessorKey: 'costAmount',
-		header: 'Đơn giá vật tư (đ)',
+		header: 'Đơn giá kế hoạch (đ)',
 		cell: ({ row }) => formatNumber(row.original.costAmount),
+	},
+	{
+		accessorKey: 'actualCostAmount',
+		header: 'Đơn giá thực tế (đ)',
+		cell: ({ row }) => formatNumber(row.original.actualAmount ?? 0),
 	},
 ];

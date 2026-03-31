@@ -151,7 +151,7 @@ export function TunnelingExpand({ row }: ActionDialogProps<Tunneling>) {
 	}
 
 	return (
-		<div className='mx-32 flex flex-col gap-4'>
+		<div className='mx-10 flex flex-col gap-4'>
 			<DataTable
 				columns={MAIN_PRICING_TUNNELING_EXPAND_COLUMNS}
 				items={itemsWithOther}

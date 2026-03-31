@@ -373,8 +373,7 @@ function PricingLongwallPanelCosts({
 	index: number;
 	parts: Part[];
 }) {
-	const { control, getValues, setValue } =
-		useFormContext<LongwallPanelFormSchema>();
+	const { control, getValues } = useFormContext<LongwallPanelFormSchema>();
 
 	const watchedReplacementTimeStandard = useWatch({
 		control,
@@ -399,23 +398,6 @@ function PricingLongwallPanelCosts({
 
 	const regularRepairCost =
 		(part?.costAmount ?? 0) * Number(regularRepairRates);
-
-	const handleRemove = () => {
-		const currentCosts = getValues('costs');
-		const updatedCosts = currentCosts.filter(
-			(
-				_: {
-					partId: string;
-					replacementTimeStandard: number;
-					quantity: number;
-					averageMonthlyTunnelProduction: number;
-					equipmentId: string;
-				},
-				i: number,
-			) => i !== index,
-		);
-		setValue('costs', updatedCosts, { shouldValidate: true });
-	};
 
 	return (
 		<>
@@ -455,12 +437,14 @@ function PricingLongwallPanelCosts({
 				/>
 			</div>
 
-			<FormNumber
-				control={control}
-				name={`costs.${index}.replacementTimeStandard`}
-				label='Định mức thời gian thay thế (tháng)'
-				placeholder='Nhập định mức'
-			/>
+			<div className='flex flex-1 flex-col gap-2'>
+				<Label>Định mức thời gian thay thế (tháng)</Label>
+				<Input
+					readOnly
+					value={part?.replacementTimeStandard ?? ''}
+					className='read-only:bg-transparent'
+				/>
+			</div>
 
 			<FormNumber
 				control={control}
@@ -498,15 +482,7 @@ function PricingLongwallPanelCosts({
 				/>
 			</div>
 
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
-				onClick={handleRemove}
-			>
-				<XCircleIcon className='size-6' />
-			</Button>
+			<div className='size-9'></div>
 		</>
 	);
 }

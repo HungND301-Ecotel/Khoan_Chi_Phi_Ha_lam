@@ -86,13 +86,13 @@ export function ProductionOrderForm({
 			<FormInput
 				control={form.control}
 				name='code'
-				label='Số Quyết định, lệnh sản xuất'
+				label='Số quyết định, lệnh sản xuất'
 				placeholder='Nhập số quyết định, lệnh sản xuất'
 			/>
 			<FormInput
 				control={form.control}
 				name='name'
-				label='Tên Quyết định, lệnh sản xuất'
+				label='Tên quyết định, lệnh sản xuất'
 				placeholder='Nhập tên quyết định, lệnh sản xuất'
 			/>
 

@@ -280,7 +280,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
 		return {
-			label: 'Vật tư, tài sản khác',
+			label: 'Vật tư, tài sản ngoài khoán',
 			className:
 				'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
 		};
@@ -590,12 +590,11 @@ export function RawAcceptanceReportForm({
 										0,
 									)
 								: item.quotaBasedMaterialQuantity || 0;
-						const categoryOrderOrEquipmentValue =
-							item.categoryEquipmentId
-								? toEquipmentOptionValue(item.categoryEquipmentId)
-								: item.categoryProductionOrderId
-									? toProductionOrderOptionValue(item.categoryProductionOrderId)
-									: null;
+						const categoryOrderOrEquipmentValue = item.categoryEquipmentId
+							? toEquipmentOptionValue(item.categoryEquipmentId)
+							: item.categoryProductionOrderId
+								? toProductionOrderOptionValue(item.categoryProductionOrderId)
+								: null;
 						const additionalOrderOrEquipmentValue =
 							item.additionalCostEquipmentId
 								? toEquipmentOptionValue(item.additionalCostEquipmentId)
