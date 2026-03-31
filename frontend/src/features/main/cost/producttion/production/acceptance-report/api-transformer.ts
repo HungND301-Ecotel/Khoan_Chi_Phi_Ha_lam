@@ -54,6 +54,7 @@ function trimText(value?: string | null): string {
 function normalizeForCompare(value?: string | null): string {
 	return trimText(value)
 		.toLocaleLowerCase()
+		.replace(/đ/g, 'd')
 		.normalize('NFD')
 		.replace(/[\u0300-\u036f]/g, '');
 }
