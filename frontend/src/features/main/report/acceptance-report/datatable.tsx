@@ -13,7 +13,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { Production } from '@/features/main/cost/producttion/production/columns';
 import { ProductionOutputDto } from '@/features/main/cost/producttion/production/acceptance-report/api-types';
-import { transformApiResponseToHierarchical } from '@/features/main/cost/producttion/production/acceptance-report/api-transformer';
+import {
+	applyProductionOrderNames,
+	transformApiResponseToHierarchical,
+} from '@/features/main/cost/producttion/production/acceptance-report/api-transformer';
 import { AcceptanceReportDataTable as AcceptanceReportGrid } from '@/features/main/cost/producttion/production/acceptance-report/datatable';
 import { HierarchicalRow } from '@/features/main/cost/producttion/production/acceptance-report/types';
 import { flattenHierarchicalData } from '@/features/main/cost/producttion/production/acceptance-report/utils';
@@ -52,6 +55,12 @@ interface AcceptanceReportDataTableProps {
 	enableSearch?: boolean;
 	largeText?: boolean;
 }
+
+type ProductionOrderLookupDto = {
+	id: string;
+	code: string;
+	name: string;
+};
 
 const formatPeriodLabel = (month: string, year: string) => {
 	return `THÁNG ${Number(month)} NĂM ${year}`;
@@ -234,12 +243,25 @@ export function AcceptanceReportDataTable({
 				outputsByPeriod[0]?.acceptanceReportId ?? null,
 			);
 
-			const detailResponses = await Promise.all(
-				outputsByPeriod.map((output) =>
-					api.get<ProductionOutputDto>(
-						API.PRODUCTION.PRODUCTION_OUTPUT.DETAIL(output.id),
+			const [detailResponses, productionOrderResponse] = await Promise.all([
+				Promise.all(
+					outputsByPeriod.map((output) =>
+						api.get<ProductionOutputDto>(
+							API.PRODUCTION.PRODUCTION_OUTPUT.DETAIL(output.id),
+						),
 					),
 				),
+				api.pagging<ProductionOrderLookupDto>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{ ignorePagination: true },
+				),
+			]);
+
+			const productionOrderNameById = Object.fromEntries(
+				(productionOrderResponse.result.data ?? []).map((item) => [
+					item.id,
+					[item.code, item.name].filter(Boolean).join(' - ') || item.id,
+				]),
 			);
 
 			const mergedRows = detailResponses.flatMap((response, index) => {
@@ -247,7 +269,9 @@ export function AcceptanceReportDataTable({
 				if (!detail) return [] as HierarchicalRow[];
 
 				const hierarchical = transformApiResponseToHierarchical(detail);
-				const flattened = flattenHierarchicalData(hierarchical);
+				const flattened = flattenHierarchicalData(
+					applyProductionOrderNames(hierarchical, productionOrderNameById),
+				);
 				const outputId = outputsByPeriod[index]?.id || `output-${index}`;
 
 				return flattened.map((row) => ({
