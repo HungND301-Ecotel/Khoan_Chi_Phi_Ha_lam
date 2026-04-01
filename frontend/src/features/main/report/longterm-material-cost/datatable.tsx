@@ -72,6 +72,9 @@ interface ExcelStructuredTableProps {
 const borderCellClass =
 	'border border-black px-0.5 py-1 align-middle leading-tight whitespace-normal break-words';
 
+const headerFormulaCellClass =
+	'border border-black px-0.5 py-0.5 align-middle text-center text-[11px] font-semibold leading-tight whitespace-normal break-words';
+
 const formatPeriodLabel = (month: string, year: string) => {
 	return `Tháng ${Number(month)} năm ${year}`;
 };
@@ -167,17 +170,17 @@ const ExcelStructuredTable = ({
 				)}
 			>
 				<thead>
-					<tr className='bg-white'>
-						<th rowSpan={2} className={borderCellClass}>
+					<tr className='bg-[#e6e6e6]'>
+						<th rowSpan={3} className={borderCellClass}>
 							STT
 						</th>
-						<th rowSpan={2} className={borderCellClass}>
-							MÃ PHỤ TÙNG
+						<th rowSpan={3} className={borderCellClass}>
+							MÃ VẬT TƯ
 						</th>
-						<th rowSpan={2} className={borderCellClass}>
-							TÊN PHỤ TÙNG
+						<th rowSpan={3} className={borderCellClass}>
+							DANH MỤC VẬT TƯ
 						</th>
-						<th rowSpan={2} className={borderCellClass}>
+						<th rowSpan={3} className={borderCellClass}>
 							ĐVT
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
@@ -207,20 +210,37 @@ const ExcelStructuredTable = ({
 						<th rowSpan={2} className={borderCellClass}>
 							TỶ LỆ PHÂN BỔ
 						</th>
-						<th rowSpan={2} className={borderCellClass}>
+						<th rowSpan={2} className={cn(borderCellClass)}>
 							GIÁ TRỊ DÀI KỲ HẠCH TOÁN KỲ NÀY (Đồng)
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
 							GIÁ TRỊ CUỐI KỲ CHỜ HẠCH TOÁN KỲ SAU (Đồng)
 						</th>
-						<th rowSpan={2} className={borderCellClass}>
+						<th rowSpan={3} className={borderCellClass}>
 							GHI CHÚ
 						</th>
 					</tr>
-					<tr className='bg-white'>
+					<tr className='bg-[#e6e6e6]'>
 						<th className={borderCellClass}>SỐ LƯỢNG</th>
 						<th className={borderCellClass}>ĐƠN GIÁ</th>
 						<th className={borderCellClass}>THÀNH TIỀN</th>
+					</tr>
+					<tr className='bg-[#e6e6e6]'>
+						<th className={headerFormulaCellClass}>(1)</th>
+						<th className={headerFormulaCellClass}>(2)</th>
+						<th className={headerFormulaCellClass}>(3)</th>
+						<th className={headerFormulaCellClass}>(4 = 2 * 3)</th>
+						<th className={headerFormulaCellClass}>(5 = 1 + 4)</th>
+						<th className={headerFormulaCellClass}>(6)</th>
+						<th className={headerFormulaCellClass}>(7)</th>
+						<th className={headerFormulaCellClass}>(8)</th>
+						<th className={headerFormulaCellClass}>(9)</th>
+						<th className={headerFormulaCellClass}>(10 = (6) / (7) * Qkh / Qđm)</th>
+						<th className={headerFormulaCellClass}>(11)</th>
+						<th className={cn(headerFormulaCellClass)}>
+							(12 = 10 * 11)
+						</th>
+						<th className={headerFormulaCellClass}>(13 = 5 - 12)</th>
 					</tr>
 				</thead>
 				<tbody className='font-normal'>
@@ -593,10 +613,28 @@ export function LongtermMaterialCostDataTable({
 	const handleExport = async () => {
 		if (!activeAcceptanceReportId) return;
 
+		const processGroupId =
+			selectedProcessGroup !== 'all' &&
+			selectedProcessGroup !== UNGROUPED_PROCESS_GROUP
+				? selectedProcessGroup
+				: undefined;
+
 		setIsExporting(true);
 		try {
+			const exportFileName = `bang-hach-toan-chi-phi-vat-tu-dai-ky-thang-${month}-nam-${year}.xlsx`;
+
 			await api.export(
-				API.PRODUCTION.ACCEPTANCE_REPORT.DOWNLOAD(activeAcceptanceReportId),
+				`${API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_LONG_TERM_MATERIAL_COST(activeAcceptanceReportId)}?${new URLSearchParams(
+					Object.entries({
+						month,
+						year,
+						...(processGroupId ? { processGroupId } : {}),
+					}) as [string, string][],
+				).toString()}`,
+				{
+					fileName: exportFileName,
+					forceFileName: true,
+				},
 			);
 		} catch (err) {
 			console.error('Failed to export long-term material cost:', err);
