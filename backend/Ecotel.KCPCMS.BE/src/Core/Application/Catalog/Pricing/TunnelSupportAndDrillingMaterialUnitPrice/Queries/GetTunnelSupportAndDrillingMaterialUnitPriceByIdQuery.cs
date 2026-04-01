@@ -10,12 +10,12 @@ using Shared.Constants;
 
 namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Queries;
 
-public record GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery(DefaultIdType Id) : IRequest<MaterialUnitPriceDetailDto>;
+public record GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery(DefaultIdType Id) : IRequest<TunnelSupportAndDrillingMaterialUnitPriceDetailDto>;
 
-public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery, MaterialUnitPriceDetailDto>
+public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery, TunnelSupportAndDrillingMaterialUnitPriceDetailDto>
 {
     private readonly IWriteRepository<TunnelSupportAndDrillingMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelSupportAndDrillingMaterialUnitPrice>();
-    public async Task<MaterialUnitPriceDetailDto> Handle(GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery request, CancellationToken cancellationToken)
+    public async Task<TunnelSupportAndDrillingMaterialUnitPriceDetailDto> Handle(GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery request, CancellationToken cancellationToken)
     {
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
@@ -29,7 +29,7 @@ public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitO
 
         string passportName =
             $"H/c {materialUnitPrice.Passport!.Name}; {materialUnitPrice.Passport!.Sd}; {materialUnitPrice.Passport!.Sc}";
-        return new MaterialUnitPriceDetailDto
+        return new TunnelSupportAndDrillingMaterialUnitPriceDetailDto
         {
             Id = materialUnitPrice.Id,
             Code = materialUnitPrice.Code.Value,
@@ -37,10 +37,9 @@ public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitO
             StartMonth = materialUnitPrice.StartMonth,
             EndMonth = materialUnitPrice.EndMonth,
             HardnessId = materialUnitPrice.HardnessId,
-            InsertItemId = Guid.Empty,
             PassportId = materialUnitPrice.PassportId,
             ProcessId = materialUnitPrice.ProcessId,
-            SupportStepId = Guid.Empty,
+            TechnologyId = materialUnitPrice.TechnologyId,
             TotalPrice = materialUnitPrice.TotalPrice,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
             Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()

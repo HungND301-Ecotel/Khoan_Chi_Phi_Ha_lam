@@ -11,7 +11,7 @@ using Shared.Constants;
 
 namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
 
-public record CreateTunnelSupportAndDrillingMaterialUnitPriceCommand(CreateMaterialUnitPriceDto CreateModel) : IRequest<bool>;
+public record CreateTunnelSupportAndDrillingMaterialUnitPriceCommand(CreateTunnelSupportAndDrillingMaterialUnitPriceDto CreateModel) : IRequest<bool>;
 
 public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
     IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateTunnelSupportAndDrillingMaterialUnitPriceCommand, bool>
@@ -33,7 +33,8 @@ public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
             m.EndMonth > request.CreateModel.StartMonth &&
             m.ProcessId == request.CreateModel.ProcessId &&
             m.PassportId == request.CreateModel.PassportId &&
-            m.HardnessId == request.CreateModel.HardnessId))
+            m.HardnessId == request.CreateModel.HardnessId &&
+            m.TechnologyId == request.CreateModel.TechnologyId))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -67,9 +68,7 @@ public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
                 request.CreateModel.ProcessId,
                 request.CreateModel.PassportId,
                 request.CreateModel.HardnessId,
-                request.CreateModel.InsertItemId,
-                request.CreateModel.SupportStepId,
-                null,
+                request.CreateModel.TechnologyId,
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
                 request.CreateModel.OtherMaterialValue,

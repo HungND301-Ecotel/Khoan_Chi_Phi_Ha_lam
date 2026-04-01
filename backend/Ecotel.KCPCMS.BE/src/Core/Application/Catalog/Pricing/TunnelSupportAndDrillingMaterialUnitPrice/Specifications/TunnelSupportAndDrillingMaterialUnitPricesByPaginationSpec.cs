@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Specifications;
 
 public sealed class TunnelSupportAndDrillingMaterialUnitPricesByPaginationSpec
-    : EntitiesByPaginationFilterSpec<TunnelSupportAndDrillingMaterialUnitPrice, MaterialUnitPriceDto>
+    : EntitiesByPaginationFilterSpec<TunnelSupportAndDrillingMaterialUnitPrice, TunnelSupportAndDrillingMaterialUnitPriceDto>
 {
     public TunnelSupportAndDrillingMaterialUnitPricesByPaginationSpec(PaginationFilter filter, string? search) : base(filter)
     {
@@ -19,22 +19,21 @@ public sealed class TunnelSupportAndDrillingMaterialUnitPricesByPaginationSpec
             .Include(m => m.ProductionProcess)
             .Include(m => m.Hardness)
             .Include(m => m.Passport)
+            .Include(m => m.Technology)
             .Include(m => m.MaterialUnitPriceAssignmentCodes)
             .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
                         m.Code.Value.ToLower().Contains(searchTerm));
         Query
-        .Select(m => new MaterialUnitPriceDto
+        .Select(m => new TunnelSupportAndDrillingMaterialUnitPriceDto
         {
             Id = m.Id,
             Code = m.Code.Value,
             HardnessId = m.HardnessId,
             HardnessName = m.Hardness!.Value,
-            InsertItemId = Guid.Empty,
-            InsertItemName = string.Empty,
+            TechnologyId = m.TechnologyId,
+            TechnologyName = m.Technology.Value,
             PassportId = m.PassportId,
             PassportName = m.Passport!.GetFullname(),
-            SupportStepId = Guid.Empty,
-            SupportStepName = string.Empty,
             ProcessId = m.ProcessId,
             ProcessName = m.ProductionProcess != null ? m.ProductionProcess.Name : string.Empty,
             StartMonth = m.StartMonth,

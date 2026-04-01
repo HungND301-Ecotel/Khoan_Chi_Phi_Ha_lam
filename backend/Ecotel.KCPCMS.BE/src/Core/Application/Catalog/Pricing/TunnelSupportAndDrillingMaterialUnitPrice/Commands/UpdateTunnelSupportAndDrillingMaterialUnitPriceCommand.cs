@@ -13,7 +13,7 @@ using Shared.Constants;
 
 namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
 
-public record UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand(UpdateMaterialUnitPriceDto UpdateModel) : IRequest<bool>;
+public record UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand(UpdateTunnelSupportAndDrillingMaterialUnitPrice UpdateModel) : IRequest<bool>;
 
 public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService, ICacheService cacheService) : IRequestHandler<UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand, bool>
 {
@@ -78,8 +78,6 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
                 request.UpdateModel.ProcessId,
                 request.UpdateModel.PassportId,
                 request.UpdateModel.HardnessId,
-                request.UpdateModel.InsertItemId,
-                request.UpdateModel.SupportStepId,
                 null,
                 request.UpdateModel.StartMonth,
                 request.UpdateModel.EndMonth,

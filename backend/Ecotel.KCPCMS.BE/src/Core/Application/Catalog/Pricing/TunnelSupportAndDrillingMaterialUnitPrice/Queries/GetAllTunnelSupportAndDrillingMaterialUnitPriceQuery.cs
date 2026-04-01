@@ -7,12 +7,13 @@ using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 
 namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Queries;
-public record class GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<MaterialUnitPriceDto>>;
+
+public record class GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<TunnelSupportAndDrillingMaterialUnitPriceDto>>;
 
 public class GetAllTunnelSupportAndDrillingUnitPriceQueryHandler(IPaginationService paginationService, IReadRepository<TunnelSupportAndDrillingMaterialUnitPrice> maintainUnitPriceRepository)
-    : IRequestHandler<GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery, PaginationResponse<MaterialUnitPriceDto>>
+    : IRequestHandler<GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery, PaginationResponse<TunnelSupportAndDrillingMaterialUnitPriceDto>>
 {
-    public async Task<PaginationResponse<MaterialUnitPriceDto>> Handle(GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery request, CancellationToken cancellationToken)
+    public async Task<PaginationResponse<TunnelSupportAndDrillingMaterialUnitPriceDto>> Handle(GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
         var filter = new PaginationFilter
         {

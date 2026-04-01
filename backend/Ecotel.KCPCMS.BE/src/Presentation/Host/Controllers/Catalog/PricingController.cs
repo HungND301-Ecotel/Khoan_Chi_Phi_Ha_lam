@@ -123,7 +123,7 @@ public class PricingController : BaseNoAuthController
     }
     #endregion
 
-    #region TunnelSupportAndDrillingMaterialUnitPrice - Chống xén
+    #region TunnelSupportAndDrillingMaterialUnitPrice - ĐÀO LÒ  CHỐNG NEO, BÊ TÔNG PHUN VÀ KHOAN THĂM DÒ
 
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Get All Tunnel Support And Drilling MaterialUnitPrice", "")]
@@ -143,7 +143,7 @@ public class PricingController : BaseNoAuthController
 
     [HttpPut("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Update Tunnel Support And Drilling MaterialUnitPrice", "")]
-    public async Task<IActionResult> UpdateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
+    public async Task<IActionResult> UpdateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] UpdateTunnelSupportAndDrillingMaterialUnitPrice updateModel)
     {
         var result = await Mediator.Send(new UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);
@@ -151,7 +151,7 @@ public class PricingController : BaseNoAuthController
 
     [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Create New Tunnel Support And Drilling MaterialUnitPrice", "")]
-    public async Task<IActionResult> CreateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
+    public async Task<IActionResult> CreateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] CreateTunnelSupportAndDrillingMaterialUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateTunnelSupportAndDrillingMaterialUnitPriceCommand(createModel));
         return Ok(result, MessageCommon.CreateSuccess);
