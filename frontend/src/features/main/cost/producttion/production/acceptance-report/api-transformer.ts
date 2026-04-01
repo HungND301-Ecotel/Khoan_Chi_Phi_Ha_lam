@@ -51,6 +51,14 @@ function trimText(value?: string | null): string {
 	return (value ?? '').trim();
 }
 
+function normalizeForCompare(value?: string | null): string {
+	return trimText(value)
+		.toLocaleLowerCase()
+		.replace(/đ/g, 'd')
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '');
+}
+
 function getOtherMaterialDetailLabel(
 	otherMaterialDetail?: string | number | null,
 ): string | null {
@@ -411,7 +419,14 @@ function createMaterialTypeGroups(
 		const target = typeGroups.get(matType)!;
 		target.order = Math.min(target.order, order);
 
-		if (shouldUseFlatItems(matGroup, sectionKey)) {
+		const hasOnlyOneTopLevelGroup =
+			grouped.length === 1 && (!matGroup.subGroups || matGroup.subGroups.length === 0);
+		const isRedundantQuotaGroup =
+			sectionKey === 'sectionC' &&
+			hasOnlyOneTopLevelGroup &&
+			normalizeForCompare(grouped[0]?.groupName) === normalizeForCompare(matType);
+
+		if (shouldUseFlatItems(matGroup, sectionKey) || isRedundantQuotaGroup) {
 			grouped.forEach((group) => {
 				target.flatItems.push(...group.items);
 			});

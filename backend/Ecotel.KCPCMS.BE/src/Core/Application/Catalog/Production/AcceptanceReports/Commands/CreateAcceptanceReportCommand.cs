@@ -140,6 +140,13 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     partId = item.MaterialOrPartId;
                 }
 
+                var categoryReference = ProductionReference.Create(
+                    item.CategoryProductionOrderId,
+                    item.CategoryEquipmentId);
+                var additionalCostReference = ProductionReference.Create(
+                    item.AdditionalCostProductionOrderId,
+                    item.AdditionalCostEquipmentId);
+
                 if (item.AcceptanceReportItemId.HasValue)
                 {
                     // UPDATE: Item already exists (may belong to another report)
@@ -154,7 +161,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         materialId,
                         partId,
                         item.ItemType,
-                        item.ProductionOrderId,
+                        categoryReference,
+                        additionalCostReference,
                         item.MaterialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
                         item.AdditionalCost,
@@ -179,7 +187,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         materialId,
                         partId,
                         item.ItemType,
-                        item.ProductionOrderId,
+                        categoryReference,
+                        additionalCostReference,
                         item.MaterialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
                         item.AdditionalCost,

@@ -20,11 +20,6 @@ export const CATALOG_ASSET_INTERNAL_COLUMNS: ColumnDef<Asset>[] = [
 		header: 'Đơn vị tính',
 	},
 	{
-		accessorKey: 'usageTime',
-		header: 'Thời gian sử dụng (tháng)',
-		cell: ({ row }) => formatNumber(row.original.usageTime),
-	},
-	{
 		accessorKey: 'costAmount',
 		header: 'Đơn giá kế hoạch (đ)',
 		cell: ({ row }) => formatNumber(row.original.costAmount),

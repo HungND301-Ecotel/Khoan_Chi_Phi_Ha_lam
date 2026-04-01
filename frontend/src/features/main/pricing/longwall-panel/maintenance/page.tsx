@@ -9,7 +9,7 @@ import {
 } from '@/features/main/pricing/longwall-panel/maintenance/columns';
 import { LongwallPanelForm } from '@/features/main/pricing/longwall-panel/maintenance/form';
 import { api } from '@/lib/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // Mock data for detail expand
 export type MaintainUnitPriceLongwallPanel = {
@@ -43,6 +43,7 @@ export type LongwallPanelDetail = {
 export function MainPricingMaintenanceLongwallPanelPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
+	const query = useMemo(() => ({ maintainType: 2 }), []);
 
 	const handleDelete = async ({ data }: ActionDialogProps<LongwallPanel>) => {
 		try {
@@ -95,7 +96,8 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 			<DataTable
 				columns={MAIN_PRICING_LONGWALL_PANEL_COLUMNS}
 				url={API.PRICING.MAINTENANCE.LIST}
-				query={{ maintainType: 2 }}
+				query={query}
+				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <LongwallPanelForm {...props} />}
 				onUpdate={(props) => <LongwallPanelForm {...props} />}
@@ -155,7 +157,7 @@ export function LongwallPanelExpand({ row }: ActionDialogProps<LongwallPanel>) {
 	}
 
 	return (
-		<div className='mx-32 flex flex-col gap-4'>
+		<div className='mx-10 flex flex-col gap-4'>
 			<DataTable
 				columns={MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS}
 				items={itemsWithOther}

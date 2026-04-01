@@ -9,7 +9,9 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
     public Guid ProductUnitPriceId { get; protected set; }
     public Guid MaterialUnitPriceId { get; protected set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; protected set; }
+    public Guid? MaterialReferenceId { get; protected set; }
     public Guid? NormFactorId { get; protected set; }
+    public Guid? StoneClampRatioReferenceId { get; protected set; }
     public Guid OutputId { get; protected set; }
 
     private double? CachedPlannedMaterialTotal { get; set; }
@@ -20,6 +22,8 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
     public virtual MaterialUnitPriceEntity? MaterialUnitPrice { get; protected set; }
     public virtual SlideUnitPriceAssignmentCode? SlideUnitPriceAssignmentCode { get; protected set; }
     public virtual NormFactor? NormFactor { get; protected set; }
+    public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
+    public virtual Material? Material { get; protected set; }
 
     //Constructor
     public double GetTotalPrice()
@@ -38,7 +42,7 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         return CachedPlannedMaterialTotal.Value;
     }
 
-    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid outputId)
+    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId)
     {
         return new PlannedMaterialCost
         {
@@ -46,16 +50,20 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
             MaterialUnitPriceId = materialUnitPriceId,
             SlideUnitPriceAssignmentCodeId = slideUnitPriceAssignmentCodeId,
             NormFactorId = normFactorId,
+            StoneClampRatioReferenceId = stoneClampRatioReferenceId,
+            MaterialReferenceId = materialReferenceId,
             OutputId = outputId
         };
     }
 
     public void Update(Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId,
-        Guid? normFactorId, Guid outputId)
+        Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId)
     {
         MaterialUnitPriceId = materialUnitPriceId;
         SlideUnitPriceAssignmentCodeId = slideUnitPriceAssignmentCodeId;
         NormFactorId = normFactorId;
+        StoneClampRatioReferenceId = stoneClampRatioReferenceId;
+        MaterialReferenceId = materialReferenceId;
         OutputId = outputId;
     }
 }

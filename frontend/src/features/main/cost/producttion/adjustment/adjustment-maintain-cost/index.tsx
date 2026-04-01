@@ -36,7 +36,13 @@ export function AdjustmentMaintainCost({
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
-		if (!id) return;
+		if (!id) {
+			setAdjustmentMaintainCost(undefined);
+			setTotal(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
 		api
 			.get<AdjustmentMaintainCostDetail>(
 				API.COST.ADJUSTMENT_MAINTAIN.DETAIL(id),
@@ -55,13 +61,13 @@ export function AdjustmentMaintainCost({
 				);
 			})
 			.finally(() => setLoading(false));
-	}, [id]);
+	}, [id, productionOutput?.productionMeters, multiplyByProductionMeters]);
 
 	return (
 		<AccordionItem value={'adjustment-maintain-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí SCTX điều chỉnh</ItemTitle>
+					<ItemTitle>Doanh thu SCTX điều chỉnh</ItemTitle>
 				</ItemContent>
 
 				<ItemContent className='me-7.5 w-24'>

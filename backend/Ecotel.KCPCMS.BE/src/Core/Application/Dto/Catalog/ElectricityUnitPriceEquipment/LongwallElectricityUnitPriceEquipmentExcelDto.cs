@@ -21,7 +21,7 @@ namespace Application.Dto.Catalog.ElectricityUnitPriceEquipment
         public double WorkingHour { get; set; }
         [Display(Name = "Ngày hoạt động")]
         public decimal WorkingDate { get; set; }
-        [Display(Name = "Sản lượng than bình quân tháng (tấn)")]
+        [Display(Name = "Sản lượng than bình quân tháng (1000 tấn)")]
         public decimal AverageMonthlyTunnelProduction { get; set; }
         [Display(Name = "Thời gian bắt đầu")]
         public string StartMonth { get; set; } = string.Empty;

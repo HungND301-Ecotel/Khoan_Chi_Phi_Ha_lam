@@ -282,7 +282,6 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 		try {
 			const processedValues = {
 				...values,
-				endMonth: values.startMonth,
 			};
 			if (row?.id) {
 				await api.put(API.PRICING.SLIDE.UPDATE, {
@@ -347,7 +346,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 				label='Hộ chiếu, Sđ, Sc'
 				placeholder='Chọn hộ chiếu'
 				options={passports.map((passport) => ({
-					label: ` H/c ${passport.name}; ${passport.sd}; ${passport.sc}`,
+					label: `H/c ${passport.name}; ${passport.sd}; ${passport.sc}`,
 					value: passport.id,
 				}))}
 			/>

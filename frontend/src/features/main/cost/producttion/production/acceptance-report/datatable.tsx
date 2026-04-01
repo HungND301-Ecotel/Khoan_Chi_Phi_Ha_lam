@@ -62,6 +62,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		let categoryIndex = 0;
 		let typeIndex = 0;
 		let groupIndex = 0;
+		let subGroupIndex = 0;
 
 		rows.forEach((row) => {
 			if (row.rowType === 'category') {
@@ -75,12 +76,22 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 			if (row.rowType === 'type') {
 				typeIndex += 1;
 				groupIndex = 0;
+				subGroupIndex = 0;
 				sttMap.set(row.id, `${toRoman(typeIndex)}.`);
 				return;
 			}
 
 			if (row.rowType === 'group') {
+				if (row.level >= 3) {
+					subGroupIndex += 1;
+					sttMap.set(
+						row.id,
+						`${toRoman(typeIndex)}.${groupIndex}.${subGroupIndex}`,
+					);
+					return;
+				}
 				groupIndex += 1;
+				subGroupIndex = 0;
 				sttMap.set(row.id, `${toRoman(typeIndex)}.${groupIndex}`);
 				return;
 			}
@@ -101,7 +112,9 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 			case 'type':
 				return 'bg-muted font-semibold';
 			case 'group':
-				return 'text-muted-foreground';
+				return row.level <= 2
+					? 'bg-muted/40 font-medium text-foreground'
+					: 'text-muted-foreground';
 			case 'item':
 				return '';
 			default:
@@ -111,7 +124,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 
 	// Get indentation padding based on level
 	const getIndentClass = (level: number): string => {
-		const indents = ['pl-2', 'pl-6', 'pl-10', 'pl-14'];
+		const indents = ['pl-2', 'pl-6', 'pl-12', 'pl-20', 'pl-28'];
 		return indents[level] || 'pl-2';
 	};
 
@@ -214,16 +227,28 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		<Table className='text-xs'>
 			<TableHeader>
 				<TableRow>
-					<TableHead rowSpan={3} className='min-w-14 border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-14 border-r text-center font-bold'
+					>
 						STT
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[220px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[220px] border-r text-center font-bold'
+					>
 						DANH MỤC VẬT TƯ, HÀNG HÓA
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[60px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[60px] border-r text-center font-bold'
+					>
 						ĐVT
 					</TableHead>
-					<TableHead rowSpan={3} className='min-w-[90px] border-r text-center'>
+					<TableHead
+						rowSpan={3}
+						className='min-w-[90px] border-r text-center font-bold'
+					>
 						CÁCH TÍNH
 					</TableHead>
 					<TableHead colSpan={2} className='border-r text-center font-bold'>

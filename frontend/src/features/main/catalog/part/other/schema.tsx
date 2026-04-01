@@ -14,10 +14,10 @@ export const otherPartSchema = z.object({
 		.nullable(),
 	replacementTimeStandard: z.coerce
 		.number<number>({
-			message: 'Giá trị phải là số',
+			message: 'Thời gian sử dụng phải là số',
 		})
 		.gt(0, {
-			message: 'Giá trị phải lớn hơn 0',
+			message: 'Thời gian sử dụng phải lớn hơn 0',
 		}),
 	costs: z
 		.array(

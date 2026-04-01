@@ -59,6 +59,7 @@ export const API = {
 			DELETES: '/v1/catalog/equipment',
 			DELETE: (id: string) => `/v1/catalog/equipment/${id}`,
 			DETAIL: (id: string) => `/v1/catalog/equipment/${id}`,
+			EQUIPMENT_PARTS: (id: string) => `/v1/catalog/equipment/${id}/parts`,
 			IMPORT: '/v1/catalog/equipment/import',
 			EXPORT: '/v1/catalog/equipment/export',
 		},
@@ -69,6 +70,7 @@ export const API = {
 			DELETES: '/v1/catalog/part',
 			DELETE: (id: string) => `/v1/catalog/part/${id}`,
 			DETAIL: (id: string) => `/v1/catalog/part/${id}`,
+			PART_EQUIPMENT: (id: string) => `/v1/catalog/part/${id}/equipments`,
 			IMPORT: '/v1/catalog/part/import',
 			EXPORT: '/v1/catalog/part/export',
 		},
@@ -192,6 +194,16 @@ export const API = {
 				IMPORT: '/v1/catalog/productionorder/import',
 				EXPORT: '/v1/catalog/productionorder/export',
 			},
+			POWER: {
+				LIST: '/v1/catalog/power',
+				CREATE: '/v1/catalog/power',
+				UPDATE: '/v1/catalog/power',
+				DELETES: '/v1/catalog/power',
+				DELETE: (id: string) => `/v1/catalog/power/${id}`,
+				DETAIL: (id: string) => `/v1/catalog/power/${id}`,
+				IMPORT: '/v1/catalog/power/import',
+				EXPORT: '/v1/catalog/power/export',
+			},
 		},
 		ADJUSTMENT: {
 			FACTOR: {
@@ -255,6 +267,18 @@ export const API = {
 				IMPORT: '/v1/pricing/longwallmaterialunitprice/import',
 				EXPORT: '/v1/pricing/longwallmaterialunitprice/export',
 			},
+			SUPPORT_AND_DRILLING: {
+				LIST: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				CREATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				UPDATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
+				DELETES: '/v1/pricing/tunnelsupportanddrillingmaterialunitpricelist',
+				DELETE: (id: string) =>
+					`/v1/pricing/tunnelsupportanddrillingmaterialunitprice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/tunnelsupportanddrillingmaterialunitprice/${id}`,
+				IMPORT: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice/import',
+				EXPORT: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice/export',
+			},
 		},
 		SLIDE: {
 			LIST: '/v1/pricing/slideunitprice',
@@ -263,6 +287,7 @@ export const API = {
 			DELETES: '/v1/pricing/slideunitprice',
 			DELETE: (id: string) => `/v1/pricing/slideunitprice/${id}`,
 			DETAIL: (id: string) => `/v1/pricing/slideunitprice/${id}`,
+			DETAIL_LIST: `/v1/pricing/slideunitprice/details`,
 			IMPORT: '/v1/pricing/slideunitprice/import',
 			EXPORT: '/v1/pricing/slideunitprice/export',
 		},

@@ -40,6 +40,7 @@ public class ApplicationDbContext(
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
     public DbSet<ProductionProcess> ProductionProcesses => Set<ProductionProcess>();
     public DbSet<Hardness> Hardnesses => Set<Hardness>();
+    public DbSet<Power> Powers => Set<Power>();
     public DbSet<StoneClampRatio> StoneClampRatios => Set<StoneClampRatio>();
     public DbSet<InsertItem> InsertItems => Set<InsertItem>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
@@ -80,6 +81,8 @@ public class ApplicationDbContext(
     public DbSet<ProductionOutputProcessGroup> ProductionOutputProcessGroups => Set<ProductionOutputProcessGroup>();
     public DbSet<ProductionOutputProduct> ProductionOutputProducts => Set<ProductionOutputProduct>();
     public DbSet<AcceptanceReport> AcceptanceReports => Set<AcceptanceReport>();
+    public DbSet<ActualElectricityCost> ActualElectricityCosts => Set<ActualElectricityCost>();
+    public DbSet<ActualEletricityEquipment> ActualEletricityEquipments => Set<ActualEletricityEquipment>();
     public DbSet<AcceptanceReportItem> AcceptanceReportItems => Set<AcceptanceReportItem>();
     public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
     public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
@@ -116,6 +119,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<InsertItem>().ToTable(nameof(InsertItem), "Index");
         modelBuilder.Entity<ProductionOrder>().ToTable(nameof(ProductionOrder), "Index");
         modelBuilder.Entity<Technology>().ToTable(nameof(Technology), "Index");
+        modelBuilder.Entity<Power>().ToTable(nameof(Power), "Index");
         modelBuilder.Entity<SupportStep>().ToTable(nameof(SupportStep), "Index");
         modelBuilder.Entity<Passport>().ToTable(nameof(Passport), "Index");
         modelBuilder.Entity<LongwallParameters>().ToTable(nameof(LongwallParameters), "Index");
@@ -202,6 +206,11 @@ public class ApplicationDbContext(
             .HasMany(s => s.EquipmentParts)
             .WithOne(h => h.Equipment)
             .HasForeignKey(s => s.EquipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Equipment>()
+            .HasMany(l => l.ActualEletricityEquipment)
+            .WithOne(l => l.Equipment)
+            .HasForeignKey(l => l.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //Part table
@@ -364,6 +373,12 @@ public class ApplicationDbContext(
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
 
+        //Power table
+        modelBuilder.Entity<Power>()
+            .HasIndex(e => e.Value)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
         //InsertItem table
         modelBuilder.Entity<InsertItem>()
             .HasIndex(e => e.Value)
@@ -415,7 +430,8 @@ public class ApplicationDbContext(
             .ToTable(nameof(MaterialUnitPrice), "Pricing")
             .HasDiscriminator<MaterialUnitPriceType>("MaterialType")
             .HasValue<TunnelExcavationMaterialUnitPrice>(MaterialUnitPriceType.TunnelExcavation)
-            .HasValue<LongwallMaterialUnitPrice>(MaterialUnitPriceType.Longwall);
+            .HasValue<LongwallMaterialUnitPrice>(MaterialUnitPriceType.Longwall)
+            .HasValue<TunnelSupportAndDrillingMaterialUnitPrice>(MaterialUnitPriceType.TunnelSupportAndDrilling);
 
         modelBuilder.Entity<MaterialUnitPriceAssignmentCode>().ToTable(nameof(MaterialUnitPriceAssignmentCode), "Pricing");
         modelBuilder.Entity<SlideUnitPrice>().ToTable(nameof(SlideUnitPrice), "Pricing");
@@ -480,6 +496,18 @@ public class ApplicationDbContext(
             .HasOne(s => s.SupportStep)
             .WithMany(h => h.MaterialUnitPrices)
             .HasForeignKey(s => s.SupportStepId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // TunnelSupportAndDrillingMaterialUnitPrice - Chống xén specific configuration
+        modelBuilder.Entity<TunnelSupportAndDrillingMaterialUnitPrice>()
+            .HasOne(s => s.Passport)
+            .WithMany()
+            .HasForeignKey(s => s.PassportId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TunnelSupportAndDrillingMaterialUnitPrice>()
+            .HasOne(s => s.Hardness)
+            .WithMany()
+            .HasForeignKey(s => s.HardnessId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //LongwallMaterialUnitPrice - Lò chợ specific configuration
@@ -640,6 +668,16 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.MaterialUnitPriceId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<PlannedMaterialCost>()
+            .HasOne(m => m.StoneClampRatio)
+            .WithMany(h => h.PlannedMaterialCosts)
+            .HasForeignKey(s => s.StoneClampRatioReferenceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedMaterialCost>()
+            .HasOne(m => m.Material)
+            .WithMany(h => h.PlannedMaterialCosts)
+            .HasForeignKey(s => s.MaterialReferenceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedMaterialCost>()
             .HasOne(m => m.ProductUnitPrice)
             .WithMany(h => h.PlannedMaterialCosts)
             .HasForeignKey(s => s.ProductUnitPriceId)
@@ -730,6 +768,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOutputProduct>().ToTable(nameof(ProductionOutputProduct), "Production");
         modelBuilder.Entity<AcceptanceReport>().ToTable(nameof(AcceptanceReport), "Production");
         modelBuilder.Entity<AcceptanceReportItem>().ToTable(nameof(AcceptanceReportItem), "Production");
+        modelBuilder.Entity<ActualElectricityCost>().ToTable(nameof(ActualElectricityCost), "Production");
+        modelBuilder.Entity<ActualEletricityEquipment>().ToTable(nameof(ActualEletricityEquipment), "Production");
         modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemShippedDetail>().ToTable(nameof(AcceptanceReportItemShippedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemLog>().ToTable(nameof(AcceptanceReportItemLog), "Production");
@@ -767,6 +807,11 @@ public class ApplicationDbContext(
                   .WithOne(p => p.AcceptanceReport)
                   .HasForeignKey<AcceptanceReport>(a => a.ProductionOutputId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(a => a.ActualElectricityCost)
+              .WithOne(p => p.AcceptanceReport)
+              .HasForeignKey<ActualElectricityCost>(a => a.AcceptanceReportId)
+              .OnDelete(DeleteBehavior.Cascade);
 
             // 2. Cấu hình Index có điều kiện (Partial Index)
             // Phải ghi đè Index mặc định mà EF tự tạo cho Foreign Key
@@ -838,8 +883,18 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<LumpSumQuarterCustomCost>()
-            .HasIndex(l => new { l.Year, l.Quarter, l.ProcessGroupId })
+            .HasIndex(l => new { l.Year, l.Month, l.ProcessGroupId })
             .HasFilter("\"DeletedOn\" IS NULL");
+
+        // ActualElectricityCost table
+        modelBuilder.Entity<ActualElectricityCost>()
+            .HasIndex(l => l.AcceptanceReportId)
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<ActualElectricityCost>()
+            .HasMany(l => l.ActualEletricityEquipment)
+            .WithOne(l => l.ActualElectricityCost)
+            .HasForeignKey(l => l.ActualElectricityCostId)
+            .OnDelete(DeleteBehavior.Cascade);
         #endregion
 
         base.OnModelCreating(modelBuilder);

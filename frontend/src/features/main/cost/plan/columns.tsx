@@ -46,7 +46,7 @@ export const MAIN_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'plannedTotalCost',
 		header: () => (
 			<span>
-				Chi phí <br /> kế hoạch <br /> ban đầu (đ)
+				Doanh thu <br /> kế hoạch <br /> ban đầu (đ)
 			</span>
 		),
 		cell: ({ row }) =>

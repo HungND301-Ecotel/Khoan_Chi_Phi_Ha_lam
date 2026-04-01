@@ -73,12 +73,22 @@ public enum MaterialType
 
     [Display(Name = "Ngoài khoán")]
     MaterialOutContract = 2,
+
+    [Display(Name = "Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão")]
+    SafetyAndWelfareMaterials = 3,
+
+    [Display(Name = "Tài sản")]
+    Resource = 4,
+
+    [Display(Name = "Vật tư theo hạn mức")]
+    QuotaMaterials = 5,
 }
 
 public enum MaterialUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò
-    Longwall = 2           // Lò chợ
+    Longwall = 2,          // Lò chợ
+    TunnelSupportAndDrilling = 3
 }
 
 
@@ -100,7 +110,7 @@ public enum AdditionalCost
     None = 1,
     Material = 2,
     Maintain = 3,
-    OtherMaterial = 4
+    SafeAndWelfare = 4
 }
 
 public enum OtherMaterialDetail
@@ -117,6 +127,7 @@ public enum QuotaBasedMaterial
     SupportAccessories = 3,
     MineTimber = 4,
 }
+
 public enum QuotaBasedMaterialType
 {
     New = 1,
@@ -138,13 +149,23 @@ public enum AcceptanceReportItemType
 public enum ItemType
 {
     InContract = 1,
-    OutContract = 2
+    OutContract = 2,
+    SafetyAndWelfare = 3,
+    Resource = 4,
+    QuotaMaterials = 5
 }
 
 public enum PartType
 {
     Part = 1,
     OtherPart = 2
+}
+
+public enum SteelMeshType
+{
+    None = 1,
+    SingleLayerSteelMesh = 2,
+    DoubleLayerSteelMesh = 3
 }
 
 public enum IssuedQuantityType

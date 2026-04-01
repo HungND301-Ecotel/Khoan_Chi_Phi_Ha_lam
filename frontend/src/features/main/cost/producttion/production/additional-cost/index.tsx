@@ -26,7 +26,11 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 
-export function AdditionalCost({ output, isOpen }: ProductCostExpandProps) {
+export function AdditionalCost({
+	output,
+	isOpen,
+	reloadKey,
+}: ProductCostExpandProps) {
 	const [materials, setMaterials] = useState<MaterialCost[]>([]);
 	const [sctx, setSCTX] = useState<SCTXCost[]>([]);
 	const [otherMaterials, setOtherMaterials] = useState<OtherMaterial[]>([]);
@@ -90,7 +94,7 @@ export function AdditionalCost({ output, isOpen }: ProductCostExpandProps) {
 		};
 
 		fetchAdditionalCost();
-	}, [output?.acceptanceReportId]);
+	}, [output?.acceptanceReportId, reloadKey]);
 
 	return (
 		<AccordionItem

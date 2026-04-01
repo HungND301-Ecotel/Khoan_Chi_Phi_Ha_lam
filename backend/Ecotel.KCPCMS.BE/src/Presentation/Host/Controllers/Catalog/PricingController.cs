@@ -1,12 +1,14 @@
-﻿using Application.Catalog.Pricing.AdjustmentElectricityCost.Queries;
+using Application.Catalog.Pricing.ActualElectricityCost.Commands;
+using Application.Catalog.Pricing.ActualElectricityCost.Queries;
+using Application.Catalog.Pricing.AdjustmentElectricityCost.Queries;
 using Application.Catalog.Pricing.AdjustmentMaterialCost.Queries;
 using Application.Catalog.Pricing.AdjustmnetMaintainCost.Queries;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Queries;
-using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 using Application.Catalog.Pricing.LumpSumFinalSettlement.Commands;
+using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.MaterialUnitPrice.Commands;
@@ -21,6 +23,9 @@ using Application.Catalog.Pricing.ProductUnitPrice.Commands;
 using Application.Catalog.Pricing.ProductUnitPrice.Queries;
 using Application.Catalog.Pricing.SlideUnitPrice.Commands;
 using Application.Catalog.Pricing.SlideUnitPrice.Queries;
+using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
+using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Queries;
+using Application.Dto.Catalog.ActualElectricityCost;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
@@ -118,6 +123,74 @@ public class PricingController : BaseNoAuthController
     }
     #endregion
 
+    #region TunnelSupportAndDrillingMaterialUnitPrice - ĐÀO LÒ  CHỐNG NEO, BÊ TÔNG PHUN VÀ KHOAN THĂM DÒ
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Get All Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> GetAllTunnelSupportAndDrillingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTunnelSupportAndDrillingMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Tunnel Support And Drilling MaterialUnitPrice By Id", "")]
+    public async Task<IActionResult> GetTunnelSupportAndDrillingMaterialUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTunnelSupportAndDrillingMaterialUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Update Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> UpdateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] UpdateTunnelSupportAndDrillingMaterialUnitPrice updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice")]
+    [OpenApiOperation("Create New Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> CreateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] CreateTunnelSupportAndDrillingMaterialUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTunnelSupportAndDrillingMaterialUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpDelete("TunnelSupportAndDrillingMaterialUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTunnelSupportAndDrillingMaterialUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TunnelSupportAndDrillingMaterialUnitPriceList")]
+    [OpenApiOperation("Delete Multiple Tunnel Support And Drilling MaterialUnitPrice", "")]
+    public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTunnelSupportAndDrillingMaterialUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/export")]
+    [OpenApiOperation("Export TunnelSupportAndDrillingMaterialUnitPrice", "")]
+    public async Task<IActionResult> ExportTunnelSupportAndDrillingMaterialUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chong_xen_don_gia_dinh_muc.xlsx");
+        return result;
+    }
+
+    [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice/import")]
+    [OpenApiOperation("Import TunnelSupportAndDrillingMaterialUnitPrice", "")]
+    public async Task<IActionResult> ImportTunnelSupportAndDrillingMaterialUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
     #region LongwallMaterialUnitPrice - Lò chợ
 
     [HttpGet("LongwallMaterialUnitPrice")]
@@ -194,6 +267,14 @@ public class PricingController : BaseNoAuthController
     public async Task<IActionResult> GetAllSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("SlideUnitPrice/Details")]
+    [OpenApiOperation("Get All SlideUnitPrice Detail list", "")]
+    public async Task<IActionResult> GetAllSlideUnitPriceAssignmentCode([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllSlideUnitPriceAssignmentCodeQuery(pageIndex, pageSize, search, ignorePagination));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -670,6 +751,33 @@ public class PricingController : BaseNoAuthController
     }
     #endregion
 
+    #region ActualElectricityCost
+
+    [HttpGet("ActualElectricityCost/{id:guid}")]
+    [OpenApiOperation("Get ActualElectricityCost By AcceptanceReport Id", "")]
+    public async Task<IActionResult> GetActualElectricityCost([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetActualElectricityCostByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("ActualElectricityCost")]
+    [OpenApiOperation("Update ActualElectricityCost", "")]
+    public async Task<IActionResult> UpdateActualElectricityCost([FromBody] UpdateActualElectricityCostDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateActualElectricityCostCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("ActualElectricityCost")]
+    [OpenApiOperation("Create New ActualElectricityCost", "")]
+    public async Task<IActionResult> CreateActualElectricityCost([FromBody] CreateActualElectricityCostDto createModel)
+    {
+        var result = await Mediator.Send(new CreateActualElectricityCostCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    #endregion
     #region AdjustmentCost
     [HttpGet("AdjustmnetMaterialCost/{id:guid}")]
     [OpenApiOperation("Get AdjustmnetMaterialCost By Id", "")]
@@ -748,3 +856,5 @@ public class PricingController : BaseNoAuthController
 
     #endregion
 }
+
+

@@ -33,7 +33,13 @@ export function AdjustmentElectricityCost({
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
-		if (!id) return;
+		if (!id) {
+			setAdjustmentElectricityCost(undefined);
+			setTotal(0);
+			setLoading(false);
+			return;
+		}
+		setLoading(true);
 		api
 			.get<AdjustmentElectricityCostDetail>(
 				API.COST.ADJUSTMENT_ELECTRICITY.DETAIL(id),
@@ -51,7 +57,7 @@ export function AdjustmentElectricityCost({
 				);
 			})
 			.finally(() => setLoading(false));
-	}, [id]);
+	}, [id, productionOutput?.productionMeters, multiplyByProductionMeters]);
 
 	return (
 		<AccordionItem
@@ -60,7 +66,7 @@ export function AdjustmentElectricityCost({
 		>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
-					<ItemTitle>Chi phí điện năng điều chỉnh</ItemTitle>
+					<ItemTitle>Doanh thu điện năng điều chỉnh</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>

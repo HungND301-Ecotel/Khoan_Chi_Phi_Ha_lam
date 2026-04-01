@@ -455,12 +455,14 @@ function PricingLongwallPanelCosts({
 				/>
 			</div>
 
-			<FormNumber
-				control={control}
-				name={`costs.${index}.replacementTimeStandard`}
-				label='Định mức thời gian thay thế (tháng)'
-				placeholder='Nhập định mức'
-			/>
+			<div className='flex flex-1 flex-col gap-2'>
+				<Label>Định mức thời gian thay thế (tháng)</Label>
+				<Input
+					readOnly
+					value={part?.replacementTimeStandard ?? ''}
+					className='read-only:bg-transparent'
+				/>
+			</div>
 
 			<FormNumber
 				control={control}
@@ -472,12 +474,12 @@ function PricingLongwallPanelCosts({
 			<FormNumber
 				control={control}
 				name={`costs.${index}.averageMonthlyTunnelProduction`}
-				label='Sản lượng than bình quân tháng (tấn)'
+				label='Sản lượng than bình quân tháng (1000 tấn)'
 				placeholder='Nhập sản lượng'
 			/>
 
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Định mức vật tư SCTX</Label>
+				<Label>Định mức SCTX 1 thiết bị/1000 tấn</Label>
 				<Input
 					readOnly
 					value={regularRepairRates ? regularRepairRates.toFixed(4) : '0'}
@@ -489,7 +491,7 @@ function PricingLongwallPanelCosts({
 			</div>
 
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Chi phí vật tư SCTX (đ)</Label>
+				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
 					value={formatNumber(Math.round(regularRepairCost) || 0)}
@@ -706,19 +708,19 @@ function PricingEquipmentOtherPartCosts({
 			</div>
 
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Sản lượng than bình quân tháng (tấn)</Label>
+				<Label>Sản lượng than bình quân tháng (1000 tấn)</Label>
 				<Input readOnly value='' className='read-only:bg-transparent' />
 			</div>
 
 			<FormNumber
 				control={control}
 				name={`otherMaterialValues.${equipmentId}`}
-				label='Định mức vật tư SCTX'
+				label='Định mức SCTX 1 thiết bị/1000 tấn'
 				placeholder='Nhập định mức (%)'
 			/>
 
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Chi phí vật tư SCTX (đ)</Label>
+				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
 					value={formatNumber(isNaN(otherCost) ? 0 : Math.round(otherCost))}

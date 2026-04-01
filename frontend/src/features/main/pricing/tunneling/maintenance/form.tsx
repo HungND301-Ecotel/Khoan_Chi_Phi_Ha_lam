@@ -437,7 +437,6 @@ function PricingTunnelingCosts({
 				<Label>Định mức thời gian thay thế (tháng)</Label>
 				<Input
 					readOnly
-					disabled
 					value={part?.replacementTimeStandard ?? ''}
 					className='read-only:bg-transparent'
 				/>

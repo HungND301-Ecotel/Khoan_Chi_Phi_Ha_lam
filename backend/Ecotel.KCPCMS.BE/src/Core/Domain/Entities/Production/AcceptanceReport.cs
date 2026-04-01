@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Entities.Pricing;
 
 namespace Domain.Entities.Production;
 
@@ -8,7 +9,8 @@ public class AcceptanceReport : AuditableEntity<Guid>
     public string FilePath { get; protected set; }
 
     //Navigation Properties
-    public virtual ProductionOutput ProductionOutput { get; protected set; }
+    public virtual ProductionOutput? ProductionOutput { get; protected set; }
+    public virtual ActualElectricityCost? ActualElectricityCost { get; protected set; }
 
     private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
     public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();

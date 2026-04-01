@@ -1,10 +1,12 @@
+using Application.Catalog.Pricing.Common;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Pricing.Common;
 using Application.Dto.Catalog.Dashboard;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
+using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,14 +18,18 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 {
     private readonly IWriteRepository<ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
-    private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
+    private readonly IWriteRepository<PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
+    private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
+    private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
 
     public async Task<CostSummaryDto> Handle(GetCostSummaryQuery request, CancellationToken cancellationToken)
     {
         var year = request.Year;
+        var startOfYear = new DateOnly(year, 1, 1);
+        var endOfYear = new DateOnly(year, 12, 31);
 
         // STEP 1: Get Plan outputs for requested year and process group
         var outputs = await _outputRepository.GetAll()
@@ -31,8 +37,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 && o.ProductUnitPrice != null
                 && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                 && (!request.ProcessGroupId.HasValue || o.ProductUnitPrice.Product!.ProcessGroupId == request.ProcessGroupId)
-                && o.StartMonth.Year <= year
-                && o.EndMonth.Year >= year)
+                && o.StartMonth <= endOfYear
+                && o.EndMonth >= startOfYear)
             .Select(o => new OutputData
             {
                 ProductUnitPriceId = o.ProductUnitPriceId,
@@ -95,8 +101,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 && (!request.ProcessGroupId.HasValue || p.Product!.ProcessGroupId == request.ProcessGroupId))
             .SelectMany(p => p.ProductUnitPriceProductionOutputs
                 .Where(link => link.ProductionOutput != null
-                    && link.ProductionOutput.StartMonth.Year <= year
-                    && link.ProductionOutput.EndMonth.Year >= year)
+                    && link.ProductionOutput.StartMonth <= endOfYear
+                    && link.ProductionOutput.EndMonth >= startOfYear)
                 .Select(link => new AdjustmentProductionData
                 {
                     ProductId = p.ProductId,
@@ -148,6 +154,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         var plannedMaintainFactors = await LoadPlannedMaintainFactors(plannedMaintainCostIds, cancellationToken);
         var plannedElectricityFactors = await LoadPlannedElectricityFactors(plannedElectricityCostIds, cancellationToken);
         var plannedMaterialCosts = await LoadPlannedMaterialCosts(plannedMaterialCostIds, cancellationToken);
+        var customCostsByMonth = await LoadCustomCostsByMonth(year, request.ProcessGroupId, cancellationToken);
+        var transferredCostsByMonth = await LoadTransferredCostsByMonth(year, request.ProcessGroupId, cancellationToken);
 
         // STEP 4: Calculate monthly costs
         var result = new CostSummaryDto();
@@ -167,27 +175,19 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             double monthlyOtherQuantity = monthActuals
                 .Where(o => o.ProcessGroupType != ProcessGroupType.DL && o.ProcessGroupType != ProcessGroupType.LC)
                 .Sum(o => o.ProductionMeters);
-            double monthlyPlannedCost = CalculatePlannedTotalCost(plannedOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialCosts);
-
-            var monthDate = new DateOnly(year, month, 1);
-            double monthlyActualCost = monthActuals.Sum(actual =>
-            {
-                var matchedPlanOutput = allPlannedOutputs.FirstOrDefault(plan =>
-                    plan.ProductId == actual.ProductId
-                    && plan.StartMonth <= monthDate
-                    && plan.EndMonth >= monthDate);
-
-                if (matchedPlanOutput == null)
-                {
-                    return 0;
-                }
-
-                var materialCost = CalculatePlannedMaterialCost(matchedPlanOutput, plannedMaterialCosts);
-                var maintainCost = CalculateMaintainCost(matchedPlanOutput.PlannedMaintainCostId, plannedMaintainFactors);
-                var electricityCost = CalculatePlannedElectricityCost(matchedPlanOutput.PlannedElectricityCostId, plannedElectricityFactors);
-
-                return actual.ProductionMeters * (materialCost + maintainCost + electricityCost);
-            });
+            double monthlyPlannedCost = CalculateMonthlyPlannedCost(
+                plannedOutputs,
+                plannedMaintainFactors,
+                plannedElectricityFactors,
+                plannedMaterialCosts);
+            double monthlyAdjustmentCost = CalculateMonthlyAdjustmentCost(
+                plannedOutputs,
+                monthActuals,
+                plannedMaintainFactors,
+                plannedElectricityFactors,
+                plannedMaterialCosts);
+            double monthlyActualCost = customCostsByMonth.GetValueOrDefault(month, 0)
+                + transferredCostsByMonth.GetValueOrDefault(month, 0);
 
             result.MonthlyData.Add(new MonthlyCostDto
             {
@@ -195,6 +195,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 TunnelQuantity = monthlyTunnelQuantity,
                 LongwallQuantity = monthlyLongwallQuantity,
                 PlannedCost = monthlyPlannedCost,
+                AdjustmentCost = monthlyAdjustmentCost,
                 ActualCost = monthlyActualCost
             });
 
@@ -202,6 +203,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             result.TotalLongwallQuantity += monthlyLongwallQuantity;
             result.TotalOtherQuantity += monthlyOtherQuantity;
             result.TotalPlannedCost += monthlyPlannedCost;
+            result.TotalAdjustmentCost += monthlyAdjustmentCost;
             result.TotalActualCost += monthlyActualCost;
         }
 
@@ -230,7 +232,6 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    //m.ReplacementTimeStandard,
                     m.Part.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
@@ -246,7 +247,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 g => g.Key,
                 g => g.Select(f => new MaintainFactorData
                 {
-                    Quantity = (double)f.Quantity,
+                    Quantity = Convert.ToDouble(f.Quantity),
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
@@ -291,7 +292,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 
                     return new PlannedElectricityFactorData
                     {
-                        Quantity = (double)f.Quantity,
+                        Quantity = Convert.ToDouble(f.Quantity),
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -351,24 +352,64 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 
     #region Calculate Methods
 
-    private static double CalculatePlannedTotalCost(
-        List<OutputData> outputs,
+    private static double CalculateMonthlyPlannedCost(
+        List<OutputData> plannedOutputs,
         Dictionary<Guid, List<MaintainFactorData>> plannedMaintainFactors,
         Dictionary<Guid, List<PlannedElectricityFactorData>> plannedElectricityFactors,
         Dictionary<Guid, double> plannedMaterialCosts)
     {
-        if (!outputs.Any())
+        if (!plannedOutputs.Any())
         {
             return 0;
         }
 
-        return outputs.Sum(output =>
+        return plannedOutputs.Sum(output =>
         {
             var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(output.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(output.PlannedElectricityCostId, plannedElectricityFactors);
             return output.ProductionMeters * (materialCost + maintainCost + electricityCost);
         });
+    }
+
+    private static double CalculateMonthlyAdjustmentCost(
+        List<OutputData> plannedOutputs,
+        List<AdjustmentProductionData> monthActuals,
+        Dictionary<Guid, List<MaintainFactorData>> plannedMaintainFactors,
+        Dictionary<Guid, List<PlannedElectricityFactorData>> plannedElectricityFactors,
+        Dictionary<Guid, double> plannedMaterialCosts)
+    {
+        if (!plannedOutputs.Any() || !monthActuals.Any())
+        {
+            return 0;
+        }
+
+        var actualQuantityByProduct = monthActuals
+            .GroupBy(x => x.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
+
+        var plannedByProduct = plannedOutputs.GroupBy(x => x.ProductId);
+        var monthlyRevenue = 0.0;
+
+        foreach (var productGroup in plannedByProduct)
+        {
+            if (!actualQuantityByProduct.TryGetValue(productGroup.Key, out var actualQuantity) || actualQuantity <= 0)
+            {
+                continue;
+            }
+
+            var productUnitPrice = productGroup.Sum(output =>
+            {
+                var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
+                var maintainCost = CalculateMaintainCost(output.PlannedMaintainCostId, plannedMaintainFactors);
+                var electricityCost = CalculatePlannedElectricityCost(output.PlannedElectricityCostId, plannedElectricityFactors);
+                return materialCost + maintainCost + electricityCost;
+            });
+
+            monthlyRevenue += productUnitPrice * actualQuantity;
+        }
+
+        return monthlyRevenue;
     }
 
     private static double CalculatePlannedMaterialCost(
@@ -405,6 +446,124 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         }
 
         return factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+    }
+
+    private async Task<Dictionary<int, double>> LoadCustomCostsByMonth(
+        int year,
+        Guid? processGroupId,
+        CancellationToken cancellationToken)
+    {
+        var customCosts = await _customCostRepository.GetAll()
+            .Where(x => x.Year == year
+                && (!processGroupId.HasValue || x.ProcessGroupId == processGroupId))
+            .Select(x => new
+            {
+                x.Month,
+                TotalAmount = x.ActualQuantity * (x.MaterialUnitPrice + x.MaintainUnitPrice + x.ElectricityUnitPrice)
+            })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return customCosts
+            .GroupBy(x => x.Month)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalAmount));
+    }
+
+    private async Task<Dictionary<int, double>> LoadTransferredCostsByMonth(
+        int year,
+        Guid? processGroupId,
+        CancellationToken cancellationToken)
+    {
+        var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
+            .Where(po => po.StartMonth.Year == year && po.AcceptanceReport != null)
+            .Include(po => po.ProductionOutputProcessGroups)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Material)
+                        .ThenInclude(m => m!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.ShippedDetails)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.AcceptanceReportItemLogs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.ActualElectricityCost)
+                    .ThenInclude(aec => aec!.ActualEletricityEquipment)
+                        .ThenInclude(aee => aee.Equipment)
+                            .ThenInclude(e => e!.Costs)
+            .AsSplitQuery()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<int, double>();
+
+        foreach (var output in outputsWithAcceptanceReport)
+        {
+            if (processGroupId.HasValue
+                && !output.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId.Value))
+            {
+                continue;
+            }
+
+            var report = output.AcceptanceReport;
+            if (report == null)
+            {
+                continue;
+            }
+
+            var sectionAItems = report.AcceptanceReportItems
+                .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                .Where(i => !processGroupId.HasValue || i.ProcessGroupId == processGroupId.Value)
+                .ToList();
+
+            decimal transferredMaterial = 0m;
+            decimal transferredMaintain = 0m;
+            decimal transferredElectricity = 0m;
+
+            foreach (var item in sectionAItems.Where(i => i.MaterialId.HasValue && i.Material != null))
+            {
+                var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
+                var exportedToProductionQty = item.ShippedDetails
+                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                    .Sum(d => d.Quantity);
+                transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
+            }
+
+            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+            {
+                var logsOfCurrentReport = item.AcceptanceReportItemLogs
+                    .Where(l => l.AcceptanceReportId == report.Id);
+                transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
+            }
+
+            if (report.ActualElectricityCost != null)
+            {
+                transferredElectricity += (decimal)report.ActualElectricityCost.ActualEletricityEquipment.Sum(equipment =>
+                {
+                    var unitPrice = GetPlannedUnitPrice(
+                        equipment.Equipment?.Costs ?? Array.Empty<Cost>(),
+                        output.StartMonth);
+                    return (double)unitPrice * equipment.ActualElectricityConsumption;
+                });
+            }
+
+            var month = output.StartMonth.Month;
+            var totalTransferred = (double)(transferredMaterial + transferredMaintain + transferredElectricity);
+            result[month] = result.GetValueOrDefault(month, 0) + totalTransferred;
+        }
+
+        return result;
+    }
+
+    private static decimal GetPlannedUnitPrice(IReadOnlyCollection<Cost> costs, DateOnly month)
+    {
+        var cost = costs.FirstOrDefault(c => c.StartMonth <= month && c.EndMonth >= month);
+        return cost == null ? 0 : (decimal)cost.Amount;
     }
 
     #endregion

@@ -19,6 +19,7 @@ import {
 	LumpSumFinalSettlementQuarterListRequest,
 	LumpSumFinalSettlementQuarterResponse,
 	LumpSumQuarterCustomCost,
+	LumpSumQuarterCustomCostListRequest,
 	LumpSumQuarterRevenueByMonth,
 	LumpSumQuarterTransferredCost,
 	ProcessGroup,
@@ -46,8 +47,13 @@ const quarterToMonthRange = (quarter: string) => {
 	return [startMonth, startMonth + 1, startMonth + 2];
 };
 
-const quarterEndMonth = (quarter: number) => {
-	return (quarter - 1) * 3 + 3;
+const toRomanQuarter = (quarter: string | number) => {
+	const quarterNumber = Number(quarter);
+	if (quarterNumber === 1) return 'I';
+	if (quarterNumber === 2) return 'II';
+	if (quarterNumber === 3) return 'III';
+	if (quarterNumber === 4) return 'IV';
+	return String(quarter);
 };
 
 interface LumpSumFinalSettlementReportTableProps {
@@ -93,10 +99,10 @@ const ExcelReportHeader = ({ quarter, year }: ExcelReportHeaderProps) => {
 
 			<div className='mt-4 text-center'>
 				<p className='text-lg font-bold uppercase md:text-2xl'>
-					Bảng quyết toán khoán chi phí lũy kế
+					Bảng quyết toán
 				</p>
 				<p className='mt-2 text-base font-bold uppercase md:text-xl'>
-					Quý {quarter} năm {year}
+					Quý {toRomanQuarter(quarter)} năm {year}
 				</p>
 			</div>
 		</div>
@@ -135,7 +141,7 @@ const ExcelReportFooter = ({ quarter, year }: ExcelReportFooterProps) => {
 			</div>
 
 			<p className='mt-4 text-xs italic'>
-				Biểu mẫu quý {quarter}/{year}
+				Biểu mẫu quý {toRomanQuarter(quarter)}/{year}
 			</p>
 		</div>
 	);
@@ -160,8 +166,9 @@ export function LumpSumFinalSettlementReportTable({
 	const [revenuesByMonth, setRevenuesByMonth] = useState<
 		LumpSumQuarterRevenueByMonth[]
 	>([]);
-	const [transferredCost, setTransferredCost] =
-		useState<LumpSumQuarterTransferredCost | null>(null);
+	const [transferredCosts, setTransferredCosts] = useState<
+		LumpSumQuarterTransferredCost[]
+	>([]);
 	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>(
 		[],
 	);
@@ -239,15 +246,32 @@ export function LumpSumFinalSettlementReportTable({
 				LumpSumFinalSettlementQuarterResponse,
 				LumpSumFinalSettlementQuarterListRequest
 			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload);
+			const customCostResponse = await api.post<
+				LumpSumQuarterCustomCost[],
+				LumpSumQuarterCustomCostListRequest
+			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
+				quarter,
+				year,
+				processGroupId:
+					selectedProcessGroup === ALL_PROCESS_GROUP
+						? ''
+						: selectedProcessGroup,
+			});
 
 			setRows(groupByProcessGroup(response.result.items ?? []));
 			setRevenuesByMonth(response.result.revenuesByMonth ?? []);
-			setTransferredCost(response.result.transferredCost ?? null);
-			setCustomCosts(response.result.customCosts ?? []);
+			if (response.result.transferredCosts?.length) {
+				setTransferredCosts(response.result.transferredCosts);
+			} else {
+				setTransferredCosts([]);
+			}
+			setCustomCosts(
+				customCostResponse.result ?? response.result.customCosts ?? [],
+			);
 		} catch (err) {
 			setRows([]);
 			setRevenuesByMonth([]);
-			setTransferredCost(null);
+			setTransferredCosts([]);
 			setCustomCosts([]);
 			setError(
 				err instanceof Error
@@ -264,7 +288,7 @@ export function LumpSumFinalSettlementReportTable({
 	}, [fetchLumpSumFinalSettlementQuarter]);
 
 	const reportRows = useMemo(() => {
-		const quarterNumber = Number(quarter);
+		const quarterRoman = toRomanQuarter(quarter);
 		const months = quarterToMonthRange(quarter);
 		const revenueByMonthMap = new Map(
 			revenuesByMonth.map((item) => [item.month, item]),
@@ -292,14 +316,22 @@ export function LumpSumFinalSettlementReportTable({
 		);
 
 		const transferred = {
-			month: transferredCost?.month ?? quarterEndMonth(quarterNumber),
-			materials: transferredCost?.materials?.totalAmount ?? 0,
-			maintains: transferredCost?.maintains?.totalAmount ?? 0,
-			electricities: transferredCost?.electricities?.totalAmount ?? 0,
-			total: transferredCost?.totalAmount ?? 0,
+			byMonth: new Map(
+				transferredCosts.map((item) => [
+					item.month,
+					{
+						materials: item.materials?.totalAmount ?? 0,
+						maintains: item.maintains?.totalAmount ?? 0,
+						electricities: item.electricities?.totalAmount ?? 0,
+						total: item.totalAmount ?? 0,
+					},
+				]),
+			),
 		};
 
-		const customCostRows: LumpSumFinalSettlement[] = customCosts.map((item) => {
+		const buildCustomCostRow = (
+			item: LumpSumQuarterCustomCost,
+		): LumpSumFinalSettlement => {
 			const quantity = item.actualQuantity || 0;
 			const materialUnit = item.materialUnitPrice || 0;
 			const maintainUnit = item.maintainUnitPrice || 0;
@@ -311,6 +343,7 @@ export function LumpSumFinalSettlementReportTable({
 			return {
 				id: item.id,
 				sttLabel: '-',
+				month: item.month ? Number(item.month) : undefined,
 				productName: item.customName || '',
 				unitOfMeasureName: 'Đồng',
 				plannedQuantity: undefined,
@@ -330,13 +363,109 @@ export function LumpSumFinalSettlementReportTable({
 				totalAmount: materialTotal + maintainTotal + electricityTotal,
 				excludeFromSummary: true,
 			};
+		};
+
+		const customCostRowsByMonth = new Map<number, LumpSumFinalSettlement[]>();
+		const customCostTotalsByMonth = new Map<
+			number,
+			{
+				materials: number;
+				maintains: number;
+				electricities: number;
+				total: number;
+			}
+		>();
+		for (const item of customCosts) {
+			const month = Number(item.month ?? 0);
+			if (!month) {
+				continue;
+			}
+			const row = buildCustomCostRow(item);
+			const rows = customCostRowsByMonth.get(month) ?? [];
+			rows.push(row);
+			customCostRowsByMonth.set(month, rows);
+
+			const currentTotal = customCostTotalsByMonth.get(month) ?? {
+				materials: 0,
+				maintains: 0,
+				electricities: 0,
+				total: 0,
+			};
+			customCostTotalsByMonth.set(month, {
+				materials: currentTotal.materials + (row.materials?.totalAmount ?? 0),
+				maintains: currentTotal.maintains + (row.maintains?.totalAmount ?? 0),
+				electricities:
+					currentTotal.electricities + (row.electricities?.totalAmount ?? 0),
+				total: currentTotal.total + (row.totalAmount ?? 0),
+			});
+		}
+
+		const costRows = months.map((month) => {
+			const monthTransferred = transferred.byMonth.get(month) ?? {
+				materials: 0,
+				maintains: 0,
+				electricities: 0,
+				total: 0,
+			};
+			const monthCustom = customCostTotalsByMonth.get(month) ?? {
+				materials: 0,
+				maintains: 0,
+				electricities: 0,
+				total: 0,
+			};
+			return {
+				month,
+				materials: monthTransferred.materials + monthCustom.materials,
+				maintains: monthTransferred.maintains + monthCustom.maintains,
+				electricities:
+					monthTransferred.electricities + monthCustom.electricities,
+				total: monthTransferred.total + monthCustom.total,
+			};
 		});
+
+		const costQuarter = costRows.reduce(
+			(acc, item) => ({
+				materials: acc.materials + item.materials,
+				maintains: acc.maintains + item.maintains,
+				electricities: acc.electricities + item.electricities,
+				total: acc.total + item.total,
+			}),
+			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
+		);
+
+		const savingRows = months.map((month, idx) => ({
+			month,
+			materials:
+				(revenueRows[idx]?.materials ?? 0) - (costRows[idx]?.materials ?? 0),
+			maintains:
+				(revenueRows[idx]?.maintains ?? 0) - (costRows[idx]?.maintains ?? 0),
+			electricities:
+				(revenueRows[idx]?.electricities ?? 0) -
+				(costRows[idx]?.electricities ?? 0),
+			total: (revenueRows[idx]?.total ?? 0) - (costRows[idx]?.total ?? 0),
+		}));
+
+		const savingQuarter = savingRows.reduce(
+			(acc, item) => ({
+				materials: acc.materials + item.materials,
+				maintains: acc.maintains + item.maintains,
+				electricities: acc.electricities + item.electricities,
+				total: acc.total + item.total,
+			}),
+			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
+		);
+		const acceptedSavingQuarter =
+			savingQuarter.materials +
+			savingQuarter.maintains +
+			savingQuarter.electricities;
 
 		const makeZeroRow = (
 			productName: string,
 			options?: {
 				sttLabel?: string;
 				isBold?: boolean;
+				month?: number;
+				isTransferredDefaultRow?: boolean;
 				unitOfMeasureName?: string;
 				materialsTotalAmount?: number;
 				maintainsTotalAmount?: number;
@@ -352,6 +481,8 @@ export function LumpSumFinalSettlementReportTable({
 			isBold: options?.isBold,
 			excludeFromSummary: true,
 			isMergedValueRow: options?.isMergedValueRow,
+			isTransferredDefaultRow: options?.isTransferredDefaultRow,
+			month: options?.month,
 			mergedValue: options?.mergedValue ?? options?.totalAmount ?? 0,
 			productName,
 			unitOfMeasureName: options?.unitOfMeasureName ?? '',
@@ -373,7 +504,7 @@ export function LumpSumFinalSettlementReportTable({
 		});
 
 		const defaultRows: LumpSumFinalSettlement[] = [
-			makeZeroRow(`Doanh thu quý ${quarter}/${year}`, {
+			makeZeroRow(`Doanh thu quý ${quarterRoman}/${year}`, {
 				sttLabel: 'I',
 				isBold: true,
 				materialsTotalAmount: revenueQuarter.materials,
@@ -395,34 +526,52 @@ export function LumpSumFinalSettlementReportTable({
 					hideUnitPrice: true,
 				}),
 			),
-			makeZeroRow(`Chi phí quý ${quarter}/${year}`, {
+			makeZeroRow(`Chi phí quý ${quarterRoman}/${year}`, {
 				sttLabel: 'II',
 				isBold: true,
+				materialsTotalAmount: costQuarter.materials,
+				maintainsTotalAmount: costQuarter.maintains,
+				electricitiesTotalAmount: costQuarter.electricities,
+				totalAmount: costQuarter.total,
 				hidePlanActual: true,
 				hideUnitPrice: true,
 			}),
-			...months.map((monthNumber, idx) =>
-				makeZeroRow(`Tháng ${monthNumber}/${year}`, {
-					sttLabel: `II.${idx + 1}`,
-					unitOfMeasureName: 'Đồng',
-					hidePlanActual: true,
-					hideUnitPrice: true,
-				}),
-			),
-			makeZeroRow(`Chi phí kết chuyển T${transferred.month}/${year}`, {
-				sttLabel: '-',
-				unitOfMeasureName: '',
-				materialsTotalAmount: transferred.materials,
-				maintainsTotalAmount: transferred.maintains,
-				electricitiesTotalAmount: transferred.electricities,
-				totalAmount: transferred.total,
-				hidePlanActual: true,
-				hideUnitPrice: true,
+			...months.flatMap((monthNumber, idx) => {
+				const monthTransferred = transferred.byMonth.get(monthNumber);
+				const monthCost = costRows[idx];
+				return [
+					makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+						sttLabel: `II.${idx + 1}`,
+						unitOfMeasureName: 'Đồng',
+						materialsTotalAmount: monthCost?.materials ?? 0,
+						maintainsTotalAmount: monthCost?.maintains ?? 0,
+						electricitiesTotalAmount: monthCost?.electricities ?? 0,
+						totalAmount: monthCost?.total ?? 0,
+						hidePlanActual: true,
+						hideUnitPrice: true,
+					}),
+					makeZeroRow(`Chi phí kết chuyển T${monthNumber}/${year}`, {
+						sttLabel: '-',
+						isTransferredDefaultRow: true,
+						month: monthNumber,
+						unitOfMeasureName: '',
+						materialsTotalAmount: monthTransferred?.materials ?? 0,
+						maintainsTotalAmount: monthTransferred?.maintains ?? 0,
+						electricitiesTotalAmount: monthTransferred?.electricities ?? 0,
+						totalAmount: monthTransferred?.total ?? 0,
+						hidePlanActual: true,
+						hideUnitPrice: true,
+					}),
+					...(customCostRowsByMonth.get(monthNumber) ?? []),
+				];
 			}),
-			...customCostRows,
-			makeZeroRow(`Giá trị tiết kiệm, bội chi quý ${quarter}/${year}`, {
+			makeZeroRow(`Giá trị tiết kiệm, bội chi quý ${quarterRoman}/${year}`, {
 				sttLabel: 'III',
 				isBold: true,
+				materialsTotalAmount: savingQuarter.materials,
+				maintainsTotalAmount: savingQuarter.maintains,
+				electricitiesTotalAmount: savingQuarter.electricities,
+				totalAmount: savingQuarter.total,
 				hidePlanActual: true,
 				hideUnitPrice: true,
 			}),
@@ -430,12 +579,16 @@ export function LumpSumFinalSettlementReportTable({
 				makeZeroRow(`Tháng ${monthNumber}/${year}`, {
 					sttLabel: `III.${idx + 1}`,
 					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: savingRows[idx]?.materials ?? 0,
+					maintainsTotalAmount: savingRows[idx]?.maintains ?? 0,
+					electricitiesTotalAmount: savingRows[idx]?.electricities ?? 0,
+					totalAmount: savingRows[idx]?.total ?? 0,
 					hidePlanActual: true,
 					hideUnitPrice: true,
 				}),
 			),
 			makeZeroRow(
-				`Tổng giá trị tiết kiệm được chấp nhận quý ${quarter}/${year}`,
+				`Tổng giá trị tiết kiệm được chấp nhận quý ${quarterRoman}/${year}`,
 				{
 					sttLabel: '*',
 					isBold: true,
@@ -443,11 +596,11 @@ export function LumpSumFinalSettlementReportTable({
 					hidePlanActual: true,
 					hideUnitPrice: true,
 					isMergedValueRow: true,
-					mergedValue: 0,
+					mergedValue: acceptedSavingQuarter,
 				},
 			),
 			makeZeroRow(
-				`Giá trị tiết kiệm được cộng vào thu nhập quý ${quarter}/${year}`,
+				`Giá trị tiết kiệm được cộng vào thu nhập quý ${quarterRoman}/${year}`,
 				{
 					sttLabel: '*',
 					isBold: true,
@@ -474,7 +627,7 @@ export function LumpSumFinalSettlementReportTable({
 		];
 
 		return [...rows, ...defaultRows];
-	}, [customCosts, quarter, revenuesByMonth, rows, transferredCost, year]);
+	}, [customCosts, quarter, revenuesByMonth, rows, transferredCosts, year]);
 
 	const filteredRows = useMemo(() => {
 		if (!enableSearch || !searchQuery.trim()) {

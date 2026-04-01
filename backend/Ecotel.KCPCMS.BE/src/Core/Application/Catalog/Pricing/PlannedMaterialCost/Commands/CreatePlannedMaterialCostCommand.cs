@@ -19,8 +19,10 @@ public class CreatePlannedMaterialCostCommandHandler(
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
     private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
+    private readonly IWriteRepository<StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<StoneClampRatio>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<SlideUnitPriceAssignmentCode> _slideUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<SlideUnitPriceAssignmentCode>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     public async Task<bool> Handle(CreatePlannedMaterialCostCommand request, CancellationToken cancellationToken)
     {
         bool checkExited = await _plannedMaterialCostRepository.ExistsAsync(p => p.MaterialUnitPriceId == request.CreateModel.MaterialUnitPriceId && p.ProductUnitPriceId == request.CreateModel.ProductUnitPriceId && p.OutputId == request.CreateModel.OutputId);
@@ -35,6 +37,26 @@ public class CreatePlannedMaterialCostCommandHandler(
             if (!checkNormFactor)
             {
                 throw new NotFoundException(CustomResponseMessage.NormFactorNotFound);
+            }
+        }
+
+        if (request.CreateModel.StoneClampRatioReferenceId != null)
+        {
+            bool checkStoneClampRatio =
+                await _stoneClampRatioRepository.ExistsAsync(p => p.Id == request.CreateModel.StoneClampRatioReferenceId);
+            if (!checkStoneClampRatio)
+            {
+                throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
+            }
+        }
+
+        if (request.CreateModel.MaterialReferenceId != null)
+        {
+            bool checkStoneClampRatio =
+                await _materialRepository.ExistsAsync(p => p.Id == request.CreateModel.MaterialReferenceId);
+            if (!checkStoneClampRatio)
+            {
+                throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
             }
         }
 
@@ -54,7 +76,7 @@ public class CreatePlannedMaterialCostCommandHandler(
             }
         }
 
-        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.NormFactorId, request.CreateModel.OutputId);
+        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.NormFactorId, request.CreateModel.StoneClampRatioReferenceId, request.CreateModel.MaterialReferenceId, request.CreateModel.OutputId);
 
         await _plannedMaterialCostRepository.InsertAsync(newPlannedMaterialCost, cancellationToken);
         await unitOfWork.SaveChangesAsync();

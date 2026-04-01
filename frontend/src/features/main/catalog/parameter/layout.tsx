@@ -22,6 +22,7 @@ const TABS: { title: string; href: string }[] = [
 		href: '/catalogs/parameters/cuttingthicknesses',
 	},
 	{ title: 'Thông số lò chợ', href: '/catalogs/parameters/longwallparameters' },
+	{ title: 'Công suất', href: '/catalogs/parameters/powers' },
 ] as const;
 
 export function MainCatalogParameterLayout() {

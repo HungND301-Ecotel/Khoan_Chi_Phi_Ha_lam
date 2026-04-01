@@ -42,7 +42,7 @@ export const ADJUSTMENT_ELECTRICITY_COST_COLUMNS: ColumnDef<AdjustmentElectricit
 		}),
 		{
 			accessorKey: 'totalPrice',
-			header: 'Thành tiền (đ)',
+			header: 'Đơn giá điện năng (đ/m)',
 			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 		},
 	];

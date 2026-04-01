@@ -33,6 +33,8 @@ import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
 import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
 import { NumericFormat } from 'react-number-format';
+import type { Power } from '@/features/main/catalog/parameter/power/columns';
+import type { Strength } from '@/features/main/catalog/parameter/strength/columns';
 
 interface Technology {
 	id: string;
@@ -46,6 +48,8 @@ interface LongwallMaterialDetail {
 	cuttingThickness: { id: string; from: string; to: string };
 	seamFaceId?: string;
 	technologyId?: string;
+	powerId?: string;
+	hardnessId?: string;
 	processId: string;
 	startMonth: string;
 	endMonth: string;
@@ -67,6 +71,8 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		Longwallparameters[]
 	>([]);
 	const [technologies, setTechnologies] = useState<Technology[]>([]);
+	const [powers, setPowers] = useState<Power[]>([]);
+	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [seamfaces, setSeamfaces] = useState<Seamface[]>([]);
 	const [cuttingthicknesses, setCuttingthicknesses] = useState<
 		Cuttingthickness[]
@@ -85,6 +91,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 	const [selectedLowerNormId, setSelectedLowerNormId] = useState<string>('');
 	const [upperPoint, setUpperPoint] = useState<number | undefined>(undefined);
 	const [lowerPoint, setLowerPoint] = useState<number | undefined>(undefined);
+	const [isMechanizedLongwall, setIsMechanizedLongwall] = useState(false);
 
 	const prevSelectedCodesRef = useRef<MultiSelectOption[]>([]);
 	// Track whether costs were set by interpolation to avoid overwriting
@@ -109,6 +116,8 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 			try {
 				const [
 					techRes,
+					powerRes,
+					strengthRes,
 					longwallRes,
 					cuttingRes,
 					seamRes,
@@ -117,6 +126,8 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 					upperNormsRes,
 				] = await Promise.all([
 					api.pagging<Technology>(API.CATALOG.PARAMETER.TECHNOLOGY.LIST),
+					api.pagging<Power>(API.CATALOG.PARAMETER.POWER.LIST),
+					api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 					api.pagging<Longwallparameters>(
 						API.CATALOG.PARAMETER.LONGWALLPARAMETERS.LIST,
 					),
@@ -132,6 +143,8 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				]);
 
 				setTechnologies(techRes.result.data);
+				setPowers(powerRes.result.data);
+				setStrengths(strengthRes.result.data);
 				setLongwallParameters(longwallRes.result.data);
 				setCuttingthicknesses(cuttingRes.result.data);
 				setSeamfaces(seamRes.result.data);
@@ -155,11 +168,14 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 							cuttingThicknessId: detail.cuttingThickness?.id || '',
 							seamFaceId: detail.seamFaceId || row.seamFaceId || '',
 							technologyId: detail.technologyId || row.technologyId || '',
+							powerId: detail.powerId || '',
+							hardnessId: detail.hardnessId || '',
 							processId: detail.processId || row.processId || '',
 							startMonth: detail.startMonth.substring(0, 10),
 							endMonth: detail.endMonth.substring(0, 10),
 							otherMaterialValue: 0,
 						});
+						setIsMechanizedLongwall(!!detail.powerId);
 
 						const selectedFromAPI = contractsData
 							.filter((c) =>
@@ -182,12 +198,17 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 							cuttingThicknessId: row.cuttingthicknessId || '',
 							seamFaceId: row.seamFaceId || '',
 							technologyId: row.technologyId || '',
+							powerId: '',
+							hardnessId: '',
 							processId: row.processId || '',
 							startMonth: row.startMonth.substring(0, 10),
 							endMonth: row.endMonth.substring(0, 10),
 							otherMaterialValue: 0,
 						});
+						setIsMechanizedLongwall(false);
 					}
+				} else {
+					setIsMechanizedLongwall(false);
 				}
 			} catch (error) {
 				popup.error(error);
@@ -197,13 +218,37 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		loadData();
 	}, [row?.id]);
 
-	// Effect to apply interpolation when all required values are set
+	useEffect(() => {
+		if (isMechanizedLongwall) {
+			form.setValue('hardnessId', '');
+			form.clearErrors('hardnessId');
+			return;
+		}
+		form.setValue('powerId', '');
+		form.clearErrors('powerId');
+	}, [isMechanizedLongwall, form]);
+
+	// Effect: populate/update/clear contract list whenever either norm selection changes
 	useEffect(() => {
 		if (!useInterpolation) return;
-		if (!selectedUpperNormId || !selectedLowerNormId) return;
-		if (upperPoint === undefined || lowerPoint === undefined) return;
-		if (interpolationPoint === undefined) return;
-		if (upperPoint <= lowerPoint) return;
+
+		// If either norm is cleared, wipe the contract list
+		if (!selectedUpperNormId || !selectedLowerNormId) {
+			interpolationAppliedRef.current = true;
+			prevSelectedCodesRef.current = [];
+			setSelectedCodes([]);
+			form.setValue('costs', []);
+			return;
+		}
+
+		// Same norm selected for both — also clear
+		if (selectedUpperNormId === selectedLowerNormId) {
+			interpolationAppliedRef.current = true;
+			prevSelectedCodesRef.current = [];
+			setSelectedCodes([]);
+			form.setValue('costs', []);
+			return;
+		}
 
 		const upperNorm = upperNorms.find((n) => n.id === selectedUpperNormId);
 		const lowerNorm = upperNorms.find((n) => n.id === selectedLowerNormId);
@@ -215,52 +260,29 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		const lowerIds = new Set(
 			(lowerNorm.costs ?? []).map((c) => c.assignmentCodeId),
 		);
-		const allIds = new Set([...upperIds, ...lowerIds]);
+		// Only use IDs present in both norms
+		const sharedIds = Array.from(upperIds).filter((id) => lowerIds.has(id));
 
-		// Block if any id is not shared between both norms
-		for (const id of allIds) {
-			if (!upperIds.has(id) || !lowerIds.has(id)) return;
-		}
-
-		const upperCostMap = new Map(
-			(upperNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
-		);
-		const lowerCostMap = new Map(
-			(lowerNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
-		);
-
-		const newCosts = Array.from(allIds).map((id) => {
-			const inBoth = upperCostMap.has(id) && lowerCostMap.has(id);
-			if (inBoth) {
-				const yUpper = upperCostMap.get(id)!;
-				const yLower = lowerCostMap.get(id)!;
-				// Linear interpolation
-				const totalPrice =
-					yLower +
-					((interpolationPoint - lowerPoint) / (upperPoint - lowerPoint)) *
-						(yUpper - yLower);
-				return { assignmentCodeId: id, totalPrice };
-			}
-			return { assignmentCodeId: id, totalPrice: 0 };
-		});
-
-		// Sort by contract code
-		newCosts.sort((a, b) => {
-			const aCode =
-				contracts.find((c) => c.id === a.assignmentCodeId)?.code ?? '';
-			const bCode =
-				contracts.find((c) => c.id === b.assignmentCodeId)?.code ?? '';
-			return aCode.localeCompare(bCode);
-		});
-
-		// Update MultiSelect options
-		const newSelectedCodes = Array.from(allIds)
+		const newSelectedCodes = sharedIds
 			.map((id) => {
 				const contract = contracts.find((c) => c.id === id);
 				if (!contract) return null;
 				return { label: `${contract.code} - ${contract.name}`, value: id };
 			})
 			.filter(Boolean) as MultiSelectOption[];
+
+		newSelectedCodes.sort((a, b) => a.label.localeCompare(b.label));
+
+		// Build costs with NaN prices — price effect will recompute if points are set
+		const newCosts = sharedIds
+			.map((id) => ({ assignmentCodeId: id, totalPrice: NaN }))
+			.sort((a, b) => {
+				const aCode =
+					contracts.find((c) => c.id === a.assignmentCodeId)?.code ?? '';
+				const bCode =
+					contracts.find((c) => c.id === b.assignmentCodeId)?.code ?? '';
+				return aCode.localeCompare(bCode);
+			});
 
 		interpolationAppliedRef.current = true;
 		prevSelectedCodesRef.current = newSelectedCodes;
@@ -270,11 +292,59 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		useInterpolation,
 		selectedUpperNormId,
 		selectedLowerNormId,
+		upperNorms,
+		contracts,
+	]);
+
+	// Effect: recalculate prices whenever interpolation points change
+	useEffect(() => {
+		if (!useInterpolation) return;
+		if (!selectedUpperNormId || !selectedLowerNormId) return;
+		if (upperPoint === undefined || lowerPoint === undefined) return;
+		if (interpolationPoint === undefined) return;
+		if (upperPoint <= lowerPoint) return;
+
+		const upperNorm = upperNorms.find((n) => n.id === selectedUpperNormId);
+		const lowerNorm = upperNorms.find((n) => n.id === selectedLowerNormId);
+		if (!upperNorm || !lowerNorm) return;
+
+		const upperCostMap = new Map(
+			(upperNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
+		);
+		const lowerCostMap = new Map(
+			(lowerNorm.costs ?? []).map((c) => [c.assignmentCodeId, c.totalPrice]),
+		);
+
+		const currentCosts = form.getValues('costs') ?? [];
+
+		const newCosts = currentCosts.map((cost) => {
+			const id = cost.assignmentCodeId;
+			if (upperCostMap.has(id) && lowerCostMap.has(id)) {
+				const yUpper = upperCostMap.get(id)!;
+				const yLower = lowerCostMap.get(id)!;
+				const raw =
+					yLower +
+					((interpolationPoint - lowerPoint) / (upperPoint - lowerPoint)) *
+						(yUpper - yLower);
+				// Round to 2 decimal places
+				return {
+					assignmentCodeId: id,
+					totalPrice: Math.round(raw * 100) / 100,
+				};
+			}
+			return cost;
+		});
+
+		interpolationAppliedRef.current = true;
+		form.setValue('costs', newCosts);
+	}, [
+		useInterpolation,
+		selectedUpperNormId,
+		selectedLowerNormId,
 		upperPoint,
 		lowerPoint,
 		interpolationPoint,
 		upperNorms,
-		contracts,
 	]);
 
 	// Effect to handle manual MultiSelect changes (non-interpolation path)
@@ -322,17 +392,49 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 
 	const handleSubmit = async (values: LongwallMaterialFormSchema) => {
 		try {
+			if (isMechanizedLongwall && !values.powerId) {
+				form.setError('powerId', {
+					type: 'manual',
+					message: 'Công suất không được để trống',
+				});
+				return;
+			}
+
+			if (!isMechanizedLongwall && !values.hardnessId) {
+				form.setError('hardnessId', {
+					type: 'manual',
+					message: 'Độ kiên cố than đá không được để trống',
+				});
+				return;
+			}
+
+			if (!useInterpolation && !values.seamFaceId) {
+				form.setError('seamFaceId', {
+					type: 'manual',
+					message: 'Mặt vỉa không được để trống',
+				});
+				return;
+			}
+
+			const interpolationSeamFaceValue =
+				useInterpolation && interpolationPoint !== undefined
+					? seamFaceInterpolationValue
+					: '';
+
 			const payload = {
 				code: values.code,
 				longwallParametersId: values.longwallParametersId,
 				cuttingThicknessId: values.cuttingThicknessId,
-				seamFaceId: values.seamFaceId,
+				seamFaceId: useInterpolation ? null : values.seamFaceId || '',
+				powerId: isMechanizedLongwall ? values.powerId || null : null,
+				hardnessId: isMechanizedLongwall ? null : values.hardnessId || null,
 				technologyId: values.technologyId,
 				processId: values.processId,
 				startMonth: values.startMonth,
 				endMonth: values.endMonth,
 				costs: values.costs,
 				otherMaterialValue: 0,
+				InterpolationSeamFaceValue: interpolationSeamFaceValue,
 			};
 
 			if (row?.id) {
@@ -387,6 +489,12 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		return mismatched;
 	})();
 
+	// Seam face display value when interpolation is active
+	const seamFaceInterpolationValue =
+		interpolationPoint !== undefined
+			? `M =${interpolationPoint.toString().replace('.', ',')}m`
+			: 'M =';
+
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<FormRow>
@@ -429,6 +537,48 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				options={technologies.map((t) => ({ label: t.value, value: t.id }))}
 			/>
 
+			<div className='flex items-center gap-2'>
+				<Checkbox
+					id='is-mechanized-longwall'
+					checked={isMechanizedLongwall}
+					onCheckedChange={(checked) => {
+						const isChecked = !!checked;
+						setIsMechanizedLongwall(isChecked);
+						if (isChecked) {
+							form.clearErrors('powerId');
+							form.setValue('hardnessId', '');
+							return;
+						}
+						form.clearErrors('hardnessId');
+						form.setValue('powerId', '');
+					}}
+				/>
+				<label
+					htmlFor='is-mechanized-longwall'
+					className='cursor-pointer text-sm leading-none font-medium'
+				>
+					Lò chợ cơ giới hóa (CGH)
+				</label>
+			</div>
+
+			{isMechanizedLongwall ? (
+				<FormComboBox
+					control={form.control}
+					name='powerId'
+					label='Công suất'
+					placeholder='Chọn công suất'
+					options={powers.map((p) => ({ label: p.value, value: p.id }))}
+				/>
+			) : (
+				<FormComboBox
+					control={form.control}
+					name='hardnessId'
+					label='Độ kiên cố than đá (f)'
+					placeholder='Chọn độ kiên cố than đá (f)'
+					options={strengths.map((s) => ({ label: s.value, value: s.id }))}
+				/>
+			)}
+
 			<FormComboBox
 				control={form.control}
 				name='longwallParametersId'
@@ -451,13 +601,26 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				}))}
 			/>
 
-			<FormComboBox
-				control={form.control}
-				name='seamFaceId'
-				label='Mặt vỉa (m)'
-				placeholder='Chọn mặt vỉa (m)'
-				options={seamfaces.map((s) => ({ label: s.value, value: s.id }))}
-			/>
+			{/* Mặt vỉa: show readonly input when interpolation is active, otherwise combobox */}
+			{useInterpolation ? (
+				<div className='flex flex-col gap-2'>
+					<Label>Mặt vỉa (m)</Label>
+					<Input
+						disabled
+						readOnly
+						value={seamFaceInterpolationValue}
+						className='read-only:bg-muted disabled:cursor-default disabled:opacity-100'
+					/>
+				</div>
+			) : (
+				<FormComboBox
+					control={form.control}
+					name='seamFaceId'
+					label='Mặt vỉa (m)'
+					placeholder='Chọn mặt vỉa (m)'
+					options={seamfaces.map((s) => ({ label: s.value, value: s.id }))}
+				/>
+			)}
 
 			{/* Interpolation checkbox */}
 			<div className='flex items-center gap-2'>
@@ -466,6 +629,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 					checked={useInterpolation}
 					onCheckedChange={(checked) => {
 						setUseInterpolation(!!checked);
+						if (checked) form.clearErrors('seamFaceId');
 						if (!checked) {
 							// Reset interpolation state
 							setSelectedUpperNormId('');

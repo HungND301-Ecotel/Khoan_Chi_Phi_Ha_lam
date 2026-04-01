@@ -418,7 +418,7 @@ export function DataTable<TData>({
 					</TableHeader>
 
 					<TableBody className={cn(compact ? '' : 'text-base')}>
-						{loading ? (
+						{loading && !table.getRowModel().rows?.length ? (
 							<DataTableLoading table={table} columns={columnCount} />
 						) : table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row, index) => (

@@ -27,7 +27,11 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
                     .ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(m => m.Part)
-                    .ThenInclude(p => p.Code),
+                    .ThenInclude(p => p.Code)
+                 .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(a => a.IssuedDetails)
+                 .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(a => a.ShippedDetails),
             disableTracking: true);
 
         if (acceptanceReport == null)
@@ -58,11 +62,11 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
             ShippedQuantity = item.ShippedQuantity
         }).ToList();
 
-        return excelService.ExportToExcel(
+        return (excelService.ExportToExcel(
             excelData,
             "Báo cáo tiếp nhận",
             hiddenProperties,
-            null);
+            null));
     }
 
     private byte[] CreateTemplateExcel()

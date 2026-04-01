@@ -7,13 +7,6 @@ export const assetExternalFormSchema = z.object({
 	name: z.string().nonempty({
 		message: 'Tên vật tư, tài sản không được để trống',
 	}),
-	usageTime: z.coerce
-		.number<number>({
-			message: 'Thời gian sử dụng phải là số.',
-		})
-		.gt(0, {
-			message: 'Thời gian sử dụng phải lớn hơn 0.',
-		}),
 	unitOfMeasureId: z
 		.string()
 		.trim()
@@ -40,6 +33,13 @@ export const assetExternalFormSchema = z.object({
 					.gt(0, {
 						message: 'Giá trị phải lớn hơn 0.',
 					}),
+				actualAmount: z.coerce
+					.number<number>({
+						message: 'Giá trị phải là số.',
+					})
+					.gt(0, {
+						message: 'Giá trị phải lớn hơn 0.',
+					}),
 			}),
 		)
 		.nonempty({
@@ -53,13 +53,13 @@ export const ASSET_EXTERNAL_FORM_DEFAULT: AssetExternalFormSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
-	usageTime: 0,
 	materialType: 2,
 	costs: [
 		{
 			startMonth: '',
 			endMonth: '',
 			amount: NaN,
+			actualAmount: NaN,
 		},
 	],
 } as const;

@@ -67,13 +67,13 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 				: '-';
 
 			return (
-				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm text-gray-600'>
+				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
 					<span>{technologyName ?? ''}</span>
-					<span className='text-gray-300'>|</span>
+					<span>|</span>
 					<span>{seamFaceName ?? ''}</span>
-					<span className='text-gray-300'>|</span>
+					<span>|</span>
 					<span>{longwallParameterText}</span>
-					<span className='text-gray-300'>|</span>
+					<span>|</span>
 					<span>{cuttingThicknessText}</span>
 				</div>
 			);

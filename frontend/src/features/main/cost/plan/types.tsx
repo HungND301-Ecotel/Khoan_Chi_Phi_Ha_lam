@@ -53,6 +53,7 @@ export type ProductCostExpandProps = {
 	actual?: CostProductDetail;
 	callback?: () => void | Promise<void>;
 	isOpen?: boolean;
+	reloadKey?: number;
 };
 
 export type ProductCostFormProps = Omit<ProductCostExpandProps, 'isOpen'>;

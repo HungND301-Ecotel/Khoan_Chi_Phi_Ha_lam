@@ -35,6 +35,7 @@ export function MainCostProductionCostPage() {
 		<DataTable
 			columns={MAIN_COST_PRODUCTION_COLUMNS}
 			url={API.PRODUCTION.PRODUCTION_OUTPUT.LIST}
+			getRowId={(row) => row.id}
 			onExpand={(props) => <ProductionExpand {...props} />}
 			onDelete={handleDeleteProduction}
 			importCrumb='Biên bản nghiệm thu'

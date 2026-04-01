@@ -1,8 +1,8 @@
-﻿using Application.Common.Caching;
+﻿using Application.Catalog.Pricing.Common;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Pricing.Common;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Domain.Common.Enums;
 using Domain.Entities.Pricing;
@@ -156,7 +156,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             ProcessGroupName = baseData.ProcessGroupName,
             ProcessGroupType = baseData.ProcessGroupType,
             ProductionOutputs = productionOutputsWithAdj,
-            Outputs = plannedOutputs
+            Outputs = plannedOutputs.OrderByDescending(o => o.StartMonth).ToList()
         };
 
         cacheService.SetWithSignal(cacheKey, result, CacheSignalKey);

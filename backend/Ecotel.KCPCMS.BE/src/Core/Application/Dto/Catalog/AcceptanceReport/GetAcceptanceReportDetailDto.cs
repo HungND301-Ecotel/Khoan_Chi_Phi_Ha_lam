@@ -6,9 +6,12 @@ public record AcceptanceReportDetailItemDto
 {
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
-    public required Guid? ProductionOrderId { get; init; }
+    public required Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostEquipmentId { get; init; }
     public Guid? MaterialId { get; init; }
-    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+    public Guid? PartId { get; init; }
     public string? MaterialCode { get; init; }
     public string? MaterialName { get; init; }
     public string? PartCode { get; init; }

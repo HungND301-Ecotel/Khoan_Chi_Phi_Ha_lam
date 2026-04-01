@@ -13,7 +13,15 @@ export const planMaterialCostSchema = z
 			.string()
 			.nullable()
 			.transform((val) => (val === '' ? null : val)),
+		materialReferenceId: z
+			.string()
+			.nullable()
+			.transform((val) => (val === '' ? null : val)),
 		normFactorId: z
+			.string()
+			.nullable()
+			.transform((val) => (val === '' ? null : val)),
+		stoneClampRatioReferenceId: z
 			.string()
 			.nullable()
 			.transform((val) => (val === '' ? null : val)),
@@ -25,13 +33,16 @@ export const planMaterialCostSchema = z
 	.refine(
 		(data) => {
 			if (data.processGroupType === ProcessGroupType.DL) {
-				return data.normFactorId !== null && data.normFactorId !== '';
+				return (
+					data.stoneClampRatioReferenceId !== null &&
+					data.stoneClampRatioReferenceId !== ''
+				);
 			}
 			return true;
 		},
 		{
-			message: 'Độ kiên cố đá không được để trống',
-			path: ['normFactorId'],
+			message: 'Tỷ lệ đá kẹp không được để trống',
+			path: ['stoneClampRatioReferenceId'],
 		},
 	);
 
@@ -41,6 +52,8 @@ export const PLAN_MATERIAL_COST_DEFAULT: PlanMaterialCostSchema = {
 	productUnitPriceId: '',
 	materialUnitPriceId: '',
 	slideUnitPriceAssignmentCodeId: null,
+	materialReferenceId: null,
 	normFactorId: null,
+	stoneClampRatioReferenceId: null,
 	outputId: '',
 };

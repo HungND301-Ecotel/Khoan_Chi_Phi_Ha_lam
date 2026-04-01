@@ -7,9 +7,14 @@ public class PlannedMaterialCostDetailDto
     public Guid MaterialUnitPriceId { get; set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; set; }
     public Guid? NormFactorId { get; set; }
+    public Guid? StoneClampRatioReferenceId { get; set; }
+    public Guid? MaterialReferenceId { get; set; }
     public Guid OutputId { get; set; }
     public double? OtherMaterialValue { get; set; }
     public double TotalPlannedMaterialPrice { get; set; }
+    public double MaterialCost { get; set; }
+    public double SlideUnitPriceCost { get; set; }
+    public string NormFactorValue { get; set; } = string.Empty;
     public IList<PlannedMaterialCostAssignmentCode> PlannedMaterialCostAssignmentCodes { get; set; } = new List<PlannedMaterialCostAssignmentCode>();
 }
 
@@ -41,6 +46,8 @@ public class CreatePlannedMaterialCostDto
     public Guid MaterialUnitPriceId { get; set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; set; }
     public Guid? NormFactorId { get; set; }
+    public Guid? StoneClampRatioReferenceId { get; set; }
+    public Guid? MaterialReferenceId { get; set; }
     public Guid OutputId { get; set; }
 
 }
@@ -51,5 +58,7 @@ public class UpdatePlannedMaterialCostDto
     public Guid MaterialUnitPriceId { get; set; }
     public Guid? SlideUnitPriceAssignmentCodeId { get; set; }
     public Guid? NormFactorId { get; set; }
+    public Guid? StoneClampRatioReferenceId { get; set; }
+    public Guid? MaterialReferenceId { get; set; }
     public Guid OutputId { get; set; }
 }

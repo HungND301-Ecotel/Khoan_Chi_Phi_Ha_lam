@@ -52,6 +52,7 @@ public static class PlannedMaterialCostCalculator
         if (normFactor.TargetHardnessId.HasValue &&
             currentMaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialUnitPrice)
         {
+            var coefficientValue = normFactor.Value;
             var targetMaterialUnitPrice = ResolveTargetTunnelMaterialUnitPrice(
                 currentTunnelMaterialUnitPrice,
                 normFactor.TargetHardnessId.Value,
@@ -64,22 +65,23 @@ public static class PlannedMaterialCostCalculator
                 ?? new Dictionary<Guid, double>();
 
             // Use target hardness price for affected assignments.
-            affectedTotal = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
+            var total = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
                 targetAssignmentTotals.GetValueOrDefault(
                     assignmentCodeId,
                     currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0)));
+            affectedTotal = ApplyOtherMaterialValue(total, currentMaterialUnitPrice.OtherMaterialvalue) * coefficientValue;
         }
         else
         {
             var coefficientValue = normFactor.Value;
-            affectedTotal = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
-                currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0) * coefficientValue);
+            var total = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
+                currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0));
+            affectedTotal = ApplyOtherMaterialValue(total, currentMaterialUnitPrice.OtherMaterialvalue) * coefficientValue;
         }
 
         var totalMaterialAssignments = unaffectedTotal + affectedTotal;
-        var materialCostWithOther = ApplyOtherMaterialValue(totalMaterialAssignments, currentMaterialUnitPrice.OtherMaterialvalue);
 
-        return slideCost + materialCostWithOther;
+        return slideCost + totalMaterialAssignments;
     }
 
     private static TunnelExcavationMaterialUnitPrice? ResolveTargetTunnelMaterialUnitPrice(
@@ -105,6 +107,6 @@ public static class PlannedMaterialCostCalculator
 
     private static double ApplyOtherMaterialValue(double total, double otherMaterialValue)
     {
-        return total * (1 + otherMaterialValue / 100.0);
+        return total + otherMaterialValue;
     }
 }

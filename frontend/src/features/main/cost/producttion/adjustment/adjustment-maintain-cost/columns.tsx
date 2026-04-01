@@ -79,7 +79,7 @@ export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostI
 		),
 		{
 			accessorKey: 'totalPrice',
-			header: 'Thành tiền (đ)',
+			header: 'Đơn giá SCTX (đ/m) ',
 			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 		},
 	];

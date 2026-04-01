@@ -12,10 +12,12 @@ export const longwallMaterialFormSchema = z.object({
 	cuttingThicknessId: z
 		.string()
 		.nonempty({ error: 'Chiều dày lớp khấu không được để trống' }),
-	seamFaceId: z.string().nonempty({ error: 'Mặt vỉa không được để trống' }),
+	seamFaceId: z.string().nullable().optional(),
 	technologyId: z
 		.string()
 		.nonempty({ error: 'Công nghệ khai thác không được để trống' }),
+	powerId: z.string().nullable().optional(),
+	hardnessId: z.string().nullable().optional(),
 	startMonth: z.iso
 		.date({
 			message: 'Tháng không hợp lệ.',
@@ -53,6 +55,8 @@ export const LONGWALL_MATERIAL_FORM_DEFAULT: LongwallMaterialFormSchema = {
 	cuttingThicknessId: '',
 	seamFaceId: '',
 	technologyId: '',
+	powerId: '',
+	hardnessId: '',
 	startMonth: '',
 	endMonth: '',
 	costs: [],

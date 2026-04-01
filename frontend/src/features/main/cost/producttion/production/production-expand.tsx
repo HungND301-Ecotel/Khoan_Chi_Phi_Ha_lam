@@ -2,16 +2,21 @@ import { ActionDialogProps } from '@/components/datatable';
 import { Accordion } from '@/components/ui/accordion';
 import { LongTermMaterialCosts } from '@/features/main/cost/producttion/production/longterm-material-cost';
 import { RawAcceptanceReport } from '@/features/main/cost/producttion/production/raw-acceptance-report';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Production } from './columns';
 import { AdditionalCost } from './additional-cost';
 import { AcceptanceReport } from './acceptance-report';
+import { ProductionElectricityCost } from './electricity-cost';
 
 // Re-export AdjustmentExpand for convenience
 export { AdjustmentExpand } from '@/features/main/cost/producttion/adjustment/adjustment-expand';
 
 export function ProductionExpand({ row, data }: ActionDialogProps<Production>) {
 	const [opened, setOpened] = useState<string[]>([]);
+	const reloadKey = data.refreshVersion;
+	const handleRefreshExpandData = useCallback(async () => {
+		await data.refresh();
+	}, [data]);
 
 	if (!row) return null;
 
@@ -39,32 +44,42 @@ export function ProductionExpand({ row, data }: ActionDialogProps<Production>) {
 					id={row.id}
 					plan={undefined}
 					output={output}
-					callback={data.refresh}
+					callback={handleRefreshExpandData}
 					isOpen={opened.includes('raw-acceptance-report')}
+					reloadKey={reloadKey}
 				/>
-
 				<LongTermMaterialCosts
 					id={row.id}
 					plan={undefined}
 					output={output}
-					callback={data.refresh}
+					callback={handleRefreshExpandData}
 					isOpen={opened.includes('longterm-material-cost')}
+					reloadKey={reloadKey}
 				/>
-
 				<AdditionalCost
 					id={row.id}
 					plan={undefined}
 					output={output}
-					callback={data.refresh}
+					callback={handleRefreshExpandData}
 					isOpen={opened.includes('additional-cost')}
+					reloadKey={reloadKey}
 				/>
 
+				<ProductionElectricityCost
+					id={undefined}
+					plan={undefined}
+					output={output}
+					callback={handleRefreshExpandData}
+					isOpen={opened.includes('production-electricity-cost')}
+					reloadKey={reloadKey}
+				/>
 				<AcceptanceReport
 					id={row.id}
 					plan={undefined}
 					output={output}
-					callback={data.refresh}
+					callback={handleRefreshExpandData}
 					isOpen={opened.includes('acceptance-report')}
+					reloadKey={reloadKey}
 				/>
 			</Accordion>
 		</div>

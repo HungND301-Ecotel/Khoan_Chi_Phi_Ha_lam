@@ -9,6 +9,7 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
     public Guid CodeId { get; protected set; }
     public string Name { get; protected set; }
     public Guid? UnitOfMeasureId { get; protected set; }
+    public bool IsSlideAssignmentCode { get; protected set; } = false;
 
     // Navigation properties
     public virtual UnitOfMeasure? UnitOfMeasure { get; protected set; }

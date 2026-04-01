@@ -74,10 +74,52 @@ export const LONGWALL_ELECTRICITY_COLUMNS: ColumnDef<LongwallElectricity>[] = [
 		cell: ({ row }) => formatNumber(row.original.sPdm ?? 0),
 	},
 	{
+		accessorKey: 'kyc',
+		header: () => (
+			<span className='leading-tight whitespace-normal'>{'Kyc'}</span>
+		),
+		cell: ({ row }) => formatNumber(row.original.kyc ?? 0),
+	},
+	{
+		accessorKey: 'kdt',
+		header: () => (
+			<span className='leading-tight whitespace-normal'>{'Kdt'}</span>
+		),
+		cell: ({ row }) => formatNumber(row.original.kdt ?? 0),
+	},
+	{
+		accessorKey: 'ptt',
+		header: () => (
+			<span className='leading-tight whitespace-normal'>{'Ptt (kW)'}</span>
+		),
+		cell: ({ row }) =>
+			formatNumber(
+				(row.original.sPdm ?? 0) *
+					(row.original.kyc ?? 0) *
+					(row.original.kdt ?? 0),
+			),
+	},
+	{
+		accessorKey: 'workingHour',
+		header: () => (
+			<span className='leading-tight whitespace-normal'>{'Thời gian (h)'}</span>
+		),
+		cell: ({ row }) => formatNumber(row.original.workingHour ?? 0),
+	},
+	{
+		accessorKey: 'workingDate',
+		header: () => (
+			<span className='leading-tight whitespace-normal'>
+				{'Ngày hoạt động'}
+			</span>
+		),
+		cell: ({ row }) => formatNumber(row.original.workingDate ?? 0),
+	},
+	{
 		accessorKey: 'longwallAverageMonthlyTunnelProduction',
 		header: () => (
 			<span className='leading-tight whitespace-normal'>
-				{'Sản lượng than bình quân tháng (tấn)'}
+				{'Sản lượng than bình quân tháng (1000 tấn)'}
 			</span>
 		),
 		cell: ({ row }) =>
@@ -97,7 +139,7 @@ export const LONGWALL_ELECTRICITY_COLUMNS: ColumnDef<LongwallElectricity>[] = [
 		accessorKey: 'electricityCostPerMetres',
 		header: () => (
 			<span className='leading-tight whitespace-normal'>
-				{'Chi phí Điện năng cho 01 thiết bị/1 tấn than (đ/tấn)'}
+				{'Chi phí Điện năng cho 1 thiết bị/1 tấn than (đ/tấn)'}
 			</span>
 		),
 		cell: ({ row }) =>

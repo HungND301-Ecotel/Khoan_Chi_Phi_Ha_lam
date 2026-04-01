@@ -11,10 +11,10 @@ namespace Application.Dto.Catalog.Material
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid AssignmentCodeId { get; set; } = Guid.Empty;
+        public bool IsSlideAssignmentCode { get; set; } = false;
         public string AssignmentCode { get; set; } = "";
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
-        public decimal UsageTime { get; set; }
         public MaterialType MaterialType { get; set; }
         public double CostAmount { get; set; }
         public double ActualAmount { get; set; }
@@ -33,8 +33,6 @@ namespace Application.Dto.Catalog.Material
         public string UnitOfMeasureName { get; set; }
         [Display(Name = "Loại vật tư")]
         public string MaterialType { get; set; }
-        [Display(Name = "Thời gian sử dụng")]
-        public decimal UsageTime { get; set; }
         [Display(Name = "Đơn giá")]
         public string Cost { get; set; }
     }
@@ -44,7 +42,6 @@ namespace Application.Dto.Catalog.Material
         public Guid Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
-        public decimal UsageTime { get; set; }
         public Guid? AssigmentCodeId { get; set; } = Guid.Empty;
         public string AssigmentCode { get; set; } = "";
         public Guid? UnitOfMeasureId { get; set; }
@@ -58,7 +55,6 @@ namespace Application.Dto.Catalog.Material
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? AssigmentCodeId { get; set; }
-        public decimal UsageTime { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
@@ -71,7 +67,6 @@ namespace Application.Dto.Catalog.Material
         public string Name { get; set; }
         public Guid? AssigmentCodeId { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
-        public decimal UsageTime { get; set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
     }

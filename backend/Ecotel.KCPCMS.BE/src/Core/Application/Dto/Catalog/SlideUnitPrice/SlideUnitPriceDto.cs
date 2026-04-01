@@ -17,6 +17,18 @@ namespace Application.Dto.Catalog.SlideUnitPrice
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
     }
+    public class SlideUnitPriceAssignmentCodeDto : IDto
+    {
+        public Guid Id { get; set; }
+        public Guid SlideUnitPriceId { get; set; }
+        public Guid ProcessGroupId { get; set; }
+        public Guid PassportId { get; set; }
+        public Guid HardnessId { get; set; }
+        public Guid MaterialId { get; set; }
+        public DateOnly StartMonth { get; set; }
+        public DateOnly EndMonth { get; set; }
+        public double Amount { get; set; }
+    }
 
     public class CreateSlideUnitPriceDto
     {

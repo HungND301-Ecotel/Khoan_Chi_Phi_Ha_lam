@@ -1,6 +1,7 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.EletricityUnitPrice;
+using Domain.Entities.Production;
 using Shared.Constants;
 
 namespace Domain.Entities.Index;
@@ -25,6 +26,8 @@ public class Equipment : AuditableEntity<Guid>, IAggregateRoot
 
     private IList<MaintainUnitPrice> _maintainUnitPrices = new List<MaintainUnitPrice>();
     public virtual IReadOnlyCollection<MaintainUnitPrice> MaintainUnitPrices => _maintainUnitPrices.AsReadOnly();
+    private IList<ActualEletricityEquipment> _actualEletricityEquipment = new List<ActualEletricityEquipment>();
+    public virtual IReadOnlyCollection<ActualEletricityEquipment> ActualEletricityEquipment => _actualEletricityEquipment.AsReadOnly();
 
     // constructor
     public static Equipment Create(string code, string name, Guid? unitOfMeasureId)

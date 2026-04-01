@@ -18,6 +18,9 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DefaultIdType CuttingThicknessId { get; set; }
         public DefaultIdType SeamFaceId { get; set; }
         public DefaultIdType? TechnologyId { get; set; }
+        public DefaultIdType? PowerId { get; set; }
+        public DefaultIdType? HardnessId { get; set; }
+        public bool IsLongwallMaterialUnitPriceCGH { get; set; }
         public string TechnologyName { get; set; } = "";
         public LongwallParametersDto LongwallParameters { get; set; }
         public CuttingThicknessDto CuttingThickness { get; set; }
@@ -34,12 +37,15 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public string Code { get; set; } = string.Empty;
         public DefaultIdType LongwallParametersId { get; set; }
         public DefaultIdType CuttingThicknessId { get; set; }
-        public DefaultIdType SeamFaceId { get; set; }
+        public DefaultIdType? SeamFaceId { get; set; }
+        public DefaultIdType? PowerId { get; set; }
+        public DefaultIdType? HardnessId { get; set; }
         public DefaultIdType ProcessId { get; set; }
         public DefaultIdType? TechnologyId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double OtherMaterialValue { get; set; }
+        public string InterpolationSeamFaceValue { get; set; } = "";
         public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
@@ -49,12 +55,15 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public string Code { get; set; } = string.Empty;
         public DefaultIdType LongwallParametersId { get; set; }
         public DefaultIdType CuttingThicknessId { get; set; }
-        public DefaultIdType SeamFaceId { get; set; }
+        public DefaultIdType? SeamFaceId { get; set; }
+        public DefaultIdType? PowerId { get; set; }
+        public DefaultIdType? HardnessId { get; set; }
         public DefaultIdType ProcessId { get; set; }
         public DefaultIdType? TechnologyId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double OtherMaterialValue { get; set; }
+        public string InterpolationSeamFaceValue { get; set; } = "";
         public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
@@ -64,6 +73,11 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public string Code { get; set; } = string.Empty;
         public LongwallParametersDto LongwallParameters { get; set; }
         public CuttingThicknessDto CuttingThickness { get; set; }
+        public DefaultIdType? SeamFaceId { get; set; }
+        public DefaultIdType? TechnologyId { get; set; }
+        public DefaultIdType? PowerId { get; set; }
+        public DefaultIdType? HardnessId { get; set; }
+        public bool IsLongwallMaterialUnitPriceCGH { get; set; }
         public DefaultIdType ProcessId { get; set; }
         public string ProcessCode { get; set; }
         public DateOnly StartMonth { get; set; }

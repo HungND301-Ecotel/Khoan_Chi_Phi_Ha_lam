@@ -32,6 +32,7 @@ export type UseAcceptanceReportDetailResult = {
 export function useAcceptanceReportDetail(
 	reportId: string | undefined,
 	enabled: boolean = true,
+	reloadKey?: number,
 ): UseAcceptanceReportDetailResult {
 	const [data, setData] = useState<HierarchicalAcceptanceReport | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -77,7 +78,7 @@ export function useAcceptanceReportDetail(
 
 	useEffect(() => {
 		fetchData();
-	}, [reportId, enabled]);
+	}, [reportId, enabled, reloadKey]);
 
 	const refetch = () => {
 		fetchData();

@@ -89,12 +89,20 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 if (itemsToUpdate.TryGetValue(existingItem.Id, out var updateItem))
                 {
+                    var categoryReference = ProductionReference.Create(
+                        updateItem.CategoryProductionOrderId,
+                        updateItem.CategoryEquipmentId);
+                    var additionalCostReference = ProductionReference.Create(
+                        updateItem.AdditionalCostProductionOrderId,
+                        updateItem.AdditionalCostEquipmentId);
+
                     existingItem.Update(
                         updateItem.ProcessGroupId,
                         existingItem.MaterialId,
                         existingItem.PartId,
                         updateItem.ItemType,
-                        updateItem.ProductionOrderId,
+                        categoryReference,
+                        additionalCostReference,
                         updateItem.MaterialsIncludedInContractRevenue,
                         updateItem.MaterialsIncludedInContractRevenueQuantity,
                         updateItem.AdditionalCost,

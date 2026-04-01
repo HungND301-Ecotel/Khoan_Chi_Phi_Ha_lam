@@ -48,13 +48,6 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                     .ThenInclude(pg => pg.ProductionOutputProducts),
             disableTracking: true);
 
-        var actualByProduct = productionOutputs
-            .SelectMany(po => po.ProductionOutputProcessGroups)
-            .Where(pg => !hasProcessGroupFilter || pg.ProcessGroupId == processGroupId)
-            .SelectMany(pg => pg.ProductionOutputProducts)
-            .GroupBy(p => new { p.ProductionOutputProcessGroup.ProcessGroupId, p.ProductId })
-            .ToDictionary(g => (g.Key.ProcessGroupId, g.Key.ProductId), g => g.Sum(x => x.ProductionMeters));
-
         var actualByProductMonth = productionOutputs
             .SelectMany(po => po.ProductionOutputProcessGroups.Select(pg => new
             {
@@ -181,10 +174,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 var filteredOutputs = productUnitPrice.Outputs
                     .Where(o => o.OutputType == OutputType.PlanOutput
                         && o.StartMonth.Year == year
-                        && o.StartMonth.Month >= quarterStartMonth
-                        && o.StartMonth.Month <= quarterEndMonth)
+                        && o.StartMonth.Month == quarterEndMonth)
                     .ToList();
-
                 if (!filteredOutputs.Any())
                 {
                     continue;
@@ -192,8 +183,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
 
                 var plannedQuantity = filteredOutputs.Sum(o => o.ProductionMeters);
 
-                var key = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId);
-                var actualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProduct.TryGetValue(key, out var productActual)
+                var monthKey = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId, quarterEndMonth);
+                var actualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProductMonth.TryGetValue(monthKey, out var productActual)
                     ? productActual
                     : 0;
 
@@ -336,11 +327,13 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
             });
         }
 
-        var quarterEndOutputs = await _productionOutputRepository.GetAllAsync(
+        var quarterOutputsWithAcceptanceReport = await _productionOutputRepository.GetAllAsync(
             predicate: po => po.StartMonth.Year == year
-                && po.StartMonth.Month == quarterEndMonth
+                && po.StartMonth.Month >= quarterStartMonth
+                && po.StartMonth.Month <= quarterEndMonth
                 && po.AcceptanceReport != null,
             include: q => q.AsSplitQuery()
+                .Include(po => po.ProductionOutputProcessGroups)
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
                         .ThenInclude(i => i.Material)
@@ -354,48 +347,88 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                         .ThenInclude(i => i.ShippedDetails)
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.AcceptanceReportItemLogs),
+                        .ThenInclude(i => i.AcceptanceReportItemLogs)
+                .Include(po => po.AcceptanceReport!)
+                    .ThenInclude(ar => ar.ActualElectricityCost)
+                        .ThenInclude(aec => aec!.ActualEletricityEquipment)
+                            .ThenInclude(aee => aee.Equipment)
+                                .ThenInclude(e => e!.Costs),
             disableTracking: true);
-
-        var transferredMaterial = 0m;
-        var transferredMaintain = 0m;
-
-        foreach (var output in quarterEndOutputs)
+        var transferredCostsByMonth = new List<LumpSumQuarterTransferredCostDto>();
+        for (var currentMonth = quarterStartMonth; currentMonth <= quarterEndMonth; currentMonth++)
         {
-            var report = output.AcceptanceReport;
-            if (report == null)
-            {
-                continue;
-            }
+            var transferredMaterial = 0m;
+            var transferredMaintain = 0m;
+            var transferredElectricity = 0m;
 
-            var sectionAItems = report.AcceptanceReportItems
-                .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
-                .Where(i => !hasProcessGroupFilter || i.ProcessGroupId == processGroupId)
+            var monthOutputs = quarterOutputsWithAcceptanceReport
+                .Where(po => po.StartMonth.Month == currentMonth)
                 .ToList();
 
-            foreach (var item in sectionAItems.Where(i => i.MaterialId.HasValue && i.Material != null))
+            foreach (var output in monthOutputs)
             {
-                var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
-                var exportedToProductionQty = item.ShippedDetails
-                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
-                    .Sum(d => d.Quantity);
-                transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
+                if (hasProcessGroupFilter
+                    && !output.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId))
+                {
+                    continue;
+                }
+
+                var report = output.AcceptanceReport;
+                if (report == null)
+                {
+                    continue;
+                }
+
+                var sectionAItems = report.AcceptanceReportItems
+                    .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                    .Where(i => !hasProcessGroupFilter || i.ProcessGroupId == processGroupId)
+                    .ToList();
+
+                foreach (var item in sectionAItems.Where(i => i.MaterialId.HasValue && i.Material != null))
+                {
+                    var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
+                    var exportedToProductionQty = item.ShippedDetails
+                        .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                        .Sum(d => d.Quantity);
+                    transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
+                }
+
+                foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+                {
+                    var logsOfCurrentReport = item.AcceptanceReportItemLogs
+                        .Where(l => l.AcceptanceReportId == report.Id);
+                    transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
+                }
+
+                if (report.ActualElectricityCost != null)
+                {
+                    transferredElectricity += (decimal)report.ActualElectricityCost.ActualEletricityEquipment.Sum(equipment =>
+                    {
+                        var unitPrice = GetPlannedUnitPrice(
+                            equipment.Equipment?.Costs ?? Array.Empty<Cost>(),
+                            output.StartMonth);
+                        return (double)unitPrice * equipment.ActualElectricityConsumption;
+                    });
+                }
             }
 
-            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+            var transferredMaterialDouble = (double)transferredMaterial;
+            var transferredMaintainDouble = (double)transferredMaintain;
+            var transferredElectricityDouble = (double)transferredElectricity;
+
+            transferredCostsByMonth.Add(new LumpSumQuarterTransferredCostDto
             {
-                var logsOfCurrentReport = item.AcceptanceReportItemLogs
-                    .Where(l => l.AcceptanceReportId == report.Id);
-                transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
-            }
+                Month = currentMonth,
+                Materials = new LumpSumCostDetailDto { TotalAmount = transferredMaterialDouble },
+                Maintains = new LumpSumCostDetailDto { TotalAmount = transferredMaintainDouble },
+                Electricities = new LumpSumCostDetailDto { TotalAmount = transferredElectricityDouble },
+                TotalAmount = transferredMaterialDouble + transferredMaintainDouble + transferredElectricityDouble
+            });
         }
 
-        var transferredMaterialDouble = (double)transferredMaterial;
-        var transferredMaintainDouble = (double)transferredMaintain;
-        var transferredElectricityDouble = 0.0;
-
+        var monthList = GetMonthListByQuarter(quarter);
         var customCosts = await _customCostRepository.GetAllAsync(
-            predicate: x => x.Quarter == quarter
+            predicate: x => monthList.Contains(x.Month)
                 && x.Year == year
                 && (!hasProcessGroupFilter || x.ProcessGroupId == processGroupId),
             disableTracking: true);
@@ -404,20 +437,13 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
         {
             Items = result,
             RevenuesByMonth = revenuesByMonth,
-            TransferredCost = new LumpSumQuarterTransferredCostDto
-            {
-                Month = quarterEndMonth,
-                Materials = new LumpSumCostDetailDto { TotalAmount = transferredMaterialDouble },
-                Maintains = new LumpSumCostDetailDto { TotalAmount = transferredMaintainDouble },
-                Electricities = new LumpSumCostDetailDto { TotalAmount = transferredElectricityDouble },
-                TotalAmount = transferredMaterialDouble + transferredMaintainDouble + transferredElectricityDouble,
-            },
+            TransferredCosts = transferredCostsByMonth,
             CustomCosts = customCosts
                 .OrderBy(x => x.CreatedOn)
                 .Select(x => new LumpSumQuarterCustomCostDto
                 {
                     Id = x.Id,
-                    Quarter = x.Quarter,
+                    Month = x.Month,
                     Year = x.Year,
                     ProcessGroupId = x.ProcessGroupId,
                     CustomName = x.CustomName,
@@ -434,5 +460,23 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
     {
         var cost = costs.FirstOrDefault(c => c.StartMonth <= month && c.EndMonth >= month);
         return cost == null ? 0 : (decimal)cost.Amount;
+    }
+
+    public static List<int> GetMonthListByQuarter(int quarter)
+    {
+        switch (quarter)
+        {
+            case 1:
+                return [1, 2, 3];
+            case 2:
+                return [4, 5, 6];
+            case 3:
+                return [7, 8, 9];
+            case 4:
+                return [10, 11, 12];
+            default:
+                throw new BadRequestException("Invalid quarter or year");
+                break;
+        }
     }
 }

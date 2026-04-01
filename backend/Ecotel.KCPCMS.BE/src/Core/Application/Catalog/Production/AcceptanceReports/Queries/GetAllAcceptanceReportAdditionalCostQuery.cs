@@ -79,7 +79,7 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
                 case AdditionalCost.Maintain:
                     additionalCostsGroup.Maintain.Add(costItem);
                     break;
-                case AdditionalCost.OtherMaterial:
+                case AdditionalCost.SafeAndWelfare:
                     additionalCostsGroup.OtherMaterial.Add(costItem);
                     break;
             }

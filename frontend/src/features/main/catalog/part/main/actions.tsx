@@ -21,8 +21,8 @@ import {
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 
 export type PartDetail = {
 	id: string;
@@ -57,6 +57,35 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 		defaultValues: PART_SCHEMA_DEFAULT,
 		mode: 'onSubmit',
 	});
+
+	const lastSyncedPlanRef = useRef<Record<number, number>>({});
+	const costs = useWatch({
+		control: form.control,
+		name: 'costs',
+	});
+
+	useEffect(() => {
+		costs?.forEach((cost, index) => {
+			const lastSyncedPlan = lastSyncedPlanRef.current[index];
+			const isActualAmountEmpty =
+				cost.actualAmount === undefined ||
+				cost.actualAmount === null ||
+				Number.isNaN(cost.actualAmount);
+			const hasPlanAmount =
+				cost.amount !== undefined &&
+				cost.amount !== null &&
+				!Number.isNaN(cost.amount);
+			const wasAutoFilled =
+				lastSyncedPlan !== undefined && cost.actualAmount === lastSyncedPlan;
+
+			if ((isActualAmountEmpty || wasAutoFilled) && hasPlanAmount) {
+				form.setValue(`costs.${index}.actualAmount`, cost.amount, {
+					shouldDirty: true,
+				});
+				lastSyncedPlanRef.current[index] = cost.amount;
+			}
+		});
+	}, [costs, form]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -170,8 +199,8 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 			<FormNumber
 				control={form.control}
 				name={`replacementTimeStandard`}
-				label='Định mức thời gian thay thế (tháng)'
-				placeholder='Nhập định mức thời gian thay thế (tháng)'
+				label='Thời gian sử dụng (tháng)'
+				placeholder='Nhập thời gian sử dụng (tháng)'
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>

@@ -10,10 +10,13 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public Guid AcceptanceReportId { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
     public Guid? PartId { get; protected set; }
+    public Guid? EquipmentId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
 
     public ItemType ItemType { get; protected set; }
     public Guid? ProductionOrderId { get; protected set; }
+    public Guid? AdditionalCostProductionOrderId { get; protected set; }
+    public Guid? AdditionalCostEquipmentId { get; protected set; }
 
     public double IssuedQuantity => _issuedDetails.Sum(x => x.Quantity);   // tự tính tổng
 
@@ -41,8 +44,15 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
     public virtual Part? Part { get; protected set; }
+    public virtual Equipment? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
+
+    public ProductionReference CategoryProductionReference
+        => ProductionReference.Create(ProductionOrderId, EquipmentId);
+
+    public ProductionReference AdditionalCostProductionReference
+        => ProductionReference.Create(AdditionalCostProductionOrderId, AdditionalCostEquipmentId);
 
     private IList<AcceptanceReportItemIssuedDetail> _issuedDetails = new List<AcceptanceReportItemIssuedDetail>();
     public virtual IReadOnlyCollection<AcceptanceReportItemIssuedDetail> IssuedDetails => _issuedDetails.AsReadOnly();
@@ -60,10 +70,20 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         AdditionalCost additionalCost,
         QuotaBasedMaterial quotaBasedMaterial)
     {
+        var categoryReference = categoryProductionReference ?? ProductionReference.Empty();
+        var additionalReference = additionalCostProductionReference ?? ProductionReference.Empty();
+
+        if ((categoryReference.EquipmentId != null || additionalReference.EquipmentId != null) && partId == null)
+        {
+            throw new ArgumentException("Phải chỉ rõ Phụ tùng thuộc Thiết bị");
+        }
+
         bool requiresMaintain =
             materialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain ||
             additionalCost == AdditionalCost.Maintain;
@@ -71,7 +91,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         bool requiresMaterial =
             materialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Material ||
             additionalCost == AdditionalCost.Material ||
-            additionalCost == AdditionalCost.OtherMaterial;
+            additionalCost == AdditionalCost.SafeAndWelfare;
 
         if (requiresMaintain && partId == null)
         {
@@ -168,7 +188,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid? materialId,
         Guid? partId,
         ItemType itemType,
-        Guid? productionOrderId,
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
@@ -182,7 +203,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
     {
-        ValidateIds(processGroupId, materialId, partId,
+        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
@@ -193,6 +214,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             ProcessGroupId = processGroupId,
             MaterialId = materialId,
             PartId = partId,
+            EquipmentId = categoryProductionReference.EquipmentId,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
             AdditionalCost = additionalCost,
@@ -203,7 +225,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             Asset = asset,
             AssetMaterialQuantity = assetMaterialQuantity,
             ItemType = itemType,
-            ProductionOrderId = productionOrderId,
+            ProductionOrderId = categoryProductionReference.ProductionOrderId,
+            AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId,
+            AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId,
         };
 
         foreach (var detail in issuedDetails)
@@ -233,7 +257,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid? materialId,
         Guid? partId,
         ItemType itemType,
-        Guid? productionOrderId,
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
@@ -247,7 +272,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
     {
-        ValidateIds(processGroupId, materialId, partId,
+        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
@@ -255,6 +280,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProcessGroupId = processGroupId;
         MaterialId = materialId;
         PartId = partId;
+        EquipmentId = categoryProductionReference.EquipmentId;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;
         AdditionalCost = additionalCost;
@@ -265,7 +291,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Asset = asset;
         AssetMaterialQuantity = assetMaterialQuantity;
         ItemType = itemType;
-        ProductionOrderId = productionOrderId;
+        ProductionOrderId = categoryProductionReference.ProductionOrderId;
+        AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId;
+        AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId;
 
         // Clear và rebuild toàn bộ details (replace strategy)
         _issuedDetails.Clear();

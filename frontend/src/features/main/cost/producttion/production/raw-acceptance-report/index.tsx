@@ -43,6 +43,7 @@ export function RawAcceptanceReport({
 	plan,
 	callback,
 	isOpen,
+	reloadKey,
 }: ProductCostExpandProps) {
 	const [rawAcceptanceData, setRawAcceptanceData] = useState<
 		RawAcceptanceReportItem[]
@@ -83,7 +84,7 @@ export function RawAcceptanceReport({
 		};
 
 		fetchAcceptanceReport();
-	}, [isOpen, output?.acceptanceReportId]);
+	}, [isOpen, output?.acceptanceReportId, reloadKey]);
 
 	const handleImport = async () => {
 		await callback?.();

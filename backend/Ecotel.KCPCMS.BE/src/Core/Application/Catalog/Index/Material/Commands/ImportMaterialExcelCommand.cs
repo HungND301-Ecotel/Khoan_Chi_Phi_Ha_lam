@@ -110,7 +110,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
             if (dto.Id != Guid.Empty && dbMaterialDict.TryGetValue(dto.Id, out var entityToUpdate))
             {
                 // Logic UPDATE
-                bool isInfoChanged = entityToUpdate.CheckChange(MaterialEntity.Create(dto.Id, dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, dto.UsageTime, materialType.Value));
+                bool isInfoChanged = entityToUpdate.CheckChange(MaterialEntity.Create(dto.Id, dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, materialType.Value));
                 bool isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), incomingCosts);
 
                 if (isInfoChanged || isCostChanged)
@@ -120,7 +120,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                         throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
                     }
 
-                    entityToUpdate.Update(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, dto.UsageTime, materialType.Value);
+                    entityToUpdate.Update(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, materialType.Value);
 
                     if (isCostChanged)
                     {
@@ -139,7 +139,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                     throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
                 }
 
-                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, dto.UsageTime, materialType.Value);
+                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, materialType.Value);
                 newMaterial.AddMaterialCost(incomingCosts);
                 addList.Add(newMaterial);
             }

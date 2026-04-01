@@ -40,9 +40,12 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.ProductionProcessNotFound);
         }
 
-        if (!checkHardnessTask)
+        if (request.UpdateModel.HardnessId != null)
         {
-            throw new NotFoundException(CustomResponseMessage.HardnessNotFound);
+            if (!checkHardnessTask)
+            {
+                throw new NotFoundException(CustomResponseMessage.HardnessNotFound);
+            }
         }
 
         if (!checkStoneClampRatioTask)
@@ -56,7 +59,7 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         }
 
         // update main properties
-        existNormFactor.Update(request.UpdateModel.ProductionProcessId, request.UpdateModel.HardnessId, request.UpdateModel.StoneClampRatioId, request.UpdateModel.Value, request.UpdateModel.TargetHardnessId);
+        existNormFactor.Update(request.UpdateModel.ProductionProcessId, request.UpdateModel.HardnessId, request.UpdateModel.StoneClampRatioId, request.UpdateModel.Value, request.UpdateModel.TargetHardnessId, request.UpdateModel.SteelMeshType);
 
         // determine assignment codes to add / keep / remove
         var existingAssignmentCodes = existNormFactor.NormFactorAssignmentCodes.ToList();

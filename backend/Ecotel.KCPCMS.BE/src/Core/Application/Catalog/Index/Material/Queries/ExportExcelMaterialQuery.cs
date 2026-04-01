@@ -48,7 +48,6 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
                 Id = l.Id,
                 Code = l.Code?.Value ?? "",
                 Name = l.Name,
-                UsageTime = l.UsageTime,
                 UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
                 AssignmentCode = l.AssignmentCode?.Code?.Value ?? "",
                 MaterialType = l.MaterialType.GetDisplayName(),

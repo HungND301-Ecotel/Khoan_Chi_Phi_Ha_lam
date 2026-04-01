@@ -509,6 +509,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsSlideAssignmentCode")
+                        .HasColumnType("boolean");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -907,10 +910,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid?>("UnitOfMeasureId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("UsageTime")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AssigmentCodeId");
@@ -941,7 +940,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("HardnessId")
+                    b.Property<Guid?>("HardnessId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("LastModifiedBy")
@@ -952,6 +951,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<Guid>("ProductionProcessId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("SteelMeshType")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("StoneClampRatioId")
                         .HasColumnType("uuid");
@@ -1186,6 +1188,43 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("PlannedMaintainCostAdjustmentFactorId");
 
                     b.ToTable("PlannedMaintainCostAdjustmentFactorDescription", "Index");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.Power", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("Power", "Index");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.ProcessGroup", b =>
@@ -1555,6 +1594,42 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("UnitOfMeasure", "Index");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.ActualElectricityCost", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AcceptanceReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcceptanceReportId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("ActualElectricityCost", "Production");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment", b =>
@@ -2051,6 +2126,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("MaterialReferenceId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("MaterialUnitPriceId")
                         .HasColumnType("uuid");
 
@@ -2066,7 +2144,12 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid?>("SlideUnitPriceAssignmentCodeId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("StoneClampRatioReferenceId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("MaterialReferenceId");
 
                     b.HasIndex("MaterialUnitPriceId");
 
@@ -2076,6 +2159,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsUnique();
 
                     b.HasIndex("SlideUnitPriceAssignmentCodeId");
+
+                    b.HasIndex("StoneClampRatioReferenceId");
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -2319,6 +2404,12 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<int>("AdditionalCost")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("AdditionalCostEquipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdditionalCostProductionOrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<double>("AdditionalCostQuantity")
                         .HasColumnType("double precision");
 
@@ -2339,6 +2430,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EquipmentId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("ItemType")
                         .HasColumnType("integer");
@@ -2379,6 +2473,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AcceptanceReportId");
+
+                    b.HasIndex("EquipmentId");
 
                     b.HasIndex("MaterialId");
 
@@ -2628,6 +2724,48 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("AcceptanceReportItemShippedDetail", "Production");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Production.ActualEletricityEquipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("ActualElectricityConsumption")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ActualElectricityCostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EquipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActualElectricityCostId");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.ToTable("ActualEletricityEquipment", "Production");
+                });
+
             modelBuilder.Entity("Domain.Entities.Production.LumpSumQuarterCustomCost", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2668,11 +2806,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<double>("MaterialUnitPrice")
                         .HasColumnType("double precision");
 
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("ProcessGroupId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("Quarter")
-                        .HasColumnType("integer");
 
                     b.Property<int>("Year")
                         .HasColumnType("integer");
@@ -2681,7 +2819,7 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("ProcessGroupId");
 
-                    b.HasIndex("Year", "Quarter", "ProcessGroupId")
+                    b.HasIndex("Year", "Month", "ProcessGroupId")
                         .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("LumpSumQuarterCustomCost", "Production");
@@ -2904,17 +3042,35 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("CuttingThicknessId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("HardnessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsLongwallMaterialUnitPriceCGH")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("LongwallParametersId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PowerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("SeamFaceId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("StoneClampRatioId")
+                        .HasColumnType("uuid");
+
                     b.HasIndex("CuttingThicknessId");
+
+                    b.HasIndex("HardnessId");
 
                     b.HasIndex("LongwallParametersId");
 
+                    b.HasIndex("PowerId");
+
                     b.HasIndex("SeamFaceId");
+
+                    b.HasIndex("StoneClampRatioId");
 
                     b.HasDiscriminator().HasValue(2);
                 });
@@ -2943,7 +3099,40 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("SupportStepId");
 
+                    b.ToTable("MaterialUnitPrice", "Pricing", t =>
+                        {
+                            t.Property("HardnessId")
+                                .HasColumnName("TunnelExcavationMaterialUnitPrice_HardnessId");
+                        });
+
                     b.HasDiscriminator().HasValue(1);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelSupportAndDrillingMaterialUnitPrice", b =>
+                {
+                    b.HasBaseType("Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice");
+
+                    b.Property<Guid>("HardnessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PassportId")
+                        .HasColumnType("uuid");
+
+                    b.HasIndex("HardnessId");
+
+                    b.HasIndex("PassportId")
+                        .HasDatabaseName("IX_MaterialUnitPrice_TunnelSupportAndDrillingMaterialUnitPric~1");
+
+                    b.ToTable("MaterialUnitPrice", "Pricing", t =>
+                        {
+                            t.Property("HardnessId")
+                                .HasColumnName("TunnelSupportAndDrillingMaterialUnitPrice_HardnessId");
+
+                            t.Property("PassportId")
+                                .HasColumnName("TunnelSupportAndDrillingMaterialUnitPrice_PassportId");
+                        });
+
+                    b.HasDiscriminator().HasValue(3);
                 });
 
             modelBuilder.Entity("Domain.Entities.Identity.RefreshToken", b =>
@@ -3122,8 +3311,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
                         .WithMany("NormFactors")
                         .HasForeignKey("HardnessId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Domain.Entities.Index.ProductionProcess", "ProductionProcess")
                         .WithMany("NormFactors")
@@ -3295,6 +3483,17 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.ProductionProcess", null)
                         .WithMany("StoneClampRatios")
                         .HasForeignKey("ProductionProcessId");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.ActualElectricityCost", b =>
+                {
+                    b.HasOne("Domain.Entities.Production.AcceptanceReport", "AcceptanceReport")
+                        .WithOne("ActualElectricityCost")
+                        .HasForeignKey("Domain.Entities.Pricing.ActualElectricityCost", "AcceptanceReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcceptanceReport");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment", b =>
@@ -3472,6 +3671,11 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Pricing.PlannedMaterialCost", b =>
                 {
+                    b.HasOne("Domain.Entities.Index.Material", "Material")
+                        .WithMany("PlannedMaterialCosts")
+                        .HasForeignKey("MaterialReferenceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice", "MaterialUnitPrice")
                         .WithMany("PlannedMaterialCosts")
                         .HasForeignKey("MaterialUnitPriceId")
@@ -3500,6 +3704,13 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasForeignKey("SlideUnitPriceAssignmentCodeId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("Domain.Entities.Index.StoneClampRatio", "StoneClampRatio")
+                        .WithMany("PlannedMaterialCosts")
+                        .HasForeignKey("StoneClampRatioReferenceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Material");
+
                     b.Navigation("MaterialUnitPrice");
 
                     b.Navigation("NormFactor");
@@ -3509,6 +3720,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("ProductUnitPrice");
 
                     b.Navigation("SlideUnitPriceAssignmentCode");
+
+                    b.Navigation("StoneClampRatio");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
@@ -3621,6 +3834,10 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId");
+
                     b.HasOne("Domain.Entities.Index.Material", "Material")
                         .WithMany("AcceptanceReportItems")
                         .HasForeignKey("MaterialId")
@@ -3641,6 +3858,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasForeignKey("ProductionOrderId");
 
                     b.Navigation("AcceptanceReport");
+
+                    b.Navigation("Equipment");
 
                     b.Navigation("Material");
 
@@ -3709,6 +3928,25 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReportItem");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Production.ActualEletricityEquipment", b =>
+                {
+                    b.HasOne("Domain.Entities.Pricing.ActualElectricityCost", "ActualElectricityCost")
+                        .WithMany("ActualEletricityEquipment")
+                        .HasForeignKey("ActualElectricityCostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Equipment", "Equipment")
+                        .WithMany("ActualEletricityEquipment")
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActualElectricityCost");
+
+                    b.Navigation("Equipment");
+                });
+
             modelBuilder.Entity("Domain.Entities.Production.LumpSumQuarterCustomCost", b =>
                 {
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
@@ -3765,11 +4003,19 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
+                        .WithMany()
+                        .HasForeignKey("HardnessId");
+
                     b.HasOne("Domain.Entities.Index.LongwallParameters", "LongwallParameters")
                         .WithMany("MaterialUnitPrices")
                         .HasForeignKey("LongwallParametersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Power", "Power")
+                        .WithMany()
+                        .HasForeignKey("PowerId");
 
                     b.HasOne("Domain.Entities.Index.SeamFace", "SeamFace")
                         .WithMany("MaterialUnitPrices")
@@ -3777,11 +4023,21 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.StoneClampRatio", "StoneClampRatio")
+                        .WithMany()
+                        .HasForeignKey("StoneClampRatioId");
+
                     b.Navigation("CuttingThickness");
+
+                    b.Navigation("Hardness");
 
                     b.Navigation("LongwallParameters");
 
+                    b.Navigation("Power");
+
                     b.Navigation("SeamFace");
+
+                    b.Navigation("StoneClampRatio");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelExcavationMaterialUnitPrice", b =>
@@ -3817,6 +4073,25 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Passport");
 
                     b.Navigation("SupportStep");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.TunnelSupportAndDrillingMaterialUnitPrice", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Hardness", "Hardness")
+                        .WithMany()
+                        .HasForeignKey("HardnessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Passport", "Passport")
+                        .WithMany()
+                        .HasForeignKey("PassportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hardness");
+
+                    b.Navigation("Passport");
                 });
 
             modelBuilder.Entity("Domain.Entities.Identity.Role", b =>
@@ -3882,6 +4157,8 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Index.Equipment", b =>
                 {
+                    b.Navigation("ActualEletricityEquipment");
+
                     b.Navigation("Costs");
 
                     b.Navigation("ElectricityUnitPriceEquipments");
@@ -3919,6 +4196,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReportItems");
 
                     b.Navigation("Costs");
+
+                    b.Navigation("PlannedMaterialCosts");
 
                     b.Navigation("SlideUnitPriceAssignmentCodes");
                 });
@@ -3986,6 +4265,8 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Index.StoneClampRatio", b =>
                 {
                     b.Navigation("NormFactors");
+
+                    b.Navigation("PlannedMaterialCosts");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.SupportStep", b =>
@@ -4009,6 +4290,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Parts");
 
                     b.Navigation("ProductUnitPrices");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.ActualElectricityCost", b =>
+                {
+                    b.Navigation("ActualEletricityEquipment");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment", b =>
@@ -4087,6 +4373,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReportItemLogs");
 
                     b.Navigation("AcceptanceReportItems");
+
+                    b.Navigation("ActualElectricityCost");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItem", b =>

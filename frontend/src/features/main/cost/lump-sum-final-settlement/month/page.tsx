@@ -139,8 +139,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 								control={form.control}
 								month='month'
 								year='year'
-								label='Tháng và Năm'
-								placeholder='Chọn tháng và năm'
+								label='Thời gian'
+								placeholder='Chọn thời gian'
 							/>
 							<FormComboBox
 								control={form.control}

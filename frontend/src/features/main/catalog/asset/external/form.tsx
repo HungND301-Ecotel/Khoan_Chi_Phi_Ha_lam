@@ -15,13 +15,12 @@ import {
 	assetExternalFormSchema,
 	AssetExternalFormSchema,
 } from '@/features/main/catalog/asset/external/schema';
-import { ASSET_INTERNAL_FORM_DEFAULT } from '@/features/main/catalog/asset/internal/schema';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 
 export type AssetExternalDetail = {
 	id: string;
@@ -37,6 +36,7 @@ export type AssetExternalDetail = {
 		endMonth: string;
 		costType: number;
 		amount: number;
+		actualAmount: number;
 	}>;
 };
 
@@ -50,6 +50,11 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 		resolver: zodResolver(assetExternalFormSchema),
 		mode: 'onSubmit',
 		defaultValues: ASSET_EXTERNAL_FORM_DEFAULT,
+	});
+	const lastSyncedPlanRef = useRef<Record<number, number>>({});
+	const costs = useWatch({
+		control: form.control,
+		name: 'costs',
 	});
 
 	useEffect(() => {
@@ -71,8 +76,9 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 									startMonth: cost.startMonth.substring(0, 10),
 									endMonth: cost.endMonth.substring(0, 10),
 									amount: cost.amount,
+									actualAmount: cost.actualAmount,
 								}))
-							: ASSET_INTERNAL_FORM_DEFAULT.costs,
+							: ASSET_EXTERNAL_FORM_DEFAULT.costs,
 						materialType: 2,
 					});
 				}
@@ -83,6 +89,29 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 
 		fetchData();
 	}, [row]);
+
+	useEffect(() => {
+		costs?.forEach((cost, index) => {
+			const lastSyncedPlan = lastSyncedPlanRef.current[index];
+			const isActualAmountEmpty =
+				cost.actualAmount === undefined ||
+				cost.actualAmount === null ||
+				Number.isNaN(cost.actualAmount);
+			const hasPlanAmount =
+				cost.amount !== undefined &&
+				cost.amount !== null &&
+				!Number.isNaN(cost.amount);
+			const wasAutoFilled =
+				lastSyncedPlan !== undefined && cost.actualAmount === lastSyncedPlan;
+
+			if ((isActualAmountEmpty || wasAutoFilled) && hasPlanAmount) {
+				form.setValue(`costs.${index}.actualAmount`, cost.amount, {
+					shouldDirty: true,
+				});
+				lastSyncedPlanRef.current[index] = cost.amount;
+			}
+		});
+	}, [costs, form]);
 
 	const handleSubmit = async (values: AssetExternalFormSchema) => {
 		try {
@@ -128,15 +157,6 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 				placeholder='Nhập tên vật tư, tài sản'
 			/>
 
-			<div className='flex-1'>
-				<FormNumber
-					control={form.control}
-					name={`usageTime`}
-					label='Thời gian sử dụng (tháng)'
-					placeholder='Nhập thời gian sử dụng (tháng)'
-				/>
-			</div>
-
 			<FormComboBox
 				control={form.control}
 				name='unitOfMeasureId'
@@ -167,8 +187,16 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá vật tư (đ)'
-								placeholder='Nhập đơn giá vật tư (đ)'
+								label='Đơn giá kế hoạch (đ)'
+								placeholder='Nhập đơn giá kế hoạch (đ)'
+							/>
+						</div>
+						<div className='flex-1'>
+							<FormNumber
+								control={form.control}
+								name={`costs.${index}.actualAmount`}
+								label='Đơn giá thực tế (đ)'
+								placeholder='Nhập đơn giá thực tế (đ)'
 							/>
 						</div>
 					</div>

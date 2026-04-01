@@ -35,7 +35,7 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
             UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
             AssignmentCodeId = m.AssignmentCode != null ? m.AssignmentCode.Id : DefaultIdType.Empty,
             AssignmentCode = m.AssignmentCode != null && m.AssignmentCode.Code != null ? m.AssignmentCode.Code.Value : string.Empty,
-            UsageTime = m.UsageTime,
+            IsSlideAssignmentCode = m.AssignmentCode != null ? m.AssignmentCode.IsSlideAssignmentCode : false,
             CostAmount = m.Costs
                     .Where(c => c.CostType == CostType.Material &&
                                 c.StartMonth <= checkDate &&

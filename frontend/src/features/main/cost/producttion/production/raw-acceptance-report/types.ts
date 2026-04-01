@@ -1,8 +1,12 @@
 export type RawAcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
-	materialId: string;
-	maintainUnitPriceEquipmentId: string | null;
+	materialId: string | null;
+	partId?: string | null;
+	categoryProductionOrderId?: string | null;
+	categoryEquipmentId?: string | null;
+	additionalCostProductionOrderId?: string | null;
+	additionalCostEquipmentId?: string | null;
 	materialCode: string | null;
 	materialName: string | null;
 	partCode: string | null;
@@ -39,10 +43,13 @@ export type RawAcceptanceReportDetail = {
 export type AcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
-	materialId: string;
+	materialId: string | null;
+	partId?: string | null;
+	categoryProductionOrderId?: string | null;
+	categoryEquipmentId?: string | null;
+	additionalCostProductionOrderId?: string | null;
+	additionalCostEquipmentId?: string | null;
 	itemType?: number;
-	productionOrderId?: string | null;
-	maintainUnitPriceEquipmentId: string | null;
 	materialCode: string | null;
 	materialName: string | null;
 	partCode: string | null;

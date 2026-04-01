@@ -7,9 +7,16 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
     public Guid LongwallParametersId { get; protected set; }
     public Guid CuttingThicknessId { get; protected set; }
     public Guid SeamFaceId { get; protected set; }
+    public Guid? StoneClampRatioId { get; protected set; }
+    public Guid? PowerId { get; protected set; }
+    public Guid? HardnessId { get; protected set; }
+    public bool IsLongwallMaterialUnitPriceCGH { get; protected set; }
 
     // Navigation properties
     public virtual LongwallParameters? LongwallParameters { get; protected set; }
+    public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
+    public virtual Power? Power { get; protected set; }
+    public virtual Hardness? Hardness { get; protected set; }
     public virtual CuttingThickness? CuttingThickness { get; protected set; }
     public virtual SeamFace? SeamFace { get; protected set; }
 
@@ -19,6 +26,9 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         Guid longwallParametersId,
         Guid cuttingThicknessId,
         Guid seamFaceId,
+        Guid? powerId,
+        Guid? hardnessId,
+        bool isLongwallMaterialUnitPriceCGH,
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
@@ -34,6 +44,9 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
             LongwallParametersId = longwallParametersId,
             CuttingThicknessId = cuttingThicknessId,
             SeamFaceId = seamFaceId,
+            PowerId = powerId,
+            HardnessId = hardnessId,
+            IsLongwallMaterialUnitPriceCGH = isLongwallMaterialUnitPriceCGH,
             TechnologyId = technologyId,
             OtherMaterialvalue = otherMaterialvalue,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
@@ -50,6 +63,9 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         Guid longwallParametersId,
         Guid cuttingThicknessId,
         Guid seamFaceId,
+        Guid? powerId,
+        Guid? hardnessId,
+        bool isLongwallMaterialUnitPriceCGH,
         Guid? technologyId,
         DateOnly startMonth,
         DateOnly endMonth,
@@ -67,6 +83,9 @@ public class LongwallMaterialUnitPrice : MaterialUnitPrice
         LongwallParametersId = longwallParametersId;
         CuttingThicknessId = cuttingThicknessId;
         SeamFaceId = seamFaceId;
+        PowerId = powerId;
+        HardnessId = hardnessId;
+        IsLongwallMaterialUnitPriceCGH = isLongwallMaterialUnitPriceCGH;
         TechnologyId = technologyId;
         StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
         EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);

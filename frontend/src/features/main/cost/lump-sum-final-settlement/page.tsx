@@ -2,7 +2,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 const TABS: { title: string; href: string }[] = [
-	{ title: 'Bảng thanh toán', href: '/cost/lump-sum-final-settlement/month' },
+	{ title: 'Bảng Thanh toán', href: '/cost/lump-sum-final-settlement/month' },
 	{ title: 'Bảng Quyết toán', href: '/cost/lump-sum-final-settlement/quarter' },
 ] as const;
 

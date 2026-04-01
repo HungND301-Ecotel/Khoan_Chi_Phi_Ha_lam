@@ -279,7 +279,7 @@ function GroupedMaterialCosts({ contracts }: { contracts: ContractCode[] }) {
 
 	const vtkValue = isNaN(Number(otherMaterialValue))
 		? 0
-		: (Number(otherMaterialValue) / 100) * sumCosts;
+		: Number(otherMaterialValue);
 
 	const total = sumCosts + vtkValue;
 

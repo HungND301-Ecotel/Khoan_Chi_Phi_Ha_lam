@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -20,9 +21,15 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
     private readonly IWriteRepository<LongwallParameters> _longwallParametersRepository = unitOfWork.GetRepository<LongwallParameters>();
     private readonly IWriteRepository<CuttingThickness> _cuttingThicknessRepository = unitOfWork.GetRepository<CuttingThickness>();
     private readonly IWriteRepository<SeamFace> _seamFaceRepository = unitOfWork.GetRepository<SeamFace>();
+    private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
+    private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
     private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+
+    // Valid format: "M =12m", "M =12,7m", "M =12.7m"
+    private static readonly Regex InterpolationSeamFaceRegex =
+        new(@"^M =\d+([,.]\d+)?m$", RegexOptions.Compiled);
 
     public async Task<bool> Handle(CreateLongwallMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -31,29 +38,91 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
             throw new ConflictException(CustomResponseMessage.MaterialUnitPriceCodeAlreadyExists);
         }
 
+        // --- Interpolation SeamFace handling ---
+        // If InterpolationSeamFaceValue is provided, validate format, check for duplicate,
+        // then create a new SeamFace and use its Id instead of the incoming SeamFaceId.
+        var resolvedSeamFaceId = request.CreateModel.SeamFaceId;
+
+        if (!string.IsNullOrEmpty(request.CreateModel.InterpolationSeamFaceValue))
+        {
+            var interpolationValue = request.CreateModel.InterpolationSeamFaceValue.Trim();
+
+            if (!InterpolationSeamFaceRegex.IsMatch(interpolationValue))
+            {
+                throw new BadRequestException(
+                    "Giá trị mặt vỉa nội suy không đúng định dạng. " +
+                    "Định dạng hợp lệ: M =<số>m hoặc M =<số>,<số>m (ví dụ: M =12,7m).");
+            }
+
+            bool alreadyExists = await _seamFaceRepository.AnyAsync(s => s.Value == interpolationValue);
+            if (alreadyExists)
+            {
+                throw new ConflictException(
+                    $"Mặt vỉa với giá trị \"{interpolationValue}\" đã tồn tại trong hệ thống.");
+            }
+
+            var newSeamFace = SeamFace.Create(interpolationValue);
+            await _seamFaceRepository.InsertAsync(newSeamFace, cancellationToken);
+            resolvedSeamFaceId = newSeamFace.Id;
+        }
+
+        if (!resolvedSeamFaceId.HasValue)
+        {
+            throw new BadRequestException("Mặt vỉa không được để trống.");
+        }
+
+        if (request.CreateModel.PowerId.HasValue && request.CreateModel.HardnessId.HasValue)
+        {
+            throw new BadRequestException("Chỉ được chọn một trong hai: Công suất hoặc Độ kiên cố than đá.");
+        }
+        if (!request.CreateModel.PowerId.HasValue && !request.CreateModel.HardnessId.HasValue)
+        {
+            throw new BadRequestException("Phải chọn Công suất hoặc Độ kiên cố than đá.");
+        }
+
+        // --- Month range overlap check (uses resolvedSeamFaceId) ---
         if (await _materialUnitPriceRepository.AnyAsync(m =>
             m.StartMonth < request.CreateModel.EndMonth &&
             m.EndMonth > request.CreateModel.StartMonth &&
             m.LongwallParametersId == request.CreateModel.LongwallParametersId &&
             m.CuttingThicknessId == request.CreateModel.CuttingThicknessId &&
-            m.SeamFaceId == request.CreateModel.SeamFaceId))
+            m.SeamFaceId == resolvedSeamFaceId.Value &&
+            m.PowerId == request.CreateModel.PowerId &&
+            m.HardnessId == request.CreateModel.HardnessId))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
 
+        // --- Assignment code existence check ---
         var assignemntCodeIds = request.CreateModel.Costs.Select(c => c.AssignmentCodeId).Distinct();
         var assignmentCodeTask = await _assignmentCodeRepository.GetAllAsync(selector: a => a.Id, disableTracking: true);
 
         var checkExisted = assignemntCodeIds.All(id => assignmentCodeTask.Any(ac => ac == id));
-
         if (!checkExisted)
         {
             throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
         }
 
+        // --- Referenced entity existence checks ---
         bool longwallParamsTask = await _longwallParametersRepository.AnyAsync(p => p.Id == request.CreateModel.LongwallParametersId);
         bool cuttingThicknessTask = await _cuttingThicknessRepository.AnyAsync(p => p.Id == request.CreateModel.CuttingThicknessId);
-        bool seamFaceTask = await _seamFaceRepository.AnyAsync(p => p.Id == request.CreateModel.SeamFaceId);
+
+        // SeamFace was already created above for interpolation path, so skip DB check in that case
+        bool seamFaceTask = !string.IsNullOrEmpty(request.CreateModel.InterpolationSeamFaceValue)
+            || await _seamFaceRepository.AnyAsync(p => p.Id == request.CreateModel.SeamFaceId!.Value);
+
+        bool powerTask = true;
+        if (request.CreateModel.PowerId.HasValue)
+        {
+            powerTask = await _powerRepository.AnyAsync(p => p.Id == request.CreateModel.PowerId.Value);
+        }
+
+        bool hardnessTask = true;
+        if (request.CreateModel.HardnessId.HasValue)
+        {
+            hardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.CreateModel.HardnessId.Value);
+        }
+
         bool processTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProcessId);
 
         bool technologyTask = true;
@@ -62,7 +131,13 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
             technologyTask = await _technologyRepository.AnyAsync(p => p.Id == request.CreateModel.TechnologyId.Value);
         }
 
-        var checkData = longwallParamsTask && cuttingThicknessTask && seamFaceTask && processTask && technologyTask;
+        var checkData = longwallParamsTask
+            && cuttingThicknessTask
+            && seamFaceTask
+            && processTask
+            && technologyTask
+            && powerTask
+            && hardnessTask;
         if (!checkData)
         {
             throw new BadRequestException(CustomResponseMessage.OneOrMoreReferencedSpecificationIdsInvalid);
@@ -77,7 +152,10 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
                 request.CreateModel.ProcessId,
                 request.CreateModel.LongwallParametersId,
                 request.CreateModel.CuttingThicknessId,
-                request.CreateModel.SeamFaceId,
+                resolvedSeamFaceId.Value,
+                request.CreateModel.PowerId,
+                request.CreateModel.HardnessId,
+                request.CreateModel.PowerId.HasValue,
                 request.CreateModel.TechnologyId,
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,

@@ -14,7 +14,7 @@ export interface LumpSumFinalSettlementQuarterListRequest {
 export interface LumpSumFinalSettlementQuarterResponse {
 	items: LumpSumFinalSettlement[];
 	revenuesByMonth: LumpSumQuarterRevenueByMonth[];
-	transferredCost: LumpSumQuarterTransferredCost;
+	transferredCosts?: LumpSumQuarterTransferredCost[];
 	customCosts?: LumpSumQuarterCustomCost[];
 }
 
@@ -37,7 +37,8 @@ export interface LumpSumQuarterTransferredCost {
 export interface LumpSumQuarterCustomCost {
 	id: string;
 	year: number | string;
-	quarter: number | string;
+	month?: number | string;
+	quarter?: number | string;
 	processGroupId?: string | null;
 	customName?: string;
 	actualQuantity: number;
@@ -49,13 +50,15 @@ export interface LumpSumQuarterCustomCost {
 export interface LumpSumQuarterCustomCostListRequest {
 	year: string;
 	quarter: string;
+	month?: string;
 	processGroupId: string;
 }
 
 export interface UpsertLumpSumQuarterCustomCostRequest {
 	id?: string;
 	year: string;
-	quarter: string;
+	month: string;
+	quarter?: string;
 	processGroupId: string;
 	customName?: string;
 	actualQuantity: number;
@@ -78,6 +81,7 @@ export interface LumpSumFinalSettlement {
 	isCustomCostRow?: boolean;
 	isEditing?: boolean;
 	isTransferredDefaultRow?: boolean;
+	month?: number;
 	productName?: string;
 	productCode?: string;
 	unitOfMeasureId?: string;

@@ -3,6 +3,7 @@ export type DashboardMonthlyItem = {
 	tunnelQuantity: number;
 	longwallQuantity: number;
 	plannedCost: number;
+	adjustmentCost: number;
 	actualCost: number;
 };
 
@@ -11,6 +12,7 @@ export type DashboardCostSummary = {
 	totalLongwallQuantity: number;
 	totalOtherQuantity: number;
 	totalPlannedCost: number;
+	totalAdjustmentCost: number;
 	totalActualCost: number;
 	monthlyData: DashboardMonthlyItem[];
 };

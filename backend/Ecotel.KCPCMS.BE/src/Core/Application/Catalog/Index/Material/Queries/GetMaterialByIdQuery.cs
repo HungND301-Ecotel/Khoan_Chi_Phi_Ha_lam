@@ -34,7 +34,6 @@ public class GetMaterialByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
             Name = details.Name,
             AssigmentCodeId = details.AssigmentCodeId,
             UnitOfMeasureId = details.UnitOfMeasureId,
-            UsageTime = details.UsageTime,
             AssigmentCode = details.AssignmentCode is { Code: not null } ? details.AssignmentCode.Code.Value : string.Empty,
             UnitOfMeasureName = details.AssignmentCode != null ? details.AssignmentCode.Name : string.Empty,
             Costs = details.Costs.Adapt<List<MaterialCostDto>>(),

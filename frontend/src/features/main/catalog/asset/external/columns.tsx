@@ -16,13 +16,13 @@ export const CATALOG_ASSET_EXTERNAL_COLUMNS: ColumnDef<Asset>[] = [
 		header: 'Đơn vị tính',
 	},
 	{
-		accessorKey: 'usageTime',
-		header: 'Thời gian sử dụng (tháng)',
-		cell: ({ row }) => formatNumber(row.original.usageTime),
+		accessorKey: 'costAmount',
+		header: 'Đơn giá kế hoạch (đ)',
+		cell: ({ row }) => formatNumber(row.original.costAmount),
 	},
 	{
-		accessorKey: 'costAmount',
-		header: 'Đơn giá vật tư (đ)',
-		cell: ({ row }) => formatNumber(row.original.costAmount),
+		accessorKey: 'actualCostAmount',
+		header: 'Đơn giá thực tế (đ)',
+		cell: ({ row }) => formatNumber(row.original.actualAmount ?? 0),
 	},
 ];

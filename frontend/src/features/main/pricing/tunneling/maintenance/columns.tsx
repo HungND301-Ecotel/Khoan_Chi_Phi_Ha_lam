@@ -31,7 +31,7 @@ export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá SCTX (đ)',
+		header: 'Đơn giá SCTX (đ/m)',
 		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 	},
 ];

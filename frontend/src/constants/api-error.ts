@@ -12,7 +12,7 @@ export const ERROR: Record<string, string> = {
 	COEFFICIENT_VALUE_CANNOT_BE_ZERO_OR_NEGATIVE:
 		'Giá trị hệ số không được bằng 0 hoặc số âm.',
 	MONTHLY_ELECTRICITY_COST_CANNOT_BE_NEGATIVE:
-		'Chi phí điện năng hàng tháng không được là số âm.',
+		'Doanh thu điện năng hàng tháng không được là số âm.',
 	AVERAGE_MONTHLY_TUNNEL_PRODUCTION_CANNOT_BE_NEGATIVE:
 		'Sản lượng lò đào bình quân hàng tháng không được là số âm.',
 	QUANTITY_CANNOT_BE_NEGATIVE: 'Số lượng không được là số âm.',

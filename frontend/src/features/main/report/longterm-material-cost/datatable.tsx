@@ -643,9 +643,9 @@ export function LongtermMaterialCostDataTable({
 		}
 	};
 
-	const summaryItem = filteredItems[0] ?? processGroupFilteredItems[0] ?? items[0];
-	const totalQkh = summaryItem?.actualOutput ?? 0;
-	const totalQdm = summaryItem?.standardOutput ?? 0;
+	const totalQkh = filteredItems[0]?.actualOutput ?? 0;
+
+	const totalQdm = filteredItems[0]?.standardOutput ?? 0;
 
 	return (
 		<div className='relative flex min-h-0 min-w-0 flex-1 flex-col gap-3'>
