@@ -110,13 +110,7 @@ export const api = {
 			query as Record<string, string>,
 		);
 	},
-	export: async (
-		path: string,
-		options?: {
-			fileName?: string;
-			forceFileName?: boolean;
-		},
-	) => {
+	export: async (path: string) => {
 		const url = `${base}${path}`;
 		const response = await fetch(url);
 
@@ -127,9 +121,9 @@ export const api = {
 
 		// Get filename from content-disposition header
 		const contentDisposition = response.headers.get('content-disposition');
-		let filename = options?.fileName || 'download.xlsx'; // default filename
+		let filename = 'download.xlsx'; // default filename
 
-		if (contentDisposition && !options?.forceFileName) {
+		if (contentDisposition) {
 			const filenameMatch = contentDisposition.match(
 				/filename\*?=['"]?(?:UTF-\d+'')?([^;\r\n"']*)['"]?/,
 			);
