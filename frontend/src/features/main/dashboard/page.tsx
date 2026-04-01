@@ -33,6 +33,7 @@ const ALL_PROCESS_GROUP_VALUE = '__all_process_group__';
 type DashboardChartItem = {
 	name: string;
 	chiPhiKeHoach: number;
+	doanhThuDieuChinh: number;
 	chiPhiThucHien: number;
 	sanLuongDaoLo: number;
 	sanLuongLoCho: number;
@@ -44,6 +45,7 @@ const generateMonthlyData = () => {
 		(_, i): DashboardChartItem => ({
 			name: `Tháng ${i + 1}`,
 			chiPhiKeHoach: 0,
+			doanhThuDieuChinh: 0,
 			chiPhiThucHien: 0,
 			sanLuongDaoLo: 0,
 			sanLuongLoCho: 0,
@@ -86,6 +88,7 @@ export default function DashboardPage() {
 				const months = Array.from({ length: 12 }, (_, i) => ({
 					name: `Tháng ${i + 1}`,
 					chiPhiKeHoach: 0,
+					doanhThuDieuChinh: 0,
 					chiPhiThucHien: 0,
 					sanLuongDaoLo: 0,
 					sanLuongLoCho: 0,
@@ -93,12 +96,18 @@ export default function DashboardPage() {
 
 				body.monthlyData?.forEach((m) => {
 					const idx = Math.max(0, Math.min(11, m.month - 1));
+					const plannedCost = Number((m as any).plannedCost ?? 0);
+					const adjustmentCost = Number(
+						(m as any).adjustmentCost ?? (m as any).adjustmentcost ?? 0,
+					);
+					const actualCost = Number((m as any).actualCost ?? 0);
 					months[idx] = {
 						name: `Tháng ${m.month}`,
-						chiPhiKeHoach: m.plannedCost,
-						chiPhiThucHien: m.actualCost,
-						sanLuongDaoLo: m.tunnelQuantity,
-						sanLuongLoCho: m.longwallQuantity,
+						chiPhiKeHoach: plannedCost,
+						doanhThuDieuChinh: adjustmentCost,
+						chiPhiThucHien: actualCost,
+						sanLuongDaoLo: Number((m as any).tunnelQuantity ?? 0),
+						sanLuongLoCho: Number((m as any).longwallQuantity ?? 0),
 					};
 				});
 
@@ -126,6 +135,10 @@ export default function DashboardPage() {
 
 	// Calculate totals
 	const totalPlanned = data.reduce((sum, item) => sum + item.chiPhiKeHoach, 0);
+	const totalAdjustment = data.reduce(
+		(sum, item) => sum + item.doanhThuDieuChinh,
+		0,
+	);
 	const totalActual = data.reduce((sum, item) => sum + item.chiPhiThucHien, 0);
 	const selectedGroupData = groups.find((g) => g.id === selectedGroup);
 	const selectedGroupType = selectedGroupData?.type;
@@ -162,8 +175,8 @@ export default function DashboardPage() {
 					];
 	const statsGridClass =
 		volumeCards.length === 2
-			? 'md:grid-cols-2 xl:grid-cols-4'
-			: 'md:grid-cols-2 xl:grid-cols-3';
+			? 'md:grid-cols-2 xl:grid-cols-5'
+			: 'md:grid-cols-2 xl:grid-cols-4';
 	const processGroupSelectValue = selectedGroup || ALL_PROCESS_GROUP_VALUE;
 
 	return (
@@ -256,7 +269,7 @@ export default function DashboardPage() {
 				<Card>
 					<CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
 						<CardTitle className='text-sm font-medium'>
-							Tổng doanh thu
+							Tổng doanh thu kế hoạch
 						</CardTitle>
 						<TrendingUp className='h-4 w-4 text-blue-500' />
 					</CardHeader>
@@ -265,7 +278,23 @@ export default function DashboardPage() {
 							{formatNumber(Math.round(totalPlanned))} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
-							Tổng doanh thu trong năm {selectedYear}
+							Tổng doanh thu kế hoạch trong năm {selectedYear}
+						</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+						<CardTitle className='text-sm font-medium'>
+							Tổng doanh thu điều chỉnh
+						</CardTitle>
+						<TrendingUp className='h-4 w-4 text-cyan-500' />
+					</CardHeader>
+					<CardContent>
+						<div className='text-2xl font-bold text-cyan-600'>
+							{formatNumber(Math.round(totalAdjustment))} VNĐ
+						</div>
+						<p className='text-muted-foreground mt-1 text-xs'>
+							Tổng doanh thu điều chỉnh trong năm {selectedYear}
 						</p>
 					</CardContent>
 				</Card>
@@ -340,6 +369,13 @@ export default function DashboardPage() {
 									content={({ active, payload }) => {
 										if (active && payload && payload.length > 0) {
 											const monthData = payload[0].payload;
+											const plannedRevenue = Number(
+												monthData.chiPhiKeHoach ?? 0,
+											);
+											const adjustmentRevenue = Number(
+												monthData.doanhThuDieuChinh ?? 0,
+											);
+											const actualCost = Number(monthData.chiPhiThucHien ?? 0);
 
 											return (
 												<div className='overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'>
@@ -380,9 +416,16 @@ export default function DashboardPage() {
 																Doanh thu:
 															</span>
 															<span className='font-bold text-blue-600 tabular-nums'>
-																{formatNumber(
-																	Math.round(monthData.chiPhiKeHoach),
-																)}{' '}
+																{formatNumber(Math.round(plannedRevenue))} VNĐ
+															</span>
+														</div>
+														<div className='flex items-center justify-between gap-10'>
+															<span className='flex items-center gap-2 text-sm text-gray-600'>
+																<span className='inline-block h-3 w-3 rounded-sm bg-cyan-500' />
+																Doanh thu điều chỉnh:
+															</span>
+															<span className='font-bold text-cyan-600 tabular-nums'>
+																{formatNumber(Math.round(adjustmentRevenue))}{' '}
 																VNĐ
 															</span>
 														</div>
@@ -392,10 +435,7 @@ export default function DashboardPage() {
 																Chi phí:
 															</span>
 															<span className='font-bold text-emerald-600 tabular-nums'>
-																{formatNumber(
-																	Math.round(monthData.chiPhiThucHien),
-																)}{' '}
-																VNĐ
+																{formatNumber(Math.round(actualCost))} VNĐ
 															</span>
 														</div>
 													</div>
@@ -411,7 +451,8 @@ export default function DashboardPage() {
 									iconSize={14}
 									formatter={(value) => {
 										const labels: Record<string, string> = {
-											chiPhiKeHoach: 'Doanh thu',
+											chiPhiKeHoach: 'Doanh thu kế hoạch',
+											doanhThuDieuChinh: 'Doanh thu điều chỉnh',
 											chiPhiThucHien: 'Chi phí',
 										};
 										return (
@@ -424,6 +465,12 @@ export default function DashboardPage() {
 								<Bar
 									dataKey='chiPhiKeHoach'
 									fill='#3b82f6'
+									radius={[6, 6, 0, 0]}
+									maxBarSize={50}
+								/>
+								<Bar
+									dataKey='doanhThuDieuChinh'
+									fill='#06b6d4'
 									radius={[6, 6, 0, 0]}
 									maxBarSize={50}
 								/>

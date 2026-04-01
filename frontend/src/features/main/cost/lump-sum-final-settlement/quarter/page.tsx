@@ -492,8 +492,6 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				const apiTransferredCosts = res.result.transferredCosts;
 				if (apiTransferredCosts?.length) {
 					setTransferredCosts(apiTransferredCosts);
-				} else if (res.result.transferredCost) {
-					setTransferredCosts([res.result.transferredCost]);
 				} else {
 					setTransferredCosts([]);
 				}

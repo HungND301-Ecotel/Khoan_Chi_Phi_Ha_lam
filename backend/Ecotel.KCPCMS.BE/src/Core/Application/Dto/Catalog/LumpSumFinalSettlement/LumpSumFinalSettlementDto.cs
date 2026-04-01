@@ -31,7 +31,6 @@ public class LumpSumFinalSettlementQuarterResponseDto
     public List<LumpSumFinalSettlementDto> Items { get; set; } = new();
     public List<LumpSumQuarterRevenueByMonthDto> RevenuesByMonth { get; set; } = new();
     public List<LumpSumQuarterTransferredCostDto> TransferredCosts { get; set; } = new();
-    public LumpSumQuarterTransferredCostDto TransferredCost { get; set; } = new();
     public List<LumpSumQuarterCustomCostDto> CustomCosts { get; set; } = new();
 }
 

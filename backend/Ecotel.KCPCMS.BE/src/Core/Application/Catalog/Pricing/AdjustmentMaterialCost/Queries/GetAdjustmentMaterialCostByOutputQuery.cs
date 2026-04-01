@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Application.Catalog.Pricing.Common;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -108,7 +109,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
                 .FirstOrDefault();
         }
 
-        var materialCost = SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice);
+        var materialCost = SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice) + plannedMaterialCost.MaterialUnitPrice.OtherMaterialvalue;
         if (plannedMaterialCost.NormFactor?.TargetHardnessId.HasValue == true
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
@@ -119,7 +120,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
 
             if (targetMaterial != null)
             {
-                materialCost = SumMaterialUnitPriceCost(targetMaterial);
+                materialCost = SumMaterialUnitPriceCost(targetMaterial) + targetMaterial.OtherMaterialvalue;
             }
         }
 
@@ -145,8 +146,6 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             var currentSlide = plannedMaterialCost.SlideUnitPriceAssignmentCode.Material;
             var originalAmount = plannedMaterialCost.SlideUnitPriceAssignmentCode.Amount;
             var coefficientValue = plannedMaterialCost.NormFactor?.Value ?? 1;
-            var slideMaterialCost = currentSlide.Costs.FirstOrDefault(cc =>
-                cc.StartMonth <= plannedMaterialCost.Output.StartMonth && cc.EndMonth >= plannedMaterialCost.Output.EndMonth)?.Amount ?? 0;
             mCost.Add(new AdjustmentMaterialCostAssignmentCode
             {
                 AssignmentCodeId = currentSlide.AssigmentCodeId,
@@ -168,6 +167,10 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             });
         }
 
+        var totalByCostId = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+            new List<Domain.Entities.Pricing.PlannedMaterialCost> { plannedMaterialCost },
+            tunnelMaterials);
+
         var result = new AdjustmentMaterialCostDetailDto
         {
             Id = plannedMaterialCost.Id,
@@ -178,7 +181,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             NormFactorId = plannedMaterialCost.NormFactorId,
             AdjustmentMaterialCostAssignmentCodes = mCost,
             StoneClampRatioReferenceId = plannedMaterialCost.StoneClampRatioReferenceId,
-            TotalPlannedMaterialPrice = plannedMaterialCost.GetTotalPrice(),
+            TotalPlannedMaterialPrice = totalByCostId.GetValueOrDefault(plannedMaterialCost.Id, 0),
             MaterialCost = materialCost,
             SlideUnitPriceCost = slideUnitPriceCost,
             NormFactorValue = normFactorValue,

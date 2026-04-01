@@ -6,6 +6,7 @@ public class MonthlyCostDto
     public double TunnelQuantity { get; set; }
     public double LongwallQuantity { get; set; }
     public double PlannedCost { get; set; }
+    public double AdjustmentCost { get; set; }
     public double ActualCost { get; set; }
 }
 
@@ -15,6 +16,7 @@ public class CostSummaryDto
     public double TotalLongwallQuantity { get; set; }
     public double TotalOtherQuantity { get; set; }
     public double TotalPlannedCost { get; set; }
+    public double TotalAdjustmentCost { get; set; }
     public double TotalActualCost { get; set; }
     public IList<MonthlyCostDto> MonthlyData { get; set; } = new List<MonthlyCostDto>();
 }

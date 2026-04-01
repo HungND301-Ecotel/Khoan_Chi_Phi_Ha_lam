@@ -42,12 +42,12 @@ export const REPORT_CATEGORIES: ReportCategory[] = [
 	},
 	{
 		id: 'lump-sum-final-settlement',
-		label: 'Bảng thanh toán',
+		label: 'Bảng quyết toán',
 		group: 'reports',
 	},
 	{
 		id: 'lump-sum-final-settlement-month',
-		label: 'Bảng quyết toán',
+		label: 'Bảng thanh toán',
 		group: 'reports',
 	},
 ];

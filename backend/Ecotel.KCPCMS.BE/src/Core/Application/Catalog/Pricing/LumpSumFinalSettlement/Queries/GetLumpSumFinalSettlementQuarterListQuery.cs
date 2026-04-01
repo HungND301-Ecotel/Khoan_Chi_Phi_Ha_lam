@@ -48,13 +48,6 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                     .ThenInclude(pg => pg.ProductionOutputProducts),
             disableTracking: true);
 
-        var actualByProduct = productionOutputs
-            .SelectMany(po => po.ProductionOutputProcessGroups)
-            .Where(pg => !hasProcessGroupFilter || pg.ProcessGroupId == processGroupId)
-            .SelectMany(pg => pg.ProductionOutputProducts)
-            .GroupBy(p => new { p.ProductionOutputProcessGroup.ProcessGroupId, p.ProductId })
-            .ToDictionary(g => (g.Key.ProcessGroupId, g.Key.ProductId), g => g.Sum(x => x.ProductionMeters));
-
         var actualByProductMonth = productionOutputs
             .SelectMany(po => po.ProductionOutputProcessGroups.Select(pg => new
             {
@@ -181,10 +174,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 var filteredOutputs = productUnitPrice.Outputs
                     .Where(o => o.OutputType == OutputType.PlanOutput
                         && o.StartMonth.Year == year
-                        && o.StartMonth.Month >= quarterStartMonth
-                        && o.StartMonth.Month <= quarterEndMonth)
+                        && o.StartMonth.Month == quarterEndMonth)
                     .ToList();
-
                 if (!filteredOutputs.Any())
                 {
                     continue;
@@ -192,8 +183,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
 
                 var plannedQuantity = filteredOutputs.Sum(o => o.ProductionMeters);
 
-                var key = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId);
-                var actualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProduct.TryGetValue(key, out var productActual)
+                var monthKey = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId, quarterEndMonth);
+                var actualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProductMonth.TryGetValue(monthKey, out var productActual)
                     ? productActual
                     : 0;
 
@@ -442,17 +433,11 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 && (!hasProcessGroupFilter || x.ProcessGroupId == processGroupId),
             disableTracking: true);
 
-        var fallbackTransferredCost = transferredCostsByMonth
-            .FirstOrDefault(x => x.Month == quarterEndMonth)
-            ?? transferredCostsByMonth.LastOrDefault()
-            ?? new LumpSumQuarterTransferredCostDto { Month = quarterEndMonth };
-
         return new LumpSumFinalSettlementQuarterResponseDto
         {
             Items = result,
             RevenuesByMonth = revenuesByMonth,
             TransferredCosts = transferredCostsByMonth,
-            TransferredCost = fallbackTransferredCost,
             CustomCosts = customCosts
                 .OrderBy(x => x.CreatedOn)
                 .Select(x => new LumpSumQuarterCustomCostDto

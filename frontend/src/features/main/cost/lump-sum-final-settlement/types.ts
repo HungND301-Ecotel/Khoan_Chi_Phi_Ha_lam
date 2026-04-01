@@ -15,7 +15,6 @@ export interface LumpSumFinalSettlementQuarterResponse {
 	items: LumpSumFinalSettlement[];
 	revenuesByMonth: LumpSumQuarterRevenueByMonth[];
 	transferredCosts?: LumpSumQuarterTransferredCost[];
-	transferredCost?: LumpSumQuarterTransferredCost;
 	customCosts?: LumpSumQuarterCustomCost[];
 }
 

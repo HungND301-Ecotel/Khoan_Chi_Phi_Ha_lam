@@ -99,7 +99,7 @@ const ExcelReportHeader = ({ quarter, year }: ExcelReportHeaderProps) => {
 
 			<div className='mt-4 text-center'>
 				<p className='text-lg font-bold uppercase md:text-2xl'>
-					Bảng thanh toán
+					Bảng quyết toán
 				</p>
 				<p className='mt-2 text-base font-bold uppercase md:text-xl'>
 					Quý {toRomanQuarter(quarter)} năm {year}
@@ -262,8 +262,6 @@ export function LumpSumFinalSettlementReportTable({
 			setRevenuesByMonth(response.result.revenuesByMonth ?? []);
 			if (response.result.transferredCosts?.length) {
 				setTransferredCosts(response.result.transferredCosts);
-			} else if (response.result.transferredCost) {
-				setTransferredCosts([response.result.transferredCost]);
 			} else {
 				setTransferredCosts([]);
 			}
