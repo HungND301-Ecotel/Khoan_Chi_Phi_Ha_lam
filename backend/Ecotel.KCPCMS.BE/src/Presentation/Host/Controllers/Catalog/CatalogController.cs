@@ -1581,6 +1581,23 @@ public class CatalogController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("NormFactor/export")]
+    [OpenApiOperation("Export NormFactor", "")]
+    public async Task<IActionResult> ExportNormFactor()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelNormFactorQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "He_so_dinh_muc.xlsx");
+        return result;
+    }
+
+    [HttpPost("NormFactor/import")]
+    [OpenApiOperation("Import NormFactor", "")]
+    public async Task<IActionResult> ImportNormFactor([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportNormFactorExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
     [HttpPost("NormFactor")]
     [OpenApiOperation("Create New NormFactor", "")]
     public async Task<IActionResult> CreateNormFactor([FromBody] CreateNormFactorDto createModel)

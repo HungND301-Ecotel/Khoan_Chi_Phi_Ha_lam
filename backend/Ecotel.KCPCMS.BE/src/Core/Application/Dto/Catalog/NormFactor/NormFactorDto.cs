@@ -1,4 +1,5 @@
-﻿using Application.Common.Interfaces;
+using System.ComponentModel.DataAnnotations;
+using Application.Common.Interfaces;
 using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.NormFactor;
@@ -49,4 +50,30 @@ public class UpdateNormFactorDto
     public double Value { get; set; }
     public IList<Guid> AssignmentCodeIds { get; set; }
     public Guid? TargetHardnessId { get; set; }
+}
+
+public class NormFactorExcelDto
+{
+    public Guid Id { get; set; }
+
+    [Display(Name = "Công đoạn sản xuất")]
+    public string ProductionProcessName { get; set; } = string.Empty;
+
+    [Display(Name = "Độ kiên cố than đá (f)")]
+    public string HardnessName { get; set; } = string.Empty;
+
+    [Display(Name = "Lớp lưới thép")]
+    public string SteelMeshTypeName { get; set; } = string.Empty;
+
+    [Display(Name = "Tỷ lệ đá kẹp (Ckẹp)")]
+    public string StoneClampRatioName { get; set; } = string.Empty;
+
+    [Display(Name = "Thành phần điều chỉnh định mức")]
+    public string AffectAssignmentCodes { get; set; } = string.Empty;
+
+    [Display(Name = "Hệ số điều chỉnh định mức")]
+    public double Value { get; set; }
+
+    [Display(Name = "Định mức tham chiếu")]
+    public string TargetHardnessName { get; set; } = string.Empty;
 }

@@ -38,10 +38,7 @@ export function MainCatalogNormFactorPage() {
 		data?: ActionDialogProps<NormFactor>['data'],
 	) => {
 		try {
-			const result = await api.import(
-				API.CATALOG.ADJUSTMENT.FACTOR.IMPORT,
-				file,
-			);
+			const result = await api.import(API.CATALOG.NORM_FACTOR.IMPORT, file);
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {
