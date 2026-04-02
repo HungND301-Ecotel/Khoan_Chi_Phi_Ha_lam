@@ -427,6 +427,8 @@ export const API = {
 			UPDATE: '/v1/production/acceptancereport',
 			DOWNLOAD: (id: string) =>
 				`/v1/production/acceptancereport/${id}/download`,
+			EXPORT_LONG_TERM_MATERIAL_COST: (id: string) =>
+				`/v1/production/acceptancereport/${id}/export-longterm-material-cost`,
 			ADDITIONAL_COST_LIST: (id: string) =>
 				`/v1/production/acceptancereport/${id}/additional-cost`,
 			LONG_TERM_TRACKING_LIST: (id: string) =>
