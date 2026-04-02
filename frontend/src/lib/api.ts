@@ -115,9 +115,11 @@ export const api = {
 		options?: {
 			fileName?: string;
 			forceFileName?: boolean;
+			query?: Record<string, string>;
 		},
 	) => {
-		const url = `${base}${path}`;
+		const search = new URLSearchParams(options?.query).toString();
+		const url = `${base}${path}${search ? '?' + search : ''}`;
 		const response = await fetch(url);
 
 		if (!response.ok) {

@@ -842,6 +842,18 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("lump-sum-final-settlement/quarter-export")]
+    [OpenApiOperation("Export Lump Sum Final Settlement Quarter Excel", "")]
+    public async Task<IActionResult> ExportLumpSumFinalSettlementQuarterExcel(
+        [FromQuery] string quarter,
+        [FromQuery] string year,
+        [FromQuery] string? processGroupId,
+        [FromQuery] string? search)
+    {
+        var result = await Mediator.Send(new ExportLumpSumFinalSettlementQuarterExcelQuery(quarter, year, processGroupId, search));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     [HttpPost("lump-sum-final-settlement/quarter-custom-cost")]
     [OpenApiOperation("Create Lump Sum Quarter Custom Cost", "")]
     public async Task<IActionResult> CreateLumpSumQuarterCustomCost([FromBody] CreateLumpSumQuarterCustomCostRequest request)
