@@ -82,7 +82,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
 
         for (int i = 0; i < metadataLabels.Length; i++)
         {
-            var labelCell = worksheet.Cell(i + 1, 3); // Column C
+            var labelCell = worksheet.Cell(i + 1, 4); // Column C
             labelCell.Value = metadataLabels[i];
             labelCell.Style.Font.Bold = true;
             labelCell.Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -94,22 +94,22 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
             .OrderBy(g => g.Key.StartMonth)
             .ToList();
 
-        // Write each time group as 3 columns
+        // Write each time group as 2 columns
         foreach (var timeGroup in timeGroups)
         {
             // Row 1: StartMonth
             worksheet.Cell(1, currentCol).Value = timeGroup.Key.StartMonth.ToString("MM/yyyy");
             worksheet.Cell(1, currentCol).Style.Fill.BackgroundColor = XLColor.LightBlue;
             worksheet.Cell(1, currentCol).Style.Font.Bold = true;
-            worksheet.Range(1, currentCol, 1, currentCol + 2).Merge();
+            worksheet.Range(1, currentCol, 1, currentCol + 1).Merge();
 
             // Row 2: EndMonth
             worksheet.Cell(2, currentCol).Value = timeGroup.Key.EndMonth.ToString("MM/yyyy");
             worksheet.Cell(2, currentCol).Style.Fill.BackgroundColor = XLColor.LightBlue;
             worksheet.Cell(2, currentCol).Style.Font.Bold = true;
-            worksheet.Range(2, currentCol, 2, currentCol + 2).Merge();
+            worksheet.Range(2, currentCol, 2, currentCol + 1).Merge();
 
-            currentCol += 3;
+            currentCol += 2;
         }
 
         // Freeze panes (now 3 rows: row1=StartMonth, row2=EndMonth, row3=sub-headers)
@@ -151,11 +151,10 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
         currentCol = 5;
         foreach (var _ in timeGroups)
         {
-            worksheet.Cell(currentRow, currentCol).Value = "Định mức thời gian thay thế (tháng)";
-            worksheet.Cell(currentRow, currentCol + 1).Value = "Số lượng vật tư 1 lần thay thế";
-            worksheet.Cell(currentRow, currentCol + 2).Value = "Sản lượng than bình quân tháng";
+            worksheet.Cell(currentRow, currentCol).Value = "Số lượng vật tư 1 lần thay thế";
+            worksheet.Cell(currentRow, currentCol + 1).Value = "Sản lượng than bình quân tháng";
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 2; i++)
             {
                 worksheet.Cell(currentRow, currentCol + i).Style.Font.Bold = true;
                 worksheet.Cell(currentRow, currentCol + i).Style.Fill.BackgroundColor = XLColor.LightYellow;
@@ -163,7 +162,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
                 worksheet.Cell(currentRow, currentCol + i).Style.Alignment.WrapText = true;
             }
 
-            currentCol += 3;
+            currentCol += 2;
         }
 
         currentRow++; // Now at row 4, first data row
@@ -226,23 +225,19 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
 
                     if (partEquipment != null)
                     {
-                        //worksheet.Cell(currentRow, currentCol).Value = (double)partEquipment.ReplacementTimeStandard;
-                        worksheet.Cell(currentRow, currentCol).Value = 0;
-                        worksheet.Cell(currentRow, currentCol + 1).Value = partEquipment.Quantity;
-                        worksheet.Cell(currentRow, currentCol + 2).Value = (double)partEquipment.AverageMonthlyTunnelProduction;
+                        worksheet.Cell(currentRow, currentCol).Value = partEquipment.Quantity;
+                        worksheet.Cell(currentRow, currentCol + 1).Value = (double)partEquipment.AverageMonthlyTunnelProduction;
 
                         worksheet.Cell(currentRow, currentCol).Style.NumberFormat.Format = "0.00";
                         worksheet.Cell(currentRow, currentCol + 1).Style.NumberFormat.Format = "0.00";
-                        worksheet.Cell(currentRow, currentCol + 2).Style.NumberFormat.Format = "0.00";
                     }
                     else
                     {
                         worksheet.Cell(currentRow, currentCol).Value = "";
                         worksheet.Cell(currentRow, currentCol + 1).Value = "";
-                        worksheet.Cell(currentRow, currentCol + 2).Value = "";
                     }
 
-                    currentCol += 3;
+                    currentCol += 2;
                 }
 
                 currentRow++;

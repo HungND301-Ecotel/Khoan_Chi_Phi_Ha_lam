@@ -74,7 +74,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             disableTracking: false);
 
         var dbLookup = dbEntities
-            .GroupBy(x => new LongwallMaintainUnitPriceLookupKey(x.EquipmentId, x.StartMonth))
+            .GroupBy(x => new LongwallMaintainUnitPriceLookupKey(x.EquipmentId, x.StartMonth, x.EndMonth))
             .ToDictionary(g => g.Key, g => g.First());
 
         var deleteList = new List<MaintainUnitPrice>();
@@ -84,10 +84,10 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
         foreach (var excelItem in excelItems)
         {
-            var key = new LongwallMaintainUnitPriceLookupKey(excelItem.EquipmentId, excelItem.StartMonth);
+            var key = new LongwallMaintainUnitPriceLookupKey(excelItem.EquipmentId, excelItem.StartMonth, excelItem.EndMonth);
             if (!processedKeys.Add(key))
             {
-                throw new BadRequestException($"Dữ liệu bị trùng cho mã thiết bị và thời gian: {excelItem.StartMonth:MM/yyyy}.");
+                throw new BadRequestException($"Dữ liệu bị trùng cho mã thiết bị và khoảng thời gian: {excelItem.StartMonth:MM/yyyy} - {excelItem.EndMonth:MM/yyyy}.");
             }
 
             if (excelItem.IsDeleteRequest)
@@ -160,16 +160,16 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
         var result = new List<LongwallMaintainUnitPriceImportDto>();
 
-        // Find number of MaintainUnitPrice groups (each takes 3 columns, starting from column E)
+        // Find number of MaintainUnitPrice groups (each takes 2 columns, starting from column E)
         int colCount = 5;
         while (!worksheet.Cell(1, colCount).IsEmpty())
         {
-            colCount += 3;
+            colCount += 2;
         }
-        colCount -= 3; // Adjust to last filled column group
+        colCount -= 2; // Adjust to last filled column group
 
-        // Read each MaintainUnitPrice (every 3 columns from E onwards)
-        for (int col = 5; col <= colCount; col += 3)
+        // Read each MaintainUnitPrice (every 2 columns from E onwards)
+        for (int col = 5; col <= colCount; col += 2)
         {
             var startMonth = worksheet.Cell(1, col).GetString(); // Row 1: StartMonth
             var endMonth = worksheet.Cell(2, col).GetString();   // Row 2: EndMonth
@@ -213,21 +213,18 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                 }
 
                 var partIdString = worksheet.Cell(row, 1).GetString(); // Column A: Part Id (hidden)
-                var replacementTimeValue = worksheet.Cell(row, col).GetString();
-                var quantityValue = worksheet.Cell(row, col + 1).GetString();
-                var productionValue = worksheet.Cell(row, col + 2).GetString();
+                var quantityValue = worksheet.Cell(row, col).GetString();
+                var productionValue = worksheet.Cell(row, col + 1).GetString();
 
-                var hasAnyValue = !string.IsNullOrWhiteSpace(replacementTimeValue)
-                    || !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAnyValue = !string.IsNullOrWhiteSpace(quantityValue)
                     || !string.IsNullOrWhiteSpace(productionValue);
 
-                var hasAllValues = !string.IsNullOrWhiteSpace(replacementTimeValue)
-                    && !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAllValues = !string.IsNullOrWhiteSpace(quantityValue)
                     && !string.IsNullOrWhiteSpace(productionValue);
 
                 if (hasAnyValue && !hasAllValues)
                 {
-                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 3 cột: Định mức thời gian thay thế, Số lượng vật tư, Sản lượng than bình quân tháng.");
+                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 2 cột: Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
                 }
 
                 if (!string.IsNullOrWhiteSpace(partIdString) &&
@@ -241,14 +238,12 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         continue;
                     }
 
-                    if (decimal.TryParse(replacementTimeValue, out var replacementTime) &&
-                        double.TryParse(quantityValue, out var quantity) &&
+                    if (double.TryParse(quantityValue, out var quantity) &&
                         decimal.TryParse(productionValue, out var production))
                     {
                         state.FilledParts++;
                         state.Dto.PartData[partId] = new LongwallPartEquipmentData
                         {
-                            //ReplacementTimeStandard = replacementTime,
                             Quantity = quantity,
                             AverageMonthlyTunnelProduction = production
                         };
@@ -271,7 +266,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
                 if (state.FilledParts > 0 && state.FilledParts < state.TotalParts)
                 {
-                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 3 thông số cho tất cả phụ tùng.");
+                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 2 thông số cho tất cả phụ tùng.");
                 }
 
                 state.Dto.IsDeleteRequest = state.FilledParts == 0;
@@ -331,7 +326,7 @@ internal class LongwallMaintainUnitPriceImportDto
     public Dictionary<Guid, LongwallPartEquipmentData?> PartData { get; set; } = new(); // Key is PartId
 }
 
-internal readonly record struct LongwallMaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth);
+internal readonly record struct LongwallMaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth, DateOnly EndMonth);
 
 internal class LongwallEquipmentImportState
 {
