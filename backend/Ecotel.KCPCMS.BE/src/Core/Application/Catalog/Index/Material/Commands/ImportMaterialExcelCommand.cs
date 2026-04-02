@@ -20,6 +20,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
     public async Task<bool> Handle(ImportMaterialExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -67,6 +68,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
         // Danh sách ID từ Excel để xác định các bản ghi cần xóa trong đúng MaterialType
         var excelIds = dtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToHashSet();
         deleteList.AddRange(dbMaterials.Where(x => !excelIds.Contains(x.Id)));
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
         // 3. Xử lý mapping + validate theo từng dòng
         for (int i = 0; i < dtos.Count; i++)
@@ -159,6 +161,11 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
             if (deleteList.Any())
             {
                 _materialRepository.Delete(deleteList);
+
+                if (codeToDelete.Any())
+                {
+                    _codeRepository.Delete(codeToDelete);
+                }
             }
 
             if (addList.Any())

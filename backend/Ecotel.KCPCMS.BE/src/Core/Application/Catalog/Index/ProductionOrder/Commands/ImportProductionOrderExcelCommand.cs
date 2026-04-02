@@ -16,6 +16,7 @@ public record ImportProductionOrderExcelCommand(IFormFile File) : IRequest<bool>
 public class ImportProductionOrderExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<ImportProductionOrderExcelCommand, bool>
 {
     private readonly IWriteRepository<ProductionOrderEntity> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrderEntity>();
+    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
 
     public async Task<bool> Handle(ImportProductionOrderExcelCommand request, CancellationToken cancellationToken)
     {
@@ -40,9 +41,12 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
         var excelIds = dtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
         var entitiesToDelete = dbProductionOrders.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
-        foreach (var dto in dtos)
+        for (var i = 0; i < dtos.Count; i++)
         {
+            var dto = dtos[i];
+            var rowNumber = i + 2;
             if (dto.Id != Guid.Empty && dbProductionOrderDict.TryGetValue(dto.Id, out var entityToUpdate))
             {
                 var isChanged =
@@ -55,7 +59,7 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
                 {
                     if (await codeService.IsCodeExisted(dto.Code, entityToUpdate.CodeId))
                     {
-                        throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                        throw new ConflictException($"Giá trị mã '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
                     entityToUpdate.Update(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth);
@@ -66,7 +70,7 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
             {
                 if (await codeService.IsCodeExisted(dto.Code))
                 {
-                    throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                    throw new ConflictException($"Giá trị mã '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
                 addList.Add(ProductionOrderEntity.Create(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth));
@@ -79,6 +83,11 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
             if (deleteList.Any())
             {
                 _productionOrderRepository.Delete(deleteList);
+
+                if (codeToDelete.Any())
+                {
+                    _codeRepository.Delete(codeToDelete);
+                }
             }
 
             if (addList.Any())

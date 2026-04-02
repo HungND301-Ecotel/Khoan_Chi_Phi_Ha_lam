@@ -18,7 +18,7 @@ public class ImportLongwallParametersExcelCommandHandler(IExcelService excelServ
     {
         if (request.File == null || request.File.Length == 0)
         {
-            throw new BadRequestException("Vui l?ng ch?n file Excel.");
+            throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
         using var stream = request.File.OpenReadStream();

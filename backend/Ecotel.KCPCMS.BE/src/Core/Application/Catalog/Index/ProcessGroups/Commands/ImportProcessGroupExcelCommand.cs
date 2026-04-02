@@ -16,6 +16,7 @@ public record ImportProcessGroupExcelCommand(IFormFile File) : IRequest<bool>;
 public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<ImportProcessGroupExcelCommand, bool>
 {
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
     public async Task<bool> Handle(ImportProcessGroupExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -26,7 +27,7 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<ProcessGroupExcelDto>(stream);
-        var excelDtos = dtos.Select(d => ProcessGroup.Create(d.Id, d.Code, d.Name));
+        var excelDtos = dtos.Select(d => ProcessGroup.Create(d.Id, d.Code, d.Name)).ToList();
         var dbProcessGroups = await _processGroupRepository.GetAllAsync(
             include: p => p.Include(p => p.Code!),
             disableTracking: true);
@@ -39,6 +40,16 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
         var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
         var entitiesToDelete = dbProcessGroups.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
+
+        var rowById = dtos
+            .Where(d => d.Id != Guid.Empty)
+            .GroupBy(d => d.Id)
+            .ToDictionary(g => g.Key, g => g.Select(x => dtos.IndexOf(x) + 2).First());
+        var rowByCode = dtos
+            .Where(d => !string.IsNullOrWhiteSpace(d.Code))
+            .GroupBy(d => d.Code.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Select(x => dtos.IndexOf(x) + 2).First(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var dto in excelDtos)
         {
@@ -50,7 +61,10 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
                 {
                     if (await codeService.IsCodeExisted(dto.Code.Value, entityToUpdate.Code.Id))
                     {
-                        throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                        var rowNumber = rowById.TryGetValue(dto.Id, out var byId)
+                            ? byId
+                            : (rowByCode.TryGetValue(dto.Code.Value, out var byCode) ? byCode : 2);
+                        throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
                     entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name);
@@ -61,7 +75,8 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
             {
                 if (await codeService.IsCodeExisted(dto.Code.Value))
                 {
-                    throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                    var rowNumber = rowByCode.TryGetValue(dto.Code.Value, out var byCode) ? byCode : 2;
+                    throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
                 addList.Add(ProcessGroup.Create(dto.Code?.Value ?? "", dto.Name));
@@ -74,6 +89,11 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
             if (deleteList.Any())
             {
                 _processGroupRepository.Delete(deleteList);
+
+                if (codeToDelete.Any())
+                {
+                    _codeRepository.Delete(codeToDelete);
+                }
             }
 
             if (addList.Any())

@@ -6,7 +6,6 @@ using Application.Interfaces.Services;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Shared.Constants;
 using AdjustmentFactorDescriptionEntity = Domain.Entities.Index.AdjustmentFactorDescription;
 using AdjustmentFactorEntity = Domain.Entities.Index.AdjustmentFactor;
 
@@ -28,12 +27,23 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<AdjustmentFactorDescriptionExcelDto>(stream);
 
-        if (!(await CheckExistedAdjustmentFactor(dtos)))
-        {
-            throw new BadRequestException(CustomResponseMessage.ProcessGroupNotFound);
-        }
-
         //Map data to Entity Model
+
+        var dbAdjustmentFactorCodes = (await _adjustmentFactorRepository.GetAllAsync(
+                include: p => p.Include(p => p.Code),
+                disableTracking: true))
+            .Select(p => p.Code?.Value?.Trim())
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < dtos.Count; i++)
+        {
+            var value = ExtractAdjustmentFactorCode(dtos[i].AdjustmentFactorCode);
+            if (string.IsNullOrWhiteSpace(value) || !dbAdjustmentFactorCodes.Contains(value))
+            {
+                throw new BadRequestException($"Giá trị mã hệ số điều chỉnh '{dtos[i].AdjustmentFactorCode}' không tồn tại ở dòng {i + 2}.");
+            }
+        }
 
         var adjustmentFactorCodes = dtos
             .Select(d => ExtractAdjustmentFactorCode(d.AdjustmentFactorCode))
@@ -121,23 +131,6 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
             await unitOfWork.RollbackAsync(cancellationToken: cancellationToken);
             throw;
         }
-    }
-
-    private async Task<bool> CheckExistedAdjustmentFactor(List<AdjustmentFactorDescriptionExcelDto> dtoList)
-    {
-        var dbProcessCodes = (await _adjustmentFactorRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code),
-                disableTracking: true))
-            .Select(p => p.Code?.Value?.Trim())
-            .Where(code => code != null)
-            .ToHashSet();
-
-        var excelProcessCodes = dtoList
-            .Select(d => ExtractAdjustmentFactorCode(d.AdjustmentFactorCode))
-            .Where(code => !string.IsNullOrEmpty(code))
-            .Distinct();
-
-        return excelProcessCodes.All(code => dbProcessCodes.Contains(code));
     }
 
     private static string ExtractAdjustmentFactorCode(string? adjustmentFactorCode)

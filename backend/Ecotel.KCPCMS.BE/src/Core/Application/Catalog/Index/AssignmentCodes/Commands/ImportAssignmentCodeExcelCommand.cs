@@ -19,6 +19,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
 {
     private readonly IWriteRepository<AssignmentCodeEntity> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCodeEntity>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
     public async Task<bool> Handle(ImportAssignmentCodeExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -29,28 +30,41 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<AssignmentCodeExcelDto>(stream);
 
-        if (!(await CheckExistedUnitOfMeasure(dtos)))
-        {
-            throw new BadRequestException(CustomResponseMessage.ProcessGroupNotFound);
-        }
-
         //Map data to Entity Model
 
+        var dbUnitOfMeasureNames = (await _unitOfMeasureRepository.GetAllAsync(disableTracking: true))
+            .Select(p => p.Name?.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < dtos.Count; i++)
+        {
+            var unitName = dtos[i].UnitOfMeasureName?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(unitName) && !dbUnitOfMeasureNames.Contains(unitName))
+            {
+                throw new BadRequestException($"Giá trị đơn vị tính '{dtos[i].UnitOfMeasureName}' không tồn tại ở dòng {i + 2}.");
+            }
+        }
+
+        var unitNames = dtos
+            .Select(d => d.UnitOfMeasureName?.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var unitOfMeasure = await _unitOfMeasureRepository.GetAllAsync(
-            predicate: p => dtos.Select(d => d.UnitOfMeasureName).Contains(p.Name),
+            predicate: p => unitNames.Contains(p.Name),
             disableTracking: true);
-        var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name, p => p.Id);
+        var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var excelDtos = dtos.Select(d =>
         {
-            if (unitOfMeasureIdMap.TryGetValue(d.UnitOfMeasureName, out var unitOfMeasureId))
-            {
-                return AssignmentCodeEntity.Create(d.Id, d.Name, d.Code, unitOfMeasureId);
-            }
-            else
-            {
-                return AssignmentCodeEntity.Create(d.Id, d.Name, d.Code, null);
-            }
+            var unitName = d.UnitOfMeasureName?.Trim();
+            var unitId = !string.IsNullOrWhiteSpace(unitName) && unitOfMeasureIdMap.TryGetValue(unitName, out var id)
+                ? id
+                : (Guid?)null;
+
+    return AssignmentCodeEntity.Create(d.Id, d.Name, d.Code, unitId);
         }).ToList();
 
 
@@ -66,6 +80,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
         var entitiesToDelete = dbAdjustmentFactor.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
         foreach (var dto in excelDtos)
         {
@@ -91,6 +106,11 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             if (deleteList.Any())
             {
                 _assignmentCodeRepository.Delete(deleteList);
+
+                if (codeToDelete.Any())
+                {
+                    _codeRepository.Delete(codeToDelete);
+                }
             }
 
             if (addList.Any())
@@ -112,21 +132,5 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             await unitOfWork.RollbackAsync(cancellationToken: cancellationToken);
             throw;
         }
-    }
-
-    private async Task<bool> CheckExistedUnitOfMeasure(List<AssignmentCodeExcelDto> dtoList)
-    {
-        var dbProcessNames = (await _unitOfMeasureRepository.GetAllAsync(
-                disableTracking: true))
-            .Select(p => p.Name.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var excelAssingmentCodes = dtoList
-            .Select(d => d.UnitOfMeasureName?.Trim())
-            .Where(n => !string.IsNullOrEmpty(n))
-            .Distinct();
-
-        return excelAssingmentCodes.All(name => dbProcessNames.Contains(name));
     }
 }

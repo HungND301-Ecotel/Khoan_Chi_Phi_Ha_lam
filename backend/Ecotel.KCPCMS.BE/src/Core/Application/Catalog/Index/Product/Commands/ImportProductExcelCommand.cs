@@ -18,6 +18,7 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
 {
     private readonly IWriteRepository<ProductEntity> _productRepository = unitOfWork.GetRepository<ProductEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
     public async Task<bool> Handle(ImportProductExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -28,22 +29,39 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<ProductExcelDto>(stream);
 
-        if (!(await CheckExistedProductionProcess(dtos)))
+        var dbProcessCodes = (await _processGroupRepository.GetAllAsync(
+                include: p => p.Include(p => p.Code),
+                disableTracking: true))
+            .Select(p => p.Code?.Value?.Trim())
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < dtos.Count; i++)
         {
-            throw new BadRequestException(CustomResponseMessage.ProcessGroupNotFound);
+            var processGroupCode = dtos[i].ProcessGroupCode?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(processGroupCode) || !dbProcessCodes.Contains(processGroupCode))
+            {
+                throw new BadRequestException($"Giá trị mã nhóm công đoạn '{dtos[i].ProcessGroupCode}' không tồn tại ở dòng {i + 2}.");
+            }
         }
 
         //Map data to Entity Model
 
+        var processGroupCodes = dtos
+            .Select(d => d.ProcessGroupCode?.Trim())
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var processGroup = await _processGroupRepository.GetAllAsync(
-            predicate: p => dtos.Select(d => d.ProcessGroupCode).Contains(p.Code.Value),
+            predicate: p => processGroupCodes.Contains(p.Code.Value),
             include: p => p.Include(p => p.Code!),
             disableTracking: true);
-        var processGroupIdMap = processGroup.ToDictionary(p => p.Code.Value, p => p.Id);
+        var processGroupIdMap = processGroup.ToDictionary(p => p.Code.Value.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var excelDtos = dtos.Select(d =>
         {
-            if (processGroupIdMap.TryGetValue(d.ProcessGroupCode, out var processGroupId))
+            if (processGroupIdMap.TryGetValue(d.ProcessGroupCode?.Trim() ?? string.Empty, out var processGroupId))
             {
                 return ProductEntity.Create(d.Id, d.Code, d.Name, processGroupId);
             }
@@ -66,9 +84,12 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
         var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
         var entitiesToDelete = dbProduct.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
-        foreach (var dto in excelDtos)
+        for (var i = 0; i < excelDtos.Count; i++)
         {
+            var dto = excelDtos[i];
+            var rowNumber = i + 2;
             if (dto.Id != Guid.Empty && dbProduct.Any(x => x.Id == dto.Id))
             {
                 var entityToUpdate = dbProduct.First(x => x.Id == dto.Id);
@@ -77,7 +98,7 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                 {
                     if (await codeService.IsCodeExisted(dto.Code.Value, entityToUpdate.Code.Id))
                     {
-                        throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                        throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
                     entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId);
@@ -88,7 +109,7 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
             {
                 if (await codeService.IsCodeExisted(dto.Code.Value))
                 {
-                    throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+                    throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
                 addList.Add(ProductEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId));
@@ -101,6 +122,11 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
             if (deleteList.Any())
             {
                 _productRepository.Delete(deleteList);
+
+                if (codeToDelete.Any())
+                {
+                    _codeRepository.Delete(codeToDelete);
+                }
             }
 
             if (addList.Any())
@@ -124,20 +150,4 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
         }
     }
 
-    private async Task<bool> CheckExistedProductionProcess(List<ProductExcelDto> dtoList)
-    {
-        var dbProcessCodes = (await _processGroupRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code),
-                disableTracking: true))
-            .Select(p => p.Code?.Value?.Trim())
-            .Where(code => code != null)
-            .ToHashSet();
-
-        var excelProcessCodes = dtoList
-            .Select(d => d.ProcessGroupCode?.Trim())
-            .Where(code => !string.IsNullOrEmpty(code))
-            .Distinct();
-
-        return excelProcessCodes.All(code => dbProcessCodes.Contains(code));
-    }
 }

@@ -44,6 +44,6 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
             ProcessGroupCode = s.ProcessGroup?.Code?.Value ?? ""
         });
 
-        return excelService.ExportToExcel(dtoList, "Hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList.OrderBy(d => d.ProcessGroupCode).ThenBy(d => d.Code), "Hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);
     }
 }

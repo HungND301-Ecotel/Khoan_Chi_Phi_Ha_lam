@@ -24,8 +24,10 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
             disableTracking: true);
 
         var adjustmentFactors = await _adjustmentFactorRepository.GetAllAsync(
-            selector: u => u.Code.Value,
-            include: u => u.Include(u => u.Code),
+            selector: u => $"{u.ProcessGroup.Code.Value} - {u.Code.Value}",
+            include: u => u
+                .Include(u => u.Code)
+                .Include(u => u.ProcessGroup).ThenInclude(p => p.Code),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -42,6 +44,6 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
             ElectricityAdjustmentValue = s.ElectricityAdjustmentValue
         });
 
-        return excelService.ExportToExcel(dtoList, "Diễn giải hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList.OrderBy(d => d.AdjustmentFactorCode).ThenBy(d => d.Description), "Diễn giải hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);
     }
 }

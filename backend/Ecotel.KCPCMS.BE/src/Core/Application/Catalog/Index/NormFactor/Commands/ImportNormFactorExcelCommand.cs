@@ -77,26 +77,29 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var mappedRows = new List<MappedNormFactorRow>();
-        foreach (var dto in dtos)
+        for (var i = 0; i < dtos.Count; i++)
         {
+            var dto = dtos[i];
+            var rowNumber = i + 2;
             var productionProcess = ResolveProductionProcess(dto.ProductionProcessName, productionProcessByCode, productionProcessByDisplay)
-                ?? throw new BadRequestException(CustomResponseMessage.ProductionProcessNotFound);
+                ?? throw new BadRequestException($"Giá trị công đoạn sản xuất '{dto.ProductionProcessName}' không tồn tại ở dòng {rowNumber}.");
 
-            var hardnessId = ResolveHardnessId(dto.HardnessName, hardnessByName);
-            var steelMeshType = ResolveSteelMeshType(dto.SteelMeshTypeName);
+            var hardnessId = ResolveHardnessId(dto.HardnessName, hardnessByName, rowNumber);
+            var steelMeshType = ResolveSteelMeshType(dto.SteelMeshTypeName, rowNumber);
 
             var stoneClampRatioName = dto.StoneClampRatioName?.Trim() ?? string.Empty;
             if (!stoneClampByName.TryGetValue(stoneClampRatioName, out var stoneClampRatio))
             {
-                throw new BadRequestException(CustomResponseMessage.StoneClampRatioNotFound);
+                throw new BadRequestException($"Giá trị tỷ lệ ngậm đá '{dto.StoneClampRatioName}' không tồn tại ở dòng {rowNumber}.");
             }
 
-            var assignmentCodeIds = ResolveAssignmentCodeIds(dto.AffectAssignmentCodes, assignmentCodeByCode);
+            var assignmentCodeIds = ResolveAssignmentCodeIds(dto.AffectAssignmentCodes, assignmentCodeByCode, rowNumber);
 
-            var targetHardnessId = ResolveTargetHardnessId(dto.TargetHardnessName, hardnessByName);
+            var targetHardnessId = ResolveTargetHardnessId(dto.TargetHardnessName, hardnessByName, rowNumber);
 
             mappedRows.Add(new MappedNormFactorRow(
                 dto.Id,
+                rowNumber,
                 productionProcess.Id,
                 hardnessId,
                 stoneClampRatio.Id,
@@ -236,7 +239,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
 
     private static Guid? ResolveHardnessId(
         string? rawValue,
-        IReadOnlyDictionary<string, Domain.Entities.Index.Hardness> hardnessByName)
+        IReadOnlyDictionary<string, Domain.Entities.Index.Hardness> hardnessByName,
+        int rowNumber)
     {
         var value = rawValue?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(value)
@@ -251,12 +255,13 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             return hardness.Id;
         }
 
-        throw new BadRequestException(CustomResponseMessage.HardnessNotFound);
+        throw new BadRequestException($"Giá trị độ cứng '{rawValue}' không tồn tại ở dòng {rowNumber}.");
     }
 
     private static Guid? ResolveTargetHardnessId(
         string? rawValue,
-        IReadOnlyDictionary<string, Domain.Entities.Index.Hardness> hardnessByName)
+        IReadOnlyDictionary<string, Domain.Entities.Index.Hardness> hardnessByName,
+        int rowNumber)
     {
         var value = rawValue?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(value)
@@ -272,10 +277,10 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             return hardness.Id;
         }
 
-        throw new BadRequestException(CustomResponseMessage.HardnessNotFound);
+        throw new BadRequestException($"Giá trị độ cứng mục tiêu '{rawValue}' không tồn tại ở dòng {rowNumber}.");
     }
 
-    private static SteelMeshType ResolveSteelMeshType(string? rawValue)
+    private static SteelMeshType ResolveSteelMeshType(string? rawValue, int rowNumber)
     {
         var value = rawValue?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(value))
@@ -308,12 +313,13 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             return SteelMeshType.DoubleLayerSteelMesh;
         }
 
-        throw new BadRequestException("STEEL_MESH_TYPE_NOT_VALID");
+        throw new BadRequestException($"Giá trị loại lưới thép '{rawValue}' không hợp lệ ở dòng {rowNumber}.");
     }
 
     private static List<Guid> ResolveAssignmentCodeIds(
         string? rawValue,
-        IReadOnlyDictionary<string, Domain.Entities.Index.AssignmentCode> assignmentCodeByCode)
+        IReadOnlyDictionary<string, Domain.Entities.Index.AssignmentCode> assignmentCodeByCode,
+        int rowNumber)
     {
         var codes = (rawValue ?? string.Empty)
             .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -328,7 +334,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             if (string.IsNullOrWhiteSpace(normalizedCode)
                 || !assignmentCodeByCode.TryGetValue(normalizedCode, out var assignmentCode))
             {
-                throw new BadRequestException(CustomResponseMessage.AssignmentCodeNotFound);
+                throw new BadRequestException($"Giá trị mã giao khoán '{code}' không tồn tại ở dòng {rowNumber}.");
             }
 
             assignmentIds.Add(assignmentCode.Id);
@@ -381,6 +387,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
 
     private sealed record MappedNormFactorRow(
         Guid Id,
+        int RowNumber,
         Guid ProductionProcessId,
         Guid? HardnessId,
         Guid StoneClampRatioId,
