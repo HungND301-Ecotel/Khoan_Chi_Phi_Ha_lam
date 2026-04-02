@@ -397,6 +397,8 @@ export const API = {
 		},
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
+			MONTH_EXPORT:
+				'/v1/pricing/lump-sum-final-settlement/month-export',
 			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
 			QUARTER_EXPORT:
 				'/v1/pricing/lump-sum-final-settlement/quarter-export',
