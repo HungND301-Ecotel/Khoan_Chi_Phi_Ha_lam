@@ -40,10 +40,9 @@ function MainCatalogAssetInternalPage() {
 		data?: ActionDialogProps<Asset>['data'],
 	) => {
 		try {
-			const result = await api.import(
-				`${API.CATALOG.ASSET.IMPORT}?materialType=1`,
-				file,
-			);
+			const result = await api.import(API.CATALOG.ASSET.IMPORT, file, {
+				materialType: 1,
+			});
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {

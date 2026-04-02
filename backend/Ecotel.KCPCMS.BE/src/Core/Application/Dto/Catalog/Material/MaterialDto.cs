@@ -1,7 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Application.Dto.Catalog.Cost;
 using Domain.Common.Enums;
+using Microsoft.AspNetCore.Http;
 
 namespace Application.Dto.Catalog.Material
 {
@@ -31,10 +32,13 @@ namespace Application.Dto.Catalog.Material
         public string Name { get; set; }
         [Display(Name = "Đơn vị tính")]
         public string UnitOfMeasureName { get; set; }
-        [Display(Name = "Loại vật tư")]
-        public string MaterialType { get; set; }
         [Display(Name = "Đơn giá")]
         public string Cost { get; set; }
+    }
+    public class ImportMaterialDto
+    {
+        public IFormFile FormFile { get; set; }
+        public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
     }
 
     public class MaterialDetailDto
@@ -71,3 +75,4 @@ namespace Application.Dto.Catalog.Material
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
     }
 }
+

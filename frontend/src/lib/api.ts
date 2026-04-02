@@ -145,10 +145,19 @@ export const api = {
 
 		return filename;
 	},
-	import: async (path: string, file: File) => {
+	import: async (
+		path: string,
+		file: File,
+		fields?: Record<string, string | number | boolean>,
+	) => {
 		const url = `${base}${path}`;
 		const formData = new FormData();
 		formData.append('FormFile', file);
+		if (fields) {
+			Object.entries(fields).forEach(([key, value]) => {
+				formData.append(key, String(value));
+			});
+		}
 
 		const response = await fetch(url, {
 			method: 'POST',

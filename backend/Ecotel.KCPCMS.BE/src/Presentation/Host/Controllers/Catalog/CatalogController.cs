@@ -206,18 +206,18 @@ public class CatalogController : BaseNoAuthController
 
     [HttpGet("Material/export")]
     [OpenApiOperation("Export Material", "")]
-    public async Task<IActionResult> ExportMaterial()
+    public async Task<IActionResult> ExportMaterial([FromQuery] MaterialType materialType = MaterialType.MaterialInContract)
     {
-        var fileByte = await Mediator.Send(new ExportExcelMaterialQuery());
+        var fileByte = await Mediator.Send(new ExportExcelMaterialQuery(materialType));
         var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Vat_tu_tai_san.xlsx");
         return result;
     }
 
     [HttpPost("Material/import")]
     [OpenApiOperation("Import Material", "")]
-    public async Task<IActionResult> ImportMaterial([FromForm] ImportDto importModel)
+    public async Task<IActionResult> ImportMaterial([FromForm] ImportMaterialDto importModel)
     {
-        var result = await Mediator.Send(new ImportMaterialExcelCommand(importModel.FormFile));
+        var result = await Mediator.Send(new ImportMaterialExcelCommand(importModel.FormFile, importModel.MaterialType));
         return Ok(result, MessageCommon.ImportSuccess);
     }
 

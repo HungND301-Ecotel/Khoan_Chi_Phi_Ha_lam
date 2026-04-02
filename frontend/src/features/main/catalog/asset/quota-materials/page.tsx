@@ -41,8 +41,9 @@ function MainCatalogAssetQuotaMaterialsPage() {
 	) => {
 		try {
 			const result = await api.import(
-				`${API.CATALOG.ASSET.IMPORT}?materialType=5`,
+				API.CATALOG.ASSET.IMPORT,
 				file,
+				{ materialType: 5 },
 			);
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
@@ -76,3 +77,4 @@ function MainCatalogAssetQuotaMaterialsPage() {
 }
 
 export default MainCatalogAssetQuotaMaterialsPage;
+

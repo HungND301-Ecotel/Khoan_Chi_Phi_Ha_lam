@@ -41,8 +41,9 @@ function MainCatalogAssetExternalPage() {
 	) => {
 		try {
 			const result = await api.import(
-				`${API.CATALOG.ASSET.IMPORT}?materialType=2`,
+				API.CATALOG.ASSET.IMPORT,
 				file,
+				{ materialType: 2 },
 			);
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
@@ -75,3 +76,4 @@ function MainCatalogAssetExternalPage() {
 }
 
 export default MainCatalogAssetExternalPage;
+
