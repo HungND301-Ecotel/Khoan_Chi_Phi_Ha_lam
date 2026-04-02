@@ -53,6 +53,30 @@ namespace Domain.Entities.Index
             return part;
         }
 
+        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, PartType type = PartType.Part)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+            }
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            var part = new Part
+            {
+                Id = id,
+                Code = new Code(code.ToUpper()),
+                Name = name,
+                UnitOfMeasureId = unitOfMeasureId,
+                Type = type,
+                ReplacementTimeStandard = replacementTimeStandard
+            };
+
+            return part;
+        }
+
 
         public static Part Create(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, IList<Equipment> equipments, PartType type = PartType.Part)
         {

@@ -423,6 +423,24 @@ public class CatalogController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+
+    [HttpGet("OtherPart/export")]
+    [OpenApiOperation("Export OtherPart", "")]
+    public async Task<IActionResult> ExportOtherPart()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelOtherPartQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Phu_tung_khac.xlsx");
+        return result;
+    }
+
+    [HttpPost("OtherPart/import")]
+    [OpenApiOperation("Import OtherPart", "")]
+    public async Task<IActionResult> ImportOtherPart([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportOtherPartExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
     [HttpGet("OtherPart/{id:guid}")]
     [OpenApiOperation("Get OtherPart by Id", "")]
     public async Task<IActionResult> GetOtherPartById([FromRoute] Guid id)

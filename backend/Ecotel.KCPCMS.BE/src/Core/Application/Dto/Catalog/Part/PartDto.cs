@@ -49,6 +49,22 @@ namespace Application.Dto.Catalog.Part
         public string Cost { get; set; }
     }
 
+    public class OtherPartExcelDto
+    {
+        public Guid Id { get; set; }
+        [Display(Name = "Mã phụ tùng")]
+        public string Code { get; set; }
+        [Display(Name = "Tên phụ tùng")]
+        public string Name { get; set; }
+        [Display(Name = "Đơn vị tính")]
+        public string UnitOfMeasureName { get; set; }
+        [Display(Name = "Định mức thời gian thay thế (tháng)")]
+        public decimal ReplacementTimeStandard { get; set; }
+
+        [Display(Name = "Đơn giá")]
+        public string Cost { get; set; }
+    }
+
     public class PartDetailDto
     {
         public Guid Id { get; set; }

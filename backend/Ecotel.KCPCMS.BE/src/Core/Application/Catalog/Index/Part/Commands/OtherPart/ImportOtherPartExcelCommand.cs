@@ -13,16 +13,15 @@ using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Index.Part.Commands.Part;
 
-public record ImportPartExcelCommand(IFormFile File) : IRequest<bool>;
+public record ImportOtherPartExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICostService costService, ICodeService codeService) : IRequestHandler<ImportPartExcelCommand, bool>
+public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICostService costService, ICodeService codeService) : IRequestHandler<ImportOtherPartExcelCommand, bool>
 {
     private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
-    public async Task<bool> Handle(ImportPartExcelCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(ImportOtherPartExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
         {
@@ -30,33 +29,18 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         }
 
         using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<PartExcelDto>(stream);
+        var dtos = excelService.ImportFromExcel<OtherPartExcelDto>(stream);
 
         if (!(await CheckExistedUnitOfMeasure(dtos)))
         {
             throw new BadRequestException(CustomResponseMessage.UnitOfMeasureNotFound);
         }
 
-        if (!(await CheckExistedEquipment(dtos)))
-        {
-            throw new BadRequestException(CustomResponseMessage.EquipmentNotFound);
-        }
-
-        var equipmentCodes = dtos
-            .SelectMany(d => SplitEquipmentCodes(d.EquipmentCodes))
-            .Distinct()
-            .ToList();
-
         var unitOfMeasure = await _unitOfMeasureRepository.GetAllAsync(
             predicate: p => dtos.Select(d => d.UnitOfMeasureName).Contains(p.Name),
             disableTracking: false);
-        var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name, p => p.Id);
 
-        var equipmentEntities = await _equipmentRepository.GetAllAsync(
-            predicate: p => equipmentCodes.Contains(p.Code!.Value),
-            include: p => p.Include(p => p.Code!),
-            disableTracking: false);
-        var equipmentMap = equipmentEntities.ToDictionary(p => p.Code!.Value, p => p);
+        var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name, p => p.Id);
 
         var excelDtos = dtos.Select(d =>
         {
@@ -65,26 +49,14 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                 return null;
             }
 
-            var mappedEquipments = SplitEquipmentCodes(d.EquipmentCodes)
-                .Select(code => equipmentMap.GetValueOrDefault(code))
-                .Where(e => e != null)
-                .DistinctBy(e => e!.Id)
-                .Select(e => e!)
-                .ToList();
-
-            if (!mappedEquipments.Any())
-            {
-                return null;
-            }
-
-            var partEntity = PartEntity.Create(d.Id, d.Code, d.Name, unitOfMeasureId, d.ReplacementTimeStandard, mappedEquipments, PartType.Part);
+            var partEntity = PartEntity.Create(d.Id, d.Code, d.Name, unitOfMeasureId, d.ReplacementTimeStandard, PartType.OtherPart);
             var costList = costService.ParseExcelCostString(d.Cost, Domain.Common.Enums.CostType.Part, Guid.Empty);
             partEntity.AddCost(costList);
             return partEntity;
         }).Where(d => d != null).Cast<PartEntity>().ToList();
 
         var dbParts = await _partRepository.GetAllAsync(
-            predicate: p => p.Type == PartType.Part,
+            predicate: p => p.Type == PartType.OtherPart,
             include: p => p.Include(p => p.Code).Include(p => p.Costs).Include(p => p.EquipmentParts),
             disableTracking: false);
 
@@ -118,8 +90,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                         dto.Name,
                         dto.UnitOfMeasureId,
                         dto.ReplacementTimeStandard,
-                        dto.EquipmentParts.Select(ep => ep.Equipment).Where(e => e != null).ToList()!,
-                        PartType.Part);
+                        PartType.OtherPart);
 
                     if (isCostChanged)
                     {
@@ -144,8 +115,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                     dto.Name,
                     dto.UnitOfMeasureId,
                     dto.ReplacementTimeStandard,
-                    dto.EquipmentParts.Select(ep => ep.Equipment).Where(e => e != null).ToList()!,
-                    PartType.Part);
+                    PartType.OtherPart);
                 newPart.AddCost(dto.Costs.ToList());
                 addList.Add(newPart);
             }
@@ -184,7 +154,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         }
     }
 
-    private async Task<bool> CheckExistedUnitOfMeasure(List<PartExcelDto> dtoList)
+    private async Task<bool> CheckExistedUnitOfMeasure(List<OtherPartExcelDto> dtoList)
     {
         var dbProcessNames = (await _unitOfMeasureRepository.GetAllAsync(
                 disableTracking: true))
@@ -198,30 +168,5 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
             .Distinct();
 
         return excelProcessNames.All(name => dbProcessNames.Contains(name));
-    }
-
-    private async Task<bool> CheckExistedEquipment(List<PartExcelDto> dtoList)
-    {
-        var dbProcessCodes = (await _equipmentRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code),
-                disableTracking: true))
-            .Select(p => p.Code.Value.Trim())
-            .Where(n => n != null)
-            .ToHashSet();
-
-        var excelProcessCodes = dtoList
-            .SelectMany(d => SplitEquipmentCodes(d.EquipmentCodes))
-            .Distinct();
-
-        return excelProcessCodes.All(code => dbProcessCodes.Contains(code));
-    }
-
-    private static IList<string> SplitEquipmentCodes(string? equipmentCodes)
-    {
-        return (equipmentCodes ?? string.Empty)
-            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
     }
 }

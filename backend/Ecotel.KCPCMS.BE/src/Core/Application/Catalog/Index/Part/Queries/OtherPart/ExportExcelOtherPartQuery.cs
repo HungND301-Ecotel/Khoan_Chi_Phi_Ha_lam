@@ -9,20 +9,20 @@ using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Index.Part.Queries.Part;
 
-public record ExportExcelPartQuery() : IRequest<byte[]>;
+public record ExportExcelOtherPartQuery() : IRequest<byte[]>;
 
-public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICostService costService) : IRequestHandler<ExportExcelPartQuery, byte[]>
+public class ExportExcelOtherPartQueryHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICostService costService) : IRequestHandler<ExportExcelOtherPartQuery, byte[]>
 {
     private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
     private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
     private readonly IWriteRepository<Domain.Entities.Index.Equipment> _equipmentRepository = unitOfWork.GetRepository<Domain.Entities.Index.Equipment>();
 
-    public async Task<byte[]> Handle(ExportExcelPartQuery request, CancellationToken cancellationToken)
+    public async Task<byte[]> Handle(ExportExcelOtherPartQuery request, CancellationToken cancellationToken)
     {
-        var listHiddenProperty = new List<string> { nameof(PartExcelDto.Id) };
+        var listHiddenProperty = new List<string> { nameof(OtherPartExcelDto.Id) };
 
         var list = await _partRepository.GetAllAsync(
-            predicate: p => p.Type == PartType.Part,
+            predicate: p => p.Type == PartType.OtherPart,
             include: p => p
             .Include(p => p.UnitOfMeasure)
             .Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
@@ -33,23 +33,19 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
         var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(selector: u => u.Name, disableTracking: true);
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
-            { nameof(PartExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
+            { nameof(OtherPartExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
         };
 
-        var dtoList = list.Select(l => new PartExcelDto
+        var dtoList = list.Select(l => new OtherPartExcelDto
         {
             Id = l.Id,
             Code = l.Code.Value,
             Name = l.Name,
             UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
-            EquipmentCodes = string.Join(", ", l.EquipmentParts
-                .Where(e => e.Equipment?.Code != null)
-                .Select(e => e.Equipment!.Code!.Value)
-                .OrderBy(code => code)),
             ReplacementTimeStandard = l.ReplacementTimeStandard,
             Cost = costService.BuildExcelCostString(l.Costs.ToList())
         });
 
-        return excelService.ExportToExcel(dtoList, "Phụ tùng", listHiddenProperty, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList, "Phụ tùng khác", listHiddenProperty, dropdownConfigs);
     }
 }
