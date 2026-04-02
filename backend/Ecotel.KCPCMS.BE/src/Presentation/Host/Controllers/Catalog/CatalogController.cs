@@ -23,6 +23,7 @@ using Application.Catalog.Index.ProcessGroups.Queries;
 using Application.Catalog.Index.Product.Commands;
 using Application.Catalog.Index.Product.Queries;
 using Application.Catalog.Index.ProductionOrder.Commands;
+using Application.Catalog.Index.ProductionOrder.Queries;
 using Application.Catalog.Index.ProductionProcess.Commands;
 using Application.Catalog.Index.ProductionProcess.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
@@ -1178,6 +1179,23 @@ public class CatalogController : BaseNoAuthController
     {
         var result = await Mediator.Send(new GetProductionOrderByIdQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ProductionOrder/export")]
+    [OpenApiOperation("Export ProductionOrder", "")]
+    public async Task<IActionResult> ExportProductionOrder()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelProductionOrderQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Quyet_dinh_lenh_san_xuat.xlsx");
+        return result;
+    }
+
+    [HttpPost("ProductionOrder/import")]
+    [OpenApiOperation("Import ProductionOrder", "")]
+    public async Task<IActionResult> ImportProductionOrder([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportProductionOrderExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
     }
 
     [HttpPost("ProductionOrder")]

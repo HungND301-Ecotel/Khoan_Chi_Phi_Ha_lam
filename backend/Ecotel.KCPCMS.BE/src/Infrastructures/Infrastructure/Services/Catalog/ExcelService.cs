@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Reflection;
 using Application.Interfaces.Services;
 using ClosedXML.Excel;
@@ -168,7 +169,27 @@ public class ExcelService(IConfiguration configuration) : IExcelService
 
                 try
                 {
-                    object? val = targetType == typeof(Guid) ? Guid.Parse(cell.GetString()) : Convert.ChangeType(cell.Value.ToString(), targetType);
+                    object? val;
+                    if (targetType == typeof(Guid))
+                    {
+                        val = Guid.Parse(cell.GetString());
+                    }
+                    else if (targetType == typeof(DateOnly))
+                    {
+                        if (TryParseDateOnly(cell, out var parsedDate))
+                        {
+                            val = parsedDate;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        val = Convert.ChangeType(cell.Value.ToString(), targetType);
+                    }
+
                     prop.SetValue(item, val);
                     hasData = true;
                 }
@@ -181,7 +202,46 @@ public class ExcelService(IConfiguration configuration) : IExcelService
         }
         return result;
     }
+    private static bool TryParseDateOnly(IXLCell cell, out DateOnly date)
+    {
+        if (cell.TryGetValue<DateTime>(out var cellDateTime))
+        {
+            date = DateOnly.FromDateTime(cellDateTime);
+            return true;
+        }
 
+        var raw = cell.GetString()?.Trim();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            date = default;
+            return false;
+        }
+
+        if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParse(raw, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out date))
+        {
+            return true;
+        }
+
+        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtInvariant))
+        {
+            date = DateOnly.FromDateTime(dtInvariant);
+            return true;
+        }
+
+        if (DateTime.TryParse(raw, CultureInfo.GetCultureInfo("vi-VN"), DateTimeStyles.None, out var dtVn))
+        {
+            date = DateOnly.FromDateTime(dtVn);
+            return true;
+        }
+
+        date = default;
+        return false;
+    }
     private byte[] SaveWorkbook(XLWorkbook workbook)
     {
         using var stream = new MemoryStream();
