@@ -144,6 +144,14 @@ public class ProductionController : BaseNoAuthController
         var result = await Mediator.Send(new GetAllAcceptanceReportAdditionalCostQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
+    [HttpGet("AcceptanceReport/export")]
+    [OpenApiOperation("Export AcceptanceReport By Period", "Export acceptance report excel by month and year")]
+    public async Task<IActionResult> ExportAcceptanceReportByPeriod([FromQuery] string? month, [FromQuery] string? year)
+    {
+        var result = await Mediator.Send(new ExportAcceptanceReportByPeriodExcelQuery(month, year));
+        return File(result.FileBytes.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
 
     [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking")]
     [OpenApiOperation("Get Long-term Item Tracking", "Get all long-term items with tracking logs (TH1 & TH2)")]
