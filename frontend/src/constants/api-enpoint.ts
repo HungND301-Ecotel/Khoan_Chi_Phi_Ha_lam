@@ -338,6 +338,8 @@ export const API = {
 			UPDATE: '/v1/pricing/productunitprice',
 			DELETES: '/v1/pricing/productunitprice',
 			EXPORT: '/v1/pricing/productunitprice/export',
+			EXPORT_ADJUSTMENT_ELECTRICITY_MAINTAIN_REPORT:
+				'/v1/pricing/productunitprice/export-adjustment-electricity-maintain-report',
 			DELETE: (id: string) => `/v1/pricing/productunitprice/${id}`,
 			DETAIL_PLANNED: (id: string) =>
 				`/v1/pricing/productunitprice/planned/${id}`,

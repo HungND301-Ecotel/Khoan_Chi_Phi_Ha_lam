@@ -643,6 +643,18 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.DeleteSuccess);
     }
 
+    [HttpGet("ProductUnitPrice/export-adjustment-electricity-maintain-report")]
+    [OpenApiOperation("Export Adjustment Electricity And Maintain Report", "Export Bảng tính đơn giá SCTX và điện năng")]
+    public async Task<IActionResult> ExportAdjustmentElectricityAndMaintainReport(
+        [FromQuery] string? month,
+        [FromQuery] string? year,
+        [FromQuery] Guid? processGroupId,
+        [FromQuery] ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Adjustment)
+    {
+        var result = await Mediator.Send(new ExportAdjustmentElectricityAndMaintainReportExcelQuery(month, year, processGroupId, scenarioType));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     #endregion
 
     #region PlannedMaterialCost
