@@ -73,7 +73,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             headerWidthInstructions.Add((new[] { col }, title));
         }
 
-        var passportList = passports.ToList();
+        var passportList = passports.OrderBy(p => p).ToList();
         var passportColumns = passportList
             .Select((name, index) => new
             {

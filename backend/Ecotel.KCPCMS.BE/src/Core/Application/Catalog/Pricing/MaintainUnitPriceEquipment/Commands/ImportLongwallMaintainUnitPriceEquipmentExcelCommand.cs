@@ -18,7 +18,6 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 {
     private readonly IWriteRepository<MaintainUnitPrice> _repository = unitOfWork.GetRepository<MaintainUnitPrice>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<bool> Handle(ImportLongwallMaintainUnitPriceEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
