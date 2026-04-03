@@ -12,12 +12,15 @@ public record ExportExcelMaterialUnitPriceQuery() : IRequest<byte[]>;
 
 public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<ExportExcelMaterialUnitPriceQuery, byte[]>
 {
+    private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
@@ -28,7 +31,10 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
                 .Include(s => s.Hardness)
                 .Include(s => s.InsertItem)
                 .Include(s => s.SupportStep)
-                .Include(s => s.Code),
+                .Include(s => s.Code)
+                .Include(s => s.MaterialUnitPriceAssignmentCodes)
+                    .ThenInclude(c => c.AssignmentCode)
+                        .ThenInclude(a => a.Code),
             disableTracking: true);
 
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
@@ -36,6 +42,19 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
         var hardnesses = await _hardnessRepository.GetAllAsync(selector: h => h.Value, disableTracking: true);
         var insertItems = await _insertItemRepository.GetAllAsync(selector: i => i.Value, disableTracking: true);
         var supportSteps = await _supportStepRepository.GetAllAsync(selector: s => s.Value, disableTracking: true);
+        var assignments = await _assignmentCodeRepository.GetAllAsync(
+            include: a => a.Include(x => x.Code),
+            disableTracking: true);
+        var assignmentOptions = assignments
+            .Select(GetAssignmentDisplayName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        if (!assignmentOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
+        {
+            assignmentOptions.Add(OtherMaterialDisplay);
+        }
 
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Định mức vật tư lò đào");
@@ -46,7 +65,8 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
         const int hardnessCol = 4;
         const int insertItemCol = 5;
         const int supportStepCol = 6;
-        const int passportStartCol = 7;
+        const int assignmentCol = 7;
+        const int passportStartCol = 8;
 
         var fixedHeaders = new[]
         {
@@ -55,7 +75,8 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             (processCol, "Công đoạn sản xuất"),
             (hardnessCol, "Độ kiên cố than đá"),
             (insertItemCol, "Chèn"),
-            (supportStepCol, "Bước chống")
+            (supportStepCol, "Bước chống"),
+            (assignmentCol, "Mã giao khoán")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();
@@ -78,14 +99,13 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             .Select((name, index) => new
             {
                 name,
-                dmCol = passportStartCol + (index * 2),
-                ttCol = passportStartCol + (index * 2) + 1
+                valueCol = passportStartCol + index
             })
             .ToList();
 
         foreach (var passport in passportColumns)
         {
-            var passportRange = worksheet.Range(1, passport.dmCol, 1, passport.ttCol);
+            var passportRange = worksheet.Range(1, passport.valueCol, 2, passport.valueCol);
             passportRange.Merge();
             passportRange.Value = passport.name;
             passportRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -93,18 +113,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             passportRange.Style.Font.Bold = true;
             passportRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
             passportRange.Style.Font.FontColor = XLColor.White;
-
-            worksheet.Cell(2, passport.dmCol).Value = "Mã định mức vật liệu";
-            worksheet.Cell(2, passport.ttCol).Value = "TT";
-            worksheet.Cell(2, passport.dmCol).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            worksheet.Cell(2, passport.ttCol).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            worksheet.Cell(2, passport.dmCol).Style.Font.Bold = true;
-            worksheet.Cell(2, passport.ttCol).Style.Font.Bold = true;
-            worksheet.Cell(2, passport.dmCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
-            worksheet.Cell(2, passport.ttCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
-            worksheet.Cell(2, passport.dmCol).Style.Font.FontColor = XLColor.White;
-            worksheet.Cell(2, passport.ttCol).Style.Font.FontColor = XLColor.White;
-            headerWidthInstructions.Add((new[] { passport.dmCol, passport.ttCol }, passport.name));
+            headerWidthInstructions.Add((new[] { passport.valueCol }, passport.name));
         }
 
         var groupedData = list
@@ -125,30 +134,60 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             .ThenBy(group => group.Key.SupportStepName)
             .ToList();
 
+        var blockRanges = new List<(int startRow, int endRow)>();
+        var baseRows = new List<int>();
+
         var rowIndex = 3;
         foreach (var group in groupedData)
         {
-            worksheet.Cell(rowIndex, startMonthCol).Value = group.Key.StartMonth;
-            worksheet.Cell(rowIndex, endMonthCol).Value = group.Key.EndMonth;
-            worksheet.Cell(rowIndex, processCol).Value = group.Key.ProcessName;
-            worksheet.Cell(rowIndex, hardnessCol).Value = group.Key.HardnessName;
-            worksheet.Cell(rowIndex, insertItemCol).Value = group.Key.InsertItemName;
-            worksheet.Cell(rowIndex, supportStepCol).Value = group.Key.SupportStepName;
+            var baseRow = rowIndex;
+            worksheet.Cell(baseRow, startMonthCol).Value = group.Key.StartMonth;
+            worksheet.Cell(baseRow, endMonthCol).Value = group.Key.EndMonth;
+            worksheet.Cell(baseRow, processCol).Value = group.Key.ProcessName;
+            worksheet.Cell(baseRow, hardnessCol).Value = group.Key.HardnessName;
+            worksheet.Cell(baseRow, insertItemCol).Value = group.Key.InsertItemName;
+            worksheet.Cell(baseRow, supportStepCol).Value = group.Key.SupportStepName;
 
             var passportEntities = group
                 .Where(data => !string.IsNullOrWhiteSpace(GetPassportDisplayName(data)))
-                .ToDictionary(data => GetPassportDisplayName(data), data => data);
+                .GroupBy(GetPassportDisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            var assignmentRows = BuildAssignmentRows(group, assignmentOptions);
+            for (var i = 0; i < assignmentRows.Count; i++)
+            {
+                var assignmentRow = baseRow + i + 1;
+                worksheet.Cell(assignmentRow, assignmentCol).Value = assignmentRows[i];
+            }
+            baseRows.Add(baseRow);
 
             foreach (var passport in passportColumns)
             {
-                if (passportEntities.TryGetValue(passport.name, out var entity))
+                if (!passportEntities.TryGetValue(passport.name, out var entity))
                 {
-                    worksheet.Cell(rowIndex, passport.dmCol).Value = entity.Code?.Value ?? string.Empty;
-                    worksheet.Cell(rowIndex, passport.ttCol).Value = entity.TotalPrice;
+                    continue;
+                }
+
+                worksheet.Cell(baseRow, passport.valueCol).Value = entity.Code?.Value ?? string.Empty;
+                var costMap = BuildCostMap(entity);
+
+                for (var i = 0; i < assignmentRows.Count; i++)
+                {
+                    var assignmentDisplay = assignmentRows[i];
+                    if (string.IsNullOrWhiteSpace(assignmentDisplay))
+                    {
+                        continue;
+                    }
+
+                    if (costMap.TryGetValue(assignmentDisplay, out var amount))
+                    {
+                        worksheet.Cell(baseRow + i + 1, passport.valueCol).Value = amount;
+                    }
                 }
             }
 
-            rowIndex++;
+            blockRanges.Add((baseRow, baseRow + assignmentRows.Count));
+            rowIndex += assignmentRows.Count + 1;
         }
 
         var lastDataRow = Math.Max(rowIndex - 1, 100);
@@ -156,19 +195,28 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
         AddDropdownValidation(workbook, worksheet, hardnessCol, hardnesses.ToList(), lastDataRow, 2);
         AddDropdownValidation(workbook, worksheet, insertItemCol, insertItems.ToList(), lastDataRow, 3);
         AddDropdownValidation(workbook, worksheet, supportStepCol, supportSteps.ToList(), lastDataRow, 4);
+        AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 5);
 
-        var lastHeaderCol = passportStartCol + passportList.Count * 2 - 1;
-        if (lastHeaderCol >= startMonthCol)
-        {
-            var headerRange = worksheet.Range(1, startMonthCol, 2, lastHeaderCol);
-            headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-            headerRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        }
+        var lastHeaderCol = Math.Max(supportStepCol, passportStartCol + passportList.Count - 1);
 
         foreach (var (columns, text) in headerWidthInstructions)
         {
             ApplyColumnWidthForHeader(worksheet, columns, text);
         }
+
+        var fullTableRange = worksheet.Range(1, startMonthCol, lastDataRow, lastHeaderCol);
+        fullTableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        fullTableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+        // Improve readability by styling row types and separating each block.
+        foreach (var baseRow in baseRows)
+        {
+            worksheet.Range(baseRow, assignmentCol, baseRow, lastHeaderCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#E9F1FB");
+            worksheet.Cell(baseRow, assignmentCol).Style.Font.Bold = true;
+        }
+
+        worksheet.SheetView.FreezeRows(2);
+        worksheet.SheetView.FreezeColumns(assignmentCol);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -240,5 +288,78 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
         }
 
         return $"H/c {data.Passport.Name}; {data.Passport.Sd}; {data.Passport.Sc}";
+    }
+
+    private static List<string> BuildAssignmentRows(
+        IEnumerable<TunnelExcavationMaterialUnitPrice> entities,
+        IReadOnlyList<string> assignmentOptions)
+    {
+        var allAssignments = entities
+            .SelectMany(entity => BuildCostMap(entity).Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!allAssignments.Any())
+        {
+            return [string.Empty, string.Empty, string.Empty, OtherMaterialDisplay];
+        }
+
+        var optionIndex = assignmentOptions
+            .Select((value, index) => new { value, index })
+            .ToDictionary(x => x.value, x => x.index, StringComparer.OrdinalIgnoreCase);
+
+        return allAssignments
+            .OrderBy(value => optionIndex.TryGetValue(value, out var index) ? index : int.MaxValue)
+            .ThenBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static Dictionary<string, double> BuildCostMap(TunnelExcavationMaterialUnitPrice entity)
+    {
+        var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in entity.MaterialUnitPriceAssignmentCodes)
+        {
+            var assignmentDisplay = GetAssignmentDisplayName(item);
+            if (string.IsNullOrWhiteSpace(assignmentDisplay))
+            {
+                continue;
+            }
+
+            map[assignmentDisplay] = item.TotalPrice;
+        }
+
+        if (entity.OtherMaterialvalue > 0)
+        {
+            map[OtherMaterialDisplay] = entity.OtherMaterialvalue;
+        }
+
+        return map;
+    }
+
+    private static string GetAssignmentDisplayName(MaterialUnitPriceAssignmentCode item)
+    {
+        var code = item.AssignmentCode?.Code?.Value?.Trim() ?? string.Empty;
+        var name = item.AssignmentCode?.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string GetAssignmentDisplayName(AssignmentCode assignment)
+    {
+        var code = assignment.Code?.Value?.Trim() ?? string.Empty;
+        var name = assignment.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
     }
 }

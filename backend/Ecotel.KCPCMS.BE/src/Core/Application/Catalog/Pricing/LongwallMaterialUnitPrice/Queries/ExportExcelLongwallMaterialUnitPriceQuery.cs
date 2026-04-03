@@ -2,6 +2,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using ClosedXML.Excel;
 using Domain.Entities.Index;
+using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using LongwallMaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice;
@@ -12,12 +13,15 @@ public record ExportExcelLongwallMaterialUnitPriceQuery() : IRequest<byte[]>;
 
 public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<ExportExcelLongwallMaterialUnitPriceQuery, byte[]>
 {
+    private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+
     private readonly IWriteRepository<LongwallMaterialUnitPriceEntity> _materialUnitPriceRepository = unitOfWork.GetRepository<LongwallMaterialUnitPriceEntity>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<LongwallParameters> _longwallParametersRepository = unitOfWork.GetRepository<LongwallParameters>();
     private readonly IWriteRepository<CuttingThickness> _cuttingThicknessRepository = unitOfWork.GetRepository<CuttingThickness>();
     private readonly IWriteRepository<SeamFace> _seamFaceRepository = unitOfWork.GetRepository<SeamFace>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelLongwallMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
@@ -28,7 +32,10 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 .Include(s => s.CuttingThickness)
                 .Include(s => s.SeamFace)
                 .Include(s => s.Technology)
-                .Include(s => s.Code),
+                .Include(s => s.Code)
+                .Include(s => s.MaterialUnitPriceAssignmentCodes)
+                    .ThenInclude(c => c.AssignmentCode)
+                        .ThenInclude(a => a.Code),
             disableTracking: true);
 
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
@@ -37,6 +44,19 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(selector: c => c.Value, disableTracking: true);
         var seamFaceEntities = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(selector: s => s.Value, disableTracking: true);
+        var assignments = await _assignmentCodeRepository.GetAllAsync(
+            include: a => a.Include(x => x.Code),
+            disableTracking: true);
+        var assignmentOptions = assignments
+            .Select(GetAssignmentDisplayName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        if (!assignmentOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
+        {
+            assignmentOptions.Add(OtherMaterialDisplay);
+        }
 
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Định mức vật tư lò chợ");
@@ -47,7 +67,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         const int technologyCol = 4;
         const int longwallParametersCol = 5;
         const int cuttingThicknessCol = 6;
-        const int seamFaceStartCol = 7;
+        const int assignmentCol = 7;
+        const int seamFaceStartCol = 8;
 
         var fixedHeaders = new[]
         {
@@ -56,13 +77,14 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             (processCol, "Công đoạn sản xuất"),
             (technologyCol, "Công nghệ khai thác"),
             (longwallParametersCol, "Thông số lò chợ"),
-            (cuttingThicknessCol, "Chiều dày lớp khấu")
+            (cuttingThicknessCol, "Chiều dày lớp khấu"),
+            (assignmentCol, "Mã giao khoán")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();
         foreach (var (col, title) in fixedHeaders)
         {
-            var range = worksheet.Range(1, col, 3, col);
+            var range = worksheet.Range(1, col, 2, col);
             range.Merge();
             range.Value = title;
             range.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -78,14 +100,13 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             .Select((name, index) => new
             {
                 name,
-                dmCol = seamFaceStartCol + (index * 2),
-                ttCol = seamFaceStartCol + (index * 2) + 1
+                valueCol = seamFaceStartCol + index
             })
             .ToList();
 
         foreach (var seamFace in seamFaceColumns)
         {
-            var faceRange = worksheet.Range(1, seamFace.dmCol, 2, seamFace.ttCol);
+            var faceRange = worksheet.Range(1, seamFace.valueCol, 2, seamFace.valueCol);
             faceRange.Merge();
             faceRange.Value = seamFace.name;
             faceRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -93,19 +114,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             faceRange.Style.Font.Bold = true;
             faceRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
             faceRange.Style.Font.FontColor = XLColor.White;
-            headerWidthInstructions.Add((new[] { seamFace.dmCol }, "Mã định mức vật liệu"));
-            headerWidthInstructions.Add((new[] { seamFace.ttCol }, "TT"));
-
-            worksheet.Cell(3, seamFace.dmCol).Value = "Mã định mức vật liệu";
-            worksheet.Cell(3, seamFace.ttCol).Value = "TT";
-            worksheet.Cell(3, seamFace.dmCol).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            worksheet.Cell(3, seamFace.ttCol).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            worksheet.Cell(3, seamFace.dmCol).Style.Font.Bold = true;
-            worksheet.Cell(3, seamFace.ttCol).Style.Font.Bold = true;
-            worksheet.Cell(3, seamFace.dmCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
-            worksheet.Cell(3, seamFace.ttCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
-            worksheet.Cell(3, seamFace.dmCol).Style.Font.FontColor = XLColor.White;
-            worksheet.Cell(3, seamFace.ttCol).Style.Font.FontColor = XLColor.White;
+            headerWidthInstructions.Add((new[] { seamFace.valueCol }, seamFace.name));
         }
 
         var groupedData = list
@@ -126,48 +135,83 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             .ThenBy(group => group.Key.CuttingThicknessName)
             .ToList();
 
-        var rowIndex = 4;
+        var rowIndex = 3;
+        var baseRows = new List<int>();
         foreach (var group in groupedData)
         {
-            worksheet.Cell(rowIndex, startMonthCol).Value = group.Key.StartMonth;
-            worksheet.Cell(rowIndex, endMonthCol).Value = group.Key.EndMonth;
-            worksheet.Cell(rowIndex, processCol).Value = group.Key.ProcessName;
-            worksheet.Cell(rowIndex, technologyCol).Value = group.Key.TechnologyName;
-            worksheet.Cell(rowIndex, longwallParametersCol).Value = group.Key.LongwallParametersName;
-            worksheet.Cell(rowIndex, cuttingThicknessCol).Value = group.Key.CuttingThicknessName;
+            var baseRow = rowIndex;
+            worksheet.Cell(baseRow, startMonthCol).Value = group.Key.StartMonth;
+            worksheet.Cell(baseRow, endMonthCol).Value = group.Key.EndMonth;
+            worksheet.Cell(baseRow, processCol).Value = group.Key.ProcessName;
+            worksheet.Cell(baseRow, technologyCol).Value = group.Key.TechnologyName;
+            worksheet.Cell(baseRow, longwallParametersCol).Value = group.Key.LongwallParametersName;
+            worksheet.Cell(baseRow, cuttingThicknessCol).Value = group.Key.CuttingThicknessName;
+            baseRows.Add(baseRow);
 
             var seamFaceData = group
                 .Where(data => !string.IsNullOrWhiteSpace(GetSeamFaceDisplayName(data)))
-                .ToDictionary(data => GetSeamFaceDisplayName(data), data => data);
+                .GroupBy(GetSeamFaceDisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            var assignmentRows = BuildAssignmentRows(group, assignmentOptions);
+            for (var i = 0; i < assignmentRows.Count; i++)
+            {
+                worksheet.Cell(baseRow + i + 1, assignmentCol).Value = assignmentRows[i];
+            }
 
             foreach (var seamFace in seamFaceColumns)
             {
-                if (seamFaceData.TryGetValue(seamFace.name, out var entity))
+                if (!seamFaceData.TryGetValue(seamFace.name, out var entity))
                 {
-                    worksheet.Cell(rowIndex, seamFace.dmCol).Value = entity.Code?.Value ?? string.Empty;
-                    worksheet.Cell(rowIndex, seamFace.ttCol).Value = entity.TotalPrice;
+                    continue;
+                }
+
+                worksheet.Cell(baseRow, seamFace.valueCol).Value = entity.Code?.Value ?? string.Empty;
+                var costMap = BuildCostMap(entity);
+
+                for (var i = 0; i < assignmentRows.Count; i++)
+                {
+                    var assignmentDisplay = assignmentRows[i];
+                    if (string.IsNullOrWhiteSpace(assignmentDisplay))
+                    {
+                        continue;
+                    }
+
+                    if (costMap.TryGetValue(assignmentDisplay, out var amount))
+                    {
+                        worksheet.Cell(baseRow + i + 1, seamFace.valueCol).Value = amount;
+                    }
                 }
             }
 
-            rowIndex++;
+            rowIndex += assignmentRows.Count + 1;
         }
 
         var lastDataRow = Math.Max(rowIndex - 1, 100);
-        AddDropdownValidation(workbook, worksheet, processCol, processes.ToList(), lastDataRow, 1);
-        AddDropdownValidation(workbook, worksheet, technologyCol, technologies.ToList(), lastDataRow, 2);
-        AddDropdownValidation(workbook, worksheet, longwallParametersCol, longwallParameters, lastDataRow, 3);
-        AddDropdownValidation(workbook, worksheet, cuttingThicknessCol, cuttingThicknesses.ToList(), lastDataRow, 4);
+        AddDropdownValidation(workbook, worksheet, processCol, processes.ToList(), lastDataRow, 1, 3);
+        AddDropdownValidation(workbook, worksheet, technologyCol, technologies.ToList(), lastDataRow, 2, 3);
+        AddDropdownValidation(workbook, worksheet, longwallParametersCol, longwallParameters, lastDataRow, 3, 3);
+        AddDropdownValidation(workbook, worksheet, cuttingThicknessCol, cuttingThicknesses.ToList(), lastDataRow, 4, 3);
+        AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 5, 3);
 
-        var lastHeaderCol = seamFaceColumns.Any()
-            ? seamFaceColumns.Last().ttCol
-            : cuttingThicknessCol;
-
-        var headerRange = worksheet.Range(1, startMonthCol, 3, lastHeaderCol);
-
+        var lastHeaderCol = Math.Max(cuttingThicknessCol, seamFaceStartCol + seamFaceNames.Count - 1);
         foreach (var (columns, text) in headerWidthInstructions)
         {
             ApplyColumnWidthForHeader(worksheet, columns, text);
         }
+
+        var fullTableRange = worksheet.Range(1, startMonthCol, lastDataRow, lastHeaderCol);
+        fullTableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        fullTableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+        foreach (var baseRow in baseRows)
+        {
+            worksheet.Range(baseRow, startMonthCol, baseRow, lastHeaderCol).Style.Fill.BackgroundColor = XLColor.FromHtml("#E9F1FB");
+            worksheet.Cell(baseRow, assignmentCol).Style.Font.Bold = true;
+        }
+
+        worksheet.SheetView.FreezeRows(2);
+        worksheet.SheetView.FreezeColumns(assignmentCol);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -179,13 +223,86 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         return data.SeamFace?.Value?.Trim() ?? string.Empty;
     }
 
+    private static List<string> BuildAssignmentRows(
+        IEnumerable<LongwallMaterialUnitPriceEntity> entities,
+        IReadOnlyList<string> assignmentOptions)
+    {
+        var allAssignments = entities
+            .SelectMany(entity => BuildCostMap(entity).Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!allAssignments.Any())
+        {
+            return [string.Empty, string.Empty, string.Empty, OtherMaterialDisplay];
+        }
+
+        var optionIndex = assignmentOptions
+            .Select((value, index) => new { value, index })
+            .ToDictionary(x => x.value, x => x.index, StringComparer.OrdinalIgnoreCase);
+
+        return allAssignments
+            .OrderBy(value => optionIndex.TryGetValue(value, out var index) ? index : int.MaxValue)
+            .ThenBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static Dictionary<string, double> BuildCostMap(LongwallMaterialUnitPriceEntity entity)
+    {
+        var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in entity.MaterialUnitPriceAssignmentCodes)
+        {
+            var assignmentDisplay = GetAssignmentDisplayName(item);
+            if (string.IsNullOrWhiteSpace(assignmentDisplay))
+            {
+                continue;
+            }
+
+            map[assignmentDisplay] = item.TotalPrice;
+        }
+
+        if (entity.OtherMaterialvalue > 0)
+        {
+            map[OtherMaterialDisplay] = entity.OtherMaterialvalue;
+        }
+
+        return map;
+    }
+
+    private static string GetAssignmentDisplayName(MaterialUnitPriceAssignmentCode item)
+    {
+        var code = item.AssignmentCode?.Code?.Value?.Trim() ?? string.Empty;
+        var name = item.AssignmentCode?.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string GetAssignmentDisplayName(AssignmentCode assignment)
+    {
+        var code = assignment.Code?.Value?.Trim() ?? string.Empty;
+        var name = assignment.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
     private static void AddDropdownValidation(
         XLWorkbook workbook,
         IXLWorksheet worksheet,
         int targetColumn,
         List<string> options,
         int lastDataRow,
-        int sourceColumn)
+        int sourceColumn,
+        int firstDataRow)
     {
         if (!options.Any())
         {
@@ -199,13 +316,13 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             dataSourceSheet.Hide();
         }
 
-        for (int row = 0; row < options.Count; row++)
+        for (var row = 0; row < options.Count; row++)
         {
             dataSourceSheet.Cell(row + 1, sourceColumn).Value = options[row];
         }
 
         var sourceRange = dataSourceSheet.Range(1, sourceColumn, options.Count, sourceColumn);
-        var targetRange = worksheet.Range(4, targetColumn, lastDataRow, targetColumn);
+        var targetRange = worksheet.Range(firstDataRow, targetColumn, lastDataRow, targetColumn);
         var validation = targetRange.CreateDataValidation();
         validation.List(sourceRange);
         validation.InputTitle = "Lựa chọn";
