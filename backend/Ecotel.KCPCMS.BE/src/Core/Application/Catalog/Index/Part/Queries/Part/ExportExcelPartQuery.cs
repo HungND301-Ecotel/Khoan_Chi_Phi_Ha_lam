@@ -15,11 +15,10 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
 {
     private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
     private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
-    private readonly IWriteRepository<Domain.Entities.Index.Equipment> _equipmentRepository = unitOfWork.GetRepository<Domain.Entities.Index.Equipment>();
 
     public async Task<byte[]> Handle(ExportExcelPartQuery request, CancellationToken cancellationToken)
     {
-        var listHiddenProperty = new List<string> { nameof(PartExcelDto.Id) };
+        var listHiddenProperty = new List<string>();
 
         var list = await _partRepository.GetAllAsync(
             predicate: p => p.Type == PartType.Part,
@@ -36,20 +35,43 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
             { nameof(PartExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
         };
 
-        var dtoList = list.Select(l => new PartExcelDto
+        var dtoList = list.SelectMany(l =>
         {
-            Id = l.Id,
-            Code = l.Code.Value,
-            Name = l.Name,
-            UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
-            EquipmentCodes = string.Join(", ", l.EquipmentParts
-                .Where(e => e.Equipment?.Code != null)
-                .Select(e => e.Equipment!.Code!.Value)
-                .OrderBy(code => code)),
-            ReplacementTimeStandard = l.ReplacementTimeStandard,
-            Cost = costService.BuildExcelCostString(l.Costs.ToList())
+            var cost = costService.BuildExcelCostString(l.Costs.ToList());
+            var equipmentRows = l.EquipmentParts
+                .Where(ep => ep.Equipment?.Code != null)
+                .Select(ep => new PartExcelDto
+                {
+                    EquipmentCode = ep.Equipment!.Code!.Value,
+                    EquipmentName = ep.Equipment.Name,
+                    Code = l.Code.Value,
+                    Name = l.Name,
+                    UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
+                    ReplacementTimeStandard = l.ReplacementTimeStandard,
+                    Cost = cost
+                })
+                .ToList();
+
+            if (equipmentRows.Any())
+            {
+                return equipmentRows;
+            }
+
+            return new List<PartExcelDto>
+            {
+                new()
+                {
+                    EquipmentCode = string.Empty,
+                    EquipmentName = string.Empty,
+                    Code = l.Code.Value,
+                    Name = l.Name,
+                    UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
+                    ReplacementTimeStandard = l.ReplacementTimeStandard,
+                    Cost = cost
+                }
+            };
         });
 
-        return excelService.ExportToExcel(dtoList, "Phụ tùng", listHiddenProperty, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList.OrderBy(d => d.EquipmentCode).ThenBy(d => d.Code).ThenBy(d => d.Name), "Phụ tùng", listHiddenProperty, dropdownConfigs);
     }
 }
