@@ -144,6 +144,14 @@ public class ProductionController : BaseNoAuthController
         var result = await Mediator.Send(new GetAllAcceptanceReportAdditionalCostQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
+    [HttpGet("AcceptanceReport/export")]
+    [OpenApiOperation("Export AcceptanceReport By Period", "Export acceptance report excel by month and year")]
+    public async Task<IActionResult> ExportAcceptanceReportByPeriod([FromQuery] string? month, [FromQuery] string? year)
+    {
+        var result = await Mediator.Send(new ExportAcceptanceReportByPeriodExcelQuery(month, year));
+        return File(result.FileBytes.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
 
     [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking")]
     [OpenApiOperation("Get Long-term Item Tracking", "Get all long-term items with tracking logs (TH1 & TH2)")]
@@ -159,6 +167,18 @@ public class ProductionController : BaseNoAuthController
     {
         var result = await Mediator.Send(new GetDetailLongTermTrackingQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("AcceptanceReport/{acceptanceReportId:guid}/export-longterm-material-cost")]
+    [OpenApiOperation("Export Long-term Material Cost Excel", "Export long-term material cost accounting report in Excel format")]
+    public async Task<IActionResult> ExportLongTermMaterialCostExcel(
+        [FromRoute] Guid acceptanceReportId,
+        [FromQuery] string? month,
+        [FromQuery] string? year,
+        [FromQuery] Guid? processGroupId)
+    {
+        var result = await Mediator.Send(new ExportLongTermMaterialCostExcelQuery(acceptanceReportId, month, year, processGroupId));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
     }
 
     [HttpPut("AcceptanceReport/long-term-tracking")]

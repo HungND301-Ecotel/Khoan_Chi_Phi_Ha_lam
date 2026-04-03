@@ -338,6 +338,8 @@ export const API = {
 			UPDATE: '/v1/pricing/productunitprice',
 			DELETES: '/v1/pricing/productunitprice',
 			EXPORT: '/v1/pricing/productunitprice/export',
+			EXPORT_ADJUSTMENT_ELECTRICITY_MAINTAIN_REPORT:
+				'/v1/pricing/productunitprice/export-adjustment-electricity-maintain-report',
 			DELETE: (id: string) => `/v1/pricing/productunitprice/${id}`,
 			DETAIL_PLANNED: (id: string) =>
 				`/v1/pricing/productunitprice/planned/${id}`,
@@ -395,7 +397,11 @@ export const API = {
 		},
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
+			MONTH_EXPORT:
+				'/v1/pricing/lump-sum-final-settlement/month-export',
 			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
+			QUARTER_EXPORT:
+				'/v1/pricing/lump-sum-final-settlement/quarter-export',
 			QUARTER_CUSTOM_COST_LIST:
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/list',
 			QUARTER_CUSTOM_COST_CREATE:
@@ -427,6 +433,10 @@ export const API = {
 			UPDATE: '/v1/production/acceptancereport',
 			DOWNLOAD: (id: string) =>
 				`/v1/production/acceptancereport/${id}/download`,
+			EXPORT_PERIOD: (month: string, year: string) =>
+				`/v1/production/acceptancereport/export?month=${month}&year=${year}`,
+			EXPORT_LONG_TERM_MATERIAL_COST: (id: string) =>
+				`/v1/production/acceptancereport/${id}/export-longterm-material-cost`,
 			ADDITIONAL_COST_LIST: (id: string) =>
 				`/v1/production/acceptancereport/${id}/additional-cost`,
 			LONG_TERM_TRACKING_LIST: (id: string) =>

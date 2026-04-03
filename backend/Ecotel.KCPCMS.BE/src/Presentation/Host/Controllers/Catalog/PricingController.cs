@@ -643,6 +643,18 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.DeleteSuccess);
     }
 
+    [HttpGet("ProductUnitPrice/export-adjustment-electricity-maintain-report")]
+    [OpenApiOperation("Export Adjustment Electricity And Maintain Report", "Export Bảng tính đơn giá SCTX và điện năng")]
+    public async Task<IActionResult> ExportAdjustmentElectricityAndMaintainReport(
+        [FromQuery] string? month,
+        [FromQuery] string? year,
+        [FromQuery] Guid? processGroupId,
+        [FromQuery] ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Adjustment)
+    {
+        var result = await Mediator.Send(new ExportAdjustmentElectricityAndMaintainReportExcelQuery(month, year, processGroupId, scenarioType));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     #endregion
 
     #region PlannedMaterialCost
@@ -814,6 +826,18 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("lump-sum-final-settlement/month-export")]
+    [OpenApiOperation("Export Lump Sum Final Settlement Month Excel", "")]
+    public async Task<IActionResult> ExportLumpSumFinalSettlementMonthExcel(
+        [FromQuery] string month,
+        [FromQuery] string year,
+        [FromQuery] string? processGroupId,
+        [FromQuery] string? search)
+    {
+        var result = await Mediator.Send(new ExportLumpSumFinalSettlementMonthExcelQuery(month, year, processGroupId, search));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
+    }
+
     [HttpPost("lump-sum-final-settlement/quarter-list")]
     [OpenApiOperation("Get Lump Sum Final Settlement Quarter List", "")]
     public async Task<IActionResult> GetLumpSumFinalSettlementQuarterList([FromBody] LumpSumFinalSettlementQuarterListRequest request)
@@ -828,6 +852,18 @@ public class PricingController : BaseNoAuthController
     {
         var result = await Mediator.Send(new GetLumpSumQuarterCustomCostListQuery(request.Quarter, request.Year, request.ProcessGroupId));
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("lump-sum-final-settlement/quarter-export")]
+    [OpenApiOperation("Export Lump Sum Final Settlement Quarter Excel", "")]
+    public async Task<IActionResult> ExportLumpSumFinalSettlementQuarterExcel(
+        [FromQuery] string quarter,
+        [FromQuery] string year,
+        [FromQuery] string? processGroupId,
+        [FromQuery] string? search)
+    {
+        var result = await Mediator.Send(new ExportLumpSumFinalSettlementQuarterExcelQuery(quarter, year, processGroupId, search));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
     }
 
     [HttpPost("lump-sum-final-settlement/quarter-custom-cost")]

@@ -32,15 +32,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ALL_PROCESS_GROUP = '__all_process_group__';
 
-const escapeCsvCell = (value: string | number | null | undefined) => {
-	const cell = value == null ? '' : String(value);
-	if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
-		return `"${cell.replace(/"/g, '""')}"`;
-	}
-
-	return cell;
-};
-
 const quarterToMonthRange = (quarter: string) => {
 	const quarterNumber = Number(quarter);
 	const startMonth = (quarterNumber - 1) * 3 + 1;
@@ -654,54 +645,17 @@ export function LumpSumFinalSettlementReportTable({
 		setIsExporting(true);
 
 		try {
-			const headers = [
-				'STT',
-				'Mã sản phẩm',
-				'Sản phẩm',
-				'ĐVT',
-				'KH',
-				'TH',
-				'Vật liệu - Đơn giá',
-				'Vật liệu - Thành tiền',
-				'SCTX - Đơn giá',
-				'SCTX - Thành tiền',
-				'Điện năng - Đơn giá',
-				'Điện năng - Thành tiền',
-				'Tổng thành tiền',
-			];
-
-			const records = filteredRows.map((row, index) => [
-				row.sttLabel ?? index + 1,
-				row.productCode ?? '',
-				row.productName ?? '',
-				row.unitOfMeasureName ?? '',
-				row.plannedQuantity ?? '',
-				row.actualQuantity ?? '',
-				row.materials?.unitPrice ?? '',
-				row.materials?.totalAmount ?? '',
-				row.maintains?.unitPrice ?? '',
-				row.maintains?.totalAmount ?? '',
-				row.electricities?.unitPrice ?? '',
-				row.electricities?.totalAmount ?? '',
-				row.totalAmount ?? '',
-			]);
-
-			const csvText = [headers, ...records]
-				.map((record) => record.map(escapeCsvCell).join(','))
-				.join('\n');
-
-			const blob = new Blob([`\uFEFF${csvText}`], {
-				type: 'text/csv;charset=utf-8;',
+			await api.export(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_EXPORT, {
+				query: {
+					quarter,
+					year,
+					processGroupId:
+						selectedProcessGroup === ALL_PROCESS_GROUP
+							? ''
+							: selectedProcessGroup,
+					search: searchQuery.trim(),
+				},
 			});
-			const downloadUrl = window.URL.createObjectURL(blob);
-			const link = document.createElement('a');
-
-			link.href = downloadUrl;
-			link.download = `bao-cao-quyet-toan-quy-${quarter}-${year}.csv`;
-			document.body.appendChild(link);
-			link.click();
-			window.URL.revokeObjectURL(downloadUrl);
-			document.body.removeChild(link);
 		} catch (err) {
 			console.error('Failed to export lump-sum quarter report:', err);
 		} finally {

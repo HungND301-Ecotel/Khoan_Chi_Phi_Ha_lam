@@ -27,15 +27,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ALL_PROCESS_GROUP = '__all_process_group__';
 
-const escapeCsvCell = (value: string | number | null | undefined) => {
-	const cell = value == null ? '' : String(value);
-	if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
-		return `"${cell.replace(/"/g, '""')}"`;
-	}
-
-	return cell;
-};
-
 interface LumpSumFinalSettlementMonthReportTableProps {
 	enableSearch?: boolean;
 	enablePagination?: boolean;
@@ -258,7 +249,18 @@ export function LumpSumFinalSettlementMonthReportTable({
 		setIsExporting(true);
 
 		try {
-			const headers = [
+			await api.export(API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_EXPORT, {
+				query: {
+					month,
+					year,
+					processGroupId:
+						selectedProcessGroup === ALL_PROCESS_GROUP
+							? ''
+							: selectedProcessGroup,
+					search: searchQuery.trim(),
+				},
+			});
+			/* const headers = [
 				'STT',
 				'Mã sản phẩm',
 				'Sản phẩm',
@@ -305,7 +307,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 			document.body.appendChild(link);
 			link.click();
 			window.URL.revokeObjectURL(downloadUrl);
-			document.body.removeChild(link);
+			document.body.removeChild(link); */
 		} catch (err) {
 			console.error('Failed to export lump-sum month report:', err);
 		} finally {

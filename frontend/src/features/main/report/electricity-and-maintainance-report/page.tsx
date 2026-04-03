@@ -428,10 +428,37 @@ export function ElectricityAndMaintainanceReportPage() {
 	}, [filteredItems, month, year]);
 
 	const handleExport = async () => {
+		if (!filteredItems.length) {
+			popup.error('Không có dữ liệu để xuất file');
+			return;
+		}
+
 		try {
 			setIsExporting(true);
-			const filename = await api.export(API.COST.PRODUCT.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			const processGroupId =
+				selectedProcessGroup !== 'all' &&
+				selectedProcessGroup !== UNGROUPED_PROCESS_GROUP
+					? selectedProcessGroup
+					: undefined;
+
+			const fileName = `bang-tinh-don-gia-sctx-va-dien-nang-thang-${month}-nam-${year}.xlsx`;
+
+			await api.export(
+				`${API.COST.PRODUCT.EXPORT_ADJUSTMENT_ELECTRICITY_MAINTAIN_REPORT}?${new URLSearchParams(
+					Object.entries({
+						month,
+						year,
+						scenarioType: '2',
+						...(processGroupId ? { processGroupId } : {}),
+					}) as [string, string][],
+				).toString()}`,
+				{
+					fileName,
+					forceFileName: true,
+				},
+			);
+
+			popup.success(`Đã xuất file ${fileName}`);
 		} catch (err) {
 			popup.error(err);
 		} finally {
