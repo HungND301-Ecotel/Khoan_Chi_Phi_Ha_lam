@@ -6,6 +6,7 @@ using Application.Dto.Catalog.AdjustmentFactorDescription;
 using MediatR;
 
 namespace Application.Catalog.Index.AdjustmentFactorDescription.Queries;
+
 public record class GetAllAdjustmentFactorDescriptionQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<AdjustmentFactorDescriptionDto>>;
 
 public class GetAllAdjustmentFactorDescriptionQueryHandler(IPaginationService paginationService, IReadRepository<Domain.Entities.Index.AdjustmentFactorDescription> adjustmentFactorDescription) : IRequestHandler<GetAllAdjustmentFactorDescriptionQuery, PaginationResponse<AdjustmentFactorDescriptionDto>>
@@ -22,12 +23,14 @@ public class GetAllAdjustmentFactorDescriptionQueryHandler(IPaginationService pa
 
         var spec = new AdjustmentFactorDescriptionsByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: adjustmentFactorDescription,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderBy(d => d.AdjustmentFactorCode).ThenBy(d => d.Description).ToList();
+        return result;
     }
 }

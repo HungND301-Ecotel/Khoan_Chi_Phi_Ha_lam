@@ -221,6 +221,8 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
             newProductUnitPrice.AddProductionOutput(productionOutputId, remaining.Value);
             await _productUnitPriceRepository.InsertAsync(newProductUnitPrice, cancellationToken);
         }
+
+        await unitOfWork.SaveChangesAsync();
     }
 
     private async Task UpdateAffectedAcceptanceReportItemLogs(ProductionOutput productionOutput, CancellationToken cancellationToken)

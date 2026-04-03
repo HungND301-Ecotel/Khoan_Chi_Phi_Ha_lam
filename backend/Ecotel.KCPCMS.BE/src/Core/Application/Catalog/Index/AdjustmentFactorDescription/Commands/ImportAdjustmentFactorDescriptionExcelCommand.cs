@@ -29,49 +29,40 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
 
         //Map data to Entity Model
 
-        var dbAdjustmentFactorCodes = (await _adjustmentFactorRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code),
+        //var dbAdjustmentFactorCodes = (await _adjustmentFactorRepository.GetAllAsync(
+        //        include: p => p.Include(p => p.Code).Include(p => p.ProcessGroup).ThenInclude(pg => pg.Code),
+        //        disableTracking: true))
+        //    .Select(p => p.Code?.Value?.Trim())
+        //    .Where(code => !string.IsNullOrWhiteSpace(code))
+        //    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var dbAdjustmentFactorMap = (await _adjustmentFactorRepository.GetAllAsync(
+                include: p => p.Include(p => p.Code).Include(p => p.ProcessGroup).ThenInclude(pg => pg.Code),
                 disableTracking: true))
-            .Select(p => p.Code?.Value?.Trim())
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Where(p => !string.IsNullOrWhiteSpace(p.Code?.Value))
+            .GroupBy(p => $"{p.ProcessGroup?.Code?.Value?.Trim()}|{p.Code!.Value.Trim()}", StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < dtos.Count; i++)
         {
-            var value = ExtractAdjustmentFactorCode(dtos[i].AdjustmentFactorCode);
-            if (string.IsNullOrWhiteSpace(value) || !dbAdjustmentFactorCodes.Contains(value))
+            var (pgCode, afCode) = ExtractCodes(dtos[i].AdjustmentFactorCode);
+            var compositeKey = $"{pgCode}|{afCode}";
+            if (string.IsNullOrWhiteSpace(afCode) || !dbAdjustmentFactorMap.ContainsKey(compositeKey))
             {
                 throw new BadRequestException($"Giá trị mã hệ số điều chỉnh '{dtos[i].AdjustmentFactorCode}' không tồn tại ở dòng {i + 2}.");
             }
         }
 
-        var adjustmentFactorCodes = dtos
-            .Select(d => ExtractAdjustmentFactorCode(d.AdjustmentFactorCode))
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct()
-            .ToList();
-
-        var adjusmentFactors = await _adjustmentFactorRepository.GetAllAsync(
-            predicate: p => adjustmentFactorCodes.Contains(p.Code.Value),
-            include: p => p.Include(p => p.Code!),
-            disableTracking: true);
-        var adjustmentFactorIdMap = adjusmentFactors
-            .Where(p => !string.IsNullOrWhiteSpace(p.Code?.Value))
-            .GroupBy(p => p.Code!.Value)
-            .ToDictionary(g => g.Key, g => g.First().Id);
-
         var excelDtos = dtos.Select(d =>
         {
-            var adjustmentFactorCode = ExtractAdjustmentFactorCode(d.AdjustmentFactorCode);
+            var (pgCode, afCode) = ExtractCodes(d.AdjustmentFactorCode);
+            var compositeKey = $"{pgCode}|{afCode}";
 
-            if (adjustmentFactorIdMap.TryGetValue(adjustmentFactorCode, out var adjustmentFactorId))
+            if (dbAdjustmentFactorMap.TryGetValue(compositeKey, out var adjustmentFactorId))
             {
                 return AdjustmentFactorDescriptionEntity.Create(d.Id, d.Description, adjustmentFactorId, d.MaintenanceAdjustmentValue, d.ElectricityAdjustmentValue);
             }
-            else
-            {
-                return null;
-            }
+            return null;
         }).Where(d => d != null).ToList();
 
 
@@ -133,11 +124,11 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
         }
     }
 
-    private static string ExtractAdjustmentFactorCode(string? adjustmentFactorCode)
+    private static (string ProcessGroupCode, string AdjustmentFactorCode) ExtractCodes(string? adjustmentFactorCode)
     {
         if (string.IsNullOrWhiteSpace(adjustmentFactorCode))
         {
-            return string.Empty;
+            return (string.Empty, string.Empty);
         }
 
         var value = adjustmentFactorCode.Trim();
@@ -145,9 +136,9 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
 
         if (separatorIndex < 0)
         {
-            return value;
+            return (string.Empty, value);
         }
 
-        return value[(separatorIndex + 3)..].Trim();
+        return (value[..separatorIndex].Trim(), value[(separatorIndex + 3)..].Trim());
     }
 }

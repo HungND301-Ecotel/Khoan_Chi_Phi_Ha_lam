@@ -25,7 +25,7 @@ public class AdjustmentFactorDescriptionsByPaginationSpec
                 Id = ad.Id,
                 AdjustmentFactorId = ad.AdjustmentFactorId,
                 Description = ad.Description,
-                AdjustmentFactorCode = ad.AdjustmentFactor != null ? ad.AdjustmentFactor.Code.Value : string.Empty,
+                AdjustmentFactorCode = ad.AdjustmentFactor != null ? $"{ad.AdjustmentFactor.ProcessGroup.Code.Value} - {ad.AdjustmentFactor.Code.Value}" : string.Empty,
                 ElectricityAdjustmentValue = ad.ElectricityAdjustmentValue,
                 MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue
             });

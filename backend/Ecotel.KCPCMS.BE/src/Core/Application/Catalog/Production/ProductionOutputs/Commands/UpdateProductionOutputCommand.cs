@@ -173,9 +173,12 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
             .GroupBy(x => x.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
 
+        var productIds = productMeters.Keys.ToList();
+
         var allRelatedPrices = await _productUnitPriceRepository.GetAll()
             .Where(x => x.ScenarioType == ProductUnitPriceScenarioType.Adjustment
-                && x.ProductUnitPriceProductionOutputs.Any(y => y.ProductionOutputId == productionOutputId))
+                && (x.ProductUnitPriceProductionOutputs.Any(y => y.ProductionOutputId == productionOutputId)
+                    || productIds.Contains(x.ProductId)))
             .Include(x => x.ProductUnitPriceProductionOutputs)
             .ToListAsync(cancellationToken);
 
@@ -204,10 +207,9 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                 }
             }
 
+            await unitOfWork.SaveChangesAsync();
             return;
         }
-
-        var productIds = productMeters.Keys.ToList();
 
         // Xóa liên kết cho những sản phẩm không còn trong payload
         var pricesToRemove = allRelatedPrices
@@ -273,30 +275,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                 }), cancellationToken);
         }
 
-        // Gọi Update cho những Adjustment ProductUnitPrice mới tạo
-        foreach (var productId in newProductIds)
-        {
-            var newlyCreatedPrice = await _productUnitPriceRepository.GetFirstOrDefaultAsync(
-                predicate: x => x.ProductId == productId
-                    && x.ScenarioType == ProductUnitPriceScenarioType.Adjustment,
-                include: x => x.Include(p => p.ProductUnitPriceProductionOutputs),
-                disableTracking: true);
-
-            if (newlyCreatedPrice != null)
-            {
-                await mediator.Send(new UpdateAdjustmentProductUnitPriceCommand(
-                    new UpdateAdjustmentProductUnitPriceDto
-                    {
-                        Id = newlyCreatedPrice.Id,
-                        ProductId = newlyCreatedPrice.ProductId,
-                        UnitOfMeasureId = newlyCreatedPrice.UnitOfMeasureId,
-                        ProductionOutputs = new Dictionary<Guid, double>
-                        {
-                        { productionOutputId, productMeters[productId] }
-                        }
-                    }), cancellationToken);
-            }
-        }
+        await unitOfWork.SaveChangesAsync();
     }
 
     private async Task UpdateAffectedAcceptanceReportItemLogs(ProductionOutput productionOutput, CancellationToken cancellationToken)
