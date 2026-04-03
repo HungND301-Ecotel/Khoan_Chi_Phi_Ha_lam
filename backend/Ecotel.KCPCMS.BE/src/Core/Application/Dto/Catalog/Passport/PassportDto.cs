@@ -9,6 +9,7 @@ namespace Application.Dto.Catalog.Passport
         public string Name { get; set; }
         public string Sd { get; set; }
         public string Sc { get; set; }
+        public DateTimeOffset CreateOn { get; set; }
     }
 
     public class PassportExcelDto

@@ -32,7 +32,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             disableTracking: true);
 
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
-        var passports = await _passportRepository.GetAllAsync(selector: p => $"H/c {p.Name}; {p.Sd}; {p.Sc}", disableTracking: true);
+        var passports = await _passportRepository.GetAllAsync(selector: p => $"H/c {p.Name}; {p.Sd}; {p.Sc}", orderBy: p => p.OrderBy(p => p.CreatedOn), disableTracking: true);
         var hardnesses = await _hardnessRepository.GetAllAsync(selector: h => h.Value, disableTracking: true);
         var insertItems = await _insertItemRepository.GetAllAsync(selector: i => i.Value, disableTracking: true);
         var supportSteps = await _supportStepRepository.GetAllAsync(selector: s => s.Value, disableTracking: true);
@@ -73,7 +73,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             headerWidthInstructions.Add((new[] { col }, title));
         }
 
-        var passportList = passports.OrderBy(p => p).ToList();
+        var passportList = passports.ToList();
         var passportColumns = passportList
             .Select((name, index) => new
             {

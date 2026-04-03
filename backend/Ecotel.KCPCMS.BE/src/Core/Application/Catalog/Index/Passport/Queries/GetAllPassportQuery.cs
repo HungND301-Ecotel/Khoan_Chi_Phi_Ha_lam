@@ -30,7 +30,7 @@ public class GetAllPassportQueryHandler(IPaginationService paginationService, IR
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.Name).ToList();
+        result.Data = result.Data.OrderBy(d => d.CreateOn).ToList();
         return result;
     }
 }
