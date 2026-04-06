@@ -399,17 +399,6 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                         .Where(l => l.AcceptanceReportId == report.Id);
                     transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
                 }
-
-                if (report.ActualElectricityCost != null)
-                {
-                    transferredElectricity += (decimal)report.ActualElectricityCost.ActualEletricityEquipment.Sum(equipment =>
-                    {
-                        var unitPrice = GetPlannedUnitPrice(
-                            equipment.Equipment?.Costs ?? Array.Empty<Cost>(),
-                            output.StartMonth);
-                        return (double)unitPrice * equipment.ActualElectricityConsumption;
-                    });
-                }
             }
 
             var transferredMaterialDouble = (double)transferredMaterial;
@@ -421,7 +410,7 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 Month = currentMonth,
                 Materials = new LumpSumCostDetailDto { TotalAmount = transferredMaterialDouble },
                 Maintains = new LumpSumCostDetailDto { TotalAmount = transferredMaintainDouble },
-                Electricities = new LumpSumCostDetailDto { TotalAmount = transferredElectricityDouble },
+                Electricities = new LumpSumCostDetailDto { TotalAmount = 0 },
                 TotalAmount = transferredMaterialDouble + transferredMaintainDouble + transferredElectricityDouble
             });
         }

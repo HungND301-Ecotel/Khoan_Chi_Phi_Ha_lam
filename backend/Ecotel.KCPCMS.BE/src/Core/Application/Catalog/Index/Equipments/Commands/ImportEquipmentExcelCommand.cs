@@ -90,7 +90,9 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             }
         }
 
-        var excelDtos = new List<(Equipment Entity, int RowNumber, string EquipmentCode, List<Guid> ProcessGroupIds)>();
+        // Each item: (parsed cost string, unitOfMeasureId, processGroupIds, rowNumber, equipmentCodeNormalized, dto)
+        var excelDtos = new List<(Equipment Entity, int RowNumber, string EquipmentCode, List<Guid> ProcessGroupIds, string CostString)>();
+
         foreach (var rowGroup in groupedRows)
         {
             var firstRow = rowGroup.First();
@@ -122,13 +124,19 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 continue;
             }
 
-            var equipmentId = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id;
+            // Always create a fresh Id for the snapshot entity to avoid EF tracking conflicts.
+            // The update path is resolved by EquipmentCode (dbEquipmentDict), not by this Id.
+            var equipmentId = Guid.NewGuid();
             try
             {
                 var equipmentEntity = Equipment.Create(equipmentId, dto.Code, dto.Name, unitOfMeasureId);
+
+                // Costs are attached to the snapshot entity for new (add) path only.
+                // For the update path, costs are rebuilt separately using the real DB entity Id.
                 var costList = costService.ParseExcelCostString(dto.Cost, CostType.Electricity, equipmentId);
                 equipmentEntity.AddCost(costList);
-                excelDtos.Add((equipmentEntity, rowNumber, firstRow.EquipmentCodeNormalized, mappedProcessGroupIds));
+
+                excelDtos.Add((equipmentEntity, rowNumber, firstRow.EquipmentCodeNormalized, mappedProcessGroupIds, dto.Cost ?? string.Empty));
             }
             catch (Exception ex)
             {
@@ -142,6 +150,7 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
 
         var deleteList = new List<Equipment>();
         var deleteCost = new List<Cost>();
+        var insertCostsForUpdate = new List<Cost>(); // Costs rebuilt for updated entities — inserted via repository, not via navigation collection
         var deleteEquipmentProcessGroups = new List<EquipmentProcessGroup>();
         var insertEquipmentProcessGroups = new List<EquipmentProcessGroup>();
         var updateList = new List<Equipment>();
@@ -188,9 +197,15 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
 
                     if (isCostChanged)
                     {
+                        // Delete old costs tracked by EF
                         deleteCost.AddRange(entityToUpdate.Costs.ToList());
-                        entityToUpdate.ClearCost();
-                        entityToUpdate.AddCost(dto.Costs.ToList());
+
+                        // Do NOT call entityToUpdate.ClearCost() or entityToUpdate.AddCost() here.
+                        // Mutating the EF-tracked navigation collection while also deleting via repository
+                        // causes EF to insert Cost rows before the delete executes, violating CK_Cost_OneParentOnly.
+                        // Instead, rebuild costs with the correct DB entity Id and insert via repository directly.
+                        var rebuiltCosts = costService.ParseExcelCostString(excelDto.CostString, CostType.Electricity, entityToUpdate.Id);
+                        insertCostsForUpdate.AddRange(rebuiltCosts);
                     }
 
                     if (isProcessGroupChanged)
@@ -250,6 +265,11 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 }
 
                 _equipmentRepository.Update(updateList);
+            }
+
+            if (insertCostsForUpdate.Any())
+            {
+                await _costRepository.InsertAsync(insertCostsForUpdate, cancellationToken);
             }
 
             if (insertEquipmentProcessGroups.Any())

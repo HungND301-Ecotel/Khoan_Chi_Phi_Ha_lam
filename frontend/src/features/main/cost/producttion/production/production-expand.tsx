@@ -6,7 +6,6 @@ import { useCallback, useState } from 'react';
 import { Production } from './columns';
 import { AdditionalCost } from './additional-cost';
 import { AcceptanceReport } from './acceptance-report';
-import { ProductionElectricityCost } from './electricity-cost';
 
 // Re-export AdjustmentExpand for convenience
 export { AdjustmentExpand } from '@/features/main/cost/producttion/adjustment/adjustment-expand';
@@ -62,15 +61,6 @@ export function ProductionExpand({ row, data }: ActionDialogProps<Production>) {
 					output={output}
 					callback={handleRefreshExpandData}
 					isOpen={opened.includes('additional-cost')}
-					reloadKey={reloadKey}
-				/>
-
-				<ProductionElectricityCost
-					id={undefined}
-					plan={undefined}
-					output={output}
-					callback={handleRefreshExpandData}
-					isOpen={opened.includes('production-electricity-cost')}
 					reloadKey={reloadKey}
 				/>
 				<AcceptanceReport
