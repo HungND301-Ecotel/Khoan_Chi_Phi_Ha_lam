@@ -1,7 +1,9 @@
 import { type Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
 	Select,
 	SelectContent,
@@ -18,12 +20,42 @@ interface DataTablePaginationProps<TData> {
 export function DataTablePagination<TData>({
 	table,
 }: DataTablePaginationProps<TData>) {
+	const MAX_VISIBLE_PAGES = 10;
 	const pageSize = table.getState().pagination.pageSize;
 	const pageIndex = table.getState().pagination.pageIndex;
+	const pageCount = table.getPageCount();
 	const totalItems = table.getFilteredRowModel().rows.length;
+	const [jumpPage, setJumpPage] = useState(`${pageIndex + 1}`);
 
 	const startItem = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
 	const endItem = Math.min((pageIndex + 1) * pageSize, totalItems);
+
+	useEffect(() => {
+		setJumpPage(`${pageIndex + 1}`);
+	}, [pageIndex]);
+
+	const visiblePages = useMemo(() => {
+		if (pageCount <= 0) {
+			return [];
+		}
+
+		const windowStart = Math.floor(pageIndex / MAX_VISIBLE_PAGES) * MAX_VISIBLE_PAGES;
+		const windowEnd = Math.min(windowStart + MAX_VISIBLE_PAGES, pageCount);
+
+		return Array.from({ length: windowEnd - windowStart }, (_, index) => windowStart + index);
+	}, [pageCount, pageIndex]);
+
+	const goToPage = () => {
+		const parsed = Number(jumpPage);
+		if (!Number.isFinite(parsed)) {
+			setJumpPage(`${pageIndex + 1}`);
+			return;
+		}
+
+		const targetPage = Math.min(Math.max(Math.trunc(parsed), 1), Math.max(pageCount, 1));
+		table.setPageIndex(targetPage - 1);
+		setJumpPage(`${targetPage}`);
+	};
 
 	return (
 		<div className='flex w-full items-center justify-center gap-4 bg-transparent px-4'>
@@ -40,8 +72,7 @@ export function DataTablePagination<TData>({
 				<ChevronLeft />
 			</Button>
 			<div className='flex items-center gap-2'>
-				{/* displlay page numbers button */}
-				{Array.from({ length: table.getPageCount() }, (_, index) => (
+				{visiblePages.map((index) => (
 					<Button
 						key={index}
 						variant='ghost'
@@ -67,6 +98,24 @@ export function DataTablePagination<TData>({
 			>
 				<ChevronRight />
 			</Button>
+			<div className='flex items-center gap-2'>
+				<span className='text-[14px]'>Đến trang</span>
+				<Input
+					type='number'
+					min={1}
+					max={Math.max(pageCount, 1)}
+					value={jumpPage}
+					onChange={(event) => setJumpPage(event.target.value)}
+					onBlur={goToPage}
+					onKeyDown={(event) => {
+						if (event.key === 'Enter') {
+							event.preventDefault();
+							goToPage();
+						}
+					}}
+					className='h-8 w-20'
+				/>
+			</div>
 			<Select
 				value={`${table.getState().pagination.pageSize}`}
 				onValueChange={(value) => {

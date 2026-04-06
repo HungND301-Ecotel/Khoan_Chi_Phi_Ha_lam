@@ -93,6 +93,7 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DefaultIdType ProcessId { get; set; }
         public DefaultIdType PassportId { get; set; }
         public DefaultIdType HardnessId { get; set; }
+        public DefaultIdType TechnologyId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double OtherMaterialValue { get; set; }

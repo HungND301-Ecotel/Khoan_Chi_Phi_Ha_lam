@@ -34,6 +34,7 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
             m.ProcessId == request.UpdateModel.ProcessId &&
             m.PassportId == request.UpdateModel.PassportId &&
             m.HardnessId == request.UpdateModel.HardnessId &&
+            m.TechnologyId == request.UpdateModel.TechnologyId &&
             m.Id != request.UpdateModel.Id))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
@@ -78,7 +79,7 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
                 request.UpdateModel.ProcessId,
                 request.UpdateModel.PassportId,
                 request.UpdateModel.HardnessId,
-                null,
+                request.UpdateModel.TechnologyId,
                 request.UpdateModel.StartMonth,
                 request.UpdateModel.EndMonth,
                 request.UpdateModel.OtherMaterialValue,

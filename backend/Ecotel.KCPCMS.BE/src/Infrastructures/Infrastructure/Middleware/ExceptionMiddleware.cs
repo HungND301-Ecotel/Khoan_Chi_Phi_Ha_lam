@@ -120,6 +120,10 @@ public class ExceptionMiddleware(
                 result.TryAdd(domainException.FieldName ?? "request", [domainException.Message]);
                 break;
 
+            case CustomException customException when customException.ErrorMessages.Count > 0:
+                result.TryAdd("request", customException.ErrorMessages.ToArray());
+                break;
+
             default:
                 break;
         }

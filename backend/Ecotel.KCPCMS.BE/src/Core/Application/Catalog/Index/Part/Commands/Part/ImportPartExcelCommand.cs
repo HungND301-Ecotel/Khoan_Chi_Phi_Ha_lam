@@ -30,11 +30,18 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         }
 
         using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<PartExcelDto>(stream);
+        var dtos = excelService.ImportFromExcel<PartExcelDto>(stream) ?? [];
 
-        var importRows = dtos
-            .Select((dto, index) => BuildImportRow(dto, index + 2))
-            .ToList();
+        var importErrors = new List<string>();
+        var importRows = new List<PartImportRow>();
+
+        for (var i = 0; i < dtos.Count; i++)
+        {
+            if (TryBuildImportRow(dtos[i], i + 2, importRows, importErrors))
+            {
+                continue;
+            }
+        }
 
         var groupedRows = importRows
             .GroupBy(r => r.PartCodeNormalized)
@@ -42,7 +49,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
 
         foreach (var rowGroup in groupedRows)
         {
-            ValidateConsistentPartRows(rowGroup);
+            ValidateConsistentPartRows(rowGroup, importErrors);
         }
 
         var equipmentCodes = importRows
@@ -62,7 +69,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var equipmentEntities = await _equipmentRepository.GetAllAsync(
-            predicate: p => equipmentCodes.Contains(p.Code!.Value),
+            predicate: p => p.Code != null && equipmentCodes.Contains(p.Code.Value),
             include: p => p.Include(p => p.Code!),
             disableTracking: false);
         var equipmentMap = equipmentEntities.ToDictionary(p => p.Code!.Value.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
@@ -73,12 +80,12 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         {
             if (string.IsNullOrWhiteSpace(row.UnitName) || !dbUnitOfMeasureNames.Contains(row.UnitName))
             {
-                throw new BadRequestException($"Mã phụ tùng '{row.PartCodeDisplay}' có đơn vị tính '{row.Dto.UnitOfMeasureName}' không tồn tại ở dòng {row.RowNumber}.");
+                importErrors.Add($"Mã phụ tùng '{row.PartCodeDisplay}' có đơn vị tính '{row.Dto.UnitOfMeasureName}' không tồn tại ở dòng {row.RowNumber}.");
             }
 
             if (!equipmentCodeSet.Contains(row.EquipmentCode))
             {
-                throw new BadRequestException($"Mã phụ tùng '{row.PartCodeDisplay}' có mã thiết bị '{row.EquipmentCode}' không tồn tại ở dòng {row.RowNumber}.");
+                importErrors.Add($"Mã phụ tùng '{row.PartCodeDisplay}' có mã thiết bị '{row.Dto.EquipmentCode}' không tồn tại ở dòng {row.RowNumber}.");
             }
         }
 
@@ -91,7 +98,8 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
 
             if (!unitOfMeasureIdMap.TryGetValue(firstRow.UnitName, out var unitOfMeasureId))
             {
-                throw new BadRequestException($"Mã phụ tùng '{firstRow.PartCodeDisplay}' có đơn vị tính '{dto.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                importErrors.Add($"Mã phụ tùng '{firstRow.PartCodeDisplay}' có đơn vị tính '{dto.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                continue;
             }
 
             var equipmentCodesByPart = rowGroup
@@ -107,7 +115,8 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
 
             if (!mappedEquipments.Any())
             {
-                throw new BadRequestException($"Mã phụ tùng '{firstRow.PartCodeDisplay}' không có mã thiết bị hợp lệ ở dòng {rowNumber}.");
+                importErrors.Add($"Mã phụ tùng '{firstRow.PartCodeDisplay}' không có mã thiết bị hợp lệ ở dòng {rowNumber}.");
+                continue;
             }
 
             var partId = Guid.NewGuid();
@@ -116,12 +125,18 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
             {
                 var costList = costService.ParseExcelCostString(dto.Cost, CostType.Part, partId);
                 costList = RebuildPartCosts(costList, partId);
-                ValidateSinglePartCosts(partEntity.Code?.Value ?? firstRow.PartCodeDisplay, costList, partId);
+
+                if (!TryValidateSinglePartCosts(partEntity.Code?.Value ?? firstRow.PartCodeDisplay, costList, partId, out var singleCostError))
+                {
+                    importErrors.Add(singleCostError);
+                    continue;
+                }
+
                 excelDtos.Add((partEntity, rowNumber, firstRow.PartCodeNormalized, costList));
             }
             catch (Exception ex)
             {
-                throw new BadRequestException($"Mã phụ tùng '{firstRow.PartCodeDisplay}' có đơn giá '{dto.Cost}' không hợp lệ ở dòng {rowNumber}. Chi tiết: {ex.Message}");
+                importErrors.Add($"Mã phụ tùng '{firstRow.PartCodeDisplay}' có đơn giá '{dto.Cost}' không hợp lệ ở dòng {rowNumber}. Chi tiết: {ex.Message}");
             }
         }
 
@@ -198,7 +213,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                             return $"thiết bị '{g.Key}' (dòng {lines}, DB PartId: {partIds})";
                         }));
 
-                throw new ConflictException(
+                importErrors.Add(
                     $"Mã phụ tùng '{group.Key}' bị trùng theo cả PartCode + EquipmentCode trong DB. " +
                     $"Các dòng Excel liên quan: {conflictedLines}. Chi tiết: {conflictedEquipments}.");
             }
@@ -250,7 +265,8 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
             {
                 if (await codeService.IsPartCodeExisted(dto.Code!.Value))
                 {
-                    throw new ConflictException($"Mã phụ tùng '{dto.Code!.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    importErrors.Add($"Mã phụ tùng '{dto.Code!.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    continue;
                 }
 
                 addList.Add(dto);
@@ -258,7 +274,12 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
             }
         }
 
-        ValidatePartCosts(insertCost);
+        if (!TryValidatePartCosts(insertCost, out var partCostError))
+        {
+            importErrors.Add(partCostError);
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -304,46 +325,63 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         }
     }
 
-    private static PartImportRow BuildImportRow(PartExcelDto dto, int rowNumber)
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
+
+    private static bool TryBuildImportRow(PartExcelDto dto, int rowNumber, ICollection<PartImportRow> rows, ICollection<string> errors)
     {
         var partCodeDisplay = (dto.Code ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(partCodeDisplay))
         {
-            throw new BadRequestException($"Thiếu mã phụ tùng ở dòng {rowNumber}.");
+            errors.Add($"Thiếu mã phụ tùng ở dòng {rowNumber}.");
+            return false;
         }
 
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            throw new BadRequestException($"Mã phụ tùng '{partCodeDisplay}' thiếu tên phụ tùng ở dòng {rowNumber}.");
+            errors.Add($"Mã phụ tùng '{partCodeDisplay}' thiếu tên phụ tùng ở dòng {rowNumber}.");
+            return false;
         }
 
-        return new PartImportRow(
+        var equipmentCode = ExtractEquipmentCodeFromDisplay(dto.EquipmentCode);
+
+        rows.Add(new PartImportRow(
             dto,
             rowNumber,
             NormalizePartCode(partCodeDisplay),
             partCodeDisplay,
             dto.Name.Trim(),
             dto.UnitOfMeasureName?.Trim() ?? string.Empty,
-            ParseSingleEquipmentCode(dto.EquipmentCode, rowNumber, partCodeDisplay),
-            NormalizeCostString(dto.Cost));
+            equipmentCode,
+            NormalizeCostString(dto.Cost)));
+
+        return true;
     }
-
-    private static string ParseSingleEquipmentCode(string? equipmentCode, int rowNumber, string partCode)
+    private static string ExtractEquipmentCodeFromDisplay(string value)
     {
-        var codes = (equipmentCode ?? string.Empty)
-            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .ToList();
-
-        if (codes.Count != 1)
+        var normalized = (value ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
         {
-            throw new BadRequestException($"Mã phụ tùng '{partCode}' có mã thiết bị '{equipmentCode}' không hợp lệ ở dòng {rowNumber}. Mỗi dòng chỉ được khai báo 1 mã thiết bị.");
+            return string.Empty;
         }
 
-        return codes[0];
+        var separatorIndex = normalized.IndexOf(" - ", StringComparison.Ordinal);
+        return separatorIndex <= 0 ? normalized : normalized[..separatorIndex].Trim();
     }
 
-    private static void ValidateConsistentPartRows(IGrouping<string, PartImportRow> rowGroup)
+    private static void ValidateConsistentPartRows(IGrouping<string, PartImportRow> rowGroup, ICollection<string> errors)
     {
         var rows = rowGroup.OrderBy(x => x.RowNumber).ToList();
         if (rows.Count <= 1)
@@ -359,7 +397,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
         {
             var duplicateDetails = string.Join("; ", duplicateEquipmentGroups.Select(g =>
                 $"thiết bị '{g.Key}' ở các dòng {string.Join(", ", g.Select(x => x.RowNumber))}"));
-            throw new BadRequestException($"Mã phụ tùng '{rows[0].PartCodeDisplay}' bị trùng cặp Mã phụ tùng + Mã thiết bị: {duplicateDetails}.");
+            errors.Add($"Mã phụ tùng '{rows[0].PartCodeDisplay}' bị trùng cặp Mã phụ tùng + Mã thiết bị: {duplicateDetails}.");
         }
 
         var first = rows[0];
@@ -371,10 +409,11 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
                 || !string.Equals(first.CostNormalized, row.CostNormalized, StringComparison.OrdinalIgnoreCase))
             {
                 var lineList = string.Join(", ", rows.Select(r => r.RowNumber));
-                throw new BadRequestException(
+                errors.Add(
                     $"Mã phụ tùng '{first.PartCodeDisplay}' có dữ liệu không đồng nhất ở các dòng {lineList}. " +
                     "Các thông tin phải giống nhau: Tên phụ tùng, Đơn vị tính, Định mức thời gian thay thế, Đơn giá. " +
                     "Chỉ được phép khác Mã thiết bị/Tên thiết bị.");
+                break;
             }
         }
     }
@@ -390,7 +429,7 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
             .ToList();
     }
 
-    private static void ValidateSinglePartCosts(string partCode, IEnumerable<Cost> costs, Guid partId)
+    private static bool TryValidateSinglePartCosts(string partCode, IEnumerable<Cost> costs, Guid partId, out string error)
     {
         foreach (var cost in costs)
         {
@@ -401,12 +440,16 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
 
             if (parentCount != 1 || cost.PartId != partId)
             {
-                throw new BadRequestException($"Mã phụ tùng '{partCode}' có dữ liệu đơn giá không hợp lệ.");
+                error = $"Mã phụ tùng '{partCode}' có dữ liệu đơn giá không hợp lệ.";
+                return false;
             }
         }
+
+        error = string.Empty;
+        return true;
     }
 
-    private static void ValidatePartCosts(IEnumerable<Cost> costs)
+    private static bool TryValidatePartCosts(IEnumerable<Cost> costs, out string error)
     {
         foreach (var cost in costs)
         {
@@ -417,9 +460,13 @@ public class ImportPartExcelCommandHandler(IExcelService excelService, IUnitOfWo
 
             if (parentCount != 1 || !cost.PartId.HasValue)
             {
-                throw new BadRequestException("Dữ liệu đơn giá phụ tùng không hợp lệ.");
+                error = "Dữ liệu đơn giá phụ tùng không hợp lệ.";
+                return false;
             }
         }
+
+        error = string.Empty;
+        return true;
     }
 
     private sealed record PartImportRow(

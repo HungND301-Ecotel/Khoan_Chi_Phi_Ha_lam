@@ -21,6 +21,7 @@ interface PopupOptions {
 	type: PopupType;
 	title?: string;
 	description: string;
+	errorList?: string[];
 	duration?: number;
 }
 
@@ -47,22 +48,24 @@ export function usePopup() {
 
 	const error = (error?: unknown) => {
 		let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
+		let errorList: string[] = [];
 
 		if (error instanceof ErrorResponse) {
 			const mappedMessage = ERROR[error.title];
+			const responseErrors = Object.values(error.errors)
+				.flatMap((value) => (Array.isArray(value) ? value : [value]))
+				.filter(
+					(value): value is string =>
+						typeof value === 'string' && value.trim().length > 0,
+				);
+
+			errorList = [...new Set(responseErrors)];
+
 			if (mappedMessage) {
 				message = mappedMessage;
 			} else {
-				const responseErrors = Object.values(error.errors)
-					.flatMap((value) => (Array.isArray(value) ? value : [value]))
-					.filter(
-						(value): value is string =>
-							typeof value === 'string' && value.trim().length > 0,
-					)
-					.join(', ');
-
 				message =
-					error.message.trim() || responseErrors || error.title || message;
+					error.message.trim() || error.title.trim() || errorList[0] || message;
 			}
 		} else if (typeof error === 'string' && error.trim()) {
 			message = error;
@@ -70,7 +73,11 @@ export function usePopup() {
 			message = error.message;
 		}
 
-		context.showPopup({ type: 'error', description: message });
+		context.showPopup({
+			type: 'error',
+			description: message,
+			errorList: errorList.length > 1 ? errorList : undefined,
+		});
 	};
 	return { success, error };
 }
@@ -175,8 +182,8 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
 					if (!open) closePopup();
 				}}
 			>
-				<DialogContent className='max-w-md min-w-md'>
-					<DialogHeader className='flex flex-col items-center gap-4 text-center'>
+				<DialogContent className='max-h-[85vh] max-w-2xl min-w-md overflow-hidden'>
+					<DialogHeader className='flex min-h-0 w-full flex-col items-center gap-4 overflow-hidden text-center'>
 						<div
 							className={cn(
 								'flex h-16 w-16 items-center justify-center rounded-full border',
@@ -206,6 +213,22 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
 						<DialogDescription className='text-center text-lg whitespace-normal'>
 							{popupState?.description}
 						</DialogDescription>
+
+						{popupState?.type === 'error' &&
+							(popupState?.errorList?.length ?? 0) > 1 && (
+								<div className='mt-2 flex min-h-0 w-full flex-col rounded-md border border-red-200 bg-red-50 p-3 text-left'>
+									<div className='mb-2 text-sm font-semibold text-red-700'>
+										Danh sách lỗi ({popupState?.errorList?.length})
+									</div>
+									<div className='max-h-[45vh] overflow-y-auto pr-1'>
+										<ul className='list-disc space-y-1 pl-5 text-sm wrap-break-word text-red-700'>
+											{popupState?.errorList?.map((item, index) => (
+												<li key={`${index}-${item}`}>{item}</li>
+											))}
+										</ul>
+									</div>
+								</div>
+							)}
 					</DialogHeader>
 
 					{/* Progress bar */}

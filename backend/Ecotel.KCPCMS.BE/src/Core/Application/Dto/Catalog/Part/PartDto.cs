@@ -35,8 +35,6 @@ namespace Application.Dto.Catalog.Part
     {
         [Display(Name = "Mã thiết bị")]
         public string EquipmentCode { get; set; }
-        [Display(Name = "Tên thiết bị")]
-        public string EquipmentName { get; set; }
         [Display(Name = "Mã phụ tùng")]
         public string Code { get; set; }
         [Display(Name = "Tên phụ tùng")]
