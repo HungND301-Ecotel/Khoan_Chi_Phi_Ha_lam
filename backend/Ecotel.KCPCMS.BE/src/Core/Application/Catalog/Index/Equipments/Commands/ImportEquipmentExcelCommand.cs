@@ -20,7 +20,7 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
-    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+    private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
 
     public async Task<bool> Handle(ImportEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
@@ -348,21 +348,8 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             return;
         }
 
-        var first = rows[0];
-        foreach (var row in rows.Skip(1))
-        {
-            if (!string.Equals(first.EquipmentName, row.EquipmentName, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(first.UnitName, row.UnitName, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(first.ProcessGroupCodesNormalized, row.ProcessGroupCodesNormalized, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(first.CostNormalized, row.CostNormalized, StringComparison.OrdinalIgnoreCase))
-            {
-                var lineList = string.Join(", ", rows.Select(r => r.RowNumber));
-                errors.Add(
-                    $"Mã thiết bị '{first.EquipmentCodeDisplay}' có dữ liệu không đồng nhất ở các dòng {lineList}. " +
-                    "Các thông tin phải giống nhau: Tên thiết bị, Đơn vị tính, Mã nhóm công đoạn sản xuất, Đơn giá.");
-                break;
-            }
-        }
+        var lineList = string.Join(", ", rows.Select(r => r.RowNumber));
+        errors.Add($"Mã thiết bị '{rows[0].EquipmentCodeDisplay}' bị trùng ở các dòng {lineList}.");
     }
 
     private static string NormalizeEquipmentCode(string? equipmentCode) => (equipmentCode ?? string.Empty).Trim().ToUpperInvariant();
