@@ -28,6 +28,8 @@ public class Equipment : AuditableEntity<Guid>, IAggregateRoot
     public virtual IReadOnlyCollection<MaintainUnitPrice> MaintainUnitPrices => _maintainUnitPrices.AsReadOnly();
     private IList<ActualEletricityEquipment> _actualEletricityEquipment = new List<ActualEletricityEquipment>();
     public virtual IReadOnlyCollection<ActualEletricityEquipment> ActualEletricityEquipment => _actualEletricityEquipment.AsReadOnly();
+    private IList<EquipmentProcessGroup> _equipmentProcessGroups = new List<EquipmentProcessGroup>();
+    public virtual IReadOnlyCollection<EquipmentProcessGroup> EquipmentProcessGroups => _equipmentProcessGroups.AsReadOnly();
 
     // constructor
     public static Equipment Create(string code, string name, Guid? unitOfMeasureId)

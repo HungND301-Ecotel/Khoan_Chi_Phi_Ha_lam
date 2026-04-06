@@ -26,6 +26,10 @@ namespace Domain.Entities.Index
 
         private IList<SlideUnitPrice> _slideUnitPrices = new List<SlideUnitPrice>();
         public virtual IReadOnlyCollection<SlideUnitPrice> SlideUnitPrices => _slideUnitPrices.AsReadOnly();
+        private IList<EquipmentProcessGroup> _equipmentProcessGroups = new List<EquipmentProcessGroup>();
+        public virtual IReadOnlyCollection<EquipmentProcessGroup> EquipmentProcessGroups => _equipmentProcessGroups.AsReadOnly();
+        private IList<PartProcessGroup> _partProcessGroups = new List<PartProcessGroup>();
+        public virtual IReadOnlyCollection<PartProcessGroup> PartProcessGroups => _partProcessGroups.AsReadOnly();
 
         // constructor
         public static ProcessGroup Create(string code, string name)

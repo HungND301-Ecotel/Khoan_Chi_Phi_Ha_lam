@@ -15,12 +15,20 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
 {
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     public async Task<bool> Handle(CreateEquipmentCommand request, CancellationToken cancellationToken)
     {
         if (await codeService.IsCodeExisted(request.CreateModel.Code))
         {
             throw new ConflictException(CustomResponseMessage.EquipmentCodeAlreadyExists);
         }
+
+        var processGroupIds = (request.CreateModel.ProcessGroupIds ?? [])
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        await EnsureProcessGroupsExist(processGroupIds);
 
         if (request.CreateModel.UnitOfMeasureId != null)
         {
@@ -55,6 +63,15 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
             newEquipment.AddCost(costList);
 
             await _equipmentRepository.InsertAsync(newEquipment, cancellationToken);
+
+            if (processGroupIds.Any())
+            {
+                var equipmentProcessGroups = processGroupIds
+                    .Select(processGroupId => EquipmentProcessGroup.Create(newEquipment.Id, processGroupId))
+                    .ToList();
+                await _equipmentProcessGroupRepository.InsertAsync(equipmentProcessGroups, cancellationToken);
+            }
+
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
         }
@@ -64,5 +81,24 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
             throw;
         }
         return true;
+    }
+
+    private async Task EnsureProcessGroupsExist(ICollection<Guid> processGroupIds)
+    {
+        if (!processGroupIds.Any())
+        {
+            return;
+        }
+
+        var existingProcessGroupIds = await _processGroupRepository.GetAllAsync(
+            selector: x => x.Id,
+            predicate: x => processGroupIds.Contains(x.Id),
+            disableTracking: true);
+
+        var existingIdSet = existingProcessGroupIds.ToHashSet();
+        if (processGroupIds.Any(id => !existingIdSet.Contains(id)))
+        {
+            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
+        }
     }
 }

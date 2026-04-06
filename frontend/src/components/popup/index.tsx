@@ -76,7 +76,7 @@ export function usePopup() {
 		context.showPopup({
 			type: 'error',
 			description: message,
-			errorList: errorList.length > 1 ? errorList : undefined,
+			errorList: errorList.length > 0 ? errorList : undefined,
 		});
 	};
 	return { success, error };
@@ -215,7 +215,7 @@ export function PopupProvider({ children }: { children: React.ReactNode }) {
 						</DialogDescription>
 
 						{popupState?.type === 'error' &&
-							(popupState?.errorList?.length ?? 0) > 1 && (
+							(popupState?.errorList?.length ?? 0) > 0 && (
 								<div className='mt-2 flex min-h-0 w-full flex-col rounded-md border border-red-200 bg-red-50 p-3 text-left'>
 									<div className='mb-2 text-sm font-semibold text-red-700'>
 										Danh sách lỗi ({popupState?.errorList?.length})

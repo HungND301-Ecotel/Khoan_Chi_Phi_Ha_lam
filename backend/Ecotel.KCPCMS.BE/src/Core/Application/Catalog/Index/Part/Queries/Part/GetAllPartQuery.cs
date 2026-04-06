@@ -1,6 +1,5 @@
 using Application.Common.Models;
 using Application.Common.Repositories;
-using Application.Common.Services;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
 using Domain.Common.Enums;
@@ -11,9 +10,10 @@ namespace Application.Catalog.Index.Part.Queries.Part;
 
 public record GetAllPartQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination, DateTime Date) : IRequest<PaginationResponse<PartDto>>;
 
-public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitOfWork unitOfWork) : IRequestHandler<GetAllPartQuery, PaginationResponse<PartDto>>
+public class GetAllPartQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetAllPartQuery, PaginationResponse<PartDto>>
 {
-    IWriteRepository<Domain.Entities.Index.Equipment> equipmentRepository = unitOfWork.GetRepository<Domain.Entities.Index.Equipment>();
+    private readonly IWriteRepository<Domain.Entities.Index.Equipment> equipmentRepository = unitOfWork.GetRepository<Domain.Entities.Index.Equipment>();
+
     public async Task<PaginationResponse<PartDto>> Handle(GetAllPartQuery request, CancellationToken cancellationToken)
     {
         var filter = new PaginationFilter
@@ -24,14 +24,22 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
         };
 
         var checkDate = new DateOnly(request.Date.Year, request.Date.Month, 1);
+        var searchTerm = request.Search?.Trim().ToLower() ?? string.Empty;
 
         var equipments = await equipmentRepository.GetAllAsync(
             predicate: e =>
-                string.IsNullOrWhiteSpace(request.Search) ||
-                e.Name.ToLower().Contains(request.Search) ||
+                string.IsNullOrWhiteSpace(searchTerm) ||
+                e.Name.ToLower().Contains(searchTerm) ||
+                (e.Code != null && e.Code.Value.ToLower().Contains(searchTerm)) ||
                 e.EquipmentParts.Any(ep =>
                     ep.Part.Code != null &&
-                    ep.Part.Code.Value.ToLower().Contains(request.Search)),
+                    ep.Part.Code.Value.ToLower().Contains(searchTerm)) ||
+                e.EquipmentParts.Any(ep =>
+                    ep.Part.PartProcessGroups.Any(ppg =>
+                        ppg.ProcessGroup != null &&
+                        ppg.ProcessGroup.Code != null &&
+                        (ppg.ProcessGroup.Name.ToLower().Contains(searchTerm) ||
+                         ppg.ProcessGroup.Code.Value.ToLower().Contains(searchTerm)))),
             include: e => e.Include(e => e.Code)
                 .Include(e => e.EquipmentParts)
                     .ThenInclude(ep => ep.Part)
@@ -41,7 +49,12 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
                     .ThenInclude(p => p.Code)
                 .Include(e => e.EquipmentParts)
                     .ThenInclude(ep => ep.Part)
-                    .ThenInclude(p => p.Costs),
+                    .ThenInclude(p => p.Costs)
+                .Include(e => e.EquipmentParts)
+                    .ThenInclude(ep => ep.Part)
+                    .ThenInclude(p => p.PartProcessGroups)
+                        .ThenInclude(ppg => ppg.ProcessGroup)
+                        .ThenInclude(pg => pg.Code),
             disableTracking: true
             );
 
@@ -69,12 +82,26 @@ public class GetAllPartQueryHandler(IPaginationService paginationService, IUnitO
                                 c.EndMonth >= checkDate)
                     .Select(c => c.ActualAmount)
                     .FirstOrDefault(),
+                ProcessGroups = ep.Part.PartProcessGroups
+                    .Where(ppg => ppg.ProcessGroup?.Code != null)
+                    .Select(ppg => new PartProcessGroupDto
+                    {
+                        Id = ppg.ProcessGroupId,
+                        Code = ppg.ProcessGroup!.Code!.Value,
+                        Name = ppg.ProcessGroup.Name
+                    })
+                    .OrderBy(pg => pg.Code)
+                    .ThenBy(pg => pg.Name)
+                    .ToList(),
+                ProcessGroupCodeText = string.Join(", ", ep.Part.PartProcessGroups
+                    .Where(ppg => ppg.ProcessGroup?.Code != null)
+                    .Select(ppg => ppg.ProcessGroup!.Code!.Value)
+                    .OrderBy(code => code)),
             })
             .OrderBy(p => p.EquipmentCode)
             .ThenBy(p => p.Name)
             .ToList();
 
-        // Áp dụng pagination thủ công sau khi flatten
         var totalCount = parts.Count;
         var pagedData = filter.IgnorePagination
             ? parts

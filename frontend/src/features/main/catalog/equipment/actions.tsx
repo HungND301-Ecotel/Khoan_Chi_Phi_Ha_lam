@@ -3,6 +3,7 @@ import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMonthYear } from '@/components/form/form-month-year';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormInput } from '@/components/form/form-input';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
@@ -16,6 +17,7 @@ import {
 	equipmentSchema,
 	EquipmentSchema,
 } from '@/features/main/catalog/equipment/schema';
+import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +37,11 @@ export type EquipmentDetail = {
 		costType: number;
 		amount: number;
 	}>;
+	processGroups: Array<{
+		id: string;
+		code: string;
+		name: string;
+	}>;
 };
 
 export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
@@ -42,6 +49,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
+	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 
 	const form = useForm<EquipmentSchema>({
 		resolver: zodResolver(equipmentSchema),
@@ -50,17 +58,22 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 	});
 
 	useEffect(() => {
-		const promises = Promise.all([api.pagging<Unit>(API.CATALOG.UNIT.LIST)]);
+		const promises = Promise.all([
+			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
+		]);
 
-		promises.then(([units]) => {
+		promises.then(([units, processGroups]) => {
 			setUnits(units.result.data);
+			setProcessGroups(processGroups.result.data);
 			if (row) {
 				api
 					.get<EquipmentDetail>(API.CATALOG.EQUIPMENT.DETAIL(row.id))
 					.then((res) => {
-						const { costs, ...equipment } = res.result;
+						const { costs, processGroups, ...equipment } = res.result;
 						form.reset({
 							...equipment,
+							processGroupIds: processGroups.map((item) => item.id),
 							costs:
 								costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -122,6 +135,17 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 				options={units.map((unit) => ({
 					value: unit.id,
 					label: unit.name,
+				}))}
+			/>
+
+			<FormMultiSelect
+				control={form.control}
+				name='processGroupIds'
+				label='Nhóm công đoạn sản xuất'
+				placeholder='Chọn nhóm công đoạn sản xuất'
+				options={processGroups.map((processGroup) => ({
+					value: processGroup.id,
+					label: `${processGroup.code} - ${processGroup.name}`,
 				}))}
 			/>
 

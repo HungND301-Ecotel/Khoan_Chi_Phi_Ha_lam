@@ -1,5 +1,6 @@
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
 
 export type Equipment = {
 	id: string;
@@ -8,6 +9,11 @@ export type Equipment = {
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	currentPrice: number;
+	processGroups: Array<{
+		id: string;
+		code: string;
+		name: string;
+	}>;
 };
 
 export const CATALOG_EQUIPMENT_COLUMNS: ColumnDef<Equipment>[] = [
@@ -18,6 +24,23 @@ export const CATALOG_EQUIPMENT_COLUMNS: ColumnDef<Equipment>[] = [
 	{
 		accessorKey: 'name',
 		header: 'Tên thiết bị',
+	},
+	{
+		accessorKey: 'processGroups',
+		header: 'Nhóm công đoạn sản xuất',
+		cell: ({ row }) => (
+			<div className='flex flex-wrap gap-1'>
+				{(row.original.processGroups ?? []).map((item) => (
+					<Badge
+						key={item.id}
+						variant='secondary'
+						className='whitespace-normal'
+					>
+						{item.code} - {item.name}
+					</Badge>
+				))}
+			</div>
+		),
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

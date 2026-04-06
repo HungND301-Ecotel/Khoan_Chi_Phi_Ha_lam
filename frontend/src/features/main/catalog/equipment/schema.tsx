@@ -12,6 +12,9 @@ export const equipmentSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
+	processGroupIds: z.array(z.string()).min(1, {
+		error: 'Vui lòng chọn ít nhất một nhóm công đoạn sản xuất',
+	}),
 	costs: z.array(
 		z.object({
 			startMonth: z.iso.date({
@@ -39,6 +42,7 @@ export const EQUIPMENT_SCHEMA_DEFAULT: EquipmentSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
+	processGroupIds: [],
 	costs: [
 		{
 			startMonth: '',

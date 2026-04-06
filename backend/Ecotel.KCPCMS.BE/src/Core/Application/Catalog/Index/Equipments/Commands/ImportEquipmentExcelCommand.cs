@@ -1,8 +1,9 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Equipment;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +18,10 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+
     public async Task<bool> Handle(ImportEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -26,101 +30,174 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         }
 
         using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<EquipmentExcelDto>(stream);
+        var dtos = excelService.ImportFromExcel<EquipmentExcelDto>(stream) ?? [];
 
-        //Map data to Entity Model
-
-        var dbUnitOfMeasureNames = (await _unitOfMeasureRepository.GetAllAsync(disableTracking: true))
-            .Select(p => p.Name?.Trim())
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var importErrors = new List<string>();
+        var importRows = new List<EquipmentImportRow>();
 
         for (var i = 0; i < dtos.Count; i++)
         {
-            var unitName = dtos[i].UnitOfMeasureName?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(unitName) || !dbUnitOfMeasureNames.Contains(unitName))
-            {
-                throw new BadRequestException($"Giá trị đơn vị tính '{dtos[i].UnitOfMeasureName}' không tồn tại ở dòng {i + 2}.");
-            }
+            TryBuildImportRow(dtos[i], i + 2, importRows, importErrors);
         }
 
-        var unitNames = dtos
-            .Select(d => d.UnitOfMeasureName?.Trim())
+        var groupedRows = importRows
+            .GroupBy(r => r.EquipmentCodeNormalized)
+            .ToList();
+
+        foreach (var rowGroup in groupedRows)
+        {
+            ValidateConsistentEquipmentRows(rowGroup, importErrors);
+        }
+
+        var unitNames = importRows
+            .Select(r => r.UnitName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var processGroupCodes = importRows
+            .SelectMany(r => r.ProcessGroupCodes)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unitOfMeasure = await _unitOfMeasureRepository.GetAllAsync(
             predicate: p => unitNames.Contains(p.Name),
-            disableTracking: true);
+            disableTracking: false);
         var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var dbUnitOfMeasureNames = unitOfMeasureIdMap.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelDtos = new List<Equipment>();
-        for (var i = 0; i < dtos.Count; i++)
+        var processGroups = await _processGroupRepository.GetAllAsync(
+            predicate: p => p.Code != null && processGroupCodes.Contains(p.Code.Value),
+            include: p => p.Include(p => p.Code!),
+            disableTracking: false);
+        var processGroupMap = processGroups.ToDictionary(p => p.Code!.Value.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
+        var processGroupCodeSet = processGroupMap.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in importRows)
         {
-            var dto = dtos[i];
-            var rowNumber = i + 2;
-            var unitName = dto.UnitOfMeasureName?.Trim() ?? string.Empty;
-
-            if (!unitOfMeasureIdMap.TryGetValue(unitName, out var unitOfMeasureId))
+            if (!string.IsNullOrWhiteSpace(row.UnitName) && !dbUnitOfMeasureNames.Contains(row.UnitName))
             {
-                throw new BadRequestException($"Giá trị đơn vị tính '{dto.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                importErrors.Add($"Mã thiết bị '{row.EquipmentCodeDisplay}' có đơn vị tính '{row.Dto.UnitOfMeasureName}' không tồn tại ở dòng {row.RowNumber}.");
             }
 
+            var invalidProcessGroupCodes = row.ProcessGroupCodes
+                .Where(code => !processGroupCodeSet.Contains(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (invalidProcessGroupCodes.Any())
+            {
+                importErrors.Add($"Mã thiết bị '{row.EquipmentCodeDisplay}' có mã nhóm công đoạn sản xuất '{string.Join(", ", invalidProcessGroupCodes)}' không tồn tại ở dòng {row.RowNumber}.");
+            }
+        }
+
+        var excelDtos = new List<(Equipment Entity, int RowNumber, string EquipmentCode, List<Guid> ProcessGroupIds)>();
+        foreach (var rowGroup in groupedRows)
+        {
+            var firstRow = rowGroup.First();
+            var rowNumber = firstRow.RowNumber;
+            var dto = firstRow.Dto;
+
+            Guid? unitOfMeasureId = null;
+            if (!string.IsNullOrWhiteSpace(firstRow.UnitName))
+            {
+                if (!unitOfMeasureIdMap.TryGetValue(firstRow.UnitName, out var mappedUnitOfMeasureId))
+                {
+                    importErrors.Add($"Mã thiết bị '{firstRow.EquipmentCodeDisplay}' có đơn vị tính '{dto.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                    continue;
+                }
+
+                unitOfMeasureId = mappedUnitOfMeasureId;
+            }
+
+            var mappedProcessGroupIds = firstRow.ProcessGroupCodes
+                .Select(code => processGroupMap.GetValueOrDefault(code)?.Id)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToList();
+
+            if (!mappedProcessGroupIds.Any())
+            {
+                importErrors.Add($"Mã thiết bị '{firstRow.EquipmentCodeDisplay}' không có mã nhóm công đoạn sản xuất hợp lệ ở dòng {rowNumber}.");
+                continue;
+            }
+
+            var equipmentId = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id;
             try
             {
-                var equipmentEntity = Equipment.Create(dto.Id, dto.Code, dto.Name, unitOfMeasureId);
-                var costList = costService.ParseExcelCostString(dto.Cost, Domain.Common.Enums.CostType.Electricity, Guid.Empty);
+                var equipmentEntity = Equipment.Create(equipmentId, dto.Code, dto.Name, unitOfMeasureId);
+                var costList = costService.ParseExcelCostString(dto.Cost, CostType.Electricity, equipmentId);
                 equipmentEntity.AddCost(costList);
-                excelDtos.Add(equipmentEntity);
+                excelDtos.Add((equipmentEntity, rowNumber, firstRow.EquipmentCodeNormalized, mappedProcessGroupIds));
             }
             catch (Exception ex)
             {
-                throw new BadRequestException($"Giá trị đơn giá '{dto.Cost}' không hợp lệ ở dòng {rowNumber}. Chi tiết: {ex.Message}");
+                importErrors.Add($"Mã thiết bị '{firstRow.EquipmentCodeDisplay}' có đơn giá '{dto.Cost}' không hợp lệ ở dòng {rowNumber}. Chi tiết: {ex.Message}");
             }
         }
 
         var dbEquipments = await _equipmentRepository.GetAllAsync(
-            include: p => p.Include(p => p.Code).Include(p => p.Costs),
-            disableTracking: true);
+            include: p => p.Include(p => p.Code).Include(p => p.Costs).Include(p => p.EquipmentProcessGroups),
+            disableTracking: false);
 
         var deleteList = new List<Equipment>();
         var deleteCost = new List<Cost>();
+        var deleteEquipmentProcessGroups = new List<EquipmentProcessGroup>();
+        var insertEquipmentProcessGroups = new List<EquipmentProcessGroup>();
         var updateList = new List<Equipment>();
         var addList = new List<Equipment>();
 
-        //CheckDelete
-        var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
-        var entitiesToDelete = dbEquipments.Where(x => !excelIds.Contains(x.Id)).ToList();
-        deleteList.AddRange(entitiesToDelete);
+        var excelEquipmentCodes = excelDtos.Select(x => x.EquipmentCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        deleteList.AddRange(dbEquipments.Where(x => !excelEquipmentCodes.Contains(NormalizeEquipmentCode(x.Code?.Value))));
         var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
-        var dbPartDict = dbEquipments.ToDictionary(p => p.Id);
+        var dbEquipmentDict = dbEquipments
+            .Where(p => p.Code != null && !string.IsNullOrWhiteSpace(p.Code.Value))
+            .GroupBy(p => NormalizeEquipmentCode(p.Code!.Value), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(p => p.LastModifiedOn ?? p.CreatedOn)
+                    .ThenByDescending(p => p.CreatedOn)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
 
-        for (var i = 0; i < excelDtos.Count; i++)
+        foreach (var excelDto in excelDtos)
         {
-            var dto = excelDtos[i];
-            var rowNumber = i + 2;
-            if (dto.Id != Guid.Empty && dbPartDict.TryGetValue(dto.Id, out var entityToUpdate))
+            var dto = excelDto.Entity;
+            var rowNumber = excelDto.RowNumber;
+            var processGroupIdsByRow = excelDto.ProcessGroupIds
+                .Distinct()
+                .OrderBy(id => id)
+                .ToList();
+
+            if (dbEquipmentDict.TryGetValue(excelDto.EquipmentCode, out var entityToUpdate))
             {
-                bool isInfoChanged = entityToUpdate.CheckChange(dto);
-                bool isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), dto.Costs.ToList());
+                var isInfoChanged = entityToUpdate.CheckChange(dto);
+                var isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), dto.Costs.ToList());
+                var existingProcessGroupIds = entityToUpdate.EquipmentProcessGroups
+                    .Select(epg => epg.ProcessGroupId)
+                    .Distinct()
+                    .OrderBy(id => id)
+                    .ToList();
+                var isProcessGroupChanged = !existingProcessGroupIds.SequenceEqual(processGroupIdsByRow);
 
-                if (isInfoChanged || isCostChanged)
+                if (isInfoChanged || isCostChanged || isProcessGroupChanged)
                 {
-                    if (await codeService.IsCodeExisted(dto.Code.Value, entityToUpdate.Code.Id))
-                    {
-                        throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
-                    }
-
                     entityToUpdate.Update(dto.Code.Value, dto.Name, dto.UnitOfMeasureId);
 
                     if (isCostChanged)
                     {
                         deleteCost.AddRange(entityToUpdate.Costs.ToList());
-
                         entityToUpdate.ClearCost();
                         entityToUpdate.AddCost(dto.Costs.ToList());
+                    }
+
+                    if (isProcessGroupChanged)
+                    {
+                        deleteEquipmentProcessGroups.AddRange(entityToUpdate.EquipmentProcessGroups.ToList());
+                        insertEquipmentProcessGroups.AddRange(processGroupIdsByRow
+                            .Select(processGroupId => EquipmentProcessGroup.Create(entityToUpdate.Id, processGroupId)));
                     }
 
                     updateList.Add(entityToUpdate);
@@ -128,17 +205,19 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             }
             else
             {
-                // 3. Thêm mới nếu không tìm thấy ID
                 if (await codeService.IsCodeExisted(dto.Code.Value))
                 {
-                    throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    importErrors.Add($"Mã thiết bị '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    continue;
                 }
 
-                var newPart = Equipment.Create(dto.Code.Value, dto.Name, dto.UnitOfMeasureId);
-                newPart.AddCost(dto.Costs.ToList());
-                addList.Add(newPart);
+                addList.Add(dto);
+                insertEquipmentProcessGroups.AddRange(processGroupIdsByRow
+                    .Select(processGroupId => EquipmentProcessGroup.Create(dto.Id, processGroupId)));
             }
         }
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -164,7 +243,18 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 {
                     _costRepository.Delete(deleteCost);
                 }
+
+                if (deleteEquipmentProcessGroups.Any())
+                {
+                    _equipmentProcessGroupRepository.Delete(deleteEquipmentProcessGroups);
+                }
+
                 _equipmentRepository.Update(updateList);
+            }
+
+            if (insertEquipmentProcessGroups.Any())
+            {
+                await _equipmentProcessGroupRepository.InsertAsync(insertEquipmentProcessGroups, cancellationToken);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -178,4 +268,114 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         }
     }
 
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
+
+    private static bool TryBuildImportRow(EquipmentExcelDto dto, int rowNumber, ICollection<EquipmentImportRow> rows, ICollection<string> errors)
+    {
+        var equipmentCodeDisplay = (dto.Code ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(equipmentCodeDisplay))
+        {
+            errors.Add($"Thiếu mã thiết bị ở dòng {rowNumber}.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            errors.Add($"Mã thiết bị '{equipmentCodeDisplay}' thiếu tên thiết bị ở dòng {rowNumber}.");
+            return false;
+        }
+
+        var processGroupCodes = ParseProcessGroupCodes(dto.ProcessGroupCodes);
+        if (!processGroupCodes.Any())
+        {
+            errors.Add($"Mã thiết bị '{equipmentCodeDisplay}' thiếu mã nhóm công đoạn sản xuất ở dòng {rowNumber}.");
+            return false;
+        }
+
+        rows.Add(new EquipmentImportRow(
+            dto,
+            rowNumber,
+            NormalizeEquipmentCode(equipmentCodeDisplay),
+            equipmentCodeDisplay,
+            dto.Name.Trim(),
+            dto.UnitOfMeasureName?.Trim() ?? string.Empty,
+            processGroupCodes,
+            NormalizeProcessGroupCodes(processGroupCodes),
+            NormalizeCostString(dto.Cost)));
+
+        return true;
+    }
+
+    private static List<string> ParseProcessGroupCodes(string? processGroupCodes)
+    {
+        return (processGroupCodes ?? string.Empty)
+            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(code => code.Trim().ToUpperInvariant())
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code)
+            .ToList();
+    }
+
+    private static string NormalizeProcessGroupCodes(IEnumerable<string> processGroupCodes)
+    {
+        return string.Join(",",
+            processGroupCodes
+                .Select(code => code.Trim().ToUpperInvariant())
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code));
+    }
+
+    private static void ValidateConsistentEquipmentRows(IGrouping<string, EquipmentImportRow> rowGroup, ICollection<string> errors)
+    {
+        var rows = rowGroup.OrderBy(x => x.RowNumber).ToList();
+        if (rows.Count <= 1)
+        {
+            return;
+        }
+
+        var first = rows[0];
+        foreach (var row in rows.Skip(1))
+        {
+            if (!string.Equals(first.EquipmentName, row.EquipmentName, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(first.UnitName, row.UnitName, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(first.ProcessGroupCodesNormalized, row.ProcessGroupCodesNormalized, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(first.CostNormalized, row.CostNormalized, StringComparison.OrdinalIgnoreCase))
+            {
+                var lineList = string.Join(", ", rows.Select(r => r.RowNumber));
+                errors.Add(
+                    $"Mã thiết bị '{first.EquipmentCodeDisplay}' có dữ liệu không đồng nhất ở các dòng {lineList}. " +
+                    "Các thông tin phải giống nhau: Tên thiết bị, Đơn vị tính, Mã nhóm công đoạn sản xuất, Đơn giá.");
+                break;
+            }
+        }
+    }
+
+    private static string NormalizeEquipmentCode(string? equipmentCode) => (equipmentCode ?? string.Empty).Trim().ToUpperInvariant();
+    private static string NormalizeCostString(string? cost) => (cost ?? string.Empty).Replace(" ", string.Empty).Trim();
+
+    private sealed record EquipmentImportRow(
+        EquipmentExcelDto Dto,
+        int RowNumber,
+        string EquipmentCodeNormalized,
+        string EquipmentCodeDisplay,
+        string EquipmentName,
+        string UnitName,
+        List<string> ProcessGroupCodes,
+        string ProcessGroupCodesNormalized,
+        string CostNormalized);
 }

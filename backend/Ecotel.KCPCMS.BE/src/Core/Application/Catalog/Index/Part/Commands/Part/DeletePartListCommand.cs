@@ -25,7 +25,6 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
             throw new BadRequestException(CustomResponseMessage.DeletedIdsEmpty);
         }
 
-        // Query EquipmentParts kèm Part cha
         var equipmentPartsToDelete = await _equipmentPartRepository.GetAllAsync(
             predicate: x => distinctIds.Contains(x.Id),
             include: t => t.Include(t => t.Part).ThenInclude(p => p.Code),
@@ -41,7 +40,6 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
             throw new NotFoundException(CustomResponseMessage.PartNotFound);
         }
 
-        // Lấy danh sách Part cha duy nhất
         var parentParts = equipmentPartsToDelete
             .Where(ep => ep.Part != null)
             .Select(ep => ep.Part!)
@@ -54,11 +52,9 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
 
         try
         {
-            // Xóa các EquipmentParts được chọn
             _equipmentPartRepository.Delete(equipmentPartsToDelete);
             await unitOfWork.SaveChangesAsync();
 
-            // Query 1 lần — lấy các partId còn EquipmentPart trong DB sau khi xóa
             var partIdsStillHaveEquipment = await _equipmentPartRepository.GetAllAsync(
                 predicate: ep => parentPartIds.Contains(ep.PartId),
                 disableTracking: true);
@@ -67,7 +63,6 @@ public class DeletePartListCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
                 .Select(ep => ep.PartId)
                 .ToHashSet();
 
-            // Xóa các Part không còn EquipmentPart nào
             var partsToDelete = parentParts
                 .Where(p => !partIdsToKeep.Contains(p.Id))
                 .ToList();

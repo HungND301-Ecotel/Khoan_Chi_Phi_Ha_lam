@@ -65,6 +65,7 @@ export function MainCatalogPartPage() {
 			filters={[
 				{ key: 'code', label: 'Mã phụ tùng' },
 				{ key: 'equipmentCode', label: 'Mã thiết bị' },
+				{ key: 'processGroupCodeText', label: 'Nhóm công đoạn' },
 				{ key: 'name', label: 'Tên phụ tùng' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}

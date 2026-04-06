@@ -4,6 +4,7 @@ import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormMonthYear } from '@/components/form/form-month-year';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { MultiSelect, MultiSelectOption } from '@/components/multi-select';
@@ -18,6 +19,7 @@ import {
 	partSchema,
 	PartSchema,
 } from '@/features/main/catalog/part/main/schema';
+import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,6 +34,12 @@ export type PartDetail = {
 	unitOfMeasureName: string;
 	equipmentIds: string[];
 	equipmentCodes: string[];
+	processGroupIds: string[];
+	processGroups: Array<{
+		id: string;
+		code: string;
+		name: string;
+	}>;
 	replacementTimeStandard: number;
 	costs: Array<{
 		startMonth: string;
@@ -48,6 +56,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [equipments, setEquipments] = useState<Equipment[]>([]);
+	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [selectedEquipments, setSelectedEquipments] = useState<
 		MultiSelectOption[]
 	>([]);
@@ -91,27 +100,27 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
 			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST),
+			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
 		]);
 
-		promises.then(([unitsRes, equipmentsRes]) => {
-			const unitsData = unitsRes.result.data;
-			const equipmentsData = equipmentsRes.result.data;
-
-			setUnits(unitsData);
-			setEquipments(equipmentsData);
+		promises.then(([unitsRes, equipmentsRes, processGroupsRes]) => {
+			setUnits(unitsRes.result.data);
+			setEquipments(equipmentsRes.result.data);
+			setProcessGroups(processGroupsRes.result.data);
 
 			if (!row) return;
 			api.get<PartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
-				const { costs, ...part } = res.result;
-				const selectedEquipmentsFromAPI = equipmentsData
-					.filter((equipment) => part.equipmentIds.includes(equipment.id))
+				const { costs, processGroupIds, equipmentIds, ...part } = res.result;
+				const selectedEquipmentsFromAPI = equipmentsRes.result.data
+					.filter((equipment) => equipmentIds.includes(equipment.id))
 					.map<MultiSelectOption>((equipment) => ({
 						label: `${equipment.code} - ${equipment.name}`,
 						value: equipment.id,
 					}));
-
 				form.reset({
 					...part,
+					equipmentIds: equipmentIds ?? [],
+					processGroupIds: processGroupIds ?? [],
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -166,6 +175,17 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				values={selectedEquipments}
 				onValuesChange={setSelectedEquipments}
 				options={equipments.map((item) => ({
+					value: item.id,
+					label: `${item.code} - ${item.name}`,
+				}))}
+			/>
+
+			<FormMultiSelect
+				control={form.control}
+				name='processGroupIds'
+				label='Nhóm công đoạn sản xuất'
+				placeholder='Chọn nhóm công đoạn sản xuất'
+				options={processGroups.map((item) => ({
 					value: item.id,
 					label: `${item.code} - ${item.name}`,
 				}))}

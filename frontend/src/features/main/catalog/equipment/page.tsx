@@ -15,7 +15,8 @@ function MainCatalogEquipmentPage() {
 		try {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const rows = selected.rows.map((row) => row.original.id);
-			api.delete(API.CATALOG.EQUIPMENT.DELETES, rows);
+			const res = await api.delete(API.CATALOG.EQUIPMENT.DELETES, rows);
+			if (!res.success) throw new Error(res.message);
 
 			popup.success(`Đã xoá thành công ${rows.length} thiết bị.`);
 			await data.refresh();

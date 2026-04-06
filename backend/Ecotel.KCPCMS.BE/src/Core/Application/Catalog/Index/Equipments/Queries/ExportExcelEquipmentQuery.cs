@@ -24,6 +24,7 @@ public class ExportExcelEquipmentQueryHandler(IExcelService excelService, IUnitO
             include: p => p
             .Include(p => p.UnitOfMeasure)
             .Include(p => p.Costs)
+            .Include(p => p.EquipmentProcessGroups).ThenInclude(epg => epg.ProcessGroup).ThenInclude(pg => pg.Code)
             .Include(p => p.Code!),
             disableTracking: true);
 
@@ -40,6 +41,11 @@ public class ExportExcelEquipmentQueryHandler(IExcelService excelService, IUnitO
                 Id = l.Id,
                 Code = l.Code?.Value ?? "",
                 Name = l.Name,
+                ProcessGroupCodes = string.Join(", ", l.EquipmentProcessGroups
+                    .Where(epg => epg.ProcessGroup?.Code != null)
+                    .Select(epg => epg.ProcessGroup!.Code!.Value)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(code => code)),
                 UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
                 Cost = costService.BuildExcelCostString(l.Costs.ToList())
             };

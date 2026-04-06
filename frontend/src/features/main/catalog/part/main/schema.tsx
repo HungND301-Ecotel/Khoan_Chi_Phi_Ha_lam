@@ -12,6 +12,9 @@ export const partSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
+	processGroupIds: z.array(z.string()).min(1, {
+		message: 'Nhóm công đoạn sản xuất không được để trống',
+	}),
 	equipmentIds: z.array(z.string()).min(1, {
 		message: 'Mã thiết bị không được để trống',
 	}),
@@ -62,6 +65,7 @@ export const PART_SCHEMA_DEFAULT: PartSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
+	processGroupIds: [],
 	equipmentIds: [],
 	replacementTimeStandard: NaN,
 	costs: [

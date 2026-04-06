@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -10,6 +11,12 @@ export type Part = {
 	unitOfMeasureName: string;
 	equipmentId: string;
 	equipmentCode: string;
+	processGroupCodeText: string;
+	processGroups: Array<{
+		id: string;
+		code: string;
+		name: string;
+	}>;
 	replacementTimeStandard: number;
 	costAmount: number;
 	actualAmount: number;
@@ -35,6 +42,23 @@ export const CATALOG_PART_COLUMNS: ColumnDef<Part>[] = [
 	{
 		accessorKey: 'replacementTimeStandard',
 		header: 'Thời gian sử dụng (tháng)',
+	},
+	{
+		accessorKey: 'processGroupCodeText',
+		header: 'Nhóm công đoạn',
+		cell: ({ row }) => (
+			<div className='flex flex-wrap gap-1'>
+				{(row.original.processGroups ?? []).map((item) => (
+					<Badge
+						key={item.id}
+						variant='secondary'
+						className='whitespace-normal'
+					>
+						{item.code} - {item.name}
+					</Badge>
+				))}
+			</div>
+		),
 	},
 	{
 		accessorKey: 'costAmount',

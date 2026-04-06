@@ -27,6 +27,7 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
             include: p => p
             .Include(p => p.UnitOfMeasure)
             .Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
+            .Include(p => p.PartProcessGroups).ThenInclude(ppg => ppg.ProcessGroup).ThenInclude(pg => pg.Code)
             .Include(p => p.Code)
             .Include(p => p.Costs),
             disableTracking: true);
@@ -46,11 +47,17 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
         var dtoList = list.SelectMany(l =>
         {
             var cost = costService.BuildExcelCostString(l.Costs.ToList());
+            var processGroupCodes = string.Join(", ", l.PartProcessGroups
+                .Where(ppg => ppg.ProcessGroup?.Code != null)
+                .Select(ppg => ppg.ProcessGroup!.Code!.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code));
             var equipmentRows = l.EquipmentParts
                 .Where(ep => ep.Equipment?.Code != null)
                 .Select(ep => new PartExcelDto
                 {
                     EquipmentCode = $"{ep.Equipment!.Code!.Value} - {ep.Equipment.Name}",
+                    ProcessGroupCodes = processGroupCodes,
                     Code = l.Code.Value,
                     Name = l.Name,
                     UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
@@ -69,6 +76,7 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
                 new()
                 {
                     EquipmentCode = string.Empty,
+                    ProcessGroupCodes = processGroupCodes,
                     Code = l.Code.Value,
                     Name = l.Name,
                     UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,

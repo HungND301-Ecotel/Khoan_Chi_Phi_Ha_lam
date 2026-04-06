@@ -28,6 +28,8 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
         private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
         public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
+        private IList<PartProcessGroup> _partProcessGroups = new List<PartProcessGroup>();
+        public virtual IReadOnlyCollection<PartProcessGroup> PartProcessGroups => _partProcessGroups.AsReadOnly();
 
         // constructor
         public static Part Create(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, PartType type = PartType.Part)

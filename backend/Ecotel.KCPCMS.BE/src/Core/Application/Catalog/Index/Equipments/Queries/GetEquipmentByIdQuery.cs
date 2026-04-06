@@ -19,7 +19,13 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
     {
         var detail = await _equipmentRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
-            include: t => t.Include(c => c.UnitOfMeasure).Include(c => c.Costs).Include(c => c.Code),
+            include: t => t
+                .Include(c => c.UnitOfMeasure)
+                .Include(c => c.Costs)
+                .Include(c => c.Code)
+                .Include(c => c.EquipmentProcessGroups)
+                    .ThenInclude(c => c.ProcessGroup)
+                    .ThenInclude(c => c.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
 
@@ -30,7 +36,18 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
             Name = detail.Name,
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
-            Costs = detail.Costs.Adapt<List<ElectricityCostDto>>()
+            Costs = detail.Costs.Adapt<List<ElectricityCostDto>>(),
+            ProcessGroups = detail.EquipmentProcessGroups
+                .Where(epg => epg.ProcessGroup?.Code != null)
+                .Select(epg => new EquipmentProcessGroupDto
+                {
+                    Id = epg.ProcessGroupId,
+                    Code = epg.ProcessGroup!.Code!.Value,
+                    Name = epg.ProcessGroup.Name
+                })
+                .OrderBy(x => x.Code)
+                .ThenBy(x => x.Name)
+                .ToList()
         };
     }
 }

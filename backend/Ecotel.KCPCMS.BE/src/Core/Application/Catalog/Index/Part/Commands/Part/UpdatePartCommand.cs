@@ -17,6 +17,8 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
 {
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<PartProcessGroup> _partProcessGroupRepository = unitOfWork.GetRepository<PartProcessGroup>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     public async Task<bool> Handle(UpdatePartCommand request, CancellationToken cancellationToken)
@@ -35,6 +37,12 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
         }
 
+        var processGroupIds = (request.UpdateModel.ProcessGroupIds ?? [])
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        await EnsureProcessGroupsExist(processGroupIds);
+
         if (request.UpdateModel.UnitOfMeasureId != null)
         {
             bool checkUnitOfMeasureExisted = await _unitOfMeasureRepository.ExistsAsync(x => x.Id == request.UpdateModel.UnitOfMeasureId);
@@ -45,7 +53,7 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         }
         var existedPart = await _partRepository.GetFirstOrDefaultAsync(
             predicate: m => m.Id == request.UpdateModel.Id,
-            include: m => m.Include(c => c.Costs).Include(c => c.Code).Include(c => c.EquipmentParts),
+            include: m => m.Include(c => c.Costs).Include(c => c.Code).Include(c => c.EquipmentParts).Include(c => c.PartProcessGroups),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         if (await codeService.IsPartCodeExisted(request.UpdateModel.Code, existedPart.CodeId))
@@ -57,6 +65,15 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         try
         {
             _costRepository.Delete(existedPart.Costs.ToList());
+
+            var existedPartProcessGroups = await _partProcessGroupRepository.GetAllAsync(
+                predicate: x => x.PartId == existedPart.Id,
+                disableTracking: false);
+            if (existedPartProcessGroups.Any())
+            {
+                _partProcessGroupRepository.Delete(existedPartProcessGroups);
+            }
+
             await unitOfWork.SaveChangesAsync();
 
             existedPart.Update(
@@ -85,6 +102,14 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
 
             existedPart.AddCost(costList);
 
+            if (processGroupIds.Any())
+            {
+                var partProcessGroups = processGroupIds
+                    .Select(processGroupId => PartProcessGroup.Create(existedPart.Id, processGroupId))
+                    .ToList();
+                await _partProcessGroupRepository.InsertAsync(partProcessGroups, cancellationToken);
+            }
+
             _partRepository.Update(existedPart);
 
             await unitOfWork.SaveChangesAsync();
@@ -96,5 +121,24 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             throw;
         }
         return true;
+    }
+
+    private async Task EnsureProcessGroupsExist(ICollection<Guid> processGroupIds)
+    {
+        if (!processGroupIds.Any())
+        {
+            return;
+        }
+
+        var existingProcessGroupIds = await _processGroupRepository.GetAllAsync(
+            selector: x => x.Id,
+            predicate: x => processGroupIds.Contains(x.Id),
+            disableTracking: true);
+
+        var existingIdSet = existingProcessGroupIds.ToHashSet();
+        if (processGroupIds.Any(id => !existingIdSet.Contains(id)))
+        {
+            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
+        }
     }
 }
