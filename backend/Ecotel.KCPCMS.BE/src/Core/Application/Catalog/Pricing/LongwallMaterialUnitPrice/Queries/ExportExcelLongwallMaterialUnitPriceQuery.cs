@@ -95,8 +95,11 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             headerWidthInstructions.Add((new[] { col }, title));
         }
 
-        var seamFaceNames = seamFaceEntities.Select(s => s.Value).ToList();
-        var seamFaceColumns = seamFaceNames
+        var seamFaceNames = seamFaceEntities
+            .Select(s => s.Value)
+            .OrderBy(v => ExtractLeadingNumber(v))   // sort số trước
+            .ThenBy(v => v, StringComparer.OrdinalIgnoreCase) // fallback text
+            .ToList(); var seamFaceColumns = seamFaceNames
             .Select((name, index) => new
             {
                 name,
@@ -351,5 +354,14 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         {
             worksheet.Column(columnIndex).Width = perColumnWidth;
         }
+    }
+
+    private static double ExtractLeadingNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
+
+        // Tìm số đầu tiên trong chuỗi, ví dụ: "M =12m" → 12, "M =9m" → 9
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+(\.\d+)?");
+        return match.Success ? double.Parse(match.Value, System.Globalization.CultureInfo.InvariantCulture) : double.MaxValue;
     }
 }
