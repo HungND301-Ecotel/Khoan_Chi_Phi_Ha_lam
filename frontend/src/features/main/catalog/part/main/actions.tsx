@@ -219,8 +219,8 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 			<FormNumber
 				control={form.control}
 				name={`replacementTimeStandard`}
-				label='Thời gian sử dụng (tháng)'
-				placeholder='Nhập thời gian sử dụng (tháng)'
+				label='Định mức thời gian thay thế (tháng)'
+				placeholder='Nhập định mức thời gian thay thế (tháng)'
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>

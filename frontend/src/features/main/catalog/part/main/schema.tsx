@@ -20,10 +20,10 @@ export const partSchema = z.object({
 	}),
 	replacementTimeStandard: z.coerce
 		.number<number>({
-			message: 'Thời gian sử dụng phải là số',
+			message: 'Định mức thời gian thay thế (tháng) phải là số',
 		})
 		.gt(0, {
-			message: 'Thời gian sử dụng phải lớn hơn 0',
+			message: 'Định mức thời gian thay thế (tháng) phải lớn hơn 0',
 		}),
 	costs: z
 		.array(

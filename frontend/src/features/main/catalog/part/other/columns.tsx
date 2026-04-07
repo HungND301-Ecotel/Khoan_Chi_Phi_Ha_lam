@@ -27,7 +27,7 @@ export const CATALOG_OTHER_PART_COLUMNS: ColumnDef<OtherPart>[] = [
 	},
 	{
 		accessorKey: 'replacementTimeStandard',
-		header: 'Thời gian sử dụng (tháng)',
+		header: 'Định mức thời gian thay thế (tháng)',
 	},
 	{
 		accessorKey: 'costAmount',
