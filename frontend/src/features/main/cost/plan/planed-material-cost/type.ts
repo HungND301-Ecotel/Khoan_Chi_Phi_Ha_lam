@@ -21,6 +21,9 @@ export type UnifiedMaterial = {
 	cuttingThicknessName: string;
 	seamFaceId: string;
 	seamFaceName: string;
+	powerId?: string | null;
+	powerName?: string;
+	isLongwallMaterialUnitPriceCGH?: boolean;
 
 	startMonth: string;
 	endMonth: string;

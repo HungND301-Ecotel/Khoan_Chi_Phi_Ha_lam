@@ -265,9 +265,7 @@ export function PlanMaterialCostForm({
 		}
 
 		// Khi có mã máng trượt: lấy toàn bộ asset và lọc theo assignmentCode
-		return (
-			asset.assignmentCode.trim().toLowerCase() === normalizedSlideCode
-		);
+		return asset.assignmentCode.trim().toLowerCase() === normalizedSlideCode;
 	});
 
 	useEffect(() => {
@@ -345,9 +343,12 @@ export function PlanMaterialCostForm({
 			detailText = fields.filter(Boolean).join(' | ');
 		} else if (groupType === ProcessGroupType.LC) {
 			// Trường hợp Luồng cày/Khai thác (LC)
+			const hardnessOrPowerText =
+				material.powerName?.trim() || material.hardnessName?.trim();
 
 			const fields = [
 				material.technologyName,
+				hardnessOrPowerText,
 				material.seamFaceName,
 				material.longwallParametersName,
 				material.cuttingThicknessName,
@@ -532,31 +533,28 @@ export function PlanMaterialCostForm({
 				</FormRow>
 			)}
 
-			{plan?.processGroupType === ProcessGroupType.DL && (
-				<FormRow>
-					<FormComboBox
-						control={form.control}
-						name='stoneClampRatioReferenceId'
-						label='Tỷ lệ đá kẹp (Ckep)'
-						placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
-						options={stoneClampRatios.map((clamp) => ({
-							label: clamp.value,
-							value: clamp.id,
-						}))}
-					/>
+			<FormRow>
+				<FormComboBox
+					control={form.control}
+					name='stoneClampRatioReferenceId'
+					label='Tỷ lệ đá kẹp (Ckep)'
+					placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
+					options={stoneClampRatios.map((clamp) => ({
+						label: clamp.value,
+						value: clamp.id,
+					}))}
+				/>
 
-					<div className='flex-1 space-y-2'>
-						<Label>Hệ số điều chỉnh định mức</Label>
-						<Input readOnly value={selectedNormFactor?.value ?? ''} />
-					</div>
+				<div className='flex-1 space-y-2'>
+					<Label>Hệ số điều chỉnh định mức</Label>
+					<Input readOnly value={selectedNormFactor?.value ?? ''} />
+				</div>
 
-					<div className='flex-1 space-y-2'>
-						<Label>Định mức tham chiếu</Label>
-						<Input readOnly value={referenceHardnessValue} />
-					</div>
-				</FormRow>
-			)}
-
+				<div className='flex-1 space-y-2'>
+					<Label>Định mức tham chiếu</Label>
+					<Input readOnly value={referenceHardnessValue} />
+				</div>
+			</FormRow>
 			<DataTableEditConfirm />
 		</FormProvider>
 	);

@@ -49,7 +49,7 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
             EndMonth = m.EndMonth,
             TotalPrice = m.TotalPrice,
             TechnologyId = m.TechnologyId,
-            TechnologyName = m.Technology.Value,
+            TechnologyName = m.Technology != null ? m.Technology.Value : null,
             Type = m is DomainEntities.LongwallMaterialUnitPrice ? MaterialUnitPriceType.Longwall : MaterialUnitPriceType.TunnelExcavation,
 
             // Longwall Properties
@@ -63,14 +63,33 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
             CuttingThicknessName = m is DomainEntities.LongwallMaterialUnitPrice ? ((DomainEntities.LongwallMaterialUnitPrice)m).CuttingThickness!.Value : null,
             SeamFaceId = m is DomainEntities.LongwallMaterialUnitPrice ? ((DomainEntities.LongwallMaterialUnitPrice)m).SeamFaceId : null,
             SeamFaceName = m is DomainEntities.LongwallMaterialUnitPrice ? ((DomainEntities.LongwallMaterialUnitPrice)m).SeamFace!.Value : null,
+            PowerId = m is DomainEntities.LongwallMaterialUnitPrice ? ((DomainEntities.LongwallMaterialUnitPrice)m).PowerId : null,
+            PowerName = m is DomainEntities.LongwallMaterialUnitPrice
+                ? (((DomainEntities.LongwallMaterialUnitPrice)m).Power != null
+                    ? ((DomainEntities.LongwallMaterialUnitPrice)m).Power!.Value
+                    : null)
+                : null,
+            IsLongwallMaterialUnitPriceCGH = m is DomainEntities.LongwallMaterialUnitPrice
+                ? ((DomainEntities.LongwallMaterialUnitPrice)m).IsLongwallMaterialUnitPriceCGH
+                : null,
 
             // TunnelExcavation Properties
             PassportId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).PassportId : null,
             PassportName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ?
                 $"H/c {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Name}; {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Sd}; {((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Passport!.Sc} "
                 : null,
-            HardnessId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).HardnessId : null,
-            HardnessName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Hardness!.Value : null,
+            HardnessId = m is DomainEntities.TunnelExcavationMaterialUnitPrice
+                ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).HardnessId
+                : (m is DomainEntities.LongwallMaterialUnitPrice
+                    ? ((DomainEntities.LongwallMaterialUnitPrice)m).HardnessId
+                    : null),
+            HardnessName = m is DomainEntities.TunnelExcavationMaterialUnitPrice
+                ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Hardness!.Value
+                : (m is DomainEntities.LongwallMaterialUnitPrice
+                    ? (((DomainEntities.LongwallMaterialUnitPrice)m).Hardness != null
+                        ? ((DomainEntities.LongwallMaterialUnitPrice)m).Hardness!.Value
+                        : null)
+                    : null),
             InsertItemId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).InsertItemId : null,
             InsertItemName = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).InsertItem!.Value : null,
             SupportStepId = m is DomainEntities.TunnelExcavationMaterialUnitPrice ? ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).SupportStepId : null,

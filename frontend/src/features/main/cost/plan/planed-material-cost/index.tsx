@@ -18,7 +18,7 @@ import { ProcessGroupType } from '@/constants/process-group';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
 import {
-	PLANED_MATERIAL_COST_SUMMARY_COLUMNS,
+	getPlanedMaterialCostSummaryColumns,
 	PlanedMaterialCostSummary,
 	PlanedMaterialCostType,
 } from '@/features/main/cost/plan/planed-material-cost/columns';
@@ -102,7 +102,12 @@ export function PlanedMaterialCost({
 
 				let slideUsage = '-';
 				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
-				let stoneClampRatio = '-';
+				const stoneClampRatioReferenceId =
+					result.stoneClampRatioReferenceId ||
+					(result as unknown as { stoneClampRatioId?: string }).stoneClampRatioId;
+				const stoneClampRatio =
+					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
+						?.value || '-';
 
 				if (plan?.processGroupType === ProcessGroupType.DL) {
 					if (!result.slideUnitPriceAssignmentCodeId) {
@@ -152,13 +157,6 @@ export function PlanedMaterialCost({
 							}
 						}
 					}
-					const stoneClampRatioReferenceId =
-						result.stoneClampRatioReferenceId ||
-						(result as unknown as { stoneClampRatioId?: string })
-							.stoneClampRatioId;
-					stoneClampRatio =
-						allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
-							?.value || '-';
 				}
 
 				setSummary([
@@ -254,7 +252,9 @@ export function PlanedMaterialCost({
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable
-							columns={PLANED_MATERIAL_COST_SUMMARY_COLUMNS}
+							columns={getPlanedMaterialCostSummaryColumns(
+								plan?.processGroupType,
+							)}
 							items={summary}
 							compact={true}
 							hasActions={false}

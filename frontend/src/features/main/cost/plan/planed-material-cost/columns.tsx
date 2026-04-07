@@ -1,5 +1,6 @@
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+import { ProcessGroupType } from '@/constants/process-group';
 
 export type PlanedMaterialCostItem = {
 	materialId: string;
@@ -64,27 +65,37 @@ export type PlanedMaterialCostSummary = {
 	normFactorValue: string;
 };
 
-export const PLANED_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<PlanedMaterialCostSummary>[] =
-	[
+export const getPlanedMaterialCostSummaryColumns = (
+	processGroupType?: number,
+): ColumnDef<PlanedMaterialCostSummary>[] => {
+	const columns: ColumnDef<PlanedMaterialCostSummary>[] = [
 		{
 			accessorKey: 'materialCode',
 			header: () => (
 				<span className='whitespace-normal'>Mã định mức đơn giá vật liệu</span>
 			),
 		},
-		{
-			accessorKey: 'slideUsage',
-			header: () => (
-				<span className='whitespace-normal'>Sử dụng máng trượt</span>
-			),
-		},
-		{
-			accessorKey: 'slideUnitPriceCost',
-			header: () => (
-				<span className='whitespace-normal'>Đơn giá máng trượt (đ/m)</span>
-			),
-			cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
-		},
+	];
+
+	if (processGroupType === ProcessGroupType.DL) {
+		columns.push(
+			{
+				accessorKey: 'slideUsage',
+				header: () => (
+					<span className='whitespace-normal'>Sử dụng máng trượt</span>
+				),
+			},
+			{
+				accessorKey: 'slideUnitPriceCost',
+				header: () => (
+					<span className='whitespace-normal'>Đơn giá máng trượt (đ/m)</span>
+				),
+				cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
+			},
+		);
+	}
+
+	columns.push(
 		{
 			accessorKey: 'stoneClampRatio',
 			header: () => <span className='whitespace-normal'>Tỷ lệ đá kẹp</span>,
@@ -102,4 +113,7 @@ export const PLANED_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<PlanedMaterialCostS
 			),
 			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
 		},
-	];
+	);
+
+	return columns;
+};

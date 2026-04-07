@@ -26,6 +26,9 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public string? CuttingThicknessName { get; set; }
         public DefaultIdType? SeamFaceId { get; set; }
         public string? SeamFaceName { get; set; }
+        public DefaultIdType? PowerId { get; set; }
+        public string? PowerName { get; set; }
+        public bool? IsLongwallMaterialUnitPriceCGH { get; set; }
 
         // TunnelExcavation Properties
         public DefaultIdType? PassportId { get; set; }
