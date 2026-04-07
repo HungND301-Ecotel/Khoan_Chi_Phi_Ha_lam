@@ -1301,7 +1301,22 @@ public class CatalogController : BaseNoAuthController
     public async Task<IActionResult> GetAllSeamFace([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<SeamFace>(pageIndex, pageSize, search, ignorePagination));
+
+        result.Data = result.Data
+            .OrderBy(d => ExtractLeadingNumber(d.Value))
+            .ThenBy(d => d.Value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    private static double ExtractLeadingNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+(\.\d+)?");
+        return match.Success
+            ? double.Parse(match.Value, System.Globalization.CultureInfo.InvariantCulture)
+            : double.MaxValue;
     }
 
     [HttpGet("SeamFace/export")]
