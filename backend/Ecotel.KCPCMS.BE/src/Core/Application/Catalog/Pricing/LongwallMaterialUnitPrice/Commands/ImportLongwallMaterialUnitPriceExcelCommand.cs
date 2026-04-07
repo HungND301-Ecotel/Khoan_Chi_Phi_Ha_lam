@@ -20,6 +20,7 @@ public record ImportLongwallMaterialUnitPriceExcelCommand(IFormFile File) : IReq
 public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportLongwallMaterialUnitPriceExcelCommand, bool>
 {
     private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string LegacyNoneOptionDisplay = "Không";
 
     private readonly IWriteRepository<LongwallMaterialUnitPriceEntity> _materialUnitPriceRepository = unitOfWork.GetRepository<LongwallMaterialUnitPriceEntity>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
@@ -27,6 +28,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private readonly IWriteRepository<CuttingThickness> _cuttingThicknessRepository = unitOfWork.GetRepository<CuttingThickness>();
     private readonly IWriteRepository<SeamFace> _seamFaceRepository = unitOfWork.GetRepository<SeamFace>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
+    private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
+    private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
@@ -42,6 +45,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(disableTracking: true);
         var seamFaces = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(disableTracking: true);
+        var hardnesses = await _hardnessRepository.GetAllAsync(disableTracking: true);
+        var powers = await _powerRepository.GetAllAsync(disableTracking: true);
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
@@ -78,6 +83,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var technologyIdMap = technologies
             .Where(t => !string.IsNullOrWhiteSpace(t.Value))
             .ToDictionary(t => NormalizeLookupValue(t.Value), t => t.Id, StringComparer.OrdinalIgnoreCase);
+        var hardnessIdMap = hardnesses
+            .Where(h => !string.IsNullOrWhiteSpace(h.Value))
+            .ToDictionary(h => NormalizeLookupValue(h.Value), h => h.Id, StringComparer.OrdinalIgnoreCase);
+        var powerIdMap = powers
+            .Where(p => !string.IsNullOrWhiteSpace(p.Value))
+            .ToDictionary(p => NormalizeLookupValue(p.Value), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var dbEntities = await _materialUnitPriceRepository.GetAllAsync(
             include: e => e
@@ -138,6 +149,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
             var startMonth = ParseMonthYear(row.StartMonth);
             var endMonth = ParseMonthYear(row.EndMonth);
+            var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
 
             var costDtos = row.AssignmentCosts
                 .Select(c => new MaterialUnitPriceAssignmentCodeDto
@@ -161,9 +173,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     longwallParametersId,
                     cuttingThicknessId,
                     seamFaceId,
-                    null,
-                    null,
-                    false,
+                    powerId,
+                    hardnessId,
+                    powerId.HasValue,
                     technologyId,
                     startMonth,
                     endMonth,
@@ -180,9 +192,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     longwallParametersId,
                     cuttingThicknessId,
                     seamFaceId,
-                    null,
-                    null,
-                    false,
+                    powerId,
+                    hardnessId,
+                    powerId.HasValue,
                     technologyId,
                     startMonth,
                     endMonth,
@@ -246,10 +258,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         const int endMonthCol = 2;
         const int processCol = 3;
         const int technologyCol = 4;
-        const int longwallParametersCol = 5;
-        const int cuttingThicknessCol = 6;
-        const int assignmentCol = 7;
-        const int seamFaceStartCol = 8;
+        const int hardnessCol = 5;
+        const int powerCol = 6;
+        const int longwallParametersCol = 7;
+        const int cuttingThicknessCol = 8;
+        const int assignmentCol = 9;
+        const int seamFaceStartCol = 10;
 
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
@@ -282,6 +296,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
             var processName = worksheet.Cell(row, processCol).GetString().Trim();
             var technologyName = worksheet.Cell(row, technologyCol).GetString().Trim();
+            var hardnessName = worksheet.Cell(row, hardnessCol).GetString().Trim();
+            var powerName = worksheet.Cell(row, powerCol).GetString().Trim();
             var longwallParametersName = worksheet.Cell(row, longwallParametersCol).GetString().Trim();
             var cuttingThicknessName = worksheet.Cell(row, cuttingThicknessCol).GetString().Trim();
 
@@ -302,6 +318,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     !string.IsNullOrWhiteSpace(endMonth) ||
                     !string.IsNullOrWhiteSpace(processName) ||
                     !string.IsNullOrWhiteSpace(technologyName) ||
+                    !string.IsNullOrWhiteSpace(hardnessName) ||
+                    !string.IsNullOrWhiteSpace(powerName) ||
                     !string.IsNullOrWhiteSpace(longwallParametersName) ||
                     !string.IsNullOrWhiteSpace(cuttingThicknessName) ||
                     seamFaceCodeByName.Any();
@@ -326,6 +344,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     EndMonth: endMonth,
                     ProcessName: processName,
                     TechnologyName: technologyName,
+                    HardnessName: hardnessName,
+                    PowerName: powerName,
                     LongwallParametersName: longwallParametersName,
                     CuttingThicknessName: cuttingThicknessName,
                     SeamFaceCodeByName: seamFaceCodeByName);
@@ -339,6 +359,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                         EndMonth: endMonth,
                         ProcessName: processName,
                         TechnologyName: technologyName,
+                        HardnessName: hardnessName,
+                        PowerName: powerName,
                         LongwallParametersName: longwallParametersName,
                         CuttingThicknessName: cuttingThicknessName);
 
@@ -352,6 +374,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                         code: seamFace.Value,
                         processName: processName,
                         technologyName: technologyName,
+                        hardnessName: hardnessName,
+                        powerName: powerName,
                         longwallParametersName: longwallParametersName,
                         cuttingThicknessName: cuttingThicknessName,
                         seamFaceName: seamFace.Key,
@@ -412,6 +436,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     EndMonth: currentContext.EndMonth,
                     ProcessName: currentContext.ProcessName,
                     TechnologyName: currentContext.TechnologyName,
+                    HardnessName: currentContext.HardnessName,
+                    PowerName: currentContext.PowerName,
                     LongwallParametersName: currentContext.LongwallParametersName,
                     CuttingThicknessName: currentContext.CuttingThicknessName);
 
@@ -531,6 +557,51 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
     }
 
+    private static (Guid? powerId, Guid? hardnessId) ResolvePowerAndHardness(
+        string powerName,
+        string hardnessName,
+        IReadOnlyDictionary<string, Guid> powerIdMap,
+        IReadOnlyDictionary<string, Guid> hardnessIdMap,
+        string code)
+    {
+        var normalizedPower = NormalizeLookupValue(powerName);
+        var normalizedHardness = NormalizeLookupValue(hardnessName);
+        var normalizedNone = NormalizeLookupValue(LegacyNoneOptionDisplay);
+
+        var isPowerNone = string.IsNullOrWhiteSpace(normalizedPower) || normalizedPower == normalizedNone;
+        var isHardnessNone = string.IsNullOrWhiteSpace(normalizedHardness) || normalizedHardness == normalizedNone;
+
+        if (isPowerNone == isHardnessNone)
+        {
+            throw new BadRequestException(
+                $"Mã '{code}': chỉ một trong hai cột 'Độ kiên cố than đá (f)' hoặc 'Công suất' được để trống.");
+        }
+
+        Guid? powerId = null;
+        if (!isPowerNone)
+        {
+            if (!powerIdMap.TryGetValue(normalizedPower, out var mappedPowerId))
+            {
+                throw new BadRequestException($"Công suất '{powerName}' không tồn tại cho mã '{code}'.");
+            }
+
+            powerId = mappedPowerId;
+        }
+
+        Guid? hardnessId = null;
+        if (!isHardnessNone)
+        {
+            if (!hardnessIdMap.TryGetValue(normalizedHardness, out var mappedHardnessId))
+            {
+                throw new BadRequestException($"Độ kiên cố than đá (f) '{hardnessName}' không tồn tại cho mã '{code}'.");
+            }
+
+            hardnessId = mappedHardnessId;
+        }
+
+        return (powerId, hardnessId);
+    }
+
     private sealed record AssignmentLookupItem(Guid Id, string Display);
 
     private sealed record LongwallRowContext(
@@ -538,6 +609,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         string EndMonth,
         string ProcessName,
         string TechnologyName,
+        string HardnessName,
+        string PowerName,
         string LongwallParametersName,
         string CuttingThicknessName,
         IReadOnlyDictionary<string, string> SeamFaceCodeByName);
@@ -549,6 +622,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         string EndMonth,
         string ProcessName,
         string TechnologyName,
+        string HardnessName,
+        string PowerName,
         string LongwallParametersName,
         string CuttingThicknessName);
 
@@ -556,6 +631,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         string code,
         string processName,
         string technologyName,
+        string hardnessName,
+        string powerName,
         string longwallParametersName,
         string cuttingThicknessName,
         string seamFaceName,
@@ -567,6 +644,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         public string Code { get; } = code;
         public string ProcessName { get; } = processName;
         public string TechnologyName { get; } = technologyName;
+        public string HardnessName { get; } = hardnessName;
+        public string PowerName { get; } = powerName;
         public string LongwallParametersName { get; } = longwallParametersName;
         public string CuttingThicknessName { get; } = cuttingThicknessName;
         public string SeamFaceName { get; } = seamFaceName;

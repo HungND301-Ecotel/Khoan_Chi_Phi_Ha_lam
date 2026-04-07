@@ -20,6 +20,8 @@ namespace Application.Dto.Catalog.LongwallMaterialUnitPrice
         public DefaultIdType? TechnologyId { get; set; }
         public DefaultIdType? PowerId { get; set; }
         public DefaultIdType? HardnessId { get; set; }
+        public string? PowerName { get; set; }
+        public string? HardnessName { get; set; }
         public bool IsLongwallMaterialUnitPriceCGH { get; set; }
         public string TechnologyName { get; set; } = "";
         public LongwallParametersDto LongwallParameters { get; set; }

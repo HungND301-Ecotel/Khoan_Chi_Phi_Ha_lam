@@ -23,6 +23,8 @@ public sealed class LongwallMaterialUnitPricesByPaginationSpec
             .Include(m => m.LongwallParameters)
             .Include(m => m.CuttingThickness)
             .Include(m => m.SeamFace)
+            .Include(m => m.Hardness)
+            .Include(m => m.Power)
             .Include(m => m.Technology)
             .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode)
             .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
@@ -40,6 +42,8 @@ public sealed class LongwallMaterialUnitPricesByPaginationSpec
             TechnologyId = m.TechnologyId,
             PowerId = m.PowerId,
             HardnessId = m.HardnessId,
+            PowerName = m.PowerId == null ? "" : m.Power.Value,
+            HardnessName = m.HardnessId == null ? "" : m.Hardness.Value,
             IsLongwallMaterialUnitPriceCGH = m.IsLongwallMaterialUnitPriceCGH,
             TechnologyName = m.Technology != null ? m.Technology.Value : string.Empty,
             LongwallParameters = m.LongwallParameters.Adapt<LongwallParametersDto>(),

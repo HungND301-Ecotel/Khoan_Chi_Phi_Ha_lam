@@ -21,6 +21,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
     private readonly IWriteRepository<CuttingThickness> _cuttingThicknessRepository = unitOfWork.GetRepository<CuttingThickness>();
     private readonly IWriteRepository<SeamFace> _seamFaceRepository = unitOfWork.GetRepository<SeamFace>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
+    private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
+    private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelLongwallMaterialUnitPriceQuery request, CancellationToken cancellationToken)
@@ -32,6 +34,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 .Include(s => s.CuttingThickness)
                 .Include(s => s.SeamFace)
                 .Include(s => s.Technology)
+                .Include(s => s.Hardness)
+                .Include(s => s.Power)
                 .Include(s => s.Code)
                 .Include(s => s.MaterialUnitPriceAssignmentCodes)
                     .ThenInclude(c => c.AssignmentCode)
@@ -44,6 +48,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(selector: c => c.Value, disableTracking: true);
         var seamFaceEntities = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(selector: s => s.Value, disableTracking: true);
+        var hardnessOptions = (await _hardnessRepository.GetAllAsync(selector: h => h.Value, disableTracking: true))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        var powerOptions = (await _powerRepository.GetAllAsync(selector: p => p.Value, disableTracking: true))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        hardnessOptions.Insert(0, string.Empty);
+        powerOptions.Insert(0, string.Empty);
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
@@ -65,10 +81,12 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         const int endMonthCol = 2;
         const int processCol = 3;
         const int technologyCol = 4;
-        const int longwallParametersCol = 5;
-        const int cuttingThicknessCol = 6;
-        const int assignmentCol = 7;
-        const int seamFaceStartCol = 8;
+        const int hardnessCol = 5;
+        const int powerCol = 6;
+        const int longwallParametersCol = 7;
+        const int cuttingThicknessCol = 8;
+        const int assignmentCol = 9;
+        const int seamFaceStartCol = 10;
 
         var fixedHeaders = new[]
         {
@@ -76,6 +94,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             (endMonthCol, "Thời gian kết thúc"),
             (processCol, "Công đoạn sản xuất"),
             (technologyCol, "Công nghệ khai thác"),
+            (hardnessCol, "Độ kiên cố than đá (f)"),
+            (powerCol, "Công suất"),
             (longwallParametersCol, "Thông số lò chợ"),
             (cuttingThicknessCol, "Chiều dày lớp khấu"),
             (assignmentCol, "Mã giao khoán")
@@ -127,6 +147,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 EndMonth = data.EndMonth.ToString("MM/yyyy"),
                 ProcessName = data.ProductionProcess?.Name?.Trim() ?? string.Empty,
                 TechnologyName = data.Technology?.Value?.Trim() ?? string.Empty,
+                HardnessName = data.Hardness?.Value?.Trim() ?? string.Empty,
+                PowerName = data.Power?.Value?.Trim() ?? string.Empty,
                 LongwallParametersName = data.LongwallParameters != null ? $"{data.LongwallParameters.Llc}-{data.LongwallParameters.Lkc}-{data.LongwallParameters.Mk}" : string.Empty,
                 CuttingThicknessName = data.CuttingThickness?.Value?.Trim() ?? string.Empty
             })
@@ -134,6 +156,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             .ThenBy(group => group.Key.EndMonth)
             .ThenBy(group => group.Key.ProcessName)
             .ThenBy(group => group.Key.TechnologyName)
+            .ThenBy(group => group.Key.HardnessName)
+            .ThenBy(group => group.Key.PowerName)
             .ThenBy(group => group.Key.LongwallParametersName)
             .ThenBy(group => group.Key.CuttingThicknessName)
             .ToList();
@@ -147,6 +171,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             worksheet.Cell(baseRow, endMonthCol).Value = group.Key.EndMonth;
             worksheet.Cell(baseRow, processCol).Value = group.Key.ProcessName;
             worksheet.Cell(baseRow, technologyCol).Value = group.Key.TechnologyName;
+            worksheet.Cell(baseRow, hardnessCol).Value = group.Key.HardnessName;
+            worksheet.Cell(baseRow, powerCol).Value = group.Key.PowerName;
             worksheet.Cell(baseRow, longwallParametersCol).Value = group.Key.LongwallParametersName;
             worksheet.Cell(baseRow, cuttingThicknessCol).Value = group.Key.CuttingThicknessName;
             baseRows.Add(baseRow);
@@ -193,11 +219,13 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var lastDataRow = Math.Max(rowIndex - 1, 100);
         AddDropdownValidation(workbook, worksheet, processCol, processes.ToList(), lastDataRow, 1, 3);
         AddDropdownValidation(workbook, worksheet, technologyCol, technologies.ToList(), lastDataRow, 2, 3);
-        AddDropdownValidation(workbook, worksheet, longwallParametersCol, longwallParameters, lastDataRow, 3, 3);
-        AddDropdownValidation(workbook, worksheet, cuttingThicknessCol, cuttingThicknesses.ToList(), lastDataRow, 4, 3);
-        AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 5, 3);
+        AddDropdownValidation(workbook, worksheet, hardnessCol, hardnessOptions, lastDataRow, 3, 3);
+        AddDropdownValidation(workbook, worksheet, powerCol, powerOptions, lastDataRow, 4, 3);
+        AddDropdownValidation(workbook, worksheet, longwallParametersCol, longwallParameters, lastDataRow, 5, 3);
+        AddDropdownValidation(workbook, worksheet, cuttingThicknessCol, cuttingThicknesses.ToList(), lastDataRow, 6, 3);
+        AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 7, 3);
 
-        var lastHeaderCol = Math.Max(cuttingThicknessCol, seamFaceStartCol + seamFaceNames.Count - 1);
+        var lastHeaderCol = Math.Max(powerCol, seamFaceStartCol + seamFaceNames.Count - 1);
         foreach (var (columns, text) in headerWidthInstructions)
         {
             ApplyColumnWidthForHeader(worksheet, columns, text);

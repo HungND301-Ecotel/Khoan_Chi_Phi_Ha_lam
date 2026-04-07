@@ -21,6 +21,9 @@ export type LongwallMaterial = {
 	seamFaceId: string;
 	technologyId: string;
 	processId: string;
+	powerId?: string | null;
+	hardnessId?: string | null;
+	isLongwallMaterialUnitPriceCGH?: boolean;
 	processName?: string;
 	startMonth: string;
 	endMonth: string;
@@ -31,6 +34,8 @@ export type LongwallMaterial = {
 	seamFaceName?: string;
 	cuttingthicknessId?: string;
 	technologyName?: string;
+	hardnessName?: string;
+	powerName?: string;
 
 	costs: Array<{
 		assignmentCodeId: string;
@@ -57,6 +62,8 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 				longwallParameters,
 				cuttingThickness,
 				technologyName,
+				hardnessName,
+				powerName,
 			} = row.original;
 
 			const longwallParameterText = longwallParameters
@@ -65,16 +72,23 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 			const cuttingThicknessText = cuttingThickness
 				? cuttingThickness.value
 				: '-';
+			const hardnessOrPowerText =
+				powerName?.trim() || hardnessName?.trim() || '';
+			const displayParts = [
+				technologyName?.trim(),
+				hardnessOrPowerText,
+				seamFaceName?.trim(),
+				longwallParameterText,
+				cuttingThicknessText,
+			].filter(Boolean);
 
 			return (
 				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
-					<span>{technologyName ?? ''}</span>
-					<span>|</span>
-					<span>{seamFaceName ?? ''}</span>
-					<span>|</span>
-					<span>{longwallParameterText}</span>
-					<span>|</span>
-					<span>{cuttingThicknessText}</span>
+					{displayParts.map((part, index) => (
+						<span key={`${String(part)}-${index}`}>
+							{index > 0 ? ` | ${part}` : part}
+						</span>
+					))}
 				</div>
 			);
 		},
