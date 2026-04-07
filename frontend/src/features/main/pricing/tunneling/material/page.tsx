@@ -110,7 +110,7 @@ export function MainPricingMaterialPage() {
 		<Tabs defaultValue='material' className='w-full'>
 			<TabsList className='mb-4'>
 				<TabsTrigger value='material'>
-					Đơn giá và định mức vật liệu đào/xén lò
+					Đơn giá và định mức vật liệu đào lò
 				</TabsTrigger>
 				<TabsTrigger value='support-and-drilling'>
 					Đơn giá và định mức lò neo bê tông phun

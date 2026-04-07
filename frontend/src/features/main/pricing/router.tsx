@@ -15,7 +15,7 @@ const MainPricingRouter: RouteObject = {
 	children: [
 		{
 			path: 'tunneling',
-			handle: { breadcrumb: 'Đào/Xén lò' },
+			handle: { breadcrumb: 'Đào lò' },
 			children: [
 				{
 					index: true,
