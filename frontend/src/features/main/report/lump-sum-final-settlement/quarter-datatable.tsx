@@ -24,6 +24,7 @@ import {
 	LumpSumQuarterTransferredCost,
 	ProcessGroup,
 } from '@/features/main/cost/lump-sum-final-settlement/types';
+import { SavingsRateConfig } from '@/features/main/catalog/savings-rate-config/columns';
 import { api } from '@/lib/api';
 import { cn, formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -46,6 +47,38 @@ const toRomanQuarter = (quarter: string | number) => {
 	if (quarterNumber === 4) return 'IV';
 	return String(quarter);
 };
+
+function resolveSavingsValue(
+	acceptedSavingQuarter: number,
+	configs: SavingsRateConfig[],
+) {
+	const boundedConfigs = configs
+		.filter((x) => x.maxRevenue != null && x.maxSavingsRate != null)
+		.sort((a, b) => (a.maxRevenue ?? 0) - (b.maxRevenue ?? 0));
+
+	const matchedBoundedConfig = boundedConfigs.find(
+		(x) => acceptedSavingQuarter <= (x.maxRevenue ?? 0),
+	);
+	if (matchedBoundedConfig?.maxSavingsRate != null) {
+		return matchedBoundedConfig.maxSavingsRate / 100;
+	}
+
+	const unlimitedConfig = configs.filter(
+		(x) => x.maxRevenue == null && x.maxSavingsRate != null,
+	)[0];
+	const maxBoundedRevenue = boundedConfigs.length
+		? Math.max(...boundedConfigs.map((x) => x.maxRevenue ?? 0))
+		: Number.NEGATIVE_INFINITY;
+
+	if (
+		unlimitedConfig?.maxSavingsRate != null &&
+		(boundedConfigs.length === 0 || acceptedSavingQuarter > maxBoundedRevenue)
+	) {
+		return unlimitedConfig.maxSavingsRate / 100;
+	}
+
+	return 0;
+}
 
 interface LumpSumFinalSettlementReportTableProps {
 	enableSearch?: boolean;
@@ -154,6 +187,17 @@ export function LumpSumFinalSettlementReportTable({
 		{ value: string; label: string }[]
 	>([{ value: ALL_PROCESS_GROUP, label: 'Tất cả nhóm công đoạn' }]);
 	const [rows, setRows] = useState<LumpSumFinalSettlement[]>([]);
+	const [quarterSpecialQuantities, setQuarterSpecialQuantities] = useState<{
+		coalExcavationActualQuantity: number;
+		coalCrosscutActualQuantity: number;
+		meterExcavationActualQuantity: number;
+		meterCrosscutActualQuantity: number;
+	}>({
+		coalExcavationActualQuantity: 0,
+		coalCrosscutActualQuantity: 0,
+		meterExcavationActualQuantity: 0,
+		meterCrosscutActualQuantity: 0,
+	});
 	const [revenuesByMonth, setRevenuesByMonth] = useState<
 		LumpSumQuarterRevenueByMonth[]
 	>([]);
@@ -163,6 +207,9 @@ export function LumpSumFinalSettlementReportTable({
 	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>(
 		[],
 	);
+	const [savingsRateConfigs, setSavingsRateConfigs] = useState<
+		SavingsRateConfig[]
+	>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
@@ -233,36 +280,61 @@ export function LumpSumFinalSettlementReportTable({
 						: selectedProcessGroup,
 			};
 
-			const response = await api.post<
-				LumpSumFinalSettlementQuarterResponse,
-				LumpSumFinalSettlementQuarterListRequest
-			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload);
-			const customCostResponse = await api.post<
-				LumpSumQuarterCustomCost[],
-				LumpSumQuarterCustomCostListRequest
-			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
-				quarter,
-				year,
-				processGroupId:
-					selectedProcessGroup === ALL_PROCESS_GROUP
-						? ''
-						: selectedProcessGroup,
-			});
+			const [response, customCostResponse, savingsRateConfigRes] =
+				await Promise.all([
+					api.post<
+						LumpSumFinalSettlementQuarterResponse,
+						LumpSumFinalSettlementQuarterListRequest
+					>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload),
+					api.post<
+						LumpSumQuarterCustomCost[],
+						LumpSumQuarterCustomCostListRequest
+					>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
+						quarter,
+						year,
+						processGroupId:
+							selectedProcessGroup === ALL_PROCESS_GROUP
+								? ''
+								: selectedProcessGroup,
+					}),
+					api.pagging<SavingsRateConfig>(
+						API.CATALOG.SAVINGS_RATE_CONFIG.LIST,
+						{ ignorePagination: true },
+					),
+				]);
 
-			setRows(groupByProcessGroup(response.result.items ?? []));
+			setRows(groupByProcessGroup(response.result.items ?? [], 5));
+			setQuarterSpecialQuantities({
+				coalExcavationActualQuantity:
+					response.result.coalExcavationActualQuantity ?? 0,
+				coalCrosscutActualQuantity:
+					response.result.coalCrosscutActualQuantity ?? 0,
+				meterExcavationActualQuantity:
+					response.result.meterExcavationActualQuantity ?? 0,
+				meterCrosscutActualQuantity:
+					response.result.meterCrosscutActualQuantity ?? 0,
+			});
 			setRevenuesByMonth(response.result.revenuesByMonth ?? []);
 			if (response.result.transferredCosts?.length) {
 				setTransferredCosts(response.result.transferredCosts);
 			} else {
 				setTransferredCosts([]);
 			}
+			setSavingsRateConfigs(savingsRateConfigRes.result.data ?? []);
 			setCustomCosts(
 				customCostResponse.result ?? response.result.customCosts ?? [],
 			);
 		} catch (err) {
 			setRows([]);
+			setQuarterSpecialQuantities({
+				coalExcavationActualQuantity: 0,
+				coalCrosscutActualQuantity: 0,
+				meterExcavationActualQuantity: 0,
+				meterCrosscutActualQuantity: 0,
+			});
 			setRevenuesByMonth([]);
 			setTransferredCosts([]);
+			setSavingsRateConfigs([]);
 			setCustomCosts([]);
 			setError(
 				err instanceof Error
@@ -449,6 +521,27 @@ export function LumpSumFinalSettlementReportTable({
 			savingQuarter.materials +
 			savingQuarter.maintains +
 			savingQuarter.electricities;
+		const savingsValue = resolveSavingsValue(
+			acceptedSavingQuarter,
+			savingsRateConfigs,
+		);
+		const savingAddedToIncomeQuarter = acceptedSavingQuarter * savingsValue;
+		const savingAddedToIncomeByMonth = months.map((_, idx) => {
+			const acceptedSavingMonth =
+				(savingRows[idx]?.materials ?? 0) +
+				(savingRows[idx]?.maintains ?? 0) +
+				(savingRows[idx]?.electricities ?? 0);
+			const savingValueOfMonth = resolveSavingsValue(
+				acceptedSavingMonth,
+				savingsRateConfigs,
+			);
+			return acceptedSavingMonth * savingValueOfMonth;
+		});
+		const firstTwoMonthsSavingAdded =
+			(savingAddedToIncomeByMonth[0] ?? 0) +
+			(savingAddedToIncomeByMonth[1] ?? 0);
+		const lastMonthSavingAdded =
+			savingAddedToIncomeQuarter - firstTwoMonthsSavingAdded;
 
 		const makeZeroRow = (
 			productName: string,
@@ -599,10 +692,10 @@ export function LumpSumFinalSettlementReportTable({
 					hidePlanActual: true,
 					hideUnitPrice: true,
 					isMergedValueRow: true,
-					mergedValue: 0,
+					mergedValue: savingAddedToIncomeQuarter,
 				},
 			),
-			...months.map((monthNumber) =>
+			...months.map((monthNumber, idx) =>
 				makeZeroRow(
 					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`,
 					{
@@ -611,14 +704,65 @@ export function LumpSumFinalSettlementReportTable({
 						hidePlanActual: true,
 						hideUnitPrice: true,
 						isMergedValueRow: true,
-						mergedValue: 0,
+						mergedValue:
+							idx < 2
+								? (savingAddedToIncomeByMonth[idx] ?? 0)
+								: lastMonthSavingAdded,
 					},
 				),
 			),
 		];
 
-		return [...rows, ...defaultRows];
-	}, [customCosts, quarter, revenuesByMonth, rows, transferredCosts, year]);
+		const specialRows: LumpSumFinalSettlement[] = [
+			{
+				sttLabel: '1',
+				productName: 'Than đào lò',
+				unitOfMeasureName: 'Tấn',
+				isBold: true,
+				plannedQuantity: undefined,
+				actualQuantity: quarterSpecialQuantities.coalExcavationActualQuantity,
+				excludeFromSummary: true,
+			},
+			{
+				sttLabel: '2',
+				productName: 'Than xén lò',
+				unitOfMeasureName: 'Tấn',
+				isBold: true,
+				plannedQuantity: undefined,
+				actualQuantity: quarterSpecialQuantities.coalCrosscutActualQuantity,
+				excludeFromSummary: true,
+			},
+			{
+				sttLabel: '3',
+				productName: 'Mét lò đào',
+				unitOfMeasureName: 'm',
+				isBold: true,
+				plannedQuantity: undefined,
+				actualQuantity: quarterSpecialQuantities.meterExcavationActualQuantity,
+				excludeFromSummary: true,
+			},
+			{
+				sttLabel: '4',
+				productName: 'Mét xén lò',
+				unitOfMeasureName: 'm',
+				isBold: true,
+				plannedQuantity: undefined,
+				actualQuantity: quarterSpecialQuantities.meterCrosscutActualQuantity,
+				excludeFromSummary: true,
+			},
+		];
+
+		return [...specialRows, ...rows, ...defaultRows];
+	}, [
+		customCosts,
+		quarter,
+		quarterSpecialQuantities,
+		revenuesByMonth,
+		rows,
+		savingsRateConfigs,
+		transferredCosts,
+		year,
+	]);
 
 	const filteredRows = useMemo(() => {
 		if (!enableSearch || !searchQuery.trim()) {
@@ -664,7 +808,9 @@ export function LumpSumFinalSettlementReportTable({
 	};
 
 	const totalReportValue = useMemo(() => {
-		return filteredRows.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0);
+		return filteredRows
+			.filter((item) => !item.isProcessGroupRow && !item.excludeFromSummary)
+			.reduce((sum, item) => sum + (item.totalAmount ?? 0), 0);
 	}, [filteredRows]);
 
 	return (
