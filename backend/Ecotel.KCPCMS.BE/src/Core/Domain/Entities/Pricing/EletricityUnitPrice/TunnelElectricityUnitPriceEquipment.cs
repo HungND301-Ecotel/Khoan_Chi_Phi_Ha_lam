@@ -50,7 +50,7 @@ public class TunnelElectricityUnitPriceEquipment : ElectricityUnitPriceEquipment
             return 0;
         }
 
-        return Math.Round((MonthlyElectricityCost / (double)AverageMonthlyTunnelProduction), 1);
+        return (MonthlyElectricityCost / (double)AverageMonthlyTunnelProduction);
     }
 
     public override double GetElectricityCostPerMetres()
@@ -59,8 +59,6 @@ public class TunnelElectricityUnitPriceEquipment : ElectricityUnitPriceEquipment
         {
             return CachedTotal.Value;
         }
-
-        var a = GetCurrentElectricityCost();
 
         CachedTotal = GetElectricityConsumePerMetres() * GetCurrentElectricityCost();
         return CachedTotal.Value;

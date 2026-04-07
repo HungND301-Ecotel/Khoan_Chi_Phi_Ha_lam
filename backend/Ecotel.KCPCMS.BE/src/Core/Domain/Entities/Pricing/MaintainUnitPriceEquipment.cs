@@ -41,7 +41,10 @@ namespace Domain.Entities.Pricing
 
         public double GetMaterialRate()
         {
-            return Quantity / (double)(Part?.ReplacementTimeStandard ?? 1 * AverageMonthlyTunnelProduction);
+            var replacementTime = (double)(Part?.ReplacementTimeStandard ?? 1);
+            var avgProduction = (double)AverageMonthlyTunnelProduction;
+
+            return Quantity / (replacementTime * avgProduction);
         }
 
         public double GetMaterialCostPerMetres(DateOnly effectiveMonth)
