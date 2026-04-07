@@ -26,8 +26,8 @@ public class ExportExcelSavingsRateConfigQueryHandler(IExcelService excelService
         var dtoList = list.Select(x => new SavingsRateConfigExcelDto
         {
             Id = x.Id,
-            MaxRevenue = x.MaxRevenue,
-            MaxSavingsRate = x.MaxSavingsRate,
+            RevenueDisplay = x.RevenueDisplay,
+            SavingsRateDisplay = x.SavingsRateDisplay,
             Description = x.Description
         });
 

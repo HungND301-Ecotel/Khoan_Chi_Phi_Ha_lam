@@ -495,36 +495,33 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
         double acceptedSavingQuarter,
         IReadOnlyCollection<SavingsRateConfig> configs)
     {
-        var boundedConfigs = configs
-            .Where(x => x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
-            .OrderBy(x => x.MaxRevenue)
-            .ToList();
-
-        var matchedBoundedConfig = boundedConfigs
-            .FirstOrDefault(x => acceptedSavingQuarter <= (double)x.MaxRevenue!.Value);
-        if (matchedBoundedConfig?.MaxSavingsRate is decimal matchedRate)
-        {
-            return (double)(matchedRate / 100m);
-        }
-
-        var unlimitedConfig = configs
-            .Where(x => !x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
-            .OrderByDescending(x => x.CreatedOn)
+        var matchedConfig = configs
+            .Where(x => IsRevenueInRange(acceptedSavingQuarter, x.MinRevenue, x.MaxRevenue))
+            .OrderByDescending(x => x.MinRevenue ?? decimal.MinValue)
+            .ThenBy(x => x.MaxRevenue ?? decimal.MaxValue)
+            .ThenByDescending(x => x.CreatedOn)
             .FirstOrDefault();
 
-        if (unlimitedConfig?.MaxSavingsRate is decimal unlimitedRate)
+        if (matchedConfig == null)
         {
-            var maxBoundedRevenue = boundedConfigs.Any()
-                ? (double)boundedConfigs.Max(x => x.MaxRevenue!.Value)
-                : double.MinValue;
-
-            if (!boundedConfigs.Any() || acceptedSavingQuarter > maxBoundedRevenue)
-            {
-                return (double)(unlimitedRate / 100m);
-            }
+            return 0;
         }
 
-        return 0;
+        var rawRate = matchedConfig.MaxSavingsRate ?? matchedConfig.MinSavingsRate;
+        if (!rawRate.HasValue)
+        {
+            return 0;
+        }
+
+        var normalizedRate = rawRate.Value > 1 ? rawRate.Value / 100m : rawRate.Value;
+        return (double)normalizedRate;
+    }
+
+    private static bool IsRevenueInRange(double revenue, decimal? minRevenue, decimal? maxRevenue)
+    {
+        var minMatch = !minRevenue.HasValue || revenue >= (double)minRevenue.Value;
+        var maxMatch = !maxRevenue.HasValue || revenue <= (double)maxRevenue.Value;
+        return minMatch && maxMatch;
     }
 
     private static double GetActualQuantityByGroupAndUnit(

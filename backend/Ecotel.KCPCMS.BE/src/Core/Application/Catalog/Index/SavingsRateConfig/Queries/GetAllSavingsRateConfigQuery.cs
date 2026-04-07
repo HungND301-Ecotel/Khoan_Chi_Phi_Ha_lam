@@ -33,7 +33,10 @@ public class GetAllSavingsRateConfigQueryHandler(
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.MaxRevenue).ToList();
+        result.Data = result.Data
+            .OrderBy(d => d.MinRevenue ?? decimal.MinValue)
+            .ThenBy(d => d.MaxRevenue ?? decimal.MaxValue)
+            .ToList();
         return result;
     }
 }

@@ -358,7 +358,10 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static double ExtractLeadingNumber(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return double.MaxValue;
+        }
 
         // Tìm số đầu tiên trong chuỗi, ví dụ: "M =12m" → 12, "M =9m" → 9
         var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+(\.\d+)?");

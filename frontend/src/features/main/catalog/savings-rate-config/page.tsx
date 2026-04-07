@@ -63,8 +63,8 @@ export function MainCatalogSavingsRateConfigPage() {
 			url={API.CATALOG.SAVINGS_RATE_CONFIG.LIST}
 			columns={CATALOG_SAVINGS_RATE_CONFIG_COLUMNS}
 			filters={[
-				{ key: 'maxRevenue', label: 'Tổng doanh thu 3 yếu tố' },
-				{ key: 'maxSavingsRate', label: 'Giá trị tiết kiệm' },
+				{ key: 'revenueDisplay', label: 'Tổng doanh thu 3 yếu tố' },
+				{ key: 'savingsRateDisplay', label: 'Giá trị tiết kiệm' },
 				{ key: 'description', label: 'Mô tả' },
 			]}
 			onCreate={(props) => <SavingsRateConfigForm {...props} />}

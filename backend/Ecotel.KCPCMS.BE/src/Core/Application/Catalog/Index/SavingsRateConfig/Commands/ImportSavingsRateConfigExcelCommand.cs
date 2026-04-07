@@ -5,6 +5,7 @@ using Application.Dto.Catalog.SavingsRateConfig;
 using Application.Interfaces.Services;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using System.Globalization;
 using SavingsRateConfigEntity = Domain.Entities.Index.SavingsRateConfig;
 
 namespace Application.Catalog.Index.SavingsRateConfig.Commands;
@@ -37,15 +38,24 @@ public class ImportSavingsRateConfigExcelCommandHandler(IExcelService excelServi
 
         foreach (var dto in dtos)
         {
+            var revenueDisplay = dto.RevenueDisplay
+                ?? (dto.MaxRevenue.HasValue
+                    ? $"≤ {dto.MaxRevenue.Value.ToString(CultureInfo.InvariantCulture)}"
+                    : null);
+            var savingsRateDisplay = dto.SavingsRateDisplay
+                ?? (dto.MaxSavingsRate.HasValue
+                    ? $"≤ {dto.MaxSavingsRate.Value.ToString(CultureInfo.InvariantCulture)}%"
+                    : null);
+
             if (dto.Id != Guid.Empty && dbEntities.Any(x => x.Id == dto.Id))
             {
                 var entityToUpdate = dbEntities.First(x => x.Id == dto.Id);
-                entityToUpdate.Update(dto.MaxRevenue, dto.MaxSavingsRate, dto.Description);
+                entityToUpdate.Update(revenueDisplay, savingsRateDisplay, dto.Description);
                 updateList.Add(entityToUpdate);
             }
             else
             {
-                addList.Add(SavingsRateConfigEntity.Create(dto.MaxRevenue, dto.MaxSavingsRate, dto.Description));
+                addList.Add(SavingsRateConfigEntity.Create(revenueDisplay, savingsRateDisplay, dto.Description));
             }
         }
 

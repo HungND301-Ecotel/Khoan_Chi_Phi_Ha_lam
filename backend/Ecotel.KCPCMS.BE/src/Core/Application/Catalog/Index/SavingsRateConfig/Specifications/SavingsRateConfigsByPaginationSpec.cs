@@ -13,14 +13,20 @@ public class SavingsRateConfigsByPaginationSpec : EntitiesByPaginationFilterSpec
 
         Query
             .Where(x => string.IsNullOrWhiteSpace(searchTerm) ||
-                        (x.Description != null && x.Description.ToLower().Contains(searchTerm)));
+                        (x.Description != null && x.Description.ToLower().Contains(searchTerm)) ||
+                        (x.RevenueDisplay != null && x.RevenueDisplay.ToLower().Contains(searchTerm)) ||
+                        (x.SavingsRateDisplay != null && x.SavingsRateDisplay.ToLower().Contains(searchTerm)));
 
         Query
             .Select(x => new SavingsRateConfigDto
             {
                 Id = x.Id,
+                MinRevenue = x.MinRevenue,
                 MaxRevenue = x.MaxRevenue,
+                MinSavingsRate = x.MinSavingsRate,
                 MaxSavingsRate = x.MaxSavingsRate,
+                RevenueDisplay = x.RevenueDisplay,
+                SavingsRateDisplay = x.SavingsRateDisplay,
                 Description = x.Description,
                 CreateOn = x.CreatedOn
             });

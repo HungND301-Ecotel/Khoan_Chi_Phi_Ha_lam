@@ -59,32 +59,38 @@ function resolveSavingsValue(
 	acceptedSavingMonth: number,
 	configs: SavingsRateConfig[],
 ) {
-	const boundedConfigs = configs
-		.filter((x) => x.maxRevenue != null && x.maxSavingsRate != null)
-		.sort((a, b) => (a.maxRevenue ?? 0) - (b.maxRevenue ?? 0));
+	const matchedConfig = [...configs]
+		.filter((x) =>
+			isRevenueInRange(acceptedSavingMonth, x.minRevenue, x.maxRevenue),
+		)
+		.sort((a, b) => {
+			const minDiff = (b.minRevenue ?? Number.NEGATIVE_INFINITY) - (a.minRevenue ?? Number.NEGATIVE_INFINITY);
+			if (minDiff !== 0) {
+				return minDiff;
+			}
+			return (a.maxRevenue ?? Number.POSITIVE_INFINITY) - (b.maxRevenue ?? Number.POSITIVE_INFINITY);
+		})[0];
 
-	const matchedBoundedConfig = boundedConfigs.find(
-		(x) => acceptedSavingMonth <= (x.maxRevenue ?? 0),
-	);
-	if (matchedBoundedConfig?.maxSavingsRate != null) {
-		return matchedBoundedConfig.maxSavingsRate / 100;
+	if (!matchedConfig) {
+		return 0;
 	}
 
-	const unlimitedConfig = configs.filter(
-		(x) => x.maxRevenue == null && x.maxSavingsRate != null,
-	)[0];
-	const maxBoundedRevenue = boundedConfigs.length
-		? Math.max(...boundedConfigs.map((x) => x.maxRevenue ?? 0))
-		: Number.NEGATIVE_INFINITY;
-
-	if (
-		unlimitedConfig?.maxSavingsRate != null &&
-		(boundedConfigs.length === 0 || acceptedSavingMonth > maxBoundedRevenue)
-	) {
-		return unlimitedConfig.maxSavingsRate / 100;
+	const rawRate = matchedConfig.maxSavingsRate ?? matchedConfig.minSavingsRate;
+	if (rawRate == null) {
+		return 0;
 	}
 
-	return 0;
+	return rawRate > 1 ? rawRate / 100 : rawRate;
+}
+
+function isRevenueInRange(
+	revenue: number,
+	minRevenue?: number,
+	maxRevenue?: number,
+) {
+	const minMatch = minRevenue == null || revenue >= minRevenue;
+	const maxMatch = maxRevenue == null || revenue <= maxRevenue;
+	return minMatch && maxMatch;
 }
 
 const ExcelReportHeader = ({ month, year }: ExcelReportHeaderProps) => {

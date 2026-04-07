@@ -1,6 +1,5 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
-import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -10,14 +9,15 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { SavingsRateConfig } from './columns';
 import {
 	SAVINGS_RATE_CONFIG_SCHEMA_DEFAULT,
 	savingsRateConfigSchema,
 	SavingsRateConfigSchema,
 } from './schema';
-import { FormNumber } from '@/components/form/form-number';
+
+const SAVINGS_RATE_CONFIG_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
 
 export function SavingsRateConfigForm({
 	data,
@@ -32,17 +32,16 @@ export function SavingsRateConfigForm({
 		defaultValues: SAVINGS_RATE_CONFIG_SCHEMA_DEFAULT,
 		mode: 'onSubmit',
 	});
-	const isUnlimited = useWatch({
-		control: form.control,
-		name: 'isUnlimited',
-	});
 
 	useEffect(() => {
 		if (row) {
 			form.reset({
-				maxRevenue: row.maxRevenue ?? null,
-				isUnlimited: row.maxRevenue == null,
-				maxSavingsRate: row.maxSavingsRate ?? null,
+				revenueDisplay:
+					row.revenueDisplay ??
+					(row.maxRevenue != null ? `≤ ${row.maxRevenue}` : ''),
+				savingsRateDisplay:
+					row.savingsRateDisplay ??
+					(row.maxSavingsRate != null ? `≤ ${row.maxSavingsRate}%` : ''),
 				description: row.description ?? '',
 			});
 		}
@@ -50,8 +49,8 @@ export function SavingsRateConfigForm({
 
 	const handleSubmit = async (values: SavingsRateConfigSchema) => {
 		const payload = {
-			maxRevenue: values.isUnlimited ? null : values.maxRevenue,
-			maxSavingsRate: values.maxSavingsRate,
+			revenueDisplay: values.revenueDisplay,
+			savingsRateDisplay: values.savingsRateDisplay,
 			description: values.description,
 		};
 
@@ -78,23 +77,21 @@ export function SavingsRateConfigForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormNumber
+			<FormInput
 				control={form.control}
-				name='maxRevenue'
+				name='revenueDisplay'
 				label='Tổng doanh thu 3 yếu tố'
 				placeholder='Nhập tổng doanh thu 3 yếu tố'
-				disabled={isUnlimited}
+				type='text'
+				supports={SAVINGS_RATE_CONFIG_SUPPORTS}
 			/>
-			<FormCheckBox
+			<FormInput
 				control={form.control}
-				name='isUnlimited'
-				label='Không giới hạn (dùng cho ngưỡng cuối cùng)'
-			/>
-			<FormNumber
-				control={form.control}
-				name='maxSavingsRate'
+				name='savingsRateDisplay'
 				label='Giá trị tiết kiệm'
 				placeholder='Nhập giá trị tiết kiệm'
+				type='text'
+				supports={SAVINGS_RATE_CONFIG_SUPPORTS}
 			/>
 			<FormInput
 				control={form.control}

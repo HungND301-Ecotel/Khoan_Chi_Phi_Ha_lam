@@ -1312,7 +1312,11 @@ public class CatalogController : BaseNoAuthController
 
     private static double ExtractLeadingNumber(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return double.MaxValue;
+        }
+
         var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+(\.\d+)?");
         return match.Success
             ? double.Parse(match.Value, System.Globalization.CultureInfo.InvariantCulture)

@@ -1,49 +1,62 @@
 import z from 'zod';
 
-export const savingsRateConfigSchema = z.object({
-	maxRevenue: z.number().nullable().optional(),
-	isUnlimited: z.boolean(),
-	maxSavingsRate: z.number().nullable().optional(),
-	description: z.string().trim(),
-}).superRefine((values, ctx) => {
-	if (!values.isUnlimited && values.maxRevenue == null) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['maxRevenue'],
-			message: 'Tổng doanh thu 3 yếu tố không được để trống.',
-		});
-	}
+export const savingsRateConfigSchema = z
+	.object({
+		revenueDisplay: z.string().trim(),
+		savingsRateDisplay: z.string().trim(),
+		description: z.string().trim(),
+	})
+	.superRefine((values, ctx) => {
+		const numberPattern = '(?:\\d{1,3}(?:,\\d{3})*|\\d+)(?:\\.\\d+)?';
+		const revenueRegex = new RegExp(
+			`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*$`,
+		);
+	const savingsRateRegex = new RegExp(
+		`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*%\\s*$`,
+	);
 
-	if (values.maxRevenue != null && values.maxRevenue < 0) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['maxRevenue'],
-			message: 'Tổng doanh thu 3 yếu tố phải lớn hơn hoặc bằng 0.',
-		});
-	}
+		if (!values.revenueDisplay) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['revenueDisplay'],
+				message: 'Tổng doanh thu 3 yếu tố không được để trống.',
+			});
+		}
 
-	if (values.maxSavingsRate == null) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['maxSavingsRate'],
-			message: 'Giá trị tiết kiệm không được để trống.',
-		});
-	}
+		if (values.revenueDisplay && !revenueRegex.test(values.revenueDisplay)) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['revenueDisplay'],
+				message:
+					'Tổng doanh thu 3 yếu tố không đúng định dạng. Ví dụ: "≥ 300000", "< 500000", "300000 - 500000".',
+			});
+		}
 
-	if (values.maxSavingsRate != null && values.maxSavingsRate < 0) {
-		ctx.addIssue({
-			code: 'custom',
-			path: ['maxSavingsRate'],
-			message: 'Giá trị tiết kiệm phải lớn hơn hoặc bằng 0.',
-		});
-	}
-});
+		if (!values.savingsRateDisplay) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['savingsRateDisplay'],
+				message: 'Giá trị tiết kiệm không được để trống.',
+			});
+		}
+
+		if (
+			values.savingsRateDisplay &&
+			!savingsRateRegex.test(values.savingsRateDisplay)
+		) {
+			ctx.addIssue({
+				code: 'custom',
+				path: ['savingsRateDisplay'],
+				message:
+					'Giá trị tiết kiệm không đúng định dạng. Ví dụ đúng: "≥ 8%", "< 12%", "8 - 12%".',
+			});
+		}
+	});
 
 export type SavingsRateConfigSchema = z.infer<typeof savingsRateConfigSchema>;
 
 export const SAVINGS_RATE_CONFIG_SCHEMA_DEFAULT: SavingsRateConfigSchema = {
-	maxRevenue: null,
-	isUnlimited: false,
-	maxSavingsRate: null,
+	revenueDisplay: '',
+	savingsRateDisplay: '',
 	description: '',
 };

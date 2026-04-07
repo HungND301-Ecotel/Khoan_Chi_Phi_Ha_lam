@@ -2,6 +2,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.SavingsRateConfig;
 using MediatR;
+using System.Globalization;
 using SavingsRateConfigEntity = Domain.Entities.Index.SavingsRateConfig;
 
 namespace Application.Catalog.Index.SavingsRateConfig.Commands;
@@ -14,9 +15,19 @@ public class CreateSavingsRateConfigCommandHandler(IUnitOfWork unitOfWork) : IRe
 
     public async Task<bool> Handle(CreateSavingsRateConfigCommand request, CancellationToken cancellationToken)
     {
+        var revenueDisplay = request.CreateModel.RevenueDisplay
+            ?? (request.CreateModel.MaxRevenue.HasValue
+                ? $"≤ {request.CreateModel.MaxRevenue.Value.ToString(CultureInfo.InvariantCulture)}"
+                : null);
+
+        var savingsRateDisplay = request.CreateModel.SavingsRateDisplay
+            ?? (request.CreateModel.MaxSavingsRate.HasValue
+                ? $"≤ {request.CreateModel.MaxSavingsRate.Value.ToString(CultureInfo.InvariantCulture)}%"
+                : null);
+
         var newSavingsRateConfig = SavingsRateConfigEntity.Create(
-            request.CreateModel.MaxRevenue,
-            request.CreateModel.MaxSavingsRate,
+            revenueDisplay,
+            savingsRateDisplay,
             request.CreateModel.Description);
 
         await _savingsRateConfigRepository.InsertAsync(newSavingsRateConfig);

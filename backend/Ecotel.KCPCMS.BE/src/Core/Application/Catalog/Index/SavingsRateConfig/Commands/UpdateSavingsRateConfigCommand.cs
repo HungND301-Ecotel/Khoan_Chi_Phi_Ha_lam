@@ -3,6 +3,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.SavingsRateConfig;
 using MediatR;
+using System.Globalization;
 using Shared.Constants;
 using SavingsRateConfigEntity = Domain.Entities.Index.SavingsRateConfig;
 
@@ -20,9 +21,19 @@ public class UpdateSavingsRateConfigCommandHandler(IUnitOfWork unitOfWork) : IRe
             predicate: t => t.Id == request.UpdateModel.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
+        var revenueDisplay = request.UpdateModel.RevenueDisplay
+            ?? (request.UpdateModel.MaxRevenue.HasValue
+                ? $"≤ {request.UpdateModel.MaxRevenue.Value.ToString(CultureInfo.InvariantCulture)}"
+                : null);
+
+        var savingsRateDisplay = request.UpdateModel.SavingsRateDisplay
+            ?? (request.UpdateModel.MaxSavingsRate.HasValue
+                ? $"≤ {request.UpdateModel.MaxSavingsRate.Value.ToString(CultureInfo.InvariantCulture)}%"
+                : null);
+
         existSavingsRateConfig.Update(
-            request.UpdateModel.MaxRevenue,
-            request.UpdateModel.MaxSavingsRate,
+            revenueDisplay,
+            savingsRateDisplay,
             request.UpdateModel.Description);
 
         _savingsRateConfigRepository.Update(existSavingsRateConfig);
