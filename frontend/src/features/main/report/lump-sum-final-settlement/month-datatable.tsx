@@ -17,6 +17,7 @@ import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlem
 import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementListRequest,
+	LumpSumFinalSettlementMonthResponse,
 	ProcessGroup,
 } from '@/features/main/cost/lump-sum-final-settlement/types';
 import { api } from '@/lib/api';
@@ -203,11 +204,13 @@ export function LumpSumFinalSettlementMonthReportTable({
 			};
 
 			const response = await api.post<
-				LumpSumFinalSettlement[],
+				LumpSumFinalSettlement[] | LumpSumFinalSettlementMonthResponse,
 				LumpSumFinalSettlementListRequest
 			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
-
-			setRows(groupByProcessGroup(response.result ?? []));
+			const items = Array.isArray(response.result)
+				? response.result
+				: (response.result.items ?? []);
+			setRows(groupByProcessGroup(items));
 		} catch (err) {
 			setRows([]);
 			setError(

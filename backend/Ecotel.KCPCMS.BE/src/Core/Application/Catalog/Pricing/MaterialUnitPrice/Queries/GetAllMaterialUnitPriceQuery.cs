@@ -7,6 +7,7 @@ using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 
 namespace Application.Catalog.Pricing.MaterialUnitPrice.Queries;
+
 public record class GetAllMaterialUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<MaterialUnitPriceDto>>;
 
 public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, IReadRepository<TunnelExcavationMaterialUnitPrice> maintainUnitPriceRepository)
@@ -23,12 +24,14 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
 
         var spec = new MaterialUnitPricesByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: maintainUnitPriceRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderByDescending(d => d.Code.Length).ThenByDescending(d => d.Code).ToList();
+        return result;
     }
 }

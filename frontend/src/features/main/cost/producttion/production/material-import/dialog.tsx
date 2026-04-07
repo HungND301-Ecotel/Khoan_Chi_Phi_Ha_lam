@@ -381,6 +381,11 @@ export function MaterialImportDialog({
 		} catch (error) {
 			popup.error(error);
 			setShowForm(false);
+			form.setValue('materials', []);
+			setFilePath('');
+			setImportedItems([]);
+			setEquipmentOptionsByPartId({});
+			setOrderOrEquipmentOptionsByItemId({});
 		} finally {
 			setIsLoading(false);
 		}

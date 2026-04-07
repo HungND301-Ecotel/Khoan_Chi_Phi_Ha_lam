@@ -33,7 +33,7 @@ public class GetAllSavingsRateConfigQueryHandler(
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.CreateOn).ToList();
+        result.Data = result.Data.OrderBy(d => d.MaxRevenue).ToList();
         return result;
     }
 }

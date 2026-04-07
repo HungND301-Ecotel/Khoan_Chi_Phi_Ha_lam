@@ -2,6 +2,7 @@ import { LumpSumFinalSettlement } from './types';
 
 export function groupByProcessGroup(
 	items: LumpSumFinalSettlement[],
+	sttStart = 1,
 ): LumpSumFinalSettlement[] {
 	const groups = new Map<string, LumpSumFinalSettlement[]>();
 
@@ -16,7 +17,7 @@ export function groupByProcessGroup(
 	}
 
 	const result: LumpSumFinalSettlement[] = [];
-	let stt = 1;
+	let stt = sttStart;
 
 	for (const [, groupItems] of groups) {
 		const first = groupItems[0];

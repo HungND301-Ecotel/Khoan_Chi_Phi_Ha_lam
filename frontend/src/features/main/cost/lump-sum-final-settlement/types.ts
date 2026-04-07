@@ -16,6 +16,23 @@ export interface LumpSumFinalSettlementQuarterResponse {
 	revenuesByMonth: LumpSumQuarterRevenueByMonth[];
 	transferredCosts?: LumpSumQuarterTransferredCost[];
 	customCosts?: LumpSumQuarterCustomCost[];
+	coalExcavationActualQuantity?: number;
+	coalCrosscutActualQuantity?: number;
+	meterExcavationActualQuantity?: number;
+	meterCrosscutActualQuantity?: number;
+	acceptedSavingQuarter?: number;
+	savingsValue?: number;
+}
+
+export interface LumpSumFinalSettlementMonthResponse {
+	items: LumpSumFinalSettlement[];
+	revenue?: LumpSumQuarterRevenueByMonth | null;
+	transferredCost?: LumpSumQuarterTransferredCost | null;
+	customCosts?: LumpSumQuarterCustomCost[];
+	coalExcavationActualQuantity?: number;
+	coalCrosscutActualQuantity?: number;
+	meterExcavationActualQuantity?: number;
+	meterCrosscutActualQuantity?: number;
 }
 
 export interface LumpSumQuarterRevenueByMonth {

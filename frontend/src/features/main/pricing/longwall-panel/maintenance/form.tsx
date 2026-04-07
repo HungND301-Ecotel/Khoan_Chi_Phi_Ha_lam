@@ -144,7 +144,7 @@ export function LongwallPanelForm({
 
 		const newCosts = newParts.map((part) => ({
 			partId: part.id,
-			replacementTimeStandard: NaN,
+			replacementTimeStandard: Number(part.replacementTimeStandard),
 			quantity: NaN,
 			averageMonthlyTunnelProduction: NaN,
 			equipmentId: part.equipmentId,
@@ -391,10 +391,15 @@ function PricingLongwallPanelCosts({
 
 	const partId = getValues(`costs.${index}.partId`);
 	const part = parts.find((p) => p.id === partId);
+	const effectiveReplacementTimeStandard = Number.isFinite(
+		watchedReplacementTimeStandard,
+	)
+		? watchedReplacementTimeStandard
+		: Number(part?.replacementTimeStandard);
 
 	const regularRepairRates =
 		watchedQuantity /
-		watchedReplacementTimeStandard /
+		effectiveReplacementTimeStandard /
 		watchedAverageMonthlyTunnelProduction;
 
 	const regularRepairCost =
@@ -576,10 +581,15 @@ function groupCostsByEquipment(
 
 			const part = parts.find((p) => p.id === cost.partId);
 			if (!part) return;
+			const replacementTimeStandard = Number.isFinite(
+				cost.replacementTimeStandard,
+			)
+				? cost.replacementTimeStandard
+				: Number(part.replacementTimeStandard);
 
 			const regularRepairRates =
 				cost.quantity /
-				cost.replacementTimeStandard /
+				replacementTimeStandard /
 				cost.averageMonthlyTunnelProduction;
 
 			const regularRepairCost = part.costAmount * Number(regularRepairRates);
@@ -647,10 +657,15 @@ function PricingEquipmentOtherPartCosts({
 		}) => {
 			const part = parts.find((part) => part.id === cost.partId);
 			if (!part) return;
+			const replacementTimeStandard = Number.isFinite(
+				cost.replacementTimeStandard,
+			)
+				? cost.replacementTimeStandard
+				: Number(part.replacementTimeStandard);
 
 			const regularRepairRates =
 				cost.quantity /
-				cost.replacementTimeStandard /
+				replacementTimeStandard /
 				cost.averageMonthlyTunnelProduction;
 
 			const regularRepairCost = part.costAmount * Number(regularRepairRates);

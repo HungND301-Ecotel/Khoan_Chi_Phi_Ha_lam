@@ -35,14 +35,14 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
             throw new BadRequestException("Invalid year");
         }
 
-        var items = await mediator.Send(
+        var response = await mediator.Send(
             new GetLumpSumFinalSettlementListQuery(
                 request.Month,
                 request.Year,
                 request.ProcessGroupId ?? string.Empty),
             cancellationToken);
 
-        var groupedRows = GroupByProcessGroup(items);
+        var groupedRows = GroupByProcessGroup(response.Items);
         var filteredRows = ApplySearch(groupedRows, request.Search);
         var fileBytes = BuildWorkbook(filteredRows, month, year);
         var fileName = $"bao-cao-thanh-toan-thang-{month}-nam-{year}.xlsx";

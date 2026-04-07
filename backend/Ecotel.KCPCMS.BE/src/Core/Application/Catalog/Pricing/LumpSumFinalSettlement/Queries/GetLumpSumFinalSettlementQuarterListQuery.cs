@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Application.Catalog.Pricing.Common;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
@@ -20,6 +22,7 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
+    private readonly IWriteRepository<SavingsRateConfig> _savingsRateConfigRepository = unitOfWork.GetRepository<SavingsRateConfig>();
 
     public async Task<LumpSumFinalSettlementQuarterResponseDto> Handle(GetLumpSumFinalSettlementQuarterListQuery request, CancellationToken cancellationToken)
     {
@@ -422,11 +425,54 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 && (!hasProcessGroupFilter || x.ProcessGroupId == processGroupId),
             disableTracking: true);
 
+        var meterExcavationActualQuantity = GetActualQuantityByGroupAndUnit(result, "DL", IsMeterUnit);
+        var meterCrosscutActualQuantity = GetActualQuantityByGroupAndUnit(result, "XL", IsMeterUnit);
+        var totalExcavationActualQuantity = GetActualQuantityByGroup(result, "DL");
+        var totalCrosscutActualQuantity = GetActualQuantityByGroup(result, "XL");
+
+        if (meterExcavationActualQuantity <= 0 && totalExcavationActualQuantity > 0)
+        {
+            meterExcavationActualQuantity = totalExcavationActualQuantity;
+        }
+
+        if (meterCrosscutActualQuantity <= 0 && totalCrosscutActualQuantity > 0)
+        {
+            meterCrosscutActualQuantity = totalCrosscutActualQuantity;
+        }
+
+        var revenueMaterialTotal = revenuesByMonth.Sum(x => x.Materials.TotalAmount);
+        var revenueMaintainTotal = revenuesByMonth.Sum(x => x.Maintains.TotalAmount);
+        var revenueElectricityTotal = revenuesByMonth.Sum(x => x.Electricities.TotalAmount);
+
+        var transferredMaterialTotal = transferredCostsByMonth.Sum(x => x.Materials.TotalAmount);
+        var transferredMaintainTotal = transferredCostsByMonth.Sum(x => x.Maintains.TotalAmount);
+        var transferredElectricityTotal = transferredCostsByMonth.Sum(x => x.Electricities.TotalAmount);
+
+        var customMaterialTotal = customCosts.Sum(x => x.ActualQuantity * x.MaterialUnitPrice);
+        var customMaintainTotal = customCosts.Sum(x => x.ActualQuantity * x.MaintainUnitPrice);
+        var customElectricityTotal = customCosts.Sum(x => x.ActualQuantity * x.ElectricityUnitPrice);
+
+        var acceptedSavingQuarter =
+            (revenueMaterialTotal - (transferredMaterialTotal + customMaterialTotal))
+            + (revenueMaintainTotal - (transferredMaintainTotal + customMaintainTotal))
+            + (revenueElectricityTotal - (transferredElectricityTotal + customElectricityTotal));
+
+        var savingsRateConfigs = await _savingsRateConfigRepository.GetAll()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var savingsValue = ResolveSavingsValue(acceptedSavingQuarter, savingsRateConfigs);
+
         return new LumpSumFinalSettlementQuarterResponseDto
         {
             Items = result,
             RevenuesByMonth = revenuesByMonth,
             TransferredCosts = transferredCostsByMonth,
+            CoalExcavationActualQuantity = 0,
+            CoalCrosscutActualQuantity = 0,
+            MeterExcavationActualQuantity = meterExcavationActualQuantity,
+            MeterCrosscutActualQuantity = meterCrosscutActualQuantity,
+            AcceptedSavingQuarter = acceptedSavingQuarter,
+            SavingsValue = savingsValue,
             CustomCosts = customCosts
                 .OrderBy(x => x.CreatedOn)
                 .Select(x => new LumpSumQuarterCustomCostDto
@@ -443,6 +489,87 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 })
                 .ToList()
         };
+    }
+
+    private static double ResolveSavingsValue(
+        double acceptedSavingQuarter,
+        IReadOnlyCollection<SavingsRateConfig> configs)
+    {
+        var boundedConfigs = configs
+            .Where(x => x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
+            .OrderBy(x => x.MaxRevenue)
+            .ToList();
+
+        var matchedBoundedConfig = boundedConfigs
+            .FirstOrDefault(x => acceptedSavingQuarter <= (double)x.MaxRevenue!.Value);
+        if (matchedBoundedConfig?.MaxSavingsRate is decimal matchedRate)
+        {
+            return (double)(matchedRate / 100m);
+        }
+
+        var unlimitedConfig = configs
+            .Where(x => !x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
+            .OrderByDescending(x => x.CreatedOn)
+            .FirstOrDefault();
+
+        if (unlimitedConfig?.MaxSavingsRate is decimal unlimitedRate)
+        {
+            var maxBoundedRevenue = boundedConfigs.Any()
+                ? (double)boundedConfigs.Max(x => x.MaxRevenue!.Value)
+                : double.MinValue;
+
+            if (!boundedConfigs.Any() || acceptedSavingQuarter > maxBoundedRevenue)
+            {
+                return (double)(unlimitedRate / 100m);
+            }
+        }
+
+        return 0;
+    }
+
+    private static double GetActualQuantityByGroupAndUnit(
+        IEnumerable<LumpSumFinalSettlementDto> items,
+        string processGroupCode,
+        Func<string, bool> unitPredicate)
+    {
+        return items
+            .Where(x => string.Equals(x.ProcessGroupCode, processGroupCode, StringComparison.OrdinalIgnoreCase))
+            .Where(x => !string.IsNullOrWhiteSpace(x.UnitOfMeasureName) && unitPredicate(x.UnitOfMeasureName))
+            .Sum(x => x.ActualQuantity);
+    }
+
+    private static double GetActualQuantityByGroup(
+        IEnumerable<LumpSumFinalSettlementDto> items,
+        string processGroupCode)
+    {
+        return items
+            .Where(x => string.Equals(x.ProcessGroupCode, processGroupCode, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => x.ActualQuantity);
+    }
+
+    private static bool IsMeterUnit(string unitName)
+    {
+        var normalized = NormalizeText(unitName);
+        return normalized is "met" or "m";
+    }
+
+    private static string NormalizeText(string input)
+    {
+        var decomposed = input.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(decomposed.Length);
+
+        foreach (var c in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb
+            .ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Replace(" ", string.Empty);
     }
 
     private static decimal GetPlannedUnitPrice(IReadOnlyCollection<Cost> costs, DateOnly month)

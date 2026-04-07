@@ -4,6 +4,7 @@ using Application.Interfaces.Services;
 using ClosedXML.Excel;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
+using System.Globalization;
 using Shared.Constants;
 
 namespace Application.Catalog.Production.AcceptanceReports.Services;
@@ -40,12 +41,12 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 }
 
                 var acceptanceReports = new List<AcceptanceReportItemDto>();
+                var importErrors = new List<string>();
 
-                var rowCount = 0;
                 foreach (var row in worksheet.RowsUsed())
                 {
-                    rowCount++;
-                    if (rowCount == 1)
+                    var rowNumber = row.RowNumber();
+                    if (rowNumber == 1)
                     {
                         continue; // Skip header row
                     }
@@ -61,21 +62,28 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     {
                         reportItemId = parsedId;
                     }
+                    else if (!string.IsNullOrWhiteSpace(idStr))
+                    {
+                        importErrors.Add($"Id không đúng định dạng Guid ở dòng {rowNumber}.");
+                    }
 
                     // Validate data
                     if (string.IsNullOrWhiteSpace(materialCode))
                     {
-                        throw new BadRequestException($"Mã vật tư không thể trống (row {rowCount + 1})");
+                        importErrors.Add($"Mã vật tư không thể trống ở dòng {rowNumber}.");
+                        continue;
                     }
 
-                    if (!double.TryParse(quantityReceived, out var receivedValue))
+                    if (!TryParseQuantity(quantityReceived, out var receivedValue))
                     {
-                        throw new BadRequestException($"Số lượng nhập phải là số (row {rowCount + 1})");
+                        importErrors.Add($"Số lượng nhập phải là số ở dòng {rowNumber}.");
+                        continue;
                     }
 
-                    if (!double.TryParse(quantityDispensed, out var dispensedValue))
+                    if (!TryParseQuantity(quantityDispensed, out var dispensedValue))
                     {
-                        throw new BadRequestException($"Số lượng xuất phải là số (row {rowCount + 1})");
+                        importErrors.Add($"Số lượng xuất phải là số ở dòng {rowNumber}.");
+                        continue;
                     }
 
                     // Find material in database
@@ -97,7 +105,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                         materialsOrPartsId = part?.Id;
                         if (part == null)
                         {
-                            throw new NotFoundException($"Không tìm thấy vật tư: '{materialCode}' (row {rowCount + 1})");
+                            importErrors.Add($"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}.");
+                            continue;
                         }
 
                         unitOfMeasureName = part.UnitOfMeasure?.Name ?? "N/A";
@@ -120,6 +129,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     });
                 }
 
+                ThrowIfImportErrors(importErrors);
+
                 if (!acceptanceReports.Any())
                 {
                     throw new BadRequestException(CustomResponseMessage.ExcelFileHasNoValidData);
@@ -132,9 +143,34 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 };
             }
         }
-        catch (Exception ex) when (!(ex is BadRequestException) && !(ex is NotFoundException))
+        catch (Exception ex) when (ex is not BadRequestException && ex is not ExcelImportException)
         {
             throw new BadRequestException(CustomResponseMessage.ErrorProcessingExcelFile);
         }
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
+
+    private static bool TryParseQuantity(string? value, out double parsedValue)
+    {
+        if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out parsedValue))
+        {
+            return true;
+        }
+
+        return double.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out parsedValue);
     }
 }

@@ -121,7 +121,7 @@ export const NAVIGATIONS: Navigation[] = [
 		items: [
 			{
 				type: 'sub-menu',
-				name: 'Đào lò',
+				name: 'Đào/Xén lò',
 				items: [
 					{
 						type: 'link',
