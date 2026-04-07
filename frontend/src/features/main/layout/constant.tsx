@@ -102,6 +102,11 @@ export const NAVIGATIONS: Navigation[] = [
 				name: 'Hệ số điều chỉnh định mức',
 				href: '/catalogs/norm-factors',
 			},
+			{
+				type: 'link',
+				name: 'Hệ số tiết kiệm được chấp nhận',
+				href: '/catalogs/accepted-savings-rates',
+			},
 		],
 	},
 	{

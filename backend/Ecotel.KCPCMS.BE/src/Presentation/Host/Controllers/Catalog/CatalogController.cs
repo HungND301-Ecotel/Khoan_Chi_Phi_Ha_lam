@@ -26,6 +26,8 @@ using Application.Catalog.Index.ProductionOrder.Commands;
 using Application.Catalog.Index.ProductionOrder.Queries;
 using Application.Catalog.Index.ProductionProcess.Commands;
 using Application.Catalog.Index.ProductionProcess.Queries;
+using Application.Catalog.Index.SavingsRateConfig.Commands;
+using Application.Catalog.Index.SavingsRateConfig.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
 using Application.Catalog.Index.StoneClampRatio.Queries;
 using Application.Catalog.Index.UnitOfMeasures.Commands;
@@ -45,6 +47,7 @@ using Application.Dto.Catalog.ProcessGroup;
 using Application.Dto.Catalog.Product;
 using Application.Dto.Catalog.ProductionOrder;
 using Application.Dto.Catalog.ProductionProcess;
+using Application.Dto.Catalog.SavingsRateConfig;
 using Application.Dto.Catalog.StoneClampRatio;
 using Application.Dto.Catalog.UnitOfMeasure;
 using Domain.Common.Enums;
@@ -1619,6 +1622,74 @@ public class CatalogController : BaseNoAuthController
     public async Task<IActionResult> DeleteNormFactorList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteNormFactorListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region SavingsRateConfig
+
+    [HttpGet("SavingsRateConfig")]
+    [OpenApiOperation("Get All SavingsRateConfig", "")]
+    public async Task<IActionResult> GetAllSavingsRateConfig([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllSavingsRateConfigQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("SavingsRateConfig/{id:guid}")]
+    [OpenApiOperation("Get SavingsRateConfig By Id", "")]
+    public async Task<IActionResult> GetSavingsRateConfigById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetSavingsRateConfigByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("SavingsRateConfig/export")]
+    [OpenApiOperation("Export SavingsRateConfig", "")]
+    public async Task<IActionResult> ExportSavingsRateConfig()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelSavingsRateConfigQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Ty_le_tiet_kiem.xlsx");
+        return result;
+    }
+
+    [HttpPost("SavingsRateConfig/import")]
+    [OpenApiOperation("Import SavingsRateConfig", "")]
+    public async Task<IActionResult> ImportSavingsRateConfig([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportSavingsRateConfigExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpPost("SavingsRateConfig")]
+    [OpenApiOperation("Create New SavingsRateConfig", "")]
+    public async Task<IActionResult> CreateSavingsRateConfig([FromBody] CreateSavingsRateConfigDto createModel)
+    {
+        var result = await Mediator.Send(new CreateSavingsRateConfigCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("SavingsRateConfig")]
+    [OpenApiOperation("Update SavingsRateConfig", "")]
+    public async Task<IActionResult> UpdateSavingsRateConfig([FromBody] SavingsRateConfigDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateSavingsRateConfigCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("SavingsRateConfig/{deleteId:guid}")]
+    [OpenApiOperation("Delete SavingsRateConfig", "")]
+    public async Task<IActionResult> DeleteSavingsRateConfig([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteSavingsRateConfigCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("SavingsRateConfig")]
+    [OpenApiOperation("Delete Many SavingsRateConfig", "")]
+    public async Task<IActionResult> DeleteSavingsRateConfigList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteSavingsRateConfigListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

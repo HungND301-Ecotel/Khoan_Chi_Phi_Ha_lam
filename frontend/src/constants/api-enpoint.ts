@@ -229,6 +229,17 @@ export const API = {
 			},
 		},
 
+		SAVINGS_RATE_CONFIG: {
+			LIST: '/v1/catalog/savingsrateconfig',
+			CREATE: '/v1/catalog/savingsrateconfig',
+			UPDATE: '/v1/catalog/savingsrateconfig',
+			DELETES: '/v1/catalog/savingsrateconfig',
+			DELETE: (id: string) => `/v1/catalog/savingsrateconfig/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/savingsrateconfig/${id}`,
+			IMPORT: '/v1/catalog/savingsrateconfig/import',
+			EXPORT: '/v1/catalog/savingsrateconfig/export',
+		},
+
 		NORM_FACTOR: {
 			LIST: '/v1/catalog/normfactor',
 			CREATE: '/v1/catalog/normfactor',
