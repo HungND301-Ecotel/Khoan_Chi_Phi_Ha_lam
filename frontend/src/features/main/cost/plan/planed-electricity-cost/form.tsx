@@ -278,7 +278,7 @@ export function PlanElectricityCostForm({
 				name='electricityUnitPriceIds'
 				label='Mã thiết bị'
 				placeholder='Chọn mã thiết bị'
-				options={filteredElectricities.map((item) => ({
+				options={electricities.map((item) => ({
 					label: `${item.equipmentCode} - ${item.equipmentName}`,
 					value: item.id,
 				}))}
