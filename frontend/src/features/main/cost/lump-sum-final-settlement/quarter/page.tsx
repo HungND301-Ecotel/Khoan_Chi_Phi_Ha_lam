@@ -315,11 +315,6 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			savingQuarter.materials +
 			savingQuarter.maintains +
 			savingQuarter.electricities;
-		const savingsValue = resolveSavingsValue(
-			acceptedSavingQuarter,
-			savingsRateConfigs,
-		);
-		const savingAddedToIncomeQuarter = acceptedSavingQuarter * savingsValue;
 		const savingAddedToIncomeByMonth = months.map((_, idx) => {
 			const acceptedSavingMonth =
 				(savingRows[idx]?.materials ?? 0) +
@@ -331,11 +326,10 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			);
 			return acceptedSavingMonth * savingValueOfMonth;
 		});
-		const firstTwoMonthsSavingAdded =
-			(savingAddedToIncomeByMonth[0] ?? 0) +
-			(savingAddedToIncomeByMonth[1] ?? 0);
-		const lastMonthSavingAdded =
-			savingAddedToIncomeQuarter - firstTwoMonthsSavingAdded;
+		const savingAddedToIncomeQuarter = savingAddedToIncomeByMonth.reduce(
+			(sum, value) => sum + (value ?? 0),
+			0,
+		);
 
 		const makeZeroRow = (
 			productName: string,
@@ -503,10 +497,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 						hidePlanActual: true,
 						hideUnitPrice: true,
 						isMergedValueRow: true,
-						mergedValue:
-							idx < 2
-								? (savingAddedToIncomeByMonth[idx] ?? 0)
-								: lastMonthSavingAdded,
+						mergedValue: savingAddedToIncomeByMonth[idx] ?? 0,
 					},
 				),
 			),

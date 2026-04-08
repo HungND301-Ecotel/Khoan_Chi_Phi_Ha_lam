@@ -247,7 +247,6 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 savingQuarter.Electricities;
         }
 
-        var savingAddedToIncomeQuarter = acceptedSavingQuarter * savingsValue;
         var savingAddedToIncomeByMonth = months
             .Select((_, index) =>
             {
@@ -258,10 +257,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 return acceptedSavingMonth * savingsValue;
             })
             .ToList();
-        var firstTwoMonthsSavingAdded =
-            (savingAddedToIncomeByMonth.Count > 0 ? savingAddedToIncomeByMonth[0] : 0)
-            + (savingAddedToIncomeByMonth.Count > 1 ? savingAddedToIncomeByMonth[1] : 0);
-        var lastMonthSavingAdded = savingAddedToIncomeQuarter - firstTwoMonthsSavingAdded;
+        var savingAddedToIncomeQuarter = savingAddedToIncomeByMonth.Sum();
 
         var specialRows = new List<ExportRow>
         {
@@ -384,20 +380,12 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
             unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
             isMergedValueRow: true, mergedValue: savingAddedToIncomeQuarter));
         defaultRows.AddRange(months.Select((monthNumber, index) =>
-        {
-            double mergedValue = lastMonthSavingAdded;
-            if (index < 2)
-            {
-                mergedValue = savingAddedToIncomeByMonth.Count > index
-                    ? savingAddedToIncomeByMonth[index]
-                    : 0;
-            }
-
-            return MakeZeroRow($"Gia tri tiet kiem da cong vao thu nhap thang {monthNumber}/{year}", sttLabel: "*",
+            MakeZeroRow($"Gia tri tiet kiem da cong vao thu nhap thang {monthNumber}/{year}", sttLabel: "*",
                 unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
                 isMergedValueRow: true,
-                mergedValue: mergedValue);
-        }));
+                mergedValue: savingAddedToIncomeByMonth.Count > index
+                    ? savingAddedToIncomeByMonth[index]
+                    : 0)));
 
         return [.. specialRows, .. groupedRows, .. defaultRows];
     }

@@ -109,7 +109,7 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
-				name: 'Cấu hình điều chỉnh thu chi',
+				name: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
 				href: '/catalogs/revenue-cost-adjustment-configs',
 			},
 		],

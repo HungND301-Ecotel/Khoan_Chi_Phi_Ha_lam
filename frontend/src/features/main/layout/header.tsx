@@ -31,7 +31,7 @@ function MainHeader({ className, ...props }: ComponentProps<'header'>) {
 			)}
 			{...props}
 		>
-			<div className='relative w-full border-b-2 bg-[#e4d6b4] p-4 px-6 text-center text-black'>
+			<div className='relative w-full border-b-2 bg-[#e4d6b4] p-4 px-6 text-center text-black shadow-md'>
 				<div>
 					<Link
 						to={`/`}

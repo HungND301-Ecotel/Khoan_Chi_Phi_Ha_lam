@@ -177,7 +177,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 var filteredOutputs = productUnitPrice.Outputs
                     .Where(o => o.OutputType == OutputType.PlanOutput
                         && o.StartMonth.Year == year
-                        && o.StartMonth.Month == quarterEndMonth)
+                        && o.StartMonth.Month >= quarterStartMonth
+                        && o.StartMonth.Month <= quarterEndMonth)
                     .ToList();
                 if (!filteredOutputs.Any())
                 {
@@ -186,52 +187,70 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
 
                 var plannedQuantity = filteredOutputs.Sum(o => o.ProductionMeters);
 
-                var monthKey = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId, quarterEndMonth);
-                var actualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProductMonth.TryGetValue(monthKey, out var productActual)
-                    ? productActual
-                    : 0;
+                var actualQuantity = 0.0;
+                for (var currentMonth = quarterStartMonth; currentMonth <= quarterEndMonth; currentMonth++)
+                {
+                    var monthKey = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId, currentMonth);
+                    if (productUnitPrice.ProductId != Guid.Empty && actualByProductMonth.TryGetValue(monthKey, out var productActual))
+                    {
+                        actualQuantity += productActual;
+                    }
+                }
 
-                var materialUnitPrice = 0.0;
                 var materialTotalAmount = 0.0;
-
-                var plannedMaterialCosts = filteredOutputs
-                    .Where(o => o.PlannedMaterialCost != null)
-                    .Select(o => o.PlannedMaterialCost!)
-                    .ToList();
-
-                if (plannedMaterialCosts.Any())
-                {
-                    materialUnitPrice = plannedMaterialCosts.Sum(p => plannedMaterialUnitCostById.GetValueOrDefault(p.Id, 0));
-                    materialTotalAmount = Math.Round(materialUnitPrice * actualQuantity, 3);
-                }
-
-                var maintainUnitPrice = 0.0;
                 var maintainTotalAmount = 0.0;
-
-                var plannedMaintainCosts = filteredOutputs
-                    .Where(o => o.PlannedMaintainCost != null)
-                    .Select(o => o.PlannedMaintainCost!)
-                    .ToList();
-
-                if (plannedMaintainCosts.Any())
-                {
-                    maintainUnitPrice = plannedMaintainCosts.Sum(p => p.GetPlannedTotalPrice());
-                    maintainTotalAmount = maintainUnitPrice * actualQuantity;
-                }
-
-                var electricityUnitPrice = 0.0;
                 var electricityTotalAmount = 0.0;
 
-                var plannedElectricityCosts = filteredOutputs
-                    .Where(o => o.PlannedElectricityCost != null)
-                    .Select(o => o.PlannedElectricityCost!)
-                    .ToList();
-
-                if (plannedElectricityCosts.Any())
+                for (var currentMonth = quarterStartMonth; currentMonth <= quarterEndMonth; currentMonth++)
                 {
-                    electricityUnitPrice = plannedElectricityCosts.Sum(p => p.GetPlannedTotalPrice());
-                    electricityTotalAmount = electricityUnitPrice * actualQuantity;
+                    var monthOutputs = filteredOutputs
+                        .Where(o => o.StartMonth.Month == currentMonth)
+                        .ToList();
+
+                    if (!monthOutputs.Any())
+                    {
+                        continue;
+                    }
+
+                    var monthKey = (productUnitPrice.Product!.ProcessGroupId, productUnitPrice.ProductId, currentMonth);
+                    var monthActualQuantity = productUnitPrice.ProductId != Guid.Empty && actualByProductMonth.TryGetValue(monthKey, out var monthActual)
+                        ? monthActual
+                        : 0;
+
+                    if (monthActualQuantity <= 0)
+                    {
+                        continue;
+                    }
+
+                    var materialUnitPriceByMonth = monthOutputs
+                        .Where(o => o.PlannedMaterialCost != null)
+                        .Select(o => plannedMaterialUnitCostById.GetValueOrDefault(o.PlannedMaterialCost!.Id, 0))
+                        .Sum();
+
+                    var maintainUnitPriceByMonth = monthOutputs
+                        .Where(o => o.PlannedMaintainCost != null)
+                        .Select(o => o.PlannedMaintainCost!.GetPlannedTotalPrice())
+                        .Sum();
+
+                    var electricityUnitPriceByMonth = monthOutputs
+                        .Where(o => o.PlannedElectricityCost != null)
+                        .Select(o => o.PlannedElectricityCost!.GetPlannedTotalPrice())
+                        .Sum();
+
+                    materialTotalAmount += Math.Round(materialUnitPriceByMonth * monthActualQuantity, 3);
+                    maintainTotalAmount += maintainUnitPriceByMonth * monthActualQuantity;
+                    electricityTotalAmount += electricityUnitPriceByMonth * monthActualQuantity;
                 }
+
+                var materialUnitPrice = actualQuantity > 0
+                    ? materialTotalAmount / actualQuantity
+                    : 0;
+                var maintainUnitPrice = actualQuantity > 0
+                    ? maintainTotalAmount / actualQuantity
+                    : 0;
+                var electricityUnitPrice = actualQuantity > 0
+                    ? electricityTotalAmount / actualQuantity
+                    : 0;
 
                 var totalAmount = materialTotalAmount + maintainTotalAmount + electricityTotalAmount;
 
@@ -266,6 +285,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 });
             }
         }
+
+        result = AggregateByProduct(result);
 
         var revenuesByMonth = new List<LumpSumQuarterRevenueByMonthDto>();
         for (var currentMonth = quarterStartMonth; currentMonth <= quarterEndMonth; currentMonth++)
@@ -489,6 +510,64 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
                 })
                 .ToList()
         };
+    }
+
+    private static List<LumpSumFinalSettlementDto> AggregateByProduct(IEnumerable<LumpSumFinalSettlementDto> items)
+    {
+        return items
+            .GroupBy(x => new
+            {
+                x.ProcessGroupId,
+                x.ProcessGroupCode,
+                x.ProcessGroupName,
+                x.ProductCode,
+                x.ProductName,
+                x.UnitOfMeasureId,
+                x.UnitOfMeasureName
+            })
+            .Select(group =>
+            {
+                var plannedQuantity = group.Sum(x => x.PlannedQuantity);
+                var actualQuantity = group.Sum(x => x.ActualQuantity);
+                var materialTotal = group.Sum(x => x.Materials?.TotalAmount ?? 0);
+                var maintainTotal = group.Sum(x => x.Maintains?.TotalAmount ?? 0);
+                var electricityTotal = group.Sum(x => x.Electricities?.TotalAmount ?? 0);
+
+                return new LumpSumFinalSettlementDto
+                {
+                    Id = group.Select(x => x.Id).FirstOrDefault(),
+                    ProcessGroupId = group.Key.ProcessGroupId,
+                    ProcessGroupCode = group.Key.ProcessGroupCode,
+                    ProcessGroupName = group.Key.ProcessGroupName,
+                    ProductCode = group.Key.ProductCode,
+                    ProductName = group.Key.ProductName,
+                    UnitOfMeasureId = group.Key.UnitOfMeasureId,
+                    UnitOfMeasureName = group.Key.UnitOfMeasureName,
+                    PlannedQuantity = plannedQuantity,
+                    ActualQuantity = actualQuantity,
+                    Materials = new LumpSumCostDetailDto
+                    {
+                        UnitPrice = actualQuantity > 0 ? materialTotal / actualQuantity : 0,
+                        TotalAmount = materialTotal
+                    },
+                    Maintains = new LumpSumCostDetailDto
+                    {
+                        UnitPrice = actualQuantity > 0 ? maintainTotal / actualQuantity : 0,
+                        TotalAmount = maintainTotal
+                    },
+                    Electricities = new LumpSumCostDetailDto
+                    {
+                        UnitPrice = actualQuantity > 0 ? electricityTotal / actualQuantity : 0,
+                        TotalAmount = electricityTotal
+                    },
+                    TotalAmount = materialTotal + maintainTotal + electricityTotal
+                };
+            })
+            .OrderBy(x => x.ProcessGroupCode)
+            .ThenBy(x => x.ProcessGroupName)
+            .ThenBy(x => x.ProductCode)
+            .ThenBy(x => x.ProductName)
+            .ToList();
     }
 
     private static double ResolveSavingsValue(
