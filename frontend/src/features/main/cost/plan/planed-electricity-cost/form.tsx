@@ -54,19 +54,6 @@ export function PlanElectricityCostForm({
 
 	const watchedElectricityUnitPriceIds = form.watch('electricityUnitPriceIds');
 	const watchedCosts = form.watch('costs');
-	const filteredElectricities = useMemo(() => {
-		const currentProcessGroupType = plan?.processGroupType as
-			| ProcessGroupType
-			| undefined;
-
-		if (!currentProcessGroupType) {
-			return electricities;
-		}
-
-		return electricities.filter((item) =>
-			item.processGroupTypes?.includes(currentProcessGroupType),
-		);
-	}, [electricities, plan?.processGroupType]);
 
 	useEffect(() => {
 		const promises = Promise.all([
