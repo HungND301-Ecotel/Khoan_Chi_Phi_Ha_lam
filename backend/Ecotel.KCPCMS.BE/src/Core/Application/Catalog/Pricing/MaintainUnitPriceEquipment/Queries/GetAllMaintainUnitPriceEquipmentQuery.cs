@@ -38,6 +38,11 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             EquipmentId = m.EquipmentId,
             EquipmentCode = m.Equipment!.Code!.Value,
             EquipmentName = m.Equipment!.Name,
+            ProcessGroupTypes = m.Equipment.EquipmentProcessGroups
+                .Where(epg => epg.ProcessGroup != null)
+                .Select(epg => epg.ProcessGroup.Type)
+                .Distinct()
+                .ToList(),
             TotalPrice = m.GetMaintainTotalPrice(),
             StartMonth = m.StartMonth,
             OtherMaterialValue = m.OtherMaterialValue,

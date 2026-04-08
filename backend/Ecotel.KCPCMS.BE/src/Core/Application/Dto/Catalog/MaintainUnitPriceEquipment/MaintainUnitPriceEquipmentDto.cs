@@ -9,6 +9,7 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid EquipmentId { get; set; }
         public string EquipmentCode { get; set; } = string.Empty;
         public string EquipmentName { get; set; } = string.Empty;
+        public IList<ProcessGroupType> ProcessGroupTypes { get; set; } = new List<ProcessGroupType>();
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double? OtherMaterialValue { get; set; }

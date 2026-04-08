@@ -25,7 +25,7 @@ import { Electricity } from '@/features/main/pricing/tunneling/electricity/colum
 import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 export function PlanElectricityCostForm({
@@ -54,6 +54,19 @@ export function PlanElectricityCostForm({
 
 	const watchedElectricityUnitPriceIds = form.watch('electricityUnitPriceIds');
 	const watchedCosts = form.watch('costs');
+	const filteredElectricities = useMemo(() => {
+		const currentProcessGroupType = plan?.processGroupType as
+			| ProcessGroupType
+			| undefined;
+
+		if (!currentProcessGroupType) {
+			return electricities;
+		}
+
+		return electricities.filter((item) =>
+			item.processGroupTypes?.includes(currentProcessGroupType),
+		);
+	}, [electricities, plan?.processGroupType]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -265,7 +278,7 @@ export function PlanElectricityCostForm({
 				name='electricityUnitPriceIds'
 				label='Mã thiết bị'
 				placeholder='Chọn mã thiết bị'
-				options={electricities.map((item) => ({
+				options={filteredElectricities.map((item) => ({
 					label: `${item.equipmentCode} - ${item.equipmentName}`,
 					value: item.id,
 				}))}

@@ -16,6 +16,7 @@ public sealed class MaintainUnitPricesByPaginationSpec
 
         Query
             .Include(m => m.Equipment).ThenInclude(e => e.EquipmentParts).ThenInclude(ep => ep.Part).ThenInclude(p => p.UnitOfMeasure)
+            .Include(m => m.Equipment).ThenInclude(e => e.EquipmentProcessGroups).ThenInclude(epg => epg.ProcessGroup)
             .Include(m => m.Equipment).ThenInclude(e => e.Code)
             .Include(m => m.MaintainUnitPriceEquipments).ThenInclude(e => e.Part).ThenInclude(p => p.Costs)
             .Where(m => (string.IsNullOrWhiteSpace(searchTerm) ||

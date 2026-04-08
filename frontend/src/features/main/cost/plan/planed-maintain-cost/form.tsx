@@ -9,6 +9,7 @@ import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
@@ -25,7 +26,7 @@ import { Tunneling } from '@/features/main/pricing/tunneling/maintenance/columns
 import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 
@@ -55,6 +56,19 @@ export function PlanMaintainCostForm({
 
 	const watchedMaintainUnitPriceIds = form.watch('maintainUnitPriceIds');
 	const watchedCosts = form.watch('costs');
+	const filteredTunnelings = useMemo(() => {
+		const currentProcessGroupType = plan?.processGroupType as
+			| ProcessGroupType
+			| undefined;
+
+		if (!currentProcessGroupType) {
+			return tunnelings;
+		}
+
+		return tunnelings.filter((item) =>
+			item.processGroupTypes?.includes(currentProcessGroupType),
+		);
+	}, [tunnelings, plan?.processGroupType]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -241,7 +255,7 @@ export function PlanMaintainCostForm({
 				name='maintainUnitPriceIds'
 				label='Mã thiết bị'
 				placeholder='Chọn mã thiết bị'
-				options={tunnelings.map((item) => ({
+				options={filteredTunnelings.map((item) => ({
 					label: `${item.equipmentCode} - ${item.equipmentName}`,
 					value: item.id,
 				}))}

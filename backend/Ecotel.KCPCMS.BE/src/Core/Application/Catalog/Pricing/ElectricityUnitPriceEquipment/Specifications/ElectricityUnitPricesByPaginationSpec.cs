@@ -16,6 +16,7 @@ public sealed class ElectricityUnitPricesByPaginationSpec
         Query
             .Include(e => e.Equipment!).ThenInclude(eq => eq!.UnitOfMeasure)
             .Include(e => e.Equipment!).ThenInclude(eq => eq!.Costs)
+            .Include(e => e.Equipment!).ThenInclude(eq => eq!.EquipmentProcessGroups).ThenInclude(epg => epg.ProcessGroup)
             .Include(e => e.Equipment!).ThenInclude(eq => eq!.Code)
             .Where(e => e.Equipment != null &&
                         (string.IsNullOrWhiteSpace(searchTerm) ||
