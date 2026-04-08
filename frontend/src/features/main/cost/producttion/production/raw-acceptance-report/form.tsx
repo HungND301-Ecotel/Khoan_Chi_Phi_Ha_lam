@@ -47,7 +47,7 @@ import {
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	FormProvider,
 	useFieldArray,
@@ -325,6 +325,70 @@ function getMaterialBadge(
 	};
 }
 
+type MaterialBadgeFilterOption = {
+	key: string;
+	label: string;
+	className: string;
+};
+
+function getMaterialBadgeFilterKey(
+	type?: number | null,
+	itemType?: number | null,
+): string {
+	if (
+		type === MaterialType.Material &&
+		itemType === ItemType.SafetyAndWelfare
+	) {
+		return 'material-safety-and-welfare';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.Resource) {
+		return 'material-asset';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
+		return 'material-quota';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.InContract) {
+		return 'material-in-contract';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
+		return 'material-out-contract';
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
+		return 'spare-part-in-contract';
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
+		return 'spare-part-out-contract';
+	}
+
+	if (type === MaterialType.Material) {
+		return 'material-default';
+	}
+
+	if (type === MaterialType.SparePart) {
+		return 'spare-part-default';
+	}
+
+	return 'material-unknown';
+}
+
+function getMaterialBadgeFilterOption(
+	type?: number | null,
+	itemType?: number | null,
+): MaterialBadgeFilterOption {
+	const badge = getMaterialBadge(type, itemType);
+	return {
+		key: getMaterialBadgeFilterKey(type, itemType),
+		label: badge.label,
+		className: badge.className,
+	};
+}
+
 export function RawAcceptanceReportForm({
 	id,
 	output,
@@ -357,6 +421,41 @@ export function RawAcceptanceReportForm({
 			productionId: id || '',
 		},
 	});
+	const watchedItems = useWatch({
+		control: form.control,
+		name: 'items',
+	});
+	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
+		string[]
+	>([]);
+	const materialBadgeFilters = useMemo(() => {
+		const map = new Map<string, MaterialBadgeFilterOption>();
+		for (const item of watchedItems || []) {
+			const option = getMaterialBadgeFilterOption(item?.type, item?.itemType);
+			if (!map.has(option.key)) {
+				map.set(option.key, option);
+			}
+		}
+		return Array.from(map.values());
+	}, [watchedItems]);
+
+	useEffect(() => {
+		if (materialBadgeFilters.length === 0) {
+			setSelectedMaterialBadgeKeys([]);
+			return;
+		}
+
+		const availableKeys = new Set(
+			materialBadgeFilters.map((option) => option.key),
+		);
+		setSelectedMaterialBadgeKeys((prev) => {
+			const next = prev.filter((key) => availableKeys.has(key));
+			if (next.length === 0) {
+				return Array.from(availableKeys);
+			}
+			return next;
+		});
+	}, [materialBadgeFilters]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -892,6 +991,40 @@ export function RawAcceptanceReportForm({
 					</div>
 				) : (
 					<div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto'>
+						{materialBadgeFilters.length > 0 && (
+							<div className='mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3'>
+								<div className='flex flex-wrap gap-3'>
+									{materialBadgeFilters.map((option) => {
+										const checked = selectedMaterialBadgeKeys.includes(
+											option.key,
+										);
+										return (
+											<label
+												key={option.key}
+												className='inline-flex cursor-pointer items-center gap-2'
+											>
+												<input
+													type='checkbox'
+													className='h-4 w-4 rounded border-slate-300'
+													checked={checked}
+													onChange={(event) => {
+														setSelectedMaterialBadgeKeys((prev) => {
+															if (event.target.checked) {
+																return prev.includes(option.key)
+																	? prev
+																	: [...prev, option.key];
+															}
+															return prev.filter((key) => key !== option.key);
+														});
+													}}
+												/>
+												<span className={option.className}>{option.label}</span>
+											</label>
+										);
+									})}
+								</div>
+							</div>
+						)}
 						<div className='rounded-lg border shadow-sm'>
 							<Table className='w-full'>
 								<TableHeader className='bg-linear-to-r from-slate-50 to-slate-100'>
@@ -929,6 +1062,7 @@ export function RawAcceptanceReportForm({
 									<RawAcceptanceReportRows
 										processGroupOptions={processGroupOptions}
 										productionOrderOptions={productionOrderOptions}
+										selectedMaterialBadgeKeys={selectedMaterialBadgeKeys}
 										orderOrEquipmentOptionsByItemId={
 											orderOrEquipmentOptionsByItemId
 										}
@@ -967,10 +1101,12 @@ export function RawAcceptanceReportForm({
 function RawAcceptanceReportRows({
 	processGroupOptions,
 	productionOrderOptions,
+	selectedMaterialBadgeKeys,
 	orderOrEquipmentOptionsByItemId,
 }: {
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	selectedMaterialBadgeKeys: string[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 }) {
 	const form = useFormContext<{
@@ -980,18 +1116,46 @@ function RawAcceptanceReportRows({
 		control: form.control,
 		name: 'items',
 	});
+	const items = useWatch({
+		control: form.control,
+		name: 'items',
+	});
+	const visibleItemIndexes = useMemo(() => {
+		if (selectedMaterialBadgeKeys.length === 0) {
+			return fields.map((_, index) => index);
+		}
+
+		return fields
+			.map((_, index) => index)
+			.filter((index) => {
+				const item = items?.[index];
+				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
+				return selectedMaterialBadgeKeys.includes(key);
+			});
+	}, [fields, items, selectedMaterialBadgeKeys]);
 
 	return (
 		<>
-			{fields.map((field, index) => (
+			{visibleItemIndexes.map((index, displayIndex) => (
 				<RawAcceptanceReportRow
-					key={field.id}
+					key={fields[index].id}
 					index={index}
+					displayIndex={displayIndex + 1}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
 					orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
 				/>
 			))}
+			{visibleItemIndexes.length === 0 && (
+				<TableRow>
+					<TableCell
+						colSpan={9}
+						className='py-6 text-center text-sm text-slate-500'
+					>
+						Không có vật tư phù hợp với bộ lọc đã chọn.
+					</TableCell>
+				</TableRow>
+			)}
 		</>
 	);
 }
@@ -1088,11 +1252,13 @@ function QuantityBreakdownInputs({
 
 function RawAcceptanceReportRow({
 	index,
+	displayIndex,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
 }: {
 	index: number;
+	displayIndex?: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
@@ -2009,7 +2175,7 @@ function RawAcceptanceReportRow({
 			)}
 		>
 			<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
-				{index + 1}
+				{displayIndex ?? index + 1}
 			</TableCell>
 			<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
 				<div className='flex flex-col gap-1'>

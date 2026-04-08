@@ -14,7 +14,7 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { MaterialFormSchema } from './schema';
 import {
@@ -177,6 +177,70 @@ function getMaterialBadge(
 	};
 }
 
+type MaterialBadgeFilterOption = {
+	key: string;
+	label: string;
+	className: string;
+};
+
+function getMaterialBadgeFilterKey(
+	type?: number | null,
+	itemType?: number | null,
+): string {
+	if (
+		type === MaterialType.Material &&
+		itemType === ItemType.SafetyAndWelfare
+	) {
+		return 'material-safety-and-welfare';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.Resource) {
+		return 'material-asset';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
+		return 'material-quota';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.InContract) {
+		return 'material-in-contract';
+	}
+
+	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
+		return 'material-out-contract';
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
+		return 'spare-part-in-contract';
+	}
+
+	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
+		return 'spare-part-out-contract';
+	}
+
+	if (type === MaterialType.Material) {
+		return 'material-default';
+	}
+
+	if (type === MaterialType.SparePart) {
+		return 'spare-part-default';
+	}
+
+	return 'material-unknown';
+}
+
+function getMaterialBadgeFilterOption(
+	type?: number | null,
+	itemType?: number | null,
+): MaterialBadgeFilterOption {
+	const badge = getMaterialBadge(type, itemType);
+	return {
+		key: getMaterialBadgeFilterKey(type, itemType),
+		label: badge.label,
+		className: badge.className,
+	};
+}
+
 const CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS =
 	CONTRACT_LIMIT_SECONDARY_OPTIONS.map((option) => ({
 		value: String(option.value),
@@ -202,6 +266,54 @@ export function MaterialImportForm({
 		control: form.control,
 		name: 'materials',
 	});
+	const watchedMaterials = useWatch({
+		control: form.control,
+		name: 'materials',
+	});
+	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
+		string[]
+	>([]);
+	const materialBadgeFilters = useMemo(() => {
+		const map = new Map<string, MaterialBadgeFilterOption>();
+		for (const item of watchedMaterials || []) {
+			const option = getMaterialBadgeFilterOption(item?.type, item?.itemType);
+			if (!map.has(option.key)) {
+				map.set(option.key, option);
+			}
+		}
+		return Array.from(map.values());
+	}, [watchedMaterials]);
+	const visibleMaterialIndexes = useMemo(() => {
+		if (selectedMaterialBadgeKeys.length === 0) {
+			return fields.map((_, index) => index);
+		}
+
+		return fields
+			.map((_, index) => index)
+			.filter((index) => {
+				const item = watchedMaterials?.[index];
+				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
+				return selectedMaterialBadgeKeys.includes(key);
+			});
+	}, [fields, watchedMaterials, selectedMaterialBadgeKeys]);
+
+	useEffect(() => {
+		if (materialBadgeFilters.length === 0) {
+			setSelectedMaterialBadgeKeys([]);
+			return;
+		}
+
+		const availableKeys = new Set(
+			materialBadgeFilters.map((option) => option.key),
+		);
+		setSelectedMaterialBadgeKeys((prev) => {
+			const next = prev.filter((key) => availableKeys.has(key));
+			if (next.length === 0) {
+				return Array.from(availableKeys);
+			}
+			return next;
+		});
+	}, [materialBadgeFilters]);
 
 	useEffect(() => {
 		if (Object.keys(form.formState.errors).length > 0) {
@@ -211,6 +323,38 @@ export function MaterialImportForm({
 
 	return (
 		<div className='flex h-full flex-col gap-6'>
+			{materialBadgeFilters.length > 0 && (
+				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
+					<div className='flex flex-wrap gap-3'>
+						{materialBadgeFilters.map((option) => {
+							const checked = selectedMaterialBadgeKeys.includes(option.key);
+							return (
+								<label
+									key={option.key}
+									className='inline-flex cursor-pointer items-center gap-2'
+								>
+									<input
+										type='checkbox'
+										className='h-4 w-4 rounded border-slate-300'
+										checked={checked}
+										onChange={(event) => {
+											setSelectedMaterialBadgeKeys((prev) => {
+												if (event.target.checked) {
+													return prev.includes(option.key)
+														? prev
+														: [...prev, option.key];
+												}
+												return prev.filter((key) => key !== option.key);
+											});
+										}}
+									/>
+									<span className={option.className}>{option.label}</span>
+								</label>
+							);
+						})}
+					</div>
+				</div>
+			)}
 			<div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto'>
 				<div className='rounded-lg border shadow-sm'>
 					<Table className='w-full'>
@@ -246,10 +390,11 @@ export function MaterialImportForm({
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{fields.map((field, index) => (
+							{visibleMaterialIndexes.map((index, displayIndex) => (
 								<MaterialImportRow
-									key={field.id}
+									key={fields[index].id}
 									index={index}
+									displayIndex={displayIndex + 1}
 									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									orderOrEquipmentOptionsByItemId={
@@ -258,6 +403,16 @@ export function MaterialImportForm({
 									onRemove={() => remove(index)}
 								/>
 							))}
+							{visibleMaterialIndexes.length === 0 && (
+								<TableRow>
+									<TableCell
+										colSpan={9}
+										className='py-6 text-center text-sm text-slate-500'
+									>
+										Không có vật tư phù hợp với bộ lọc đã chọn.
+									</TableCell>
+								</TableRow>
+							)}
 						</TableBody>
 					</Table>
 				</div>
@@ -384,11 +539,13 @@ function QuantityBreakdownInputs({
 
 function MaterialImportRow({
 	index,
+	displayIndex,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
 }: {
 	index: number;
+	displayIndex?: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
@@ -1098,7 +1255,7 @@ function MaterialImportRow({
 		>
 			{/* STT */}
 			<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
-				{index + 1}
+				{displayIndex ?? index + 1}
 			</TableCell>
 
 			{/* Mã vật tư */}
