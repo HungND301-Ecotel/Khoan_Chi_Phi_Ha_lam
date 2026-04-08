@@ -25,7 +25,7 @@ import { Electricity } from '@/features/main/pricing/tunneling/electricity/colum
 import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 export function PlanElectricityCostForm({
@@ -56,15 +56,20 @@ export function PlanElectricityCostForm({
 	const watchedCosts = form.watch('costs');
 
 	useEffect(() => {
+		const electricityEndpoint =
+			plan?.processGroupType === ProcessGroupType.LC
+				? API.PRICING.ELECTRICITY.LONGWALL_PANEL.LIST
+				: API.PRICING.ELECTRICITY.TUNNELING.LIST;
+
 		const promises = Promise.all([
-			api.pagging<Electricity>(API.PRICING.ELECTRICITY.TUNNELING.LIST),
+			api.pagging<Electricity>(electricityEndpoint),
 			api.get<AdjustmentDetail[]>(API.CATALOG.ADJUSTMENT.FACTOR.DETAILS, {
 				processGroupId: plan?.processGroupId || '',
 			}),
 		]);
 
-		promises.then(([tunnelings, adjustments]) => {
-			setElectricities(tunnelings.result.data);
+		promises.then(([electricityResponse, adjustments]) => {
+			setElectricities(electricityResponse.result.data);
 
 			let filteredAdjustments: AdjustmentDetail[] = [];
 			if (plan?.processGroupType === ProcessGroupType.DL) {
