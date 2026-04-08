@@ -17,7 +17,17 @@ import {
 	SavingsRateConfigSchema,
 } from './schema';
 
-const SAVINGS_RATE_CONFIG_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
+const SAVINGS_RATE_CONFIG_SUPPORTS = [
+	'≥',
+	'≤',
+	'<',
+	'>',
+	'%',
+	'°',
+	'=',
+	'-',
+	'_',
+];
 
 export function SavingsRateConfigForm({
 	data,
@@ -96,7 +106,7 @@ export function SavingsRateConfigForm({
 			<FormInput
 				control={form.control}
 				name='description'
-				label='Description'
+				label='Mô tả'
 				placeholder='Nhập mô tả'
 			/>
 
