@@ -26,6 +26,8 @@ using Application.Catalog.Index.ProductionOrder.Commands;
 using Application.Catalog.Index.ProductionOrder.Queries;
 using Application.Catalog.Index.ProductionProcess.Commands;
 using Application.Catalog.Index.ProductionProcess.Queries;
+using Application.Catalog.Index.RevenueCostAdjustmentConfig.Commands;
+using Application.Catalog.Index.RevenueCostAdjustmentConfig.Queries;
 using Application.Catalog.Index.SavingsRateConfig.Commands;
 using Application.Catalog.Index.SavingsRateConfig.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
@@ -47,6 +49,7 @@ using Application.Dto.Catalog.ProcessGroup;
 using Application.Dto.Catalog.Product;
 using Application.Dto.Catalog.ProductionOrder;
 using Application.Dto.Catalog.ProductionProcess;
+using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
 using Application.Dto.Catalog.SavingsRateConfig;
 using Application.Dto.Catalog.StoneClampRatio;
 using Application.Dto.Catalog.UnitOfMeasure;
@@ -1709,6 +1712,74 @@ public class CatalogController : BaseNoAuthController
     public async Task<IActionResult> DeleteSavingsRateConfigList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteSavingsRateConfigListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region RevenueCostAdjustmentConfig
+
+    [HttpGet("RevenueCostAdjustmentConfig")]
+    [OpenApiOperation("Get All RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> GetAllRevenueCostAdjustmentConfig([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllRevenueCostAdjustmentConfigQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("RevenueCostAdjustmentConfig/{id:guid}")]
+    [OpenApiOperation("Get RevenueCostAdjustmentConfig By Id", "")]
+    public async Task<IActionResult> GetRevenueCostAdjustmentConfigById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetRevenueCostAdjustmentConfigByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("RevenueCostAdjustmentConfig/export")]
+    [OpenApiOperation("Export RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> ExportRevenueCostAdjustmentConfig()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelRevenueCostAdjustmentConfigQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Ty_le_dieu_chinh_thu_chi.xlsx");
+        return result;
+    }
+
+    [HttpPost("RevenueCostAdjustmentConfig/import")]
+    [OpenApiOperation("Import RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> ImportRevenueCostAdjustmentConfig([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportRevenueCostAdjustmentConfigExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpPost("RevenueCostAdjustmentConfig")]
+    [OpenApiOperation("Create New RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> CreateRevenueCostAdjustmentConfig([FromBody] CreateRevenueCostAdjustmentConfigDto createModel)
+    {
+        var result = await Mediator.Send(new CreateRevenueCostAdjustmentConfigCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("RevenueCostAdjustmentConfig")]
+    [OpenApiOperation("Update RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> UpdateRevenueCostAdjustmentConfig([FromBody] RevenueCostAdjustmentConfigDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateRevenueCostAdjustmentConfigCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("RevenueCostAdjustmentConfig/{deleteId:guid}")]
+    [OpenApiOperation("Delete RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> DeleteRevenueCostAdjustmentConfig([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteRevenueCostAdjustmentConfigCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("RevenueCostAdjustmentConfig")]
+    [OpenApiOperation("Delete Many RevenueCostAdjustmentConfig", "")]
+    public async Task<IActionResult> DeleteRevenueCostAdjustmentConfigList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteRevenueCostAdjustmentConfigListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

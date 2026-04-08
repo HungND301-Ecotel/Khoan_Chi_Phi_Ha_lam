@@ -239,6 +239,18 @@ export const API = {
 			IMPORT: '/v1/catalog/savingsrateconfig/import',
 			EXPORT: '/v1/catalog/savingsrateconfig/export',
 		},
+		REVENUE_COST_ADJUSTMENT_CONFIG: {
+			LIST: '/v1/catalog/revenuecostadjustmentconfig',
+			CREATE: '/v1/catalog/revenuecostadjustmentconfig',
+			UPDATE: '/v1/catalog/revenuecostadjustmentconfig',
+			DELETES: '/v1/catalog/revenuecostadjustmentconfig',
+			DELETE: (id: string) =>
+				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			DETAIL: (id: string) =>
+				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			IMPORT: '/v1/catalog/revenuecostadjustmentconfig/import',
+			EXPORT: '/v1/catalog/revenuecostadjustmentconfig/export',
+		},
 
 		NORM_FACTOR: {
 			LIST: '/v1/catalog/normfactor',

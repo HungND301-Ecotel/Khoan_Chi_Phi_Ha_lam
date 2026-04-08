@@ -107,6 +107,11 @@ export const NAVIGATIONS: Navigation[] = [
 				name: 'Hệ số tiết kiệm được chấp nhận',
 				href: '/catalogs/accepted-savings-rates',
 			},
+			{
+				type: 'link',
+				name: 'Cấu hình điều chỉnh thu chi',
+				href: '/catalogs/revenue-cost-adjustment-configs',
+			},
 		],
 	},
 	{

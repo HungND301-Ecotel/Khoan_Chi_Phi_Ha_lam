@@ -59,6 +59,7 @@ public class ApplicationDbContext(
     public DbSet<NormFactorAssignmentCode> NormFactorAssignmentCodes => Set<NormFactorAssignmentCode>();
     public DbSet<Code> Codes => Set<Code>();
     public DbSet<SavingsRateConfig> SavingsRateConfigs => Set<SavingsRateConfig>();
+    public DbSet<RevenueCostAdjustmentConfig> RevenueCostAdjustmentConfigs => Set<RevenueCostAdjustmentConfig>();
 
     #endregion
 
@@ -125,6 +126,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOrder>().ToTable(nameof(ProductionOrder), "Index");
         modelBuilder.Entity<Technology>().ToTable(nameof(Technology), "Index");
         modelBuilder.Entity<SavingsRateConfig>().ToTable(nameof(SavingsRateConfig), "Index");
+        modelBuilder.Entity<RevenueCostAdjustmentConfig>().ToTable(nameof(RevenueCostAdjustmentConfig), "Index");
         modelBuilder.Entity<Power>().ToTable(nameof(Power), "Index");
         modelBuilder.Entity<SupportStep>().ToTable(nameof(SupportStep), "Index");
         modelBuilder.Entity<Passport>().ToTable(nameof(Passport), "Index");

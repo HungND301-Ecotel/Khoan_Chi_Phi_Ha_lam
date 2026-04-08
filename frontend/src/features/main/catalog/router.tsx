@@ -16,6 +16,7 @@ import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { MainCatalogOtherPartPage } from './part/other/page';
 import { MainCatalogParameterProductionOrderPage } from './production-order/page';
 import { MainCatalogNormFactorPage } from './norm-factor/page';
+import { MainCatalogRevenueCostAdjustmentConfigPage } from './revenue-cost-adjustment-config/page';
 import { MainCatalogSavingsRateConfigPage } from './savings-rate-config/page';
 
 const MainCatalogRouter: RouteObject = {
@@ -147,6 +148,14 @@ const MainCatalogRouter: RouteObject = {
 			handle: {
 				breadcrumb: 'Hệ số tiết kiệm được chấp nhận',
 				title: 'Hệ số tiết kiệm được chấp nhận',
+			},
+		},
+		{
+			path: 'revenue-cost-adjustment-configs',
+			element: <MainCatalogRevenueCostAdjustmentConfigPage />,
+			handle: {
+				breadcrumb: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
+				title: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
 			},
 		},
 	],

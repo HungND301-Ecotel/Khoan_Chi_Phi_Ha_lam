@@ -22,12 +22,14 @@ public class GetAllNormFactorQueryHandler(IPaginationService paginationService, 
 
         var spec = new NormFactorsByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: normFactorRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+        result.Data = result.Data.OrderBy(d => d.ProcessGroupCode).ThenBy(d => d.HardnessName).ThenBy(d => d.StoneClampRatioName).ToList();
+        return result;
     }
 }
