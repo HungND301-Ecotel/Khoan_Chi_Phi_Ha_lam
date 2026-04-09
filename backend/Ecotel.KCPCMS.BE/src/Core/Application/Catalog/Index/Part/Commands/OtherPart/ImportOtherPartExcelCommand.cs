@@ -20,7 +20,7 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
     private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+    private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
 
     public async Task<bool> Handle(ImportOtherPartExcelCommand request, CancellationToken cancellationToken)
     {
@@ -30,88 +30,107 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
         }
 
         using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<OtherPartExcelDto>(stream);
+        var dtos = excelService.ImportFromExcel<OtherPartExcelDto>(stream) ?? [];
 
-        var unitNames = dtos
-            .Select(d => d.UnitOfMeasureName?.Trim())
+        var importErrors = new List<string>();
+        var importRows = new List<OtherPartImportRow>();
+
+        for (var i = 0; i < dtos.Count; i++)
+        {
+            TryBuildImportRow(dtos[i], i + 2, importRows, importErrors);
+        }
+
+        ValidateDuplicatedPartCode(importRows, importErrors);
+
+        var unitNames = importRows
+            .Select(r => r.UnitName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var unitOfMeasure = await _unitOfMeasureRepository.GetAllAsync(
+        var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(
             predicate: p => unitNames.Contains(p.Name),
             disableTracking: false);
-
-        var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
-
+        var unitOfMeasureIdMap = unitOfMeasures.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
         var dbUnitOfMeasureNames = unitOfMeasureIdMap.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < dtos.Count; i++)
+
+        foreach (var row in importRows)
         {
-            var unitName = dtos[i].UnitOfMeasureName?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(unitName) || !dbUnitOfMeasureNames.Contains(unitName))
+            if (string.IsNullOrWhiteSpace(row.UnitName) || !dbUnitOfMeasureNames.Contains(row.UnitName))
             {
-                throw new BadRequestException($"Giá trị đơn vị tính '{dtos[i].UnitOfMeasureName}' không tồn tại ở dòng {i + 2}.");
+                importErrors.Add($"Mã phụ tùng khác '{row.PartCodeDisplay}' có đơn vị tính '{row.Dto.UnitOfMeasureName}' không tồn tại ở dòng {row.RowNumber}.");
             }
         }
 
-        var excelDtos = new List<PartEntity>();
-        for (var i = 0; i < dtos.Count; i++)
+        var excelDtos = new List<(PartEntity Entity, int RowNumber, string PartCodeNormalized, List<Cost> Costs)>();
+        foreach (var row in importRows)
         {
-            var d = dtos[i];
-            var rowNumber = i + 2;
-            var unitName = d.UnitOfMeasureName?.Trim() ?? string.Empty;
-            if (!unitOfMeasureIdMap.TryGetValue(unitName, out var unitOfMeasureId))
+            if (!unitOfMeasureIdMap.TryGetValue(row.UnitName, out var unitOfMeasureId))
             {
-                throw new BadRequestException($"Giá trị đơn vị tính '{d.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                continue;
             }
 
-            var partEntity = PartEntity.Create(d.Id, d.Code, d.Name, unitOfMeasureId, d.ReplacementTimeStandard, PartType.OtherPart);
+            var partId = Guid.NewGuid();
+            var partEntity = PartEntity.Create(partId, row.Dto.Code, row.Dto.Name, unitOfMeasureId, row.Dto.ReplacementTimeStandard, PartType.OtherPart);
+
             try
             {
-                var costList = costService.ParseExcelCostString(d.Cost, Domain.Common.Enums.CostType.Part, Guid.Empty);
-                partEntity.AddCost(costList);
+                var costs = costService.ParseExcelCostString(row.Dto.Cost, CostType.Part, partId)
+                    .Select(c => Cost.Create(c.StartMonth, c.EndMonth, CostType.Part, c.Amount, partId, c.ActualAmount))
+                    .ToList();
+
+                if (!TryValidatePartCosts(costs, out var partCostError))
+                {
+                    importErrors.Add($"Mã phụ tùng khác '{row.PartCodeDisplay}' {partCostError}");
+                    continue;
+                }
+
+                excelDtos.Add((partEntity, row.RowNumber, row.PartCodeNormalized, costs));
             }
             catch (Exception ex)
             {
-                throw new BadRequestException($"Giá trị đơn giá '{d.Cost}' không hợp lệ ở dòng {rowNumber}. Chi tiết: {ex.Message}");
+                importErrors.Add($"Mã phụ tùng khác '{row.PartCodeDisplay}' có đơn giá '{row.Dto.Cost}' không hợp lệ ở dòng {row.RowNumber}. Chi tiết: {ex.Message}");
             }
-
-            excelDtos.Add(partEntity);
         }
+
+        ThrowIfImportErrors(importErrors);
 
         var dbParts = await _partRepository.GetAllAsync(
             predicate: p => p.Type == PartType.OtherPart,
-            include: p => p.Include(p => p.Code).Include(p => p.Costs).Include(p => p.EquipmentParts),
+            include: p => p.Include(p => p.Code).Include(p => p.Costs),
             disableTracking: false);
 
-        var deleteList = new List<PartEntity>();
-        var deleteCost = new List<Cost>();
+        var dbPartDict = dbParts
+            .Where(p => p.Code != null && !string.IsNullOrWhiteSpace(p.Code.Value))
+            .ToDictionary(p => NormalizePartCode(p.Code!.Value), p => p, StringComparer.OrdinalIgnoreCase);
+
+        var excelPartCodes = excelDtos.Select(x => x.PartCodeNormalized).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var deleteList = dbParts.Where(x => x.Code != null && !excelPartCodes.Contains(NormalizePartCode(x.Code.Value))).ToList();
+        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
+
+        var deleteCosts = new List<Cost>();
+        var insertCosts = new List<Cost>();
         var updateList = new List<PartEntity>();
         var addList = new List<PartEntity>();
 
-        var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
-        var entitiesToDelete = dbParts.Where(x => !excelIds.Contains(x.Id)).ToList();
-        deleteList.AddRange(entitiesToDelete);
-        var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
-
-        var dbPartDict = dbParts.ToDictionary(p => p.Id);
-
-        for (var i = 0; i < excelDtos.Count; i++)
+        foreach (var excelDto in excelDtos)
         {
-            var dto = excelDtos[i];
-            var rowNumber = i + 2;
-            if (dto.Id != Guid.Empty && dbPartDict.TryGetValue(dto.Id, out var entityToUpdate))
+            var dto = excelDto.Entity;
+            var partCodeNormalized = excelDto.PartCodeNormalized;
+            var parsedCosts = excelDto.Costs;
+
+            if (dbPartDict.TryGetValue(partCodeNormalized, out var entityToUpdate))
             {
-                bool isInfoChanged = entityToUpdate.CheckChange(dto);
-                bool isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), dto.Costs.ToList());
+                var isInfoChanged = !string.Equals(entityToUpdate.Name, dto.Name, StringComparison.Ordinal)
+                    || entityToUpdate.UnitOfMeasureId != dto.UnitOfMeasureId
+                    || entityToUpdate.ReplacementTimeStandard != dto.ReplacementTimeStandard
+                    || entityToUpdate.Type != PartType.OtherPart;
+
+                var isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), parsedCosts);
 
                 if (isInfoChanged || isCostChanged)
                 {
-                    if (await codeService.IsPartCodeExisted(dto.Code!.Value, entityToUpdate.CodeId))
-                    {
-                        throw new ConflictException($"Giá trị mã vật tư khác '{dto.Code!.Value}' đã tồn tại ở dòng {rowNumber}.");
-                    }
-
                     entityToUpdate.Update(
                         dto.Code!.Value,
                         dto.Name,
@@ -121,10 +140,8 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
 
                     if (isCostChanged)
                     {
-                        deleteCost.AddRange(entityToUpdate.Costs.ToList());
-
-                        entityToUpdate.ClearCost();
-                        entityToUpdate.AddCost(dto.Costs.ToList());
+                        deleteCosts.AddRange(entityToUpdate.Costs.ToList());
+                        insertCosts.AddRange(parsedCosts.Select(c => Cost.Create(c.StartMonth, c.EndMonth, CostType.Part, c.Amount, entityToUpdate.Id, c.ActualAmount)));
                     }
 
                     updateList.Add(entityToUpdate);
@@ -134,17 +151,11 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
             {
                 if (await codeService.IsPartCodeExisted(dto.Code!.Value))
                 {
-                    throw new ConflictException($"Giá trị mã vật tư khác '{dto.Code!.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    throw new ConflictException($"Giá trị mã vật tư khác '{dto.Code!.Value}' đã tồn tại ở dòng {excelDto.RowNumber}.");
                 }
 
-                var newPart = PartEntity.Create(
-                    dto.Code!.Value,
-                    dto.Name,
-                    dto.UnitOfMeasureId,
-                    dto.ReplacementTimeStandard,
-                    PartType.OtherPart);
-                newPart.AddCost(dto.Costs.ToList());
-                addList.Add(newPart);
+                addList.Add(dto);
+                insertCosts.AddRange(parsedCosts);
             }
         }
 
@@ -154,7 +165,6 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
             if (deleteList.Any())
             {
                 _partRepository.Delete(deleteList);
-
                 if (codeToDelete.Any())
                 {
                     _codeRepository.Delete(codeToDelete);
@@ -168,11 +178,17 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
 
             if (updateList.Any())
             {
-                if (deleteCost.Any())
+                if (deleteCosts.Any())
                 {
-                    _costRepository.Delete(deleteCost);
+                    _costRepository.Delete(deleteCosts);
                 }
+
                 _partRepository.Update(updateList);
+            }
+
+            if (insertCosts.Any())
+            {
+                await _costRepository.InsertAsync(insertCosts);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -186,4 +202,86 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
         }
     }
 
+    private static bool TryBuildImportRow(OtherPartExcelDto dto, int rowNumber, ICollection<OtherPartImportRow> rows, ICollection<string> errors)
+    {
+        var partCodeDisplay = (dto.Code ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(partCodeDisplay))
+        {
+            errors.Add($"Thiếu mã phụ tùng ở dòng {rowNumber}.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            errors.Add($"Mã phụ tùng khác '{partCodeDisplay}' thiếu tên ở dòng {rowNumber}.");
+            return false;
+        }
+
+        rows.Add(new OtherPartImportRow(
+            dto,
+            rowNumber,
+            NormalizePartCode(partCodeDisplay),
+            partCodeDisplay,
+            dto.UnitOfMeasureName?.Trim() ?? string.Empty));
+
+        return true;
+    }
+
+    private static void ValidateDuplicatedPartCode(IEnumerable<OtherPartImportRow> rows, ICollection<string> errors)
+    {
+        foreach (var group in rows.GroupBy(x => x.PartCodeNormalized))
+        {
+            if (group.Count() <= 1)
+            {
+                continue;
+            }
+
+            var lines = string.Join(", ", group.Select(x => x.RowNumber));
+            errors.Add($"Mã phụ tùng khác '{group.First().PartCodeDisplay}' bị trùng ở các dòng {lines}.");
+        }
+    }
+
+    private static bool TryValidatePartCosts(IEnumerable<Cost> costs, out string error)
+    {
+        foreach (var cost in costs)
+        {
+            var parentCount =
+                (cost.PartId.HasValue ? 1 : 0) +
+                (cost.MaterialId.HasValue ? 1 : 0) +
+                (cost.EquipmentId.HasValue ? 1 : 0);
+
+            if (parentCount != 1 || !cost.PartId.HasValue)
+            {
+                error = "có dữ liệu đơn giá không hợp lệ.";
+                return false;
+            }
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
+
+    private static string NormalizePartCode(string? partCode) => (partCode ?? string.Empty).Trim().ToUpperInvariant();
+
+    private sealed record OtherPartImportRow(
+        OtherPartExcelDto Dto,
+        int RowNumber,
+        string PartCodeNormalized,
+        string PartCodeDisplay,
+        string UnitName);
 }

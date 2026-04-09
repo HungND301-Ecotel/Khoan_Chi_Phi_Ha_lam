@@ -88,22 +88,20 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 
 		promises.then(() => {
 			if (!row) return;
-			api
-				.get<OtherPartDetail>(API.CATALOG.OTHER_PART.DETAIL(row.id))
-				.then((res) => {
-					const { costs, ...otherPart } = res.result;
-					form.reset({
-						...otherPart,
-						costs: costs?.length
-							? costs.map((cost) => ({
-									startMonth: cost.startMonth.substring(0, 10),
-									endMonth: cost.endMonth.substring(0, 10),
-									amount: cost.amount,
-									actualAmount: cost.actualAmount,
-								}))
-							: OTHER_PART_SCHEMA_DEFAULT.costs,
-					});
+			api.get<OtherPartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
+				const { costs, ...otherPart } = res.result;
+				form.reset({
+					...otherPart,
+					costs: costs?.length
+						? costs.map((cost) => ({
+								startMonth: cost.startMonth.substring(0, 10),
+								endMonth: cost.endMonth.substring(0, 10),
+								amount: cost.amount,
+								actualAmount: cost.actualAmount,
+							}))
+						: OTHER_PART_SCHEMA_DEFAULT.costs,
 				});
+			});
 		});
 	}, [row, form]);
 
@@ -111,14 +109,15 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 		try {
 			const processedValues = {
 				...values,
+				partType: 2,
 			};
 			if (row?.id) {
-				await api.put(API.CATALOG.OTHER_PART.UPDATE, {
+				await api.put(API.CATALOG.PART.UPDATE, {
 					id: row?.id,
 					...processedValues,
 				});
 			} else {
-				await api.post(API.CATALOG.OTHER_PART.CREATE, processedValues);
+				await api.post(API.CATALOG.PART.CREATE, processedValues);
 			}
 
 			setOpen(false);

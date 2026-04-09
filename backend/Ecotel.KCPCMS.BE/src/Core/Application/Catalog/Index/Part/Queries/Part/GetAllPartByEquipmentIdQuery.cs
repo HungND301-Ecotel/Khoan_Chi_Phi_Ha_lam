@@ -19,6 +19,8 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: t => t.EquipmentParts.Any(e => e.EquipmentId == request.EquipmentId),
             include: t => t
                 .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
+                .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.EquipmentProcessGroups)
+                    .ThenInclude(epg => epg.ProcessGroup).ThenInclude(pg => pg.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
@@ -40,6 +42,20 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             ReplacementTimeStandard = partDetail.ReplacementTimeStandard,
             UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
+            ProcessGroups = partDetail.EquipmentParts
+                .Where(ep => ep.EquipmentId == request.EquipmentId && ep.Equipment != null)
+                .SelectMany(ep => ep.Equipment!.EquipmentProcessGroups)
+                .Where(epg => epg.ProcessGroup?.Code != null)
+                .Select(epg => new PartProcessGroupDto
+                {
+                    Id = epg.ProcessGroupId,
+                    Code = epg.ProcessGroup!.Code!.Value,
+                    Name = epg.ProcessGroup.Name
+                })
+                .DistinctBy(pg => pg.Id)
+                .OrderBy(pg => pg.Code)
+                .ThenBy(pg => pg.Name)
+                .ToList(),
             CurrentCost = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.Amount ?? 0,
             ActualAmount = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.ActualAmount ?? 0
         }).ToList();

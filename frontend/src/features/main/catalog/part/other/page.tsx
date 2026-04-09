@@ -15,7 +15,7 @@ export function MainCatalogOtherPartPage() {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const rows = selected.rows.map((row) => row.original.id);
 
-			const res = await api.delete(API.CATALOG.OTHER_PART.DELETES, rows);
+			const res = await api.delete(API.CATALOG.PART.DELETES, rows);
 
 			if (!res.success) throw new Error(res.message);
 
@@ -29,7 +29,9 @@ export function MainCatalogOtherPartPage() {
 
 	const handleExport = async () => {
 		try {
-			const filename = await api.export(API.CATALOG.OTHER_PART.EXPORT);
+			const filename = await api.export(API.CATALOG.PART.EXPORT, {
+				query: { partType: '2' },
+			});
 			popup.success(`Đã xuất file ${filename}`);
 		} catch (error) {
 			popup.error(error);
@@ -41,7 +43,9 @@ export function MainCatalogOtherPartPage() {
 		data?: ActionDialogProps<OtherPart>['data'],
 	) => {
 		try {
-			const result = await api.import(API.CATALOG.OTHER_PART.IMPORT, file);
+			const result = await api.import(API.CATALOG.PART.IMPORT, file, {
+				partType: 2,
+			});
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {
@@ -55,9 +59,9 @@ export function MainCatalogOtherPartPage() {
 
 	return (
 		<DataTable
-			url={API.CATALOG.OTHER_PART.LIST}
+			url={API.CATALOG.PART.LIST}
 			columns={CATALOG_OTHER_PART_COLUMNS}
-			query={{ ignorePagination: true }}
+			query={{ ignorePagination: true, partType: 2 }}
 			getRowId={(row) => `${row.id}`}
 			filters={[
 				{ key: 'code', label: 'Mã phụ tùng' },

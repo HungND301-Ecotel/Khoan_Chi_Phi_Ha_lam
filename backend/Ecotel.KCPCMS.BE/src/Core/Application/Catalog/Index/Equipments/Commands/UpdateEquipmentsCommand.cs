@@ -3,12 +3,14 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Equipment;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.Equipments.Commands;
+
 public record UpdateEquipmentsCommand(UpdateEquipmentDto UpdateModel) : IRequest<bool>;
 
 public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService, ICostService costService) : IRequestHandler<UpdateEquipmentsCommand, bool>
@@ -17,14 +19,23 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
+    private readonly IWriteRepository<EquipmentPart> _equipmentPartRepository = unitOfWork.GetRepository<EquipmentPart>();
     private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     public async Task<bool> Handle(UpdateEquipmentsCommand request, CancellationToken cancellationToken)
     {
-        var processGroupIds = (request.UpdateModel.ProcessGroupIds ?? [])
+        var processGroupId = request.UpdateModel.ProcessGroupId;
+        if (!processGroupId.HasValue || processGroupId.Value == Guid.Empty)
+        {
+            throw new BadRequestException("Nhóm công đoạn sản xuất không được để trống.");
+        }
+
+        var partIds = (request.UpdateModel.PartIds ?? [])
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
-        await EnsureProcessGroupsExist(processGroupIds);
+        await EnsureProcessGroupExist(processGroupId.Value);
+        await EnsurePartsExist(partIds);
 
         if (request.UpdateModel.UnitOfMeasureId != null)
         {
@@ -40,7 +51,10 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
             include: m => m.Include(c => c.Costs).Include(c => c.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        if (await codeService.IsCodeExisted(request.UpdateModel.Code, existedEquipment.CodeId))
+        if (await codeService.IsEquipmentCodeExisted(
+                request.UpdateModel.Code,
+                processGroupId.Value,
+                existedEquipment.Id))
         {
             throw new ConflictException(CustomResponseMessage.EquipmentCodeAlreadyExists);
         }
@@ -56,6 +70,14 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
             if (existedEquipmentProcessGroups.Any())
             {
                 _equipmentProcessGroupRepository.Delete(existedEquipmentProcessGroups);
+            }
+
+            var existedEquipmentParts = await _equipmentPartRepository.GetAllAsync(
+                predicate: x => x.EquipmentId == existedEquipment.Id,
+                disableTracking: false);
+            if (existedEquipmentParts.Any())
+            {
+                _equipmentPartRepository.Delete(existedEquipmentParts);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -82,12 +104,15 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
 
             _equipmentRepository.Update(existedEquipment);
 
-            if (processGroupIds.Any())
+            var equipmentProcessGroup = EquipmentProcessGroup.Create(existedEquipment.Id, processGroupId.Value);
+            await _equipmentProcessGroupRepository.InsertAsync(equipmentProcessGroup, cancellationToken);
+
+            if (partIds.Any())
             {
-                var equipmentProcessGroups = processGroupIds
-                    .Select(processGroupId => EquipmentProcessGroup.Create(existedEquipment.Id, processGroupId))
+                var equipmentParts = partIds
+                    .Select(partId => EquipmentPart.Create(existedEquipment.Id, partId))
                     .ToList();
-                await _equipmentProcessGroupRepository.InsertAsync(equipmentProcessGroups, cancellationToken);
+                await _equipmentPartRepository.InsertAsync(equipmentParts, cancellationToken);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -102,22 +127,31 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
         return true;
     }
 
-    private async Task EnsureProcessGroupsExist(ICollection<Guid> processGroupIds)
+    private async Task EnsureProcessGroupExist(Guid processGroupId)
     {
-        if (!processGroupIds.Any())
+        var exists = await _processGroupRepository.ExistsAsync(x => x.Id == processGroupId);
+        if (!exists)
+        {
+            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
+        }
+    }
+
+    private async Task EnsurePartsExist(ICollection<Guid> partIds)
+    {
+        if (!partIds.Any())
         {
             return;
         }
 
-        var existingProcessGroupIds = await _processGroupRepository.GetAllAsync(
+        var existingPartIds = await _partRepository.GetAllAsync(
             selector: x => x.Id,
-            predicate: x => processGroupIds.Contains(x.Id),
+            predicate: x => partIds.Contains(x.Id) && x.Type == PartType.Part,
             disableTracking: true);
 
-        var existingIdSet = existingProcessGroupIds.ToHashSet();
-        if (processGroupIds.Any(id => !existingIdSet.Contains(id)))
+        var existingIdSet = existingPartIds.ToHashSet();
+        if (partIds.Any(id => !existingIdSet.Contains(id)))
         {
-            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
+            throw new NotFoundException(CustomResponseMessage.PartNotFound);
         }
     }
 }

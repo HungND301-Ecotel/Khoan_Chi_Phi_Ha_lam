@@ -3,15 +3,16 @@ import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormInput } from '@/components/form/form-input';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
+import { MultiSelect, MultiSelectOption } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
+import { Part } from '@/features/main/catalog/part/main/columns';
 import {
 	EQUIPMENT_SCHEMA_DEFAULT,
 	equipmentSchema,
@@ -42,6 +43,13 @@ export type EquipmentDetail = {
 		code: string;
 		name: string;
 	}>;
+	processGroupId?: string;
+	partIds: string[];
+	parts: Array<{
+		id: string;
+		code: string;
+		name: string;
+	}>;
 };
 
 export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
@@ -50,6 +58,8 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
+	const [parts, setParts] = useState<Part[]>([]);
+	const [selectedParts, setSelectedParts] = useState<MultiSelectOption[]>([]);
 
 	const form = useForm<EquipmentSchema>({
 		resolver: zodResolver(equipmentSchema),
@@ -61,19 +71,35 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
+			api.pagging<Part>(API.CATALOG.PART.LIST, { partType: 1 }),
 		]);
 
-		promises.then(([units, processGroups]) => {
+		promises.then(([units, processGroups, parts]) => {
 			setUnits(units.result.data);
 			setProcessGroups(processGroups.result.data);
+			setParts(parts.result.data);
 			if (row) {
 				api
 					.get<EquipmentDetail>(API.CATALOG.EQUIPMENT.DETAIL(row.id))
 					.then((res) => {
-						const { costs, processGroups, ...equipment } = res.result;
+						const {
+							costs,
+							processGroups,
+							parts: selectedPartsFromApi,
+							partIds,
+							...equipment
+						} = res.result;
+						const selected = (selectedPartsFromApi ?? [])
+							.map<MultiSelectOption>((part) => ({
+								label: `${part.code} - ${part.name}`,
+								value: part.id,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
 						form.reset({
 							...equipment,
-							processGroupIds: processGroups.map((item) => item.id),
+							processGroupId:
+								equipment.processGroupId ?? processGroups.at(0)?.id ?? '',
+							partIds: partIds ?? [],
 							costs:
 								costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -81,10 +107,18 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 									amount: cost.amount,
 								})) || EQUIPMENT_SCHEMA_DEFAULT.costs,
 						});
+						setSelectedParts(selected);
 					});
 			}
 		});
 	}, [row, form]);
+
+	useEffect(() => {
+		form.setValue(
+			'partIds',
+			selectedParts.map((item) => item.value),
+		);
+	}, [form, selectedParts]);
 
 	const handleSubmit = async (values: EquipmentSchema) => {
 		try {
@@ -138,15 +172,36 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 				}))}
 			/>
 
-			<FormMultiSelect
+			<FormComboBox
 				control={form.control}
-				name='processGroupIds'
+				name='processGroupId'
 				label='Nhóm công đoạn sản xuất'
 				placeholder='Chọn nhóm công đoạn sản xuất'
 				options={processGroups.map((processGroup) => ({
 					value: processGroup.id,
 					label: `${processGroup.code} - ${processGroup.name}`,
 				}))}
+			/>
+
+			<MultiSelect
+				label='Phụ tùng'
+				placeholder='Chọn phụ tùng'
+				values={selectedParts}
+				onValuesChange={setSelectedParts}
+				options={Object.values(
+					(parts ?? []).reduce<
+						Record<string, { value: string; label: string }>
+					>((acc, item) => {
+						if (!item.id || !item.code || acc[item.id]) {
+							return acc;
+						}
+						acc[item.id] = {
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						};
+						return acc;
+					}, {}),
+				)}
 			/>
 
 			<FormArray

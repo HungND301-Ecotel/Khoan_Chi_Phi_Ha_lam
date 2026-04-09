@@ -4,9 +4,12 @@ import { API } from '@/constants/api-enpoint';
 import { EquipmentForm } from '@/features/main/catalog/equipment/actions';
 import {
 	CATALOG_EQUIPMENT_COLUMNS,
+	CATALOG_EQUIPMENT_EXPAND_COLUMNS,
 	Equipment,
+	EquipmentPartDetail,
 } from '@/features/main/catalog/equipment/columns';
 import { api } from '@/lib/api';
+import { useEffect, useState } from 'react';
 
 function MainCatalogEquipmentPage() {
 	const popup = usePopup();
@@ -63,10 +66,40 @@ function MainCatalogEquipmentPage() {
 			]}
 			onCreate={(props) => <EquipmentForm {...props} />}
 			onUpdate={(props) => <EquipmentForm {...props} />}
+			onExpand={(props) => <EquipmentExpand {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}
 			onImport={handleImport}
 		/>
+	);
+}
+
+function EquipmentExpand({ row }: ActionDialogProps<Equipment>) {
+	const [parts, setParts] = useState<EquipmentPartDetail[]>([]);
+
+	useEffect(() => {
+		if (!row) return;
+
+		api
+			.get<EquipmentPartDetail[]>(API.CATALOG.EQUIPMENT.EQUIPMENT_PARTS(row.id))
+			.then((res) => setParts(res.result ?? []))
+			.catch(() => setParts([]));
+	}, [row]);
+
+	if (!row) return null;
+
+	return (
+		<div className='mx-32'>
+			<DataTable
+				columns={CATALOG_EQUIPMENT_EXPAND_COLUMNS}
+				items={parts}
+				hasActions={false}
+				hasPagination={false}
+				hasSort={false}
+				hasIndex={false}
+				compact={true}
+			/>
+		</div>
 	);
 }
 

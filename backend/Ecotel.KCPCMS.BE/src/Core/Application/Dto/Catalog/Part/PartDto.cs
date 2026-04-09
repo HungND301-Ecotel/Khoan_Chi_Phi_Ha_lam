@@ -1,6 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Application.Dto.Catalog.Cost;
+using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.Part
 {
@@ -14,18 +15,16 @@ namespace Application.Dto.Catalog.Part
     public class PartDto : IDto
     {
         public Guid Id { get; set; }
-        public Guid EquipmentPartId { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
-        public Guid EquipmentId { get; set; }
-        public string EquipmentCode { get; set; }
+        public PartType PartType { get; set; }
+        public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
+        public IList<string> EquipmentCodes { get; set; } = new List<string>();
         public decimal ReplacementTimeStandard { get; set; }
         public double CostAmount { get; set; }
         public double ActualAmount { get; set; }
-        public string ProcessGroupCodeText { get; set; } = string.Empty;
-        public IList<PartProcessGroupDto> ProcessGroups { get; set; } = new List<PartProcessGroupDto>();
     }
 
     public class OtherPartDto : IDto
@@ -42,10 +41,6 @@ namespace Application.Dto.Catalog.Part
 
     public class PartExcelDto
     {
-        [Display(Name = "Mã thiết bị")]
-        public string EquipmentCode { get; set; }
-        [Display(Name = "Mã nhóm công đoạn sản xuất")]
-        public string ProcessGroupCodes { get; set; }
         [Display(Name = "Mã phụ tùng")]
         public string Code { get; set; }
         [Display(Name = "Tên phụ tùng")]
@@ -83,10 +78,9 @@ namespace Application.Dto.Catalog.Part
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
         public decimal ReplacementTimeStandard { get; set; }
+        public PartType PartType { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<string> EquipmentCodes { get; set; } = new List<string>();
-        public IList<Guid> ProcessGroupIds { get; set; } = new List<Guid>();
-        public IList<PartProcessGroupDto> ProcessGroups { get; set; } = new List<PartProcessGroupDto>();
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
@@ -111,7 +105,6 @@ namespace Application.Dto.Catalog.Part
         public decimal ReplacementTimeStandard { get; set; }
         public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<string> EquipmentCodes { get; set; } = new List<string>();
-        public IList<Guid> ProcessGroupIds { get; set; } = new List<Guid>();
         public IList<PartProcessGroupDto> ProcessGroups { get; set; } = new List<PartProcessGroupDto>();
         public double CurrentCost { get; set; }
         public double ActualAmount { get; set; }
@@ -123,8 +116,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public decimal ReplacementTimeStandard { get; set; }
-        public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
-        public IList<Guid> ProcessGroupIds { get; set; } = new List<Guid>();
+        public PartType PartType { get; set; } = PartType.Part;
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 
@@ -144,8 +136,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public decimal ReplacementTimeStandard { get; set; }
-        public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
-        public IList<Guid> ProcessGroupIds { get; set; } = new List<Guid>();
+        public PartType PartType { get; set; } = PartType.Part;
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 

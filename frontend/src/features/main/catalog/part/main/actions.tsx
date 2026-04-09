@@ -4,22 +4,18 @@ import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
-import { MultiSelect, MultiSelectOption } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Equipment } from '@/features/main/catalog/equipment/columns';
 import { Part } from '@/features/main/catalog/part/main/columns';
 import {
 	PART_SCHEMA_DEFAULT,
 	partSchema,
 	PartSchema,
 } from '@/features/main/catalog/part/main/schema';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,14 +28,7 @@ export type PartDetail = {
 	name: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
-	equipmentIds: string[];
-	equipmentCodes: string[];
-	processGroupIds: string[];
-	processGroups: Array<{
-		id: string;
-		code: string;
-		name: string;
-	}>;
+	partType: number;
 	replacementTimeStandard: number;
 	costs: Array<{
 		startMonth: string;
@@ -55,11 +44,6 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
-	const [equipments, setEquipments] = useState<Equipment[]>([]);
-	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
-	const [selectedEquipments, setSelectedEquipments] = useState<
-		MultiSelectOption[]
-	>([]);
 
 	const form = useForm<PartSchema>({
 		resolver: zodResolver(partSchema),
@@ -99,28 +83,16 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST),
-			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
 		]);
 
-		promises.then(([unitsRes, equipmentsRes, processGroupsRes]) => {
+		promises.then(([unitsRes]) => {
 			setUnits(unitsRes.result.data);
-			setEquipments(equipmentsRes.result.data);
-			setProcessGroups(processGroupsRes.result.data);
 
 			if (!row) return;
 			api.get<PartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
-				const { costs, processGroupIds, equipmentIds, ...part } = res.result;
-				const selectedEquipmentsFromAPI = equipmentsRes.result.data
-					.filter((equipment) => equipmentIds.includes(equipment.id))
-					.map<MultiSelectOption>((equipment) => ({
-						label: `${equipment.code} - ${equipment.name}`,
-						value: equipment.id,
-					}));
+				const { costs, ...part } = res.result;
 				form.reset({
 					...part,
-					equipmentIds: equipmentIds ?? [],
-					processGroupIds: processGroupIds ?? [],
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -130,22 +102,15 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 							}))
 						: PART_SCHEMA_DEFAULT.costs,
 				});
-				setSelectedEquipments(selectedEquipmentsFromAPI);
 			});
 		});
 	}, [row, form]);
-
-	useEffect(() => {
-		form.setValue(
-			'equipmentIds',
-			selectedEquipments.map((item) => item.value),
-		);
-	}, [form, selectedEquipments]);
 
 	const handleSubmit = async (values: PartSchema) => {
 		try {
 			const processedValues = {
 				...values,
+				partType: 1,
 			};
 			if (row?.id) {
 				await api.put(API.CATALOG.PART.UPDATE, {
@@ -169,28 +134,6 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<MultiSelect
-				label='Mã Thiết bị'
-				placeholder='Chọn mã thiết bị'
-				values={selectedEquipments}
-				onValuesChange={setSelectedEquipments}
-				options={equipments.map((item) => ({
-					value: item.id,
-					label: `${item.code} - ${item.name}`,
-				}))}
-			/>
-
-			<FormMultiSelect
-				control={form.control}
-				name='processGroupIds'
-				label='Nhóm công đoạn sản xuất'
-				placeholder='Chọn nhóm công đoạn sản xuất'
-				options={processGroups.map((item) => ({
-					value: item.id,
-					label: `${item.code} - ${item.name}`,
-				}))}
-			/>
-
 			<FormInput
 				control={form.control}
 				name='code'

@@ -9,6 +9,7 @@ namespace Infrastructure.Services.Catalog;
 public class CodeService(IUnitOfWork unitOfWork) : ICodeService
 {
     private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
+    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
     private readonly IWriteRepository<AdjustmentFactor> _adjustmentFactorRepository = unitOfWork.GetRepository<AdjustmentFactor>();
 
@@ -37,6 +38,27 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
     public async Task<bool> IsCodeExisted(string code, Guid curId)
     {
         return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId);
+    }
+
+    public async Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId)
+    {
+        var normalizedCode = code.ToUpper();
+        return await _equipmentRepository.GetAll()
+            .Where(e => e.Code != null
+                        && e.Code.Value == normalizedCode
+                        && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroupId == processGroupId))
+            .AnyAsync();
+    }
+
+    public async Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId, Guid curEquipmentId)
+    {
+        var normalizedCode = code.ToUpper();
+        return await _equipmentRepository.GetAll()
+            .Where(e => e.Id != curEquipmentId
+                        && e.Code != null
+                        && e.Code.Value == normalizedCode
+                        && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroupId == processGroupId))
+            .AnyAsync();
     }
 
     public async Task<bool> IsPartCodeExisted(string code)

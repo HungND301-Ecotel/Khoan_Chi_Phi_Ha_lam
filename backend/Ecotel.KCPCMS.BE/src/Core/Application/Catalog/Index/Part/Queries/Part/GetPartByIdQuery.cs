@@ -23,10 +23,7 @@ public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<G
                 .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
-                .Include(t => t.Code)
-                .Include(t => t.PartProcessGroups)
-                    .ThenInclude(ppg => ppg.ProcessGroup)
-                    .ThenInclude(pg => pg.Code),
+                .Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         return new PartDetailDto
@@ -41,20 +38,9 @@ public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<G
                 .OrderBy(code => code)
                 .ToList(),
             ReplacementTimeStandard = details.ReplacementTimeStandard,
+            PartType = details.Type,
             UnitOfMeasureId = details.UnitOfMeasureId,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
-            ProcessGroupIds = details.PartProcessGroups.Select(ppg => ppg.ProcessGroupId).ToList(),
-            ProcessGroups = details.PartProcessGroups
-                .Where(ppg => ppg.ProcessGroup?.Code != null)
-                .Select(ppg => new PartProcessGroupDto
-                {
-                    Id = ppg.ProcessGroupId,
-                    Code = ppg.ProcessGroup!.Code!.Value,
-                    Name = ppg.ProcessGroup.Name
-                })
-                .OrderBy(pg => pg.Code)
-                .ThenBy(pg => pg.Name)
-                .ToList(),
             Costs = details.Costs.Adapt<List<MaintainCostDto>>()
         };
     }

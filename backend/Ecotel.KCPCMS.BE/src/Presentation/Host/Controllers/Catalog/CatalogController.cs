@@ -349,26 +349,47 @@ public class CatalogController : BaseNoAuthController
 
     [HttpGet("Part")]
     [OpenApiOperation("Get All Part", "")]
-    public async Task<IActionResult> GetAllPart([FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    public async Task<IActionResult> GetAllPart([FromQuery] DateTime? date, [FromQuery] PartType? partType, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow));
+        var result = await Mediator.Send(new GetAllPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow, partType));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
     [HttpGet("Part/export")]
     [OpenApiOperation("Export Part", "")]
-    public async Task<IActionResult> ExportPart()
+    public async Task<IActionResult> ExportPart([FromQuery] PartType? partType)
     {
-        var fileByte = await Mediator.Send(new ExportExcelPartQuery());
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Phu_tung.xlsx");
+        byte[] fileByte;
+        string fileName;
+        if (partType == PartType.OtherPart)
+        {
+            fileByte = await Mediator.Send(new ExportExcelOtherPartQuery());
+            fileName = "Phu_tung_khac.xlsx";
+        }
+        else
+        {
+            fileByte = await Mediator.Send(new ExportExcelPartQuery());
+            fileName = "Phu_tung.xlsx";
+        }
+
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         return result;
     }
 
     [HttpPost("Part/import")]
     [OpenApiOperation("Import Part", "")]
-    public async Task<IActionResult> ImportPart([FromForm] ImportDto importModel)
+    public async Task<IActionResult> ImportPart([FromForm] ImportDto importModel, [FromForm] PartType? partType)
     {
-        var result = await Mediator.Send(new ImportPartExcelCommand(importModel.FormFile));
+        bool result;
+        if (partType == PartType.OtherPart)
+        {
+            result = await Mediator.Send(new ImportOtherPartExcelCommand(importModel.FormFile));
+        }
+        else
+        {
+            result = await Mediator.Send(new ImportPartExcelCommand(importModel.FormFile));
+        }
+
         return Ok(result, MessageCommon.ImportSuccess);
     }
 
@@ -426,7 +447,7 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Get All OtherPart", "")]
     public async Task<IActionResult> GetAllOtherPart([FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllOtherPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow));
+        var result = await Mediator.Send(new GetAllPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow, PartType.OtherPart));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -452,7 +473,7 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Get OtherPart by Id", "")]
     public async Task<IActionResult> GetOtherPartById([FromRoute] Guid id)
     {
-        var result = await Mediator.Send(new GetOtherPartByIdQuery(id));
+        var result = await Mediator.Send(new GetPartByIdQuery(id));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -460,7 +481,15 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Create New OtherPart", "")]
     public async Task<IActionResult> CreateOtherPart([FromBody] CreateOtherPartDto createModel)
     {
-        var result = await Mediator.Send(new CreateOtherPartCommand(createModel));
+        var result = await Mediator.Send(new CreatePartCommand(new CreatePartDto
+        {
+            Code = createModel.Code,
+            Name = createModel.Name,
+            UnitOfMeasureId = createModel.UnitOfMeasureId,
+            ReplacementTimeStandard = createModel.ReplacementTimeStandard,
+            PartType = PartType.OtherPart,
+            Costs = createModel.Costs
+        }));
         return Ok(result, MessageCommon.CreateSuccess);
     }
 
@@ -468,7 +497,16 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Update OtherPart", "")]
     public async Task<IActionResult> UpdateOtherPart([FromBody] UpdateOtherPartDto updateModel)
     {
-        var result = await Mediator.Send(new UpdateOtherPartCommand(updateModel));
+        var result = await Mediator.Send(new UpdatePartCommand(new UpdatePartDto
+        {
+            Id = updateModel.Id,
+            Code = updateModel.Code,
+            Name = updateModel.Name,
+            UnitOfMeasureId = updateModel.UnitOfMeasureId,
+            ReplacementTimeStandard = updateModel.ReplacementTimeStandard,
+            PartType = PartType.OtherPart,
+            Costs = updateModel.Costs
+        }));
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
@@ -476,7 +514,7 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Delete Many OtherPart", "")]
     public async Task<IActionResult> DeleteOtherPartList([FromBody] IList<Guid> deleteIds)
     {
-        var result = await Mediator.Send(new DeleteOtherPartListCommand(deleteIds));
+        var result = await Mediator.Send(new DeletePartListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

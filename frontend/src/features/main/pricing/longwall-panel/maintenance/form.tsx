@@ -62,6 +62,7 @@ export function LongwallPanelForm({
 			}),
 			api.pagging<Part>(API.CATALOG.PART.LIST, {
 				ignorePagination: true,
+				partType: 1,
 				...(row?.startMonth && { date: row.startMonth }),
 			}),
 		]);
@@ -110,6 +111,7 @@ export function LongwallPanelForm({
 			}),
 			api.pagging<Part>(API.CATALOG.PART.LIST, {
 				ignorePagination: true,
+				partType: 1,
 				date: watchedStartMonth,
 			}),
 		]);
@@ -138,17 +140,17 @@ export function LongwallPanelForm({
 			(id) => !existingEquipmentIdsInCosts.includes(id),
 		);
 
-		const newParts = parts.filter((part) =>
-			equipmentIdsToAdd.includes(part.equipmentId),
+		const newCosts = parts.flatMap((part) =>
+			(part.equipmentIds ?? [])
+				.filter((equipmentId) => equipmentIdsToAdd.includes(equipmentId))
+				.map((equipmentId) => ({
+					partId: part.id,
+					replacementTimeStandard: Number(part.replacementTimeStandard),
+					quantity: NaN,
+					averageMonthlyTunnelProduction: NaN,
+					equipmentId,
+				})),
 		);
-
-		const newCosts = newParts.map((part) => ({
-			partId: part.id,
-			replacementTimeStandard: Number(part.replacementTimeStandard),
-			quantity: NaN,
-			averageMonthlyTunnelProduction: NaN,
-			equipmentId: part.equipmentId,
-		}));
 
 		const costsToKeep = form
 			.getValues('costs')

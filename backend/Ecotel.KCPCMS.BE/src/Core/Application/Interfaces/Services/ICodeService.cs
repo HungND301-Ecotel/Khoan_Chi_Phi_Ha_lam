@@ -4,6 +4,8 @@ public interface ICodeService
 {
     public Task<bool> IsCodeExisted(string code);
     public Task<bool> IsCodeExisted(string code, Guid curId);
+    public Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId);
+    public Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId, Guid curEquipmentId);
 
     public Task<bool> IsProductCodeExisted(string code, Guid processGroupId);
     public Task<bool> IsProductCodeExisted(string code, Guid processGroupId, Guid curId);

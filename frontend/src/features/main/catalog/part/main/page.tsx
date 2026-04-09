@@ -16,7 +16,9 @@ export function MainCatalogPartPage() {
 	const handleDelete = async ({ data }: ActionDialogProps<Part>) => {
 		try {
 			const selected = data.table.getFilteredSelectedRowModel();
-			const rows = selected.rows.map((row) => row.original.equipmentPartId);
+			const rows = Array.from(
+				new Set(selected.rows.map((row) => row.original.id)),
+			);
 
 			const res = await api.delete(API.CATALOG.PART.DELETES, rows);
 
@@ -32,7 +34,9 @@ export function MainCatalogPartPage() {
 
 	const handleExport = async () => {
 		try {
-			const filename = await api.export(API.CATALOG.PART.EXPORT);
+			const filename = await api.export(API.CATALOG.PART.EXPORT, {
+				query: { partType: '1' },
+			});
 			popup.success(`Đã xuất file ${filename}`);
 		} catch (error) {
 			popup.error(error);
@@ -44,7 +48,9 @@ export function MainCatalogPartPage() {
 		data?: ActionDialogProps<Part>['data'],
 	) => {
 		try {
-			const result = await api.import(API.CATALOG.PART.IMPORT, file);
+			const result = await api.import(API.CATALOG.PART.IMPORT, file, {
+				partType: 1,
+			});
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {
@@ -60,12 +66,10 @@ export function MainCatalogPartPage() {
 		<DataTable
 			url={API.CATALOG.PART.LIST}
 			columns={CATALOG_PART_COLUMNS}
-			query={{ ignorePagination: true }}
-			getRowId={(row) => `${row.id}-${row.equipmentId}`}
+			query={{ ignorePagination: true, partType: 1 }}
+			getRowId={(row) => row.id}
 			filters={[
 				{ key: 'code', label: 'Mã phụ tùng' },
-				{ key: 'equipmentCode', label: 'Mã thiết bị' },
-				{ key: 'processGroupCodeText', label: 'Nhóm công đoạn' },
 				{ key: 'name', label: 'Tên phụ tùng' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}

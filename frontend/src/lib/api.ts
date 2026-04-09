@@ -50,6 +50,7 @@ export type PaggingRequest = {
 	pageSize?: number;
 	search?: string;
 	ignorePagination?: boolean;
+	partType?: number;
 	materialType?: number;
 	outputType?: number;
 	scenarioType?: number;

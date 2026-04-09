@@ -23,6 +23,9 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 .Include(c => c.UnitOfMeasure)
                 .Include(c => c.Costs)
                 .Include(c => c.Code)
+                .Include(c => c.EquipmentParts)
+                    .ThenInclude(c => c.Part)
+                    .ThenInclude(c => c.Code)
                 .Include(c => c.EquipmentProcessGroups)
                     .ThenInclude(c => c.ProcessGroup)
                     .ThenInclude(c => c.Code),
@@ -47,6 +50,24 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 })
                 .OrderBy(x => x.Code)
                 .ThenBy(x => x.Name)
+                .ToList(),
+            ProcessGroupId = detail.EquipmentProcessGroups
+                .Select(epg => (Guid?)epg.ProcessGroupId)
+                .FirstOrDefault(),
+            PartIds = detail.EquipmentParts
+                .Select(ep => ep.PartId)
+                .Distinct()
+                .ToList(),
+            Parts = detail.EquipmentParts
+                .Where(ep => ep.Part?.Code != null)
+                .Select(ep => new EquipmentPartDto
+                {
+                    Id = ep.PartId,
+                    Code = ep.Part!.Code!.Value,
+                    Name = ep.Part.Name
+                })
+                .OrderBy(p => p.Code)
+                .ThenBy(p => p.Name)
                 .ToList()
         };
     }

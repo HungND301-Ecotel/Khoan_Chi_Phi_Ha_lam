@@ -14,6 +14,8 @@ public class ExportExcelEquipmentQueryHandler(IExcelService excelService, IUnitO
 {
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
+    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
 
     public async Task<byte[]> Handle(ExportExcelEquipmentQuery request, CancellationToken cancellationToken)
     {
@@ -25,31 +27,90 @@ public class ExportExcelEquipmentQueryHandler(IExcelService excelService, IUnitO
             .Include(p => p.UnitOfMeasure)
             .Include(p => p.Costs)
             .Include(p => p.EquipmentProcessGroups).ThenInclude(epg => epg.ProcessGroup).ThenInclude(pg => pg.Code)
+            .Include(p => p.EquipmentParts).ThenInclude(ep => ep.Part).ThenInclude(part => part.Code)
             .Include(p => p.Code!),
             disableTracking: true);
 
         var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(selector: u => u.Name, disableTracking: true);
+        var processGroups = await _processGroupRepository.GetAllAsync(
+            include: p => p.Include(p => p.Code),
+            disableTracking: true);
+
+        var processGroupDropdown = processGroups
+            .Where(pg => pg.Code != null)
+            .Select(pg => $"{pg.Code!.Value} - {pg.Name}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        var partDropdown = (await _partRepository.GetAllAsync(
+                predicate: p => p.Type == Domain.Common.Enums.PartType.Part,
+                selector: p => p.Code!.Value,
+                include: p => p.Include(p => p.Code),
+                disableTracking: true))
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code)
+            .ToList();
+
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
-            { nameof(EquipmentExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() }
+            { nameof(EquipmentExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
+            { nameof(EquipmentExcelDto.ProcessGroup), processGroupDropdown },
+            { nameof(EquipmentExcelDto.PartCode), partDropdown }
         };
 
-        var dtoList = list.Select(l =>
+        var dtoList = new List<EquipmentExcelDto>();
+        foreach (var l in list.OrderBy(x => x.Code!.Value).ThenBy(x => x.Name))
         {
-            return new EquipmentExcelDto
+            var processGroup = l.EquipmentProcessGroups
+                .Where(epg => epg.ProcessGroup?.Code != null)
+                .Select(epg => new
+                {
+                    Code = epg.ProcessGroup!.Code!.Value,
+                    Name = epg.ProcessGroup.Name
+                })
+                .OrderBy(pg => pg.Code)
+                .ThenBy(pg => pg.Name)
+                .FirstOrDefault();
+            var processGroupDisplay = processGroup != null
+                ? $"{processGroup.Code} - {processGroup.Name}"
+                : string.Empty;
+            var partCodes = l.EquipmentParts
+                .Where(ep => ep.Part?.Code != null)
+                .Select(ep => ep.Part!.Code!.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code)
+                .ToList();
+
+            if (!partCodes.Any())
             {
-                Id = l.Id,
-                Code = l.Code?.Value ?? "",
-                Name = l.Name,
-                ProcessGroupCodes = string.Join(", ", l.EquipmentProcessGroups
-                    .Where(epg => epg.ProcessGroup?.Code != null)
-                    .Select(epg => epg.ProcessGroup!.Code!.Value)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(code => code)),
-                UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
-                Cost = costService.BuildExcelCostString(l.Costs.ToList())
-            };
-        });
+                dtoList.Add(new EquipmentExcelDto
+                {
+                    Id = l.Id,
+                    Code = l.Code?.Value ?? string.Empty,
+                    Name = l.Name,
+                    ProcessGroup = processGroupDisplay,
+                    PartCode = string.Empty,
+                    UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
+                    Cost = costService.BuildExcelCostString(l.Costs.ToList())
+                });
+                continue;
+            }
+
+            for (var i = 0; i < partCodes.Count; i++)
+            {
+                dtoList.Add(new EquipmentExcelDto
+                {
+                    Id = i == 0 ? l.Id : Guid.Empty,
+                    Code = i == 0 ? (l.Code?.Value ?? string.Empty) : string.Empty,
+                    Name = i == 0 ? l.Name : string.Empty,
+                    ProcessGroup = i == 0 ? processGroupDisplay : string.Empty,
+                    PartCode = partCodes[i],
+                    UnitOfMeasureName = i == 0 ? (l.UnitOfMeasure?.Name ?? string.Empty) : string.Empty,
+                    Cost = i == 0 ? costService.BuildExcelCostString(l.Costs.ToList()) : string.Empty
+                });
+            }
+        }
 
         return excelService.ExportToExcel(dtoList, "Thiết bị", listHiddenProperty, dropdownConfigs);
     }
