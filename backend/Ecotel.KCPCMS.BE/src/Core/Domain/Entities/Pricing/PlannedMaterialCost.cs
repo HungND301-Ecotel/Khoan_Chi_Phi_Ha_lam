@@ -32,12 +32,29 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         {
             return CachedPlannedMaterialTotal.Value;
         }
-        double SlideCost = 0;
+
+        double slideCost = 0;
+        double coefficientValue = 1;
+
         if (SlideUnitPriceAssignmentCodeId != null)
         {
-            SlideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
+            slideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
+
+            var assignmentCodeId = SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId;
+            if (assignmentCodeId.HasValue && NormFactor != null)
+            {
+                var matchedNormFactor = NormFactor.NormFactorAssignmentCodes
+                    .FirstOrDefault(x => x.AssignmentCodeId == assignmentCodeId.Value);
+
+                if (matchedNormFactor != null)
+                {
+                    coefficientValue = matchedNormFactor.Value;
+                }
+            }
         }
-        CachedPlannedMaterialTotal = (SlideCost + MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0) * (NormFactor?.Value ?? 1);
+
+        var materialCost = MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0;
+        CachedPlannedMaterialTotal = (slideCost + materialCost) * coefficientValue;
 
         return CachedPlannedMaterialTotal.Value;
     }

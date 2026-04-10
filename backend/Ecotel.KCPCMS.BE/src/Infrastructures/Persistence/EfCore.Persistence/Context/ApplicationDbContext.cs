@@ -331,11 +331,6 @@ public class ApplicationDbContext(
 
         //NormFactor table
         modelBuilder.Entity<NormFactor>()
-            .HasOne(s => s.TargetHardness)
-            .WithMany(h => h.TargetedNormFactors)
-            .HasForeignKey(s => s.TargetHardnessId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<NormFactor>()
             .HasOne(s => s.ProductionProcess)
             .WithMany(h => h.NormFactors)
             .HasForeignKey(s => s.ProductionProcessId)
@@ -355,6 +350,15 @@ public class ApplicationDbContext(
             .WithOne(h => h.NormFactor)
             .HasForeignKey(s => s.NormFactorId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NormFactorAssignmentCode>()
+            .HasIndex(e => new { e.NormFactorId, e.AssignmentCodeId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<NormFactorAssignmentCode>()
+            .HasOne(s => s.TargetHardness)
+            .WithMany(h => h.TargetedNormFactorAssignmentCodes)
+            .HasForeignKey(s => s.TargetHardnessId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Product table
         modelBuilder.Entity<Product>()

@@ -21,6 +21,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
         unitOfWork.GetRepository<Domain.Entities.Index.Hardness>();
     private readonly IWriteRepository<Domain.Entities.Index.StoneClampRatio> _stoneClampRatioRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.StoneClampRatio>();
+    private readonly IWriteRepository<Domain.Entities.Index.AssignmentCode> _assignmentCodeRepository =
+        unitOfWork.GetRepository<Domain.Entities.Index.AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelNormFactorQuery request, CancellationToken cancellationToken)
     {
@@ -31,8 +33,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                 .Include(n => n.ProductionProcess).ThenInclude(p => p.Code)
                 .Include(n => n.Hardness)
                 .Include(n => n.StoneClampRatio)
-                .Include(n => n.TargetHardness)
-                .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.AssignmentCode).ThenInclude(a => a.Code),
+                .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.AssignmentCode).ThenInclude(a => a.Code)
+                .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.TargetHardness),
             disableTracking: true);
 
         var productionProcesses = await _productionProcessRepository.GetAllAsync(
@@ -45,6 +47,9 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
 
         var stoneClampRatios = await _stoneClampRatioRepository.GetAllAsync(
             selector: s => s.Value,
+            disableTracking: true);
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
+            include: q => q.Include(a => a.Code),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -92,25 +97,63 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                     .OrderBy(v => v)
                     .Prepend("Định mức hiện tại")
                     .ToList()
+            },
+            {
+                nameof(NormFactorExcelDto.AssignmentCode),
+                assignmentCodes
+                    .Where(a => a.Code != null && !string.IsNullOrWhiteSpace(a.Code!.Value))
+                    .Select(a => a.Code!.Value.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(v => v)
+                    .ToList()
             }
         };
 
-        var dtoList = normFactors.Select(n => new NormFactorExcelDto
+        var dtoList = normFactors.SelectMany(n =>
         {
-            Id = n.Id,
-            ProductionProcessName = n.ProductionProcess?.Code != null
-                ? $"{n.ProductionProcess.Code.Value} - {n.ProductionProcess.Name}"
-                : string.Empty,
-            HardnessName = n.Hardness?.Value ?? "Không có",
-            SteelMeshTypeName = GetSteelMeshDisplayName(n.SteelMeshType),
-            StoneClampRatioName = n.StoneClampRatio?.Value ?? string.Empty,
-            AffectAssignmentCodes = string.Join(", ", n.NormFactorAssignmentCodes
-                .Where(a => a.AssignmentCode?.Code != null)
-                .Select(a => a.AssignmentCode.Code!.Value)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(v => v)),
-            Value = n.Value,
-            TargetHardnessName = n.TargetHardness?.Value ?? "Định mức hiện tại"
+            var baseDto = new NormFactorExcelDto
+            {
+                Id = n.Id,
+                ProductionProcessName = n.ProductionProcess?.Code != null
+                    ? $"{n.ProductionProcess.Code.Value} - {n.ProductionProcess.Name}"
+                    : string.Empty,
+                HardnessName = n.Hardness?.Value ?? "Không có",
+                SteelMeshTypeName = GetSteelMeshDisplayName(n.SteelMeshType),
+                StoneClampRatioName = n.StoneClampRatio?.Value ?? string.Empty
+            };
+
+            if (!n.NormFactorAssignmentCodes.Any())
+            {
+                return new List<NormFactorExcelDto>
+                {
+                    new()
+                    {
+                        Id = baseDto.Id,
+                        ProductionProcessName = baseDto.ProductionProcessName,
+                        HardnessName = baseDto.HardnessName,
+                        SteelMeshTypeName = baseDto.SteelMeshTypeName,
+                        StoneClampRatioName = baseDto.StoneClampRatioName,
+                        AssignmentCode = string.Empty,
+                        Value = 0,
+                        TargetHardnessName = "Định mức hiện tại"
+                    }
+                };
+            }
+
+            return n.NormFactorAssignmentCodes
+                .OrderBy(a => a.AssignmentCode!.Code!.Value)
+                .Select(a => new NormFactorExcelDto
+                {
+                    Id = baseDto.Id,
+                    ProductionProcessName = baseDto.ProductionProcessName,
+                    HardnessName = baseDto.HardnessName,
+                    SteelMeshTypeName = baseDto.SteelMeshTypeName,
+                    StoneClampRatioName = baseDto.StoneClampRatioName,
+                    AssignmentCode = a.AssignmentCode?.Code?.Value ?? string.Empty,
+                    Value = a.Value,
+                    TargetHardnessName = a.TargetHardness?.Value ?? "Định mức hiện tại"
+                })
+                .ToList();
         });
 
         return excelService.ExportToExcel(dtoList, "Hệ số định mức", hiddenProperties, dropdownConfigs);

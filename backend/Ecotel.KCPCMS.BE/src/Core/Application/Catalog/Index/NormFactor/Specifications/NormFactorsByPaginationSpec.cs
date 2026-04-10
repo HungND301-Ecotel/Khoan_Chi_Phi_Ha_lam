@@ -17,6 +17,7 @@ public class NormFactorsByPaginationSpec
 
         Query
             .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.AssignmentCode).ThenInclude(a => a.Code)
+            .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.TargetHardness)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.Code)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.Code)
             .Include(nf => nf.Hardness)
@@ -44,10 +45,21 @@ public class NormFactorsByPaginationSpec
                     Code = a.AssignmentCode.Code!.Value,
                     Name = a.AssignmentCode.Name
                 }).ToList(),
-                Value = nf.Value,
-                TargetHardnessId = nf.TargetHardnessId ?? Guid.Empty,
+                AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
+                {
+                    AssignmentCodeId = a.AssignmentCodeId,
+                    AssignmentCode = a.AssignmentCode.Code!.Value,
+                    AssignmentCodeName = a.AssignmentCode.Name,
+                    Value = a.Value,
+                    TargetHardnessId = a.TargetHardnessId,
+                    TargetHardnessName = a.TargetHardness != null ? a.TargetHardness.Value : string.Empty
+                }).ToList(),
+                Value = nf.NormFactorAssignmentCodes.Select(a => a.Value).FirstOrDefault(),
+                TargetHardnessId = nf.NormFactorAssignmentCodes.Select(a => a.TargetHardnessId).FirstOrDefault(),
                 SteelMeshType = nf.SteelMeshType,
-                TargetHardnessName = nf.TargetHardness != null ? nf.TargetHardness.Value.ToString() : string.Empty
+                TargetHardnessName = nf.NormFactorAssignmentCodes
+                    .Select(a => a.TargetHardness != null ? a.TargetHardness.Value : string.Empty)
+                    .FirstOrDefault() ?? string.Empty
             });
 
     }

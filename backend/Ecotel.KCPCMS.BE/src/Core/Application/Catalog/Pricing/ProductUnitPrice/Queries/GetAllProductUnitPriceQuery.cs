@@ -345,7 +345,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             .ToListAsync(cancellationToken);
 
         var currentTunnelMaterials = plannedMaterialCosts
-            .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
+            .Where(c => c.NormFactor != null
+                && c.NormFactor.NormFactorAssignmentCodes.Any(nfa => nfa.TargetHardnessId.HasValue)
+                && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
             .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
             .ToList();
 
@@ -353,8 +355,10 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         if (currentTunnelMaterials.Any())
         {
             var targetHardnessIds = plannedMaterialCosts
-                .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true)
-                .Select(c => c.NormFactor!.TargetHardnessId!.Value)
+                .Where(c => c.NormFactor != null)
+                .SelectMany(c => c.NormFactor!.NormFactorAssignmentCodes
+                    .Where(nfa => nfa.TargetHardnessId.HasValue)
+                    .Select(nfa => nfa.TargetHardnessId!.Value))
                 .Distinct()
                 .ToList();
             var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();

@@ -10,12 +10,9 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
     public Guid? HardnessId { get; protected set; }
     public Guid StoneClampRatioId { get; protected set; }
     public SteelMeshType SteelMeshType { get; protected set; } = SteelMeshType.None;
-    public double Value { get; protected set; }
-    public Guid? TargetHardnessId { get; protected set; }
 
 
     //Navigation Properties
-    public virtual Hardness? TargetHardness { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
     public virtual Hardness? Hardness { get; protected set; }
     public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
@@ -26,15 +23,13 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
     public IReadOnlyList<NormFactorAssignmentCode> NormFactorAssignmentCodes => _normFactorAssignmentCodes.ToList();
 
 
-    public static NormFactor Create(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null, SteelMeshType steelMeshType = SteelMeshType.None)
+    public static NormFactor Create(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, SteelMeshType steelMeshType = SteelMeshType.None)
     {
         return new NormFactor
         {
             ProductionProcessId = productionProcessId,
             HardnessId = hardnessId,
             StoneClampRatioId = stoneClampRatioId,
-            Value = value,
-            TargetHardnessId = targetHardnessId,
             SteelMeshType = steelMeshType
         };
     }
@@ -48,13 +43,11 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         }
     }
 
-    public void Update(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, double value, Guid? targetHardnessId = null, SteelMeshType steelMeshType = SteelMeshType.None)
+    public void Update(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, SteelMeshType steelMeshType = SteelMeshType.None)
     {
         ProductionProcessId = productionProcessId;
         HardnessId = hardnessId;
         StoneClampRatioId = stoneClampRatioId;
-        Value = value;
-        TargetHardnessId = targetHardnessId;
         SteelMeshType = steelMeshType;
     }
 }

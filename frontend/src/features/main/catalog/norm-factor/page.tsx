@@ -3,7 +3,13 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
-import { CATALOG_NORM_FACTOR_COLUMNS, NormFactor } from './columns';
+import { useEffect, useState } from 'react';
+import {
+	CATALOG_NORM_FACTOR_COLUMNS,
+	CATALOG_NORM_FACTOR_EXPAND_COLUMNS,
+	NormFactor,
+	NormFactorExpandItem,
+} from './columns';
 import { NormFactorForm } from './actions';
 
 export function MainCatalogNormFactorPage() {
@@ -62,9 +68,39 @@ export function MainCatalogNormFactorPage() {
 			]}
 			onCreate={(props) => <NormFactorForm {...props} />}
 			onUpdate={(props) => <NormFactorForm {...props} />}
+			onExpand={(props) => <NormFactorExpand {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}
 			onImport={handleImport}
 		/>
+	);
+}
+
+function NormFactorExpand({ row }: ActionDialogProps<NormFactor>) {
+	const [items, setItems] = useState<NormFactorExpandItem[]>([]);
+
+	useEffect(() => {
+		if (!row) return;
+
+		api
+			.get<NormFactor>(API.CATALOG.NORM_FACTOR.DETAIL(row.id))
+			.then((res) => setItems(res.result.assignmentCodes ?? []))
+			.catch(() => setItems([]));
+	}, [row]);
+
+	if (!row) return null;
+
+	return (
+		<div className='mx-32'>
+			<DataTable
+				columns={CATALOG_NORM_FACTOR_EXPAND_COLUMNS}
+				items={items}
+				hasActions={false}
+				hasPagination={false}
+				hasSort={false}
+				hasIndex={false}
+				compact={true}
+			/>
+		</div>
 	);
 }

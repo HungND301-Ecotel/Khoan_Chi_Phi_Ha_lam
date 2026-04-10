@@ -1,5 +1,19 @@
 import z from 'zod';
 
+const assignmentCodeConfigSchema = z.object({
+	assignmentCodeId: z.string().nonempty({
+		error: 'Mã giao khoán không được để trống',
+	}),
+	value: z.coerce
+		.number<number>({
+			error: 'Hệ số điều chỉnh định mức không được để trống.',
+		})
+		.min(0, {
+			error: 'Hệ số điều chỉnh định mức không được để trống.',
+		}),
+	targetHardnessId: z.string().nullable().optional(),
+});
+
 export const normFactorSchema = z
 	.object({
 		processGroupId: z.string().optional(),
@@ -13,14 +27,9 @@ export const normFactorSchema = z
 		assignmentCodeIds: z.array(z.string()).min(1, {
 			message: 'Mã giao khoán không được để trống',
 		}),
-		value: z.coerce
-			.number<number>({
-				error: 'Hệ số điều chỉnh định mức không được để trống.',
-			})
-			.min(0, {
-				error: 'Hệ số điều chỉnh định mức không được để trống.',
-			}),
-		targetHardnessId: z.string().nullable().optional(),
+		assignmentCodeConfigs: z.array(assignmentCodeConfigSchema).min(1, {
+			message: 'Cấu hình mã giao khoán không được để trống',
+		}),
 	})
 	.superRefine((data, ctx) => {
 		if (!data.isMechanizedLongwall && !data.hardnessId) {
@@ -46,6 +55,21 @@ export const normFactorSchema = z
 				path: ['steelMeshType'],
 			});
 		}
+
+		for (const assignmentCodeId of data.assignmentCodeIds) {
+			const hasConfig = data.assignmentCodeConfigs.some(
+				(config) => config.assignmentCodeId === assignmentCodeId,
+			);
+
+			if (!hasConfig) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Thiếu cấu hình cho mã giao khoán đã chọn.',
+					path: ['assignmentCodeConfigs'],
+				});
+				break;
+			}
+		}
 	});
 
 export type NormFactorSchema = z.infer<typeof normFactorSchema>;
@@ -57,6 +81,5 @@ export const NORM_FACTOR_SCHEMA_DEFAULT: NormFactorSchema = {
 	steelMeshType: 1,
 	stoneClampRatioId: '',
 	assignmentCodeIds: [],
-	value: NaN,
-	targetHardnessId: '',
+	assignmentCodeConfigs: [],
 };

@@ -10,9 +10,17 @@ public class CreateNormFactorDto
     public Guid? HardnessId { get; set; }
     public Guid StoneClampRatioId { get; set; }
     public SteelMeshType SteelMeshType { get; set; }
-    public double Value { get; set; }
-    public IList<Guid> AssignmentCodeIds { get; set; }
+    public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; set; } = [];
+    public IList<Guid>? AssignmentCodeIds { get; set; }
+    public double? Value { get; set; }
     public Guid? TargetHardnessId { get; set; }
+}
+
+public class NormFactorAssignmentCodeUpsertDto
+{
+    public Guid AssignmentCodeId { get; set; }
+    public Guid? TargetHardnessId { get; set; }
+    public double Value { get; set; }
 }
 
 public class NormFactorDto : IDto
@@ -33,10 +41,11 @@ public class NormFactorDto : IDto
     public string StoneClampRatioName { get; set; }
 
     public IList<AssignmentCode.ShortAssignmentCodeDto> AffectAssignmentCodes { get; set; }
+    public IList<NormFactorAssignmentCodeDto> AssignmentCodes { get; set; } = [];
 
     public double Value { get; set; }
 
-    public Guid TargetHardnessId { get; set; }
+    public Guid? TargetHardnessId { get; set; }
     public string TargetHardnessName { get; set; }
 }
 
@@ -47,9 +56,20 @@ public class UpdateNormFactorDto
     public Guid? HardnessId { get; set; }
     public Guid StoneClampRatioId { get; set; }
     public SteelMeshType SteelMeshType { get; set; }
-    public double Value { get; set; }
-    public IList<Guid> AssignmentCodeIds { get; set; }
+    public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; set; } = [];
+    public IList<Guid>? AssignmentCodeIds { get; set; }
+    public double? Value { get; set; }
     public Guid? TargetHardnessId { get; set; }
+}
+
+public class NormFactorAssignmentCodeDto
+{
+    public Guid AssignmentCodeId { get; set; }
+    public string AssignmentCode { get; set; } = string.Empty;
+    public string AssignmentCodeName { get; set; } = string.Empty;
+    public double Value { get; set; }
+    public Guid? TargetHardnessId { get; set; }
+    public string TargetHardnessName { get; set; } = string.Empty;
 }
 
 public class NormFactorExcelDto
@@ -68,8 +88,8 @@ public class NormFactorExcelDto
     [Display(Name = "Tỷ lệ đá kẹp (Ckẹp)")]
     public string StoneClampRatioName { get; set; } = string.Empty;
 
-    [Display(Name = "Thành phần điều chỉnh định mức")]
-    public string AffectAssignmentCodes { get; set; } = string.Empty;
+    [Display(Name = "Mã giao khoán")]
+    public string AssignmentCode { get; set; } = string.Empty;
 
     [Display(Name = "Hệ số điều chỉnh định mức")]
     public double Value { get; set; }

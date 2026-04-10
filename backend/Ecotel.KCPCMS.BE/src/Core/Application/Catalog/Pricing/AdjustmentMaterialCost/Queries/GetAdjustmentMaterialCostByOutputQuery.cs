@@ -30,7 +30,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             include: o => o
                 .Include(o => o.ProductUnitPrice)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
-                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.TargetHardness)
+                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.Hardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
@@ -54,6 +54,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         }
 
         var plannedMaterialCost = plannedOutput.PlannedMaterialCost;
+        var normFactorAssignment = plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes
+            .FirstOrDefault(x => x.AssignmentCodeId == plannedMaterialCost.SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId)
+            ?? plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes.FirstOrDefault();
+        var coefficientValue = normFactorAssignment?.Value ?? 1;
+        var targetHardnessId = normFactorAssignment?.TargetHardnessId;
+        var targetHardnessValue = normFactorAssignment?.TargetHardness?.Value;
 
         if (plannedMaterialCost.MaterialUnitPrice == null)
         {
@@ -62,11 +68,11 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
 
         // Load tunnel materials nếu cần (giống GetPlannedMaterialCostByIdQuery)
         IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (plannedMaterialCost.NormFactor?.TargetHardnessId.HasValue == true
+        if (targetHardnessId.HasValue
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterial)
         {
             tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => x.HardnessId == plannedMaterialCost.NormFactor.TargetHardnessId.Value
+                .Where(x => x.HardnessId == targetHardnessId.Value
                     && x.ProcessId == currentTunnelMaterial.ProcessId
                     && x.PassportId == currentTunnelMaterial.PassportId
                     && x.InsertItemId == currentTunnelMaterial.InsertItemId
@@ -110,12 +116,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         }
 
         var materialCost = SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice) + plannedMaterialCost.MaterialUnitPrice.OtherMaterialvalue;
-        if (plannedMaterialCost.NormFactor?.TargetHardnessId.HasValue == true
+        if (targetHardnessId.HasValue
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
             var targetMaterial = ResolveTargetTunnelMaterialUnitPrice(
                 currentTunnelMaterialForCost,
-                plannedMaterialCost.NormFactor.TargetHardnessId.Value,
+                targetHardnessId.Value,
                 tunnelMaterials);
 
             if (targetMaterial != null)
@@ -128,12 +134,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var normFactorValue = string.Empty;
         if (plannedMaterialCost.NormFactor != null)
         {
-            var hardnessValue = plannedMaterialCost.NormFactor.TargetHardness?.Value
+            var hardnessValue = targetHardnessValue
                 ?? plannedMaterialCost.NormFactor.Hardness?.Value
                 ?? string.Empty;
 
             normFactorValue =
-                $"{plannedMaterialCost.NormFactor.Value.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
+                $"{coefficientValue.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
         }
 
         // SlideUnitPriceCost
@@ -145,7 +151,6 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         {
             var currentSlide = plannedMaterialCost.SlideUnitPriceAssignmentCode.Material;
             var originalAmount = plannedMaterialCost.SlideUnitPriceAssignmentCode.Amount;
-            var coefficientValue = plannedMaterialCost.NormFactor?.Value ?? 1;
             mCost.Add(new AdjustmentMaterialCostAssignmentCode
             {
                 AssignmentCodeId = currentSlide.AssigmentCodeId,

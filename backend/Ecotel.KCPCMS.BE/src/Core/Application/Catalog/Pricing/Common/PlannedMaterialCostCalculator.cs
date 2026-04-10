@@ -40,43 +40,42 @@ public static class PlannedMaterialCostCalculator
         }
 
         var normFactor = plannedMaterialCost.NormFactor;
-        var affectedAssignmentCodeIds = normFactor.NormFactorAssignmentCodes
-            .Select(x => x.AssignmentCodeId)
-            .ToHashSet();
+        var affectedAssignments = normFactor.NormFactorAssignmentCodes.ToList();
+        var affectedAssignmentCodeIds = affectedAssignments.Select(x => x.AssignmentCodeId).ToHashSet();
 
         var unaffectedTotal = currentAssignmentTotals
             .Where(x => !affectedAssignmentCodeIds.Contains(x.Key))
             .Sum(x => x.Value);
 
-        double affectedTotal;
-        if (normFactor.TargetHardnessId.HasValue &&
-            currentMaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialUnitPrice)
+        var affectedTotal = 0d;
+        foreach (var affectedAssignment in affectedAssignments)
         {
-            var coefficientValue = normFactor.Value;
-            var targetMaterialUnitPrice = ResolveTargetTunnelMaterialUnitPrice(
-                currentTunnelMaterialUnitPrice,
-                normFactor.TargetHardnessId.Value,
-                effectiveMonth,
-                tunnelMaterialUnitPrices);
+            var assignmentCodeId = affectedAssignment.AssignmentCodeId;
+            var assignmentAmount = currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0);
 
-            var targetAssignmentTotals = targetMaterialUnitPrice?.MaterialUnitPriceAssignmentCodes
-                .GroupBy(a => a.AssignmentCodeId)
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalPrice))
-                ?? new Dictionary<Guid, double>();
+            if (affectedAssignment.TargetHardnessId.HasValue &&
+                currentMaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialUnitPrice)
+            {
+                var targetMaterialUnitPrice = ResolveTargetTunnelMaterialUnitPrice(
+                    currentTunnelMaterialUnitPrice,
+                    affectedAssignment.TargetHardnessId.Value,
+                    effectiveMonth,
+                    tunnelMaterialUnitPrices);
 
-            // Use target hardness price for affected assignments.
-            var total = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
-                targetAssignmentTotals.GetValueOrDefault(
-                    assignmentCodeId,
-                    currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0)));
-            affectedTotal = ApplyOtherMaterialValue(total, currentMaterialUnitPrice.OtherMaterialvalue) * coefficientValue;
+                var targetAssignmentTotals = targetMaterialUnitPrice?.MaterialUnitPriceAssignmentCodes
+                    .GroupBy(a => a.AssignmentCodeId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalPrice))
+                    ?? new Dictionary<Guid, double>();
+
+                assignmentAmount = targetAssignmentTotals.GetValueOrDefault(assignmentCodeId, assignmentAmount);
+            }
+
+            affectedTotal += assignmentAmount * affectedAssignment.Value;
         }
-        else
+
+        if (affectedAssignments.Count > 0)
         {
-            var coefficientValue = normFactor.Value;
-            var total = affectedAssignmentCodeIds.Sum(assignmentCodeId =>
-                currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0));
-            affectedTotal = ApplyOtherMaterialValue(total, currentMaterialUnitPrice.OtherMaterialvalue) * coefficientValue;
+            affectedTotal = ApplyOtherMaterialValue(affectedTotal, currentMaterialUnitPrice.OtherMaterialvalue);
         }
 
         var totalMaterialAssignments = unaffectedTotal + affectedTotal;
