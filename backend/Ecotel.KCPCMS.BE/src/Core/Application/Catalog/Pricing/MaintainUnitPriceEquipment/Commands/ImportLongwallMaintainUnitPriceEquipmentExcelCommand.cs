@@ -54,7 +54,8 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                     null,
                     pd.Key, // PartId from Excel
                     pd.Value!.Value.Quantity,
-                    pd.Value.Value.AverageMonthlyTunnelProduction))
+                    pd.Value.Value.AverageMonthlyTunnelProduction,
+                    pd.Value.Value.ReplacementTimeStandard))
                 .ToList();
 
             return new
@@ -244,7 +245,8 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         state.Dto.PartData[partId] = new LongwallPartEquipmentData
                         {
                             Quantity = quantity,
-                            AverageMonthlyTunnelProduction = production
+                            AverageMonthlyTunnelProduction = production,
+                            ReplacementTimeStandard = 1
                         };
                     }
                     else
@@ -338,4 +340,6 @@ internal struct LongwallPartEquipmentData
 {
     public double Quantity { get; set; }
     public decimal AverageMonthlyTunnelProduction { get; set; }
+    public decimal ReplacementTimeStandard { get; set; }
 }
+

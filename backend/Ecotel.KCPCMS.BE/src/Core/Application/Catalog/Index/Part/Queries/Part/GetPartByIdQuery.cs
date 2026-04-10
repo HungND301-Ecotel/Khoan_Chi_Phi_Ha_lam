@@ -36,12 +36,11 @@ public class GetPartByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<G
                 .Where(e => e.Equipment?.Code != null)
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)
-                .ToList(),
-            ReplacementTimeStandard = details.ReplacementTimeStandard,
-            PartType = details.Type,
+                .ToList(),            PartType = details.Type,
             UnitOfMeasureId = details.UnitOfMeasureId,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
             Costs = details.Costs.Adapt<List<MaintainCostDto>>()
         };
     }
 }
+

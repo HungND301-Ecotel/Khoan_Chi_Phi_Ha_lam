@@ -71,7 +71,7 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
             }
 
             var partId = Guid.NewGuid();
-            var partEntity = PartEntity.Create(partId, row.Dto.Code, row.Dto.Name, unitOfMeasureId, row.Dto.ReplacementTimeStandard, PartType.OtherPart);
+            var partEntity = PartEntity.Create(partId, row.Dto.Code, row.Dto.Name, unitOfMeasureId, PartType.OtherPart);
 
             try
             {
@@ -123,9 +123,7 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
             if (dbPartDict.TryGetValue(partCodeNormalized, out var entityToUpdate))
             {
                 var isInfoChanged = !string.Equals(entityToUpdate.Name, dto.Name, StringComparison.Ordinal)
-                    || entityToUpdate.UnitOfMeasureId != dto.UnitOfMeasureId
-                    || entityToUpdate.ReplacementTimeStandard != dto.ReplacementTimeStandard
-                    || entityToUpdate.Type != PartType.OtherPart;
+                    || entityToUpdate.UnitOfMeasureId != dto.UnitOfMeasureId                    || entityToUpdate.Type != PartType.OtherPart;
 
                 var isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), parsedCosts);
 
@@ -134,9 +132,7 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
                     entityToUpdate.Update(
                         dto.Code!.Value,
                         dto.Name,
-                        dto.UnitOfMeasureId,
-                        dto.ReplacementTimeStandard,
-                        PartType.OtherPart);
+                        dto.UnitOfMeasureId,                        PartType.OtherPart);
 
                     if (isCostChanged)
                     {
@@ -285,3 +281,4 @@ public class ImportOtherPartExcelCommandHandler(IExcelService excelService, IUni
         string PartCodeDisplay,
         string UnitName);
 }
+

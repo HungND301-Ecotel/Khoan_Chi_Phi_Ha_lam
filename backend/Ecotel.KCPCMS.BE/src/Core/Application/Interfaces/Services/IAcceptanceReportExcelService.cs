@@ -1,6 +1,7 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Entities.Index;
+using Domain.Entities.Pricing;
 
 namespace Application.Interfaces.Services;
 
@@ -11,6 +12,7 @@ public interface IAcceptanceReportExcelService : ITransientService
         Stream fileStream,
         string fileName,
         IEnumerable<Material> materialsInDb,
-        IEnumerable<Part> partsIsInDb);
+        IEnumerable<MaintainUnitPriceEquipment> maintainUnitPriceEquipmentsInDb);
 
 }
+

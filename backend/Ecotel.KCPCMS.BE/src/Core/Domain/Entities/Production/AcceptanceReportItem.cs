@@ -1,6 +1,7 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Domain.Entities.Production;
@@ -9,7 +10,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
-    public Guid? PartId { get; protected set; }
+    public Guid? MaintainUnitPriceEquipmentId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
 
@@ -43,7 +44,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual Part? Part { get; protected set; }
+    public virtual MaintainUnitPriceEquipment? MaintainUnitPriceEquipment { get; protected set; }
     public virtual Equipment? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
@@ -186,7 +187,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid acceptanceReportId,
         Guid? processGroupId,
         Guid? materialId,
-        Guid? partId,
+        Guid? maintainUnitPriceEquipmentId,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -203,7 +204,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
     {
-        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
+        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
@@ -213,7 +214,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             AcceptanceReportId = acceptanceReportId,
             ProcessGroupId = processGroupId,
             MaterialId = materialId,
-            PartId = partId,
+            MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
             EquipmentId = categoryProductionReference.EquipmentId,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
@@ -255,7 +256,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public void Update(
         Guid? processGroupId,
         Guid? materialId,
-        Guid? partId,
+        Guid? maintainUnitPriceEquipmentId,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -272,14 +273,14 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
     {
-        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
+        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
 
         ProcessGroupId = processGroupId;
         MaterialId = materialId;
-        PartId = partId;
+        MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId;
         EquipmentId = categoryProductionReference.EquipmentId;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;

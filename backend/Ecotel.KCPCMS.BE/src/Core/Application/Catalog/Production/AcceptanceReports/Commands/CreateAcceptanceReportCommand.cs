@@ -4,6 +4,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Entities.Pricing;
 using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -20,13 +21,12 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
+    private readonly IWriteRepository<MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<MaintainUnitPriceEquipment>();
 
     public async Task<CreateAcceptanceReportResponseDto> Handle(CreateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
         var createModel = request.CreateModel;
 
-        // Validate ProductionOutput exists
         var productionOutput = await _productionOutputRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == createModel.ProductionOutputId,
             include: p => p.Include(p => p.ProductUnitPriceProductionOutputs)
@@ -44,19 +44,16 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             throw new NotFoundException(CustomResponseMessage.EntityNotFound);
         }
 
-        // Validate items not empty
         if (createModel.Items == null || !createModel.Items.Any())
         {
             throw new BadRequestException(CustomResponseMessage.UpdateIdsEmpty);
         }
 
-        // Get all materials and parts for validation
         var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
-        var allParts = await _partRepository.GetAllAsync(
-            include: q => q.Include(p => p.Costs),
+        var allMaintainUnitPriceEquipments = await _maintainUnitPriceEquipmentRepository.GetAllAsync(
+            include: q => q.Include(m => m.Part).ThenInclude(p => p.Costs),
             disableTracking: true);
 
-        // Get existing AcceptanceReport for this ProductionOutput
         var existingAcceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
             predicate: p => p.ProductionOutputId == createModel.ProductionOutputId,
             disableTracking: false);
@@ -71,30 +68,24 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         try
         {
             AcceptanceReport acceptanceReport;
-            bool isNewReport = existingAcceptanceReport == null;
-
-            if (isNewReport)
+            if (existingAcceptanceReport == null)
             {
-                // Create new AcceptanceReport
                 acceptanceReport = AcceptanceReport.Create(createModel.ProductionOutputId, createModel.FilePath);
                 await _acceptanceReportRepository.InsertAsync(acceptanceReport, cancellationToken);
                 await unitOfWork.SaveChangesAsync();
             }
             else
             {
-                // Update existing AcceptanceReport
                 acceptanceReport = existingAcceptanceReport;
             }
 
-            // Get existing items for this acceptance report (for deletion check)
             var existingItemsInCurrentReport = await _acceptanceReportItemRepository.GetAllAsync(
                 predicate: p => p.AcceptanceReportId == acceptanceReport.Id,
                 disableTracking: false);
 
-            // Get all items by IDs from request (may belong to other reports - from Excel export of previous period)
             var requestItemIds = createModel.Items
                 .Where(x => x.AcceptanceReportItemId.HasValue)
-                .Select(x => x.AcceptanceReportItemId.Value)
+                .Select(x => x.AcceptanceReportItemId!.Value)
                 .ToList();
 
             var existingItemsByIds = new List<AcceptanceReportItem>();
@@ -110,56 +101,55 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
             var itemsToCreate = new List<AcceptanceReportItem>();
             var itemsToUpdate = new List<AcceptanceReportItem>();
-            var itemsToDelete = new List<AcceptanceReportItem>();
 
-            // Identify items to create and update
             foreach (var item in createModel.Items)
             {
                 Guid? materialId = null;
-                Guid? partId = null;
+                Guid? maintainUnitPriceEquipmentId = null;
 
-                // Check item type and validate based on MaterialOrPartId
                 if (item.Type == AcceptanceReportItemType.Material)
                 {
-                    var material = allMaterials.FirstOrDefault(m => m.Id == item.MaterialOrPartId);
-                    if (material == null)
+                    if (!item.MaterialId.HasValue)
                     {
-                        throw new NotFoundException($"Material with Id '{item.MaterialOrPartId}' not found");
+                        throw new NotFoundException("MaterialId is required for material item");
                     }
 
-                    materialId = item.MaterialOrPartId;
+                    var material = allMaterials.FirstOrDefault(m => m.Id == item.MaterialId.Value);
+                    if (material == null)
+                    {
+                        throw new NotFoundException($"Material with Id '{item.MaterialId.Value}' not found");
+                    }
+
+                    materialId = item.MaterialId.Value;
                 }
                 else if (item.Type == AcceptanceReportItemType.Part)
                 {
-                    var part = allParts.FirstOrDefault(p => p.Id == item.MaterialOrPartId);
-                    if (part == null)
+                    if (!item.MaintainUnitPriceEquipmentId.HasValue)
                     {
-                        throw new NotFoundException($"Part with Id '{item.MaterialOrPartId}' not found");
+                        throw new NotFoundException("MaintainUnitPriceEquipmentId is required for SCTX item");
                     }
 
-                    partId = item.MaterialOrPartId;
+                    var maintainItem = allMaintainUnitPriceEquipments.FirstOrDefault(m => m.Id == item.MaintainUnitPriceEquipmentId.Value);
+                    if (maintainItem == null)
+                    {
+                        throw new NotFoundException($"MaintainUnitPriceEquipment with Id '{item.MaintainUnitPriceEquipmentId.Value}' not found");
+                    }
+
+                    maintainUnitPriceEquipmentId = item.MaintainUnitPriceEquipmentId.Value;
                 }
 
-                var categoryReference = ProductionReference.Create(
-                    item.CategoryProductionOrderId,
-                    item.CategoryEquipmentId);
-                var additionalCostReference = ProductionReference.Create(
-                    item.AdditionalCostProductionOrderId,
-                    item.AdditionalCostEquipmentId);
+                var categoryReference = ProductionReference.Create(item.CategoryProductionOrderId, item.CategoryEquipmentId);
+                var additionalCostReference = ProductionReference.Create(item.AdditionalCostProductionOrderId, item.AdditionalCostEquipmentId);
 
                 if (item.AcceptanceReportItemId.HasValue)
                 {
-                    // UPDATE: Item already exists (may belong to another report)
-                    var existingItem = existingItemsByIds.FirstOrDefault(x => x.Id == item.AcceptanceReportItemId.Value);
-                    if (existingItem == null)
-                    {
-                        throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
-                    }
+                    var existingItem = existingItemsByIds.FirstOrDefault(x => x.Id == item.AcceptanceReportItemId.Value)
+                        ?? throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
 
                     existingItem.Update(
                         item.ProcessGroupId,
                         materialId,
-                        partId,
+                        maintainUnitPriceEquipmentId,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -180,12 +170,11 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
                 else
                 {
-                    // CREATE: New item for current report
                     var reportItem = AcceptanceReportItem.Create(
                         acceptanceReport.Id,
                         item.ProcessGroupId,
                         materialId,
-                        partId,
+                        maintainUnitPriceEquipmentId,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -214,10 +203,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
             }
 
-            // Identify items to delete (only from current report, not from other reports)
-            itemsToDelete.AddRange(existingItemsInCurrentReport.Where(x => !requestItemIds.Contains(x.Id)));
+            var itemsToDelete = existingItemsInCurrentReport.Where(x => !requestItemIds.Contains(x.Id)).ToList();
 
-            // Execute delete operations
             if (itemsToDelete.Any())
             {
                 _acceptanceReportItemRepository.Delete(itemsToDelete);
@@ -233,49 +220,44 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 await unitOfWork.SaveChangesAsync();
             }
 
-            // Execute create operations
             if (itemsToCreate.Any())
             {
                 await _acceptanceReportItemRepository.InsertAsync(itemsToCreate, cancellationToken);
                 await unitOfWork.SaveChangesAsync();
             }
 
-            // Execute update operations
             if (itemsToUpdate.Any())
             {
                 _acceptanceReportItemRepository.Update(itemsToUpdate);
                 await unitOfWork.SaveChangesAsync();
             }
 
-            // Create logs for long-term tracking items
             var logsToCreate = new List<AcceptanceReportItemLog>();
             var allProcessedItems = itemsToCreate.Union(itemsToUpdate).ToList();
 
             foreach (var item in allProcessedItems)
             {
-                // Filter: Long-term items (PartId != null && MaterialsIncludedInContractRevenue == Maintain)
-                if (item.PartId.HasValue &&
+                if (item.MaintainUnitPriceEquipmentId.HasValue &&
                     item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain &&
                     item.IssuedQuantity > 0)
                 {
-                    var part = allParts.FirstOrDefault(p => p.Id == item.PartId);
-                    if (part == null)
+                    var maintainItem = allMaintainUnitPriceEquipments.FirstOrDefault(m => m.Id == item.MaintainUnitPriceEquipmentId.Value);
+                    if (maintainItem == null)
                     {
                         continue;
                     }
 
-                    // Check if log already exists for this item
                     var existingLog = await _acceptanceReportItemLogRepository.GetFirstOrDefaultAsync(
                         predicate: p => p.AcceptanceReportItemId == item.Id);
 
                     if (existingLog == null)
                     {
-                        var cost = part.Costs?.FirstOrDefault(c =>
+                        var cost = maintainItem.Part?.Costs?.FirstOrDefault(c =>
                             c.StartMonth <= productionOutput.StartMonth &&
                             c.EndMonth >= productionOutput.EndMonth);
 
                         var unitPrice = (decimal)(cost?.Amount ?? 0);
-                        var usageTime = (double)part.ReplacementTimeStandard;
+                        var usageTime = (double)maintainItem.ReplacementTimeStandard;
 
                         var actualOutput = productionOutput.ProductionMeters;
                         var plannedOutput = 1.0;

@@ -1,5 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Entities.Index;
+using Domain.Entities.Production;
 using Shared.Constants;
 
 namespace Domain.Entities.Pricing
@@ -10,6 +11,7 @@ namespace Domain.Entities.Pricing
         public Guid PartId { get; protected set; }
         public double Quantity { get; protected set; }
         public decimal AverageMonthlyTunnelProduction { get; protected set; }
+        public decimal ReplacementTimeStandard { get; protected set; }
 
         private double? CachedTotal { get; set; }
 
@@ -17,8 +19,11 @@ namespace Domain.Entities.Pricing
         public virtual MaintainUnitPrice? MaintainUnitPrice { get; protected set; } = null!;
         public virtual Part? Part { get; protected set; } = null!;
 
+        private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
+        public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
+
         //Constructor
-        public static MaintainUnitPriceEquipment Create(Guid? maintainUnitPrice, Guid partId, double quantity, decimal averageMonthlyTunnelProduction)
+        public static MaintainUnitPriceEquipment Create(Guid? maintainUnitPrice, Guid partId, double quantity, decimal averageMonthlyTunnelProduction, decimal replacementTimeStandard)
         {
             if (quantity < 0)
             {
@@ -36,13 +41,19 @@ namespace Domain.Entities.Pricing
                 PartId = partId,
                 Quantity = quantity,
                 AverageMonthlyTunnelProduction = averageMonthlyTunnelProduction,
+                ReplacementTimeStandard = replacementTimeStandard
             };
         }
 
         public double GetMaterialRate()
         {
-            var replacementTime = (double)(Part?.ReplacementTimeStandard ?? 1);
+            var replacementTime = (double)ReplacementTimeStandard;
             var avgProduction = (double)AverageMonthlyTunnelProduction;
+
+            if (replacementTime == 0 || avgProduction == 0)
+            {
+                return 0;
+            }
 
             return Quantity / (replacementTime * avgProduction);
         }
@@ -62,7 +73,7 @@ namespace Domain.Entities.Pricing
         }
 
 
-        public void Update(Guid equipmentId, Guid partId, double quantity, decimal averageMonthlyTunnelProduction)
+        public void Update(Guid equipmentId, Guid partId, double quantity, decimal averageMonthlyTunnelProduction, decimal replacementTimeStandard)
         {
             if (quantity < 0)
             {
@@ -78,6 +89,8 @@ namespace Domain.Entities.Pricing
             PartId = partId;
             Quantity = quantity;
             AverageMonthlyTunnelProduction = averageMonthlyTunnelProduction;
+            ReplacementTimeStandard = replacementTimeStandard;
         }
     }
 }
+

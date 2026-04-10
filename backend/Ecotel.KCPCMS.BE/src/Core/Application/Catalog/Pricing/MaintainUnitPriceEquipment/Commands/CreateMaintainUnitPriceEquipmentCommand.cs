@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaintainUnitPrice;
@@ -70,7 +70,8 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
                     null,
                     part.Id,
                     cost?.Quantity ?? 0,
-                    cost?.AverageMonthlyTunnelProduction ?? 0
+                    cost?.AverageMonthlyTunnelProduction ?? 0,
+                    cost?.ReplacementTimeStandard ?? 0
                 ));
             }
 
@@ -83,3 +84,4 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
         return true;
     }
 }
+

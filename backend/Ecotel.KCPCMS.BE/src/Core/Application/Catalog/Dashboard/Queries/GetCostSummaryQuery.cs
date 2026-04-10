@@ -232,7 +232,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    m.Part.ReplacementTimeStandard,
+                    m.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
@@ -483,7 +483,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                         .ThenInclude(m => m!.Costs)
             .Include(po => po.AcceptanceReport!)
                 .ThenInclude(ar => ar.AcceptanceReportItems)
-                    .ThenInclude(i => i.Part)
+                    .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
                         .ThenInclude(p => p!.Costs)
             .Include(po => po.AcceptanceReport!)
                 .ThenInclude(ar => ar.AcceptanceReportItems)
@@ -534,7 +534,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
             }
 
-            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+            foreach (var item in sectionAItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
             {
                 var logsOfCurrentReport = item.AcceptanceReportItemLogs
                     .Where(l => l.AcceptanceReportId == report.Id);
@@ -612,3 +612,5 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
 
     #endregion
 }
+
+

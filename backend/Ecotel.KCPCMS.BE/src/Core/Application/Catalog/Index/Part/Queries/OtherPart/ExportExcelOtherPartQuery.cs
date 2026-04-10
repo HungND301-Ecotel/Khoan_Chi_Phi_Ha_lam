@@ -41,11 +41,10 @@ public class ExportExcelOtherPartQueryHandler(IExcelService excelService, IUnitO
             Id = l.Id,
             Code = l.Code.Value,
             Name = l.Name,
-            UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
-            ReplacementTimeStandard = l.ReplacementTimeStandard,
-            Cost = costService.BuildExcelCostString(l.Costs.ToList())
+            UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,            Cost = costService.BuildExcelCostString(l.Costs.ToList())
         });
 
         return excelService.ExportToExcel(dtoList, "Phụ tùng khác", listHiddenProperty, dropdownConfigs);
     }
 }
+

@@ -486,7 +486,6 @@ public class CatalogController : BaseNoAuthController
             Code = createModel.Code,
             Name = createModel.Name,
             UnitOfMeasureId = createModel.UnitOfMeasureId,
-            ReplacementTimeStandard = createModel.ReplacementTimeStandard,
             PartType = PartType.OtherPart,
             Costs = createModel.Costs
         }));
@@ -503,7 +502,6 @@ public class CatalogController : BaseNoAuthController
             Code = updateModel.Code,
             Name = updateModel.Name,
             UnitOfMeasureId = updateModel.UnitOfMeasureId,
-            ReplacementTimeStandard = updateModel.ReplacementTimeStandard,
             PartType = PartType.OtherPart,
             Costs = updateModel.Costs
         }));

@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
@@ -39,9 +39,7 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             var newPart = Domain.Entities.Index.Part.Create(
                 request.CreateModel.Code,
                 request.CreateModel.Name,
-                request.CreateModel.UnitOfMeasureId,
-                request.CreateModel.ReplacementTimeStandard,
-                request.CreateModel.PartType);
+                request.CreateModel.UnitOfMeasureId,                request.CreateModel.PartType);
 
             var costList = new List<Cost>();
             foreach (var cost in request.CreateModel.Costs)
@@ -75,3 +73,4 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         }
     }
 }
+

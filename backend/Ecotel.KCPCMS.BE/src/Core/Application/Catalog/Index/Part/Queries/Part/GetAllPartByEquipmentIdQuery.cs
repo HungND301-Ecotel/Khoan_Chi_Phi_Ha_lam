@@ -38,9 +38,7 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Where(e => e.Equipment?.Code != null)
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)
-                .ToList(),
-            ReplacementTimeStandard = partDetail.ReplacementTimeStandard,
-            UnitOfMeasureId = partDetail.UnitOfMeasureId,
+                .ToList(),            UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
             ProcessGroups = partDetail.EquipmentParts
                 .Where(ep => ep.EquipmentId == request.EquipmentId && ep.Equipment != null)
@@ -61,3 +59,4 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
         }).ToList();
     }
 }
+

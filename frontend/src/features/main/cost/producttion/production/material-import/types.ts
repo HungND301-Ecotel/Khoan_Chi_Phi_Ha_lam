@@ -8,7 +8,8 @@ export type MaterialImportRow = {
 // API Response types
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
-	materialOrPartId: string;
+	materialId?: string | null;
+	maintainUnitPriceEquipmentId?: string | null;
 	materialCode: string;
 	unitOfMeasureName: string;
 	type: number;
@@ -76,7 +77,8 @@ export const OtherMaterialDetail = {
 // Create request types
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
-	materialOrPartId: string;
+	materialId?: string | null;
+	maintainUnitPriceEquipmentId?: string | null;
 	type: number;
 	itemType: number;
 	categoryProductionOrderId: string | null;

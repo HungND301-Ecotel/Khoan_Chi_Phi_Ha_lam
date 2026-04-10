@@ -309,7 +309,7 @@ public class GetLumpSumFinalSettlementListQueryHandler(IUnitOfWork unitOfWork) :
                             .ThenInclude(m => m!.Costs)
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.Part)
+                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
                             .ThenInclude(p => p!.Costs)
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
@@ -350,7 +350,7 @@ public class GetLumpSumFinalSettlementListQueryHandler(IUnitOfWork unitOfWork) :
                 transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
             }
 
-            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+            foreach (var item in sectionAItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
             {
                 var logsOfCurrentReport = item.AcceptanceReportItemLogs
                     .Where(l => l.AcceptanceReportId == report.Id);
@@ -471,3 +471,4 @@ public class GetLumpSumFinalSettlementListQueryHandler(IUnitOfWork unitOfWork) :
             .Replace(" ", string.Empty);
     }
 }
+

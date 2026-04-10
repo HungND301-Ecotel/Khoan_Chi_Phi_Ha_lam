@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
@@ -49,9 +49,7 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
             existedPart.Update(
                 request.UpdateModel.Code,
                 request.UpdateModel.Name,
-                request.UpdateModel.UnitOfMeasureId,
-                request.UpdateModel.ReplacementTimeStandard,
-                request.UpdateModel.PartType);
+                request.UpdateModel.UnitOfMeasureId,                request.UpdateModel.PartType);
 
             var costList = new List<Cost>();
             foreach (var cost in request.UpdateModel.Costs)
@@ -85,3 +83,4 @@ public class UpdatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         return true;
     }
 }
+

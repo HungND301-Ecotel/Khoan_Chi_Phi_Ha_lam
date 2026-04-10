@@ -1,4 +1,5 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
+using Application.Dto.Catalog.Equipment;
 using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
@@ -55,6 +56,7 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid PartId { get; set; }
         public double? Quantity { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
     }
 
     public class UpdateMaintainUnitPriceDto
@@ -74,5 +76,14 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid PartId { get; set; }
         public double Quantity { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
+        public decimal ReplacementTimeStandard { get; set; }
+    }
+
+    public class MaintainUnitPriceEquipmentEquipmentsDto
+    {
+        public Guid MaintainUnitPriceEquipmentId { get; set; }
+        public IList<EquipmentDto> Equipments { get; set; } = new List<EquipmentDto>();
     }
 }
+
+

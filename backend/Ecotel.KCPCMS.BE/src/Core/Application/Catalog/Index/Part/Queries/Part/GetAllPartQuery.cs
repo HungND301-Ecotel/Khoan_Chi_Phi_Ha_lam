@@ -57,9 +57,7 @@ public class GetAllPartQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<Ge
                     .Select(ep => ep.Equipment!.Code!.Value)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(code => code)
-                    .ToList(),
-                ReplacementTimeStandard = p.ReplacementTimeStandard,
-                CostAmount = p.Costs
+                    .ToList(),                CostAmount = p.Costs
                     .Where(c => c.CostType == CostType.Part && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
                     .Select(c => c.Amount)
                     .FirstOrDefault(),
@@ -83,3 +81,4 @@ public class GetAllPartQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<Ge
         return new PaginationResponse<PartDto>(pagedData, totalCount, filter.PageNumber, filter.PageSize);
     }
 }
+

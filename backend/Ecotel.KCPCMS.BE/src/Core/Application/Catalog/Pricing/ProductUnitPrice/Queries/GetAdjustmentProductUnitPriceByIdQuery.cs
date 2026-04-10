@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Pricing.Common;
+using Application.Catalog.Pricing.Common;
 using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
@@ -186,7 +186,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    m.Part.ReplacementTimeStandard,
+                    m.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
@@ -372,3 +372,4 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
 
     #endregion
 }
+

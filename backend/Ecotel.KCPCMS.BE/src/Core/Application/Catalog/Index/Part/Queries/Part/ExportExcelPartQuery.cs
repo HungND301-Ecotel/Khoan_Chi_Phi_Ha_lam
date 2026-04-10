@@ -39,9 +39,7 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
             {
                 Code = l.Code?.Value ?? string.Empty,
                 Name = l.Name,
-                UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,
-                ReplacementTimeStandard = l.ReplacementTimeStandard,
-                Cost = costService.BuildExcelCostString(l.Costs.ToList())
+                UnitOfMeasureName = l.UnitOfMeasure?.Name ?? string.Empty,                Cost = costService.BuildExcelCostString(l.Costs.ToList())
             })
             .OrderBy(d => d.Code)
             .ThenBy(d => d.Name);
@@ -49,3 +47,4 @@ public class ExportExcelPartQueryHandler(IExcelService excelService, IUnitOfWork
         return excelService.ExportToExcel(dtoList, "Phụ tùng", listHiddenProperty, dropdownConfigs);
     }
 }
+

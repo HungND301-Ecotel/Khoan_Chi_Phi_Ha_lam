@@ -84,7 +84,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             }
 
             // Update existing items
-            // MaterialId và PartId giữ nguyên từ entity, không cho phép thay đổi qua Update
+            // MaterialId và MaintainUnitPriceEquipmentId giữ nguyên từ entity, không cho phép thay đổi qua Update
             foreach (var existingItem in existingItems)
             {
                 if (itemsToUpdate.TryGetValue(existingItem.Id, out var updateItem))
@@ -99,7 +99,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     existingItem.Update(
                         updateItem.ProcessGroupId,
                         existingItem.MaterialId,
-                        existingItem.PartId,
+                        existingItem.MaintainUnitPriceEquipmentId,
                         updateItem.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -150,3 +150,4 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         }
     }
 }
+

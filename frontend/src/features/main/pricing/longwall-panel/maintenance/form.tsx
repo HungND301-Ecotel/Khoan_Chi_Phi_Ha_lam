@@ -145,7 +145,7 @@ export function LongwallPanelForm({
 				.filter((equipmentId) => equipmentIdsToAdd.includes(equipmentId))
 				.map((equipmentId) => ({
 					partId: part.id,
-					replacementTimeStandard: Number(part.replacementTimeStandard),
+					replacementTimeStandard: NaN,
 					quantity: NaN,
 					averageMonthlyTunnelProduction: NaN,
 					equipmentId,
@@ -397,7 +397,7 @@ function PricingLongwallPanelCosts({
 		watchedReplacementTimeStandard,
 	)
 		? watchedReplacementTimeStandard
-		: Number(part?.replacementTimeStandard);
+		: 0;
 
 	const regularRepairRates =
 		watchedQuantity /
@@ -463,11 +463,11 @@ function PricingLongwallPanelCosts({
 			</div>
 
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Định mức thời gian thay thế (tháng)</Label>
-				<Input
-					readOnly
-					value={part?.replacementTimeStandard ?? ''}
-					className='read-only:bg-transparent'
+				<FormNumber
+					control={control}
+					name={`costs.${index}.replacementTimeStandard`}
+					label='Định mức thời gian thay thế (tháng)'
+					placeholder='Nhập định mức'
 				/>
 			</div>
 
@@ -587,7 +587,7 @@ function groupCostsByEquipment(
 				cost.replacementTimeStandard,
 			)
 				? cost.replacementTimeStandard
-				: Number(part.replacementTimeStandard);
+				: 0;
 
 			const regularRepairRates =
 				cost.quantity /
@@ -663,7 +663,7 @@ function PricingEquipmentOtherPartCosts({
 				cost.replacementTimeStandard,
 			)
 				? cost.replacementTimeStandard
-				: Number(part.replacementTimeStandard);
+				: 0;
 
 			const regularRepairRates =
 				cost.quantity /

@@ -45,7 +45,8 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
                 null,
                 partPrice.PartId,
                 partPrice.Quantity,
-                partPrice.AverageMonthlyTunnelProduction
+                partPrice.AverageMonthlyTunnelProduction,
+                partPrice.ReplacementTimeStandard
             ));
         }
 
@@ -76,3 +77,4 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
         return true;
     }
 }
+

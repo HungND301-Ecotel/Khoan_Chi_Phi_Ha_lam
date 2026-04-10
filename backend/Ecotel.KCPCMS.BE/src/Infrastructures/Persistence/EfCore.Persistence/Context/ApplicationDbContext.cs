@@ -870,9 +870,9 @@ public class ApplicationDbContext(
             .HasForeignKey(i => i.ProcessGroupId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
-            .HasOne(i => i.Part)
+            .HasOne(i => i.MaintainUnitPriceEquipment)
             .WithMany(i => i.AcceptanceReportItems)
-            .HasForeignKey(i => i.PartId)
+            .HasForeignKey(i => i.MaintainUnitPriceEquipmentId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
             .HasOne(i => i.Material)

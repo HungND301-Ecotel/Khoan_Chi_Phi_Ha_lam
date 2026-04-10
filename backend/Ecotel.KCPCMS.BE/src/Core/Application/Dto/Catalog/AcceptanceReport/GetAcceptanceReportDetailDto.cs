@@ -11,7 +11,7 @@ public record AcceptanceReportDetailItemDto
     public Guid? AdditionalCostProductionOrderId { get; init; }
     public Guid? AdditionalCostEquipmentId { get; init; }
     public Guid? MaterialId { get; init; }
-    public Guid? PartId { get; init; }
+    public Guid? MaintainUnitPriceEquipmentId { get; init; }
     public string? MaterialCode { get; init; }
     public string? MaterialName { get; init; }
     public string? PartCode { get; init; }
@@ -60,3 +60,4 @@ public record GetAcceptanceReportDetailDto
     public required string FilePath { get; init; }
     public required List<AcceptanceReportDetailItemDto> Items { get; init; }
 }
+

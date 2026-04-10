@@ -19,6 +19,12 @@ export const tunnelingFormSchema = z.object({
 		.array(
 			z.object({
 				partId: z.string().nonempty({ error: 'ID mã số không được để trống' }),
+				replacementTimeStandard: z
+					.any()
+					.transform((val) => Number(val))
+					.refine((val) => !Number.isNaN(val) && val > 0, {
+						message: 'Không được để trống',
+					}),
 				quantity: z
 					.any()
 					.transform((val) => Number(val))

@@ -27,9 +27,7 @@ export type OtherPartDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureId: string;
-	unitOfMeasureName: string;
-	replacementTimeStandard: number;
-	costs: Array<{
+	unitOfMeasureName: string;	costs: Array<{
 		startMonth: string;
 		endMonth: string;
 		costType: number;
@@ -158,12 +156,6 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				}))}
 			/>
 
-			<FormNumber
-				control={form.control}
-				name={`replacementTimeStandard`}
-				label='Định mức thời gian thay thế (tháng)'
-				placeholder='Nhập định mức thời gian thay thế (tháng)'
-			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
 				{(index) => (
@@ -204,3 +196,7 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 		</FormProvider>
 	);
 }
+
+
+
+

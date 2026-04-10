@@ -10,7 +10,6 @@ export type Part = {
 	partType: number;
 	equipmentIds: string[];
 	equipmentCodes: string[];
-	replacementTimeStandard: number;
 	costAmount: number;
 	actualAmount: number;
 };
@@ -27,10 +26,6 @@ export const CATALOG_PART_COLUMNS: ColumnDef<Part>[] = [
 	{
 		accessorKey: 'unitOfMeasureName',
 		header: 'Đơn vị tính',
-	},
-	{
-		accessorKey: 'replacementTimeStandard',
-		header: 'Định mức thời gian thay thế (tháng)',
 	},
 	{
 		accessorKey: 'costAmount',

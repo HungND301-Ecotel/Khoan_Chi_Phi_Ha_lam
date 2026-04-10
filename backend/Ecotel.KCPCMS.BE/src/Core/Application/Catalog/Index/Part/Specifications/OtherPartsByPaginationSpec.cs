@@ -1,4 +1,4 @@
-﻿using Application.Common.Models;
+using Application.Common.Models;
 using Application.Common.Specification;
 using Application.Dto.Catalog.Part;
 using Ardalis.Specification;
@@ -27,9 +27,7 @@ public class OtherPartsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.
                 Code = p.Code.Value,
                 Name = p.Name,
                 UnitOfMeasureId = p.UnitOfMeasureId,
-                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty,
-                ReplacementTimeStandard = p.ReplacementTimeStandard,
-                CostAmount = p.Costs
+                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty,                CostAmount = p.Costs
                     .Where(c => c.CostType == CostType.Part &&
                                 c.StartMonth <= checkDate &&
                                 c.EndMonth >= checkDate)
@@ -44,3 +42,4 @@ public class OtherPartsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.
             });
     }
 }
+

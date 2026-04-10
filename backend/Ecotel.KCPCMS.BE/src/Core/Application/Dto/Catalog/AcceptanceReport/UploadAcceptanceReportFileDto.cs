@@ -16,10 +16,8 @@ public record AcceptanceReportItemDto
     /// </summary>
     public Guid? ReportItemId { get; init; }
 
-    /// <summary>
-    /// Id của Material nếu Type = Material, hoặc Id của Part nếu Type = Part
-    /// </summary>
-    public required Guid MaterialOrPartId { get; init; }
+    public Guid? MaterialId { get; init; }
+    public Guid? MaintainUnitPriceEquipmentId { get; init; }
 
     public required string MaterialCode { get; init; }
     public required string UnitOfMeasureName { get; init; }

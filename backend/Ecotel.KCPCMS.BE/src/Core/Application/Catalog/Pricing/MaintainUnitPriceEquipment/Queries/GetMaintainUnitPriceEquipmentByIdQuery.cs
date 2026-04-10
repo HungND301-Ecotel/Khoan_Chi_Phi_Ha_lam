@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaintainUnitPriceEquipment;
@@ -37,7 +37,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 PartCost = x.Part?.GetPartCost(maintainUnitPrice.StartMonth) ?? 0,
                 UnitOfMeasureId = x.Part?.UnitOfMeasureId,
                 UnitOfMeasureName = x.Part?.UnitOfMeasure?.Name ?? "",
-                ReplacementTimeStandard = x.Part.ReplacementTimeStandard,
+                ReplacementTimeStandard = x.ReplacementTimeStandard,
                 AverageMonthlyTunnelProduction = x.AverageMonthlyTunnelProduction,
                 MaterialCostPerMetres = x.GetMaterialCostPerMetres(maintainUnitPrice.StartMonth),
                 MaterialRatePerMetres = x.GetMaterialRate()
@@ -59,3 +59,4 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
         };
     }
 }
+

@@ -53,6 +53,11 @@ type ImportedItemMeta = {
 	type: number;
 };
 
+type MaintainEquipmentMapping = {
+	maintainUnitPriceEquipmentId: string;
+	equipments: Equipment[];
+};
+
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -296,48 +301,54 @@ export function MaterialImportDialog({
 
 			const importedItemMetas: ImportedItemMeta[] =
 				response.result.acceptanceReports.map((item) => ({
-					materialOrPartId: item.materialOrPartId,
+					materialOrPartId:
+						item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
 					type: item.type,
 				}));
 			setImportedItems(importedItemMetas);
 
-			const partIds = Array.from(
+			const maintainUnitPriceEquipmentIds = Array.from(
 				new Set(
 					response.result.acceptanceReports
 						.filter((item) => item.type === MaterialType.SparePart)
-						.map((item) => item.materialOrPartId),
+						.map((item) => item.maintainUnitPriceEquipmentId)
+						.filter((id): id is string => Boolean(id)),
 				),
 			);
 
-			const fetchedEquipmentOptionsByPartId: Record<
+			const fetchedEquipmentOptionsByMaintainId: Record<
 				string,
 				ProductionOrderOption[]
 			> = {};
 
-			await Promise.all(
-				partIds.map(async (partId) => {
-					try {
-						const equipmentRes = await api.get<Equipment[]>(
-							API.CATALOG.PART.PART_EQUIPMENT(partId),
-						);
-						const options = (equipmentRes.result ?? [])
-							.sort((a, b) => a.code.localeCompare(b.code))
-							.map((equipment) => ({
-								value: toEquipmentOptionValue(equipment.id),
-								label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
-							}));
-						fetchedEquipmentOptionsByPartId[partId] = options;
-					} catch (error) {
-						fetchedEquipmentOptionsByPartId[partId] = [];
-						console.error(
-							`Failed to fetch equipments by partId (${partId}):`,
-							error,
-						);
-					}
-				}),
-			);
+			if (maintainUnitPriceEquipmentIds.length > 0) {
+				const equipmentMappingsRes = await api.post<
+					MaintainEquipmentMapping[],
+					string[]
+				>(
+					API.PRICING.MAINTENANCE.EQUIPMENTS_BY_MAINTAIN_IDS,
+					maintainUnitPriceEquipmentIds,
+				);
 
-			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+				for (const mapping of equipmentMappingsRes.result ?? []) {
+					fetchedEquipmentOptionsByMaintainId[
+						mapping.maintainUnitPriceEquipmentId
+					] = (mapping.equipments ?? [])
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((equipment) => ({
+							value: toEquipmentOptionValue(equipment.id),
+							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+						}));
+				}
+			}
+
+			for (const maintainId of maintainUnitPriceEquipmentIds) {
+				if (!fetchedEquipmentOptionsByMaintainId[maintainId]) {
+					fetchedEquipmentOptionsByMaintainId[maintainId] = [];
+				}
+			}
+
+			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByMaintainId);
 
 			// Transform API response to form schema
 			const formattedData: MaterialFormSchema[] =
@@ -358,9 +369,10 @@ export function MaterialImportDialog({
 
 					return {
 						...MATERIAL_FORM_DEFAULT,
-						id: item.materialOrPartId,
+						id: item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
 						acceptanceReportItemId: item.reportItemId || undefined,
-						materialOrPartId: item.materialOrPartId,
+						materialOrPartId:
+							item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
 						materialCode: item.materialCode,
 						unitOfMeasureName: item.unitOfMeasureName,
 						type: item.type,
@@ -554,7 +566,14 @@ export function MaterialImportDialog({
 
 					return {
 						acceptanceReportItemId: item.acceptanceReportItemId || null,
-						materialOrPartId: item.materialOrPartId || '',
+						materialId:
+							item.type === MaterialType.Material
+								? item.materialOrPartId || null
+								: null,
+						maintainUnitPriceEquipmentId:
+							item.type === MaterialType.SparePart
+								? item.materialOrPartId || null
+								: null,
 						type: item.type || 1,
 						itemType: item.itemType || 1,
 						categoryProductionOrderId: categorySelection.productionOrderId,

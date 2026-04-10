@@ -12,13 +12,6 @@ export const partSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
-	replacementTimeStandard: z.coerce
-		.number<number>({
-			message: 'Định mức thời gian thay thế (tháng) phải là số',
-		})
-		.gt(0, {
-			message: 'Định mức thời gian thay thế (tháng) phải lớn hơn 0',
-		}),
 	costs: z
 		.array(
 			z.object({
@@ -59,7 +52,6 @@ export const PART_SCHEMA_DEFAULT: PartSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
-	replacementTimeStandard: NaN,
 	costs: [
 		{
 			startMonth: '',

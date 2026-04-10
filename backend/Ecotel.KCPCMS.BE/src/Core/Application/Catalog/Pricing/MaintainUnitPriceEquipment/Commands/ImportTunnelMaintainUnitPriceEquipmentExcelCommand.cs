@@ -55,7 +55,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                     null,
                     pd.Key, // PartId from Excel
                     pd.Value!.Value.Quantity,
-                    pd.Value.Value.AverageMonthlyTunnelProduction))
+                    pd.Value.Value.AverageMonthlyTunnelProduction,
+                    pd.Value.Value.ReplacementTimeStandard))
                 .ToList();
 
             return new
@@ -245,7 +246,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                         state.Dto.PartData[partId] = new TunnelPartEquipmentData
                         {
                             Quantity = quantity,
-                            AverageMonthlyTunnelProduction = production
+                            AverageMonthlyTunnelProduction = production,
+                            ReplacementTimeStandard = 1
                         };
                     }
                     else
@@ -332,6 +334,7 @@ internal struct TunnelPartEquipmentData
 {
     public double Quantity { get; set; }
     public decimal AverageMonthlyTunnelProduction { get; set; }
+    public decimal ReplacementTimeStandard { get; set; }
 }
 
 internal class TunnelEquipmentImportState
@@ -340,3 +343,4 @@ internal class TunnelEquipmentImportState
     public int TotalParts { get; set; }
     public int FilledParts { get; set; }
 }
+

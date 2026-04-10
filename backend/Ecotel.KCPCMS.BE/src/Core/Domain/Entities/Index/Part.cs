@@ -1,7 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Pricing;
-using Domain.Entities.Production;
 using Shared.Constants;
 
 namespace Domain.Entities.Index
@@ -12,7 +11,6 @@ namespace Domain.Entities.Index
         public string Name { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
         public PartType Type { get; protected set; } = PartType.Part;
-        public decimal ReplacementTimeStandard { get; protected set; }
 
         // Navigation properties
         public virtual UnitOfMeasure? UnitOfMeasure { get; protected set; }
@@ -26,13 +24,11 @@ namespace Domain.Entities.Index
 
         private IList<MaintainUnitPriceEquipment> _maintainUnitPriceEquipments = new List<MaintainUnitPriceEquipment>();
         public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
-        private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
-        public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
         private IList<PartProcessGroup> _partProcessGroups = new List<PartProcessGroup>();
         public virtual IReadOnlyCollection<PartProcessGroup> PartProcessGroups => _partProcessGroups.AsReadOnly();
 
         // constructor
-        public static Part Create(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, PartType type = PartType.Part)
+        public static Part Create(string code, string name, Guid? unitOfMeasureId, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -49,13 +45,12 @@ namespace Domain.Entities.Index
                 Name = name,
                 UnitOfMeasureId = unitOfMeasureId,
                 Type = type,
-                ReplacementTimeStandard = replacementTimeStandard
             };
 
             return part;
         }
 
-        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, PartType type = PartType.Part)
+        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -73,14 +68,13 @@ namespace Domain.Entities.Index
                 Name = name,
                 UnitOfMeasureId = unitOfMeasureId,
                 Type = type,
-                ReplacementTimeStandard = replacementTimeStandard
             };
 
             return part;
         }
 
 
-        public static Part Create(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, IList<Equipment> equipments, PartType type = PartType.Part)
+        public static Part Create(string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -103,14 +97,13 @@ namespace Domain.Entities.Index
                 Name = name,
                 UnitOfMeasureId = unitOfMeasureId,
                 Type = type,
-                ReplacementTimeStandard = replacementTimeStandard
             };
             part.ReplaceEquipments(equipments);
 
             return part;
         }
 
-        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, IList<Equipment> equipments, PartType type = PartType.Part)
+        public static Part Create(Guid id, string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -134,14 +127,13 @@ namespace Domain.Entities.Index
                 Name = name,
                 UnitOfMeasureId = unitOfMeasureId,
                 Type = type,
-                ReplacementTimeStandard = replacementTimeStandard
             };
             part.ReplaceEquipments(equipments);
 
             return part;
         }
 
-        public void Update(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, IList<Equipment> equipments, PartType type = PartType.Part)
+        public void Update(string code, string name, Guid? unitOfMeasureId, IList<Equipment> equipments, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -165,11 +157,10 @@ namespace Domain.Entities.Index
             Name = name;
             UnitOfMeasureId = unitOfMeasureId;
             Type = type;
-            ReplacementTimeStandard = replacementTimeStandard;
             ReplaceEquipments(equipments);
         }
 
-        public void Update(string code, string name, Guid? unitOfMeasureId, decimal replacementTimeStandard, PartType type = PartType.Part)
+        public void Update(string code, string name, Guid? unitOfMeasureId, PartType type = PartType.Part)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -187,7 +178,6 @@ namespace Domain.Entities.Index
 
             Name = name;
             UnitOfMeasureId = unitOfMeasureId;
-            ReplacementTimeStandard = replacementTimeStandard;
             Type = type;
         }
 

@@ -321,6 +321,8 @@ export const API = {
 			DELETES: '/v1/pricing/maintainunitpriceequipment',
 			DELETE: (id: string) => `/v1/pricing/maintainunitpriceequipment/${id}`,
 			DETAIL: (id: string) => `/v1/pricing/maintainunitpriceequipment/${id}`,
+			EQUIPMENTS_BY_MAINTAIN_IDS:
+				'/v1/pricing/maintainunitpriceequipment/equipments',
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
 			LONGWALL_IMPORT: '/v1/pricing/longwallmaintainunitpriceequipment/import',

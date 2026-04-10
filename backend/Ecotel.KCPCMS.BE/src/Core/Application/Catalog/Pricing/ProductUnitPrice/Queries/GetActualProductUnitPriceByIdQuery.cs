@@ -139,7 +139,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
                 {
                     m.Quantity,
-                    m.Part.ReplacementTimeStandard,
+                    m.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
@@ -327,3 +327,4 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     }
     #endregion
 }
+

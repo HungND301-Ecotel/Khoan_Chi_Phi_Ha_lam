@@ -6,7 +6,9 @@ public record CreateAcceptanceReportItemDto
 {
     public Guid? AcceptanceReportItemId { get; init; }
 
-    public required Guid MaterialOrPartId { get; init; }
+    public Guid? MaterialId { get; init; }
+    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
 

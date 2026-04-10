@@ -2,7 +2,7 @@ export type RawAcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
-	partId?: string | null;
+	maintainUnitPriceEquipmentId?: string | null;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
@@ -44,7 +44,7 @@ export type AcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
-	partId?: string | null;
+	maintainUnitPriceEquipmentId?: string | null;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
@@ -245,3 +245,4 @@ export const MOCK_RAW_ACCEPTANCE_REPORT_DETAIL: RawAcceptanceReportDetail = {
 	productionId: 'prod-001',
 	items: MOCK_RAW_ACCEPTANCE_REPORT_ITEMS,
 };
+

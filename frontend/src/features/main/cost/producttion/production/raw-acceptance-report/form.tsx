@@ -82,6 +82,11 @@ type Equipment = {
 	name: string;
 };
 
+type MaintainEquipmentMapping = {
+	maintainUnitPriceEquipmentId: string;
+	equipments: Equipment[];
+};
+
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -586,48 +591,55 @@ export function RawAcceptanceReportForm({
 
 					const importedItemMetas: ImportedItemMeta[] = response.result.items
 						.map((item) => ({
-							materialOrPartId: item.partId ?? item.materialId ?? '',
+							materialOrPartId:
+								item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
 							type: item.type,
 						}))
 						.filter((item) => item.materialOrPartId.length > 0);
 					setImportedItems(importedItemMetas);
 
-					const partIds = Array.from(
+					const maintainUnitPriceEquipmentIds = Array.from(
 						new Set(
 							response.result.items
-								.map((item) => item.partId)
-								.filter((partId): partId is string => Boolean(partId)),
+								.filter((item) => item.type === MaterialType.SparePart)
+								.map((item) => item.maintainUnitPriceEquipmentId)
+								.filter((id): id is string => Boolean(id)),
 						),
 					);
-					const fetchedEquipmentOptionsByPartId: Record<
+
+					const fetchedEquipmentOptionsByMaintainId: Record<
 						string,
 						ProductionOrderOption[]
 					> = {};
 
-					await Promise.all(
-						partIds.map(async (partId) => {
-							try {
-								const equipmentRes = await api.get<Equipment[]>(
-									API.CATALOG.PART.PART_EQUIPMENT(partId),
-								);
-								const options = (equipmentRes.result ?? [])
-									.sort((a, b) => a.code.localeCompare(b.code))
-									.map((equipment) => ({
-										value: toEquipmentOptionValue(equipment.id),
-										label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
-									}));
-								fetchedEquipmentOptionsByPartId[partId] = options;
-							} catch (error) {
-								fetchedEquipmentOptionsByPartId[partId] = [];
-								console.error(
-									`Failed to fetch equipments by partId (${partId}):`,
-									error,
-								);
-							}
-						}),
-					);
+					if (maintainUnitPriceEquipmentIds.length > 0) {
+						const equipmentMappingsRes = await api.post<
+							MaintainEquipmentMapping[],
+							string[]
+						>(
+							API.PRICING.MAINTENANCE.EQUIPMENTS_BY_MAINTAIN_IDS,
+							maintainUnitPriceEquipmentIds,
+						);
 
-					setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+						for (const mapping of equipmentMappingsRes.result ?? []) {
+							fetchedEquipmentOptionsByMaintainId[
+								mapping.maintainUnitPriceEquipmentId
+							] = (mapping.equipments ?? [])
+								.sort((a, b) => a.code.localeCompare(b.code))
+								.map((equipment) => ({
+									value: toEquipmentOptionValue(equipment.id),
+									label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+								}));
+						}
+					}
+
+					for (const maintainId of maintainUnitPriceEquipmentIds) {
+						if (!fetchedEquipmentOptionsByMaintainId[maintainId]) {
+							fetchedEquipmentOptionsByMaintainId[maintainId] = [];
+						}
+					}
+
+					setEquipmentOptionsByPartId(fetchedEquipmentOptionsByMaintainId);
 
 					const items = response.result.items.map((item) => {
 						// Map enum values to form field values
@@ -702,7 +714,7 @@ export function RawAcceptanceReportForm({
 											item.additionalCostProductionOrderId,
 										)
 									: null;
-						const materialOrPartId = item.partId ?? item.materialId ?? '';
+						const materialOrPartId = item.maintainUnitPriceEquipmentId ?? item.materialId ?? '';
 
 						return {
 							id: item.id || '',
