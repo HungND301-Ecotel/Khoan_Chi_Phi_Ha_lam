@@ -10,7 +10,9 @@ using Shared.Constants;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 
-public record GetTunnelElectricityUnitPriceEquipmentByIdQuery(DefaultIdType Id) : IRequest<ElectricityUnitPriceEquipmentDto>;
+public record GetTunnelElectricityUnitPriceEquipmentByIdQuery(
+    DefaultIdType Id,
+    ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<ElectricityUnitPriceEquipmentDto>;
 
 public class GetTunnelElectricityUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<GetTunnelElectricityUnitPriceEquipmentByIdQuery, ElectricityUnitPriceEquipmentDto>
@@ -20,7 +22,7 @@ public class GetTunnelElectricityUnitPriceEquipmentByIdQueryHandler(IUnitOfWork 
     public async Task<ElectricityUnitPriceEquipmentDto> Handle(GetTunnelElectricityUnitPriceEquipmentByIdQuery request, CancellationToken cancellationToken)
     {
         var entity = await _repository.GetFirstOrDefaultAsync(
-            predicate: e => e.Id == request.Id && e.ElectricityType == ElectricityUnitPriceType.TunnelExcavation,
+            predicate: e => e.Id == request.Id && e.ElectricityType == request.Type,
             include: e => e.Include(e => e.Equipment).ThenInclude(e => e.UnitOfMeasure)
                 .Include(e => e.Equipment).ThenInclude(e => e.Costs)
                 .Include(e => e.Equipment).ThenInclude(e => e.Code),

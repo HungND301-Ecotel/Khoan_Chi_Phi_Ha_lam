@@ -3,12 +3,18 @@ using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
 using Application.Dto.Catalog.MaterialUnitPrice;
+using Domain.Common.Enums;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
 
 namespace Application.Catalog.Pricing.MaterialUnitPrice.Queries;
 
-public record class GetAllMaterialUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<MaterialUnitPriceDto>>;
+public record class GetAllMaterialUnitPriceQuery(
+    int PageIndex,
+    int PageSize,
+    string? Search,
+    bool IgnorePagination,
+    TunnelExcavationTrimingUnitPriceType Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation) : IRequest<PaginationResponse<MaterialUnitPriceDto>>;
 
 public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, IReadRepository<TunnelExcavationMaterialUnitPrice> maintainUnitPriceRepository)
     : IRequestHandler<GetAllMaterialUnitPriceQuery, PaginationResponse<MaterialUnitPriceDto>>
@@ -22,7 +28,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             IgnorePagination = request.IgnorePagination
         };
 
-        var spec = new MaterialUnitPricesByPaginationSpec(filter, request.Search);
+        var spec = new MaterialUnitPricesByPaginationSpec(filter, request.Search, request.Type);
 
         var result = await paginationService.PaginatedListAsync(
             repository: maintainUnitPriceRepository,

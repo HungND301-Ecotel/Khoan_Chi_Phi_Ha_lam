@@ -53,7 +53,12 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Get All MaterialUnitPrice", "")]
     public async Task<IActionResult> GetAllMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        var result = await Mediator.Send(new GetAllMaterialUnitPriceQuery(
+            pageIndex,
+            pageSize,
+            search,
+            ignorePagination,
+            TunnelExcavationTrimingUnitPriceType.TunnelExcavation));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -77,6 +82,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Update MaterialUnitPrice", "")]
     public async Task<IActionResult> UpdateMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
     {
+        updateModel.Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation;
         var result = await Mediator.Send(new UpdateMaterialUnitPriceCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);
     }
@@ -85,6 +91,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Create New MaterialUnitPrice", "")]
     public async Task<IActionResult> CreateMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
     {
+        createModel.Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation;
         var result = await Mediator.Send(new CreateMaterialUnitPriceCommand(createModel));
         return Ok(result, MessageCommon.CreateSuccess);
     }
@@ -109,7 +116,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Export MaterialUnitPrice", "")]
     public async Task<IActionResult> ExportMaterialUnitPrice()
     {
-        var fileByte = await Mediator.Send(new ExportExcelMaterialUnitPriceQuery());
+        var fileByte = await Mediator.Send(new ExportExcelMaterialUnitPriceQuery(TunnelExcavationTrimingUnitPriceType.TunnelExcavation));
         var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dao_lo_don_gia_dinh_muc.xlsx");
         return result;
     }
@@ -118,7 +125,79 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Import MaterialUnitPrice", "")]
     public async Task<IActionResult> ImportMaterialUnitPrice([FromForm] ImportDto importModel)
     {
-        var result = await Mediator.Send(new ImportMaterialUnitPriceExcelCommand(importModel.FormFile));
+        var result = await Mediator.Send(new ImportMaterialUnitPriceExcelCommand(importModel.FormFile, TunnelExcavationTrimingUnitPriceType.TunnelExcavation));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("TrimmingMaterialUnitPrice")]
+    [OpenApiOperation("Get All Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> GetAllTrimmingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMaterialUnitPriceQuery(
+            pageIndex,
+            pageSize,
+            search,
+            ignorePagination,
+            TunnelExcavationTrimingUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TrimmingMaterialUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Trimming MaterialUnitPrice By Id (Xén lò)", "")]
+    public async Task<IActionResult> GetTrimmingMaterialUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMaterialUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TrimmingMaterialUnitPrice")]
+    [OpenApiOperation("Update Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> UpdateTrimmingMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
+    {
+        updateModel.Type = TunnelExcavationTrimingUnitPriceType.Trimming;
+        var result = await Mediator.Send(new UpdateMaterialUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("TrimmingMaterialUnitPrice")]
+    [OpenApiOperation("Create New Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> CreateTrimmingMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
+    {
+        createModel.Type = TunnelExcavationTrimingUnitPriceType.Trimming;
+        var result = await Mediator.Send(new CreateMaterialUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpDelete("TrimmingMaterialUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> DeleteTrimmingMaterialUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMaterialUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TrimmingMaterialUnitPriceList")]
+    [OpenApiOperation("Delete Trimming MaterialUnitPrice List (Xén lò)", "")]
+    public async Task<IActionResult> DeleteTrimmingMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteMaterialUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TrimmingMaterialUnitPrice/export")]
+    [OpenApiOperation("Export Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> ExportTrimmingMaterialUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelMaterialUnitPriceQuery(TunnelExcavationTrimingUnitPriceType.Trimming));
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Xen_lo_don_gia_dinh_muc.xlsx");
+        return result;
+    }
+
+    [HttpPost("TrimmingMaterialUnitPrice/import")]
+    [OpenApiOperation("Import Trimming MaterialUnitPrice (Xén lò)", "")]
+    public async Task<IActionResult> ImportTrimmingMaterialUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportMaterialUnitPriceExcelCommand(importModel.FormFile, TunnelExcavationTrimingUnitPriceType.Trimming));
         return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion
@@ -413,6 +492,69 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.ImportSuccess);
     }
 
+    [HttpGet("TrimmingMaintainUnitPriceEquipment")]
+    [OpenApiOperation("Get All Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> GetAllTrimmingMaintainUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMaintainUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, MaintainUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TrimmingMaintainUnitPriceEquipment")]
+    [OpenApiOperation("Create New Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> CreateTrimmingMaintainUnitPriceEquipment([FromBody] IList<Application.Dto.Catalog.MaintainUnitPrice.CreateMaintainUnitPriceEquipmentDto> createModel)
+    {
+        foreach (var item in createModel)
+        {
+            item.Type = MaintainUnitPriceType.Trimming;
+        }
+
+        var result = await Mediator.Send(new CreateMaintainUnitPriceEquipmentCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("TrimmingMaintainUnitPriceEquipment/{id:guid}")]
+    [OpenApiOperation("Get Trimming MaintainUnitPriceEquipment By Id (Xén lò)", "")]
+    public async Task<IActionResult> GetTrimmingMaintainUnitPriceEquipmentById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMaintainUnitPriceEquipmentByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TrimmingMaintainUnitPriceEquipment")]
+    [OpenApiOperation("Update Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> UpdateTrimmingMaintainUnitPriceEquipment([FromBody] UpdateMaintainUnitPriceDto updateModel)
+    {
+        updateModel.Type = MaintainUnitPriceType.Trimming;
+        var result = await Mediator.Send(new UpdateMaintainUnitPriceEquipmentCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TrimmingMaintainUnitPriceEquipment/{deleteId:guid}")]
+    [OpenApiOperation("Delete Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> DeleteTrimmingMaintainUnitPriceEquipment([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TrimmingMaintainUnitPriceEquipment/export")]
+    [OpenApiOperation("Export Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> ExportTrimmingMaintainUnitPriceEquipment()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTrimmingMaintainUnitPriceEquipmentQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dinh_muc_bao_duong_xen_lo.xlsx");
+        return result;
+    }
+
+    [HttpPost("TrimmingMaintainUnitPriceEquipment/import")]
+    [OpenApiOperation("Import Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> ImportTrimmingMaintainUnitPriceEquipment([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTrimmingMaintainUnitPriceEquipmentExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
     [HttpGet("LongwallMaintainUnitPriceEquipment/export")]
     [OpenApiOperation("Export Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
     public async Task<IActionResult> ExportLongwallMaintainUnitPriceEquipment()
@@ -437,7 +579,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Get All Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     public async Task<IActionResult> GetAllTunnelElectricityUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllTunnelElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination));
+        var result = await Mediator.Send(new GetAllTunnelElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, ElectricityUnitPriceType.TunnelExcavation));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -445,6 +587,11 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Create New Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     public async Task<IActionResult> CreateTunnelElectricityUnitPriceEquipment([FromBody] IList<CreateElectricityUnitPriceEquipmentDto> createModel)
     {
+        foreach (var item in createModel)
+        {
+            item.Type = ElectricityUnitPriceType.TunnelExcavation;
+        }
+
         var result = await Mediator.Send(new CreateElectricityUnitPriceEquipmentCommand(createModel));
         return Ok(result, MessageCommon.CreateSuccess);
     }
@@ -453,7 +600,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Get Tunnel ElectricityUnitPriceEquipment By Id (Đào lò)", "")]
     public async Task<IActionResult> GetTunnelElectricityUnitPriceEquipmentById([FromRoute] Guid id)
     {
-        var result = await Mediator.Send(new GetTunnelElectricityUnitPriceEquipmentByIdQuery(id));
+        var result = await Mediator.Send(new GetTunnelElectricityUnitPriceEquipmentByIdQuery(id, ElectricityUnitPriceType.TunnelExcavation));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -461,6 +608,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Update Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     public async Task<IActionResult> UpdateTunnelElectricityUnitPriceEquipment([FromBody] UpdateElectricityUnitPriceEquipmentDto updateModel)
     {
+        updateModel.Type = ElectricityUnitPriceType.TunnelExcavation;
         var result = await Mediator.Send(new UpdateElectricityUnitPriceEquipmentCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);
     }
@@ -469,7 +617,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Delete Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     public async Task<IActionResult> DeleteTunnelElectricityUnitPriceEquipment([FromRoute] Guid deleteId)
     {
-        var result = await Mediator.Send(new DeleteTunnelElectricityUnitPriceEquipmentCommand(deleteId));
+        var result = await Mediator.Send(new DeleteTunnelElectricityUnitPriceEquipmentCommand(deleteId, ElectricityUnitPriceType.TunnelExcavation));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
 
@@ -477,7 +625,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Export Tunnel ElectricityUnitPriceEquipment (Lò chợ)", "")]
     public async Task<IActionResult> ExportTunnelElectricityUnitPriceEquipment()
     {
-        var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery());
+        var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery(ElectricityUnitPriceType.TunnelExcavation));
         var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dinh_muc_dien_lo_cho.xlsx");
         return result;
     }
@@ -486,7 +634,70 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Import Tunnel ElectricityUnitPriceEquipment (Lò chợ)", "")]
     public async Task<IActionResult> ImportTunnelElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
     {
-        var result = await Mediator.Send(new ImportTunnelElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile));
+        var result = await Mediator.Send(new ImportTunnelElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile, ElectricityUnitPriceType.TunnelExcavation));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("TrimmingElectricityUnitPriceEquipment")]
+    [OpenApiOperation("Get All Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> GetAllTrimmingElectricityUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTunnelElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, ElectricityUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TrimmingElectricityUnitPriceEquipment")]
+    [OpenApiOperation("Create New Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> CreateTrimmingElectricityUnitPriceEquipment([FromBody] IList<CreateElectricityUnitPriceEquipmentDto> createModel)
+    {
+        foreach (var item in createModel)
+        {
+            item.Type = ElectricityUnitPriceType.Trimming;
+        }
+
+        var result = await Mediator.Send(new CreateElectricityUnitPriceEquipmentCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("TrimmingElectricityUnitPriceEquipment/{id:guid}")]
+    [OpenApiOperation("Get Trimming ElectricityUnitPriceEquipment By Id (Xén lò)", "")]
+    public async Task<IActionResult> GetTrimmingElectricityUnitPriceEquipmentById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTunnelElectricityUnitPriceEquipmentByIdQuery(id, ElectricityUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TrimmingElectricityUnitPriceEquipment")]
+    [OpenApiOperation("Update Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> UpdateTrimmingElectricityUnitPriceEquipment([FromBody] UpdateElectricityUnitPriceEquipmentDto updateModel)
+    {
+        updateModel.Type = ElectricityUnitPriceType.Trimming;
+        var result = await Mediator.Send(new UpdateElectricityUnitPriceEquipmentCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TrimmingElectricityUnitPriceEquipment/{deleteId:guid}")]
+    [OpenApiOperation("Delete Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> DeleteTrimmingElectricityUnitPriceEquipment([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTunnelElectricityUnitPriceEquipmentCommand(deleteId, ElectricityUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TrimmingElectricityUnitPriceEquipment/export")]
+    [OpenApiOperation("Export Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> ExportTrimmingElectricityUnitPriceEquipment()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery(ElectricityUnitPriceType.Trimming));
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dinh_muc_dien_xen_lo.xlsx");
+        return result;
+    }
+
+    [HttpPost("TrimmingElectricityUnitPriceEquipment/import")]
+    [OpenApiOperation("Import Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
+    public async Task<IActionResult> ImportTrimmingElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTunnelElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile, ElectricityUnitPriceType.Trimming));
         return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion

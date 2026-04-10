@@ -152,6 +152,27 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'sub-menu',
+				name: 'Xén lò',
+				items: [
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức vật liệu',
+						href: '/pricing/trimming/material',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức SCTX',
+						href: '/pricing/trimming/maintenance',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức điện năng',
+						href: '/pricing/trimming',
+					},
+				],
+			},
+			{
+				type: 'sub-menu',
 				name: 'Lò chợ',
 				href: '/pricing/longwall-panel',
 				items: [

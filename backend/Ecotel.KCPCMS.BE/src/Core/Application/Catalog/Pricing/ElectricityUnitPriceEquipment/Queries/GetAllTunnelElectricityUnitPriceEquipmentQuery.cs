@@ -9,7 +9,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 
-public record GetAllTunnelElectricityUnitPriceEquipmentQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<ElectricityUnitPriceEquipmentDto>>;
+public record GetAllTunnelElectricityUnitPriceEquipmentQuery(
+    int PageIndex,
+    int PageSize,
+    string? Search,
+    bool IgnorePagination,
+    ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<PaginationResponse<ElectricityUnitPriceEquipmentDto>>;
 
 public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
     IUnitOfWork unitOfWork)
@@ -28,7 +33,7 @@ public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
 
         // Query only Tunnel type
         var query = _repository.GetAll()
-            .Where(e => e.ElectricityType == ElectricityUnitPriceType.TunnelExcavation)
+            .Where(e => e.ElectricityType == request.Type)
             .Include(e => e.Equipment).ThenInclude(e => e!.Code)
             .Include(e => e.Equipment).ThenInclude(e => e!.UnitOfMeasure)
             .Include(e => e.Equipment).ThenInclude(e => e!.Costs)

@@ -280,6 +280,16 @@ export const API = {
 				IMPORT: '/v1/pricing/materialunitprice/import',
 				EXPORT: '/v1/pricing/materialunitprice/export',
 			},
+			TRIMMING: {
+				LIST: '/v1/pricing/trimmingmaterialunitprice',
+				CREATE: '/v1/pricing/trimmingmaterialunitprice',
+				UPDATE: '/v1/pricing/trimmingmaterialunitprice',
+				DELETES: '/v1/pricing/trimmingmaterialunitpricelist',
+				DELETE: (id: string) => `/v1/pricing/trimmingmaterialunitprice/${id}`,
+				DETAIL: (id: string) => `/v1/pricing/trimmingmaterialunitprice/${id}`,
+				IMPORT: '/v1/pricing/trimmingmaterialunitprice/import',
+				EXPORT: '/v1/pricing/trimmingmaterialunitprice/export',
+			},
 			LONGWALL_PANEL: {
 				LIST: '/v1/pricing/longwallmaterialunitprice',
 				CREATE: '/v1/pricing/longwallmaterialunitprice',
@@ -325,6 +335,15 @@ export const API = {
 				'/v1/pricing/maintainunitpriceequipment/equipments',
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
+			TRIMMING_IMPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/import',
+			TRIMMING_EXPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/export',
+			TRIMMING_LIST: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_CREATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_UPDATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_DELETE: (id: string) =>
+				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
+			TRIMMING_DETAIL: (id: string) =>
+				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
 			LONGWALL_IMPORT: '/v1/pricing/longwallmaintainunitpriceequipment/import',
 			LONGWALL_EXPORT: '/v1/pricing/longwallmaintainunitpriceequipment/export',
 		},
@@ -340,6 +359,18 @@ export const API = {
 					`/v1/pricing/tunnelelectricityunitpriceequipment/${id}`,
 				IMPORT: '/v1/pricing/tunnelelectricityunitpriceequipment/import',
 				EXPORT: '/v1/pricing/tunnelelectricityunitpriceequipment/export',
+			},
+			TRIMMING: {
+				LIST: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				CREATE: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				UPDATE: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				DELETES: '/v1/pricing/electricityunitpriceequipment',
+				DELETE: (id: string) =>
+					`/v1/pricing/trimmingelectricityunitpriceequipment/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/trimmingelectricityunitpriceequipment/${id}`,
+				IMPORT: '/v1/pricing/trimmingelectricityunitpriceequipment/import',
+				EXPORT: '/v1/pricing/trimmingelectricityunitpriceequipment/export',
 			},
 			LONGWALL_PANEL: {
 				LIST: '/v1/pricing/longwallelectricityunitpriceequipment',

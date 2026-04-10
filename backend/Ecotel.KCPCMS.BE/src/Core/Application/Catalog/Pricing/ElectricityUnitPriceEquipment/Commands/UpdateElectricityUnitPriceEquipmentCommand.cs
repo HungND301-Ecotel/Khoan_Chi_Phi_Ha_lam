@@ -38,6 +38,11 @@ public class UpdateElectricityUnitPriceEquipmentCommandHandler(IUnitOfWork unitO
             throw new BadRequestException("This command can only update Tunnel Electricity Unit Price Equipment.");
         }
 
+        if (existEntity.ElectricityType != request.UpdateModel.Type)
+        {
+            throw new BadRequestException("Electricity unit price type does not match update payload.");
+        }
+
         tunnelEntity.Update(
             equipmentId: equipment.Id,
             monthlyElectricityCost: request.UpdateModel.MonthlyElectricityCost,

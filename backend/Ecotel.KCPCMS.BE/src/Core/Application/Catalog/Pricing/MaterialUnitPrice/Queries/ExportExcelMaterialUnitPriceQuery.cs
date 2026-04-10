@@ -1,6 +1,7 @@
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using ClosedXML.Excel;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.MaterialUnitPrice.Queries;
 
-public record ExportExcelMaterialUnitPriceQuery() : IRequest<byte[]>;
+public record ExportExcelMaterialUnitPriceQuery(
+    TunnelExcavationTrimingUnitPriceType Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation) : IRequest<byte[]>;
 
 public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<ExportExcelMaterialUnitPriceQuery, byte[]>
 {
@@ -25,6 +27,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
     public async Task<byte[]> Handle(ExportExcelMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
         var list = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: s => s.Type == request.Type,
             include: s => s
                 .Include(s => s.ProductionProcess)
                 .Include(s => s.Passport)

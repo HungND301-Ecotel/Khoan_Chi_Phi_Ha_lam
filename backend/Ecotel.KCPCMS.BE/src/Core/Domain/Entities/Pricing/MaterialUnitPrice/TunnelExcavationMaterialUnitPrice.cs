@@ -1,3 +1,4 @@
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 
 namespace Domain.Entities.Pricing.MaterialUnitPrice;
@@ -8,6 +9,7 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
     public Guid HardnessId { get; protected set; }
     public Guid InsertItemId { get; protected set; }
     public Guid SupportStepId { get; protected set; }
+    public TunnelExcavationTrimingUnitPriceType Type { get; protected set; } = TunnelExcavationTrimingUnitPriceType.TunnelExcavation;
 
     // Navigation properties
     public virtual Passport? Passport { get; protected set; }
@@ -26,7 +28,8 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         DateOnly startMonth,
         DateOnly endMonth,
         double OtherMaterialvalue,
-        IList<MaterialUnitPriceAssignmentCode> costs)
+        IList<MaterialUnitPriceAssignmentCode> costs,
+        TunnelExcavationTrimingUnitPriceType type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation)
     {
         ValidateCommonFields(code, startMonth, endMonth);
 
@@ -43,6 +46,7 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
             OtherMaterialvalue = OtherMaterialvalue,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
+            Type = type
         };
 
         materialUnitPrice.AddCosts(costs);
@@ -60,7 +64,8 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         DateOnly startMonth,
         DateOnly endMonth,
         double otherMaterialvalue,
-        IList<MaterialUnitPriceAssignmentCode> costs)
+        IList<MaterialUnitPriceAssignmentCode> costs,
+        TunnelExcavationTrimingUnitPriceType type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation)
     {
         ValidateCommonFields(code, startMonth, endMonth);
 
@@ -78,6 +83,7 @@ public class TunnelExcavationMaterialUnitPrice : MaterialUnitPrice
         StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
         EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
         OtherMaterialvalue = otherMaterialvalue;
+        Type = type;
         this.AddCosts(costs);
     }
 }

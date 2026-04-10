@@ -484,6 +484,7 @@ public class ApplicationDbContext(
             .ToTable("ElectricityUnitPriceEquipment", "Pricing")
             .HasDiscriminator<ElectricityUnitPriceType>("ElectricityType")
             .HasValue<TunnelElectricityUnitPriceEquipment>(ElectricityUnitPriceType.TunnelExcavation)
+            .HasValue<TrimmingElectricityUnitPriceEquipment>(ElectricityUnitPriceType.Trimming)
             .HasValue<LongwallElectricityUnitPriceEquipment>(ElectricityUnitPriceType.Longwall);
 
         modelBuilder.Entity<ProductUnitPrice>().ToTable(nameof(ProductUnitPrice), "Pricing");

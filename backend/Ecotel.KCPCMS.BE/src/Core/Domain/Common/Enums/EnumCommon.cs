@@ -51,7 +51,8 @@ public enum PlanCostType
 public enum MaintainUnitPriceType
 {
     TunnelExcavation = 1,
-    Longwall = 2
+    Longwall = 2,
+    Trimming = 3
 }
 
 public enum OutputType
@@ -95,7 +96,8 @@ public enum MaterialUnitPriceType
 public enum ElectricityUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò
-    Longwall = 2           // Lò chợ
+    Longwall = 2,           // Lò chợ
+    Trimming = 3           // Lò chợ
 }
 
 public enum MaterialsIncludedInContractRevenue
@@ -181,4 +183,10 @@ public enum ShippedQuantityType
     XuatChoSanXuat = 1,
     XuatKhac = 2,
     QuyetToanGiaoKhoan = 3
+}
+
+public enum TunnelExcavationTrimingUnitPriceType
+{
+    TunnelExcavation = 1,
+    Trimming = 2,
 }

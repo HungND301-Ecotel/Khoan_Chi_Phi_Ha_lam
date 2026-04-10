@@ -3,6 +3,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
@@ -11,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 
-public record ImportTunnelElectricityUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
+public record ImportTunnelElectricityUnitPriceEquipmentExcelCommand(
+    IFormFile File,
+    ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<bool>;
 
 public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork)
     : IRequestHandler<ImportTunnelElectricityUnitPriceEquipmentExcelCommand, bool>
@@ -46,29 +49,32 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
             var startMonth = ParseMonthYear(d.StartMonth);
             var endMonth = ParseMonthYear(d.EndMonth);
 
+            TunnelElectricityUnitPriceEquipment entity = request.Type == ElectricityUnitPriceType.Trimming
+                ? TrimmingElectricityUnitPriceEquipment.Create(
+                    equipmentId,
+                    d.MonthlyElectricityCost,
+                    d.AverageMonthlyTunnelProduction,
+                    startMonth,
+                    endMonth)
+                : TunnelElectricityUnitPriceEquipment.Create(
+                    equipmentId,
+                    d.MonthlyElectricityCost,
+                    d.AverageMonthlyTunnelProduction,
+                    startMonth,
+                    endMonth,
+                    request.Type);
+
             if (d.Id != Guid.Empty)
             {
-                var entity = TunnelElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    d.MonthlyElectricityCost,
-                    d.AverageMonthlyTunnelProduction,
-                    startMonth,
-                    endMonth);
                 entity.GetType().GetProperty("Id")?.SetValue(entity, d.Id);
-                return entity;
             }
-            else
-            {
-                return TunnelElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    d.MonthlyElectricityCost,
-                    d.AverageMonthlyTunnelProduction,
-                    startMonth,
-                    endMonth);
-            }
+
+            return entity;
         }).ToList();
 
-        var dbEntities = await _repository.GetAllAsync(disableTracking: false);
+        var dbEntities = await _repository.GetAllAsync(
+            predicate: e => e.ElectricityType == request.Type,
+            disableTracking: false);
 
         var deleteList = new List<TunnelElectricityUnitPriceEquipment>();
         var updateList = new List<TunnelElectricityUnitPriceEquipment>();

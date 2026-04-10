@@ -43,6 +43,7 @@ namespace Application.Dto.Catalog.ElectricityUnitPriceEquipment
         public DateOnly EndMonth { get; set; }
         public double MonthlyElectricityCost { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
+        public ElectricityUnitPriceType Type { get; set; } = ElectricityUnitPriceType.TunnelExcavation;
     }
 
     public class UpdateElectricityUnitPriceEquipmentDto
@@ -53,6 +54,7 @@ namespace Application.Dto.Catalog.ElectricityUnitPriceEquipment
         public DateOnly EndMonth { get; set; }
         public double MonthlyElectricityCost { get; set; }
         public decimal AverageMonthlyTunnelProduction { get; set; }
+        public ElectricityUnitPriceType Type { get; set; } = ElectricityUnitPriceType.TunnelExcavation;
     }
 
     // New DTOs for Longwall

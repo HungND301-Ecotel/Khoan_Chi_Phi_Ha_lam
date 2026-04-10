@@ -5,6 +5,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
 using ClosedXML.Excel;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using Mapster;
@@ -14,7 +15,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.MaterialUnitPrice.Commands;
 
-public record ImportMaterialUnitPriceExcelCommand(IFormFile File) : IRequest<bool>;
+public record ImportMaterialUnitPriceExcelCommand(
+    IFormFile File,
+    TunnelExcavationTrimingUnitPriceType Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation) : IRequest<bool>;
 
 public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportMaterialUnitPriceExcelCommand, bool>
 {
@@ -78,6 +81,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
             .ToDictionary(s => NormalizeLookupValue(s.Value), s => s.Id, StringComparer.OrdinalIgnoreCase);
 
         var dbEntities = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: m => m.Type == request.Type,
             include: a => a
                 .Include(a => a.Code!)
                 .Include(a => a.MaterialUnitPriceAssignmentCodes),
@@ -158,7 +162,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                     startMonth,
                     endMonth,
                     row.OtherMaterialValue,
-                    costs);
+                    costs,
+                    request.Type);
                 updateList.Add(existingEntity);
                 matchedCodes.Add(code);
             }
@@ -175,7 +180,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                     startMonth,
                     endMonth,
                     row.OtherMaterialValue,
-                    costs);
+                    costs,
+                    request.Type);
                 addList.Add(newEntity);
                 matchedCodes.Add(code);
             }

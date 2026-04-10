@@ -31,6 +31,7 @@ public class CreateElectricityUnitPriceEquipmentCommandHandler(
             var existed = await _electricityUnitPriceEquipmentRepository.GetFirstOrDefaultAsync(
                 predicate: e =>
                     e.EquipmentId == model.EquipmentId &&
+                    e.ElectricityType == model.Type &&
                     e.StartMonth < model.EndMonth &&
                     e.EndMonth > model.StartMonth,
                 disableTracking: true);
@@ -61,12 +62,20 @@ public class CreateElectricityUnitPriceEquipmentCommandHandler(
                 throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
             }
 
-            resultEntities.Add(TunnelElectricityUnitPriceEquipment.Create(
-                equipmentId: equipment.Id,
-                monthlyElectricityCost: model.MonthlyElectricityCost,
-                averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
-                startMonth: model.StartMonth,
-                endMonth: model.EndMonth));
+            resultEntities.Add(model.Type == Domain.Common.Enums.ElectricityUnitPriceType.Trimming
+                ? TrimmingElectricityUnitPriceEquipment.Create(
+                    equipmentId: equipment.Id,
+                    monthlyElectricityCost: model.MonthlyElectricityCost,
+                    averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
+                    startMonth: model.StartMonth,
+                    endMonth: model.EndMonth)
+                : TunnelElectricityUnitPriceEquipment.Create(
+                    equipmentId: equipment.Id,
+                    monthlyElectricityCost: model.MonthlyElectricityCost,
+                    averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
+                    startMonth: model.StartMonth,
+                    endMonth: model.EndMonth,
+                    electricityType: model.Type));
         }
 
         await _electricityUnitPriceEquipmentRepository.InsertAsync(resultEntities, cancellationToken);

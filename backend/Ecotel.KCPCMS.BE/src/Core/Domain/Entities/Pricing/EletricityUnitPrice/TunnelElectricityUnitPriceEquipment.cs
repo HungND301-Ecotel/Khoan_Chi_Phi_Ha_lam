@@ -3,10 +3,6 @@ using Shared.Constants;
 
 namespace Domain.Entities.Pricing.EletricityUnitPrice;
 
-/// <summary>
-/// Ðào l? - Tunnel Excavation ElectricityUnitPriceEquipment
-/// Công th?c: ElectricityCostPerMetres = (MonthlyElectricityCost / AverageMonthlyTunnelProduction) * Equipment.Cost
-/// </summary>
 public class TunnelElectricityUnitPriceEquipment : ElectricityUnitPriceEquipment
 {
     public double MonthlyElectricityCost { get; protected set; }
@@ -18,7 +14,8 @@ public class TunnelElectricityUnitPriceEquipment : ElectricityUnitPriceEquipment
         double monthlyElectricityCost,
         decimal averageMonthlyTunnelProduction,
         DateOnly startMonth,
-        DateOnly endMonth)
+        DateOnly endMonth,
+        ElectricityUnitPriceType electricityType = ElectricityUnitPriceType.TunnelExcavation)
     {
         if (monthlyElectricityCost < 0)
         {
@@ -37,7 +34,7 @@ public class TunnelElectricityUnitPriceEquipment : ElectricityUnitPriceEquipment
             AverageMonthlyTunnelProduction = averageMonthlyTunnelProduction,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
-            ElectricityType = ElectricityUnitPriceType.TunnelExcavation
+            ElectricityType = electricityType
         };
         entity.ValidateDateRange(entity.StartMonth, entity.EndMonth);
         return entity;

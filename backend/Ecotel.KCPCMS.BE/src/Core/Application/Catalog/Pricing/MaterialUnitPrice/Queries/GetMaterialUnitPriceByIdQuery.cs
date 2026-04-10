@@ -45,6 +45,7 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             SupportStepId = materialUnitPrice.SupportStepId,
             TotalPrice = materialUnitPrice.TotalPrice,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
+            Type = materialUnitPrice.Type,
             Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
         };
     }

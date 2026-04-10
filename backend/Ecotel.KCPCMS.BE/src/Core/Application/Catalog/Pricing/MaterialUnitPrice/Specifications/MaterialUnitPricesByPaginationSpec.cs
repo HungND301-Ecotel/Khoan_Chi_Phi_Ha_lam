@@ -2,6 +2,7 @@
 using Application.Common.Specification;
 using Application.Dto.Catalog.MaterialUnitPrice;
 using Ardalis.Specification;
+using Domain.Common.Enums;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,7 @@ namespace Application.Catalog.Pricing.MaterialUnitPrice.Specifications;
 public sealed class MaterialUnitPricesByPaginationSpec
     : EntitiesByPaginationFilterSpec<TunnelExcavationMaterialUnitPrice, MaterialUnitPriceDto>
 {
-    public MaterialUnitPricesByPaginationSpec(PaginationFilter filter, string? search) : base(filter)
+    public MaterialUnitPricesByPaginationSpec(PaginationFilter filter, string? search, TunnelExcavationTrimingUnitPriceType type) : base(filter)
     {
         var searchTerm = (search ?? "").Trim().ToLower();
 
@@ -22,8 +23,9 @@ public sealed class MaterialUnitPricesByPaginationSpec
             .Include(m => m.SupportStep)
             .Include(m => m.Passport)
             .Include(m => m.MaterialUnitPriceAssignmentCodes)
-            .Where(m => string.IsNullOrWhiteSpace(searchTerm) ||
-                        m.Code.Value.ToLower().Contains(searchTerm));
+            .Where(m => m.Type == type &&
+                        (string.IsNullOrWhiteSpace(searchTerm) ||
+                         m.Code.Value.ToLower().Contains(searchTerm)));
         Query
         .Select(m => new MaterialUnitPriceDto
         {
@@ -47,7 +49,8 @@ public sealed class MaterialUnitPricesByPaginationSpec
 
             StartMonth = m.StartMonth,
             EndMonth = m.EndMonth,
-            TotalPrice = m.TotalPrice
+            TotalPrice = m.TotalPrice,
+            Type = m.Type
         });
     }
 }

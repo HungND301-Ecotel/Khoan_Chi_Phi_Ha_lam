@@ -38,6 +38,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
             m.HardnessId == request.UpdateModel.HardnessId &&
             m.InsertItemId == request.UpdateModel.InsertItemId &&
             m.SupportStepId == request.UpdateModel.SupportStepId &&
+            m.Type == request.UpdateModel.Type &&
             m.Id != request.UpdateModel.Id))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
@@ -90,7 +91,8 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
                 request.UpdateModel.StartMonth,
                 request.UpdateModel.EndMonth,
                 request.UpdateModel.OtherMaterialValue,
-                request.UpdateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>()
+                request.UpdateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>(),
+                request.UpdateModel.Type
                 );
 
             await unitOfWork.SaveChangesAsync();

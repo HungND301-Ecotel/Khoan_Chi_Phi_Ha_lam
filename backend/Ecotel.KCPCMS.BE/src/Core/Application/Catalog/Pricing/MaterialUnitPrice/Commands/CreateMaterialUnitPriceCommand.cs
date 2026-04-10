@@ -37,7 +37,8 @@ public class CreateMaterialUnitPriceCommandHandler(
             m.PassportId == request.CreateModel.PassportId &&
             m.HardnessId == request.CreateModel.HardnessId &&
             m.InsertItemId == request.CreateModel.InsertItemId &&
-            m.SupportStepId == request.CreateModel.SupportStepId))
+            m.SupportStepId == request.CreateModel.SupportStepId &&
+            m.Type == request.CreateModel.Type))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -79,7 +80,8 @@ public class CreateMaterialUnitPriceCommandHandler(
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
                 request.CreateModel.OtherMaterialValue,
-                request.CreateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>());
+                request.CreateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>(),
+                request.CreateModel.Type);
 
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();

@@ -2,6 +2,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
@@ -9,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 
-public record ExportExcelTunnelElectricityUnitPriceEquipmentQuery() : IRequest<byte[]>;
+public record ExportExcelTunnelElectricityUnitPriceEquipmentQuery(
+    ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<byte[]>;
 
 public class ExportExcelTunnelElectricityUnitPriceEquipmentQueryHandler(IExcelService excelService, IUnitOfWork unitOfWork)
     : IRequestHandler<ExportExcelTunnelElectricityUnitPriceEquipmentQuery, byte[]>
@@ -23,6 +25,7 @@ public class ExportExcelTunnelElectricityUnitPriceEquipmentQueryHandler(IExcelSe
         listHiddenProperty.Add(nameof(TunnelElectricityUnitPriceEquipmentExcelDto.Id));
 
         var list = await _repository.GetAllAsync(
+            predicate: e => e.ElectricityType == request.Type,
             include: e => e
                 .Include(e => e.Equipment)
                     .ThenInclude(eq => eq!.Code)
