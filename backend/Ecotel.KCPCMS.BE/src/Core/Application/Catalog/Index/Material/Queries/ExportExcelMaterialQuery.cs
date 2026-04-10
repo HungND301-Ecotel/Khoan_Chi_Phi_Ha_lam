@@ -15,7 +15,6 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
 {
     private readonly IWriteRepository<MaterialEntity> _materialEntityRepository = unitOfWork.GetRepository<MaterialEntity>();
     private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
-    private readonly IWriteRepository<Domain.Entities.Index.AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<Domain.Entities.Index.AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelMaterialQuery request, CancellationToken cancellationToken)
     {
@@ -32,14 +31,15 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
             disableTracking: true);
 
         var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(selector: u => u.Name, disableTracking: true);
-        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(selector: u => u.Code!.Value, include: a => a.Include(a => a.Code!), disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
             { nameof(MaterialExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
-            { nameof(MaterialExcelDto.AssignmentCode), assignmentCodes.ToList() },
         };
-        var dtoList = list.Select(l =>
+        var dtoList = list
+            .OrderBy(d => d.AssignmentCode != null && d.AssignmentCode.Code != null ? d.AssignmentCode.Code.Value : string.Empty)
+            .ThenBy(d => d.Name)
+            .Select(l =>
         {
             return new MaterialExcelDto
             {
