@@ -69,7 +69,6 @@ namespace Application.Dto.Catalog.Material
         public Guid Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
-        public Guid? AssigmentCodeId { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();

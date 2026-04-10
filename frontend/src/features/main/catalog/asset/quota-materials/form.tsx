@@ -16,7 +16,6 @@ import {
 	AssetQuotaMaterialsFormSchema,
 	assetQuotaMaterialsFormSchema,
 } from '@/features/main/catalog/asset/quota-materials/schema';
-import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +26,7 @@ export type AssetQuotaMaterialsDetail = {
 	id: string;
 	code: string;
 	name: string;
-	assigmentCodeId: string;
+	assigmentCodeId: string | null;
 	assignmentCode: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -48,7 +47,6 @@ export function AssetQuotaMaterialsForm({
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
-	const [contracts, setContracts] = useState<ContractCode[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
 
 	const form = useForm<AssetQuotaMaterialsFormSchema>({
@@ -65,12 +63,8 @@ export function AssetQuotaMaterialsForm({
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const contracts = await api.pagging<ContractCode>(
-					API.CATALOG.CONTRACT_CODE.LIST,
-				);
 				const units = await api.pagging<Unit>(API.CATALOG.UNIT.LIST);
 
-				setContracts(contracts.result.data);
 				setUnits(units.result.data);
 
 				if (row) {
@@ -133,10 +127,12 @@ export function AssetQuotaMaterialsForm({
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
+					assigmentCodeId: null,
 				});
 			} else {
 				await api.post(API.CATALOG.ASSET.CREATE, {
 					...processedValues,
+					assigmentCodeId: null,
 				});
 			}
 			setOpen(false);
@@ -152,17 +148,6 @@ export function AssetQuotaMaterialsForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormComboBox
-				control={form.control}
-				name='assigmentCodeId'
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
-				options={contracts.map((contract) => ({
-					value: contract.id,
-					label: contract.code,
-				}))}
-			/>
-
 			<FormInput
 				control={form.control}
 				name='code'

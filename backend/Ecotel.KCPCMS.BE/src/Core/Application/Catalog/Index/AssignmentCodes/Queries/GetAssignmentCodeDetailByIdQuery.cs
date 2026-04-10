@@ -2,6 +2,7 @@
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AssignmentCode;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,9 +16,17 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     public async Task<AssignmentCodeDto> Handle(GetAssignmentCodeDetailByIdQuery request, CancellationToken cancellationToken)
     {
+        var now = DateTime.UtcNow;
+        var checkDate = new DateOnly(now.Year, now.Month, 1);
+
         var detail = await _assignmentCodeRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
-            include: t => t.Include(c => c.UnitOfMeasure).Include(c => c.Code),
+            include: t => t
+                .Include(c => c.UnitOfMeasure)
+                .Include(c => c.Code)
+                .Include(c => c.Materials).ThenInclude(m => m.Code)
+                .Include(c => c.Materials).ThenInclude(m => m.UnitOfMeasure)
+                .Include(c => c.Materials).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
 
@@ -27,7 +36,26 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             Code = detail.Code?.Value ?? "",
             Name = detail.Name,
             UnitOfMeasureId = detail.UnitOfMeasureId,
-            UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty
+            UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
+            Materials = detail.Materials
+                .Select(m => new AssignmentCodeMaterialDto
+                {
+                    Id = m.Id,
+                    Code = m.Code?.Value ?? string.Empty,
+                    Name = m.Name,
+                    UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
+                    CostAmount = m.Costs
+                        .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
+                        .Select(c => c.Amount)
+                        .FirstOrDefault(),
+                    ActualAmount = m.Costs
+                        .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
+                        .Select(c => c.ActualAmount)
+                        .FirstOrDefault()
+                })
+                .OrderBy(m => m.Code)
+                .ThenBy(m => m.Name)
+                .ToList()
         };
     }
 }

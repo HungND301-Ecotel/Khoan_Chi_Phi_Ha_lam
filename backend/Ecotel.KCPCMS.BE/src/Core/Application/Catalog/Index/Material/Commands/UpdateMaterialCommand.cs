@@ -16,19 +16,10 @@ public record UpdateMaterialCommand(UpdateMaterialDto UpdateModel) : IRequest<bo
 public class UpdateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<UpdateMaterialCommand, bool>
 {
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
-    private readonly IWriteRepository<AssignmentCode> _assigmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     public async Task<bool> Handle(UpdateMaterialCommand request, CancellationToken cancellationToken)
     {
-        if (request.UpdateModel.MaterialType == Domain.Common.Enums.MaterialType.MaterialInContract)
-        {
-            bool checkAssigmentCodeExisted = await _assigmentCodeRepository.ExistsAsync(x => x.Id == request.UpdateModel.AssigmentCodeId);
-            if (!checkAssigmentCodeExisted)
-            {
-                throw new NotFoundException(CustomResponseMessage.AssignmentCodeAlreadyExists);
-            }
-        }
 
         if (request.UpdateModel.UnitOfMeasureId != null)
         {
@@ -56,7 +47,7 @@ public class UpdateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService c
             _costRepository.Delete(existedMaterial.Costs.ToList());
             await unitOfWork.SaveChangesAsync();
 
-            existedMaterial.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.AssigmentCodeId, request.UpdateModel.MaterialType);
+            existedMaterial.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, existedMaterial.AssigmentCodeId, request.UpdateModel.MaterialType);
 
             var costList = new List<Cost>();
             foreach (var cost in request.UpdateModel.Costs)

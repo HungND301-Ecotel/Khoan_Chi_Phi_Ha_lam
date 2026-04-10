@@ -1,9 +1,6 @@
 import z from 'zod';
 
 export const assetQuotaMaterialsFormSchema = z.object({
-	assigmentCodeId: z.string().nonempty({
-		message: 'Mã giao khoán không được để trống',
-	}),
 	code: z.string().nonempty({
 		message: 'Mã vật tư, tài sản không được để trống',
 	}),
@@ -56,7 +53,6 @@ export type AssetQuotaMaterialsFormSchema = z.infer<
 
 export const ASSET_QUOTA_MATERIALS_FORM_DEFAULT: AssetQuotaMaterialsFormSchema =
 	{
-		assigmentCodeId: '',
 		code: '',
 		name: '',
 		unitOfMeasureId: '',

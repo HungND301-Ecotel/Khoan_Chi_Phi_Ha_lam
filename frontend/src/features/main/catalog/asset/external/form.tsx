@@ -26,7 +26,7 @@ export type AssetExternalDetail = {
 	id: string;
 	code: string;
 	name: string;
-	assigmentCodeId: string;
+	assigmentCodeId: string | null;
 	assignmentCode: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -122,11 +122,13 @@ export function AssetExternalForm({ data, row }: ActionDialogProps<Asset>) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
+					assigmentCodeId: null,
 					materialType: 2,
 				});
 			} else {
 				await api.post(API.CATALOG.ASSET.CREATE, {
 					...processedValues,
+					assigmentCodeId: null,
 					materialType: 2,
 				});
 			}

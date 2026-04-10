@@ -16,7 +16,6 @@ import {
 	assetInternalFormSchema,
 } from '@/features/main/catalog/asset/internal/schema';
 import { Asset } from '@/features/main/catalog/asset/types';
-import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +26,7 @@ export type AssetInternalDetail = {
 	id: string;
 	code: string;
 	name: string;
-	assigmentCodeId: string;
+	assigmentCodeId: string | null;
 	assignmentCode: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -45,7 +44,6 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
-	const [contracts, setContracts] = useState<ContractCode[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
 
 	const form = useForm<AssetInternalFormSchema>({
@@ -62,12 +60,8 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const contracts = await api.pagging<ContractCode>(
-					API.CATALOG.CONTRACT_CODE.LIST,
-				);
 				const units = await api.pagging<Unit>(API.CATALOG.UNIT.LIST);
 
-				setContracts(contracts.result.data);
 				setUnits(units.result.data);
 
 				if (row) {
@@ -128,10 +122,12 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
+					assigmentCodeId: null,
 				});
 			} else {
 				await api.post(API.CATALOG.ASSET.CREATE, {
 					...processedValues,
+					assigmentCodeId: null,
 					isOtherMaterial: false,
 				});
 			}
@@ -148,17 +144,6 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormComboBox
-				control={form.control}
-				name='assigmentCodeId'
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
-				options={contracts.map((contract) => ({
-					value: contract.id,
-					label: contract.code,
-				}))}
-			/>
-
 			<FormInput
 				control={form.control}
 				name='code'

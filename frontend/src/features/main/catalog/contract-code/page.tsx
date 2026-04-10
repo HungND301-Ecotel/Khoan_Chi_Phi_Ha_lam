@@ -4,9 +4,12 @@ import { API } from '@/constants/api-enpoint';
 import { ContractCodeForm } from '@/features/main/catalog/contract-code/actions';
 import {
 	CATALOG_CONTRACT_CODE_COLUMNS,
+	CATALOG_CONTRACT_CODE_EXPAND_COLUMNS,
 	ContractCode,
+	ContractCodeMaterialDetail,
 } from '@/features/main/catalog/contract-code/columns';
 import { api } from '@/lib/api';
+import { useEffect, useState } from 'react';
 
 function MainCatalogContractCodePage() {
 	const popup = usePopup();
@@ -61,10 +64,47 @@ function MainCatalogContractCodePage() {
 			]}
 			onCreate={(props) => <ContractCodeForm {...props} />}
 			onUpdate={(props) => <ContractCodeForm {...props} />}
+			onExpand={(props) => <ContractCodeExpand {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}
 			onImport={handleImport}
 		/>
+	);
+}
+
+type ContractCodeDetail = {
+	id: string;
+	code: string;
+	name: string;
+	materials?: ContractCodeMaterialDetail[];
+};
+
+function ContractCodeExpand({ row }: ActionDialogProps<ContractCode>) {
+	const [materials, setMaterials] = useState<ContractCodeMaterialDetail[]>([]);
+
+	useEffect(() => {
+		if (!row) return;
+
+		api
+			.get<ContractCodeDetail>(API.CATALOG.CONTRACT_CODE.DETAIL(row.id))
+			.then((res) => setMaterials(res.result?.materials ?? []))
+			.catch(() => setMaterials([]));
+	}, [row]);
+
+	if (!row) return null;
+
+	return (
+		<div className='mx-32'>
+			<DataTable
+				columns={CATALOG_CONTRACT_CODE_EXPAND_COLUMNS}
+				items={materials}
+				hasActions={false}
+				hasPagination={false}
+				hasSort={false}
+				hasIndex={false}
+				compact={true}
+			/>
+		</div>
 	);
 }
 

@@ -12,6 +12,7 @@ export const contractCodeSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
+	materialIds: z.array(z.string()),
 });
 
 export type ContractCodeSchema = z.infer<typeof contractCodeSchema>;
@@ -20,4 +21,5 @@ export const CONTRACT_CODE_SCHEMA_DEFAULT: ContractCodeSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: null,
+	materialIds: [],
 } as const;

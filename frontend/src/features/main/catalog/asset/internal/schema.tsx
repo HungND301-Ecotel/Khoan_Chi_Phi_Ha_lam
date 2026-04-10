@@ -1,9 +1,6 @@
 import z from 'zod';
 
 export const assetInternalFormSchema = z.object({
-	assigmentCodeId: z.string().nonempty({
-		message: 'Mã giao khoán không được để trống',
-	}),
 	code: z.string().nonempty({
 		message: 'Mã vật tư, tài sản không được để trống',
 	}),
@@ -53,7 +50,6 @@ export const assetInternalFormSchema = z.object({
 export type AssetInternalFormSchema = z.infer<typeof assetInternalFormSchema>;
 
 export const ASSET_INTERNAL_FORM_DEFAULT: AssetInternalFormSchema = {
-	assigmentCodeId: '',
 	code: '',
 	name: '',
 	unitOfMeasureId: '',

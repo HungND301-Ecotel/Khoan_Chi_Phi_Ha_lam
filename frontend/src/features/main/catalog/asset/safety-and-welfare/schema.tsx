@@ -1,9 +1,6 @@
 import z from 'zod';
 
 export const assetSafetyAndWelfareFormSchema = z.object({
-	assigmentCodeId: z.string().nonempty({
-		message: 'Mã giao khoán không được để trống',
-	}),
 	code: z.string().nonempty({
 		message: 'Mã vật tư, tài sản không được để trống',
 	}),
@@ -56,7 +53,6 @@ export type AssetSafetyAndWelfareFormSchema = z.infer<
 
 export const ASSET_SAFETY_AND_WELFARE_FORM_DEFAULT: AssetSafetyAndWelfareFormSchema =
 	{
-		assigmentCodeId: '',
 		code: '',
 		name: '',
 		unitOfMeasureId: '',

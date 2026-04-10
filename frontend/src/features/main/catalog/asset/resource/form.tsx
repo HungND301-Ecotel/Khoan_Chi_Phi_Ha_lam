@@ -26,7 +26,7 @@ export type AssetResourceDetail = {
 	id: string;
 	code: string;
 	name: string;
-	assigmentCodeId: string;
+	assigmentCodeId: string | null;
 	assignmentCode: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -123,10 +123,12 @@ export function AssetResourceForm({ data, row }: ActionDialogProps<Asset>) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
+					assigmentCodeId: null,
 				});
 			} else {
 				await api.post(API.CATALOG.ASSET.CREATE, {
 					...processedValues,
+					assigmentCodeId: null,
 				});
 			}
 			setOpen(false);
