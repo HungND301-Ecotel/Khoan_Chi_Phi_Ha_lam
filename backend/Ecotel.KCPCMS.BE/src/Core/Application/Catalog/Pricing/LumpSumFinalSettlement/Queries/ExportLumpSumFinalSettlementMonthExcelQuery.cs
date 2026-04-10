@@ -373,33 +373,36 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
         double acceptedSavingMonth,
         IReadOnlyCollection<SavingsRateConfigDto> configs)
     {
-        var matchedConfig = configs
-            .Where(x => IsRevenueInRange(acceptedSavingMonth, x.MinRevenue, x.MaxRevenue))
-            .OrderByDescending(x => x.MinRevenue ?? decimal.MinValue)
-            .ThenBy(x => x.MaxRevenue ?? decimal.MaxValue)
-            .ThenByDescending(x => x.CreateOn)
+        var boundedConfigs = configs
+            .Where(x => x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
+            .OrderBy(x => x.MaxRevenue)
+            .ToList();
+
+        var matchedBoundedConfig = boundedConfigs
+            .FirstOrDefault(x => acceptedSavingMonth <= (double)x.MaxRevenue!.Value);
+        if (matchedBoundedConfig?.MaxSavingsRate is decimal matchedRate)
+        {
+            return (double)(matchedRate / 100m);
+        }
+
+        var unlimitedConfig = configs
+            .Where(x => !x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
+            .OrderByDescending(x => x.CreateOn)
             .FirstOrDefault();
 
-        if (matchedConfig == null)
+        if (unlimitedConfig?.MaxSavingsRate is decimal unlimitedRate)
         {
-            return 0;
+            var maxBoundedRevenue = boundedConfigs.Any()
+                ? (double)boundedConfigs.Max(x => x.MaxRevenue!.Value)
+                : double.MinValue;
+
+            if (!boundedConfigs.Any() || acceptedSavingMonth > maxBoundedRevenue)
+            {
+                return (double)(unlimitedRate / 100m);
+            }
         }
 
-        var rawRate = matchedConfig.MaxSavingsRate ?? matchedConfig.MinSavingsRate;
-        if (!rawRate.HasValue)
-        {
-            return 0;
-        }
-
-        var normalizedRate = rawRate.Value > 1 ? rawRate.Value / 100m : rawRate.Value;
-        return (double)normalizedRate;
-    }
-
-    private static bool IsRevenueInRange(double revenue, decimal? minRevenue, decimal? maxRevenue)
-    {
-        var minMatch = !minRevenue.HasValue || revenue >= (double)minRevenue.Value;
-        var maxMatch = !maxRevenue.HasValue || revenue <= (double)maxRevenue.Value;
-        return minMatch && maxMatch;
+        return 0;
     }
 
     private static byte[] BuildWorkbook(IReadOnlyList<ExportRow> rows, int month, int year)
