@@ -34,6 +34,7 @@ export const NAVIGATIONS: Navigation[] = [
 		),
 		items: [
 			{ type: 'link', name: 'Đơn vị tính', href: '/catalogs/units' },
+			{ type: 'link', name: 'Đơn vị', href: '/catalogs/departments' },
 			{ type: 'link', name: 'Công đoạn sản xuất', href: '/catalogs/processes' },
 			{ type: 'link', name: 'Mã giao khoán', href: '/catalogs/contract-codes' },
 			{

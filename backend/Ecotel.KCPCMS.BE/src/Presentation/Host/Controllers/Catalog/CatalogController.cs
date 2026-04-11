@@ -6,6 +6,8 @@ using Application.Catalog.Index.AssignmentCodes.Commands;
 using Application.Catalog.Index.AssignmentCodes.Queries;
 using Application.Catalog.Index.CuttingThickness.Commands;
 using Application.Catalog.Index.CuttingThickness.Queries;
+using Application.Catalog.Index.Department.Commands;
+using Application.Catalog.Index.Department.Queries;
 using Application.Catalog.Index.Equipments.Commands;
 using Application.Catalog.Index.Equipments.Queries;
 using Application.Catalog.Index.LongwallParameters.Commands;
@@ -38,6 +40,7 @@ using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.CuttingThickness;
+using Application.Dto.Catalog.Department;
 using Application.Dto.Catalog.Equipment;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
@@ -199,6 +202,58 @@ public class CatalogController : BaseNoAuthController
         var result = await Mediator.Send(new DeleteAssignmentCodeListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
+    #endregion
+
+    #region Department
+
+    [HttpGet("Department")]
+    [OpenApiOperation("Get All Department", "")]
+    public async Task<IActionResult> GetAllDepartment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllDepartmentQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("Department/{id:guid}")]
+    [OpenApiOperation("Get Department By Id", "")]
+    public async Task<IActionResult> GetDepartmentById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetDepartmentByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("Department")]
+    [OpenApiOperation("Create New Department", "")]
+    public async Task<IActionResult> CreateDepartment([FromBody] CreateDepartmentDto createModel)
+    {
+        var result = await Mediator.Send(new CreateDepartmentCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("Department")]
+    [OpenApiOperation("Update Department", "")]
+    public async Task<IActionResult> UpdateDepartment([FromBody] UpdateDepartmentDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateDepartmentCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("Department/{deleteId:guid}")]
+    [OpenApiOperation("Delete Department", "")]
+    public async Task<IActionResult> DeleteDepartment([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteDepartmentCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("Department")]
+    [OpenApiOperation("Delete Many Department", "")]
+    public async Task<IActionResult> DeleteDepartmentList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteDepartmentListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
     #endregion
 
     #region Material

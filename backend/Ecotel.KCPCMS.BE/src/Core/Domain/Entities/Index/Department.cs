@@ -1,0 +1,77 @@
+using Domain.Common.Contracts;
+using Shared.Constants;
+
+namespace Domain.Entities.Index;
+
+public class Department : AuditableEntity<Guid>, IAggregateRoot
+{
+    public Guid CodeId { get; protected set; }
+    public string Name { get; protected set; }
+
+    // Navigation properties
+    public virtual Code? Code { get; protected set; }
+
+    public static Department Create(string code, string name)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+        }
+
+        return new Department
+        {
+            Code = new Code(code.ToUpper()),
+            Name = name
+        };
+    }
+
+    public static Department Create(Guid id, string code, string name)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+        }
+
+        return new Department
+        {
+            Id = id,
+            Code = new Code(code.ToUpper()),
+            Name = name
+        };
+    }
+
+    public void Update(string code, string name)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+        }
+
+        if (Code != null)
+        {
+            Code.Value = code.ToUpper();
+        }
+
+        Name = name;
+    }
+
+    public bool CheckChange(Department dto)
+    {
+        return !(Code?.Value == dto.Code?.Value && Name == dto.Name);
+    }
+}

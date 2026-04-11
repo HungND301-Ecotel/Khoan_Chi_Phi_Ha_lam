@@ -5,6 +5,7 @@ import MainCatalogAssetQuotaMaterialsPage from '@/features/main/catalog/asset/qu
 import MainCatalogAssetResourcePage from '@/features/main/catalog/asset/resource/page';
 import MainCatalogAssetSafetyAndWelfarePage from '@/features/main/catalog/asset/safety-and-welfare/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
+import { MainCatalogDepartmentPage } from '@/features/main/catalog/department/page';
 import MainCatalogEquipmentPage from '@/features/main/catalog/equipment/page';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
 import { MainCatalogParameterRouter } from '@/features/main/catalog/parameter/router';
@@ -33,6 +34,11 @@ const MainCatalogRouter: RouteObject = {
 			path: 'units',
 			element: <MainCatalogUnitPage />,
 			handle: { breadcrumb: 'Đơn vị tính', title: 'Đơn vị tính' },
+		},
+		{
+			path: 'departments',
+			element: <MainCatalogDepartmentPage />,
+			handle: { breadcrumb: 'Đơn vị', title: 'Đơn vị' },
 		},
 		{
 			path: 'contract-codes',

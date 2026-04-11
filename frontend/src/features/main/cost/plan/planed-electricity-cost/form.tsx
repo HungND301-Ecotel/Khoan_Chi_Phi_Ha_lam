@@ -28,6 +28,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+function formatAdjustmentOptionLabel(description: string, value?: number | null) {
+	if (value === null || value === undefined) {
+		return description;
+	}
+
+	const valueText = value.toLocaleString('vi-VN', {
+		maximumFractionDigits: 4,
+	});
+
+	return `${description} - ${valueText}`;
+}
+
 export function PlanElectricityCostForm({
 	id,
 	plan,
@@ -346,8 +358,17 @@ export function PlanElectricityCostForm({
 												label={adjustment.code}
 												placeholder={`Chọn ${adjustment.code}`}
 												options={adjustment.adjustmentFactorDescriptions.map(
-													({ id, description }) => ({
-														label: description,
+													({
+														id,
+														description,
+														electricityAdjustmentValue,
+														maintenanceAdjustmentValue,
+													}) => ({
+														label: formatAdjustmentOptionLabel(
+															description,
+															electricityAdjustmentValue ??
+																maintenanceAdjustmentValue,
+														),
 														value: id,
 													}),
 												)}

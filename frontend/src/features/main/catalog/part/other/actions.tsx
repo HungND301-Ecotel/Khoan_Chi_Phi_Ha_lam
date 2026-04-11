@@ -27,7 +27,8 @@ export type OtherPartDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureId: string;
-	unitOfMeasureName: string;	costs: Array<{
+	unitOfMeasureName: string;
+	costs: Array<{
 		startMonth: string;
 		endMonth: string;
 		costType: number;
@@ -156,8 +157,7 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				}))}
 			/>
 
-
-			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
+			<FormArray control={form.control} name='costs' label='Đơn giá SCTX (đ)'>
 				{(index) => (
 					<div className='flex w-full gap-4'>
 						<FormMonthYear
@@ -176,8 +176,8 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá vật tư (đ)'
-								placeholder='Nhập đơn giá vật tư (đ)'
+								label='Đơn giá kế hoạch (đ)'
+								placeholder='Nhập đơn giá kế hoạch (đ)'
 							/>
 						</div>
 						<div className='flex-1'>
@@ -196,7 +196,3 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 		</FormProvider>
 	);
 }
-
-
-
-

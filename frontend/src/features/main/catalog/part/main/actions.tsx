@@ -28,7 +28,8 @@ export type PartDetail = {
 	name: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
-	partType: number;	costs: Array<{
+	partType: number;
+	costs: Array<{
 		startMonth: string;
 		endMonth: string;
 		costType: number;
@@ -79,9 +80,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	}, [costs, form]);
 
 	useEffect(() => {
-		const promises = Promise.all([
-			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-		]);
+		const promises = Promise.all([api.pagging<Unit>(API.CATALOG.UNIT.LIST)]);
 
 		promises.then(([unitsRes]) => {
 			setUnits(unitsRes.result.data);
@@ -157,8 +156,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				}))}
 			/>
 
-
-			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
+			<FormArray control={form.control} name='costs' label='Đơn giá SCTX (đ)'>
 				{(index) => (
 					<div className='flex w-full gap-4'>
 						<FormMonthYear
@@ -197,7 +195,3 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 		</FormProvider>
 	);
 }
-
-
-
-

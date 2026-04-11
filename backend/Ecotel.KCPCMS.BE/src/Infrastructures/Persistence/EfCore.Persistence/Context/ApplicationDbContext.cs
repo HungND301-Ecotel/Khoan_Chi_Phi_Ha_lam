@@ -38,6 +38,7 @@ public class ApplicationDbContext(
     public DbSet<PartProcessGroup> PartProcessGroups => Set<PartProcessGroup>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Part> Parts => Set<Part>();
+    public DbSet<Department> Departments => Set<Department>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
     public DbSet<ProductionProcess> ProductionProcesses => Set<ProductionProcess>();
@@ -117,6 +118,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<PartProcessGroup>().ToTable(nameof(PartProcessGroup), "Index");
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
         modelBuilder.Entity<Part>().ToTable(nameof(Part), "Index");
+        modelBuilder.Entity<Department>().ToTable(nameof(Department), "Index");
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
         modelBuilder.Entity<ProcessGroup>().ToTable(nameof(ProcessGroup), "Index");
         modelBuilder.Entity<ProductionProcess>().ToTable(nameof(ProductionProcess), "Index");
@@ -299,6 +301,13 @@ public class ApplicationDbContext(
             .HasOne(s => s.Code)
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey<ProcessGroup>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Department table
+        modelBuilder.Entity<Department>()
+            .HasOne(s => s.Code)
+            .WithOne(h => h.Department)
+            .HasForeignKey<Department>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Production Process table

@@ -71,7 +71,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
-			api.pagging<Part>(API.CATALOG.PART.LIST, { partType: 1 }),
+			api.pagging<Part>(API.CATALOG.PART.LIST),
 		]);
 
 		promises.then(([units, processGroups, parts]) => {

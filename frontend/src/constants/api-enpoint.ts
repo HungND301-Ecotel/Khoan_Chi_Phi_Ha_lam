@@ -10,6 +10,14 @@ export const API = {
 			IMPORT: '/v1/catalog/unitofmeasure/import',
 			EXPORT: '/v1/catalog/unitofmeasure/export',
 		},
+		DEPARTMENT: {
+			LIST: '/v1/catalog/department',
+			CREATE: '/v1/catalog/department',
+			UPDATE: '/v1/catalog/department',
+			DELETES: '/v1/catalog/department',
+			DELETE: (id: string) => `/v1/catalog/department/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/department/${id}`,
+		},
 		PROCESS: {
 			GROUP: {
 				LIST: '/v1/catalog/processgroup',

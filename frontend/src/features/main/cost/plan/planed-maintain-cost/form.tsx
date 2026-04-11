@@ -30,6 +30,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 
+function formatAdjustmentOptionLabel(description: string, value?: number | null) {
+	if (value === null || value === undefined) {
+		return description;
+	}
+
+	const valueText = value.toLocaleString('vi-VN', {
+		maximumFractionDigits: 4,
+	});
+
+	return `${description} - ${valueText}`;
+}
+
 export function PlanMaintainCostForm({
 	id,
 	plan,
@@ -356,8 +368,15 @@ export function PlanMaintainCostForm({
 													label={adjustment.code}
 													placeholder={`Chọn ${adjustment.code}`}
 													options={adjustment.adjustmentFactorDescriptions.map(
-														({ id, description }) => ({
-															label: description,
+														({
+															id,
+															description,
+															maintenanceAdjustmentValue,
+														}) => ({
+															label: formatAdjustmentOptionLabel(
+																description,
+																maintenanceAdjustmentValue,
+															),
 															value: id,
 														}),
 													)}
