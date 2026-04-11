@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.Equipments.Queries;
+
 public record GetEquipmentByIdQuery(DefaultIdType Id) : IRequest<EquipmentDetailDto>;
 
 public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetEquipmentByIdQuery, EquipmentDetailDto>
@@ -46,7 +47,8 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 {
                     Id = epg.ProcessGroupId,
                     Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
+                    Name = epg.ProcessGroup.Name,
+                    Type = epg.ProcessGroup.Type,
                 })
                 .OrderBy(x => x.Code)
                 .ThenBy(x => x.Name)

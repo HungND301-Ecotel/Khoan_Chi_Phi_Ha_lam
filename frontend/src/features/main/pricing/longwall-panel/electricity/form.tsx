@@ -18,6 +18,7 @@ import {
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
 import { LongwallElectricity } from '@/features/main/pricing/longwall-panel/electricity/columns';
 import {
@@ -58,7 +59,12 @@ export function ElectricityForm({
 				const response = await api.pagging<Equipment>(
 					API.CATALOG.EQUIPMENT.LIST,
 				);
-				setEquipments(response.result.data || []);
+				setEquipments(
+					filterEquipmentsByProcessGroupType(
+						response.result.data || [],
+						ProcessGroupType.LC,
+					),
+				);
 			} catch (error) {
 				popup.error(error);
 			}
@@ -520,5 +526,14 @@ function ElectricityCostRow({
 				</TooltipProvider>
 			</div>
 		</FormRow>
+	);
+}
+
+function filterEquipmentsByProcessGroupType(
+	items: Equipment[],
+	processGroupType: ProcessGroupType,
+) {
+	return items.filter((item) =>
+		(item.processGroups ?? []).some((group) => group.type === processGroupType),
 	);
 }

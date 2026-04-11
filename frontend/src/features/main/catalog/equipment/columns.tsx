@@ -12,6 +12,7 @@ export type Equipment = {
 	processGroups: Array<{
 		id: string;
 		code: string;
+		type: number;
 		name: string;
 	}>;
 };

@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Application.Dto.Catalog.Cost;
+using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.Equipment
 {
@@ -8,6 +9,7 @@ namespace Application.Dto.Catalog.Equipment
     {
         public Guid Id { get; set; }
         public string Code { get; set; }
+        public ProcessGroupType Type { get; set; }
         public string Name { get; set; }
     }
 

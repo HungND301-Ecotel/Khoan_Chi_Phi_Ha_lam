@@ -37,7 +37,8 @@ public class EquipmentsByPaginationSpec : EntitiesByPaginationFilterSpec<Equipme
                 {
                     Id = epg.ProcessGroupId,
                     Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
+                    Name = epg.ProcessGroup.Name,
+                    Type = epg.ProcessGroup.Type
                 })
                 .OrderBy(epg => epg.Code)
                 .ThenBy(epg => epg.Name)

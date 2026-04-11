@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
@@ -67,7 +68,12 @@ export function LongwallPanelForm({
 			}),
 		]);
 		promises.then(([equipments, assets]) => {
-			setEquipments(equipments.result.data);
+			setEquipments(
+				filterEquipmentsByProcessGroupType(
+					equipments.result.data,
+					ProcessGroupType.LC,
+				),
+			);
 			setParts(assets.result.data);
 
 			if (!row) return;
@@ -116,7 +122,12 @@ export function LongwallPanelForm({
 			}),
 		]);
 		promises.then(([equipmentsRes, partsRes]) => {
-			setEquipments(equipmentsRes.result.data);
+			setEquipments(
+				filterEquipmentsByProcessGroupType(
+					equipmentsRes.result.data,
+					ProcessGroupType.LC,
+				),
+			);
 			setParts(partsRes.result.data);
 		});
 	}, [watchedStartMonth, row]);
@@ -295,6 +306,15 @@ export function LongwallPanelForm({
 
 			<DataTableEditConfirm isEdit={false} />
 		</FormProvider>
+	);
+}
+
+function filterEquipmentsByProcessGroupType(
+	items: Equipment[],
+	processGroupType: ProcessGroupType,
+) {
+	return items.filter((item) =>
+		(item.processGroups ?? []).some((group) => group.type === processGroupType),
 	);
 }
 

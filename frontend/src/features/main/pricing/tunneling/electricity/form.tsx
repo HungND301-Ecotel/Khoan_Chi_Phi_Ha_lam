@@ -16,6 +16,7 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
@@ -55,7 +56,12 @@ export function ElectricityForm({ data, row }: ActionDialogProps<Electricity>) {
 		]);
 
 		promises.then(([equipments]) => {
-			setEquipments(equipments.result.data);
+			setEquipments(
+				filterEquipmentsByProcessGroupType(
+					equipments.result.data,
+					ProcessGroupType.DL,
+				),
+			);
 
 			if (!row) return;
 
@@ -398,5 +404,14 @@ function ElectricityCostRow({
 				</TooltipProvider>
 			</div>
 		</FormRow>
+	);
+}
+
+function filterEquipmentsByProcessGroupType(
+	items: Equipment[],
+	processGroupType: ProcessGroupType,
+) {
+	return items.filter((item) =>
+		(item.processGroups ?? []).some((group) => group.type === processGroupType),
 	);
 }
