@@ -31,6 +31,7 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             Id = plannedMaintainCost.Id,
             ProductUnitPriceId = plannedMaintainCost.ProductUnitPriceId,
             OutputId = plannedMaintainCost.OutputId,
+            TrimmingCoefficient = plannedMaintainCost.TrimmingCoefficient,
             Costs = plannedMaintainCost.PlannedMaintainCostAdjustmentFactors.Select(p =>
             {
                 return new PlannedMaintainCostAdjDto

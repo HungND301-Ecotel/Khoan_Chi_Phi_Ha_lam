@@ -6,6 +6,7 @@ export type PlanedMaintainCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	trimmingCoefficient: number;
 	costs: PlanedMaintainCostItem[];
 };
 
@@ -34,7 +35,10 @@ export const getPlanedMaintainCostColumns = (
 	processGroupType?: ProcessGroupType,
 ): ColumnDef<PlanedMaintainCostItem>[] => {
 	const getLength = () => {
-		if (processGroupType === ProcessGroupType.DL) {
+		if (
+			processGroupType === ProcessGroupType.DL ||
+			processGroupType === ProcessGroupType.XL
+		) {
 			return 7;
 		}
 		return 8; // LONGWALL or default

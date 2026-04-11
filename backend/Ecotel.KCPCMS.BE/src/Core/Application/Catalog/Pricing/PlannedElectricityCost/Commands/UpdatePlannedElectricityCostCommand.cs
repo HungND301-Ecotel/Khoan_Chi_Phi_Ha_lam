@@ -84,7 +84,10 @@ public class UpdatePlannedElectricityCostCommandHandler(
             _plannedElectricityCostAdjustmentFactorRepository.Delete(plannedElectricityCost.PlannedElectricityCostAdjustmentFactors);
 
             plannedElectricityCost.ClearPlannedElectricityCostAdjustmentFactors();
-            plannedElectricityCost.Update(request.UpdateModel.ProductUnitPriceId, request.UpdateModel.OutputId);
+            plannedElectricityCost.Update(
+                request.UpdateModel.ProductUnitPriceId,
+                request.UpdateModel.OutputId,
+                request.UpdateModel.TrimmingCoefficient);
             plannedElectricityCost.AddPlannedElectricityCostAdjustmentFactors(costs);
 
             _plannedElectricityCostRepository.Update(plannedElectricityCost);

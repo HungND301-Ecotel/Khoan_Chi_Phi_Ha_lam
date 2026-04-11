@@ -132,6 +132,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             .Select(f => new
             {
                 f.PlannedMaintainCostId,
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
@@ -155,6 +156,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 g => g.Select(f => new MaintainFactorData
                 {
                     Quantity = (double)f.Quantity,
+                    TrimmingCoefficient = f.TrimmingCoefficient,
                     K6AdjustmentFactorValue = f.K6AdjustmentFactorValue,
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
@@ -182,6 +184,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             .Select(f => new
             {
                 f.PlannedElectricityCostId,
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
@@ -200,6 +203,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     return new PlannedElectricityFactorData
                     {
                         Quantity = (double)f.Quantity,
+                        TrimmingCoefficient = f.TrimmingCoefficient,
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -278,12 +282,14 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             var plannedMaintainCost = plannedOutput.PlannedMaintainCostId.HasValue &&
                 plannedMaintainFactors.TryGetValue(plannedOutput.PlannedMaintainCostId.Value, out var pMaintainFactors)
                 ? pMaintainFactors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor)
+                    * NormalizeTrimmingCoefficient(pMaintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
                 : 0;
 
             // Planned Electricity Cost
             var plannedElectricityCost = plannedOutput.PlannedElectricityCostId.HasValue &&
                 plannedElectricityFactors.TryGetValue(plannedOutput.PlannedElectricityCostId.Value, out var pElecFactors)
                 ? pElecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                    * NormalizeTrimmingCoefficient(pElecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
                 : 0;
 
             adjTotalPrice = actualOutput.ProductionMeters * (plannedMaterialCost + plannedMaintainCost + plannedElectricityCost);
@@ -317,6 +323,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     private class MaintainFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double K6AdjustmentFactorValue { get; set; }
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
@@ -326,8 +333,19 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     private class PlannedElectricityFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double CostPerMetre { get; set; }
         public double AdjustmentFactor { get; set; }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
     #endregion
 }

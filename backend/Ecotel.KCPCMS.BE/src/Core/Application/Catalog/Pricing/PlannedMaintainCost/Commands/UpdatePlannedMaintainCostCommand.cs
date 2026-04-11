@@ -80,7 +80,10 @@ public class UpdatePlannedMaintainCostCommandHandler(
             _plannedMaintainCostAdjustmentFactorRepository.Delete(plannedMaintainCost.PlannedMaintainCostAdjustmentFactors);
 
             plannedMaintainCost.ClearPlannedMaintainCostAdjustmentFactors();
-            plannedMaintainCost.Update(request.UpdateModel.ProductUnitPriceId, request.UpdateModel.OutputId);
+            plannedMaintainCost.Update(
+                request.UpdateModel.ProductUnitPriceId,
+                request.UpdateModel.OutputId,
+                request.UpdateModel.TrimmingCoefficient);
             plannedMaintainCost.AddPlannedMaintainCostAdjustmentFactors(costs);
 
             _plannedMaintainCostRepository.Update(plannedMaintainCost);

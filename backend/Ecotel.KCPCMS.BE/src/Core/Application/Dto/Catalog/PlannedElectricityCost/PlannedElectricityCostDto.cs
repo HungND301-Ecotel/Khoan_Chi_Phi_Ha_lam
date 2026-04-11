@@ -6,6 +6,7 @@ public class CreatePlannedElectricityCostDto
 {
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<CreatePlannedElectricityCostAdjFactorDto> Costs { get; set; } = new List<CreatePlannedElectricityCostAdjFactorDto>();
 }
 
@@ -21,6 +22,7 @@ public class UpdatePlannedElectricityCostDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<UpdatePlannedElectricityCostAdjFactorDto> Costs { get; set; } = new List<UpdatePlannedElectricityCostAdjFactorDto>();
 }
 
@@ -36,6 +38,7 @@ public class PlannedElectricityCostDetailDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<PlannedElectricityCostAdjDto> Costs { get; set; } = new List<PlannedElectricityCostAdjDto>();
 }
 

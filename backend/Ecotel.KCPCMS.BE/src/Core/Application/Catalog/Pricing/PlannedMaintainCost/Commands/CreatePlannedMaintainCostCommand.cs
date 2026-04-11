@@ -66,7 +66,11 @@ public class CreatePlannedMaintainCostCommandHandler(
 
         var costs = request.CreateModel.Costs.Select(c => PlannedMaintainCostAdjustmentFactor.Create(Guid.Empty, c.MaintainUnitPriceId, c.Quantity, c.K6AdjustmentFactorValue, c.AdjustmentFactorDescriptions.Select(a => adjMap.GetValueOrDefault(a)).ToList())).ToList();
 
-        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaintainCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.OutputId, costs);
+        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaintainCost.Create(
+            request.CreateModel.ProductUnitPriceId,
+            request.CreateModel.OutputId,
+            request.CreateModel.TrimmingCoefficient,
+            costs);
         await _plannedMaintainCostRepository.InsertAsync(newPlannedMaterialCost, cancellationToken);
         await unitOfWork.SaveChangesAsync();
 

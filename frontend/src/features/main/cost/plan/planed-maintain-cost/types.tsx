@@ -36,5 +36,6 @@ export type PlannedMaintainCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	trimmingCoefficient: number;
 	costs: PlannedMaintainCostDetailItem[];
 };

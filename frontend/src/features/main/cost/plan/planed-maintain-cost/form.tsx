@@ -94,6 +94,7 @@ export function PlanMaintainCostForm({
 					form.reset({
 						productUnitPriceId: plan?.id,
 						outputId: output?.id,
+						trimmingCoefficient: (res.result.trimmingCoefficient || 1) * 100,
 						maintainUnitPriceIds: res.result.costs.map((detail) => {
 							return detail.maintainUnitPriceId;
 						}),
@@ -189,10 +190,18 @@ export function PlanMaintainCostForm({
 
 	const handleSubmit = async (values: PlanMaintainCostSchema) => {
 		try {
+			const payload = {
+				...values,
+				trimmingCoefficient:
+					plan?.processGroupType === ProcessGroupType.XL
+						? values.trimmingCoefficient / 100
+						: 1,
+			};
+
 			if (id) {
-				await api.put(API.COST.PLANNED_MAINTAIN.UPDATE, { id, ...values });
+				await api.put(API.COST.PLANNED_MAINTAIN.UPDATE, { id, ...payload });
 			} else {
-				await api.post(API.COST.PLANNED_MAINTAIN.CREATE, values);
+				await api.post(API.COST.PLANNED_MAINTAIN.CREATE, payload);
 			}
 
 			setOpen(false);
@@ -250,6 +259,14 @@ export function PlanMaintainCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
+			{plan?.processGroupType === ProcessGroupType.XL && (
+				<FormNumber
+					control={form.control}
+					name='trimmingCoefficient'
+					label='Hệ số xén lò (%)'
+					placeholder='Nhập hệ số xén lò'
+				/>
+			)}
 			<FormMultiSelect
 				control={form.control}
 				name='maintainUnitPriceIds'

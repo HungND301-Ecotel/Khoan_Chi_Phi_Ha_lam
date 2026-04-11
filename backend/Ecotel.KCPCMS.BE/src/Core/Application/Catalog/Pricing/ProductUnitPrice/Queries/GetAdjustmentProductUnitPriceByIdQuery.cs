@@ -179,6 +179,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             .Select(f => new
             {
                 f.PlannedMaintainCostId,
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
@@ -202,6 +203,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 g => g.Select(f => new MaintainFactorData
                 {
                     Quantity = (double)f.Quantity,
+                    TrimmingCoefficient = f.TrimmingCoefficient,
                     K6AdjustmentFactorValue = f.K6AdjustmentFactorValue,
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
@@ -229,6 +231,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             .Select(f => new
             {
                 f.PlannedElectricityCostId,
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
@@ -247,6 +250,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                     return new PlannedElectricityFactorData
                     {
                         Quantity = (double)f.Quantity,
+                        TrimmingCoefficient = f.TrimmingCoefficient,
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -327,7 +331,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor);
+        var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -339,7 +345,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     #endregion
@@ -361,6 +369,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
     private class MaintainFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double K6AdjustmentFactorValue { get; set; }
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
@@ -370,8 +379,19 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
     private class PlannedElectricityFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double CostPerMetre { get; set; }
         public double AdjustmentFactor { get; set; }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
 
     #endregion

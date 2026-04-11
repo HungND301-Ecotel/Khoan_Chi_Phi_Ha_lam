@@ -22,5 +22,6 @@ export type PlanedElectricityCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	trimmingCoefficient: number;
 	costs: PlanedElectricityCostDetailCost[];
 };

@@ -14,11 +14,11 @@ namespace Application.Catalog.Index.AdjustmentFactor.Commands;
 
 public record ImportAdjustmentFactorExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<ImportAdjustmentFactorExcelCommand, bool>
+public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork) : IRequestHandler<ImportAdjustmentFactorExcelCommand, bool>
 {
     private readonly IWriteRepository<AdjustmentFactorEntity> _adjustmentFactorRepository = unitOfWork.GetRepository<AdjustmentFactorEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
-    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+    private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
     public async Task<bool> Handle(ImportAdjustmentFactorExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -29,47 +29,50 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<AdjustmentFactorExcelDto>(stream);
 
-        var dbProcessCodes = (await _processGroupRepository.GetAllAsync(
+        var processGroups = await _processGroupRepository.GetAllAsync(
                 include: p => p.Include(p => p.Code),
-                disableTracking: true))
-            .Select(p => p.Code?.Value?.Trim())
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            disableTracking: true);
+        var processGroupIdMap = processGroups
+            .Where(p => p.Code != null && !string.IsNullOrWhiteSpace(p.Code.Value))
+            .ToDictionary(p => p.Code!.Value.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
+
+        var errors = new List<string>();
+        var excelRows = new List<ImportRow>();
+        var duplicateChecker = new Dictionary<(Guid ProcessGroupId, string Code), int>();
 
         for (var i = 0; i < dtos.Count; i++)
         {
-            var processGroupCode = dtos[i].ProcessGroupCode?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(processGroupCode) || !dbProcessCodes.Contains(processGroupCode))
+            var dto = dtos[i];
+            var rowNumber = i + 2;
+            var processGroupCode = dto.ProcessGroupCode?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(processGroupCode) || !processGroupIdMap.TryGetValue(processGroupCode, out var processGroupId))
             {
-                throw new BadRequestException($"Giá trị mã nhóm công đoạn '{dtos[i].ProcessGroupCode}' không tồn tại ở dòng {i + 2}.");
+                errors.Add($"Giá trị mã nhóm công đoạn '{dto.ProcessGroupCode}' không tồn tại ở dòng {rowNumber}.");
+                continue;
             }
+
+            var normalizedCode = dto.Code?.Trim().ToUpperInvariant() ?? string.Empty;
+            var duplicateKey = (processGroupId, normalizedCode);
+            if (!string.IsNullOrWhiteSpace(normalizedCode))
+            {
+                if (duplicateChecker.TryGetValue(duplicateKey, out var firstRow))
+                {
+                    errors.Add($"Giá trị mã '{dto.Code}' bị trùng trong cùng nhóm công đoạn (dòng {firstRow} và dòng {rowNumber}).");
+                }
+                else
+                {
+                    duplicateChecker[duplicateKey] = rowNumber;
+                }
+            }
+
+            excelRows.Add(new ImportRow
+            {
+                Dto = dto,
+                ProcessGroupId = processGroupId,
+                RowNumber = rowNumber
+            });
         }
-
-        //Map data to Entity Model
-
-        var processGroupCodes = dtos
-            .Select(d => d.ProcessGroupCode?.Trim())
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var processGroup = await _processGroupRepository.GetAllAsync(
-            predicate: p => processGroupCodes.Contains(p.Code.Value),
-            include: p => p.Include(p => p.Code!),
-            disableTracking: true);
-        var processGroupIdMap = processGroup.ToDictionary(p => p.Code.Value.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
-
-        var excelDtos = dtos.Select(d =>
-        {
-            if (processGroupIdMap.TryGetValue(d.ProcessGroupCode?.Trim() ?? string.Empty, out var processGroupId))
-            {
-                return AdjustmentFactorEntity.Create(d.Id, (AdjustmentFactorType)d.Type, d.Code, d.Name, processGroupId);
-            }
-            else
-            {
-                return null;
-            }
-        }).Where(d => d != null).ToList();
 
 
         var dbAdjustmentFactor = await _adjustmentFactorRepository.GetAllAsync(
@@ -81,38 +84,77 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         var addList = new List<AdjustmentFactorEntity>();
 
         //CheckDelete
-        var excelIds = excelDtos.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
+        var excelIds = excelRows.Select(x => x.Dto.Id).Where(id => id != Guid.Empty).Distinct().ToList();
         var entitiesToDelete = dbAdjustmentFactor.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
         var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
+        var deleteIdSet = deleteList.Select(x => x.Id).ToHashSet();
 
-        for (var i = 0; i < excelDtos.Count; i++)
+        for (var i = 0; i < excelRows.Count; i++)
         {
-            var dto = excelDtos[i];
-            var rowNumber = i + 2;
-            if (dto.Id != Guid.Empty && dbAdjustmentFactor.Any(x => x.Id == dto.Id))
-            {
-                var entityToUpdate = dbAdjustmentFactor.First(x => x.Id == dto.Id);
+            var row = excelRows[i];
+            var dto = row.Dto;
+            var rowNumber = row.RowNumber;
+            AdjustmentFactorEntity parsedEntity;
 
-                if (entityToUpdate.CheckChange(dto))
+            try
+            {
+                parsedEntity = AdjustmentFactorEntity.Create(dto.Id, (AdjustmentFactorType)dto.Type, dto.Code, dto.Name, row.ProcessGroupId);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Dòng {rowNumber}: {ex.Message}");
+                continue;
+            }
+
+            if (parsedEntity.Id != Guid.Empty && dbAdjustmentFactor.Any(x => x.Id == parsedEntity.Id))
+            {
+                var entityToUpdate = dbAdjustmentFactor.First(x => x.Id == parsedEntity.Id);
+
+                if (entityToUpdate.CheckChange(parsedEntity))
                 {
-                    if (await codeService.IsCodeExisted(dto.Code.Value, entityToUpdate.Code.Id))
+                    var isCodeDuplicatedInDb = dbAdjustmentFactor.Any(x =>
+                        x.Id != entityToUpdate.Id
+                        && !deleteIdSet.Contains(x.Id)
+                        && x.ProcessGroupId == parsedEntity.ProcessGroupId
+                        && x.Code != null
+                        && string.Equals(x.Code.Value, parsedEntity.Code?.Value, StringComparison.OrdinalIgnoreCase));
+
+                    if (isCodeDuplicatedInDb)
                     {
-                        throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
+                        errors.Add($"Giá trị mã '{parsedEntity.Code?.Value}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
+                        continue;
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Type, dto.Name, dto.ProcessGroupId);
+                    entityToUpdate.Update(parsedEntity.Code?.Value ?? "", parsedEntity.Type, parsedEntity.Name, parsedEntity.ProcessGroupId);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                if (await codeService.IsCodeExisted(dto.Code.Value))
+                var isCodeDuplicatedInDb = dbAdjustmentFactor.Any(x =>
+                    !deleteIdSet.Contains(x.Id)
+                    && x.ProcessGroupId == parsedEntity.ProcessGroupId
+                    && x.Code != null
+                    && string.Equals(x.Code.Value, parsedEntity.Code?.Value, StringComparison.OrdinalIgnoreCase));
+
+                if (isCodeDuplicatedInDb)
                 {
-                    throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
+                    errors.Add($"Giá trị mã '{parsedEntity.Code?.Value}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
+                    continue;
                 }
-                addList.Add(AdjustmentFactorEntity.Create(dto.Code?.Value ?? "", dto.Type, dto.Name, dto.ProcessGroupId));
+
+                addList.Add(AdjustmentFactorEntity.Create(
+                    parsedEntity.Code?.Value ?? "",
+                    parsedEntity.Type,
+                    parsedEntity.Name,
+                    parsedEntity.ProcessGroupId));
             }
+        }
+
+        if (errors.Any())
+        {
+            throw new BadRequestException(string.Join(Environment.NewLine, errors.Distinct()));
         }
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -149,4 +191,10 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         }
     }
 
+    private class ImportRow
+    {
+        public AdjustmentFactorExcelDto Dto { get; set; } = default!;
+        public Guid ProcessGroupId { get; set; }
+        public int RowNumber { get; set; }
+    }
 }

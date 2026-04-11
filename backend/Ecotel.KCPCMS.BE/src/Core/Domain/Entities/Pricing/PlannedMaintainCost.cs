@@ -6,6 +6,7 @@ public class PlannedMaintainCost : AuditableEntity<Guid>
 {
     public Guid ProductUnitPriceId { get; protected set; }
     public Guid OutputId { get; protected set; }
+    public double TrimmingCoefficient { get; protected set; } = 1;
 
     private double? CachedPlannedMaintainTotal { get; set; }
 
@@ -21,28 +22,34 @@ public class PlannedMaintainCost : AuditableEntity<Guid>
     {
         if (CachedPlannedMaintainTotal.HasValue)
         {
-            return CachedPlannedMaintainTotal.Value;
+            return CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient();
         }
 
         CachedPlannedMaintainTotal = _plannedMaintainCostAdjustmentFactors.Sum(p => p.GetCurrentMaintainCost());
-        return CachedPlannedMaintainTotal.Value;
+        return CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient();
     }
 
-    public static PlannedMaintainCost Create(Guid productUnitPriceId, Guid outputId, IEnumerable<PlannedMaintainCostAdjustmentFactor> list)
+    public static PlannedMaintainCost Create(
+        Guid productUnitPriceId,
+        Guid outputId,
+        double trimmingCoefficient,
+        IEnumerable<PlannedMaintainCostAdjustmentFactor> list)
     {
         var result = new PlannedMaintainCost
         {
             ProductUnitPriceId = productUnitPriceId,
             OutputId = outputId
         };
+        result.SetTrimmingCoefficient(trimmingCoefficient);
         result.AddPlannedMaintainCostAdjustmentFactors(list.ToList());
         return result;
     }
 
-    public void Update(Guid productUnitPriceId, Guid outputId)
+    public void Update(Guid productUnitPriceId, Guid outputId, double trimmingCoefficient)
     {
         ProductUnitPriceId = productUnitPriceId;
         OutputId = outputId;
+        SetTrimmingCoefficient(trimmingCoefficient);
     }
 
     public void ClearPlannedMaintainCostAdjustmentFactors()
@@ -56,5 +63,25 @@ public class PlannedMaintainCost : AuditableEntity<Guid>
         {
             _plannedMaintainCostAdjustmentFactors.Add(item);
         }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
+    }
+
+    private double GetNormalizedTrimmingCoefficient()
+    {
+        return NormalizeTrimmingCoefficient(TrimmingCoefficient);
+    }
+
+    private void SetTrimmingCoefficient(double trimmingCoefficient)
+    {
+        TrimmingCoefficient = NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 }

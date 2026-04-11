@@ -7,7 +7,8 @@ export const getPlanedElectricityCostColumns = (
 	processGroupType?: ProcessGroupType,
 ): ColumnDef<PlanedElectricityCostDetailCost>[] => {
 	const kFactorLength =
-		processGroupType === ProcessGroupType.DL
+		processGroupType === ProcessGroupType.DL ||
+		processGroupType === ProcessGroupType.XL
 			? 3
 			: processGroupType === ProcessGroupType.LC
 				? 1
@@ -42,12 +43,19 @@ export const getPlanedElectricityCostColumns = (
 			return {
 				id: name,
 				header: name,
-				cell: ({ row }) =>
-					formatNumber(
-						row.original.adjustmentFactorDescriptions?.sort((a, b) =>
-							a.adjustmentFactorCode.localeCompare(b.adjustmentFactorCode),
-						)[idx]?.electricityAdjustmentValue ?? 0,
-					),
+				cell: ({ row }) => {
+					const sortedAdjustmentFactors = [
+						...(row.original?.adjustmentFactorDescriptions ?? []),
+					].sort((a, b) =>
+						(a?.adjustmentFactorCode ?? '').localeCompare(
+							b?.adjustmentFactorCode ?? '',
+						),
+					);
+
+					return formatNumber(
+						sortedAdjustmentFactors[idx]?.electricityAdjustmentValue ?? 0,
+					);
+				},
 			};
 		}),
 		{

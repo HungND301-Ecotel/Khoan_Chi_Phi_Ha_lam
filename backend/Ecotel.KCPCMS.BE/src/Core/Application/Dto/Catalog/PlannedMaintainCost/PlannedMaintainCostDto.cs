@@ -6,6 +6,7 @@ public class CreatePlannedMaintainCostDto
 {
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<CreatePlannedMaintainCostAdjFactorDto> Costs { get; set; } = new List<CreatePlannedMaintainCostAdjFactorDto>();
 }
 
@@ -22,6 +23,7 @@ public class UpdatePlannedMaintainCostDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<UpdatePlannedMaintainCostAdjFactorDto> Costs { get; set; } = new List<UpdatePlannedMaintainCostAdjFactorDto>();
 }
 
@@ -38,6 +40,7 @@ public class PlannedMaintainCostDetailDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<PlannedMaintainCostAdjDto> Costs { get; set; } = new List<PlannedMaintainCostAdjDto>();
 }
 

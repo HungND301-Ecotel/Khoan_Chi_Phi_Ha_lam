@@ -69,7 +69,11 @@ IUnitOfWork unitOfWork) : IRequestHandler<CreatePlannedElectricityCostCommand, b
 
         var costs = request.CreateModel.Costs.Select(c => PlannedElectricityCostAdjustmentFactor.Create(Guid.Empty, c.ElectricityUnitPriceEquipmentId, c.Quantity, c.AdjustmentFactorDescriptions.Select(a => adjMap.GetValueOrDefault(a)).ToList())).ToList();
 
-        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedElectricityCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.OutputId, costs);
+        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedElectricityCost.Create(
+            request.CreateModel.ProductUnitPriceId,
+            request.CreateModel.OutputId,
+            request.CreateModel.TrimmingCoefficient,
+            costs);
         await _plannedElectricityCostRepository.InsertAsync(newPlannedMaterialCost, cancellationToken);
         await unitOfWork.SaveChangesAsync();
 

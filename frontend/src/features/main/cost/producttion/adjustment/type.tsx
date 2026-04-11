@@ -1,3 +1,5 @@
+import { ProcessGroupType } from '@/constants/process-group';
+
 export type AdjustmentCostProductDetail = {
 	id: string;
 	productId: string;
@@ -5,7 +7,7 @@ export type AdjustmentCostProductDetail = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: number;
+	processGroupType: ProcessGroupType;
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;

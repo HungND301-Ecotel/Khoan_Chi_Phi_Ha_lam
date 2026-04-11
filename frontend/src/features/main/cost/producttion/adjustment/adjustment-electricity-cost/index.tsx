@@ -19,11 +19,12 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import { AdjustmentElectricityCostDetail } from './types';
-import { ADJUSTMENT_ELECTRICITY_COST_COLUMNS } from './columns';
+import { getAdjustmentElectricityCostColumns } from './columns';
 
 export function AdjustmentElectricityCost({
 	id,
 	isOpen,
+	adjustment,
 	productionOutput,
 	multiplyByProductionMeters = true,
 }: AdjustmentCostExpandProps) {
@@ -92,7 +93,9 @@ export function AdjustmentElectricityCost({
 			{id && isOpen && (
 				<AccordionContent className='p-0 px-2 pt-2'>
 					<DataTable
-						columns={ADJUSTMENT_ELECTRICITY_COST_COLUMNS}
+						columns={getAdjustmentElectricityCostColumns(
+							adjustment?.processGroupType,
+						)}
 						items={adjustmentElectricityCost?.costs}
 						compact={true}
 						hasActions={false}

@@ -60,10 +60,14 @@ export function PlanedMaintainCost({
 					const { totalPrice } = item;
 					total += totalPrice;
 				});
-				setTotal(total * (output?.productionMeters || 1));
+				const trimmingCoefficient =
+					plan?.processGroupType === ProcessGroupType.XL
+						? res.result.trimmingCoefficient || 1
+						: 1;
+				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
-	}, [id, reloadKey, output?.productionMeters]);
+	}, [id, reloadKey, output?.productionMeters, plan?.processGroupType]);
 
 	return (
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>

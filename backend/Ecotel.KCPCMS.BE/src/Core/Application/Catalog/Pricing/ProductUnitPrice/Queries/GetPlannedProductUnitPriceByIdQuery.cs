@@ -125,6 +125,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
             .Select(f => new
             {
                 f.PlannedMaintainCostId,
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
@@ -148,6 +149,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
                 g => g.Select(f => new MaintainFactorData
                 {
                     Quantity = (double)f.Quantity,
+                    TrimmingCoefficient = f.TrimmingCoefficient,
                     K6AdjustmentFactorValue = f.K6AdjustmentFactorValue,
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
@@ -175,6 +177,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
             .Select(f => new
             {
                 f.PlannedElectricityCostId,
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
@@ -193,6 +196,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
                     return new ElectricityFactorData
                     {
                         Quantity = (double)f.Quantity,
+                        TrimmingCoefficient = f.TrimmingCoefficient,
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -266,12 +270,14 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
         var plannedMaintainCost = output.PlannedMaintainCostId.HasValue &&
             plannedMaintainFactors.TryGetValue(output.PlannedMaintainCostId.Value, out var maintainFactors)
             ? maintainFactors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor)
+                * NormalizeTrimmingCoefficient(maintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
             : 0;
 
         // Calculate Planned Electricity Cost
         var plannedElectricityCost = output.PlannedElectricityCostId.HasValue &&
             plannedElectricityFactors.TryGetValue(output.PlannedElectricityCostId.Value, out var elecFactors)
             ? elecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                * NormalizeTrimmingCoefficient(elecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
             : 0;
 
         // Calculate Total Price
@@ -307,6 +313,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
     private class MaintainFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double K6AdjustmentFactorValue { get; set; }
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
@@ -316,8 +323,19 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
     private class ElectricityFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double CostPerMetre { get; set; }
         public double AdjustmentFactor { get; set; }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
     #endregion
 }

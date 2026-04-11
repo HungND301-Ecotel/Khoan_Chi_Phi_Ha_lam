@@ -30,6 +30,7 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
             Id = plannedElectricityCost.Id,
             ProductUnitPriceId = plannedElectricityCost.ProductUnitPriceId,
             OutputId = plannedElectricityCost.OutputId,
+            TrimmingCoefficient = plannedElectricityCost.TrimmingCoefficient,
             Costs = plannedElectricityCost.PlannedElectricityCostAdjustmentFactors.Select(p =>
             {
                 return new PlannedElectricityCostAdjDto

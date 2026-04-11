@@ -7,6 +7,9 @@ export const planMaintainCostSchema = z.object({
 	outputId: z.string().nonempty({
 		error: 'Mã kế hoạch không được để trống',
 	}),
+	trimmingCoefficient: z.coerce
+		.number<number>({ error: 'Hệ số không hợp lệ' })
+		.gt(0, { error: 'Hệ số phải lớn hơn 0' }),
 	maintainUnitPriceIds: z
 		.array(
 			z.string().nonempty({
@@ -49,6 +52,7 @@ export type PlanMaintainCostSchema = z.infer<typeof planMaintainCostSchema>;
 export const PLAN_MAINTAIN_COST_DEFAULT: PlanMaintainCostSchema = {
 	productUnitPriceId: '',
 	outputId: '',
+	trimmingCoefficient: 100,
 	maintainUnitPriceIds: [],
 	costs: [],
 };

@@ -72,7 +72,10 @@ export function PlanElectricityCostForm({
 			setElectricities(electricityResponse.result.data);
 
 			let filteredAdjustments: AdjustmentDetail[] = [];
-			if (plan?.processGroupType === ProcessGroupType.DL) {
+			if (
+				plan?.processGroupType === ProcessGroupType.DL ||
+				plan?.processGroupType === ProcessGroupType.XL
+			) {
 				filteredAdjustments = adjustments.result
 					.sort((a, b) => a.code.localeCompare(b.code))
 					.slice(0, 3);
@@ -94,6 +97,7 @@ export function PlanElectricityCostForm({
 					form.reset({
 						productUnitPriceId: plan?.id,
 						outputId: output?.id,
+						trimmingCoefficient: (res.result.trimmingCoefficient || 1) * 100,
 						electricityUnitPriceIds: res.result.costs.map((detail) => {
 							return detail.electricityUnitPriceEquipmentId;
 						}),
@@ -191,22 +195,27 @@ export function PlanElectricityCostForm({
 	const handleSubmit = async ({
 		productUnitPriceId,
 		outputId,
+		trimmingCoefficient,
 		costs,
 	}: PlanElectricityCostSchema) => {
 		try {
+			const payload = {
+				productUnitPriceId,
+				outputId,
+				costs,
+				trimmingCoefficient:
+					plan?.processGroupType === ProcessGroupType.XL
+						? trimmingCoefficient / 100
+						: 1,
+			};
+
 			if (id) {
 				await api.put(API.COST.PLANNED_ELECTRICITY.UPDATE, {
 					id,
-					productUnitPriceId,
-					outputId,
-					costs,
+					...payload,
 				});
 			} else {
-				await api.post(API.COST.PLANNED_ELECTRICITY.CREATE, {
-					productUnitPriceId,
-					outputId,
-					costs,
-				});
+				await api.post(API.COST.PLANNED_ELECTRICITY.CREATE, payload);
 			}
 
 			setOpen(false);
@@ -264,6 +273,14 @@ export function PlanElectricityCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
+			{plan?.processGroupType === ProcessGroupType.XL && (
+				<FormNumber
+					control={form.control}
+					name='trimmingCoefficient'
+					label='Hệ số xén lò (%)'
+					placeholder='Nhập hệ số xén lò'
+				/>
+			)}
 
 			<FormMultiSelect
 				control={form.control}

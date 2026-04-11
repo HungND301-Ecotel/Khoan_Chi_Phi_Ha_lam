@@ -7,6 +7,9 @@ export const planElectricityCostSchema = z.object({
 	outputId: z.string().nonempty({
 		error: 'Mã kế hoạch không được để trống',
 	}),
+	trimmingCoefficient: z.coerce
+		.number<number>({ error: 'Hệ số không hợp lệ' })
+		.gt(0, { error: 'Hệ số phải lớn hơn 0' }),
 	electricityUnitPriceIds: z
 		.array(
 			z.string().nonempty({
@@ -40,6 +43,7 @@ export type PlanElectricityCostSchema = z.infer<
 export const PLAN_ELECTRICITY_COST_DEFAULT: PlanElectricityCostSchema = {
 	productUnitPriceId: '',
 	outputId: '',
+	trimmingCoefficient: 100,
 	electricityUnitPriceIds: [],
 	costs: [],
 };
