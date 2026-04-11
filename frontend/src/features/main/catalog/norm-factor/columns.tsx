@@ -1,6 +1,5 @@
-import { ColumnDef } from '@tanstack/react-table';
-import { Badge } from '@/components/ui/badge';
 import { formatNumber } from '@/lib/utils';
+import { ColumnDef } from '@tanstack/react-table';
 
 type AffectAssignmentCode = {
 	id: string;
@@ -101,7 +100,6 @@ export const CATALOG_NORM_FACTOR_EXPAND_COLUMNS: ColumnDef<NormFactorExpandItem>
 		{
 			accessorKey: 'targetHardnessName',
 			header: 'Định mức tham chiếu',
-			cell: ({ row }) =>
-				row.original.targetHardnessName || 'Định mức hiện tại',
+			cell: ({ row }) => row.original.targetHardnessName || 'Định mức hiện tại',
 		},
 	];
