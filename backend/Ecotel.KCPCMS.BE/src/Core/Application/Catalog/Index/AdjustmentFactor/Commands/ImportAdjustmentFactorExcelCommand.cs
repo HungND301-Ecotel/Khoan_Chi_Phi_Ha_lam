@@ -27,7 +27,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         }
 
         using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<AdjustmentFactorExcelDto>(stream);
+        var dtos = excelService.ImportFromExcel<AdjustmentFactorExcelDto>(stream) ?? [];
 
         var processGroups = await _processGroupRepository.GetAllAsync(
                 include: p => p.Include(p => p.Code),
@@ -152,10 +152,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
             }
         }
 
-        if (errors.Any())
-        {
-            throw new BadRequestException(string.Join(Environment.NewLine, errors.Distinct()));
-        }
+        ThrowIfImportErrors(errors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -196,5 +193,20 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         public AdjustmentFactorExcelDto Dto { get; set; } = default!;
         public Guid ProcessGroupId { get; set; }
         public int RowNumber { get; set; }
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 }
