@@ -1,4 +1,5 @@
 using Domain.Common.Contracts;
+using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Domain.Entities.Index;
@@ -10,6 +11,9 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
 
     // Navigation properties
     public virtual Code? Code { get; protected set; }
+
+    private IList<ProductUnitPrice> _productUnitPrices = new List<ProductUnitPrice>();
+    public virtual IReadOnlyCollection<ProductUnitPrice> ProductUnitPrices => _productUnitPrices.AsReadOnly();
 
     public static Department Create(string code, string name)
     {

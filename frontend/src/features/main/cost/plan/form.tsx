@@ -15,6 +15,7 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Product } from '@/features/main/catalog/product/columns';
+import { Department } from '@/features/main/catalog/department/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import {
 	PLAN_FORM_DEFAULT,
@@ -30,13 +31,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
+type PlanFormProps = ActionDialogProps<CostProduct> & {
+	defaultDepartmentId?: string;
+	onSuccess?: () => void;
+};
+
+export function PlanForm({
+	data,
+	row,
+	defaultDepartmentId,
+	onSuccess,
+}: PlanFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 
 	const [products, setProducts] = useState<Product[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
 
 	const form = useForm<PlanFormSchema>({
 		resolver: zodResolver(planFormSchema),
@@ -54,21 +66,28 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 		const promises = Promise.all([
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST),
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST),
 		]);
 
-		promises.then(([products, units]) => {
+		promises.then(([products, units, departments]) => {
 			setProducts(products.result.data);
 			setUnits(units.result.data);
+			setDepartments(departments.result.data);
+
+			if (!row && defaultDepartmentId) {
+				form.setValue('departmentId', defaultDepartmentId);
+			}
 
 			if (!row) return;
 
 			api
 				.get<CostProductDetail>(API.COST.PRODUCT.DETAIL_PLANNED(row.id))
 				.then((res) => {
-					const { productId, unitOfMeasureId, outputs } = res.result;
+					const { productId, unitOfMeasureId, departmentId, outputs } = res.result;
 					form.reset({
 						productId,
 						unitOfMeasureId,
+						departmentId,
 						outputs: outputs.map(
 							({ startMonth, endMonth, outputType, productionMeters, id }) => ({
 								startMonth: startMonth.substring(0, 10),
@@ -81,7 +100,7 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 					});
 				});
 		});
-	}, [row, form]);
+	}, [row, form, defaultDepartmentId]);
 
 	const handleSubmit = async ({ outputs, ...values }: PlanFormSchema) => {
 		try {
@@ -110,6 +129,7 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
+			onSuccess?.();
 		} catch (error) {
 			popup.error(error);
 		}
@@ -137,6 +157,16 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 					options={units.map((unit) => ({
 						label: unit.name,
 						value: unit.id,
+					}))}
+				/>
+				<FormComboBox
+					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
 					}))}
 				/>
 			</FormRow>

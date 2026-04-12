@@ -6,6 +6,9 @@ export type Production = {
 	startMonth: string;
 	endMonth: string;
 	acceptanceReportId: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	productionMeters?: number;
 	standardProductionMeters?: number;
 };

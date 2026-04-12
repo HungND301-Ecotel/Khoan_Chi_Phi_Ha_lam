@@ -58,6 +58,7 @@ export const productionFormSchema = z
 	.object({
 		mode: z.enum(['create', 'edit']),
 		startMonth: z.string().nonempty({ error: 'Thời gian không được để trống' }),
+		departmentId: z.string().nonempty({ error: 'Đơn vị không được để trống' }),
 		productionMeters: z.coerce
 			.number<number>({ error: 'Sản lượng thực tế phải là số' })
 			.optional(),
@@ -94,6 +95,7 @@ export function getProductionFormDefault(
 		return {
 			mode: 'edit',
 			startMonth: '',
+			departmentId: '',
 			productionMeters: 0,
 			standardProductionMeters: 0,
 			groups: [],
@@ -103,6 +105,7 @@ export function getProductionFormDefault(
 	return {
 		mode: 'create',
 		startMonth: '',
+		departmentId: '',
 		groups: [
 			{
 				...PRODUCTION_GROUP_DEFAULT,

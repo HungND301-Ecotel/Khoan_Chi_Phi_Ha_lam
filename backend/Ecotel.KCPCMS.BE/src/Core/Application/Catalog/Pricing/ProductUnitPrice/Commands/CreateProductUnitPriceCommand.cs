@@ -21,10 +21,12 @@ public class CreateProductUnitPriceCommandHandler(
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     public async Task<bool> Handle(CreateProductUnitPriceCommand request, CancellationToken cancellationToken)
     {
         bool checkExited = await _productUnitPriceRepository.ExistsAsync(p =>
             p.ProductId == request.CreateModel.ProductId &&
+            p.DepartmentId == request.CreateModel.DepartmentId &&
             p.ScenarioType == ProductUnitPriceScenarioType.Plan);
         if (checkExited)
         {
@@ -36,6 +38,14 @@ public class CreateProductUnitPriceCommandHandler(
             if (!checkUnitOfMeasureExisted)
             {
                 throw new NotFoundException(CustomResponseMessage.UnitOfMeasureNotFound);
+            }
+        }
+        if (request.CreateModel.DepartmentId != null)
+        {
+            bool checkDepartmentExisted = await _departmentRepository.ExistsAsync(x => x.Id == request.CreateModel.DepartmentId);
+            if (!checkDepartmentExisted)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
             }
         }
         if (!request.CreateModel.Outputs.Any())
@@ -60,6 +70,7 @@ public class CreateProductUnitPriceCommandHandler(
         var newProductUnitPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
             request.CreateModel.ProductId,
             request.CreateModel.UnitOfMeasureId,
+            request.CreateModel.DepartmentId,
             ProductUnitPriceScenarioType.Plan);
         newProductUnitPrice.AddOutputs(newOutputs);
 

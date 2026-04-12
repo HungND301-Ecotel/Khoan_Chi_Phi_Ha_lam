@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Dashboard.Queries;
 
-public record GetCostSummaryQuery(Guid? ProcessGroupId, int Year) : IRequest<CostSummaryDto>;
+public record GetCostSummaryQuery(Guid? ProcessGroupId, Guid? DepartmentId, int Year) : IRequest<CostSummaryDto>;
 
 public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetCostSummaryQuery, CostSummaryDto>
 {
@@ -37,12 +37,14 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 && o.ProductUnitPrice != null
                 && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                 && (!request.ProcessGroupId.HasValue || o.ProductUnitPrice.Product!.ProcessGroupId == request.ProcessGroupId)
+                && (!request.DepartmentId.HasValue || o.ProductUnitPrice.DepartmentId == request.DepartmentId)
                 && o.StartMonth <= endOfYear
                 && o.EndMonth >= startOfYear)
             .Select(o => new OutputData
             {
                 ProductUnitPriceId = o.ProductUnitPriceId,
                 ProductId = o.ProductUnitPrice!.ProductId,
+                DepartmentId = o.ProductUnitPrice.DepartmentId,
                 Id = o.Id,
                 OutputType = o.OutputType,
                 StartMonth = o.StartMonth,
@@ -80,6 +82,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                     Id = o.Id,
                     ProductUnitPriceId = o.ProductUnitPriceId,
                     ProductId = o.ProductId,
+                    DepartmentId = o.DepartmentId,
                     OutputType = o.OutputType,
                     ProductionMeters = metersPerMonth,
                     ActualMaterialCostId = o.ActualMaterialCostId,
@@ -98,6 +101,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         // STEP 2: Get Adjustment production links (actual quantity source) by year and process group
         var adjustmentProductionLinks = await _productUnitPriceRepository.GetAll()
             .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment
+                && (!request.DepartmentId.HasValue || p.DepartmentId == request.DepartmentId)
                 && (!request.ProcessGroupId.HasValue || p.Product!.ProcessGroupId == request.ProcessGroupId))
             .SelectMany(p => p.ProductUnitPriceProductionOutputs
                 .Where(link => link.ProductionOutput != null
@@ -106,6 +110,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 .Select(link => new AdjustmentProductionData
                 {
                     ProductId = p.ProductId,
+                    DepartmentId = p.DepartmentId,
                     StartMonth = link.ProductionOutput!.StartMonth,
                     EndMonth = link.ProductionOutput.EndMonth,
                     ProductionMeters = link.ProductionMeters,
@@ -136,6 +141,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 monthlyAllocatedActuals[m].Add(new AdjustmentProductionData
                 {
                     ProductId = item.ProductId,
+                    DepartmentId = item.DepartmentId,
                     StartMonth = item.StartMonth,
                     EndMonth = item.EndMonth,
                     ProductionMeters = metersPerMonth,
@@ -154,8 +160,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         var plannedMaintainFactors = await LoadPlannedMaintainFactors(plannedMaintainCostIds, cancellationToken);
         var plannedElectricityFactors = await LoadPlannedElectricityFactors(plannedElectricityCostIds, cancellationToken);
         var plannedMaterialCosts = await LoadPlannedMaterialCosts(plannedMaterialCostIds, cancellationToken);
-        var customCostsByMonth = await LoadCustomCostsByMonth(year, request.ProcessGroupId, cancellationToken);
-        var transferredCostsByMonth = await LoadTransferredCostsByMonth(year, request.ProcessGroupId, cancellationToken);
+        var customCostsByMonth = await LoadCustomCostsByMonth(year, request.ProcessGroupId, request.DepartmentId, cancellationToken);
+        var transferredCostsByMonth = await LoadTransferredCostsByMonth(year, request.ProcessGroupId, request.DepartmentId, cancellationToken);
 
         // STEP 4: Calculate monthly costs
         var result = new CostSummaryDto();
@@ -389,10 +395,10 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         }
 
         var actualQuantityByProduct = monthActuals
-            .GroupBy(x => x.ProductId)
+            .GroupBy(x => (x.ProductId, x.DepartmentId))
             .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
 
-        var plannedByProduct = plannedOutputs.GroupBy(x => x.ProductId);
+        var plannedByProduct = plannedOutputs.GroupBy(x => (x.ProductId, x.DepartmentId));
         var monthlyRevenue = 0.0;
 
         foreach (var productGroup in plannedByProduct)
@@ -455,8 +461,15 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     private async Task<Dictionary<int, double>> LoadCustomCostsByMonth(
         int year,
         Guid? processGroupId,
+        Guid? departmentId,
         CancellationToken cancellationToken)
     {
+        if (departmentId.HasValue)
+        {
+            // Custom cost chưa có DepartmentId để phân bổ chính xác
+            return new Dictionary<int, double>();
+        }
+
         var customCosts = await _customCostRepository.GetAll()
             .Where(x => x.Year == year
                 && (!processGroupId.HasValue || x.ProcessGroupId == processGroupId))
@@ -476,10 +489,13 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     private async Task<Dictionary<int, double>> LoadTransferredCostsByMonth(
         int year,
         Guid? processGroupId,
+        Guid? departmentId,
         CancellationToken cancellationToken)
     {
         var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
-            .Where(po => po.StartMonth.Year == year && po.AcceptanceReport != null)
+            .Where(po => po.StartMonth.Year == year
+                && po.AcceptanceReport != null
+                && (!departmentId.HasValue || po.DepartmentId == departmentId))
             .Include(po => po.ProductionOutputProcessGroups)
             .Include(po => po.AcceptanceReport!)
                 .ThenInclude(ar => ar.AcceptanceReportItems)
@@ -577,6 +593,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     {
         public Guid ProductUnitPriceId { get; set; }
         public Guid ProductId { get; set; }
+        public Guid? DepartmentId { get; set; }
         public Guid Id { get; set; }
         public OutputType OutputType { get; set; }
         public DateOnly StartMonth { get; set; }
@@ -608,6 +625,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     private class AdjustmentProductionData
     {
         public Guid ProductId { get; set; }
+        public Guid? DepartmentId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }

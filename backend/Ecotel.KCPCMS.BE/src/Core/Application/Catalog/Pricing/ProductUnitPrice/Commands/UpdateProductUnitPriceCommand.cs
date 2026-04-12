@@ -23,11 +23,13 @@ public class UpdateProductUnitPriceCommandHandler(
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
     public async Task<bool> Handle(UpdateProductUnitPriceCommand request, CancellationToken cancellationToken)
     {
         bool checkExited = await _productUnitPriceRepository.ExistsAsync(p =>
             p.ProductId == request.UpdateModel.ProductId &&
+            p.DepartmentId == request.UpdateModel.DepartmentId &&
             p.Id != request.UpdateModel.Id &&
             p.ScenarioType == ProductUnitPriceScenarioType.Plan);
         if (checkExited)
@@ -41,6 +43,15 @@ public class UpdateProductUnitPriceCommandHandler(
             if (!checkUnitOfMeasureExisted)
             {
                 throw new NotFoundException(CustomResponseMessage.UnitOfMeasureNotFound);
+            }
+        }
+
+        if (request.UpdateModel.DepartmentId != null)
+        {
+            bool checkDepartmentExisted = await _departmentRepository.ExistsAsync(x => x.Id == request.UpdateModel.DepartmentId);
+            if (!checkDepartmentExisted)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
             }
         }
 
@@ -146,7 +157,7 @@ public class UpdateProductUnitPriceCommandHandler(
                 }
             }
 
-            exitedProductUnitPrice.Update(request.UpdateModel.ProductId, request.UpdateModel.UnitOfMeasureId);
+            exitedProductUnitPrice.Update(request.UpdateModel.ProductId, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.DepartmentId);
 
             // Update ProductionOutput relationship
             exitedProductUnitPrice.ClearProductionOutputs();

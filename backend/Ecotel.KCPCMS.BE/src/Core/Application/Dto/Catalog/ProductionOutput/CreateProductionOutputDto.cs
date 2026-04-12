@@ -6,6 +6,7 @@ public class CreateProductionOutputDto
     public DateOnly EndMonth { get; set; }
     public double ProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }
+    public Guid? DepartmentId { get; set; }
     public IList<CreateProductionOutputProcessGroupDto> ProcessGroups { get; set; } = new List<CreateProductionOutputProcessGroupDto>();
 }
 

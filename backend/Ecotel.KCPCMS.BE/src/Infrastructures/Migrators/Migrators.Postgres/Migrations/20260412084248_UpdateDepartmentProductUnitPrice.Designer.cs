@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260412084248_UpdateDepartmentProductUnitPrice")]
+    partial class UpdateDepartmentProductUnitPrice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2446,7 +2449,7 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("UnitOfMeasureId");
 
-                    b.HasIndex("ProductId", "ScenarioType", "DepartmentId")
+                    b.HasIndex("ProductId", "ScenarioType")
                         .IsUnique()
                         .HasFilter("\"DeletedOn\" IS NULL");
 
@@ -3083,9 +3086,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DepartmentId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateOnly>("EndMonth")
                         .HasColumnType("date");
 
@@ -3105,8 +3105,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DepartmentId");
 
                     b.ToTable("ProductionOutput", "Production");
                 });
@@ -4272,16 +4270,6 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ProcessGroup");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>
-                {
-                    b.HasOne("Domain.Entities.Index.Department", "Department")
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutputProcessGroup", b =>

@@ -46,6 +46,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 ProductCode = p.Product.Code.Value,
                 UnitOfMeasureId = p.UnitOfMeasureId,
                 UnitOfMeasureName = p.UnitOfMeasure!.Name,
+                DepartmentId = p.DepartmentId,
+                DepartmentCode = p.Department != null && p.Department.Code != null ? p.Department.Code.Value : null,
+                DepartmentName = p.Department != null ? p.Department.Name : null,
                 ProcessGroupId = p.Product.ProcessGroupId,
                 ProcessGroupCode = p.Product.ProcessGroup!.Code.Value,
                 ProcessGroupName = p.Product.ProcessGroup.Name,
@@ -70,11 +73,33 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             throw new NotFoundException(CustomResponseMessage.ProductUnitPriceNotFound);
         }
 
+        var planMeta = await _productUnitPriceRepository.GetAll()
+            .Where(p => p.ProductId == baseData.ProductId
+                && p.ScenarioType == ProductUnitPriceScenarioType.Plan
+                && p.DepartmentId == baseData.DepartmentId)
+            .Select(p => new
+            {
+                p.UnitOfMeasureId,
+                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : null,
+                p.DepartmentId,
+                DepartmentCode = p.Department != null && p.Department.Code != null ? p.Department.Code.Value : null,
+                DepartmentName = p.Department != null ? p.Department.Name : null
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var effectiveUnitOfMeasureId = baseData.UnitOfMeasureId ?? planMeta?.UnitOfMeasureId;
+        var effectiveUnitOfMeasureName = baseData.UnitOfMeasureName ?? planMeta?.UnitOfMeasureName ?? string.Empty;
+        var effectiveDepartmentId = baseData.DepartmentId ?? planMeta?.DepartmentId;
+        var effectiveDepartmentCode = baseData.DepartmentCode ?? planMeta?.DepartmentCode ?? string.Empty;
+        var effectiveDepartmentName = baseData.DepartmentName ?? planMeta?.DepartmentName ?? string.Empty;
+
         // STEP 2: Get planned outputs with cost data from plan ProductUnitPrice
         var plannedOutputsRaw = await _outputRepository.GetAll()
             .Where(o => o.OutputType == OutputType.PlanOutput
                 && o.ProductUnitPrice!.ProductId == baseData.ProductId
-                && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan)
+                && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
+                && o.ProductUnitPrice.DepartmentId == baseData.DepartmentId)
             .Select(o => new OutputRawData
             {
                 Id = o.Id,
@@ -149,8 +174,11 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             ProductId = baseData.ProductId,
             ProductName = baseData.ProductName,
             ProductCode = baseData.ProductCode,
-            UnitOfMeasureId = baseData.UnitOfMeasureId,
-            UnitOfMeasureName = baseData.UnitOfMeasureName,
+            UnitOfMeasureId = effectiveUnitOfMeasureId,
+            UnitOfMeasureName = effectiveUnitOfMeasureName,
+            DepartmentId = effectiveDepartmentId,
+            DepartmentCode = effectiveDepartmentCode,
+            DepartmentName = effectiveDepartmentName,
             ProcessGroupId = baseData.ProcessGroupId,
             ProcessGroupCode = baseData.ProcessGroupCode,
             ProcessGroupName = baseData.ProcessGroupName,

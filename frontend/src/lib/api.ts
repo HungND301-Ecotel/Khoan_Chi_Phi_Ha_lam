@@ -54,6 +54,7 @@ export type PaggingRequest = {
 	materialType?: number;
 	outputType?: number;
 	scenarioType?: number;
+	departmentId?: string;
 	date?: string;
 	longwallType?: number;
 	maintainType?: number;

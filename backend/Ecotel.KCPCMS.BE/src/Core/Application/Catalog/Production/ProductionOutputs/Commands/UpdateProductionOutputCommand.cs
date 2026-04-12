@@ -23,6 +23,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
     public async Task<bool> Handle(UpdateProductionOutputCommand request, CancellationToken cancellationToken)
@@ -33,17 +34,30 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                 .Include(x => x.ProductionOutputProcessGroups)
                     .ThenInclude(x => x.ProductionOutputProducts),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+        var previousDepartmentId = existProductionOutput.DepartmentId;
 
-        // Kiểm tra khoảng thời gian trùng lặp với bản ghi trong DB (loại trừ bản ghi hiện tại)
+        // Kiểm tra khoảng thời gian trùng lặp với bản ghi trong DB cùng đơn vị (loại trừ bản ghi hiện tại)
         var allRecords = await _productionOutputRepository.GetAllAsync(disableTracking: true);
+        var existingRecordsByDepartment = allRecords
+            .Where(x => x.DepartmentId == request.UpdateModel.DepartmentId)
+            .ToList();
         var newPeriod = (request.UpdateModel.StartMonth, request.UpdateModel.EndMonth, Index: 0);
 
         if (OverlapChecker.HasOverlapWithExistingExclude(
             new[] { newPeriod },
-            allRecords,
+            existingRecordsByDepartment,
             new[] { request.UpdateModel.Id }))
         {
             throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
+        }
+
+        if (request.UpdateModel.DepartmentId.HasValue)
+        {
+            var checkDepartmentExisted = await _departmentRepository.ExistsAsync(x => x.Id == request.UpdateModel.DepartmentId.Value);
+            if (!checkDepartmentExisted)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+            }
         }
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -65,7 +79,8 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                     request.UpdateModel.StartMonth,
                     request.UpdateModel.EndMonth,
                     existProductionOutput.ProductionMeters,
-                    existProductionOutput.StandardProductionMeters);
+                    existProductionOutput.StandardProductionMeters,
+                    request.UpdateModel.DepartmentId);
             }
             else
             {
@@ -73,7 +88,8 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                     request.UpdateModel.StartMonth,
                     request.UpdateModel.EndMonth,
                     request.UpdateModel.ProductionMeters,
-                    request.UpdateModel.StandardProductionMeters);
+                    request.UpdateModel.StandardProductionMeters,
+                    request.UpdateModel.DepartmentId);
             }
 
             await UpdateAffectedAcceptanceReportItemLogs(existProductionOutput, cancellationToken);
@@ -85,7 +101,18 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
             // Sync ProductUnitPrice sau khi commit transaction chính
             if (hasProcessGroupsPayload)
             {
-                await SyncProductUnitPricesForAdjustment(existProductionOutput.Id, processGroups, cancellationToken);
+                await SyncProductUnitPricesForAdjustment(
+                    existProductionOutput.Id,
+                    existProductionOutput.DepartmentId,
+                    processGroups,
+                    cancellationToken);
+            }
+            else if (previousDepartmentId != existProductionOutput.DepartmentId)
+            {
+                await SyncProductUnitPriceDepartmentByProductionOutput(
+                    existProductionOutput.Id,
+                    existProductionOutput.DepartmentId,
+                    cancellationToken);
             }
         }
         catch
@@ -165,6 +192,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
 
     private async Task SyncProductUnitPricesForAdjustment(
         Guid productionOutputId,
+        Guid? departmentId,
         List<ProductionOutputProcessGroup> processGroups,
         CancellationToken cancellationToken)
     {
@@ -178,7 +206,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         var allRelatedPrices = await _productUnitPriceRepository.GetAll()
             .Where(x => x.ScenarioType == ProductUnitPriceScenarioType.Adjustment
                 && (x.ProductUnitPriceProductionOutputs.Any(y => y.ProductionOutputId == productionOutputId)
-                    || productIds.Contains(x.ProductId)))
+                    || (productIds.Contains(x.ProductId) && x.DepartmentId == departmentId)))
             .Include(x => x.ProductUnitPriceProductionOutputs)
             .ToListAsync(cancellationToken);
 
@@ -211,9 +239,40 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
             return;
         }
 
+        // Nếu productionOutput đang nằm trong bản ghi khác Department thì tách link khỏi bản ghi đó
+        var linkedPricesDifferentDepartment = allRelatedPrices
+            .Where(x => x.DepartmentId != departmentId
+                && x.ProductUnitPriceProductionOutputs.Any(y => y.ProductionOutputId == productionOutputId))
+            .ToList();
+
+        foreach (var price in linkedPricesDifferentDepartment)
+        {
+            var remainingOutputs = price.ProductUnitPriceProductionOutputs
+                .Where(x => x.ProductionOutputId != productionOutputId)
+                .ToDictionary(x => x.ProductionOutputId, x => x.ProductionMeters);
+
+            if (remainingOutputs.Any())
+            {
+                await mediator.Send(new UpdateAdjustmentProductUnitPriceCommand(
+                    new UpdateAdjustmentProductUnitPriceDto
+                    {
+                        Id = price.Id,
+                        ProductId = price.ProductId,
+                        UnitOfMeasureId = price.UnitOfMeasureId,
+                        DepartmentId = price.DepartmentId,
+                        ProductionOutputs = remainingOutputs
+                    }), cancellationToken);
+            }
+            else
+            {
+                _productUnitPriceRepository.Delete(price);
+            }
+        }
+
         // Xóa liên kết cho những sản phẩm không còn trong payload
         var pricesToRemove = allRelatedPrices
-            .Where(x => !productIds.Contains(x.ProductId))
+            .Where(x => x.DepartmentId == departmentId
+                && !productIds.Contains(x.ProductId))
             .ToList();
 
         foreach (var price in pricesToRemove)
@@ -230,6 +289,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                         Id = price.Id,
                         ProductId = price.ProductId,
                         UnitOfMeasureId = price.UnitOfMeasureId,
+                        DepartmentId = price.DepartmentId,
                         ProductionOutputs = remainingOutputs
                     }), cancellationToken);
             }
@@ -240,7 +300,8 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         }
 
         var existingProductUnitPrices = allRelatedPrices
-            .Where(x => productIds.Contains(x.ProductId))
+            .Where(x => x.DepartmentId == departmentId
+                && productIds.Contains(x.ProductId))
             .ToList();
 
         var newProductIds = productIds
@@ -251,7 +312,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         foreach (var productId in newProductIds)
         {
             var newPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
-                productId, null, ProductUnitPriceScenarioType.Adjustment);
+                productId, null, departmentId, ProductUnitPriceScenarioType.Adjustment);
             newPrice.AddProductionOutput(productionOutputId, productMeters[productId]);
             await _productUnitPriceRepository.InsertAsync(newPrice, cancellationToken);
         }
@@ -271,8 +332,73 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                     Id = price.Id,
                     ProductId = price.ProductId,
                     UnitOfMeasureId = price.UnitOfMeasureId,
+                    DepartmentId = departmentId,
                     ProductionOutputs = updatedOutputs
                 }), cancellationToken);
+        }
+
+        await unitOfWork.SaveChangesAsync();
+    }
+
+    private async Task SyncProductUnitPriceDepartmentByProductionOutput(
+        Guid productionOutputId,
+        Guid? departmentId,
+        CancellationToken cancellationToken)
+    {
+        var linkedAdjustmentProductUnitPrices = await _productUnitPriceRepository.GetAll()
+            .Where(x => x.ScenarioType == ProductUnitPriceScenarioType.Adjustment
+                && x.ProductUnitPriceProductionOutputs.Any(y => y.ProductionOutputId == productionOutputId))
+            .Include(x => x.ProductUnitPriceProductionOutputs)
+            .ToListAsync(cancellationToken);
+
+        foreach (var productUnitPrice in linkedAdjustmentProductUnitPrices)
+        {
+            var currentLink = productUnitPrice.ProductUnitPriceProductionOutputs
+                .FirstOrDefault(x => x.ProductionOutputId == productionOutputId);
+            if (currentLink == null)
+            {
+                continue;
+            }
+
+            if (productUnitPrice.DepartmentId == departmentId)
+            {
+                continue;
+            }
+
+            var productionMeters = currentLink.ProductionMeters;
+            productUnitPrice.RemoveProductionOutput(productionOutputId);
+
+            if (productUnitPrice.ProductUnitPriceProductionOutputs.Any())
+            {
+                _productUnitPriceRepository.Update(productUnitPrice);
+            }
+            else
+            {
+                _productUnitPriceRepository.Delete(productUnitPrice);
+            }
+
+            var targetProductUnitPrice = await _productUnitPriceRepository.GetFirstOrDefaultAsync(
+                predicate: x => x.ScenarioType == ProductUnitPriceScenarioType.Adjustment
+                    && x.ProductId == productUnitPrice.ProductId
+                    && x.DepartmentId == departmentId,
+                include: q => q.Include(x => x.ProductUnitPriceProductionOutputs),
+                disableTracking: false);
+
+            if (targetProductUnitPrice == null)
+            {
+                var newPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
+                    productUnitPrice.ProductId,
+                    productUnitPrice.UnitOfMeasureId,
+                    departmentId,
+                    ProductUnitPriceScenarioType.Adjustment);
+                newPrice.AddProductionOutput(productionOutputId, productionMeters);
+                await _productUnitPriceRepository.InsertAsync(newPrice, cancellationToken);
+            }
+            else
+            {
+                targetProductUnitPrice.AddProductionOutput(productionOutputId, productionMeters);
+                _productUnitPriceRepository.Update(targetProductUnitPrice);
+            }
         }
 
         await unitOfWork.SaveChangesAsync();

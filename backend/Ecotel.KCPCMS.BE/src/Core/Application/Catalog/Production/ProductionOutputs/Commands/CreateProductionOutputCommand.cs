@@ -19,17 +19,30 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
     public async Task<bool> Handle(CreateProductionOutputCommand request, CancellationToken cancellationToken)
     {
-        // Kiểm tra khoảng thời gian trùng lặp với bản ghi trong DB
+        // Kiểm tra khoảng thời gian trùng lặp với bản ghi trong DB cùng đơn vị
         var allRecords = await _productionOutputRepository.GetAllAsync(disableTracking: true);
+        var existingRecordsByDepartment = allRecords
+            .Where(x => x.DepartmentId == request.CreateModel.DepartmentId)
+            .ToList();
         var newPeriod = (request.CreateModel.StartMonth, request.CreateModel.EndMonth, Index: 0);
 
-        if (OverlapChecker.HasOverlapWithExisting(new[] { newPeriod }, allRecords))
+        if (OverlapChecker.HasOverlapWithExisting(new[] { newPeriod }, existingRecordsByDepartment))
         {
             throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
+        }
+
+        if (request.CreateModel.DepartmentId.HasValue)
+        {
+            var checkDepartmentExisted = await _departmentRepository.ExistsAsync(x => x.Id == request.CreateModel.DepartmentId.Value);
+            if (!checkDepartmentExisted)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+            }
         }
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -49,7 +62,8 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
                 totalProductionMeters,
-                totalStandardProductionMeters);
+                totalStandardProductionMeters,
+                request.CreateModel.DepartmentId);
 
             if (processGroups.Any())
             {
@@ -160,6 +174,7 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
 
         var existingProductUnitPrices = await _productUnitPriceRepository.GetAll()
             .Where(x => productIds.Contains(x.ProductId)
+                && x.DepartmentId == productionOutput.DepartmentId
                 && x.ScenarioType == ProductUnitPriceScenarioType.Adjustment)
             .Include(x => x.ProductUnitPriceProductionOutputs)
             .ToListAsync(cancellationToken);
@@ -171,12 +186,20 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
 
             if (productUnitPrice == null)
             {
-                productUnitPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(productId, null, ProductUnitPriceScenarioType.Adjustment);
+                productUnitPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
+                    productId,
+                    null,
+                    productionOutput.DepartmentId,
+                    ProductUnitPriceScenarioType.Adjustment);
                 productUnitPrice.AddProductionOutput(productionOutput.Id, productionMeters);
                 await _productUnitPriceRepository.InsertAsync(productUnitPrice, cancellationToken);
             }
             else
             {
+                productUnitPrice.Update(
+                    productUnitPrice.ProductId,
+                    productUnitPrice.UnitOfMeasureId,
+                    productionOutput.DepartmentId);
                 productUnitPrice.AddProductionOutput(productionOutput.Id, productionMeters);
                 _productUnitPriceRepository.Update(productUnitPrice);
             }

@@ -8,6 +8,9 @@ export type CostProduct = {
 	processGroupType: number;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	totalProductionMeters: number;
 	plannedTotalCost: number;
 	startMonth: string;
@@ -25,6 +28,9 @@ export type CostProductDetail = {
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	outputs: CostProductDetailOutput[];
 };
 

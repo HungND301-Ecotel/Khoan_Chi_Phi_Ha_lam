@@ -7,6 +7,9 @@ public class ProductionOutputDto : IDto
     public Guid Id { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
+    public Guid? DepartmentId { get; set; }
+    public string DepartmentCode { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
     public Guid? AcceptanceReportId { get; set; }
     public double ProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }

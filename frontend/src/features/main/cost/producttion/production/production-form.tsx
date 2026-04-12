@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
+import type { Department } from '@/features/main/catalog/department/columns';
 import type { Product } from '@/features/main/catalog/product/columns';
 import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
@@ -46,13 +47,16 @@ type ProductionOutputDetail = {
 	id: string;
 	startMonth: string;
 	endMonth?: string;
+	departmentId?: string | null;
 	acceptanceReportId?: string | null;
 	productionMeters: number;
 	standardProductionMeters: number;
 	processGroups?: ProductionOutputDetailProcessGroup[];
 };
 
-type ProductionFormProps = ActionDialogProps<Production>;
+type ProductionFormProps = ActionDialogProps<Production> & {
+	onSuccess?: () => void;
+};
 type ProductionGroup = NonNullable<ProductionFormSchema['groups']>[number];
 type ProductionGroupProduct = ProductionGroup['products'][number];
 
@@ -117,7 +121,7 @@ function buildProcessGroupPayload(groups: ProductionGroup[] = []) {
 	}));
 }
 
-export function ProductionForm({ data, row }: ProductionFormProps) {
+export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const isEdit = !!row;
 	const mode: ProductionFormMode = isEdit ? 'edit' : 'create';
 	const popup = usePopup();
@@ -125,6 +129,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 	const { breadcrumb } = useMeta();
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [products, setProducts] = useState<Product[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
 
 	const form = useForm<ProductionFormSchema>({
 		resolver: zodResolver(productionFormSchema),
@@ -161,6 +166,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			.then((res) => {
 				const {
 					startMonth,
+					departmentId,
 					processGroups,
 					productionMeters,
 					standardProductionMeters,
@@ -185,6 +191,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 				form.reset({
 					mode: 'edit',
 					startMonth: startMonth.substring(0, 10),
+					departmentId: departmentId ?? '',
 					productionMeters,
 					standardProductionMeters,
 					groups:
@@ -195,6 +202,9 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 
 	useEffect(() => {
 		const promises = Promise.all([
+			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST, {
+				ignorePagination: true,
+			}),
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST, {
 				ignorePagination: true,
 			}),
@@ -203,7 +213,12 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			}),
 		]);
 
-		promises.then(([processGroupRes, productRes]) => {
+		promises.then(([departmentRes, processGroupRes, productRes]) => {
+			setDepartments(
+				[...departmentRes.result.data].sort((a, b) =>
+					a.code.localeCompare(b.code),
+				),
+			);
 			setProcessGroups(
 				[...processGroupRes.result.data].sort((a, b) =>
 					a.code.localeCompare(b.code),
@@ -297,6 +312,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 					id: row.id,
 					startMonth: values.startMonth,
 					endMonth: values.startMonth,
+					departmentId: values.departmentId,
 					acceptanceReportId: row.acceptanceReportId || null,
 					productionMeters,
 					standardProductionMeters,
@@ -306,6 +322,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 				await api.post(API.PRODUCTION.PRODUCTION_OUTPUT.CREATE, {
 					startMonth: values.startMonth,
 					endMonth: values.startMonth,
+					departmentId: values.departmentId,
 					productionMeters,
 					standardProductionMeters,
 					processGroups,
@@ -318,6 +335,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
+			onSuccess?.();
 		} catch (error) {
 			popup.error(error);
 		}
@@ -333,6 +351,16 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 					name='startMonth'
 					label='Thời gian'
 					className='flex-1'
+				/>
+				<FormComboBox
+					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
+					}))}
 				/>
 			</FormRow>
 

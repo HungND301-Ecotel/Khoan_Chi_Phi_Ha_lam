@@ -27,6 +27,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var productionOutput = await _productionOutputRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == request.ProductionOutputId,
+            include: q => q.Include(p => p.Department).ThenInclude(d => d.Code),
             disableTracking: true)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -81,6 +82,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ProductionOutputId = productionOutput.Id,
             StartMonth = productionOutput.StartMonth,
             EndMonth = productionOutput.EndMonth,
+            DepartmentId = productionOutput.DepartmentId,
+            DepartmentCode = productionOutput.Department?.Code?.Value ?? string.Empty,
+            DepartmentName = productionOutput.Department?.Name ?? string.Empty,
             ProductionMeters = productionOutput.ProductionMeters,
             StandardProductionMeters = productionOutput.StandardProductionMeters,
             SectionA = sectionA,

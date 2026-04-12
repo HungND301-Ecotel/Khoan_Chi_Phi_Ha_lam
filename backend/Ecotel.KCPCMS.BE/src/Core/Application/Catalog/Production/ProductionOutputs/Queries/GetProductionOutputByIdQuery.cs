@@ -21,6 +21,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: t => t.Id == request.Id,
             include: q => q
                 .Include(p => p.AcceptanceReport)
+                .Include(p => p.Department)
+                    .ThenInclude(d => d.Code)
                 .Include(p => p.ProductionOutputProcessGroups)
                     .ThenInclude(g => g.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
@@ -35,6 +37,9 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = productionOutput.Id,
             StartMonth = productionOutput.StartMonth,
             EndMonth = productionOutput.EndMonth,
+            DepartmentId = productionOutput.DepartmentId,
+            DepartmentCode = productionOutput.Department?.Code?.Value ?? string.Empty,
+            DepartmentName = productionOutput.Department?.Name ?? string.Empty,
             AcceptanceReportId = productionOutput.AcceptanceReport?.Id,
             ProductionMeters = productionOutput.ProductionMeters,
             StandardProductionMeters = productionOutput.StandardProductionMeters,

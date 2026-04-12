@@ -672,7 +672,7 @@ public class ApplicationDbContext(
 
         //ProductUnitPRice
         modelBuilder.Entity<ProductUnitPrice>()
-            .HasIndex(e => new { e.ProductId, e.ScenarioType })
+            .HasIndex(e => new { e.ProductId, e.ScenarioType, e.DepartmentId })
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<ProductUnitPrice>()
@@ -689,6 +689,11 @@ public class ApplicationDbContext(
             .HasOne(m => m.UnitOfMeasure)
             .WithMany(h => h.ProductUnitPrices)
             .HasForeignKey(s => s.UnitOfMeasureId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProductUnitPrice>()
+            .HasOne(m => m.Department)
+            .WithMany(d => d.ProductUnitPrices)
+            .HasForeignKey(s => s.DepartmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //ProductUnitPriceProductionOutput - Many-to-Many relationship table
@@ -830,6 +835,11 @@ public class ApplicationDbContext(
             .WithOne(g => g.ProductionOutput)
             .HasForeignKey(g => g.ProductionOutputId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProductionOutput>()
+            .HasOne(p => p.Department)
+            .WithMany()
+            .HasForeignKey(p => p.DepartmentId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<ProductionOutputProcessGroup>()
             .HasOne(g => g.ProcessGroup)

@@ -11,6 +11,9 @@ export type AdjustmentCostProductDetail = {
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 
 	outputs: AdjustmentOutput[];
 	productionOutputs: AdjustmentProductionOutput[];

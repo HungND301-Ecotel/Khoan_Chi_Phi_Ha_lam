@@ -7,6 +7,9 @@ export const planFormSchema = z.object({
 	unitOfMeasureId: z.string().nonempty({
 		error: 'Đơn vị tính không được để trống',
 	}),
+	departmentId: z.string().nonempty({
+		error: 'Đơn vị không được để trống',
+	}),
 	outputs: z.array(
 		z.object({
 			id: z.string().optional(),
@@ -27,6 +30,7 @@ export type PlanFormSchema = z.infer<typeof planFormSchema>;
 export const PLAN_FORM_DEFAULT: PlanFormSchema = {
 	productId: '',
 	unitOfMeasureId: '',
+	departmentId: '',
 	outputs: [
 		{
 			productionMeters: NaN,

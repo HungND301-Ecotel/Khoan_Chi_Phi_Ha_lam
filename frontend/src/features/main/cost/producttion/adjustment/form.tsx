@@ -12,6 +12,7 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Product } from '@/features/main/catalog/product/columns';
+import { Department } from '@/features/main/catalog/department/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { CostProduct } from '@/features/main/cost/plan/types';
 
@@ -38,6 +39,7 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 
 	const [products, setProducts] = useState<Product[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
 	const [productionOutputs, setProductionOutputs] = useState<Production[]>([]);
 
 	const form = useForm<ActualFormSchema>({
@@ -56,12 +58,14 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 		const promises = Promise.all([
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST),
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST),
 			api.pagging<Production>(API.PRODUCTION.PRODUCTION_OUTPUT.LIST),
 		]);
 
-		promises.then(([products, units, productionOutputs]) => {
+		promises.then(([products, units, departments, productionOutputs]) => {
 			setProducts(products.result.data);
 			setUnits(units.result.data);
+			setDepartments(departments.result.data);
 			setProductionOutputs(productionOutputs.result.data);
 
 			if (!row) return;
@@ -71,11 +75,12 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 					API.COST.PRODUCT.DETAIL_ADJUSTMENT(row.id),
 				)
 				.then((res) => {
-					const { productId, unitOfMeasureId, outputs, productionOutputs } =
+					const { productId, unitOfMeasureId, departmentId, outputs, productionOutputs } =
 						res.result;
 					form.reset({
 						productId,
 						unitOfMeasureId,
+						departmentId,
 						productionOutputs:
 							productionOutputs?.map((p) => p.productionOutputId) || [],
 						outputs: outputs || [],
@@ -129,6 +134,17 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 					options={units.map((unit) => ({
 						label: unit.name,
 						value: unit.id,
+					}))}
+					disabled
+				/>
+				<FormComboBox
+					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
 					}))}
 					disabled
 				/>
