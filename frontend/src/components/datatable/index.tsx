@@ -35,6 +35,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import CreateIcon from '@mui/icons-material/Create';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
@@ -65,6 +66,7 @@ type DataTableProps<TData> = {
 	filters?: { key: keyof TData; label: string }[];
 	onExpand?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onCreate?: (props: ActionDialogProps<TData>) => JSX.Element;
+	onDuplicate?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onUpdate?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onRowImport?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onRowExport?: (props: ActionDialogProps<TData>) => Promise<void> | void;
@@ -97,6 +99,7 @@ export function DataTable<TData>({
 	filters,
 	onExpand,
 	onCreate,
+	onDuplicate,
 	onUpdate,
 	onRowImport,
 	onRowExport,
@@ -176,6 +179,7 @@ export function DataTable<TData>({
 	if (onRowImport) ++columnCount;
 	if (onRowExport) ++columnCount;
 	if (onUpdate) ++columnCount;
+	if (onDuplicate) ++columnCount;
 	if (onDelete) ++columnCount;
 	if (hasIndex) ++columnCount;
 
@@ -466,6 +470,14 @@ export function DataTable<TData>({
 											Xem
 										</TableHead>
 									)}
+									{isFirstHeaderGroup && onDuplicate && (
+										<TableHead
+											className='px-4 text-center'
+											rowSpan={totalHeaderGroups}
+										>
+											Copy
+										</TableHead>
+									)}
 									{isFirstHeaderGroup && onUpdate && (
 										<TableHead
 											className='px-4 text-center'
@@ -593,6 +605,29 @@ export function DataTable<TData>({
 														<VisibilityIcon fontSize='medium' />
 													)}
 												</Button>
+											</TableCell>
+										)}
+
+										{onDuplicate && (
+											<TableCell className='w-10 px-4 py-0'>
+												<DialogProvider>
+													<DataTableEditDialog
+														type='Tạo mới'
+														trigger={
+															<Button
+																variant={'ghost'}
+																size={'icon-lg'}
+																className='rounded-full bg-transparent text-[#6e6e6e] shadow-none hover:bg-[#f0f0f0] hover:text-[#6e6e6e] hover:shadow-none'
+															>
+																<ContentCopyIcon fontSize='medium' />
+															</Button>
+														}
+														children={onDuplicate?.({
+															data: datatable,
+															row: row.original,
+														})}
+													/>
+												</DialogProvider>
 											</TableCell>
 										)}
 

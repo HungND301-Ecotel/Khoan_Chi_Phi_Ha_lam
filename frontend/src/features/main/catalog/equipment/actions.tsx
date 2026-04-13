@@ -52,7 +52,15 @@ export type EquipmentDetail = {
 	}>;
 };
 
-export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
+type EquipmentFormProps = ActionDialogProps<Equipment> & {
+	isDuplicate?: boolean;
+};
+
+export function EquipmentForm({
+	data,
+	row,
+	isDuplicate = false,
+}: EquipmentFormProps) {
 	const { breadcrumb } = useMeta();
 	const { setOpen } = useDialog();
 	const popup = usePopup();
@@ -125,7 +133,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 			const processedValues = {
 				...values,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.EQUIPMENT.UPDATE, {
 					id: row?.id,
 					...processedValues,
@@ -136,7 +144,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -236,7 +244,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
