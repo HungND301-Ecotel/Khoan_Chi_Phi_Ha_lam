@@ -1,4 +1,5 @@
-﻿using Application.Common.Events;
+using Application.Common.Events;
+using Application.Common.Caching;
 using Application.Common.Interfaces;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
@@ -16,11 +17,13 @@ public class ApplicationDbContext(
     ICurrentUser currentUser,
     ISerializerService serializer,
     IOptions<DatabaseSettings> dbSettings,
-    IEventPublisher events)
+    IEventPublisher events,
+    ICacheService cacheService)
     : BaseDbContext(currentUser,
         serializer,
         dbSettings,
-        events)
+        events,
+        cacheService)
 {
     // Identity DbSets
 
@@ -837,9 +840,9 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ProductionOutput>()
             .HasOne(p => p.Department)
-            .WithMany()
+            .WithMany(d => d.ProductionOutputs)
             .HasForeignKey(p => p.DepartmentId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ProductionOutputProcessGroup>()
             .HasOne(g => g.ProcessGroup)
@@ -960,3 +963,4 @@ public class ApplicationDbContext(
         base.OnModelCreating(modelBuilder);
     }
 }
+

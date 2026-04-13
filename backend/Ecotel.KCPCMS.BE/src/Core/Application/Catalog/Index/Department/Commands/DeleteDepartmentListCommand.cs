@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -9,8 +10,10 @@ namespace Application.Catalog.Index.Department.Commands;
 
 public record DeleteDepartmentListCommand(IList<DefaultIdType> DeleteIds) : IRequest<bool>;
 
-public class DeleteDepartmentListCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<DeleteDepartmentListCommand, bool>
+public class DeleteDepartmentListCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<DeleteDepartmentListCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+
     private readonly IWriteRepository<Domain.Entities.Index.Department> _departmentRepository = unitOfWork.GetRepository<Domain.Entities.Index.Department>();
     private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
 
@@ -52,6 +55,7 @@ public class DeleteDepartmentListCommandHandler(IUnitOfWork unitOfWork) : IReque
             _departmentRepository.Delete(departmentsToDelete);
             _codeRepository.Delete(codes);
             await unitOfWork.SaveChangesAsync();
+            cacheService.InvalidateGroup(CacheSignalKey);
             await unitOfWork.CommitAsync(cancellationToken);
 
             return true;
