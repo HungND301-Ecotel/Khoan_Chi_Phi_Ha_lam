@@ -2,6 +2,7 @@ using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
+using Application.Catalog.Pricing.LumpSumFinalSettlement;
 using Domain.Entities.Production;
 using MediatR;
 
@@ -31,7 +32,9 @@ public class GetLumpSumQuarterCustomCostListQueryHandler(IUnitOfWork unitOfWork)
         var items = await customCostRepository.GetAllAsync(
             predicate: x => monthList.Contains(x.Month)
                 && x.Year == year
-                && (!hasProcessGroup || x.ProcessGroupId == processGroupId),
+                && (!hasProcessGroup || x.ProcessGroupId == processGroupId)
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalExcavation
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut,
             disableTracking: true);
 
         return items

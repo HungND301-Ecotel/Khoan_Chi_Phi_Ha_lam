@@ -39,6 +39,13 @@ interface LumpSumDataTableProps {
 			| 'electricityUnitPrice',
 		value: number | string,
 	) => void;
+	onEditSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onCancelSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onSaveSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onSpecialQuantityChange?: (
+		row: LumpSumFinalSettlement,
+		value: number,
+	) => void;
 }
 
 export function LumpSumDataTable({
@@ -52,6 +59,10 @@ export function LumpSumDataTable({
 	onSaveCustomCost,
 	onDeleteCustomCost,
 	onCustomCostChange,
+	onEditSpecialQuantity,
+	onCancelSpecialQuantity,
+	onSaveSpecialQuantity,
+	onSpecialQuantityChange,
 }: LumpSumDataTableProps) {
 	const renderUnitPrice = (value: number | null | undefined) => {
 		if (value == null || value === 0) {
@@ -190,6 +201,105 @@ export function LumpSumDataTable({
 						</TableRow>
 					) : table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => {
+							if (row.original.isSpecialQuantityRow) {
+								const r = row.original;
+								const isEditing = !!r.isEditing;
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 hover:bg-gray-50'
+									>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-center',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{r.sttLabel || row.index + 1}
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='flex items-center justify-between gap-2'>
+												<span>{r.productName}</span>
+												<div className='flex items-center gap-1'>
+													{isEditing ? (
+														<>
+															<Button
+																variant='default'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onSaveSpecialQuantity?.(r)}
+															>
+																Lưu
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onCancelSpecialQuantity?.(r)}
+															>
+																Hủy
+															</Button>
+														</>
+													) : (
+														<Button
+															variant='outline'
+															size='sm'
+															className='h-8 px-3'
+															onClick={() => onEditSpecialQuantity?.(r)}
+														>
+															Sửa
+														</Button>
+													)}
+												</div>
+											</div>
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-center',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='text-center'>{r.unitOfMeasureName}</div>
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{isEditing ? (
+												<FormNumberInput
+													className='h-8'
+													value={r.actualQuantity ?? 0}
+													onValueChange={(value) =>
+														onSpecialQuantityChange?.(r, Number(value ?? 0))
+													}
+												/>
+											) : (
+												<div className='text-left'>
+													{formatNumber(r.actualQuantity ?? 0, {
+														maximumFractionDigits: 3,
+													})}
+												</div>
+											)}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
 							if (row.original.isCustomCostRow) {
 								const r = row.original;
 								const isEditing = !!r.isEditing;

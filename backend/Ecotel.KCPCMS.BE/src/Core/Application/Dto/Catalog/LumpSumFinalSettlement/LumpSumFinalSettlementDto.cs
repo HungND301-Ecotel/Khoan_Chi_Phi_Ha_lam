@@ -29,27 +29,43 @@ public class LumpSumCostDetailDto
 public class LumpSumFinalSettlementQuarterResponseDto
 {
     public List<LumpSumFinalSettlementDto> Items { get; set; } = new();
+    public List<LumpSumFinalSettlementMonthResponseDto> MonthBreakdowns { get; set; } = new();
     public List<LumpSumQuarterRevenueByMonthDto> RevenuesByMonth { get; set; } = new();
+    public List<LumpSumQuarterRevenueByMonthDto> CostsByMonth { get; set; } = new();
+    public List<LumpSumQuarterRevenueByMonthDto> SavingsByMonth { get; set; } = new();
     public List<LumpSumQuarterTransferredCostDto> TransferredCosts { get; set; } = new();
     public List<LumpSumQuarterCustomCostDto> CustomCosts { get; set; } = new();
+    public LumpSumQuarterRevenueByMonthDto RevenueQuarter { get; set; } = new();
+    public LumpSumQuarterRevenueByMonthDto CostQuarter { get; set; } = new();
+    public LumpSumQuarterRevenueByMonthDto SavingQuarter { get; set; } = new();
     public double CoalExcavationActualQuantity { get; set; }
     public double CoalCrosscutActualQuantity { get; set; }
     public double MeterExcavationActualQuantity { get; set; }
     public double MeterCrosscutActualQuantity { get; set; }
+    public double TotalSavingQuarter { get; set; }
     public double AcceptedSavingQuarter { get; set; }
     public double SavingsValue { get; set; }
+    public double RevenueAdjustmentRate { get; set; }
+    public double SavingAddedToIncomeQuarter { get; set; }
 }
 
 public class LumpSumFinalSettlementMonthResponseDto
 {
     public List<LumpSumFinalSettlementDto> Items { get; set; } = new();
     public LumpSumQuarterRevenueByMonthDto Revenue { get; set; } = new();
+    public LumpSumQuarterRevenueByMonthDto Cost { get; set; } = new();
+    public LumpSumQuarterRevenueByMonthDto Saving { get; set; } = new();
     public LumpSumQuarterTransferredCostDto TransferredCost { get; set; } = new();
     public List<LumpSumQuarterCustomCostDto> CustomCosts { get; set; } = new();
     public double CoalExcavationActualQuantity { get; set; }
     public double CoalCrosscutActualQuantity { get; set; }
     public double MeterExcavationActualQuantity { get; set; }
     public double MeterCrosscutActualQuantity { get; set; }
+    public double TotalSavingMonth { get; set; }
+    public double SavingsValue { get; set; }
+    public double AcceptedSavingMonth { get; set; }
+    public double RevenueAdjustmentRate { get; set; }
+    public double SavingAddedToIncomeMonth { get; set; }
 }
 
 public class LumpSumQuarterRevenueByMonthDto

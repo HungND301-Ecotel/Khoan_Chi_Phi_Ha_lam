@@ -1105,6 +1105,14 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
+    [HttpPut("lump-sum-final-settlement/month-special-quantity")]
+    [OpenApiOperation("Update Lump Sum Month Special Quantity", "")]
+    public async Task<IActionResult> UpdateLumpSumMonthSpecialQuantity([FromBody] UpdateLumpSumMonthSpecialQuantityRequest request)
+    {
+        var result = await Mediator.Send(new UpdateLumpSumMonthSpecialQuantityCommand(request));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
     [HttpDelete("lump-sum-final-settlement/quarter-custom-cost/{id:guid}")]
     [OpenApiOperation("Delete Lump Sum Quarter Custom Cost", "")]
     public async Task<IActionResult> DeleteLumpSumQuarterCustomCost([FromRoute] Guid id)

@@ -47,3 +47,12 @@ public class UpdateLumpSumQuarterCustomCostRequest
     public double MaintainUnitPrice { get; set; }
     public double ElectricityUnitPrice { get; set; }
 }
+
+public class UpdateLumpSumMonthSpecialQuantityRequest
+{
+    public string Month { get; set; } = string.Empty;
+    public string Year { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public double CoalExcavationActualQuantity { get; set; }
+    public double CoalCrosscutActualQuantity { get; set; }
+}

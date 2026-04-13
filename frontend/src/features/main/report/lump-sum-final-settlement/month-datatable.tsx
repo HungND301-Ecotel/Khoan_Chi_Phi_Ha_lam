@@ -24,7 +24,6 @@ import {
 	LumpSumQuarterTransferredCost,
 	ProcessGroup,
 } from '@/features/main/cost/lump-sum-final-settlement/types';
-import { SavingsRateConfig } from '@/features/main/catalog/savings-rate-config/columns';
 import { api } from '@/lib/api';
 import { cn, formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -56,44 +55,6 @@ const formatDateString = (date: Date) => {
 		.toString()
 		.padStart(2, '0')} năm ${date.getFullYear()}`;
 };
-
-function resolveSavingsValue(
-	acceptedSavingMonth: number,
-	configs: SavingsRateConfig[],
-) {
-	const matchedConfig = [...configs]
-		.filter((x) =>
-			isRevenueInRange(acceptedSavingMonth, x.minRevenue, x.maxRevenue),
-		)
-		.sort((a, b) => {
-			const minDiff = (b.minRevenue ?? Number.NEGATIVE_INFINITY) - (a.minRevenue ?? Number.NEGATIVE_INFINITY);
-			if (minDiff !== 0) {
-				return minDiff;
-			}
-			return (a.maxRevenue ?? Number.POSITIVE_INFINITY) - (b.maxRevenue ?? Number.POSITIVE_INFINITY);
-		})[0];
-
-	if (!matchedConfig) {
-		return 0;
-	}
-
-	const rawRate = matchedConfig.maxSavingsRate ?? matchedConfig.minSavingsRate;
-	if (rawRate == null) {
-		return 0;
-	}
-
-	return rawRate > 1 ? rawRate / 100 : rawRate;
-}
-
-function isRevenueInRange(
-	revenue: number,
-	minRevenue?: number,
-	maxRevenue?: number,
-) {
-	const minMatch = minRevenue == null || revenue >= minRevenue;
-	const maxMatch = maxRevenue == null || revenue <= maxRevenue;
-	return minMatch && maxMatch;
-}
 
 const ExcelReportHeader = ({ month, year }: ExcelReportHeaderProps) => {
 	return (
@@ -195,12 +156,15 @@ export function LumpSumFinalSettlementMonthReportTable({
 	});
 	const [revenueByMonth, setRevenueByMonth] =
 		useState<LumpSumQuarterRevenueByMonth | null>(null);
+	const [costByMonth, setCostByMonth] =
+		useState<LumpSumQuarterRevenueByMonth | null>(null);
+	const [savingByMonth, setSavingByMonth] =
+		useState<LumpSumQuarterRevenueByMonth | null>(null);
 	const [transferredCostByMonth, setTransferredCostByMonth] =
 		useState<LumpSumQuarterTransferredCost | null>(null);
 	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
-	const [savingsRateConfigs, setSavingsRateConfigs] = useState<
-		SavingsRateConfig[]
-	>([]);
+	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
+	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
@@ -304,15 +268,10 @@ export function LumpSumFinalSettlementMonthReportTable({
 						: selectedDepartment,
 			};
 
-			const [response, savingsRateConfigRes] = await Promise.all([
-				api.post<
-					LumpSumFinalSettlement[] | LumpSumFinalSettlementMonthResponse,
-					LumpSumFinalSettlementListRequest
-				>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload),
-				api.pagging<SavingsRateConfig>(API.CATALOG.SAVINGS_RATE_CONFIG.LIST, {
-					ignorePagination: true,
-				}),
-			]);
+			const response = await api.post<
+				LumpSumFinalSettlement[] | LumpSumFinalSettlementMonthResponse,
+				LumpSumFinalSettlementListRequest
+			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
 
 			const monthData = Array.isArray(response.result) ? null : response.result;
 			const items = monthData?.items ?? (Array.isArray(response.result) ? response.result : []);
@@ -328,9 +287,12 @@ export function LumpSumFinalSettlementMonthReportTable({
 					monthData?.meterCrosscutActualQuantity ?? 0,
 			});
 			setRevenueByMonth(monthData?.revenue ?? null);
+			setCostByMonth(monthData?.cost ?? null);
+			setSavingByMonth(monthData?.saving ?? null);
 			setTransferredCostByMonth(monthData?.transferredCost ?? null);
+			setAcceptedSavingMonth(monthData?.acceptedSavingMonth ?? 0);
+			setSavingAddedToIncomeMonth(monthData?.savingAddedToIncomeMonth ?? 0);
 			setCustomCosts(monthData?.customCosts ?? []);
-			setSavingsRateConfigs(savingsRateConfigRes.result.data ?? []);
 		} catch (err) {
 			setRows([]);
 			setQuarterSpecialQuantities({
@@ -340,9 +302,12 @@ export function LumpSumFinalSettlementMonthReportTable({
 				meterCrosscutActualQuantity: 0,
 			});
 			setRevenueByMonth(null);
+			setCostByMonth(null);
+			setSavingByMonth(null);
 			setTransferredCostByMonth(null);
+			setAcceptedSavingMonth(0);
+			setSavingAddedToIncomeMonth(0);
 			setCustomCosts([]);
-			setSavingsRateConfigs([]);
 			setError(
 				err instanceof Error
 					? err.message
@@ -363,6 +328,18 @@ export function LumpSumFinalSettlementMonthReportTable({
 			maintains: revenueByMonth?.maintains?.totalAmount ?? 0,
 			electricities: revenueByMonth?.electricities?.totalAmount ?? 0,
 			total: revenueByMonth?.totalAmount ?? 0,
+		};
+		const cost = {
+			materials: costByMonth?.materials?.totalAmount ?? 0,
+			maintains: costByMonth?.maintains?.totalAmount ?? 0,
+			electricities: costByMonth?.electricities?.totalAmount ?? 0,
+			total: costByMonth?.totalAmount ?? 0,
+		};
+		const saving = {
+			materials: savingByMonth?.materials?.totalAmount ?? 0,
+			maintains: savingByMonth?.maintains?.totalAmount ?? 0,
+			electricities: savingByMonth?.electricities?.totalAmount ?? 0,
+			total: savingByMonth?.totalAmount ?? 0,
 		};
 
 		const buildCustomCostRow = (
@@ -401,44 +378,12 @@ export function LumpSumFinalSettlementMonthReportTable({
 		};
 
 		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
-		const customTotals = customCostRows.reduce(
-			(acc, row) => ({
-				materials: acc.materials + (row.materials?.totalAmount ?? 0),
-				maintains: acc.maintains + (row.maintains?.totalAmount ?? 0),
-				electricities: acc.electricities + (row.electricities?.totalAmount ?? 0),
-				total: acc.total + (row.totalAmount ?? 0),
-			}),
-			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
-		);
-
 		const transferred = {
 			materials: transferredCostByMonth?.materials?.totalAmount ?? 0,
 			maintains: transferredCostByMonth?.maintains?.totalAmount ?? 0,
 			electricities: transferredCostByMonth?.electricities?.totalAmount ?? 0,
 			total: transferredCostByMonth?.totalAmount ?? 0,
 		};
-
-		const cost = {
-			materials: transferred.materials + customTotals.materials,
-			maintains: transferred.maintains + customTotals.maintains,
-			electricities: transferred.electricities + customTotals.electricities,
-			total: transferred.total + customTotals.total,
-		};
-
-		const saving = {
-			materials: revenue.materials - cost.materials,
-			maintains: revenue.maintains - cost.maintains,
-			electricities: revenue.electricities - cost.electricities,
-			total: revenue.total - cost.total,
-		};
-
-		const acceptedSavingMonth =
-			saving.materials + saving.maintains + saving.electricities;
-		const savingsValue = resolveSavingsValue(
-			acceptedSavingMonth,
-			savingsRateConfigs,
-		);
-		const savingAddedToIncomeMonth = acceptedSavingMonth * savingsValue;
 
 		const makeZeroRow = (
 			productName: string,
@@ -600,12 +545,15 @@ export function LumpSumFinalSettlementMonthReportTable({
 
 		return [...specialRows, ...rows, ...defaultRows];
 	}, [
+		acceptedSavingMonth,
+		costByMonth,
 		customCosts,
 		month,
 		quarterSpecialQuantities,
 		revenueByMonth,
 		rows,
-		savingsRateConfigs,
+		savingAddedToIncomeMonth,
+		savingByMonth,
 		transferredCostByMonth,
 		year,
 	]);

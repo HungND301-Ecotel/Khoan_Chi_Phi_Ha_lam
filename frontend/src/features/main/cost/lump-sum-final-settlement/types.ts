@@ -15,26 +15,42 @@ export interface LumpSumFinalSettlementQuarterListRequest {
 
 export interface LumpSumFinalSettlementQuarterResponse {
 	items: LumpSumFinalSettlement[];
+	monthBreakdowns?: LumpSumFinalSettlementMonthResponse[];
 	revenuesByMonth: LumpSumQuarterRevenueByMonth[];
+	costsByMonth?: LumpSumQuarterRevenueByMonth[];
+	savingsByMonth?: LumpSumQuarterRevenueByMonth[];
 	transferredCosts?: LumpSumQuarterTransferredCost[];
 	customCosts?: LumpSumQuarterCustomCost[];
+	revenueQuarter?: LumpSumQuarterRevenueByMonth | null;
+	costQuarter?: LumpSumQuarterRevenueByMonth | null;
+	savingQuarter?: LumpSumQuarterRevenueByMonth | null;
 	coalExcavationActualQuantity?: number;
 	coalCrosscutActualQuantity?: number;
 	meterExcavationActualQuantity?: number;
 	meterCrosscutActualQuantity?: number;
+	totalSavingQuarter?: number;
 	acceptedSavingQuarter?: number;
 	savingsValue?: number;
+	revenueAdjustmentRate?: number;
+	savingAddedToIncomeQuarter?: number;
 }
 
 export interface LumpSumFinalSettlementMonthResponse {
 	items: LumpSumFinalSettlement[];
 	revenue?: LumpSumQuarterRevenueByMonth | null;
+	cost?: LumpSumQuarterRevenueByMonth | null;
+	saving?: LumpSumQuarterRevenueByMonth | null;
 	transferredCost?: LumpSumQuarterTransferredCost | null;
 	customCosts?: LumpSumQuarterCustomCost[];
 	coalExcavationActualQuantity?: number;
 	coalCrosscutActualQuantity?: number;
 	meterExcavationActualQuantity?: number;
 	meterCrosscutActualQuantity?: number;
+	totalSavingMonth?: number;
+	savingsValue?: number;
+	acceptedSavingMonth?: number;
+	revenueAdjustmentRate?: number;
+	savingAddedToIncomeMonth?: number;
 }
 
 export interface LumpSumQuarterRevenueByMonth {
@@ -86,6 +102,14 @@ export interface UpsertLumpSumQuarterCustomCostRequest {
 	electricityUnitPrice: number;
 }
 
+export interface UpdateLumpSumMonthSpecialQuantityRequest {
+	month: string;
+	year: string;
+	processGroupId?: string | null;
+	coalExcavationActualQuantity: number;
+	coalCrosscutActualQuantity: number;
+}
+
 export interface LumpSumFinalSettlement {
 	id?: string;
 	processGroupId?: string;
@@ -100,6 +124,10 @@ export interface LumpSumFinalSettlement {
 	isCustomCostRow?: boolean;
 	isEditing?: boolean;
 	isTransferredDefaultRow?: boolean;
+	isSpecialQuantityRow?: boolean;
+	specialQuantityField?:
+		| 'coalExcavationActualQuantity'
+		| 'coalCrosscutActualQuantity';
 	month?: number;
 	productName?: string;
 	productCode?: string;
