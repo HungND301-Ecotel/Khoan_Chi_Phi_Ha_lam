@@ -21,6 +21,40 @@ export type ProductionAdjustment = {
 	endMonth: string;
 };
 
+export type DepartmentAdjustmentGroup = {
+	id: string;
+	code: string;
+	name: string;
+	startMonth?: string;
+	endMonth?: string;
+	productUnitPriceIds: string[];
+};
+
+export const ADJUSTMENT_DEPARTMENT_COLUMNS: ColumnDef<DepartmentAdjustmentGroup>[] =
+	[
+		{
+			accessorKey: 'code',
+			header: () => <span className='whitespace-normal'>Mã đơn vị</span>,
+		},
+		{
+			accessorKey: 'name',
+			header: () => <span className='whitespace-normal'>Tên đơn vị</span>,
+		},
+		{
+			id: 'time',
+			header: () => <span className='whitespace-normal'>Thời gian</span>,
+			cell: ({ row }) => {
+				const { startMonth, endMonth } = row.original;
+
+				if (!startMonth && !endMonth) return '-';
+				if (!startMonth) return formatDate(endMonth!);
+				if (!endMonth) return formatDate(startMonth);
+
+				return `${formatDate(startMonth)} - ${formatDate(endMonth)}`;
+			},
+		},
+	];
+
 export const MAIN_COST_ADJUSTMENT_COLUMNS: ColumnDef<ProductionAdjustment>[] = [
 	{
 		accessorKey: 'productCode',

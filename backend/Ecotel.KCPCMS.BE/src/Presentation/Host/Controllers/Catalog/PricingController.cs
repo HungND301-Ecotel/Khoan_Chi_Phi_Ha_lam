@@ -1043,7 +1043,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Get Lump Sum Final Settlement List", "")]
     public async Task<IActionResult> GetLumpSumFinalSettlementList([FromBody] LumpSumFinalSettlementListRequest request)
     {
-        var result = await Mediator.Send(new GetLumpSumFinalSettlementListQuery(request.Month, request.Year, request.ProcessGroupId));
+        var result = await Mediator.Send(new GetLumpSumFinalSettlementListQuery(request.Month, request.Year, request.ProcessGroupId, request.DepartmentId));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -1053,9 +1053,10 @@ public class PricingController : BaseNoAuthController
         [FromQuery] string month,
         [FromQuery] string year,
         [FromQuery] string? processGroupId,
+        [FromQuery] string? departmentId,
         [FromQuery] string? search)
     {
-        var result = await Mediator.Send(new ExportLumpSumFinalSettlementMonthExcelQuery(month, year, processGroupId, search));
+        var result = await Mediator.Send(new ExportLumpSumFinalSettlementMonthExcelQuery(month, year, processGroupId, departmentId, search));
         return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
     }
 
@@ -1063,7 +1064,7 @@ public class PricingController : BaseNoAuthController
     [OpenApiOperation("Get Lump Sum Final Settlement Quarter List", "")]
     public async Task<IActionResult> GetLumpSumFinalSettlementQuarterList([FromBody] LumpSumFinalSettlementQuarterListRequest request)
     {
-        var result = await Mediator.Send(new GetLumpSumFinalSettlementQuarterListQuery(request.Quarter, request.Year, request.ProcessGroupId));
+        var result = await Mediator.Send(new GetLumpSumFinalSettlementQuarterListQuery(request.Quarter, request.Year, request.ProcessGroupId, request.DepartmentId));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -1081,9 +1082,10 @@ public class PricingController : BaseNoAuthController
         [FromQuery] string quarter,
         [FromQuery] string year,
         [FromQuery] string? processGroupId,
+        [FromQuery] string? departmentId,
         [FromQuery] string? search)
     {
-        var result = await Mediator.Send(new ExportLumpSumFinalSettlementQuarterExcelQuery(quarter, year, processGroupId, search));
+        var result = await Mediator.Send(new ExportLumpSumFinalSettlementQuarterExcelQuery(quarter, year, processGroupId, departmentId, search));
         return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
     }
 

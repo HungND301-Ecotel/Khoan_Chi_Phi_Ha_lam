@@ -7,6 +7,7 @@ import { API } from '@/constants/api-enpoint';
 import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS } from '@/features/main/cost/lump-sum-final-settlement/columns';
 import { LumpSumDataTable } from '@/features/main/cost/lump-sum-final-settlement/components/datatable';
 import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlement/grouping';
+import type { Department } from '@/features/main/catalog/department/columns';
 import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementMonthResponse,
@@ -98,6 +99,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		SavingsRateConfig[]
 	>([]);
 	const [isLoading, setIsLoading] = useState(false);
+	const [departments, setDepartments] = useState<
+		{ value: string; label: string }[]
+	>([{ value: '', label: 'Tất cả đơn vị' }]);
 	const [processGroups, setProcessGroups] = useState<
 		{ value: string; label: string }[]
 	>([{ value: '', label: 'Tất cả nhóm công đoạn' }]);
@@ -111,6 +115,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			month: defaultMonth,
 			year: defaultYear,
 			processGroup: '',
+			department: '',
 		},
 	});
 
@@ -155,10 +160,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		const selectedMonth = form.getValues('month') || defaultMonth;
 		const selectedYear = form.getValues('year') || defaultYear;
 		const selectedProcessGroup = form.getValues('processGroup') || '';
+		const selectedDepartment = form.getValues('department') || '';
 		return {
 			month: selectedMonth,
 			year: selectedYear,
-			processGroupId: selectedProcessGroup,
+			processGroupId: selectedProcessGroup || null,
+			departmentId: selectedDepartment || null,
 		};
 	}, [defaultMonth, defaultYear, form]);
 
@@ -387,6 +394,25 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	]);
 
 	useEffect(() => {
+		const fetchDepartments = async () => {
+			try {
+				const response = await api.pagging<Department>(
+					API.CATALOG.DEPARTMENT.LIST,
+					{ ignorePagination: true },
+				);
+				const options = [
+					{ value: '', label: 'Tất cả đơn vị' },
+					...(response.result.data ?? []).map((item: Department) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					})),
+				];
+				setDepartments(options);
+			} catch (error) {
+				console.error('Error fetching departments:', error);
+			}
+		};
+
 		const fetchProcessGroups = async () => {
 			try {
 				const response = await api.pagging<ProcessGroup>(
@@ -406,6 +432,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			}
 		};
 
+		fetchDepartments();
 		fetchProcessGroups();
 	}, []);
 
@@ -413,7 +440,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		async (payload: {
 			month: string;
 			year: string;
-			processGroupId: string;
+			processGroupId?: string | null;
+			departmentId?: string | null;
 		}) => {
 			setIsLoading(true);
 			try {
@@ -467,7 +495,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		async (payload: {
 			month: string;
 			year: string;
-			processGroupId: string;
+			processGroupId?: string | null;
+			departmentId?: string | null;
 		}) => {
 			const monthRes = await api.post<
 				LumpSumFinalSettlementMonthResponse,
@@ -476,6 +505,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				month: payload.month,
 				year: payload.year,
 				processGroupId: payload.processGroupId,
+				departmentId: payload.departmentId,
 			});
 			setCustomCosts(monthRes.result.customCosts ?? []);
 		},
@@ -489,7 +519,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				return;
 			}
 
-			const { month, year, processGroupId } = getCurrentFilter();
+			const { month, year, processGroupId, departmentId } = getCurrentFilter();
 			const targetMonth = String(
 				target.month ? Number(target.month) : (row.month ?? Number(month)),
 			);
@@ -497,7 +527,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				id: target.id.startsWith('temp-') ? undefined : target.id,
 				month: targetMonth,
 				year,
-				processGroupId,
+				processGroupId: processGroupId ?? '',
 				actualQuantity: target.actualQuantity || 0,
 				customName: target.customName || row.productName || '',
 				materialUnitPrice: target.materialUnitPrice || 0,
@@ -517,7 +547,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 						payload,
 					);
 				}
-				await refreshCustomCosts({ month, year, processGroupId });
+				await refreshCustomCosts({ month, year, processGroupId, departmentId });
 				setEditingSnapshot((prev) => {
 					if (!row.id) {
 						return prev;
@@ -569,7 +599,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					id: tempId,
 					month: targetMonth,
 					year,
-					processGroupId,
+					processGroupId: processGroupId ?? '',
 					customName: '',
 					actualQuantity: 0,
 					materialUnitPrice: 0,
@@ -656,7 +686,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			fetchLumpSumMonth({
 				month: data.month,
 				year: data.year,
-				processGroupId: data.processGroup ?? '',
+				processGroupId: data.processGroup || null,
+				departmentId: data.department || null,
 			});
 		},
 		[fetchLumpSumMonth],
@@ -669,6 +700,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					month: value.month,
 					year: value.year,
 					processGroup: value.processGroup ?? '',
+					department: value.department ?? '',
 				});
 			}
 		});
@@ -682,6 +714,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				month: value.month,
 				year: value.year,
 				processGroup: value.processGroup ?? '',
+				department: value.department ?? '',
 			});
 		}
 	}, [form, handleFilter]);
@@ -691,7 +724,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			<CardHeader>
 				<FormProvider context={form} onSubmit={handleFilter}>
 					<div className='flex items-end justify-between gap-4'>
-						<div className='grid w-full max-w-3xl flex-1 grid-cols-1 gap-4 md:grid-cols-3'>
+						<div className='grid w-full max-w-4xl flex-1 grid-cols-1 gap-4 md:grid-cols-4'>
 							<FormMonthYear
 								control={form.control}
 								month='month'
@@ -705,6 +738,13 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 								label='Nhóm công đoạn sản xuất'
 								placeholder='Tất cả nhóm công đoạn'
 								options={processGroups}
+							/>
+							<FormComboBox
+								control={form.control}
+								name='department'
+								label='Đơn vị'
+								placeholder='Tất cả đơn vị'
+								options={departments}
 							/>
 						</div>
 						<div className='flex shrink-0 gap-4'>

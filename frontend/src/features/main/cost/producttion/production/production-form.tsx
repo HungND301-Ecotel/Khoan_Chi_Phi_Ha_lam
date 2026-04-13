@@ -346,12 +346,6 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<FormRow>
-				<FormMonthYear
-					control={form.control}
-					name='startMonth'
-					label='Thời gian'
-					className='flex-1'
-				/>
 				<FormComboBox
 					control={form.control}
 					name='departmentId'
@@ -361,6 +355,14 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 						label: `${department.code} - ${department.name}`,
 						value: department.id,
 					}))}
+				/>
+			</FormRow>
+			<FormRow>
+				<FormMonthYear
+					control={form.control}
+					name='startMonth'
+					label='Thời gian'
+					className='flex-1'
 				/>
 			</FormRow>
 

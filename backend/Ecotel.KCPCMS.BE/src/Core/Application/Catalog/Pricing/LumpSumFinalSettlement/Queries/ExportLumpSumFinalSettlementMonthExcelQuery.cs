@@ -11,6 +11,7 @@ public record ExportLumpSumFinalSettlementMonthExcelQuery(
     string Month,
     string Year,
     string? ProcessGroupId,
+    string? DepartmentId,
     string? Search) : IRequest<ExportLumpSumFinalSettlementMonthExcelResponse>;
 
 public record ExportLumpSumFinalSettlementMonthExcelResponse(byte[] FileBytes, string FileName);
@@ -41,7 +42,8 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
             new GetLumpSumFinalSettlementListQuery(
                 request.Month,
                 request.Year,
-                request.ProcessGroupId ?? string.Empty),
+                request.ProcessGroupId,
+                request.DepartmentId),
             cancellationToken);
 
         var savingsRateConfigResponse = await mediator.Send(

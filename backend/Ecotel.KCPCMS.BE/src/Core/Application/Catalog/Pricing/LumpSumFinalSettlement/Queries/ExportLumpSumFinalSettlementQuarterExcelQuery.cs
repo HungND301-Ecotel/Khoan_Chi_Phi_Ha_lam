@@ -9,6 +9,7 @@ public record ExportLumpSumFinalSettlementQuarterExcelQuery(
     string Quarter,
     string Year,
     string? ProcessGroupId,
+    string? DepartmentId,
     string? Search) : IRequest<ExportLumpSumFinalSettlementQuarterExcelResponse>;
 
 public record ExportLumpSumFinalSettlementQuarterExcelResponse(byte[] FileBytes, string FileName);
@@ -39,7 +40,8 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
             new GetLumpSumFinalSettlementQuarterListQuery(
                 request.Quarter,
                 request.Year,
-                request.ProcessGroupId ?? string.Empty),
+                request.ProcessGroupId,
+                request.DepartmentId),
             cancellationToken);
 
         var groupedRows = GroupByProcessGroup(response.Items);

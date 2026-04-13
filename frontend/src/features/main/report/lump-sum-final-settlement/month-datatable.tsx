@@ -14,6 +14,7 @@ import { API } from '@/constants/api-enpoint';
 import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS } from '@/features/main/cost/lump-sum-final-settlement/columns';
 import { LumpSumDataTable } from '@/features/main/cost/lump-sum-final-settlement/components/datatable';
 import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlement/grouping';
+import type { Department } from '@/features/main/catalog/department/columns';
 import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementListRequest,
@@ -30,6 +31,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+const ALL_DEPARTMENT = '__all_department__';
 const ALL_PROCESS_GROUP = '__all_process_group__';
 
 interface LumpSumFinalSettlementMonthReportTableProps {
@@ -169,6 +171,11 @@ export function LumpSumFinalSettlementMonthReportTable({
 
 	const [month, setMonth] = useState(String(now.getMonth() + 1));
 	const [year, setYear] = useState(String(currentYear));
+	const [selectedDepartment, setSelectedDepartment] =
+		useState(ALL_DEPARTMENT);
+	const [departmentOptions, setDepartmentOptions] = useState<
+		{ value: string; label: string }[]
+	>([{ value: ALL_DEPARTMENT, label: 'Tất cả đơn vị' }]);
 	const [selectedProcessGroup, setSelectedProcessGroup] =
 		useState(ALL_PROCESS_GROUP);
 	const [processGroupOptions, setProcessGroupOptions] = useState<
@@ -195,6 +202,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 		SavingsRateConfig[]
 	>([]);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -221,6 +229,34 @@ export function LumpSumFinalSettlementMonthReportTable({
 			};
 		});
 	}, [currentYear]);
+
+	useEffect(() => {
+		const fetchDepartments = async () => {
+			setIsLoadingDepartments(true);
+			try {
+				const response = await api.pagging<Department>(
+					API.CATALOG.DEPARTMENT.LIST,
+					{ ignorePagination: true },
+				);
+
+				const options = [
+					{ value: ALL_DEPARTMENT, label: 'Tất cả đơn vị' },
+					...(response.result.data ?? []).map((item) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					})),
+				];
+
+				setDepartmentOptions(options);
+			} catch (err) {
+				console.error('Failed to fetch departments:', err);
+			} finally {
+				setIsLoadingDepartments(false);
+			}
+		};
+
+		fetchDepartments();
+	}, []);
 
 	useEffect(() => {
 		const fetchProcessGroups = async () => {
@@ -262,6 +298,10 @@ export function LumpSumFinalSettlementMonthReportTable({
 					selectedProcessGroup === ALL_PROCESS_GROUP
 						? ''
 						: selectedProcessGroup,
+				departmentId:
+					selectedDepartment === ALL_DEPARTMENT
+						? ''
+						: selectedDepartment,
 			};
 
 			const [response, savingsRateConfigRes] = await Promise.all([
@@ -311,7 +351,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 		} finally {
 			setIsLoading(false);
 		}
-	}, [month, year, selectedProcessGroup]);
+	}, [month, year, selectedDepartment, selectedProcessGroup]);
 
 	useEffect(() => {
 		fetchLumpSumFinalSettlementMonth();
@@ -603,6 +643,10 @@ export function LumpSumFinalSettlementMonthReportTable({
 						selectedProcessGroup === ALL_PROCESS_GROUP
 							? ''
 							: selectedProcessGroup,
+					departmentId:
+						selectedDepartment === ALL_DEPARTMENT
+							? ''
+							: selectedDepartment,
 					search: searchQuery.trim(),
 				},
 			});
@@ -715,6 +759,26 @@ export function LumpSumFinalSettlementMonthReportTable({
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
 								{processGroupOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className='space-y-1'>
+						<p className='text-sm font-medium'>Đơn vị</p>
+						<Select
+							value={selectedDepartment}
+							onValueChange={setSelectedDepartment}
+							disabled={isLoadingDepartments}
+						>
+							<SelectTrigger className='w-[320px] bg-white'>
+								<SelectValue placeholder='Chọn đơn vị' />
+							</SelectTrigger>
+							<SelectContent className='max-h-64'>
+								{departmentOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>

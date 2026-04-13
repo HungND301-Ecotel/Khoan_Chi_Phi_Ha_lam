@@ -3,37 +3,15 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
+	DepartmentProductionGroup,
 	MAIN_COST_PRODUCTION_COLUMNS,
 	Production,
+	PRODUCTION_DEPARTMENT_COLUMNS,
 } from '@/features/main/cost/producttion/production/columns';
 import { ProductionExpand } from '@/features/main/cost/producttion/production/production-expand';
 import { ProductionForm } from '@/features/main/cost/producttion/production/production-form';
 import { api } from '@/lib/api';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
-
-type DepartmentProductionGroup = {
-	id: string;
-	code: string;
-	name: string;
-	totalOutputs: number;
-	productionOutputIds: string[];
-};
-
-const PRODUCTION_DEPARTMENT_COLUMNS: ColumnDef<DepartmentProductionGroup>[] = [
-	{
-		accessorKey: 'code',
-		header: () => <span className='whitespace-normal'>Mã đơn vị</span>,
-	},
-	{
-		accessorKey: 'name',
-		header: () => <span className='whitespace-normal'>Tên đơn vị</span>,
-	},
-	{
-		accessorKey: 'totalOutputs',
-		header: () => <span className='whitespace-normal'>Số kỳ chi phí</span>,
-	},
-];
 
 type DepartmentProductionOutputsTableProps = {
 	departmentId: string;
@@ -81,15 +59,40 @@ function DepartmentProductionOutputsTable({
 	);
 }
 
-function groupByDepartment(productions: Production[]): DepartmentProductionGroup[] {
+function groupByDepartment(
+	productions: Production[],
+): DepartmentProductionGroup[] {
 	const groups = new Map<string, DepartmentProductionGroup>();
+	const toTimestamp = (value?: string) => {
+		if (!value) return undefined;
+		const parsed = Date.parse(value);
+		return Number.isNaN(parsed) ? undefined : parsed;
+	};
 
 	productions.forEach((item) => {
 		if (!item.departmentId) return;
 
 		const existed = groups.get(item.departmentId);
 		if (existed) {
-			existed.totalOutputs += 1;
+			const existedStart = toTimestamp(existed.startMonth);
+			const itemStart = toTimestamp(item.startMonth);
+			if (
+				item.startMonth &&
+				(existedStart === undefined ||
+					(itemStart !== undefined && itemStart < existedStart))
+			) {
+				existed.startMonth = item.startMonth;
+			}
+
+			const existedEnd = toTimestamp(existed.endMonth);
+			const itemEnd = toTimestamp(item.endMonth);
+			if (
+				item.endMonth &&
+				(existedEnd === undefined || (itemEnd !== undefined && itemEnd > existedEnd))
+			) {
+				existed.endMonth = item.endMonth;
+			}
+
 			existed.productionOutputIds.push(item.id);
 			return;
 		}
@@ -98,23 +101,28 @@ function groupByDepartment(productions: Production[]): DepartmentProductionGroup
 			id: item.departmentId,
 			code: item.departmentCode ?? '',
 			name: item.departmentName ?? '',
-			totalOutputs: 1,
+			startMonth: item.startMonth,
+			endMonth: item.endMonth,
 			productionOutputIds: [item.id],
 		});
 	});
 
-	return Array.from(groups.values()).sort((a, b) => a.code.localeCompare(b.code));
+	return Array.from(groups.values()).sort((a, b) =>
+		a.code.localeCompare(b.code),
+	);
 }
 
 export function MainCostProductionCostPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
 	const [allProductions, setAllProductions] = useState<Production[]>([]);
-	const [departmentGroups, setDepartmentGroups] = useState<DepartmentProductionGroup[]>(
+	const [departmentGroups, setDepartmentGroups] = useState<
+		DepartmentProductionGroup[]
+	>([]);
+	const [reloadKey, setReloadKey] = useState(0);
+	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>(
 		[],
 	);
-	const [reloadKey, setReloadKey] = useState(0);
-	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 	const [selectedOutputIdsByDepartment, setSelectedOutputIdsByDepartment] =
 		useState<Record<string, string[]>>({});
 

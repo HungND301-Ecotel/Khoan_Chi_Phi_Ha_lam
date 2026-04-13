@@ -2,13 +2,15 @@
 export interface LumpSumFinalSettlementListRequest {
 	month: string; // "1".."12"
 	year: string; // e.g. "2024"
-	processGroupId: string;
+	processGroupId?: string | null;
+	departmentId?: string | null;
 }
 
 export interface LumpSumFinalSettlementQuarterListRequest {
 	quarter: string; // "1".."4"
 	year: string; // e.g. "2024"
-	processGroupId: string;
+	processGroupId?: string | null;
+	departmentId?: string | null;
 }
 
 export interface LumpSumFinalSettlementQuarterResponse {
@@ -115,12 +117,14 @@ export interface YearFilterForm {
 	month?: string;
 	year?: string;
 	processGroup?: string;
+	department?: string;
 }
 
 export interface QuarterFilterForm {
 	quarter?: string;
 	year?: string;
 	processGroup?: string;
+	department?: string;
 }
 
 export interface ProcessGroup {

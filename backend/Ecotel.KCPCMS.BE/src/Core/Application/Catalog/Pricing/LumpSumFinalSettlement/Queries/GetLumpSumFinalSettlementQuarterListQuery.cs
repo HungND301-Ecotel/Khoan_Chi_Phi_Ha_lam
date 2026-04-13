@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 
-public record GetLumpSumFinalSettlementQuarterListQuery(string Quarter, string Year, string ProcessGroupId) : IRequest<LumpSumFinalSettlementQuarterResponseDto>;
+public record GetLumpSumFinalSettlementQuarterListQuery(string Quarter, string Year, string? ProcessGroupId, string? DepartmentId) : IRequest<LumpSumFinalSettlementQuarterResponseDto>;
 
 public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetLumpSumFinalSettlementQuarterListQuery, LumpSumFinalSettlementQuarterResponseDto>
 {
@@ -39,11 +39,13 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
         var quarterStartMonth = (quarter - 1) * 3 + 1;
         var quarterEndMonth = quarterStartMonth + 2;
         var hasProcessGroupFilter = Guid.TryParse(request.ProcessGroupId, out var processGroupId);
+        var hasDepartmentFilter = Guid.TryParse(request.DepartmentId, out var departmentId);
 
         var productionOutputs = await _productionOutputRepository.GetAllAsync(
             predicate: po => po.StartMonth.Year == year
                 && po.StartMonth.Month >= quarterStartMonth
                 && po.StartMonth.Month <= quarterEndMonth
+                && (!hasDepartmentFilter || po.DepartmentId == departmentId)
                 && po.AcceptanceReport != null,
             include: q => q.AsSplitQuery()
                 .Include(po => po.AcceptanceReport)
@@ -70,7 +72,8 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
 
         var productUnitPrices = await _productUnitPriceRepository.GetAllAsync(
             predicate: p => p.ScenarioType == ProductUnitPriceScenarioType.Plan
-                && (!hasProcessGroupFilter || p.Product!.ProcessGroupId == processGroupId),
+                && (!hasProcessGroupFilter || p.Product!.ProcessGroupId == processGroupId)
+                && (!hasDepartmentFilter || p.DepartmentId == departmentId),
             include: p => p.AsSplitQuery()
                 .Include(p => p.Product).ThenInclude(pr => pr!.Code)
                 .Include(p => p.Product).ThenInclude(pr => pr!.ProcessGroup)
@@ -359,6 +362,7 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
             predicate: po => po.StartMonth.Year == year
                 && po.StartMonth.Month >= quarterStartMonth
                 && po.StartMonth.Month <= quarterEndMonth
+                && (!hasDepartmentFilter || po.DepartmentId == departmentId)
                 && po.AcceptanceReport != null,
             include: q => q.AsSplitQuery()
                 .Include(po => po.ProductionOutputProcessGroups)

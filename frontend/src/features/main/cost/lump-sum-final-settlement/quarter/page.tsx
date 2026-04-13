@@ -7,6 +7,7 @@ import { API } from '@/constants/api-enpoint';
 import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS } from '@/features/main/cost/lump-sum-final-settlement/columns';
 import { LumpSumDataTable } from '@/features/main/cost/lump-sum-final-settlement/components/datatable';
 import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlement/grouping';
+import type { Department } from '@/features/main/catalog/department/columns';
 import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementQuarterListRequest,
@@ -106,6 +107,9 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		Record<string, LumpSumQuarterCustomCost>
 	>({});
 	const [isLoading, setIsLoading] = useState(false);
+	const [departments, setDepartments] = useState<
+		{ value: string; label: string }[]
+	>([{ value: '', label: 'Tất cả đơn vị' }]);
 	const [processGroups, setProcessGroups] = useState<
 		{ value: string; label: string }[]
 	>([{ value: '', label: 'Tất cả nhóm công đoạn' }]);
@@ -119,6 +123,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			quarter: defaultQuarter,
 			year: defaultYear,
 			processGroup: '',
+			department: '',
 		},
 	});
 	const watchedQuarter = form.watch('quarter');
@@ -165,12 +170,14 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		const selectedQuarter = form.getValues('quarter') || defaultQuarter;
 		const selectedYear = form.getValues('year') || defaultYear;
 		const selectedProcessGroup = form.getValues('processGroup') || '';
+		const selectedDepartment = form.getValues('department') || '';
 		const startMonth = quarterToStartMonth(selectedQuarter);
 		return {
 			quarter: selectedQuarter,
 			month: String(startMonth),
 			year: selectedYear,
-			processGroupId: selectedProcessGroup,
+			processGroupId: selectedProcessGroup || null,
+			departmentId: selectedDepartment || null,
 		};
 	}, [defaultQuarter, defaultYear, form]);
 
@@ -558,6 +565,25 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 	]);
 
 	useEffect(() => {
+		const fetchDepartments = async () => {
+			try {
+				const response = await api.pagging<Department>(
+					API.CATALOG.DEPARTMENT.LIST,
+					{ ignorePagination: true },
+				);
+				const options = [
+					{ value: '', label: 'Tất cả đơn vị' },
+					...(response.result.data ?? []).map((item: Department) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					})),
+				];
+				setDepartments(options);
+			} catch (error) {
+				console.error('Error fetching departments:', error);
+			}
+		};
+
 		const fetchProcessGroups = async () => {
 			try {
 				const response = await api.pagging<ProcessGroup>(
@@ -577,6 +603,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			}
 		};
 
+		fetchDepartments();
 		fetchProcessGroups();
 	}, []);
 
@@ -584,7 +611,8 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		async (payload: {
 			quarter: string;
 			year: string;
-			processGroupId: string;
+			processGroupId?: string | null;
+			departmentId?: string | null;
 		}) => {
 			setIsLoading(true);
 			try {
@@ -595,11 +623,11 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				const customCostRes = await api.post<
 					LumpSumQuarterCustomCost[],
 					LumpSumQuarterCustomCostListRequest
-				>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
-					quarter: payload.quarter,
-					year: payload.year,
-					processGroupId: payload.processGroupId,
-				});
+					>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
+						quarter: payload.quarter,
+						year: payload.year,
+						processGroupId: payload.processGroupId ?? '',
+					});
 				const savingsRateConfigRes = await api.pagging<SavingsRateConfig>(
 					API.CATALOG.SAVINGS_RATE_CONFIG.LIST,
 					{ ignorePagination: true },
@@ -650,7 +678,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		async (payload: {
 			quarter: string;
 			year: string;
-			processGroupId: string;
+			processGroupId?: string | null;
 		}) => {
 			const customCostRes = await api.post<
 				LumpSumQuarterCustomCost[],
@@ -658,7 +686,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_LIST, {
 				quarter: payload.quarter,
 				year: payload.year,
-				processGroupId: payload.processGroupId,
+				processGroupId: payload.processGroupId ?? '',
 			});
 
 			setCustomCosts(customCostRes.result ?? []);
@@ -681,7 +709,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				id: target.id.startsWith('temp-') ? undefined : target.id,
 				month: targetMonth,
 				year,
-				processGroupId,
+				processGroupId: processGroupId ?? '',
 				actualQuantity: target.actualQuantity || 0,
 				customName: target.customName || row.productName || '',
 				materialUnitPrice: target.materialUnitPrice || 0,
@@ -753,7 +781,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					id: tempId,
 					month: targetMonth,
 					year,
-					processGroupId,
+					processGroupId: processGroupId ?? '',
 					customName: ``,
 					actualQuantity: 0,
 					materialUnitPrice: 0,
@@ -840,7 +868,8 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			fetchLumpSumQuarter({
 				quarter: data.quarter,
 				year: data.year,
-				processGroupId: data.processGroup ?? '',
+				processGroupId: data.processGroup || null,
+				departmentId: data.department || null,
 			});
 		},
 		[fetchLumpSumQuarter],
@@ -853,6 +882,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					quarter: value.quarter,
 					year: value.year,
 					processGroup: value.processGroup ?? '',
+					department: value.department ?? '',
 				});
 			}
 		});
@@ -866,6 +896,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				quarter: value.quarter,
 				year: value.year,
 				processGroup: value.processGroup ?? '',
+				department: value.department ?? '',
 			});
 		}
 	}, [form, handleFilter]);
@@ -875,7 +906,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			<CardHeader>
 				<FormProvider context={form} onSubmit={handleFilter}>
 					<div className='flex items-end justify-between gap-4'>
-						<div className='grid w-full max-w-3xl flex-1 grid-cols-1 gap-4 md:grid-cols-3'>
+						<div className='grid w-full max-w-4xl flex-1 grid-cols-1 gap-4 md:grid-cols-4'>
 							<FormQuaterYear
 								control={form.control}
 								quarter='quarter'
@@ -889,6 +920,13 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 								label='Nhóm công đoạn sản xuất'
 								placeholder='Tất cả nhóm công đoạn'
 								options={processGroups}
+							/>
+							<FormComboBox
+								control={form.control}
+								name='department'
+								label='Đơn vị'
+								placeholder='Tất cả đơn vị'
+								options={departments}
 							/>
 						</div>
 						<div className='flex shrink-0 gap-4'>

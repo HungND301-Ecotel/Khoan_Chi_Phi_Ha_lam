@@ -4,14 +4,16 @@ public class LumpSumFinalSettlementListRequest
 {
     public string Month { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
-    public string ProcessGroupId { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public string? DepartmentId { get; set; }
 }
 
 public class LumpSumFinalSettlementQuarterListRequest
 {
     public string Quarter { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
-    public string ProcessGroupId { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public string? DepartmentId { get; set; }
 }
 
 public class LumpSumQuarterCustomCostListRequest

@@ -2,37 +2,15 @@ import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
+import { AdjustmentExpand } from '@/features/main/cost/producttion/adjustment/adjustment-expand';
 import {
+	ADJUSTMENT_DEPARTMENT_COLUMNS,
+	DepartmentAdjustmentGroup,
 	MAIN_COST_ADJUSTMENT_COLUMNS,
 	ProductionAdjustment,
 } from '@/features/main/cost/producttion/adjustment/columns';
-import { AdjustmentExpand } from '@/features/main/cost/producttion/adjustment/adjustment-expand';
 import { api } from '@/lib/api';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
-
-type DepartmentAdjustmentGroup = {
-	id: string;
-	code: string;
-	name: string;
-	totalProducts: number;
-	productUnitPriceIds: string[];
-};
-
-const ADJUSTMENT_DEPARTMENT_COLUMNS: ColumnDef<DepartmentAdjustmentGroup>[] = [
-	{
-		accessorKey: 'code',
-		header: () => <span className='whitespace-normal'>Mã đơn vị</span>,
-	},
-	{
-		accessorKey: 'name',
-		header: () => <span className='whitespace-normal'>Tên đơn vị</span>,
-	},
-	{
-		accessorKey: 'totalProducts',
-		header: () => <span className='whitespace-normal'>Số sản phẩm</span>,
-	},
-];
 
 type DepartmentAdjustmentProductsTableProps = {
 	departmentId: string;
@@ -69,11 +47,7 @@ function DepartmentAdjustmentProductsTable({
 				{ key: 'productName', label: 'Tên sản phẩm' },
 				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn sản xuất' },
 			]}
-			onExpand={(props) => (
-				<AdjustmentExpand
-					{...props}
-				/>
-			)}
+			onExpand={(props) => <AdjustmentExpand {...props} />}
 			showCreateAction={false}
 			showFilterAction={false}
 			showDeleteAction={false}
@@ -92,13 +66,37 @@ function groupByDepartment(
 	products: ProductionAdjustment[],
 ): DepartmentAdjustmentGroup[] {
 	const groups = new Map<string, DepartmentAdjustmentGroup>();
+	const toTimestamp = (value?: string) => {
+		if (!value) return undefined;
+		const parsed = Date.parse(value);
+		return Number.isNaN(parsed) ? undefined : parsed;
+	};
 
 	products.forEach((item) => {
 		if (!item.departmentId) return;
 
 		const existed = groups.get(item.departmentId);
 		if (existed) {
-			existed.totalProducts += 1;
+			const existedStart = toTimestamp(existed.startMonth);
+			const itemStart = toTimestamp(item.startMonth);
+			if (
+				item.startMonth &&
+				(existedStart === undefined ||
+					(itemStart !== undefined && itemStart < existedStart))
+			) {
+				existed.startMonth = item.startMonth;
+			}
+
+			const existedEnd = toTimestamp(existed.endMonth);
+			const itemEnd = toTimestamp(item.endMonth);
+			if (
+				item.endMonth &&
+				(existedEnd === undefined ||
+					(itemEnd !== undefined && itemEnd > existedEnd))
+			) {
+				existed.endMonth = item.endMonth;
+			}
+
 			existed.productUnitPriceIds.push(item.id);
 			return;
 		}
@@ -107,19 +105,24 @@ function groupByDepartment(
 			id: item.departmentId,
 			code: item.departmentCode ?? '',
 			name: item.departmentName ?? '',
-			totalProducts: 1,
+			startMonth: item.startMonth,
+			endMonth: item.endMonth,
 			productUnitPriceIds: [item.id],
 		});
 	});
 
-	return Array.from(groups.values()).sort((a, b) => a.code.localeCompare(b.code));
+	return Array.from(groups.values()).sort((a, b) =>
+		a.code.localeCompare(b.code),
+	);
 }
 
 export function MainCostProductionRevenueAdjustmentPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
 	const [reloadKey, setReloadKey] = useState(0);
-	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
+	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>(
+		[],
+	);
 	const [selectedProductIdsByDepartment, setSelectedProductIdsByDepartment] =
 		useState<Record<string, string[]>>({});
 	const query = useMemo(
@@ -161,7 +164,9 @@ export function MainCostProductionRevenueAdjustmentPage() {
 		}
 	};
 
-	const handleDepartmentSelectionChange = (rows: DepartmentAdjustmentGroup[]) => {
+	const handleDepartmentSelectionChange = (
+		rows: DepartmentAdjustmentGroup[],
+	) => {
 		const departmentIds = rows.map((row) => row.id);
 		setSelectedDepartmentIds(departmentIds);
 		setSelectedProductIdsByDepartment((prev) => {

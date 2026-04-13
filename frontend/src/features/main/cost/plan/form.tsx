@@ -83,7 +83,8 @@ export function PlanForm({
 			api
 				.get<CostProductDetail>(API.COST.PRODUCT.DETAIL_PLANNED(row.id))
 				.then((res) => {
-					const { productId, unitOfMeasureId, departmentId, outputs } = res.result;
+					const { productId, unitOfMeasureId, departmentId, outputs } =
+						res.result;
 					form.reset({
 						productId,
 						unitOfMeasureId,
@@ -140,6 +141,18 @@ export function PlanForm({
 			<FormRow>
 				<FormComboBox
 					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
+					}))}
+				/>
+			</FormRow>
+			<FormRow>
+				<FormComboBox
+					control={form.control}
 					name='productId'
 					label='Mã sản phẩm'
 					placeholder='Chọn mã sản phẩm'
@@ -157,16 +170,6 @@ export function PlanForm({
 					options={units.map((unit) => ({
 						label: unit.name,
 						value: unit.id,
-					}))}
-				/>
-				<FormComboBox
-					control={form.control}
-					name='departmentId'
-					label='Đơn vị'
-					placeholder='Chọn đơn vị'
-					options={departments.map((department) => ({
-						label: `${department.code} - ${department.name}`,
-						value: department.id,
 					}))}
 				/>
 			</FormRow>

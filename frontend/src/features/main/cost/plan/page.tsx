@@ -2,36 +2,16 @@ import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
-import { MAIN_COST_PLAN_COLUMNS } from '@/features/main/cost/plan/columns';
+import {
+	DepartmentPlanGroup,
+	MAIN_COST_PLAN_COLUMNS,
+	PLAN_DEPARTMENT_COLUMNS,
+} from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
 import { CostProduct } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
-
-type DepartmentPlanGroup = {
-	id: string;
-	code: string;
-	name: string;
-	totalProducts: number;
-	productUnitPriceIds: string[];
-};
-
-const PLAN_DEPARTMENT_COLUMNS: ColumnDef<DepartmentPlanGroup>[] = [
-	{
-		accessorKey: 'code',
-		header: () => <span className='whitespace-normal'>Mã đơn vị</span>,
-	},
-	{
-		accessorKey: 'name',
-		header: () => <span className='whitespace-normal'>Tên đơn vị</span>,
-	},
-	{
-		accessorKey: 'totalProducts',
-		header: () => <span className='whitespace-normal'>Số sản phẩm</span>,
-	},
-];
 
 type DepartmentPlanProductsTableProps = {
 	departmentId: string;
@@ -84,13 +64,36 @@ function DepartmentPlanProductsTable({
 
 function groupByDepartment(products: CostProduct[]): DepartmentPlanGroup[] {
 	const groups = new Map<string, DepartmentPlanGroup>();
+	const toTimestamp = (value?: string) => {
+		if (!value) return undefined;
+		const parsed = Date.parse(value);
+		return Number.isNaN(parsed) ? undefined : parsed;
+	};
 
 	products.forEach((item) => {
 		if (!item.departmentId) return;
 
 		const existed = groups.get(item.departmentId);
 		if (existed) {
-			existed.totalProducts += 1;
+			const existedStart = toTimestamp(existed.startMonth);
+			const itemStart = toTimestamp(item.startMonth);
+			if (
+				item.startMonth &&
+				(existedStart === undefined ||
+					(itemStart !== undefined && itemStart < existedStart))
+			) {
+				existed.startMonth = item.startMonth;
+			}
+
+			const existedEnd = toTimestamp(existed.endMonth);
+			const itemEnd = toTimestamp(item.endMonth);
+			if (
+				item.endMonth &&
+				(existedEnd === undefined || (itemEnd !== undefined && itemEnd > existedEnd))
+			) {
+				existed.endMonth = item.endMonth;
+			}
+
 			existed.productUnitPriceIds.push(item.id);
 			return;
 		}
@@ -99,7 +102,8 @@ function groupByDepartment(products: CostProduct[]): DepartmentPlanGroup[] {
 			id: item.departmentId,
 			code: item.departmentCode ?? '',
 			name: item.departmentName ?? '',
-			totalProducts: 1,
+			startMonth: item.startMonth,
+			endMonth: item.endMonth,
 			productUnitPriceIds: [item.id],
 		});
 	});
