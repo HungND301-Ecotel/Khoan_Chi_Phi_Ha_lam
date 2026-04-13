@@ -34,7 +34,8 @@ public class GetLumpSumQuarterCustomCostListQueryHandler(IUnitOfWork unitOfWork)
                 && x.Year == year
                 && (!hasProcessGroup || x.ProcessGroupId == processGroupId)
                 && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalExcavation
-                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut,
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.SavingCarryForward,
             disableTracking: true);
 
         return items

@@ -1113,6 +1113,14 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
+    [HttpPut("lump-sum-final-settlement/month-carry-forward")]
+    [OpenApiOperation("Update Lump Sum Month Carry Forward Value", "")]
+    public async Task<IActionResult> UpdateLumpSumMonthCarryForward([FromBody] UpdateLumpSumMonthCarryForwardRequest request)
+    {
+        var result = await Mediator.Send(new UpdateLumpSumMonthCarryForwardCommand(request));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
     [HttpDelete("lump-sum-final-settlement/quarter-custom-cost/{id:guid}")]
     [OpenApiOperation("Delete Lump Sum Quarter Custom Cost", "")]
     public async Task<IActionResult> DeleteLumpSumQuarterCustomCost([FromRoute] Guid id)

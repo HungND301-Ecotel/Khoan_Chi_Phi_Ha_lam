@@ -56,3 +56,11 @@ public class UpdateLumpSumMonthSpecialQuantityRequest
     public double CoalExcavationActualQuantity { get; set; }
     public double CoalCrosscutActualQuantity { get; set; }
 }
+
+public class UpdateLumpSumMonthCarryForwardRequest
+{
+    public string Month { get; set; } = string.Empty;
+    public string Year { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public double SavingCarryForwardToNextMonths { get; set; }
+}

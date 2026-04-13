@@ -66,6 +66,8 @@ public class LumpSumFinalSettlementMonthResponseDto
     public double AcceptedSavingMonth { get; set; }
     public double RevenueAdjustmentRate { get; set; }
     public double SavingAddedToIncomeMonth { get; set; }
+    public List<LumpSumSavingCarryForwardByMonthDto> SavingCarryForwardByMonths { get; set; } = new();
+    public double SavingCarryForwardToNextMonths { get; set; }
 }
 
 public class LumpSumQuarterRevenueByMonthDto
@@ -97,4 +99,10 @@ public class LumpSumQuarterCustomCostDto
     public double MaterialUnitPrice { get; set; }
     public double MaintainUnitPrice { get; set; }
     public double ElectricityUnitPrice { get; set; }
+}
+
+public class LumpSumSavingCarryForwardByMonthDto
+{
+    public int Month { get; set; }
+    public double Value { get; set; }
 }

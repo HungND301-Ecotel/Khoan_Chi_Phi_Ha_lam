@@ -51,6 +51,13 @@ export interface LumpSumFinalSettlementMonthResponse {
 	acceptedSavingMonth?: number;
 	revenueAdjustmentRate?: number;
 	savingAddedToIncomeMonth?: number;
+	savingCarryForwardByMonths?: LumpSumSavingCarryForwardByMonth[];
+	savingCarryForwardToNextMonths?: number;
+}
+
+export interface LumpSumSavingCarryForwardByMonth {
+	month: number;
+	value: number;
 }
 
 export interface LumpSumQuarterRevenueByMonth {
@@ -110,6 +117,13 @@ export interface UpdateLumpSumMonthSpecialQuantityRequest {
 	coalCrosscutActualQuantity: number;
 }
 
+export interface UpdateLumpSumMonthCarryForwardRequest {
+	month: string;
+	year: string;
+	processGroupId?: string | null;
+	savingCarryForwardToNextMonths: number;
+}
+
 export interface LumpSumFinalSettlement {
 	id?: string;
 	processGroupId?: string;
@@ -120,6 +134,7 @@ export interface LumpSumFinalSettlement {
 	isProcessGroupRow?: boolean;
 	excludeFromSummary?: boolean;
 	isMergedValueRow?: boolean;
+	isSavingCarryForwardInputRow?: boolean;
 	mergedValue?: number;
 	isCustomCostRow?: boolean;
 	isEditing?: boolean;

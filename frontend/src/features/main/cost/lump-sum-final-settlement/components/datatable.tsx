@@ -46,6 +46,13 @@ interface LumpSumDataTableProps {
 		row: LumpSumFinalSettlement,
 		value: number,
 	) => void;
+	onSavingCarryForwardChange?: (
+		row: LumpSumFinalSettlement,
+		value: number,
+	) => void;
+	onSaveSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
+	onEditSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
+	onCancelSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
 }
 
 export function LumpSumDataTable({
@@ -63,6 +70,10 @@ export function LumpSumDataTable({
 	onCancelSpecialQuantity,
 	onSaveSpecialQuantity,
 	onSpecialQuantityChange,
+	onSavingCarryForwardChange,
+	onSaveSavingCarryForward,
+	onEditSavingCarryForward,
+	onCancelSavingCarryForward,
 }: LumpSumDataTableProps) {
 	const renderUnitPrice = (value: number | null | undefined) => {
 		if (value == null || value === 0) {
@@ -502,6 +513,97 @@ export function LumpSumDataTable({
 											{formatNumber(row.original.mergedValue ?? 0, {
 												maximumFractionDigits: 0,
 											})}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
+							if (row.original.isSavingCarryForwardInputRow) {
+								const r = row.original;
+								const isEditing = !!r.isEditing;
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 hover:bg-gray-50'
+									>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{r.sttLabel || row.index + 1}
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='flex items-center justify-between gap-2'>
+												<span>{r.productName}</span>
+												<div className='flex items-center gap-1'>
+													{isEditing ? (
+														<>
+															<Button
+																variant='default'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onSaveSavingCarryForward?.(r)}
+															>
+																Lưu
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() =>
+																	onCancelSavingCarryForward?.(r)
+																}
+															>
+																Hủy
+															</Button>
+														</>
+													) : (
+														<Button
+															variant='outline'
+															size='sm'
+															className='h-8 px-3'
+															onClick={() => onEditSavingCarryForward?.(r)}
+														>
+															Sửa
+														</Button>
+													)}
+												</div>
+											</div>
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
+											{r.unitOfMeasureName}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell
+											colSpan={5}
+											className='border-r-2 border-gray-200 p-1 text-center'
+										>
+											{isEditing ? (
+												<FormNumberInput
+													className='h-8'
+													value={r.mergedValue ?? 0}
+													onValueChange={(value) =>
+														onSavingCarryForwardChange?.(
+															r,
+															Number(value ?? 0),
+														)
+													}
+												/>
+											) : (
+												formatNumber(r.mergedValue ?? 0, {
+													maximumFractionDigits: 0,
+												})
+											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='p-2 text-left'></TableCell>

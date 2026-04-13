@@ -474,6 +474,8 @@ export const API = {
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost',
 			MONTH_SPECIAL_QUANTITY_UPDATE:
 				'/v1/pricing/lump-sum-final-settlement/month-special-quantity',
+			MONTH_CARRY_FORWARD_UPDATE:
+				'/v1/pricing/lump-sum-final-settlement/month-carry-forward',
 			QUARTER_CUSTOM_COST_DELETE: (id: string) =>
 				`/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/${id}`,
 		},

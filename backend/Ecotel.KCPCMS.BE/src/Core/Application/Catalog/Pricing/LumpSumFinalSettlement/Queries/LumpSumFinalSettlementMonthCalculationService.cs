@@ -340,7 +340,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 && x.Year == year
                 && (!hasProcessGroupFilter || x.ProcessGroupId == processGroupId)
                 && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalExcavation
-                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut,
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut
+                && x.CustomName != LumpSumFinalSettlementSpecialQuantityKeys.SavingCarryForward,
             disableTracking: true);
 
         var specialQuantities = await _customCostRepository.GetAllAsync(
@@ -359,6 +360,26 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         var coalCrosscutActualQuantity = specialQuantities
             .Where(x => x.CustomName == LumpSumFinalSettlementSpecialQuantityKeys.CoalCrosscut)
             .Sum(x => x.ActualQuantity);
+
+        var carryForwardValues = await _customCostRepository.GetAllAsync(
+            predicate: x => x.Year == year
+                && x.Month <= month
+                && (hasProcessGroupFilter
+                    ? x.ProcessGroupId == processGroupId
+                    : x.ProcessGroupId == null)
+                && x.CustomName == LumpSumFinalSettlementSpecialQuantityKeys.SavingCarryForward,
+            disableTracking: true);
+        var carryForwardByMonthMap = carryForwardValues
+            .GroupBy(x => x.Month)
+            .ToDictionary(x => x.Key, x => x.Sum(c => c.ActualQuantity));
+        var savingCarryForwardByMonths = Enumerable.Range(1, month)
+            .Select(m => new LumpSumSavingCarryForwardByMonthDto
+            {
+                Month = m,
+                Value = carryForwardByMonthMap.GetValueOrDefault(m, 0)
+            })
+            .ToList();
+        var savingCarryForwardToNextMonths = carryForwardByMonthMap.GetValueOrDefault(month, 0);
 
         var meterExcavationActualQuantity = GetActualQuantityByGroupAndUnit(items, "DL", IsMeterUnit);
         var meterCrosscutActualQuantity = GetActualQuantityByGroupAndUnit(items, "XL", IsMeterUnit);
@@ -447,6 +468,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             AcceptedSavingMonth = acceptedSavingMonth,
             RevenueAdjustmentRate = revenueAdjustmentRate,
             SavingAddedToIncomeMonth = savingAddedToIncomeMonth,
+            SavingCarryForwardByMonths = savingCarryForwardByMonths,
+            SavingCarryForwardToNextMonths = savingCarryForwardToNextMonths,
             CustomCosts = customCosts
                 .OrderBy(x => x.CreatedOn)
                 .Select(x => new LumpSumQuarterCustomCostDto

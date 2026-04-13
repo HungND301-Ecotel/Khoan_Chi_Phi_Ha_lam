@@ -16,6 +16,7 @@ import {
 	LumpSumQuarterRevenueByMonth,
 	LumpSumQuarterTransferredCost,
 	ProcessGroup,
+	UpdateLumpSumMonthCarryForwardRequest,
 	UpdateLumpSumMonthSpecialQuantityRequest,
 	UpsertLumpSumQuarterCustomCostRequest,
 	YearFilterForm,
@@ -53,6 +54,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	const [transferredCostByMonth, setTransferredCostByMonth] = useState<LumpSumQuarterTransferredCost | null>(null);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
+	const [savingCarryForwardByMonths, setSavingCarryForwardByMonths] = useState<{ month: number; value: number }[]>([]);
+	const [savingCarryForwardToNextMonths, setSavingCarryForwardToNextMonths] = useState(0);
+	const [savingCarryForwardToNextMonthsDraft, setSavingCarryForwardToNextMonthsDraft] = useState(0);
+	const [savingCarryForwardEditing, setSavingCarryForwardEditing] = useState(false);
 	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
 	const [editingSnapshot, setEditingSnapshot] = useState<Record<string, LumpSumQuarterCustomCost>>({});
 	const [isLoading, setIsLoading] = useState(false);
@@ -107,6 +112,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setTransferredCostByMonth(monthRes.result.transferredCost ?? null);
 				setAcceptedSavingMonth(monthRes.result.acceptedSavingMonth ?? 0);
 				setSavingAddedToIncomeMonth(monthRes.result.savingAddedToIncomeMonth ?? 0);
+				setSavingCarryForwardByMonths(monthRes.result.savingCarryForwardByMonths ?? []);
+				setSavingCarryForwardToNextMonths(monthRes.result.savingCarryForwardToNextMonths ?? 0);
+				setSavingCarryForwardToNextMonthsDraft(monthRes.result.savingCarryForwardToNextMonths ?? 0);
+				setSavingCarryForwardEditing(false);
 				setCustomCosts(monthRes.result.customCosts ?? []);
 				setEditingSnapshot({});
 			} catch (error) {
@@ -129,6 +138,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setTransferredCostByMonth(null);
 				setAcceptedSavingMonth(0);
 				setSavingAddedToIncomeMonth(0);
+				setSavingCarryForwardByMonths([]);
+				setSavingCarryForwardToNextMonths(0);
+				setSavingCarryForwardToNextMonthsDraft(0);
+				setSavingCarryForwardEditing(false);
 				setCustomCosts([]);
 			} finally {
 				setIsLoading(false);
@@ -188,6 +201,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				hidePlanActual?: boolean;
 				hideUnitPrice?: boolean;
 				isMergedValueRow?: boolean;
+				isSavingCarryForwardInputRow?: boolean;
+				isEditing?: boolean;
 				mergedValue?: number;
 				isTransferredDefaultRow?: boolean;
 			},
@@ -196,6 +211,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			isBold: options?.isBold,
 			excludeFromSummary: true,
 			isMergedValueRow: options?.isMergedValueRow,
+			isSavingCarryForwardInputRow: options?.isSavingCarryForwardInputRow,
+			isEditing: options?.isEditing,
 			isTransferredDefaultRow: options?.isTransferredDefaultRow,
 			month: options?.month,
 			mergedValue: options?.mergedValue ?? options?.totalAmount ?? 0,
@@ -273,6 +290,27 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				isMergedValueRow: true,
 				mergedValue: savingAddedToIncomeMonth,
 			}),
+			...savingCarryForwardByMonths.map((item) =>
+				makeZeroRow(`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${item.month}`, {
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: item.value ?? 0,
+				}),
+			),
+			makeZeroRow('Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo', {
+				sttLabel: '*',
+				isBold: true,
+				unitOfMeasureName: 'Đồng',
+				hidePlanActual: true,
+				hideUnitPrice: true,
+				isSavingCarryForwardInputRow: true,
+				isEditing: savingCarryForwardEditing,
+				mergedValue: savingCarryForwardToNextMonthsDraft,
+			}),
 		];
 
 		const specialRows: LumpSumFinalSettlement[] = [
@@ -337,6 +375,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		quarterSpecialQuantities,
 		revenueByMonth,
 		savingAddedToIncomeMonth,
+		savingCarryForwardByMonths,
+		savingCarryForwardEditing,
+		savingCarryForwardToNextMonthsDraft,
 		savingByMonth,
 		specialQuantityDraft,
 		specialQuantityEditingField,
@@ -535,6 +576,43 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		}
 	}, [getCurrentFilter, reloadCurrentMonth, specialQuantityDraft]);
 
+	const changeSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement, value: number) => {
+		void row;
+		setSavingCarryForwardToNextMonthsDraft(Number(value ?? 0));
+	}, []);
+
+	const saveSavingCarryForwardValue = useCallback(async (row: LumpSumFinalSettlement) => {
+		void row;
+		const { month, year, processGroupId } = getCurrentFilter();
+		const payload: UpdateLumpSumMonthCarryForwardRequest = {
+			month,
+			year,
+			processGroupId: processGroupId ?? '',
+			savingCarryForwardToNextMonths: savingCarryForwardToNextMonthsDraft || 0,
+		};
+		try {
+			await api.put<boolean, UpdateLumpSumMonthCarryForwardRequest>(
+				API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_CARRY_FORWARD_UPDATE,
+				payload,
+			);
+			setSavingCarryForwardEditing(false);
+			await reloadCurrentMonth();
+		} catch (error) {
+			console.error('Error saving month carry forward value:', error);
+		}
+	}, [getCurrentFilter, reloadCurrentMonth, savingCarryForwardToNextMonthsDraft]);
+
+	const editSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement) => {
+		void row;
+		setSavingCarryForwardEditing(true);
+	}, []);
+
+	const cancelSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement) => {
+		void row;
+		setSavingCarryForwardToNextMonthsDraft(savingCarryForwardToNextMonths);
+		setSavingCarryForwardEditing(false);
+	}, [savingCarryForwardToNextMonths]);
+
 	const handleFilter = useCallback(
 		(data: YearFilterForm) => {
 			if (!data.month || !data.year) return;
@@ -607,6 +685,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					onCancelSpecialQuantity={cancelSpecialQuantity}
 					onSaveSpecialQuantity={saveSpecialQuantity}
 					onSpecialQuantityChange={changeSpecialQuantityValue}
+					onSavingCarryForwardChange={changeSavingCarryForwardValue}
+					onSaveSavingCarryForward={saveSavingCarryForwardValue}
+					onEditSavingCarryForward={editSavingCarryForwardValue}
+					onCancelSavingCarryForward={cancelSavingCarryForwardValue}
 				/>
 			</CardContent>
 		</Card>
