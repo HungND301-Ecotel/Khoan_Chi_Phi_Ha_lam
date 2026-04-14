@@ -16,6 +16,10 @@ export const planFormSchema = z.object({
 			productionMeters: z.coerce
 				.number<number>({ error: 'Sản lượng kế hoạch ban đầu phải là số' })
 				.gt(0, { error: 'Sản lượng kế hoạch ban đầu phải lớn hơn 0' }),
+			planAshContent: z.coerce
+				.number<number>({ error: 'Ak kế hoạch phải là số' })
+				.min(0, { error: 'Ak kế hoạch không được âm' })
+				.optional(),
 			startMonth: z
 				.string()
 				.nonempty({ error: 'Thời gian không được để trống' }),
@@ -34,6 +38,7 @@ export const PLAN_FORM_DEFAULT: PlanFormSchema = {
 	outputs: [
 		{
 			productionMeters: NaN,
+			planAshContent: 0,
 			startMonth: '',
 			endMonth: '',
 			outputType: 1,

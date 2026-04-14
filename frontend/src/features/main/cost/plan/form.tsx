@@ -49,6 +49,9 @@ export function PlanForm({
 	const [products, setProducts] = useState<Product[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [departments, setDepartments] = useState<Department[]>([]);
+	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
+		new Set(),
+	);
 
 	const form = useForm<PlanFormSchema>({
 		resolver: zodResolver(planFormSchema),
@@ -61,18 +64,31 @@ export function PlanForm({
 	const selectedProduct = products.find(
 		(product) => product.id === watchedProductId,
 	);
+	const isAkApplicable =
+		!!selectedProduct?.processGroupId &&
+		akProcessGroupIds.has(selectedProduct.processGroupId);
 
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST),
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
 			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST),
+			api.pagging<{ processGroupId: string }>(API.CATALOG.AK_FACTOR_CONFIG.LIST, {
+				ignorePagination: true,
+			}),
 		]);
 
-		promises.then(([products, units, departments]) => {
+		promises.then(([products, units, departments, akConfigs]) => {
 			setProducts(products.result.data);
 			setUnits(units.result.data);
 			setDepartments(departments.result.data);
+			setAkProcessGroupIds(
+				new Set(
+					(akConfigs.result.data || [])
+						.map((item) => item.processGroupId)
+						.filter((id) => !!id),
+				),
+			);
 
 			if (!row && defaultDepartmentId) {
 				form.setValue('departmentId', defaultDepartmentId);
@@ -83,18 +99,31 @@ export function PlanForm({
 			api
 				.get<CostProductDetail>(API.COST.PRODUCT.DETAIL_PLANNED(row.id))
 				.then((res) => {
-					const { productId, unitOfMeasureId, departmentId, outputs } =
+					const {
+						productId,
+						unitOfMeasureId,
+						departmentId,
+						outputs,
+					} =
 						res.result;
 					form.reset({
 						productId,
 						unitOfMeasureId,
 						departmentId,
 						outputs: outputs.map(
-							({ startMonth, endMonth, outputType, productionMeters, id }) => ({
+							({
+								startMonth,
+								endMonth,
+								outputType,
+								productionMeters,
+								planAshContent,
+								id,
+							}) => ({
 								startMonth: startMonth.substring(0, 10),
 								endMonth: endMonth.substring(0, 10),
 								outputType,
 								productionMeters,
+								planAshContent: planAshContent ?? 0,
 								id,
 							}),
 						),
@@ -108,6 +137,7 @@ export function PlanForm({
 			const formattedOutputs = outputs.map((output) => ({
 				...output,
 				endMonth: output.startMonth, // Gán giá trị ở đây
+				planAshContent: isAkApplicable ? (output.planAshContent ?? 0) : 0,
 			}));
 
 			if (row) {
@@ -219,6 +249,16 @@ export function PlanForm({
 								label='Thời gian'
 								className='flex-1'
 							/>
+							{isAkApplicable && (
+								<div className='flex-1'>
+									<FormNumber
+										control={form.control}
+										name={`outputs.${index}.planAshContent`}
+										label='Ak kế hoạch (%)'
+										placeholder='Nhập Ak kế hoạch'
+									/>
+								</div>
+							)}
 							<div className='flex-1'>
 								<FormNumber
 									control={form.control}

@@ -70,7 +70,10 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            exitedProductUnitPrice.Update(request.UpdateModel.ProductId, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.DepartmentId);
+            exitedProductUnitPrice.Update(
+                request.UpdateModel.ProductId,
+                request.UpdateModel.UnitOfMeasureId,
+                request.UpdateModel.DepartmentId);
 
             // Update ProductionOutputs relationship - smart update to avoid tracking conflicts
             var existingProductionOutputIds = exitedProductUnitPrice.ProductUnitPriceProductionOutputs

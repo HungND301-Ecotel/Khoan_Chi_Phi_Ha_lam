@@ -110,6 +110,11 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
+				name: 'Hệ số Ak',
+				href: '/catalogs/ak-factors',
+			},
+			{
+				type: 'link',
 				name: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
 				href: '/catalogs/revenue-cost-adjustment-configs',
 			},

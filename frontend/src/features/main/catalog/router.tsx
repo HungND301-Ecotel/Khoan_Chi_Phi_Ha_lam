@@ -19,6 +19,7 @@ import { MainCatalogParameterProductionOrderPage } from './production-order/page
 import { MainCatalogNormFactorPage } from './norm-factor/page';
 import { MainCatalogRevenueCostAdjustmentConfigPage } from './revenue-cost-adjustment-config/page';
 import { MainCatalogSavingsRateConfigPage } from './savings-rate-config/page';
+import { MainCatalogAkFactorConfigPage } from './ak-factor-config/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -154,6 +155,14 @@ const MainCatalogRouter: RouteObject = {
 			handle: {
 				breadcrumb: 'Hệ số tiết kiệm được chấp nhận',
 				title: 'Hệ số tiết kiệm được chấp nhận',
+			},
+		},
+		{
+			path: 'ak-factors',
+			element: <MainCatalogAkFactorConfigPage />,
+			handle: {
+				breadcrumb: 'Hệ số Ak',
+				title: 'Hệ số Ak',
 			},
 		},
 		{

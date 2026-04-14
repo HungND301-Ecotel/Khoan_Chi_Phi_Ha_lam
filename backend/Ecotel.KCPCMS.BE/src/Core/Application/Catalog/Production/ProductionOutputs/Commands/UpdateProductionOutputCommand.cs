@@ -181,7 +181,10 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                     throw new ConflictException(CustomResponseMessage.InvalidParams);
                 }
 
-                groupEntity.AddProduct(ProductionOutputProduct.Create(productDto.ProductId, productDto.ProductionMeters));
+                groupEntity.AddProduct(ProductionOutputProduct.Create(
+                    productDto.ProductId,
+                    productDto.ProductionMeters,
+                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);
@@ -221,13 +224,13 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                 if (remainingOutputs.Any())
                 {
                     await mediator.Send(new UpdateAdjustmentProductUnitPriceCommand(
-                        new UpdateAdjustmentProductUnitPriceDto
-                        {
-                            Id = price.Id,
-                            ProductId = price.ProductId,
-                            UnitOfMeasureId = price.UnitOfMeasureId,
-                            ProductionOutputs = remainingOutputs
-                        }), cancellationToken);
+                    new UpdateAdjustmentProductUnitPriceDto
+                    {
+                        Id = price.Id,
+                        ProductId = price.ProductId,
+                        UnitOfMeasureId = price.UnitOfMeasureId,
+                        ProductionOutputs = remainingOutputs
+                    }), cancellationToken);
                 }
                 else
                 {
@@ -312,7 +315,10 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         foreach (var productId in newProductIds)
         {
             var newPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
-                productId, null, departmentId, ProductUnitPriceScenarioType.Adjustment);
+                productId,
+                null,
+                departmentId,
+                ProductUnitPriceScenarioType.Adjustment);
             newPrice.AddProductionOutput(productionOutputId, productMeters[productId]);
             await _productUnitPriceRepository.InsertAsync(newPrice, cancellationToken);
         }

@@ -5,6 +5,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
@@ -24,6 +25,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
 
     public async Task<AdjustmentProductUnitPriceDetailDto> Handle(GetAdjustmentProductUnitPriceByIdQuery request, CancellationToken cancellationToken)
     {
@@ -61,7 +63,12 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                         StartMonth = po.ProductionOutput!.StartMonth,
                         EndMonth = po.ProductionOutput.EndMonth,
                         ProductionMeters = po.ProductionMeters,
-                        StandardProductionMeters = po.ProductionOutput.StandardProductionMeters
+                        StandardProductionMeters = po.ProductionOutput.StandardProductionMeters,
+                        ActualAshContent = po.ProductionOutput.ProductionOutputProcessGroups
+                            .SelectMany(g => g.ProductionOutputProducts)
+                            .Where(pp => pp.ProductId == p.ProductId)
+                            .Select(pp => (double?)pp.ActualAshContent)
+                            .FirstOrDefault() ?? 0
                     })
                     .ToList()
             })
@@ -107,6 +114,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 StartMonth = o.StartMonth,
                 EndMonth = o.EndMonth,
                 ProductionMeters = o.ProductionMeters,
+                PlanAshContent = o.PlanAshContent,
                 PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                 PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                 PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -122,11 +130,8 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             StartMonth = o.StartMonth,
             EndMonth = o.EndMonth,
             ProductionMeters = o.ProductionMeters,
+            PlanAshContent = o.PlanAshContent
         }).ToList();
-
-        var plannedOutputsByPeriod = plannedOutputsRaw
-            .GroupBy(o => (o.StartMonth, o.EndMonth))
-            .ToDictionary(g => g.Key, g => g.ToList());
 
         // STEP 3: Load planned cost data
         var plannedMaintainCostIds = plannedOutputsRaw.Where(o => o.PlannedMaintainCostId.HasValue).Select(o => o.PlannedMaintainCostId!.Value).ToList();
@@ -136,15 +141,21 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
         var plannedMaintainFactors = await LoadPlannedMaintainFactors(plannedMaintainCostIds, cancellationToken);
         var plannedElectricityFactors = await LoadPlannedElectricityFactors(plannedElectricityCostIds, cancellationToken);
         var plannedMaterialCosts = await LoadPlannedMaterialCosts(plannedMaterialCostIds, cancellationToken);
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => x.ProcessGroupId == baseData.ProcessGroupId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
         // STEP 4: Calculate AdjTotalPrice for each ProductionOutput
         var productionOutputsWithAdj = baseData.ProductionOutputs.Select(po =>
         {
             var adjTotalPrice = 0.0;
 
-            var plannedOutput = plannedOutputsByPeriod.TryGetValue((po.StartMonth, po.EndMonth), out var candidates)
-                ? candidates.FirstOrDefault()
-                : null;
+            var plannedOutput = plannedOutputsRaw
+                .Where(o => o.StartMonth <= po.StartMonth && o.EndMonth >= po.EndMonth)
+                .OrderBy(o => o.StartMonth)
+                .ThenBy(o => o.EndMonth)
+                .FirstOrDefault();
 
             if (plannedOutput != null)
             {
@@ -152,8 +163,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 var plannedMaterialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
                 var plannedMaintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
                 var plannedElectricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
-
-                adjTotalPrice = po.ProductionMeters * (plannedMaterialCost + plannedMaintainCost + plannedElectricityCost);
+                var akDiff = (decimal)(po.ActualAshContent - plannedOutput.PlanAshContent);
+                var akRate = ResolveAkRate(akConfigs, akDiff);
+                adjTotalPrice = po.ProductionMeters * (plannedMaterialCost * (1 + (double)akRate) + plannedMaintainCost + plannedElectricityCost);
             }
 
             return new AdjustmentProductionOutputDto
@@ -164,6 +176,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 EndMonth = po.EndMonth,
                 ProductionMeters = po.ProductionMeters,
                 StandardProductionMeters = po.StandardProductionMeters,
+                ActualAshContent = po.ActualAshContent,
                 AdjTotalPrice = adjTotalPrice
             };
         }).ToList();
@@ -193,6 +206,33 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
     }
 
     #region Helper Methods
+
+    private static decimal ResolveAkRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
+    {
+        foreach (var config in configs)
+        {
+            var minMatched = !config.MinAkDiff.HasValue || akDiff >= config.MinAkDiff.Value;
+            var maxMatched = !config.MaxAkDiff.HasValue || akDiff <= config.MaxAkDiff.Value;
+            if (!minMatched || !maxMatched)
+            {
+                continue;
+            }
+
+            if (config.MinAdjustmentRate.HasValue && config.MaxAdjustmentRate.HasValue)
+            {
+                if (config.MinAdjustmentRate == config.MaxAdjustmentRate)
+                {
+                    return config.MinAdjustmentRate.Value;
+                }
+            }
+            else
+            {
+                return config.MinAdjustmentRate ?? config.MaxAdjustmentRate ?? 0;
+            }
+        }
+
+        return 0;
+    }
 
     private async Task<Dictionary<Guid, List<MaintainFactorData>>> LoadPlannedMaintainFactors(
         List<Guid> costIds, CancellationToken cancellationToken)
@@ -389,6 +429,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
+        public double PlanAshContent { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }
@@ -402,6 +443,17 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
         public double AdjustmentFactor { get; set; }
+    }
+
+    private class ProductionOutputRawData
+    {
+        public Guid Id { get; set; }
+        public Guid? ProductionOutputId { get; set; }
+        public DateOnly? StartMonth { get; set; }
+        public DateOnly? EndMonth { get; set; }
+        public double? ProductionMeters { get; set; }
+        public double? StandardProductionMeters { get; set; }
+        public double ActualAshContent { get; set; }
     }
 
     private class PlannedElectricityFactorData

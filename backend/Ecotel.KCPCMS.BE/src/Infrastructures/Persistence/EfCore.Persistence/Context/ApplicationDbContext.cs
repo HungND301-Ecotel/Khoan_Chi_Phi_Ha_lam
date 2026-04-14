@@ -63,6 +63,7 @@ public class ApplicationDbContext(
     public DbSet<NormFactorAssignmentCode> NormFactorAssignmentCodes => Set<NormFactorAssignmentCode>();
     public DbSet<Code> Codes => Set<Code>();
     public DbSet<SavingsRateConfig> SavingsRateConfigs => Set<SavingsRateConfig>();
+    public DbSet<AkFactorConfig> AkFactorConfigs => Set<AkFactorConfig>();
     public DbSet<RevenueCostAdjustmentConfig> RevenueCostAdjustmentConfigs => Set<RevenueCostAdjustmentConfig>();
 
     #endregion
@@ -131,6 +132,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOrder>().ToTable(nameof(ProductionOrder), "Index");
         modelBuilder.Entity<Technology>().ToTable(nameof(Technology), "Index");
         modelBuilder.Entity<SavingsRateConfig>().ToTable(nameof(SavingsRateConfig), "Index");
+        modelBuilder.Entity<AkFactorConfig>().ToTable(nameof(AkFactorConfig), "Index");
         modelBuilder.Entity<RevenueCostAdjustmentConfig>().ToTable(nameof(RevenueCostAdjustmentConfig), "Index");
         modelBuilder.Entity<Power>().ToTable(nameof(Power), "Index");
         modelBuilder.Entity<SupportStep>().ToTable(nameof(SupportStep), "Index");
@@ -304,6 +306,12 @@ public class ApplicationDbContext(
             .HasOne(s => s.Code)
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey<ProcessGroup>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AkFactorConfig>()
+            .HasOne(x => x.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(x => x.ProcessGroupId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Department table
@@ -758,6 +766,9 @@ public class ApplicationDbContext(
 
         modelBuilder.Entity<Output>().HasKey(o => o.Id);
         modelBuilder.Entity<Output>().HasIndex(o => o.Id).HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<Output>()
+            .Property(o => o.PlanAshContent)
+            .HasDefaultValue(0d);
 
         //PlannedElectricityCost
         modelBuilder.Entity<PlannedElectricityCost>()
@@ -855,6 +866,10 @@ public class ApplicationDbContext(
             .WithOne(p => p.ProductionOutputProcessGroup)
             .HasForeignKey(p => p.ProductionOutputProcessGroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductionOutputProduct>()
+            .Property(p => p.ActualAshContent)
+            .HasDefaultValue(0d);
 
         modelBuilder.Entity<ProductionOutputProduct>()
             .HasOne(p => p.Product)

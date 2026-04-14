@@ -36,4 +36,5 @@ export type AdjustmentProductionOutput = {
 	productionMeters: number;
 	adjTotalPrice: number;
 	standardProductionMeters: number;
+	actualAshContent?: number;
 };

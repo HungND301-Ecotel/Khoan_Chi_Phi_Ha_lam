@@ -72,6 +72,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
                 StartMonth = o.StartMonth,
                 EndMonth = o.EndMonth,
                 ProductionMeters = o.ProductionMeters,
+                PlanAshContent = o.PlanAshContent,
                 PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                 PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                 PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -299,6 +300,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
             PlannedMaintainCostId = output.PlannedMaintainCostId,
             PlannedMaterialCostId = output.PlannedMaterialCostId,
             ProductionMeters = output.ProductionMeters,
+            PlanAshContent = output.PlanAshContent,
             TotalPrice = totalPrice
         };
     }
@@ -311,6 +313,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
+        public double PlanAshContent { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }

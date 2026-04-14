@@ -50,6 +50,7 @@ export type CostProductDetailOutput = {
 	endMonth: string;
 	totalPrice: number;
 	adjTotalPrice?: number;
+	planAshContent?: number;
 };
 
 export type ProductCostExpandProps = {

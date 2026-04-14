@@ -75,7 +75,13 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 					API.COST.PRODUCT.DETAIL_ADJUSTMENT(row.id),
 				)
 				.then((res) => {
-					const { productId, unitOfMeasureId, departmentId, outputs, productionOutputs } =
+					const {
+						productId,
+						unitOfMeasureId,
+						departmentId,
+						outputs,
+						productionOutputs,
+					} =
 						res.result;
 					form.reset({
 						productId,

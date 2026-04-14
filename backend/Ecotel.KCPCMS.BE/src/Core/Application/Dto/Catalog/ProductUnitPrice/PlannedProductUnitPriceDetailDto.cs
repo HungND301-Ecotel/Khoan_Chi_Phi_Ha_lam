@@ -67,6 +67,7 @@ public class AdjustmentProductionOutputDto
     public DateOnly? EndMonth { get; set; }
     public double? ProductionMeters { get; set; }
     public double? StandardProductionMeters { get; set; }
+    public double? ActualAshContent { get; set; }
     public double AdjTotalPrice { get; set; }
 }
 public class AdjustmentPlannedOutputDto
@@ -74,6 +75,7 @@ public class AdjustmentPlannedOutputDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public double ProductionMeters { get; set; }
+    public double PlanAshContent { get; set; }
     public OutputType OutputType { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }

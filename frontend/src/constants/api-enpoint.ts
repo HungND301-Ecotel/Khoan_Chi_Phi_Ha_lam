@@ -247,6 +247,16 @@ export const API = {
 			IMPORT: '/v1/catalog/savingsrateconfig/import',
 			EXPORT: '/v1/catalog/savingsrateconfig/export',
 		},
+		AK_FACTOR_CONFIG: {
+			LIST: '/v1/catalog/akfactorconfig',
+			CREATE: '/v1/catalog/akfactorconfig',
+			UPDATE: '/v1/catalog/akfactorconfig',
+			DELETES: '/v1/catalog/akfactorconfig',
+			DELETE: (id: string) => `/v1/catalog/akfactorconfig/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/akfactorconfig/${id}`,
+			IMPORT: '/v1/catalog/akfactorconfig/import',
+			EXPORT: '/v1/catalog/akfactorconfig/export',
+		},
 		REVENUE_COST_ADJUSTMENT_CONFIG: {
 			LIST: '/v1/catalog/revenuecostadjustmentconfig',
 			CREATE: '/v1/catalog/revenuecostadjustmentconfig',

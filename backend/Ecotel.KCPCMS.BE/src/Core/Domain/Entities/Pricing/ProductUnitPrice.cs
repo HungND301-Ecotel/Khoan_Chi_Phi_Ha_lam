@@ -32,7 +32,11 @@ public class ProductUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     public virtual IReadOnlyCollection<ProductUnitPriceProductionOutput> ProductUnitPriceProductionOutputs => _productUnitPriceProductionOutputs.AsReadOnly();
 
     //Constructor
-    public static ProductUnitPrice Create(Guid productId, Guid? unitOfMeasureId, Guid? departmentId, ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Plan)
+    public static ProductUnitPrice Create(
+        Guid productId,
+        Guid? unitOfMeasureId,
+        Guid? departmentId,
+        ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Plan)
     {
         return new ProductUnitPrice
         {

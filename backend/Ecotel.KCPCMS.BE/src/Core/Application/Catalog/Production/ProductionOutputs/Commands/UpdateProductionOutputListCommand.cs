@@ -214,7 +214,10 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                     throw new ConflictException(CustomResponseMessage.InvalidParams);
                 }
 
-                groupEntity.AddProduct(ProductionOutputProduct.Create(productDto.ProductId, productDto.ProductionMeters));
+                groupEntity.AddProduct(ProductionOutputProduct.Create(
+                    productDto.ProductId,
+                    productDto.ProductionMeters,
+                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);
@@ -233,6 +236,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
             .SelectMany(x => x.ProductionOutputProducts)
             .GroupBy(x => x.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
+        var productIds = productMeters.Keys.ToList();
 
         var affectedProductUnitPrices = await _productUnitPriceRepository.GetAll()
             .Where(x => x.ScenarioType == ProductUnitPriceScenarioType.Adjustment

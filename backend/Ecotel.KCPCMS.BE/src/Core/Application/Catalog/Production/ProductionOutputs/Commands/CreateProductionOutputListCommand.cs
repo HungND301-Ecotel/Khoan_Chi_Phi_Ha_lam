@@ -179,7 +179,10 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                     throw new ConflictException(CustomResponseMessage.InvalidParams);
                 }
 
-                groupEntity.AddProduct(ProductionOutputProduct.Create(productDto.ProductId, productDto.ProductionMeters));
+                groupEntity.AddProduct(ProductionOutputProduct.Create(
+                    productDto.ProductId,
+                    productDto.ProductionMeters,
+                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);

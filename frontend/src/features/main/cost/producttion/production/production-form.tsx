@@ -35,6 +35,7 @@ import {
 type ProductionOutputDetailProduct = {
 	productId: string;
 	productionMeters: number;
+	actualAshContent?: number;
 };
 
 type ProductionOutputDetailProcessGroup = {
@@ -110,13 +111,19 @@ function calculateTotals(groups: ProductionGroup[] = []) {
 	};
 }
 
-function buildProcessGroupPayload(groups: ProductionGroup[] = []) {
+function buildProcessGroupPayload(
+	groups: ProductionGroup[] = [],
+	akProcessGroupIds: Set<string> = new Set(),
+) {
 	return groups.map((group) => ({
 		processGroupId: group.processGroupId,
 		standardProductionMeters: group.standardProductionMeters,
 		products: (group.products || []).map((product) => ({
 			productId: product.productId,
 			productionMeters: product.productionMeters,
+			actualAshContent: akProcessGroupIds.has(group.processGroupId)
+				? product.actualAshContent ?? 0
+				: 0,
 		})),
 	}));
 }
@@ -130,6 +137,9 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [products, setProducts] = useState<Product[]>([]);
 	const [departments, setDepartments] = useState<Department[]>([]);
+	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
+		new Set(),
+	);
 
 	const form = useForm<ProductionFormSchema>({
 		resolver: zodResolver(productionFormSchema),
@@ -177,6 +187,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 						const mappedProducts = (group.products || []).map((product) => ({
 							productId: product.productId,
 							productionMeters: product.productionMeters,
+							actualAshContent: product.actualAshContent ?? 0,
 						}));
 
 						return {
@@ -211,9 +222,13 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST, {
 				ignorePagination: true,
 			}),
+			api.pagging<{ processGroupId: string }>(API.CATALOG.AK_FACTOR_CONFIG.LIST, {
+				ignorePagination: true,
+			}),
 		]);
 
-		promises.then(([departmentRes, processGroupRes, productRes]) => {
+		promises.then(
+			([departmentRes, processGroupRes, productRes, akFactorConfigRes]) => {
 			setDepartments(
 				[...departmentRes.result.data].sort((a, b) =>
 					a.code.localeCompare(b.code),
@@ -229,7 +244,15 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					a.code.localeCompare(b.code),
 				),
 			);
-		});
+			setAkProcessGroupIds(
+				new Set(
+					(akFactorConfigRes.result.data || [])
+						.map((item) => item.processGroupId)
+						.filter((id) => !!id),
+				),
+			);
+			},
+		);
 	}, []);
 
 	useEffect(() => {
@@ -254,6 +277,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 				return {
 					productId,
 					productionMeters: existing?.productionMeters ?? 0,
+					actualAshContent: existing?.actualAshContent ?? 0,
 				};
 			});
 
@@ -286,6 +310,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			return {
 				productId,
 				productionMeters: existing?.productionMeters ?? 0,
+				actualAshContent: existing?.actualAshContent ?? 0,
 			};
 		});
 
@@ -305,7 +330,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			const groups = values.groups || [];
 			const { productionMeters, standardProductionMeters } =
 				calculateTotals(groups);
-			const processGroups = buildProcessGroupPayload(groups);
+			const processGroups = buildProcessGroupPayload(groups, akProcessGroupIds);
 
 			if (isEdit && row) {
 				await api.put(API.PRODUCTION.PRODUCTION_OUTPUT.UPDATE, {
@@ -385,6 +410,8 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			<div className='flex flex-col gap-4'>
 				{groupFields.map((field, groupIndex) => {
 					const group = watchedGroups[groupIndex] || createGroupDefault();
+					const isAkApplicableForGroup =
+						!!group.processGroupId && akProcessGroupIds.has(group.processGroupId);
 					const availableProducts = products.filter(
 						(product) => product.processGroupId === group.processGroupId,
 					);
@@ -498,6 +525,17 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 															placeholder='Nhập sản lượng thực tế'
 														/>
 													</div>
+
+													{isAkApplicableForGroup && (
+														<div className='flex-1'>
+															<FormNumber
+																control={form.control}
+																name={`groups.${groupIndex}.products.${productIndex}.actualAshContent`}
+																label='Ak thực hiện (%)'
+																placeholder='Nhập Ak thực hiện'
+															/>
+														</div>
+													)}
 												</FormRow>
 											);
 										},

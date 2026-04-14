@@ -32,4 +32,5 @@ public class ProductionOutputProductDto
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public double ProductionMeters { get; set; }
+    public double ActualAshContent { get; set; }
 }

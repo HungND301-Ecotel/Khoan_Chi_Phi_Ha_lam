@@ -5,6 +5,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmnetMaterialCost;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
@@ -21,6 +22,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
 
     public async Task<AdjustmentMaterialCostDetailDto> Handle(GetAdjustmentMaterialCostByOutputQuery request, CancellationToken cancellationToken)
     {
@@ -28,7 +30,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var plannedOutput = await _outputRepository.GetFirstOrDefaultAsync(
             predicate: o => o.Id == request.Id,
             include: o => o
-                .Include(o => o.ProductUnitPrice)
+                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.Hardness)
@@ -39,16 +41,25 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
-        var adjustmentProductionMeters = await _productUnitPriceRepository.GetAll()
+        var adjustmentOutputInfo = await _productUnitPriceRepository.GetAll()
             .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment &&
-                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId &&
+                        p.DepartmentId == plannedOutput.ProductUnitPrice.DepartmentId)
             .SelectMany(p => p.ProductUnitPriceProductionOutputs)
             .Where(p => p.ProductionOutput!.StartMonth == plannedOutput.StartMonth &&
                         p.ProductionOutput.EndMonth == plannedOutput.EndMonth)
-            .Select(p => p.ProductionMeters)
+            .Select(p => new
+            {
+                p.ProductionMeters,
+                ActualAshContent = p.ProductionOutput!.ProductionOutputProcessGroups
+                    .SelectMany(g => g.ProductionOutputProducts)
+                    .Where(pp => pp.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                    .Select(pp => (double?)pp.ActualAshContent)
+                    .FirstOrDefault() ?? 0
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (adjustmentProductionMeters <= 0)
+        if (adjustmentOutputInfo == null || adjustmentOutputInfo.ProductionMeters <= 0)
         {
             throw new ConflictException(CustomResponseMessage.PleaseProvideTheActualOutputProductionMeters);
         }
@@ -175,6 +186,15 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var totalByCostId = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
             new List<Domain.Entities.Pricing.PlannedMaterialCost> { plannedMaterialCost },
             tunnelMaterials);
+        var basePlannedMaterialPrice = totalByCostId.GetValueOrDefault(plannedMaterialCost.Id, 0);
+
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var akDiff = (decimal)(adjustmentOutputInfo.ActualAshContent - plannedOutput.PlanAshContent);
+        var akRate = ResolveAkRate(akConfigs, akDiff);
+        var adjustedPlannedMaterialPrice = basePlannedMaterialPrice * (1 + (double)akRate);
 
         var result = new AdjustmentMaterialCostDetailDto
         {
@@ -186,11 +206,38 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             NormFactorId = plannedMaterialCost.NormFactorId,
             AdjustmentMaterialCostAssignmentCodes = mCost,
             StoneClampRatioReferenceId = plannedMaterialCost.StoneClampRatioReferenceId,
-            TotalPlannedMaterialPrice = totalByCostId.GetValueOrDefault(plannedMaterialCost.Id, 0),
+            TotalPlannedMaterialPrice = adjustedPlannedMaterialPrice,
             MaterialCost = materialCost,
             SlideUnitPriceCost = slideUnitPriceCost,
             NormFactorValue = normFactorValue,
         };
         return result;
+    }
+
+    private static decimal ResolveAkRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
+    {
+        foreach (var config in configs)
+        {
+            var minMatched = !config.MinAkDiff.HasValue || akDiff >= config.MinAkDiff.Value;
+            var maxMatched = !config.MaxAkDiff.HasValue || akDiff <= config.MaxAkDiff.Value;
+            if (!minMatched || !maxMatched)
+            {
+                continue;
+            }
+
+            if (config.MinAdjustmentRate.HasValue && config.MaxAdjustmentRate.HasValue)
+            {
+                if (config.MinAdjustmentRate == config.MaxAdjustmentRate)
+                {
+                    return config.MinAdjustmentRate.Value;
+                }
+            }
+            else
+            {
+                return config.MinAdjustmentRate ?? config.MaxAdjustmentRate ?? 0;
+            }
+        }
+
+        return 0;
     }
 }

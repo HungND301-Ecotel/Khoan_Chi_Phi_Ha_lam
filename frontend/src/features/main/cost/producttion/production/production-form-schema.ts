@@ -11,6 +11,14 @@ const productionGroupProductSchema = z.object({
 		.min(0, {
 			error: 'Sản lượng thực tế không được âm.',
 		}),
+	actualAshContent: z.coerce
+		.number<number>({
+			error: 'Ak thực hiện phải là số.',
+		})
+		.min(0, {
+			error: 'Ak thực hiện không được âm.',
+		})
+		.optional(),
 });
 
 const productionGroupSchema = z

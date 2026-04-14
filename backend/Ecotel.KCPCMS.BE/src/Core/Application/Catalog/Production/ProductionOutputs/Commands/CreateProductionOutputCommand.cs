@@ -146,7 +146,10 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
                     throw new ConflictException(CustomResponseMessage.InvalidParams);
                 }
 
-                groupEntity.AddProduct(ProductionOutputProduct.Create(productDto.ProductId, productDto.ProductionMeters));
+                groupEntity.AddProduct(ProductionOutputProduct.Create(
+                    productDto.ProductId,
+                    productDto.ProductionMeters,
+                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);

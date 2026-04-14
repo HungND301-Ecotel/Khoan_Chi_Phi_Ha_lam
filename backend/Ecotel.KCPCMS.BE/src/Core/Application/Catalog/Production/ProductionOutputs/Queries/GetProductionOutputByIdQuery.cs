@@ -57,7 +57,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             ProductId = p.ProductId,
                             ProductCode = p.Product?.Code?.Value ?? string.Empty,
                             ProductName = p.Product?.Name ?? string.Empty,
-                            ProductionMeters = p.ProductionMeters
+                            ProductionMeters = p.ProductionMeters,
+                            ActualAshContent = p.ActualAshContent
                         }).ToList()
                 }).ToList()
         };

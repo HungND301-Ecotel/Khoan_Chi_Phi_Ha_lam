@@ -101,8 +101,8 @@ public class UpdateProductUnitPriceCommandHandler(
             {
                 if (ouputMaps.TryGetValue(item.Id, out var updateOutput))
                 {
-                    updateOutputs.Add(Output.Create(item.Id, item.ProductionMeters, item.StartMonth, item.EndMonth, item.OutputType));
-                    item.Update(updateOutput.ProductionMeters, updateOutput.StartMonth, updateOutput.EndMonth);
+                    updateOutputs.Add(Output.Create(item.Id, item.ProductionMeters, item.StartMonth, item.EndMonth, item.OutputType, item.PlanAshContent));
+                    item.Update(updateOutput.ProductionMeters, updateOutput.StartMonth, updateOutput.EndMonth, updateOutput.PlanAshContent);
                 }
                 else
                 {
@@ -152,12 +152,15 @@ public class UpdateProductUnitPriceCommandHandler(
 
                     if (otherOutputUpdate != null && ouputMaps.TryGetValue(item.Id, out var updateOutput))
                     {
-                        otherOutputUpdate.Update(otherOutputUpdate.ProductionMeters, updateOutput.StartMonth, updateOutput.EndMonth);
+                        otherOutputUpdate.Update(otherOutputUpdate.ProductionMeters, updateOutput.StartMonth, updateOutput.EndMonth, otherOutputUpdate.PlanAshContent);
                     }
                 }
             }
 
-            exitedProductUnitPrice.Update(request.UpdateModel.ProductId, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.DepartmentId);
+            exitedProductUnitPrice.Update(
+                request.UpdateModel.ProductId,
+                request.UpdateModel.UnitOfMeasureId,
+                request.UpdateModel.DepartmentId);
 
             // Update ProductionOutput relationship
             exitedProductUnitPrice.ClearProductionOutputs();

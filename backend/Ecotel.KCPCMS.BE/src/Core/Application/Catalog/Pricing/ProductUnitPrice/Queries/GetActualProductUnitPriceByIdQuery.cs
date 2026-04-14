@@ -73,6 +73,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 StartMonth = o.StartMonth,
                 EndMonth = o.EndMonth,
                 ProductionMeters = o.ProductionMeters,
+                PlanAshContent = o.PlanAshContent,
                 PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                 PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                 PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -277,7 +278,12 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
         Dictionary<Guid, double> plannedMaterialCosts)
     {
         var adjTotalPrice = 0.0;
-        if (plannedOutputs.TryGetValue((actualOutput.StartMonth, actualOutput.EndMonth), out var plannedOutput))
+        var plannedOutput = plannedOutputs.Values
+            .Where(o => o.StartMonth <= actualOutput.StartMonth && o.EndMonth >= actualOutput.EndMonth)
+            .OrderBy(o => o.StartMonth)
+            .ThenBy(o => o.EndMonth)
+            .FirstOrDefault();
+        if (plannedOutput != null)
         {
             // Planned Material Cost
             var plannedMaterialCost = plannedOutput.PlannedMaterialCostId.HasValue
@@ -308,6 +314,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             StartMonth = actualOutput.StartMonth,
             EndMonth = actualOutput.EndMonth,
             ProductionMeters = actualOutput.ProductionMeters,
+            PlanAshContent = plannedOutput?.PlanAshContent ?? 0,
             TotalPrice = 0,
             AdjTotalPrice = adjTotalPrice
         };
@@ -321,6 +328,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
+        public double PlanAshContent { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }
