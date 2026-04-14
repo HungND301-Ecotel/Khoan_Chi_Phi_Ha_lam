@@ -313,6 +313,12 @@ public class ApplicationDbContext(
             .WithMany()
             .HasForeignKey(x => x.ProcessGroupId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AkFactorConfig>()
+            .Property(x => x.MinAdjustmentRate)
+            .HasPrecision(18, 4);
+        modelBuilder.Entity<AkFactorConfig>()
+            .Property(x => x.MaxAdjustmentRate)
+            .HasPrecision(18, 4);
 
         // Department table
         modelBuilder.Entity<Department>()

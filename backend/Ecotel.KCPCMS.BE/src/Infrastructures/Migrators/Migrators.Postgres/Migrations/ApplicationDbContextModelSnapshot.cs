@@ -522,16 +522,16 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("MaxAdjustmentRate")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal?>("MaxAkDiff")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal?>("MinAdjustmentRate")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal?>("MinAkDiff")
                         .HasPrecision(18, 2)
