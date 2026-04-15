@@ -470,6 +470,17 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             return new Dictionary<int, double>();
         }
 
+        var hasRelatedProductionOutput = await _productionOutputRepository.GetAll()
+            .Where(po => po.StartMonth.Year == year
+                && (!processGroupId.HasValue
+                    || po.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId.Value)))
+            .AnyAsync(cancellationToken);
+
+        if (!hasRelatedProductionOutput)
+        {
+            return new Dictionary<int, double>();
+        }
+
         var customCosts = await _customCostRepository.GetAll()
             .Where(x => x.Year == year
                 && (!processGroupId.HasValue || x.ProcessGroupId == processGroupId))

@@ -97,7 +97,7 @@ function EquipmentExpand({ row }: ActionDialogProps<Equipment>) {
 				hasActions={false}
 				hasPagination={false}
 				hasSort={false}
-				hasIndex={false}
+				hasIndex={true}
 				compact={true}
 			/>
 		</div>
