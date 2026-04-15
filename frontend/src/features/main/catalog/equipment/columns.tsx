@@ -27,6 +27,12 @@ export type EquipmentPartDetail = {
 	actualAmount: number;
 };
 
+const getProcessGroupsSortValue = (processGroups: Equipment['processGroups']) =>
+	(processGroups ?? [])
+		.map((item) => `${item.code} ${item.name}`.trim())
+		.sort((a, b) => a.localeCompare(b, 'vi', { sensitivity: 'base' }))
+		.join(' | ');
+
 export const CATALOG_EQUIPMENT_EXPAND_COLUMNS: ColumnDef<EquipmentPartDetail>[] =
 	[
 		{
@@ -40,10 +46,6 @@ export const CATALOG_EQUIPMENT_EXPAND_COLUMNS: ColumnDef<EquipmentPartDetail>[] 
 		{
 			accessorKey: 'unitOfMeasureName',
 			header: 'Đơn vị tính',
-		},
-		{
-			accessorKey: 'replacementTimeStandard',
-			header: 'Định mức thời gian thay thế (tháng)',
 		},
 		{
 			accessorKey: 'currentCost',
@@ -67,8 +69,15 @@ export const CATALOG_EQUIPMENT_COLUMNS: ColumnDef<Equipment>[] = [
 		header: 'Tên thiết bị',
 	},
 	{
-		accessorKey: 'processGroups',
+		id: 'processGroups',
+		accessorFn: (row) => getProcessGroupsSortValue(row.processGroups),
 		header: 'Nhóm công đoạn sản xuất',
+		sortingFn: (rowA, rowB, columnId) =>
+			String(rowA.getValue(columnId)).localeCompare(
+				String(rowB.getValue(columnId)),
+				'vi',
+				{ sensitivity: 'base' },
+			),
 		cell: ({ row }) => (
 			<div className='flex flex-wrap gap-1'>
 				{(row.original.processGroups ?? []).map((item) => (

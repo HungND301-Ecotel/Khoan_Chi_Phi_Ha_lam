@@ -38,7 +38,8 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Where(e => e.Equipment?.Code != null)
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)
-                .ToList(),            UnitOfMeasureId = partDetail.UnitOfMeasureId,
+                .ToList(),
+            UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
             ProcessGroups = partDetail.EquipmentParts
                 .Where(ep => ep.EquipmentId == request.EquipmentId && ep.Equipment != null)
@@ -56,7 +57,7 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .ToList(),
             CurrentCost = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.Amount ?? 0,
             ActualAmount = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.ActualAmount ?? 0
-        }).ToList();
+        }).OrderBy(p => p.Code).ThenBy(p => p.Name).ToList();
     }
 }
 
