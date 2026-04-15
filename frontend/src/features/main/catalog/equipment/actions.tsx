@@ -105,6 +105,7 @@ export function EquipmentForm({
 							.sort((a, b) => a.label.localeCompare(b.label));
 						form.reset({
 							...equipment,
+							code: isDuplicate ? '' : equipment.code,
 							processGroupId:
 								equipment.processGroupId ?? processGroups.at(0)?.id ?? '',
 							partIds: partIds ?? [],
@@ -119,7 +120,7 @@ export function EquipmentForm({
 					});
 			}
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	useEffect(() => {
 		form.setValue(

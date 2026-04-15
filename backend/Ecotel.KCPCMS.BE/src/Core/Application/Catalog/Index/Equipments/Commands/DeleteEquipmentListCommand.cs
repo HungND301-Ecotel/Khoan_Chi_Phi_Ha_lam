@@ -30,7 +30,7 @@ public class DeleteEquipmentListCommandHandler(IUnitOfWork unitOfWork) : IReques
 
         var equipmentsToDelete = await _equipmentRepository.GetAllAsync(
             predicate: e => distinctIds.Contains(e.Id),
-            include: e => e.Include(e => e.UnitOfMeasure).Include(t => t.EquipmentParts).Include(t => t.Costs).Include(t => t.Code),
+            include: e => e.Include(t => t.EquipmentParts).Include(t => t.Costs).Include(t => t.Code),
             disableTracking: true);
 
         if (equipmentsToDelete == null || !equipmentsToDelete.Any())
