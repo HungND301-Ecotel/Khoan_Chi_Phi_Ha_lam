@@ -68,6 +68,9 @@ function MainCatalogAssetQuotaMaterialsPage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <AssetQuotaMaterialsForm {...props} />}
+			onDuplicate={(props) => (
+				<AssetQuotaMaterialsForm {...props} isDuplicate />
+			)}
 			onUpdate={(props) => <AssetQuotaMaterialsForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

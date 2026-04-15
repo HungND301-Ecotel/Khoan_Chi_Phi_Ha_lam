@@ -65,6 +65,7 @@ export function MainCatalogAdjustmentFactorPage() {
 				{ key: 'name', label: 'Tên hệ số điều chỉnh' },
 			]}
 			onCreate={(props) => <FactorForm {...props} />}
+			onDuplicate={(props) => <FactorForm {...props} isDuplicate />}
 			onUpdate={(props) => <FactorForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

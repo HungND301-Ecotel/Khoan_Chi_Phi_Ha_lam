@@ -19,7 +19,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function FactorForm({ data, row }: ActionDialogProps<Factor>) {
+type FactorFormProps = ActionDialogProps<Factor> & {
+	isDuplicate?: boolean;
+};
+
+export function FactorForm({
+	data,
+	row,
+	isDuplicate = false,
+}: FactorFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -29,7 +37,11 @@ export function FactorForm({ data, row }: ActionDialogProps<Factor>) {
 		resolver: zodResolver(factorSchema),
 		mode: 'onSubmit',
 		defaultValues: row
-			? { code: row.code, name: row.name, processGroupId: row.processGroupId }
+			? {
+					code: isDuplicate ? '' : row.code,
+					name: row.name,
+					processGroupId: row.processGroupId,
+				}
 			: FACTOR_SCHEMA_DEFAULT,
 	});
 
@@ -41,7 +53,7 @@ export function FactorForm({ data, row }: ActionDialogProps<Factor>) {
 
 	const handleSubmit = async (values: FactorSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ADJUSTMENT.FACTOR.UPDATE, {
 					id: row?.id,
 					...values,
@@ -52,7 +64,7 @@ export function FactorForm({ data, row }: ActionDialogProps<Factor>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -88,7 +100,7 @@ export function FactorForm({ data, row }: ActionDialogProps<Factor>) {
 				placeholder='Nhập tên hệ số điều chỉnh'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

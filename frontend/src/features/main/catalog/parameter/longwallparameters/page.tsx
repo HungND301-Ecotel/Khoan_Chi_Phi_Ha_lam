@@ -70,6 +70,7 @@ export function MainCatalogParameterLongwallparametersPage() {
 				{ key: 'mk', label: 'MK' },
 			]}
 			onCreate={(props) => <LongwallparametersForm {...props} />}
+			onDuplicate={(props) => <LongwallparametersForm {...props} isDuplicate />}
 			onUpdate={(props) => <LongwallparametersForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

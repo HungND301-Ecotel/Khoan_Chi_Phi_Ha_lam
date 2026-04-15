@@ -37,10 +37,15 @@ type ContractCodeDetail = {
 	materials?: Material[];
 };
 
+type ContractCodeFormProps = ActionDialogProps<ContractCode> & {
+	isDuplicate?: boolean;
+};
+
 export function ContractCodeForm({
 	data,
 	row,
-}: ActionDialogProps<ContractCode>) {
+	isDuplicate = false,
+}: ContractCodeFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -55,7 +60,7 @@ export function ContractCodeForm({
 		mode: 'onSubmit',
 		defaultValues: row
 			? {
-					code: row.code,
+					code: isDuplicate ? '' : row.code,
 					name: row.name,
 					unitOfMeasureId: row.unitOfMeasureId,
 					materialIds: [],
@@ -86,7 +91,7 @@ export function ContractCodeForm({
 							.sort((a, b) => a.label.localeCompare(b.label));
 
 						form.reset({
-							code: detail.code,
+							code: isDuplicate ? '' : detail.code,
 							name: detail.name,
 							unitOfMeasureId: detail.unitOfMeasureId ?? null,
 							materialIds: selected.map((item) => item.value),
@@ -95,7 +100,7 @@ export function ContractCodeForm({
 					});
 			}
 		});
-	}, [form, row]);
+	}, [form, row, isDuplicate]);
 
 	useEffect(() => {
 		form.setValue(
@@ -140,7 +145,7 @@ export function ContractCodeForm({
 
 	const handleSubmit = async (values: ContractCodeSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.CONTRACT_CODE.UPDATE, {
 					id: row.id,
 					...values,
@@ -151,7 +156,7 @@ export function ContractCodeForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -195,7 +200,7 @@ export function ContractCodeForm({
 				options={materialOptions}
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

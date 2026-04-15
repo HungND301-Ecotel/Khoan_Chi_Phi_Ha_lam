@@ -62,6 +62,7 @@ export function MainCatalogParameterStrengthPage() {
 			columns={CATALOG_PARAMETER_STRENGTH_COLUMNS}
 			filters={[{ key: 'value', label: 'Độ kiên cố than/đá' }]}
 			onCreate={(props) => <StrengthForm {...props} />}
+			onDuplicate={(props) => <StrengthForm {...props} isDuplicate />}
 			onUpdate={(props) => <StrengthForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

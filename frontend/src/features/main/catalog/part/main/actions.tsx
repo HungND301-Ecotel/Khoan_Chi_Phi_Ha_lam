@@ -38,7 +38,11 @@ export type PartDetail = {
 	}>;
 };
 
-export function PartForm({ data, row }: ActionDialogProps<Part>) {
+type PartFormProps = ActionDialogProps<Part> & {
+	isDuplicate?: boolean;
+};
+
+export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -90,6 +94,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				const { costs, ...part } = res.result;
 				form.reset({
 					...part,
+					code: isDuplicate ? '' : part.code,
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -101,7 +106,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				});
 			});
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: PartSchema) => {
 		try {
@@ -109,7 +114,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				...values,
 				partType: 1,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PART.UPDATE, {
 					id: row?.id,
 					...processedValues,
@@ -120,7 +125,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -191,7 +196,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

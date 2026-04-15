@@ -43,7 +43,8 @@ export type AssetSafetyAndWelfareDetail = {
 export function AssetSafetyAndWelfareForm({
 	data,
 	row,
-}: ActionDialogProps<Asset>) {
+	isDuplicate = false,
+}: ActionDialogProps<Asset> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -75,6 +76,7 @@ export function AssetSafetyAndWelfareForm({
 
 					form.reset({
 						...formData,
+						code: isDuplicate ? '' : formData.code,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -92,7 +94,7 @@ export function AssetSafetyAndWelfareForm({
 		};
 
 		fetchData();
-	}, [row]);
+	}, [row, form, isDuplicate]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -123,7 +125,7 @@ export function AssetSafetyAndWelfareForm({
 				...values,
 				materialType: 3,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
@@ -137,7 +139,7 @@ export function AssetSafetyAndWelfareForm({
 			}
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -208,7 +210,7 @@ export function AssetSafetyAndWelfareForm({
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

@@ -20,7 +20,8 @@ import { FormMonthYear } from '@/components/form/form-month-year';
 export function ProductionOrderForm({
 	data,
 	row,
-}: ActionDialogProps<ProductionOrder>) {
+	isDuplicate = false,
+}: ActionDialogProps<ProductionOrder> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -34,17 +35,17 @@ export function ProductionOrderForm({
 	useEffect(() => {
 		if (row) {
 			form.reset({
-				code: row.code,
+				code: isDuplicate ? '' : row.code,
 				name: row.name,
 				startMonth: row.startMonth,
 				endMonth: row.endMonth,
 			});
 		}
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: ProductionOrderSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.PRODUCTION_ORDER.UPDATE, {
 					id: row?.id,
 					...values,
@@ -55,7 +56,7 @@ export function ProductionOrderForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -96,7 +97,7 @@ export function ProductionOrderForm({
 				placeholder='Nhập tên quyết định, lệnh sản xuất'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

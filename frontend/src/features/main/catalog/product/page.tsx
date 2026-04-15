@@ -66,6 +66,7 @@ export function MainCatalogProductPage() {
 				{ key: 'processGroupCode', label: 'Mã nhóm CĐSX' },
 			]}
 			onCreate={(props) => <ProductForm {...props} />}
+			onDuplicate={(props) => <ProductForm {...props} isDuplicate />}
 			onUpdate={(props) => <ProductForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

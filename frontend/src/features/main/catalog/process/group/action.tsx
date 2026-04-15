@@ -20,7 +20,8 @@ import { useForm } from 'react-hook-form';
 export function ProcessGroupForm({
 	data,
 	row,
-}: ActionDialogProps<ProcessGroup>) {
+	isDuplicate = false,
+}: ActionDialogProps<ProcessGroup> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -35,14 +36,14 @@ export function ProcessGroupForm({
 		if (row) {
 			form.reset({
 				name: row.name,
-				code: row.code,
+				code: isDuplicate ? '' : row.code,
 			});
 		}
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: ProcessGroupSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PROCESS.GROUP.UPDATE, {
 					id: row.id,
 					...values,
@@ -53,7 +54,7 @@ export function ProcessGroupForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -78,7 +79,7 @@ export function ProcessGroupForm({
 				placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

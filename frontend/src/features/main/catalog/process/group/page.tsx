@@ -65,6 +65,7 @@ export default function MainCatalogProcessGroupPage() {
 				{ key: 'code', label: 'Mã nhóm công đoạn sản xuất' },
 			]}
 			onCreate={(props) => <ProcessGroupForm {...props} />}
+			onDuplicate={(props) => <ProcessGroupForm {...props} isDuplicate />}
 			onUpdate={(props) => <ProcessGroupForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

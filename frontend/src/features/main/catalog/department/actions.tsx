@@ -17,7 +17,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function DepartmentForm({ data, row }: ActionDialogProps<Department>) {
+type DepartmentFormProps = ActionDialogProps<Department> & {
+	isDuplicate?: boolean;
+};
+
+export function DepartmentForm({
+	data,
+	row,
+	isDuplicate = false,
+}: DepartmentFormProps) {
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
@@ -31,14 +39,14 @@ export function DepartmentForm({ data, row }: ActionDialogProps<Department>) {
 	useEffect(() => {
 		if (!row) return;
 		form.reset({
-			code: row.code,
+			code: isDuplicate ? '' : row.code,
 			name: row.name,
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: DepartmentFormSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.DEPARTMENT.UPDATE, {
 					id: row.id,
 					...values,
@@ -49,7 +57,7 @@ export function DepartmentForm({ data, row }: ActionDialogProps<Department>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -72,7 +80,7 @@ export function DepartmentForm({ data, row }: ActionDialogProps<Department>) {
 				label='Tên đơn vị'
 				placeholder='Nhập tên đơn vị, ví dụ: Phân xưởng đào lò'
 			/>
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

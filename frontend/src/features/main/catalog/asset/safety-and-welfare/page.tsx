@@ -68,6 +68,9 @@ function MainCatalogAssetSafetyAndWelfarePage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <AssetSafetyAndWelfareForm {...props} />}
+			onDuplicate={(props) => (
+				<AssetSafetyAndWelfareForm {...props} isDuplicate />
+			)}
 			onUpdate={(props) => <AssetSafetyAndWelfareForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

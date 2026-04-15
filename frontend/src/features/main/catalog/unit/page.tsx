@@ -59,6 +59,7 @@ export default function MainCatalogUnitPage() {
 			columns={CATALOG_UNIT_COLUMNS}
 			filters={[{ key: 'name', label: 'Đơn vị tính' }]}
 			onCreate={(props) => <UnitForm {...props} />}
+			onDuplicate={(props) => <UnitForm {...props} isDuplicate />}
 			onUpdate={(props) => <UnitForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

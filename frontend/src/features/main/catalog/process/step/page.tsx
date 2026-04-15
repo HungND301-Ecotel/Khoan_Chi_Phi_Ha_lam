@@ -63,6 +63,7 @@ export default function MainCatalogProcessStepPage() {
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },
 			]}
 			onCreate={(props) => <ProcessStepForm {...props} />}
+			onDuplicate={(props) => <ProcessStepForm {...props} isDuplicate />}
 			onUpdate={(props) => <ProcessStepForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

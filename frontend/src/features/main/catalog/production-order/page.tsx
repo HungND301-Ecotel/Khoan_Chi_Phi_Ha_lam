@@ -68,6 +68,7 @@ export function MainCatalogParameterProductionOrderPage() {
 				{ key: 'startMonth', label: 'Thời gian' },
 			]}
 			onCreate={(props) => <ProductionOrderForm {...props} />}
+			onDuplicate={(props) => <ProductionOrderForm {...props} isDuplicate />}
 			onUpdate={(props) => <ProductionOrderForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

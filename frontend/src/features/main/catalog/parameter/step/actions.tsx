@@ -18,7 +18,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function StepForm({ data, row }: ActionDialogProps<Step>) {
+export function StepForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Step> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -39,7 +43,7 @@ export function StepForm({ data, row }: ActionDialogProps<Step>) {
 
 	const handleSubmit = async (values: InsertSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.STEP.UPDATE, {
 					id: row?.id,
 					...values,
@@ -50,7 +54,7 @@ export function StepForm({ data, row }: ActionDialogProps<Step>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -68,7 +72,7 @@ export function StepForm({ data, row }: ActionDialogProps<Step>) {
 				placeholder='Nhập bước chống'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

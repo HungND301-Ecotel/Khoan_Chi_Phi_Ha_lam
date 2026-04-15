@@ -67,6 +67,7 @@ export function MainCatalogNormFactorPage() {
 				{ key: 'value', label: 'Hệ số điều chỉnh định mức' },
 			]}
 			onCreate={(props) => <NormFactorForm {...props} />}
+			onDuplicate={(props) => <NormFactorForm {...props} isDuplicate />}
 			onUpdate={(props) => <NormFactorForm {...props} />}
 			onExpand={(props) => <NormFactorExpand {...props} />}
 			onDelete={handleDelete}

@@ -23,7 +23,8 @@ const AK_FACTOR_CONFIG_SUPPORTS = ['≥', '≤', '<', '>', '%', '-', '.', ','];
 export function AkFactorConfigForm({
 	data,
 	row,
-}: ActionDialogProps<AkFactorConfig>) {
+	isDuplicate = false,
+}: ActionDialogProps<AkFactorConfig> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -68,7 +69,7 @@ export function AkFactorConfigForm({
 		};
 
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.AK_FACTOR_CONFIG.UPDATE, {
 					id: row.id,
 					...payload,
@@ -79,7 +80,7 @@ export function AkFactorConfigForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -123,7 +124,7 @@ export function AkFactorConfigForm({
 				placeholder='Nhập mô tả'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

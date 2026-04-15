@@ -19,7 +19,11 @@ import { useForm } from 'react-hook-form';
 
 const STRENGTH_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
 
-export function StrengthForm({ data, row }: ActionDialogProps<Strength>) {
+export function StrengthForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Strength> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -40,7 +44,7 @@ export function StrengthForm({ data, row }: ActionDialogProps<Strength>) {
 
 	const handleSubmit = async (values: StrengthSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.STRENGTH.UPDATE, {
 					id: row?.id,
 					...values,
@@ -51,7 +55,7 @@ export function StrengthForm({ data, row }: ActionDialogProps<Strength>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -69,7 +73,7 @@ export function StrengthForm({ data, row }: ActionDialogProps<Strength>) {
 				placeholder='Nhập độ kiên cố than, đá (f)'
 				supports={STRENGTH_SUPPORTS}
 			/>
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

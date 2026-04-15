@@ -68,6 +68,7 @@ export function MainCatalogSavingsRateConfigPage() {
 				{ key: 'description', label: 'Mô tả' },
 			]}
 			onCreate={(props) => <SavingsRateConfigForm {...props} />}
+			onDuplicate={(props) => <SavingsRateConfigForm {...props} isDuplicate />}
 			onUpdate={(props) => <SavingsRateConfigForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

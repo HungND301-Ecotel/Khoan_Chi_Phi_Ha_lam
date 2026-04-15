@@ -19,7 +19,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function ProcessStepForm({ data, row }: ActionDialogProps<ProcessStep>) {
+type ProcessStepFormProps = ActionDialogProps<ProcessStep> & {
+	isDuplicate?: boolean;
+};
+
+export function ProcessStepForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ProcessStepFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -29,7 +37,11 @@ export function ProcessStepForm({ data, row }: ActionDialogProps<ProcessStep>) {
 		resolver: zodResolver(processStepSchema),
 		mode: 'onSubmit',
 		defaultValues: row
-			? { code: row.code, name: row.name, processGroupId: row.processGroupId }
+			? {
+					code: isDuplicate ? '' : row.code,
+					name: row.name,
+					processGroupId: row.processGroupId,
+				}
 			: PROCESS_STEP_SCHEMA_DEFAULT,
 	});
 
@@ -41,7 +53,7 @@ export function ProcessStepForm({ data, row }: ActionDialogProps<ProcessStep>) {
 
 	const handleSubmit = async (values: ProcessStepSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PROCESS.STEP.UPDATE, {
 					id: row.id,
 					...values,
@@ -52,7 +64,7 @@ export function ProcessStepForm({ data, row }: ActionDialogProps<ProcessStep>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -88,7 +100,7 @@ export function ProcessStepForm({ data, row }: ActionDialogProps<ProcessStep>) {
 				placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

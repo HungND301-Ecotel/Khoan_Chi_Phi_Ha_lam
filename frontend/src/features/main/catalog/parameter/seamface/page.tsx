@@ -62,6 +62,7 @@ export function MainCatalogParameterSeamfacePage() {
 			columns={CATALOG_PARAMETER_SEAMFACE_COLUMNS}
 			filters={[{ key: 'value', label: 'Mặt vỉa (M)' }]}
 			onCreate={(props) => <SeamfaceForm {...props} />}
+			onDuplicate={(props) => <SeamfaceForm {...props} isDuplicate />}
 			onUpdate={(props) => <SeamfaceForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

@@ -56,6 +56,7 @@ export function MainCatalogParameterPowerPage() {
 			columns={CATALOG_PARAMETER_POWER_COLUMNS}
 			filters={[{ key: 'value', label: 'Công suất' }]}
 			onCreate={(props) => <PowerForm {...props} />}
+			onDuplicate={(props) => <PowerForm {...props} isDuplicate />}
 			onUpdate={(props) => <PowerForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

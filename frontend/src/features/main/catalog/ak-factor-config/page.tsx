@@ -70,6 +70,7 @@ export function MainCatalogAkFactorConfigPage() {
 				{ key: 'description', label: 'Mô tả' },
 			]}
 			onCreate={(props) => <AkFactorConfigForm {...props} />}
+			onDuplicate={(props) => <AkFactorConfigForm {...props} isDuplicate />}
 			onUpdate={(props) => <AkFactorConfigForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

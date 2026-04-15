@@ -17,7 +17,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function TechnologyForm({ data, row }: ActionDialogProps<Technology>) {
+export function TechnologyForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Technology> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -38,7 +42,7 @@ export function TechnologyForm({ data, row }: ActionDialogProps<Technology>) {
 
 	const handleSubmit = async (values: TechnologySchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.TECHNOLOGY.UPDATE, {
 					id: row?.id,
 					...values,
@@ -49,7 +53,7 @@ export function TechnologyForm({ data, row }: ActionDialogProps<Technology>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -67,7 +71,7 @@ export function TechnologyForm({ data, row }: ActionDialogProps<Technology>) {
 				placeholder='Nhập công nghệ khai thác'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

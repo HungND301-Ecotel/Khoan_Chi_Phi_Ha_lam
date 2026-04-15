@@ -31,7 +31,15 @@ const STEEL_MESH_TYPE_SINGLE_LAYER = 2;
 const STEEL_MESH_TYPE_DOUBLE_LAYER = 3;
 const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
-export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
+type NormFactorFormProps = ActionDialogProps<NormFactor> & {
+	isDuplicate?: boolean;
+};
+
+export function NormFactorForm({
+	data,
+	row,
+	isDuplicate = false,
+}: NormFactorFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -135,7 +143,7 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 				})),
 			};
 
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.NORM_FACTOR.UPDATE, {
 					id: row?.id,
 					...payload,
@@ -146,7 +154,7 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -439,7 +447,7 @@ export function NormFactorForm({ data, row }: ActionDialogProps<NormFactor>) {
 				</div>
 			)}
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

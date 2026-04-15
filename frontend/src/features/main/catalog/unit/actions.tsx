@@ -17,7 +17,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function UnitForm({ data, row }: ActionDialogProps<Unit>) {
+type UnitFormProps = ActionDialogProps<Unit> & {
+	isDuplicate?: boolean;
+};
+
+export function UnitForm({ data, row, isDuplicate = false }: UnitFormProps) {
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
@@ -37,7 +41,7 @@ export function UnitForm({ data, row }: ActionDialogProps<Unit>) {
 
 	const handleSubmit = async (values: UnitFormSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.UNIT.UPDATE, {
 					id: row.id,
 					...values,
@@ -48,7 +52,7 @@ export function UnitForm({ data, row }: ActionDialogProps<Unit>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -65,7 +69,7 @@ export function UnitForm({ data, row }: ActionDialogProps<Unit>) {
 				label='Đơn vị tính'
 				placeholder='Nhập tên đơn vị tính, ví dụ: cái'
 			/>
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

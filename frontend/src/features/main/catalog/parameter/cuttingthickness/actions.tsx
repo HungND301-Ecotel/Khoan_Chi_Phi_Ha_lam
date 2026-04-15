@@ -32,7 +32,8 @@ const LONGWALLPARAMETERS_SUPPORTS = [
 export function CuttingthicknessForm({
 	data,
 	row,
-}: ActionDialogProps<Cuttingthickness>) {
+	isDuplicate = false,
+}: ActionDialogProps<Cuttingthickness> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -53,7 +54,7 @@ export function CuttingthicknessForm({
 
 	const handleSubmit = async (values: CuttingthicknessSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.CUTTINGTHICKNESS.UPDATE, {
 					id: row?.id,
 					...values,
@@ -64,7 +65,7 @@ export function CuttingthicknessForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -84,7 +85,7 @@ export function CuttingthicknessForm({
 				supports={LONGWALLPARAMETERS_SUPPORTS}
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

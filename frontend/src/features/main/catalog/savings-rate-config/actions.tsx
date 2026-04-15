@@ -32,7 +32,8 @@ const SAVINGS_RATE_CONFIG_SUPPORTS = [
 export function SavingsRateConfigForm({
 	data,
 	row,
-}: ActionDialogProps<SavingsRateConfig>) {
+	isDuplicate = false,
+}: ActionDialogProps<SavingsRateConfig> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -65,7 +66,7 @@ export function SavingsRateConfigForm({
 		};
 
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.SAVINGS_RATE_CONFIG.UPDATE, {
 					id: row.id,
 					...payload,
@@ -76,7 +77,7 @@ export function SavingsRateConfigForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -110,7 +111,7 @@ export function SavingsRateConfigForm({
 				placeholder='Nhập mô tả'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

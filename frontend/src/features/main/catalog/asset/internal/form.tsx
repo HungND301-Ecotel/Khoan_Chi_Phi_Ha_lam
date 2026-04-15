@@ -40,7 +40,15 @@ export type AssetInternalDetail = {
 	}>;
 };
 
-export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
+type AssetInternalFormProps = ActionDialogProps<Asset> & {
+	isDuplicate?: boolean;
+};
+
+export function AssetInternalForm({
+	data,
+	row,
+	isDuplicate = false,
+}: AssetInternalFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -72,6 +80,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 
 					form.reset({
 						...data,
+						code: isDuplicate ? '' : data.code,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -88,7 +97,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 		};
 
 		fetchData();
-	}, [row]);
+	}, [row, form, isDuplicate]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -118,7 +127,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 			const processedValues = {
 				...values,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
@@ -133,7 +142,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 			}
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -204,7 +213,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

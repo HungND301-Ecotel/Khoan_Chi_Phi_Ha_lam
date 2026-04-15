@@ -70,6 +70,9 @@ export function MainCatalogRevenueCostAdjustmentConfigPage() {
 				{ key: 'description', label: 'Mô tả' },
 			]}
 			onCreate={(props) => <RevenueCostAdjustmentConfigForm {...props} />}
+			onDuplicate={(props) => (
+				<RevenueCostAdjustmentConfigForm {...props} isDuplicate />
+			)}
 			onUpdate={(props) => <RevenueCostAdjustmentConfigForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

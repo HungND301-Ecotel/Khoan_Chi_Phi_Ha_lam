@@ -66,6 +66,7 @@ export function MainCatalogParameterCuttingthicknessPage() {
 			columns={CATALOG_PARAMETER_CUTTINGTHICKNESS_COLUMNS}
 			filters={[{ key: 'value', label: 'Chiều dày lớp khấu' }]}
 			onCreate={(props) => <CuttingthicknessForm {...props} />}
+			onDuplicate={(props) => <CuttingthicknessForm {...props} isDuplicate />}
 			onUpdate={(props) => <CuttingthicknessForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

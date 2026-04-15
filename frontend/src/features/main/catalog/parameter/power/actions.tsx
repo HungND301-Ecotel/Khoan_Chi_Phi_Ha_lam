@@ -13,7 +13,11 @@ import { useForm } from 'react-hook-form';
 import { Power } from './columns';
 import { POWER_SCHEMA_DEFAULT, powerSchema, PowerSchema } from './schema';
 
-export function PowerForm({ data, row }: ActionDialogProps<Power>) {
+export function PowerForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Power> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -34,7 +38,7 @@ export function PowerForm({ data, row }: ActionDialogProps<Power>) {
 
 	const handleSubmit = async (values: PowerSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.POWER.UPDATE, {
 					id: row?.id,
 					...values,
@@ -45,7 +49,7 @@ export function PowerForm({ data, row }: ActionDialogProps<Power>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -63,7 +67,7 @@ export function PowerForm({ data, row }: ActionDialogProps<Power>) {
 				placeholder='Nhập công suất'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

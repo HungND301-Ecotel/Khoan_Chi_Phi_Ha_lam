@@ -69,6 +69,7 @@ export function MainCatalogOtherPartPage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <OtherPartForm {...props} />}
+			onDuplicate={(props) => <OtherPartForm {...props} isDuplicate />}
 			onUpdate={(props) => <OtherPartForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

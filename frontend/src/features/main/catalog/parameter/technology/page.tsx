@@ -64,6 +64,7 @@ export function MainCatalogParameterTechnologyPage() {
 			columns={CATALOG_PARAMETER_TECHNOLOGY_COLUMNS}
 			filters={[{ key: 'value', label: 'Công nghệ khai thác' }]}
 			onCreate={(props) => <TechnologyForm {...props} />}
+			onDuplicate={(props) => <TechnologyForm {...props} isDuplicate />}
 			onUpdate={(props) => <TechnologyForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

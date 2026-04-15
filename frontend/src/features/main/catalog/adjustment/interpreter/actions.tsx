@@ -20,7 +20,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function InterpreterForm({ data, row }: ActionDialogProps<Interpreter>) {
+type InterpreterFormProps = ActionDialogProps<Interpreter> & {
+	isDuplicate?: boolean;
+};
+
+export function InterpreterForm({
+	data,
+	row,
+	isDuplicate = false,
+}: InterpreterFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -48,7 +56,7 @@ export function InterpreterForm({ data, row }: ActionDialogProps<Interpreter>) {
 
 	const handleSubmit = async (values: InterpreterSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ADJUSTMENT.INTERPRETER.UPDATE, {
 					id: row?.id,
 					...values,
@@ -59,7 +67,7 @@ export function InterpreterForm({ data, row }: ActionDialogProps<Interpreter>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -102,7 +110,7 @@ export function InterpreterForm({ data, row }: ActionDialogProps<Interpreter>) {
 				placeholder='Nhập trị số điều chỉnh điện năng'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

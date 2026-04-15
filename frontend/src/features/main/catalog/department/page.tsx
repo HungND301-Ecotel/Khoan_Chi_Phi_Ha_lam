@@ -36,6 +36,7 @@ export function MainCatalogDepartmentPage() {
 				{ key: 'name', label: 'Tên đơn vị' },
 			]}
 			onCreate={(props) => <DepartmentForm {...props} />}
+			onDuplicate={(props) => <DepartmentForm {...props} isDuplicate />}
 			onUpdate={(props) => <DepartmentForm {...props} />}
 			onDelete={handleDelete}
 		/>
