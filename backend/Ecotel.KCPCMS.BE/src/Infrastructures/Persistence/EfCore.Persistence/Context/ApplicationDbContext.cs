@@ -923,6 +923,11 @@ public class ApplicationDbContext(
             .HasForeignKey(i => i.MaintainUnitPriceEquipmentId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.Part)
+            .WithMany()
+            .HasForeignKey(i => i.PartId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
             .HasOne(i => i.Material)
             .WithMany(i => i.AcceptanceReportItems)
             .HasForeignKey(i => i.MaterialId)

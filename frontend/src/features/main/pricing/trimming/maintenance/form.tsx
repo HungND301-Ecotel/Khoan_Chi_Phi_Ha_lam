@@ -91,14 +91,16 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 						startMonth: startMonth.substring(0, 10),
 						endMonth: endMonth.substring(0, 10),
 						equipmentIds: [equipmentId],
-						costs: maintainUnitPriceEquipment.map((cost: any) => ({
-							partId: cost.partId,
-							quantity: cost.quantity,
-							averageMonthlyTunnelProduction:
-								cost.averageMonthlyTunnelProduction,
-							replacementTimeStandard: cost.replacementTimeStandard,
-							equipmentId: cost.equipmentId,
-						})),
+						costs: maintainUnitPriceEquipment
+							.filter((cost: any) => (cost.partType ?? 1) === 1)
+							.map((cost: any) => ({
+								partId: cost.partId,
+								quantity: cost.quantity,
+								averageMonthlyTunnelProduction:
+									cost.averageMonthlyTunnelProduction,
+								replacementTimeStandard: cost.replacementTimeStandard,
+								equipmentId: cost.equipmentId,
+							})),
 						otherMaterialValues: { [equipmentId]: otherMaterialValue },
 					});
 				});

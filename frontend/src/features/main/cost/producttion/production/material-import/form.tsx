@@ -62,6 +62,18 @@ type ProductionOrderOption = {
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
+function parseProductionOrderOptionId(value: string): string {
+	return value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX)
+		? value.slice(PRODUCTION_ORDER_OPTION_PREFIX.length)
+		: value;
+}
+
+function parseEquipmentOptionId(value: string): string {
+	return value.startsWith(EQUIPMENT_OPTION_PREFIX)
+		? value.slice(EQUIPMENT_OPTION_PREFIX.length)
+		: value;
+}
+
 type MaterialImportFormProps = {
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
@@ -447,6 +459,7 @@ type ResetFieldSpec = {
 	dropdown?: string;
 	dropdownSecondary?: string;
 	dropdownTertiary?: string;
+	dropdownQuaternary?: string;
 	quantity?: string;
 };
 
@@ -467,6 +480,11 @@ function resetCellFields(
 		if (field.dropdownTertiary)
 			form.setValue(
 				`${basename}.${field.dropdownTertiary}` as RowPath,
+				null as never,
+			);
+		if (field.dropdownQuaternary)
+			form.setValue(
+				`${basename}.${field.dropdownQuaternary}` as RowPath,
 				null as never,
 			);
 		if (field.quantity)
@@ -571,6 +589,7 @@ function MaterialImportRow({
 	const categoryValue = w('category');
 	const categoryProcessGroupValue = w('categoryProcessGroup');
 	const categoryProductionOrderId = w('categoryProductionOrderId');
+	const categoryEquipmentId = w('categoryEquipmentId');
 	const additionalCostCategory = w('additionalCostCategory');
 	const additionalCostProductionOrderId = w('additionalCostProductionOrderId');
 	const otherMaterialDetailValue = w('otherMaterialDetail');
@@ -622,9 +641,16 @@ function MaterialImportRow({
 	const productionOrderOnlyOptions = orderOrEquipmentOptions.filter((option) =>
 		option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
 	);
-	const categoryOrderOrEquipmentOptions = isSparePartByEquipment
-		? [...equipmentOptions, ...productionOrderOnlyOptions]
-		: orderOrEquipmentOptions;
+	const categoryEquipmentOptions = equipmentOptions.map((option) => ({
+		value: parseEquipmentOptionId(option.value),
+		label: option.label,
+	}));
+	const categoryProductionOrderOptions = productionOrderOnlyOptions.map(
+		(option) => ({
+			value: parseProductionOrderOptionId(option.value),
+			label: option.label,
+		}),
+	);
 	const additionalCostOrderOrEquipmentOptions = isSparePartByEquipment
 		? productionOrderOnlyOptions
 		: orderOrEquipmentOptions;
@@ -643,6 +669,8 @@ function MaterialImportRow({
 		contractLimitCategoryValue === QuotaBasedMaterial.SupportAccessories;
 	const categoryNeedsProductionOrder =
 		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+	const categoryNeedsEquipment =
+		categoryNeedsProductionOrder && isSparePartByEquipment;
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -723,6 +751,7 @@ function MaterialImportRow({
 		category: null as number | null | undefined,
 		categoryProcessGroup: null as string | null | undefined,
 		categoryProductionOrderId: null as string | null | undefined,
+		categoryEquipmentId: null as string | null | undefined,
 		additionalCostCategory: null as number | null | undefined,
 		additionalCostProductionOrderId: null as string | null | undefined,
 		otherMaterialDetail: null as number | null | undefined,
@@ -757,6 +786,7 @@ function MaterialImportRow({
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
 					dropdownTertiary: 'categoryProductionOrderId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -775,6 +805,7 @@ function MaterialImportRow({
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
 					dropdownTertiary: 'categoryProductionOrderId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -810,12 +841,17 @@ function MaterialImportRow({
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
 				categoryProductionOrderId == null &&
-				categoryOrderOrEquipmentOptions.length > 0
+				categoryProductionOrderOptions.length > 0
 			)
-				set(
-					'categoryProductionOrderId',
-					categoryOrderOrEquipmentOptions[0].value,
-				);
+				set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
+			if (
+				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
+				categoryNeedsEquipment &&
+				categoryEquipmentId == null &&
+				categoryEquipmentOptions.length > 0
+			) {
+				set('categoryEquipmentId', categoryEquipmentOptions[0].value);
+			}
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown)
 				resetCellFields(form, basename, [
@@ -864,6 +900,7 @@ function MaterialImportRow({
 			set('category', null);
 			set('categoryProcessGroup', null);
 			set('categoryProductionOrderId', null);
+			set('categoryEquipmentId', null);
 			set('categoryQuantity', null);
 		}
 		if (justDisabledAdditional) {
@@ -896,6 +933,7 @@ function MaterialImportRow({
 		resolvedCategoryValue,
 		categoryProcessGroupValue,
 		categoryProductionOrderId,
+		categoryEquipmentId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
@@ -903,7 +941,9 @@ function MaterialImportRow({
 		defaultAdditionalCostByType,
 		isSafetyAndWelfareMaterial,
 		processGroupOptions,
-		categoryOrderOrEquipmentOptions,
+		categoryProductionOrderOptions,
+		categoryEquipmentOptions,
+		categoryNeedsEquipment,
 		additionalCostOrderOrEquipmentOptions,
 		form,
 		basename,
@@ -939,21 +979,32 @@ function MaterialImportRow({
 		if (resolvedCategoryValue !== MaterialsIncludedInContractRevenue.Maintain) {
 			if (categoryProductionOrderId != null)
 				set('categoryProductionOrderId', null);
+			if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 			return;
 		}
 		if (
-			categoryOrderOrEquipmentOptions.length === 0 ||
-			categoryProductionOrderId != null
-		)
+			categoryProductionOrderId == null &&
+			categoryProductionOrderOptions.length > 0
+		) {
+			set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
+		}
+		if (categoryNeedsEquipment) {
+			if (categoryEquipmentId == null && categoryEquipmentOptions.length > 0) {
+				set('categoryEquipmentId', categoryEquipmentOptions[0].value);
+			}
 			return;
-		set('categoryProductionOrderId', categoryOrderOrEquipmentOptions[0].value);
+		}
+		if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 	}, [
 		showCategoryDropdown,
 		categoryValue,
 		defaultCategoryByType,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
-		categoryOrderOrEquipmentOptions,
+		categoryEquipmentId,
+		categoryProductionOrderOptions,
+		categoryEquipmentOptions,
+		categoryNeedsEquipment,
 	]);
 
 	useEffect(() => {
@@ -1003,6 +1054,8 @@ function MaterialImportRow({
 		const prev = prevDropdownState.current;
 		const categoryRequiresProductionOrder =
 			resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+		const categoryRequiresEquipment =
+			categoryRequiresProductionOrder && isSparePartByEquipment;
 		const additionalRequiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
@@ -1012,7 +1065,8 @@ function MaterialImportRow({
 			showCategoryDropdown &&
 				resolvedCategoryValue &&
 				categoryProcessGroupValue &&
-				(!categoryRequiresProductionOrder || categoryProductionOrderId != null),
+				(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
+				(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
@@ -1026,7 +1080,8 @@ function MaterialImportRow({
 				prev.category &&
 				prev.categoryProcessGroup &&
 				(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
-					prev.categoryProductionOrderId != null),
+					(prev.categoryProductionOrderId != null &&
+						(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
@@ -1065,6 +1120,7 @@ function MaterialImportRow({
 			category: categoryValue,
 			categoryProcessGroup: categoryProcessGroupValue,
 			categoryProductionOrderId,
+			categoryEquipmentId,
 			additionalCostCategory,
 			additionalCostProductionOrderId,
 			otherMaterialDetail: otherMaterialDetailValue,
@@ -1078,11 +1134,13 @@ function MaterialImportRow({
 		resolvedCategoryValue,
 		categoryProcessGroupValue,
 		categoryProductionOrderId,
+		categoryEquipmentId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
 		contractLimitCategoryValue,
 		quantityExported,
+		isSparePartByEquipment,
 		showCategoryDropdown,
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
@@ -1188,6 +1246,7 @@ function MaterialImportRow({
 			resolvedCategoryValue &&
 			categoryProcessGroupValue &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
+				(!categoryNeedsEquipment || categoryEquipmentId != null) &&
 			categoryQuantity != null
 		)
 			total += Number(categoryQuantity);
@@ -1433,19 +1492,32 @@ function MaterialImportRow({
 							)}
 							{resolvedCategoryValue ===
 								MaterialsIncludedInContractRevenue.Maintain && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.categoryProductionOrderId` as RowPath}
-										options={categoryOrderOrEquipmentOptions}
-										placeholder='Chọn quyết định, lệnh sản xuất'
-									/>
-								</div>
+								<>
+									<div className='w-full'>
+										<FormComboBox
+											control={form.control}
+											name={`${basename}.categoryProductionOrderId` as RowPath}
+											options={categoryProductionOrderOptions}
+											placeholder='Chọn quyết định, lệnh sản xuất'
+										/>
+									</div>
+									{categoryNeedsEquipment && (
+										<div className='w-full'>
+											<FormComboBox
+												control={form.control}
+												name={`${basename}.categoryEquipmentId` as RowPath}
+												options={categoryEquipmentOptions}
+												placeholder='Chọn thiết bị'
+											/>
+										</div>
+									)}
+								</>
 							)}
 							{resolvedCategoryValue &&
 								categoryProcessGroupValue &&
 								(!categoryNeedsProductionOrder ||
-									categoryProductionOrderId != null) && (
+									categoryProductionOrderId != null) &&
+								(!categoryNeedsEquipment || categoryEquipmentId != null) && (
 									<div className='w-full'>
 										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
 											Số lượng vật tư

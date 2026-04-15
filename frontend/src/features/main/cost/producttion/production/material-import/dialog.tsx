@@ -53,13 +53,18 @@ type ImportedItemMeta = {
 	type: number;
 };
 
-type MaintainEquipmentMapping = {
-	maintainUnitPriceEquipmentId: string;
+type PartEquipmentMapping = {
+	partId: string;
 	equipments: Equipment[];
 };
 
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+
+const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
+	value: toProductionOrderOptionValue(''),
+	label: '[Lệnh sản xuất] Không theo lệnh sản xuất',
+};
 
 function toProductionOrderOptionValue(id: string): string {
 	return `${PRODUCTION_ORDER_OPTION_PREFIX}${id}`;
@@ -200,7 +205,7 @@ export function MaterialImportDialog({
 						label: `[Lệnh sản xuất] ${item.code} - ${item.name}`,
 					}));
 
-				setProductionOrderOptions(options);
+				setProductionOrderOptions([NONE_PRODUCTION_ORDER_OPTION, ...options]);
 			} catch (error) {
 				if (!isMounted) return;
 				setProductionOrderOptions([]);
@@ -302,37 +307,37 @@ export function MaterialImportDialog({
 			const importedItemMetas: ImportedItemMeta[] =
 				response.result.acceptanceReports.map((item) => ({
 					materialOrPartId:
-						item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
+						item.partId ?? item.materialId ?? '',
 					type: item.type,
 				}));
 			setImportedItems(importedItemMetas);
 
-			const maintainUnitPriceEquipmentIds = Array.from(
+			const partIds = Array.from(
 				new Set(
 					response.result.acceptanceReports
 						.filter((item) => item.type === MaterialType.SparePart)
-						.map((item) => item.maintainUnitPriceEquipmentId)
+						.map((item) => item.partId)
 						.filter((id): id is string => Boolean(id)),
 				),
 			);
 
-			const fetchedEquipmentOptionsByMaintainId: Record<
+			const fetchedEquipmentOptionsByPartId: Record<
 				string,
 				ProductionOrderOption[]
 			> = {};
 
-			if (maintainUnitPriceEquipmentIds.length > 0) {
+			if (partIds.length > 0) {
 				const equipmentMappingsRes = await api.post<
-					MaintainEquipmentMapping[],
+					PartEquipmentMapping[],
 					string[]
 				>(
-					API.PRICING.MAINTENANCE.EQUIPMENTS_BY_MAINTAIN_IDS,
-					maintainUnitPriceEquipmentIds,
+					API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS,
+					partIds,
 				);
 
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					fetchedEquipmentOptionsByMaintainId[
-						mapping.maintainUnitPriceEquipmentId
+					fetchedEquipmentOptionsByPartId[
+						mapping.partId
 					] = (mapping.equipments ?? [])
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
@@ -342,13 +347,13 @@ export function MaterialImportDialog({
 				}
 			}
 
-			for (const maintainId of maintainUnitPriceEquipmentIds) {
-				if (!fetchedEquipmentOptionsByMaintainId[maintainId]) {
-					fetchedEquipmentOptionsByMaintainId[maintainId] = [];
+			for (const partId of partIds) {
+				if (!fetchedEquipmentOptionsByPartId[partId]) {
+					fetchedEquipmentOptionsByPartId[partId] = [];
 				}
 			}
 
-			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByMaintainId);
+			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
 
 			// Transform API response to form schema
 			const formattedData: MaterialFormSchema[] =
@@ -369,10 +374,10 @@ export function MaterialImportDialog({
 
 					return {
 						...MATERIAL_FORM_DEFAULT,
-						id: item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
+						id: item.partId ?? item.materialId ?? '',
 						acceptanceReportItemId: item.reportItemId || undefined,
 						materialOrPartId:
-							item.maintainUnitPriceEquipmentId ?? item.materialId ?? '',
+							item.partId ?? item.materialId ?? '',
 						materialCode: item.materialCode,
 						unitOfMeasureName: item.unitOfMeasureName,
 						type: item.type,
@@ -452,14 +457,16 @@ export function MaterialImportDialog({
 							? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 							: OtherMaterialDetail.None;
 
-					const categorySelection =
+					const categoryProductionOrderId =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? resolveSelectionIds(item.categoryProductionOrderId)
-							: {
-									productionOrderId: null,
-									equipmentId: null,
-								};
+							? normalizeProductionOrderId(item.categoryProductionOrderId)
+							: null;
+					const categoryEquipmentId =
+						item.showCategoryDropdown &&
+						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
+							? item.categoryEquipmentId ?? null
+							: null;
 
 					const additionalSelection =
 						item.showAdditionalCostDropdown &&
@@ -570,14 +577,16 @@ export function MaterialImportDialog({
 							item.type === MaterialType.Material
 								? item.materialOrPartId || null
 								: null,
-						maintainUnitPriceEquipmentId:
+						partId:
 							item.type === MaterialType.SparePart
 								? item.materialOrPartId || null
 								: null,
+						maintainUnitPriceEquipmentId:
+							null,
 						type: item.type || 1,
 						itemType: item.itemType || 1,
-						categoryProductionOrderId: categorySelection.productionOrderId,
-						categoryEquipmentId: categorySelection.equipmentId,
+						categoryProductionOrderId,
+						categoryEquipmentId,
 						additionalCostProductionOrderId:
 							additionalSelection.productionOrderId,
 						additionalCostEquipmentId: additionalSelection.equipmentId,

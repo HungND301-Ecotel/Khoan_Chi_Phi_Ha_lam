@@ -49,6 +49,7 @@ export type EquipmentDetail = {
 		id: string;
 		code: string;
 		name: string;
+		partType: number;
 	}>;
 };
 
@@ -67,7 +68,11 @@ export function EquipmentForm({
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [parts, setParts] = useState<Part[]>([]);
+	const [otherParts, setOtherParts] = useState<Part[]>([]);
 	const [selectedParts, setSelectedParts] = useState<MultiSelectOption[]>([]);
+	const [selectedOtherParts, setSelectedOtherParts] = useState<
+		MultiSelectOption[]
+	>([]);
 
 	const form = useForm<EquipmentSchema>({
 		resolver: zodResolver(equipmentSchema),
@@ -79,13 +84,21 @@ export function EquipmentForm({
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
-			api.pagging<Part>(API.CATALOG.PART.LIST),
+			api.pagging<Part>(API.CATALOG.PART.LIST, {
+				ignorePagination: true,
+				partType: 1,
+			}),
+			api.pagging<Part>(API.CATALOG.PART.LIST, {
+				ignorePagination: true,
+				partType: 2,
+			}),
 		]);
 
-		promises.then(([units, processGroups, parts]) => {
+		promises.then(([units, processGroups, parts, otherParts]) => {
 			setUnits(units.result.data);
 			setProcessGroups(processGroups.result.data);
 			setParts(parts.result.data);
+			setOtherParts(otherParts.result.data);
 			if (row) {
 				api
 					.get<EquipmentDetail>(API.CATALOG.EQUIPMENT.DETAIL(row.id))
@@ -98,6 +111,22 @@ export function EquipmentForm({
 							...equipment
 						} = res.result;
 						const selected = (selectedPartsFromApi ?? [])
+							.map<MultiSelectOption>((part) => ({
+								label: `${part.code} - ${part.name}`,
+								value: part.id,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
+
+						const selectedPartItems = (selectedPartsFromApi ?? [])
+							.filter((part) => part.partType !== 2)
+							.map<MultiSelectOption>((part) => ({
+								label: `${part.code} - ${part.name}`,
+								value: part.id,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
+
+						const selectedOtherPartItems = (selectedPartsFromApi ?? [])
+							.filter((part) => part.partType === 2)
 							.map<MultiSelectOption>((part) => ({
 								label: `${part.code} - ${part.name}`,
 								value: part.id,
@@ -116,7 +145,10 @@ export function EquipmentForm({
 									amount: cost.amount,
 								})) || EQUIPMENT_SCHEMA_DEFAULT.costs,
 						});
-						setSelectedParts(selected);
+						setSelectedParts(
+							selectedPartItems.length > 0 ? selectedPartItems : selected,
+						);
+						setSelectedOtherParts(selectedOtherPartItems);
 					});
 			}
 		});
@@ -125,9 +157,12 @@ export function EquipmentForm({
 	useEffect(() => {
 		form.setValue(
 			'partIds',
-			selectedParts.map((item) => item.value),
+			[
+				...selectedParts.map((item) => item.value),
+				...selectedOtherParts.map((item) => item.value),
+			],
 		);
-	}, [form, selectedParts]);
+	}, [form, selectedParts, selectedOtherParts]);
 
 	const handleSubmit = async (values: EquipmentSchema) => {
 		try {
@@ -193,12 +228,33 @@ export function EquipmentForm({
 			/>
 
 			<MultiSelect
-				label='Phụ tùng'
-				placeholder='Chọn phụ tùng'
+				label='Phụ tùng theo thiết bị'
+				placeholder='Chọn phụ tùng theo thiết bị'
 				values={selectedParts}
 				onValuesChange={setSelectedParts}
 				options={Object.values(
 					(parts ?? []).reduce<
+						Record<string, { value: string; label: string }>
+					>((acc, item) => {
+						if (!item.id || !item.code || acc[item.id]) {
+							return acc;
+						}
+						acc[item.id] = {
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						};
+						return acc;
+					}, {}),
+				)}
+			/>
+
+			<MultiSelect
+				label='Phụ tùng khác'
+				placeholder='Chọn phụ tùng khác'
+				values={selectedOtherParts}
+				onValuesChange={setSelectedOtherParts}
+				options={Object.values(
+					(otherParts ?? []).reduce<
 						Record<string, { value: string; label: string }>
 					>((acc, item) => {
 						if (!item.id || !item.code || acc[item.id]) {

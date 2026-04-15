@@ -9,6 +9,8 @@ export type MaterialImportRow = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	materialId?: string | null;
+	partId?: string | null;
+	partType?: number | null;
 	maintainUnitPriceEquipmentId?: string | null;
 	materialCode: string;
 	unitOfMeasureName: string;
@@ -78,6 +80,7 @@ export const OtherMaterialDetail = {
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
 	materialId?: string | null;
+	partId?: string | null;
 	maintainUnitPriceEquipmentId?: string | null;
 	type: number;
 	itemType: number;

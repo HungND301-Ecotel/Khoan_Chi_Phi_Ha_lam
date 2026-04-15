@@ -38,6 +38,7 @@ export const materialFormSchema = z
 		category: z.number().nullable(),
 		categoryProcessGroup: z.string().nullable(),
 		categoryProductionOrderId: z.string().nullable(),
+		categoryEquipmentId: z.string().nullable().optional(),
 		showCategoryDropdown: z.boolean(),
 		additionalCostCategory: z.number().nullable(),
 		additionalCostProductionOrderId: z.string().nullable(),
@@ -87,6 +88,20 @@ export const materialFormSchema = z
 		{
 			message: 'Phải chọn quyết định, lệnh sản xuất',
 			path: ['categoryProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			const needsEquipment =
+				categoryValue === 3 && data.type === 2 && data.itemType === 1;
+			if (!data.showCategoryDropdown || !needsEquipment) return true;
+			return data.categoryEquipmentId != null;
+		},
+		{
+			message: 'Phải chọn thiết bị',
+			path: ['categoryEquipmentId'],
 		},
 	)
 	.refine(
@@ -164,7 +179,13 @@ export const materialFormSchema = z
 				data.showCategoryDropdown &&
 				categoryValue &&
 				data.categoryProcessGroup &&
-				(categoryValue !== 3 || data.categoryProductionOrderId != null);
+				(categoryValue !== 3 || data.categoryProductionOrderId != null) &&
+				!(
+					categoryValue === 3 &&
+					data.type === 2 &&
+					data.itemType === 1 &&
+					data.categoryEquipmentId == null
+				);
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
@@ -236,6 +257,7 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	category: null,
 	categoryProcessGroup: null,
 	categoryProductionOrderId: null,
+	categoryEquipmentId: null,
 	showCategoryDropdown: false,
 	additionalCostCategory: null,
 	additionalCostProductionOrderId: null,

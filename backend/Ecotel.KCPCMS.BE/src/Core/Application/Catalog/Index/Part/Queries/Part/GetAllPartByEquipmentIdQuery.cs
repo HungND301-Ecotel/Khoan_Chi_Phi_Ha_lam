@@ -33,6 +33,7 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = partDetail.Id,
             Code = partDetail.Code.Value,
             Name = partDetail.Name,
+            PartType = partDetail.Type,
             EquipmentIds = partDetail.EquipmentParts.Select(e => e.EquipmentId).ToList(),
             EquipmentCodes = partDetail.EquipmentParts
                 .Where(e => e.Equipment?.Code != null)

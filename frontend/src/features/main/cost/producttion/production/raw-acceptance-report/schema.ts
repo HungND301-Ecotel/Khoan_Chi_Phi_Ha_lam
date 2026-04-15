@@ -101,6 +101,21 @@ export const rawAcceptanceReportItemSchema = z
 	)
 	.refine(
 		(data) => {
+			const needsEquipment =
+				data.showCategoryDropdown &&
+				data.category === 3 &&
+				data.type === 2 &&
+				data.itemType === 1;
+			if (!needsEquipment) return true;
+			return data.categoryEquipmentId != null;
+		},
+		{
+			message: 'Phải chọn thiết bị',
+			path: ['categoryEquipmentId'],
+		},
+	)
+	.refine(
+		(data) => {
 			if (
 				!data.showAdditionalCostDropdown ||
 				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
@@ -176,7 +191,13 @@ export const rawAcceptanceReportItemSchema = z
 				data.showCategoryDropdown &&
 				data.category &&
 				data.categoryProcessGroup &&
-				(data.category !== 3 || data.categoryProductionOrderId != null);
+				(data.category !== 3 || data.categoryProductionOrderId != null) &&
+				!(
+					data.category === 3 &&
+					data.type === 2 &&
+					data.itemType === 1 &&
+					data.categoryEquipmentId == null
+				);
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&

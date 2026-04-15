@@ -32,6 +32,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 PartName = x.Part?.Name ?? "",
                 PartCode = x.Part?.Code?.Value ?? "",
                 PartId = x.PartId,
+                PartType = x.Part?.Type ?? Domain.Common.Enums.PartType.Part,
                 EquipmentId = maintainUnitPrice.EquipmentId,
                 Quantity = x.Quantity,
                 PartCost = x.Part?.GetPartCost(maintainUnitPrice.StartMonth) ?? 0,

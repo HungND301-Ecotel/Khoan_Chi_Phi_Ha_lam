@@ -145,7 +145,8 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
 
         var existingPartIds = await _partRepository.GetAllAsync(
             selector: x => x.Id,
-            predicate: x => partIds.Contains(x.Id) && x.Type == PartType.Part,
+            predicate: x => partIds.Contains(x.Id) &&
+                            (x.Type == PartType.Part || x.Type == PartType.OtherPart),
             disableTracking: true);
 
         var existingIdSet = existingPartIds.ToHashSet();

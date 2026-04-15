@@ -17,12 +17,14 @@ public record AcceptanceReportItemDto
     public Guid? ReportItemId { get; init; }
 
     public Guid? MaterialId { get; init; }
+    public Guid? PartId { get; init; }
     public Guid? MaintainUnitPriceEquipmentId { get; init; }
 
     public required string MaterialCode { get; init; }
     public required string UnitOfMeasureName { get; init; }
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
+    public PartType? PartType { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
 }

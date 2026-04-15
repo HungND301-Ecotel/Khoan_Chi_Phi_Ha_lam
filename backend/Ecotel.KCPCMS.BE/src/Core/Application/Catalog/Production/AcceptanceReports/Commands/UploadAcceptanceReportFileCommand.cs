@@ -3,7 +3,6 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +17,7 @@ public class UploadAcceptanceReportFileCommandHandler(
     : IRequestHandler<UploadAcceptanceReportFileCommand, UploadAcceptanceReportResponseDto>
 {
     private readonly IWriteRepository<Material> materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<MaintainUnitPriceEquipment> maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<MaintainUnitPriceEquipment>();
+    private readonly IWriteRepository<Part> partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<UploadAcceptanceReportResponseDto> Handle(UploadAcceptanceReportFileCommand request, CancellationToken cancellationToken)
     {
@@ -26,13 +25,12 @@ public class UploadAcceptanceReportFileCommandHandler(
             include: p => p.Include(p => p.UnitOfMeasure).Include(p => p.Code),
             disableTracking: true);
 
-        var maintainUnitPriceEquipments = await maintainUnitPriceEquipmentRepository.GetAllAsync(
-            include: p => p.Include(p => p.Part).ThenInclude(p => p.Code)
-                           .Include(p => p.Part).ThenInclude(p => p.UnitOfMeasure)
-                           .Include(p => p.MaintainUnitPrice),
+        var parts = await partRepository.GetAllAsync(
+            include: p => p.Include(p => p.Code)
+                           .Include(p => p.UnitOfMeasure),
             disableTracking: true);
 
-        if ((materials == null || !materials.Any()) && (maintainUnitPriceEquipments == null || !maintainUnitPriceEquipments.Any()))
+        if ((materials == null || !materials.Any()) && (parts == null || !parts.Any()))
         {
             throw new ApplicationException(CustomResponseMessage.MaterialPartNotFound);
         }
@@ -43,6 +41,6 @@ public class UploadAcceptanceReportFileCommandHandler(
             fileStream,
             request.File.FileName,
             materials ?? new List<Material>(),
-            maintainUnitPriceEquipments ?? new List<MaintainUnitPriceEquipment>());
+            parts ?? new List<Part>());
     }
 }

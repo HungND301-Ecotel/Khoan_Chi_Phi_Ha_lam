@@ -66,7 +66,8 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 {
                     Id = ep.PartId,
                     Code = ep.Part!.Code!.Value,
-                    Name = ep.Part.Name
+                    Name = ep.Part.Name,
+                    PartType = ep.Part.Type
                 })
                 .OrderBy(p => p.Code)
                 .ThenBy(p => p.Name)

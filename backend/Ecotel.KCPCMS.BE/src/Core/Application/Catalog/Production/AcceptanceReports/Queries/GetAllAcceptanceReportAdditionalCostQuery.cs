@@ -26,6 +26,10 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
                 .ThenInclude(i => i.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
                 .ThenInclude(i => i.Material).ThenInclude(m => m.Code)
+                .Include(a => a.AcceptanceReportItems)
+                .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
+                .Include(a => a.AcceptanceReportItems)
+                .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.Code),
             disableTracking: true);
@@ -58,15 +62,17 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
             else
             {
                 // Part type
-                code = item?.MaintainUnitPriceEquipment?.Part?.Code?.Value;
-                name = item?.MaintainUnitPriceEquipment?.Part?.Name;
+                code = item?.Part?.Code?.Value ?? item?.MaintainUnitPriceEquipment?.Part?.Code?.Value;
+                name = item?.Part?.Name ?? item?.MaintainUnitPriceEquipment?.Part?.Name;
             }
 
             var costItem = new AdditionalCostItemDto
             {
                 Code = code,
                 Name = name,
-                UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name ?? item?.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
+                UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
+                    ?? item?.Part?.UnitOfMeasure?.Name
+                    ?? item?.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
                 AdditionalCostQuantity = item.AdditionalCostQuantity
             };
 

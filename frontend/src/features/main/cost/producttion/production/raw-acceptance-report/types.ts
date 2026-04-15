@@ -2,6 +2,8 @@ export type RawAcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
+	partId?: string | null;
+	partType?: number | null;
 	maintainUnitPriceEquipmentId?: string | null;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
@@ -44,6 +46,8 @@ export type AcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
+	partId?: string | null;
+	partType?: number | null;
 	maintainUnitPriceEquipmentId?: string | null;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;

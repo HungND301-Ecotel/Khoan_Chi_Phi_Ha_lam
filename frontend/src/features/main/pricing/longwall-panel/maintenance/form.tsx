@@ -93,14 +93,16 @@ export function LongwallPanelForm({
 						startMonth: startMonth.substring(0, 10),
 						endMonth: res.result.endMonth.substring(0, 10),
 						equipmentIds: [equipmentId],
-						costs: maintainUnitPriceEquipment.map((cost: any) => ({
-							partId: cost.partId,
-							quantity: cost.quantity,
-							replacementTimeStandard: cost.replacementTimeStandard,
-							averageMonthlyTunnelProduction:
-								cost.averageMonthlyTunnelProduction,
-							equipmentId: cost.equipmentId,
-						})),
+						costs: maintainUnitPriceEquipment
+							.filter((cost: any) => (cost.partType ?? 1) === 1)
+							.map((cost: any) => ({
+								partId: cost.partId,
+								quantity: cost.quantity,
+								replacementTimeStandard: cost.replacementTimeStandard,
+								averageMonthlyTunnelProduction:
+									cost.averageMonthlyTunnelProduction,
+								equipmentId: cost.equipmentId,
+							})),
 						otherMaterialValues: { [equipmentId]: otherMaterialValue },
 					});
 				});
