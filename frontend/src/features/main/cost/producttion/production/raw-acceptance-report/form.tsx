@@ -608,8 +608,7 @@ export function RawAcceptanceReportForm({
 
 					const importedItemMetas: ImportedItemMeta[] = response.result.items
 						.map((item) => ({
-							materialOrPartId:
-								item.partId ?? item.materialId ?? '',
+							materialOrPartId: item.partId ?? item.materialId ?? '',
 							type: item.type,
 						}))
 						.filter((item) => item.materialOrPartId.length > 0);
@@ -633,15 +632,12 @@ export function RawAcceptanceReportForm({
 						const equipmentMappingsRes = await api.post<
 							MaintainEquipmentMapping[],
 							string[]
-						>(
-							API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS,
-							partIds,
-						);
+						>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
 
 						for (const mapping of equipmentMappingsRes.result ?? []) {
-							fetchedEquipmentOptionsByPartId[
-								mapping.partId
-							] = (mapping.equipments ?? [])
+							fetchedEquipmentOptionsByPartId[mapping.partId] = (
+								mapping.equipments ?? []
+							)
 								.sort((a, b) => a.code.localeCompare(b.code))
 								.map((equipment) => ({
 									value: toEquipmentOptionValue(equipment.id),
@@ -873,7 +869,7 @@ export function RawAcceptanceReportForm({
 					const categoryEquipmentId =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? item.categoryEquipmentId ?? null
+							? (item.categoryEquipmentId ?? null)
 							: null;
 
 					const additionalSelection =
@@ -1809,34 +1805,34 @@ function RawAcceptanceReportRow({
 
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
-				resolvedCategoryValue &&
-				categoryProcessGroupValue &&
-				(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
-				(!categoryRequiresEquipment || categoryEquipmentId != null),
+			resolvedCategoryValue &&
+			categoryProcessGroupValue &&
+			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
+			(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
-				additionalCostCategoryValue &&
-				(!additionalRequiresProductionOrder ||
-					additionalCostProductionOrderId != null) &&
-				(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
+			additionalCostCategoryValue &&
+			(!additionalRequiresProductionOrder ||
+				additionalCostProductionOrderId != null) &&
+			(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
 		);
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
-				prev.category &&
-				prev.categoryProcessGroup &&
-				(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
-					(prev.categoryProductionOrderId != null &&
-						(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
+			prev.category &&
+			prev.categoryProcessGroup &&
+			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
+				(prev.categoryProductionOrderId != null &&
+					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
-				prev.additionalCostCategory &&
-				((prev.additionalCostCategory !== AdditionalCost.Material &&
-					prev.additionalCostCategory !== AdditionalCost.Maintain) ||
-					prev.additionalCostProductionOrderId != null) &&
-				(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
-					prev.otherMaterialDetail != null),
+			prev.additionalCostCategory &&
+			((prev.additionalCostCategory !== AdditionalCost.Material &&
+				prev.additionalCostCategory !== AdditionalCost.Maintain) ||
+				prev.additionalCostProductionOrderId != null) &&
+			(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
+				prev.otherMaterialDetail != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
@@ -2439,7 +2435,9 @@ function RawAcceptanceReportRow({
 									<div className='w-full'>
 										<FormComboBox
 											control={form.control}
-											name={`${basename}.categoryProductionOrderId` as FieldName}
+											name={
+												`${basename}.categoryProductionOrderId` as FieldName
+											}
 											options={categoryProductionOrderOptions}
 											placeholder='Chọn quyết định, lệnh sản xuất'
 										/>

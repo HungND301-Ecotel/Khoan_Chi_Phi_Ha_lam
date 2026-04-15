@@ -192,14 +192,13 @@ export const materialFormSchema = z
 				((data.additionalCostCategory !== 2 &&
 					data.additionalCostCategory !== 3) ||
 					data.additionalCostProductionOrderId != null) &&
-				(data.additionalCostCategory !== 4 ||
-					data.otherMaterialDetail != null);
+				(data.additionalCostCategory !== 4 || data.otherMaterialDetail != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown &&
 				data.contractLimitCategory &&
 				((data.contractLimitCategory !== 2 &&
 					data.contractLimitCategory !== 3) ||
-					((data.contractLimitSubCategories?.length ?? 0) > 0));
+					(data.contractLimitSubCategories?.length ?? 0) > 0);
 			const hasAssetActive = data.showAssetDropdown;
 
 			if (

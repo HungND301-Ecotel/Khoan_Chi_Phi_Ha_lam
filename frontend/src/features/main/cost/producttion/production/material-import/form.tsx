@@ -843,7 +843,10 @@ function MaterialImportRow({
 				categoryProductionOrderId == null &&
 				categoryProductionOrderOptions.length > 0
 			)
-				set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
+				set(
+					'categoryProductionOrderId',
+					categoryProductionOrderOptions[0].value,
+				);
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
 				categoryNeedsEquipment &&
@@ -1063,35 +1066,35 @@ function MaterialImportRow({
 			additionalCostCategory === AdditionalCost.OtherMaterial;
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
-				resolvedCategoryValue &&
-				categoryProcessGroupValue &&
-				(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
-				(!categoryRequiresEquipment || categoryEquipmentId != null),
+			resolvedCategoryValue &&
+			categoryProcessGroupValue &&
+			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
+			(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
-				additionalCostCategory &&
-				(!additionalRequiresProductionOrder ||
-					additionalCostProductionOrderId != null) &&
-				(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
+			additionalCostCategory &&
+			(!additionalRequiresProductionOrder ||
+				additionalCostProductionOrderId != null) &&
+			(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
 		);
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
-				prev.category &&
-				prev.categoryProcessGroup &&
-				(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
-					(prev.categoryProductionOrderId != null &&
-						(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
+			prev.category &&
+			prev.categoryProcessGroup &&
+			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
+				(prev.categoryProductionOrderId != null &&
+					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
-				prev.additionalCostCategory &&
-				(prev.additionalCostCategory !== AdditionalCost.Material &&
-				prev.additionalCostCategory !== AdditionalCost.Maintain
-					? true
-					: prev.additionalCostProductionOrderId != null) &&
-				(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
-					prev.otherMaterialDetail != null),
+			prev.additionalCostCategory &&
+			(prev.additionalCostCategory !== AdditionalCost.Material &&
+			prev.additionalCostCategory !== AdditionalCost.Maintain
+				? true
+				: prev.additionalCostProductionOrderId != null) &&
+			(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
+				prev.otherMaterialDetail != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
@@ -1246,7 +1249,7 @@ function MaterialImportRow({
 			resolvedCategoryValue &&
 			categoryProcessGroupValue &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
-				(!categoryNeedsEquipment || categoryEquipmentId != null) &&
+			(!categoryNeedsEquipment || categoryEquipmentId != null) &&
 			categoryQuantity != null
 		)
 			total += Number(categoryQuantity);

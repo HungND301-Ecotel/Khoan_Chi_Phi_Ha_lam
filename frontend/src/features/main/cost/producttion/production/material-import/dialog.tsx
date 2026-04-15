@@ -306,8 +306,7 @@ export function MaterialImportDialog({
 
 			const importedItemMetas: ImportedItemMeta[] =
 				response.result.acceptanceReports.map((item) => ({
-					materialOrPartId:
-						item.partId ?? item.materialId ?? '',
+					materialOrPartId: item.partId ?? item.materialId ?? '',
 					type: item.type,
 				}));
 			setImportedItems(importedItemMetas);
@@ -330,15 +329,12 @@ export function MaterialImportDialog({
 				const equipmentMappingsRes = await api.post<
 					PartEquipmentMapping[],
 					string[]
-				>(
-					API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS,
-					partIds,
-				);
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
 
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					fetchedEquipmentOptionsByPartId[
-						mapping.partId
-					] = (mapping.equipments ?? [])
+					fetchedEquipmentOptionsByPartId[mapping.partId] = (
+						mapping.equipments ?? []
+					)
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
 							value: toEquipmentOptionValue(equipment.id),
@@ -376,8 +372,7 @@ export function MaterialImportDialog({
 						...MATERIAL_FORM_DEFAULT,
 						id: item.partId ?? item.materialId ?? '',
 						acceptanceReportItemId: item.reportItemId || undefined,
-						materialOrPartId:
-							item.partId ?? item.materialId ?? '',
+						materialOrPartId: item.partId ?? item.materialId ?? '',
 						materialCode: item.materialCode,
 						unitOfMeasureName: item.unitOfMeasureName,
 						type: item.type,
@@ -465,7 +460,7 @@ export function MaterialImportDialog({
 					const categoryEquipmentId =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? item.categoryEquipmentId ?? null
+							? (item.categoryEquipmentId ?? null)
 							: null;
 
 					const additionalSelection =
@@ -581,8 +576,7 @@ export function MaterialImportDialog({
 							item.type === MaterialType.SparePart
 								? item.materialOrPartId || null
 								: null,
-						maintainUnitPriceEquipmentId:
-							null,
+						maintainUnitPriceEquipmentId: null,
 						type: item.type || 1,
 						itemType: item.itemType || 1,
 						categoryProductionOrderId,

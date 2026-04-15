@@ -751,5 +751,3 @@ function PricingEquipmentOtherPartCosts({
 		</FormRow>
 	);
 }
-
-

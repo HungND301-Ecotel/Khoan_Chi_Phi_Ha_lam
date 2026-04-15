@@ -155,13 +155,10 @@ export function EquipmentForm({
 	}, [row, form, isDuplicate]);
 
 	useEffect(() => {
-		form.setValue(
-			'partIds',
-			[
-				...selectedParts.map((item) => item.value),
-				...selectedOtherParts.map((item) => item.value),
-			],
-		);
+		form.setValue('partIds', [
+			...selectedParts.map((item) => item.value),
+			...selectedOtherParts.map((item) => item.value),
+		]);
 	}, [form, selectedParts, selectedOtherParts]);
 
 	const handleSubmit = async (values: EquipmentSchema) => {

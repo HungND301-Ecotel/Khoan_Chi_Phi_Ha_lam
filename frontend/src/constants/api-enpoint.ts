@@ -262,10 +262,8 @@ export const API = {
 			CREATE: '/v1/catalog/revenuecostadjustmentconfig',
 			UPDATE: '/v1/catalog/revenuecostadjustmentconfig',
 			DELETES: '/v1/catalog/revenuecostadjustmentconfig',
-			DELETE: (id: string) =>
-				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
-			DETAIL: (id: string) =>
-				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			DELETE: (id: string) => `/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/revenuecostadjustmentconfig/${id}`,
 			IMPORT: '/v1/catalog/revenuecostadjustmentconfig/import',
 			EXPORT: '/v1/catalog/revenuecostadjustmentconfig/export',
 		},
@@ -473,11 +471,9 @@ export const API = {
 		},
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
-			MONTH_EXPORT:
-				'/v1/pricing/lump-sum-final-settlement/month-export',
+			MONTH_EXPORT: '/v1/pricing/lump-sum-final-settlement/month-export',
 			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
-			QUARTER_EXPORT:
-				'/v1/pricing/lump-sum-final-settlement/quarter-export',
+			QUARTER_EXPORT: '/v1/pricing/lump-sum-final-settlement/quarter-export',
 			QUARTER_CUSTOM_COST_LIST:
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/list',
 			QUARTER_CUSTOM_COST_CREATE:

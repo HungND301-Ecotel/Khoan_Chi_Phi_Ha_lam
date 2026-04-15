@@ -249,4 +249,3 @@ export const MOCK_RAW_ACCEPTANCE_REPORT_DETAIL: RawAcceptanceReportDetail = {
 	productionId: 'prod-001',
 	items: MOCK_RAW_ACCEPTANCE_REPORT_ITEMS,
 };
-
