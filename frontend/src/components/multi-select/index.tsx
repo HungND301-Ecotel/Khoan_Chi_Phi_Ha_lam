@@ -40,6 +40,13 @@ export function MultiSelect({
 }: MultiSelectProps) {
 	const [open, setOpen] = useState(false);
 
+	const normalizeText = (text: string) =>
+		text
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.trim();
+
 	const selectedValues = values.map((s) => s.value);
 
 	const handleRemove = (valueToRemove: string) => {
@@ -105,7 +112,21 @@ export function MultiSelect({
 					style={{ width: 'var(--radix-popover-trigger-width)' }}
 					align='start'
 				>
-					<Command>
+					<Command
+						filter={(value, search) => {
+							const normalizedValue = normalizeText(value);
+							const normalizedSearch = normalizeText(search);
+
+							if (!normalizedSearch) return 1;
+
+							const tokens = normalizedSearch
+								.split(/\s+/)
+								.filter(Boolean);
+							return tokens.every((token) => normalizedValue.includes(token))
+								? 1
+								: 0;
+						}}
+					>
 						<CommandInput placeholder='Tìm kiếm' />
 						<CommandList
 							className='max-h-58'
