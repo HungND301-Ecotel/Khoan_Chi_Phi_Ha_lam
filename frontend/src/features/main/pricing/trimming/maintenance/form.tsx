@@ -85,13 +85,8 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 						maintainUnitPriceEquipment,
 						otherMaterialValue,
 					} = res.result;
-
-					form.reset({
-						type: 3,
-						startMonth: startMonth.substring(0, 10),
-						endMonth: endMonth.substring(0, 10),
-						equipmentIds: [equipmentId],
-						costs: maintainUnitPriceEquipment
+					const costs = syncCostsWithCurrentPartLinks(
+						maintainUnitPriceEquipment
 							.filter((cost: any) => (cost.partType ?? 1) === 1)
 							.map((cost: any) => ({
 								partId: cost.partId,
@@ -101,6 +96,16 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 								replacementTimeStandard: cost.replacementTimeStandard,
 								equipmentId: cost.equipmentId,
 							})),
+						assets.result.data,
+						[equipmentId],
+					);
+
+					form.reset({
+						type: 3,
+						startMonth: startMonth.substring(0, 10),
+						endMonth: endMonth.substring(0, 10),
+						equipmentIds: [equipmentId],
+						costs,
 						otherMaterialValues: { [equipmentId]: otherMaterialValue },
 					});
 				});
@@ -135,48 +140,11 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 	useEffect(() => {
 		if (parts.length === 0 || !Array.isArray(watchedEquipmentIds)) return;
 
-		const existingEquipmentIdsInCosts = form
-			.getValues('costs')
-			.map(
-				(cost: {
-					partId: string;
-					replacementTimeStandard: number;
-					quantity: number;
-					averageMonthlyTunnelProduction: number;
-					equipmentId: string;
-				}) => cost.equipmentId,
-			);
-
-		const equipmentIdsToAdd = watchedEquipmentIds.filter(
-			(id) => !existingEquipmentIdsInCosts.includes(id),
-		);
-
-		const newCosts = parts.flatMap((part) =>
-			(part.equipmentIds ?? [])
-				.filter((equipmentId) => equipmentIdsToAdd.includes(equipmentId))
-				.map((equipmentId) => ({
-					partId: part.id,
-					quantity: NaN,
-					averageMonthlyTunnelProduction: NaN,
-					replacementTimeStandard: NaN,
-					equipmentId,
-				})),
-		);
-
-		const costsToKeep = form
-			.getValues('costs')
-			.filter(
-				(cost: {
-					partId: string;
-					replacementTimeStandard: number;
-					quantity: number;
-					averageMonthlyTunnelProduction: number;
-					equipmentId: string;
-				}) => watchedEquipmentIds.includes(cost.equipmentId),
-			);
-
-		const costs = [...costsToKeep, ...newCosts].sort((a, b) =>
-			a.equipmentId.localeCompare(b.equipmentId),
+		const existingCosts = form.getValues('costs');
+		const costs = syncCostsWithCurrentPartLinks(
+			existingCosts,
+			parts,
+			watchedEquipmentIds,
 		);
 
 		form.setValue('costs', costs, {
@@ -322,6 +290,55 @@ function filterEquipmentsByProcessGroupType(
 	);
 }
 
+function syncCostsWithCurrentPartLinks(
+	costs: TunnelingFormSchema['costs'],
+	parts: Part[],
+	equipmentIds: string[],
+): TunnelingFormSchema['costs'] {
+	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
+	const partOrder = new Map(parts.map((part, index) => [part.id, index]));
+	const partEquipmentMap = new Map(
+		parts.map((part) => [part.id, new Set(part.equipmentIds ?? [])]),
+	);
+
+	const filteredCosts = costs.filter((cost) => {
+		if (!equipmentOrder.has(cost.equipmentId)) return false;
+		const linkedEquipmentIds = partEquipmentMap.get(cost.partId);
+		return !!linkedEquipmentIds?.has(cost.equipmentId);
+	});
+
+	const existingCostKeys = new Set(
+		filteredCosts.map((cost) => `${cost.equipmentId}-${cost.partId}`),
+	);
+
+	const newCosts = parts.flatMap((part) =>
+		(part.equipmentIds ?? [])
+			.filter((equipmentId) => equipmentOrder.has(equipmentId))
+			.filter(
+				(equipmentId) => !existingCostKeys.has(`${equipmentId}-${part.id}`),
+			)
+			.map((equipmentId) => ({
+				partId: part.id,
+				quantity: NaN,
+				averageMonthlyTunnelProduction: NaN,
+				replacementTimeStandard: NaN,
+				equipmentId,
+			})),
+	);
+
+	return [...filteredCosts, ...newCosts].sort((a, b) => {
+		const equipmentCompare =
+			(equipmentOrder.get(a.equipmentId) ?? Number.MAX_SAFE_INTEGER) -
+			(equipmentOrder.get(b.equipmentId) ?? Number.MAX_SAFE_INTEGER);
+		if (equipmentCompare !== 0) return equipmentCompare;
+
+		return (
+			(partOrder.get(a.partId) ?? Number.MAX_SAFE_INTEGER) -
+			(partOrder.get(b.partId) ?? Number.MAX_SAFE_INTEGER)
+		);
+	});
+}
+
 function GroupedTunnelingCosts({
 	equipments,
 	parts,
@@ -356,7 +373,9 @@ function GroupedTunnelingCosts({
 							label={`${group.equipmentCode} - ${group.equipmentName} - ${formatNumber(group.totalAmount)} (đ)`}
 						/>
 						{group.indices.map((index) => (
-							<FormRow key={index}>
+							<FormRow
+								key={`${group.equipmentId}-${costs[index]?.partId ?? 'unknown'}-${index}`}
+							>
 								<PricingTunnelingCosts index={index} parts={parts} />
 							</FormRow>
 						))}
