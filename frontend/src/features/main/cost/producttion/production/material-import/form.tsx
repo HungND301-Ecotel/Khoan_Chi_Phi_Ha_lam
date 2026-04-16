@@ -14,8 +14,10 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { PlusCircleIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { MaintainUnitPriceCreateDialog } from './maintain-unit-price-create-dialog';
 import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
@@ -52,11 +54,18 @@ type RowPath = Path<MaterialsExtendedForm>;
 type ProcessGroupOption = {
 	value: string;
 	label: string;
+	type: number;
 };
 
 type ProductionOrderOption = {
 	value: string;
 	label: string;
+};
+
+type EquipmentOption = {
+	id: string;
+	code: string;
+	name: string;
 };
 
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
@@ -79,6 +88,7 @@ type MaterialImportFormProps = {
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	partEquipmentsByPartId: Record<string, EquipmentOption[]>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -272,6 +282,7 @@ export function MaterialImportForm({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	partEquipmentsByPartId,
 }: MaterialImportFormProps) {
 	const form = useFormContext<MaterialsForm>();
 	const { fields, remove } = useFieldArray({
@@ -412,6 +423,7 @@ export function MaterialImportForm({
 									orderOrEquipmentOptionsByItemId={
 										orderOrEquipmentOptionsByItemId
 									}
+									partEquipmentsByPartId={partEquipmentsByPartId}
 									onRemove={() => remove(index)}
 								/>
 							))}
@@ -561,16 +573,20 @@ function MaterialImportRow({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	partEquipmentsByPartId,
 }: {
 	index: number;
 	displayIndex?: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	partEquipmentsByPartId: Record<string, EquipmentOption[]>;
 	onRemove: () => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
 	const basename = `materials.${index}` as const;
+	const [isCreateMaintainDialogOpen, setIsCreateMaintainDialogOpen] =
+		useState(false);
 
 	// ── Watch helpers (typed via RowPath) ────────────────────────────────────
 	const w = <K extends keyof MaterialRowValues>(key: K) =>
@@ -609,6 +625,8 @@ function MaterialImportRow({
 	const materialTypeValue = w('type');
 	const itemTypeValue = w('itemType');
 	const materialOrPartId = w('materialOrPartId');
+	const partTypeValue = w('partType');
+	const hasMaintainUnitPriceEquipment = w('hasMaintainUnitPriceEquipment');
 	const receivedTypes = w('receivedTypes') as string[] | undefined;
 	const exportedTypes = w('exportedTypes') as string[] | undefined;
 	const receivedBreakdown = w('receivedBreakdown') as
@@ -1302,438 +1320,495 @@ function MaterialImportRow({
 	const showReceivedBreakdown = activeReceivedKeys.length > 1;
 	const showExportedBreakdown = activeExportedKeys.length > 1;
 	const materialBadge = getMaterialBadge(materialTypeValue, itemTypeValue);
+	const needsMaintainUnitPriceCreation =
+		materialTypeValue === MaterialType.SparePart &&
+		Number(partTypeValue ?? 1) === 1 &&
+		!hasMaintainUnitPriceEquipment;
+	const partEquipments = materialOrPartId
+		? (partEquipmentsByPartId[materialOrPartId] ?? [])
+		: [];
 
 	// ── Render ───────────────────────────────────────────────────────────────
 	return (
-		<TableRow
-			className={cn(
-				'transition-colors',
-				materialTypeValue === MaterialType.Material
-					? 'bg-blue-50/40 hover:bg-blue-50/70'
-					: materialTypeValue === MaterialType.SparePart
-						? 'bg-amber-50/40 hover:bg-amber-50/70'
-						: 'hover:bg-slate-50/50',
-			)}
-		>
-			{/* STT */}
-			<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
-				{displayIndex ?? index + 1}
-			</TableCell>
+		<>
+			<TableRow
+				className={cn(
+					'transition-colors',
+					materialTypeValue === MaterialType.Material
+						? 'bg-blue-50/40 hover:bg-blue-50/70'
+						: materialTypeValue === MaterialType.SparePart
+							? 'bg-amber-50/40 hover:bg-amber-50/70'
+							: 'hover:bg-slate-50/50',
+				)}
+			>
+				{/* STT */}
+				<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
+					{displayIndex ?? index + 1}
+				</TableCell>
 
-			{/* Mã vật tư */}
-			<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
-				<div className='flex flex-col gap-1'>
+				{/* Mã vật tư */}
+				<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
+					<div className='flex flex-col gap-1'>
+						<div className='flex items-center gap-2'>
+							<Input
+								readOnly
+								value={
+									(form.watch(
+										`${basename}.materialCode` as RowPath,
+									) as string) || ''
+								}
+								className={cn(
+									'font-medium',
+									needsMaintainUnitPriceCreation
+										? 'border-red-500 bg-red-50 text-red-700'
+										: 'border-slate-300 bg-slate-100 text-slate-500',
+								)}
+							/>
+							{needsMaintainUnitPriceCreation && (
+								<Button
+									type='button'
+									variant='outline'
+									size='icon'
+									className='size-9 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
+									onClick={() => setIsCreateMaintainDialogOpen(true)}
+									title='Tạo mới đơn giá và định mức SCTX'
+								>
+									<PlusCircleIcon className='size-4' />
+								</Button>
+							)}
+						</div>
+						{needsMaintainUnitPriceCreation && (
+							<span className='text-[11px] font-medium text-red-600'>
+								Chưa có đơn giá và định mức SCTX cho phụ tùng này
+							</span>
+						)}
+						<span className={materialBadge.className}>
+							{materialBadge.label}
+						</span>
+					</div>
+				</TableCell>
+
+				{/* Đơn vị tính */}
+				<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 					<Input
 						readOnly
 						value={
-							(form.watch(`${basename}.materialCode` as RowPath) as string) ||
-							''
+							(form.watch(
+								`${basename}.unitOfMeasureName` as RowPath,
+							) as string) || ''
 						}
-						className='border-slate-300 bg-slate-100 font-medium text-slate-500'
+						className='border-slate-300 bg-slate-100 text-slate-500'
 					/>
-					<span className={materialBadge.className}>{materialBadge.label}</span>
-				</div>
-			</TableCell>
+				</TableCell>
 
-			{/* Đơn vị tính */}
-			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
-				<Input
-					readOnly
-					value={
-						(form.watch(
-							`${basename}.unitOfMeasureName` as RowPath,
-						) as string) || ''
-					}
-					className='border-slate-300 bg-slate-100 text-slate-500'
-				/>
-			</TableCell>
-
-			{/* Số lượng lĩnh */}
-			<TableCell className='border-b border-slate-200 px-4 py-4'>
-				{(() => {
-					const subTotal = activeReceivedKeys.reduce(
-						(acc, key) => acc + (Number((receivedBreakdown ?? {})[key]) || 0),
-						0,
-					);
-					const isReceivedValid =
-						!showReceivedBreakdown || Math.abs(subTotal - receivedQty) < 0.01;
-					return (
-						<div className='flex flex-col gap-2'>
-							<div className='flex items-end gap-2'>
-								{/* Total — always leftmost */}
-								<div
-									className={cn(
-										'flex shrink-0 flex-col gap-0.5',
-										showReceivedBreakdown ? 'w-24' : 'w-full',
+				{/* Số lượng lĩnh */}
+				<TableCell className='border-b border-slate-200 px-4 py-4'>
+					{(() => {
+						const subTotal = activeReceivedKeys.reduce(
+							(acc, key) => acc + (Number((receivedBreakdown ?? {})[key]) || 0),
+							0,
+						);
+						const isReceivedValid =
+							!showReceivedBreakdown || Math.abs(subTotal - receivedQty) < 0.01;
+						return (
+							<div className='flex flex-col gap-2'>
+								<div className='flex items-end gap-2'>
+									{/* Total — always leftmost */}
+									<div
+										className={cn(
+											'flex shrink-0 flex-col gap-0.5',
+											showReceivedBreakdown ? 'w-24' : 'w-full',
+										)}
+									>
+										<label className='text-[10px] font-medium text-slate-500'>
+											Tổng
+										</label>
+										<Input
+											readOnly
+											value={receivedQty}
+											className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+										/>
+									</div>
+									{/* Sub-inputs — only when >1 selected */}
+									{showReceivedBreakdown && (
+										<QuantityBreakdownInputs
+											selectedKeys={activeReceivedKeys}
+											allOptions={RECEIVED_TYPE_OPTIONS}
+											values={receivedBreakdown ?? {}}
+											onChange={handleReceivedBreakdownChange}
+											isValid={isReceivedValid}
+										/>
 									)}
-								>
-									<label className='text-[10px] font-medium text-slate-500'>
-										Tổng
-									</label>
-									<Input
-										readOnly
-										value={receivedQty}
-										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-									/>
 								</div>
-								{/* Sub-inputs — only when >1 selected */}
-								{showReceivedBreakdown && (
-									<QuantityBreakdownInputs
-										selectedKeys={activeReceivedKeys}
-										allOptions={RECEIVED_TYPE_OPTIONS}
-										values={receivedBreakdown ?? {}}
-										onChange={handleReceivedBreakdownChange}
-										isValid={isReceivedValid}
-									/>
+								<FormMultiSelect
+									control={form.control}
+									name={`${basename}.receivedTypes` as RowPath}
+									options={RECEIVED_TYPE_OPTIONS}
+									placeholder='Chọn loại lĩnh'
+								/>
+								{showReceivedBreakdown && !isReceivedValid && (
+									<p className='text-[11px] font-medium text-red-500'>
+										Tổng các mục ({subTotal}) phải bằng số lượng lĩnh (
+										{receivedQty})
+									</p>
 								)}
 							</div>
-							<FormMultiSelect
-								control={form.control}
-								name={`${basename}.receivedTypes` as RowPath}
-								options={RECEIVED_TYPE_OPTIONS}
-								placeholder='Chọn loại lĩnh'
-							/>
-							{showReceivedBreakdown && !isReceivedValid && (
-								<p className='text-[11px] font-medium text-red-500'>
-									Tổng các mục ({subTotal}) phải bằng số lượng lĩnh (
-									{receivedQty})
-								</p>
-							)}
-						</div>
-					);
-				})()}
-			</TableCell>
+						);
+					})()}
+				</TableCell>
 
-			{/* Số lượng xuất */}
-			<TableCell className='border-b border-slate-200 px-4 py-4'>
-				{(() => {
-					const subTotal = activeExportedKeys.reduce(
-						(acc, key) => acc + (Number((exportedBreakdown ?? {})[key]) || 0),
-						0,
-					);
-					const isExportedValid =
-						!showExportedBreakdown || Math.abs(subTotal - exportedQty) < 0.01;
-					return (
-						<div className='flex flex-col gap-2'>
-							<div className='flex items-end gap-2'>
-								{/* Total — always leftmost */}
-								<div
-									className={cn(
-										'flex shrink-0 flex-col gap-0.5',
-										showExportedBreakdown ? 'w-24' : 'w-full',
+				{/* Số lượng xuất */}
+				<TableCell className='border-b border-slate-200 px-4 py-4'>
+					{(() => {
+						const subTotal = activeExportedKeys.reduce(
+							(acc, key) => acc + (Number((exportedBreakdown ?? {})[key]) || 0),
+							0,
+						);
+						const isExportedValid =
+							!showExportedBreakdown || Math.abs(subTotal - exportedQty) < 0.01;
+						return (
+							<div className='flex flex-col gap-2'>
+								<div className='flex items-end gap-2'>
+									{/* Total — always leftmost */}
+									<div
+										className={cn(
+											'flex shrink-0 flex-col gap-0.5',
+											showExportedBreakdown ? 'w-24' : 'w-full',
+										)}
+									>
+										<label className='text-[10px] font-medium text-slate-500'>
+											Tổng
+										</label>
+										<Input
+											readOnly
+											value={exportedQty}
+											className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+										/>
+									</div>
+									{/* Sub-inputs — only when >1 selected */}
+									{showExportedBreakdown && (
+										<QuantityBreakdownInputs
+											selectedKeys={activeExportedKeys}
+											allOptions={EXPORTED_TYPE_OPTIONS}
+											values={exportedBreakdown ?? {}}
+											onChange={handleExportedBreakdownChange}
+											isValid={isExportedValid}
+										/>
 									)}
-								>
-									<label className='text-[10px] font-medium text-slate-500'>
-										Tổng
-									</label>
-									<Input
-										readOnly
-										value={exportedQty}
-										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-									/>
 								</div>
-								{/* Sub-inputs — only when >1 selected */}
-								{showExportedBreakdown && (
-									<QuantityBreakdownInputs
-										selectedKeys={activeExportedKeys}
-										allOptions={EXPORTED_TYPE_OPTIONS}
-										values={exportedBreakdown ?? {}}
-										onChange={handleExportedBreakdownChange}
-										isValid={isExportedValid}
-									/>
+								<FormMultiSelect
+									control={form.control}
+									name={`${basename}.exportedTypes` as RowPath}
+									options={EXPORTED_TYPE_OPTIONS}
+									placeholder='Chọn loại xuất'
+								/>
+								{showExportedBreakdown && !isExportedValid && (
+									<p className='text-[11px] font-medium text-red-500'>
+										Tổng các mục ({subTotal}) phải bằng số lượng xuất (
+										{exportedQty})
+									</p>
 								)}
 							</div>
-							<FormMultiSelect
+						);
+					})()}
+				</TableCell>
+
+				{/* Vật tư tính vào doanh thu khoán */}
+				<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+					<div className='flex flex-col items-center gap-3'>
+						<div className='flex justify-center *:w-auto!'>
+							<FormCheckBox
 								control={form.control}
-								name={`${basename}.exportedTypes` as RowPath}
-								options={EXPORTED_TYPE_OPTIONS}
-								placeholder='Chọn loại xuất'
+								name={`${basename}.showCategoryDropdown` as RowPath}
 							/>
-							{showExportedBreakdown && !isExportedValid && (
-								<p className='text-[11px] font-medium text-red-500'>
-									Tổng các mục ({subTotal}) phải bằng số lượng xuất (
-									{exportedQty})
+						</div>
+						{!showCategoryDropdown &&
+							!showAdditionalCostDropdown &&
+							!showContractLimitDropdown &&
+							!showAssetDropdown &&
+							form.formState.errors?.materials?.[index]
+								?.showCategoryDropdown && (
+								<p className='text-xs text-red-600'>
+									{
+										form.formState.errors.materials[index]?.showCategoryDropdown
+											?.message
+									}
 								</p>
 							)}
-						</div>
-					);
-				})()}
-			</TableCell>
-
-			{/* Vật tư tính vào doanh thu khoán */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showCategoryDropdown` as RowPath}
-						/>
-					</div>
-					{!showCategoryDropdown &&
-						!showAdditionalCostDropdown &&
-						!showContractLimitDropdown &&
-						!showAssetDropdown &&
-						form.formState.errors?.materials?.[index]?.showCategoryDropdown && (
-							<p className='text-xs text-red-600'>
-								{
-									form.formState.errors.materials[index]?.showCategoryDropdown
-										?.message
-								}
-							</p>
-						)}
-					{showCategoryDropdown && (
-						<>
-							{resolvedCategoryValue && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.categoryProcessGroup` as RowPath}
-										options={processGroupOptions}
-										placeholder='Chọn nhóm công đoạn'
-									/>
-								</div>
-							)}
-							{resolvedCategoryValue ===
-								MaterialsIncludedInContractRevenue.Maintain && (
-								<>
+						{showCategoryDropdown && (
+							<>
+								{resolvedCategoryValue && (
 									<div className='w-full'>
 										<FormComboBox
 											control={form.control}
-											name={`${basename}.categoryProductionOrderId` as RowPath}
-											options={categoryProductionOrderOptions}
-											placeholder='Chọn quyết định, lệnh sản xuất'
+											name={`${basename}.categoryProcessGroup` as RowPath}
+											options={processGroupOptions}
+											placeholder='Chọn nhóm công đoạn'
 										/>
-									</div>
-									{categoryNeedsEquipment && (
-										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={`${basename}.categoryEquipmentId` as RowPath}
-												options={categoryEquipmentOptions}
-												placeholder='Chọn thiết bị'
-											/>
-										</div>
-									)}
-								</>
-							)}
-							{resolvedCategoryValue &&
-								categoryProcessGroupValue &&
-								(!categoryNeedsProductionOrder ||
-									categoryProductionOrderId != null) &&
-								(!categoryNeedsEquipment || categoryEquipmentId != null) && (
-									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.categoryQuantity` as RowPath}
-											placeholder='Nhập số lượng'
-										/>
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
 									</div>
 								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Bổ sung chi phí */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showAdditionalCostDropdown` as RowPath}
-						/>
-					</div>
-					{showAdditionalCostDropdown && (
-						<>
-							{!isSafetyAndWelfareMaterial && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.additionalCostCategory` as RowPath}
-										options={additionalCostOptionsByType}
-										placeholder='Chọn danh mục'
-									/>
-								</div>
-							)}
-							{additionalCostCategory && (
-								<>
-									{additionalCostNeedsProductionOrder && (
+								{resolvedCategoryValue ===
+									MaterialsIncludedInContractRevenue.Maintain && (
+									<>
 										<div className='w-full'>
 											<FormComboBox
 												control={form.control}
 												name={
-													`${basename}.additionalCostProductionOrderId` as RowPath
+													`${basename}.categoryProductionOrderId` as RowPath
 												}
-												options={additionalCostOrderOrEquipmentOptions}
+												options={categoryProductionOrderOptions}
 												placeholder='Chọn quyết định, lệnh sản xuất'
 											/>
 										</div>
-									)}
-									{additionalCostNeedsOtherMaterialDetail && (
-										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={`${basename}.otherMaterialDetail` as RowPath}
-												options={OTHER_MATERIAL_DETAIL_OPTIONS}
-												placeholder='Chọn loại vật tư'
-											/>
-										</div>
-									)}
-								</>
-							)}
-							{additionalCostCategory &&
-								(!additionalCostNeedsProductionOrder ||
-									additionalCostProductionOrderId != null) &&
-								(!additionalCostNeedsOtherMaterialDetail ||
-									otherMaterialDetailValue != null) && (
-									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.additionalCostQuantity` as RowPath}
-											placeholder='Nhập số lượng'
-										/>
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
-									</div>
-								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Vật tư theo hạn mức */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showContractLimitDropdown` as RowPath}
-						/>
-					</div>
-					{showContractLimitDropdown && (
-						<>
-							<div className='w-full'>
-								<FormComboBox
-									control={form.control}
-									name={`${basename}.contractLimitCategory` as RowPath}
-									options={CONTRACT_LIMIT_OPTIONS}
-									placeholder='Chọn danh mục'
-								/>
-							</div>
-							{contractLimitCategoryValue && needsSecondComboBox && (
-								<>
-									<div className='w-full'>
-										<FormMultiSelect
-											control={form.control}
-											name={`${basename}.contractLimitSubCategories` as RowPath}
-											options={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
-											placeholder='Chọn loại (Lĩnh mới/Tái sử dụng)'
-										/>
-									</div>
-									{contractLimitSelectedKeys.length > 0 && (
-										<div className='w-full space-y-2'>
-											<div className='flex w-full items-end gap-2'>
-												<QuantityBreakdownInputs
-													selectedKeys={contractLimitSelectedKeys}
-													allOptions={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
-													values={contractLimitBreakdown ?? {}}
-													onChange={handleContractLimitBreakdownChange}
-													isValid={isContractLimitBreakdownValid}
-													equalWidth
+										{categoryNeedsEquipment && (
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={`${basename}.categoryEquipmentId` as RowPath}
+													options={categoryEquipmentOptions}
+													placeholder='Chọn thiết bị'
 												/>
 											</div>
-											{!isContractLimitBreakdownValid && (
-												<p className='text-xs text-red-600'>
-													Tổng lĩnh mới + lĩnh tái sử dụng phải bằng số lượng
-													xuất ({contractLimitBreakdownTotal} / {exportedQty})
-												</p>
-											)}
+										)}
+									</>
+								)}
+								{resolvedCategoryValue &&
+									categoryProcessGroupValue &&
+									(!categoryNeedsProductionOrder ||
+										categoryProductionOrderId != null) &&
+									(!categoryNeedsEquipment || categoryEquipmentId != null) && (
+										<div className='w-full'>
+											<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+												Số lượng vật tư
+											</label>
+											<FormNumber
+												control={form.control}
+												name={`${basename}.categoryQuantity` as RowPath}
+												placeholder='Nhập số lượng'
+											/>
+											<div
+												className={cn(
+													'mt-1 text-xs',
+													isValidTotal ? 'text-green-600' : 'text-red-600',
+												)}
+											>
+												Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+											</div>
 										</div>
 									)}
-								</>
-							)}
-							{contractLimitCategoryValue &&
-								(!needsSecondComboBox ||
-									contractLimitSelectedTypes.length > 0) && (
+							</>
+						)}
+					</div>
+				</TableCell>
+
+				{/* Bổ sung chi phí */}
+				<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+					<div className='flex flex-col items-center gap-3'>
+						<div className='flex justify-center *:w-auto!'>
+							<FormCheckBox
+								control={form.control}
+								name={`${basename}.showAdditionalCostDropdown` as RowPath}
+							/>
+						</div>
+						{showAdditionalCostDropdown && (
+							<>
+								{!isSafetyAndWelfareMaterial && (
 									<div className='w-full'>
-										{!needsSecondComboBox && (
-											<>
-												<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-													Số lượng vật tư
-												</label>
-												<FormNumber
-													control={form.control}
-													name={`${basename}.contractLimitQuantity` as RowPath}
-													placeholder='Nhập số lượng'
-												/>
-											</>
-										)}
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
+										<FormComboBox
+											control={form.control}
+											name={`${basename}.additionalCostCategory` as RowPath}
+											options={additionalCostOptionsByType}
+											placeholder='Chọn danh mục'
+										/>
 									</div>
 								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Tài sản */}
-			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showAssetDropdown` as RowPath}
-						/>
-					</div>
-					{showAssetDropdown && (
-						<div className='w-full'>
-							<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-								Số lượng
-							</label>
-							<FormNumber
-								control={form.control}
-								name={`${basename}.assetQuantity` as RowPath}
-								placeholder='Nhập số lượng'
-							/>
-							<div
-								className={cn(
-									'mt-1 text-xs',
-									isValidTotal ? 'text-green-600' : 'text-red-600',
+								{additionalCostCategory && (
+									<>
+										{additionalCostNeedsProductionOrder && (
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={
+														`${basename}.additionalCostProductionOrderId` as RowPath
+													}
+													options={additionalCostOrderOrEquipmentOptions}
+													placeholder='Chọn quyết định, lệnh sản xuất'
+												/>
+											</div>
+										)}
+										{additionalCostNeedsOtherMaterialDetail && (
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={`${basename}.otherMaterialDetail` as RowPath}
+													options={OTHER_MATERIAL_DETAIL_OPTIONS}
+													placeholder='Chọn loại vật tư'
+												/>
+											</div>
+										)}
+									</>
 								)}
-							>
-								Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-							</div>
+								{additionalCostCategory &&
+									(!additionalCostNeedsProductionOrder ||
+										additionalCostProductionOrderId != null) &&
+									(!additionalCostNeedsOtherMaterialDetail ||
+										otherMaterialDetailValue != null) && (
+										<div className='w-full'>
+											<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+												Số lượng vật tư
+											</label>
+											<FormNumber
+												control={form.control}
+												name={`${basename}.additionalCostQuantity` as RowPath}
+												placeholder='Nhập số lượng'
+											/>
+											<div
+												className={cn(
+													'mt-1 text-xs',
+													isValidTotal ? 'text-green-600' : 'text-red-600',
+												)}
+											>
+												Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+											</div>
+										</div>
+									)}
+							</>
+						)}
+					</div>
+				</TableCell>
+
+				{/* Vật tư theo hạn mức */}
+				<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+					<div className='flex flex-col items-center gap-3'>
+						<div className='flex justify-center *:w-auto!'>
+							<FormCheckBox
+								control={form.control}
+								name={`${basename}.showContractLimitDropdown` as RowPath}
+							/>
 						</div>
-					)}
-				</div>
-			</TableCell>
-		</TableRow>
+						{showContractLimitDropdown && (
+							<>
+								<div className='w-full'>
+									<FormComboBox
+										control={form.control}
+										name={`${basename}.contractLimitCategory` as RowPath}
+										options={CONTRACT_LIMIT_OPTIONS}
+										placeholder='Chọn danh mục'
+									/>
+								</div>
+								{contractLimitCategoryValue && needsSecondComboBox && (
+									<>
+										<div className='w-full'>
+											<FormMultiSelect
+												control={form.control}
+												name={
+													`${basename}.contractLimitSubCategories` as RowPath
+												}
+												options={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
+												placeholder='Chọn loại (Lĩnh mới/Tái sử dụng)'
+											/>
+										</div>
+										{contractLimitSelectedKeys.length > 0 && (
+											<div className='w-full space-y-2'>
+												<div className='flex w-full items-end gap-2'>
+													<QuantityBreakdownInputs
+														selectedKeys={contractLimitSelectedKeys}
+														allOptions={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
+														values={contractLimitBreakdown ?? {}}
+														onChange={handleContractLimitBreakdownChange}
+														isValid={isContractLimitBreakdownValid}
+														equalWidth
+													/>
+												</div>
+												{!isContractLimitBreakdownValid && (
+													<p className='text-xs text-red-600'>
+														Tổng lĩnh mới + lĩnh tái sử dụng phải bằng số lượng
+														xuất ({contractLimitBreakdownTotal} / {exportedQty})
+													</p>
+												)}
+											</div>
+										)}
+									</>
+								)}
+								{contractLimitCategoryValue &&
+									(!needsSecondComboBox ||
+										contractLimitSelectedTypes.length > 0) && (
+										<div className='w-full'>
+											{!needsSecondComboBox && (
+												<>
+													<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+														Số lượng vật tư
+													</label>
+													<FormNumber
+														control={form.control}
+														name={
+															`${basename}.contractLimitQuantity` as RowPath
+														}
+														placeholder='Nhập số lượng'
+													/>
+												</>
+											)}
+											<div
+												className={cn(
+													'mt-1 text-xs',
+													isValidTotal ? 'text-green-600' : 'text-red-600',
+												)}
+											>
+												Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+											</div>
+										</div>
+									)}
+							</>
+						)}
+					</div>
+				</TableCell>
+
+				{/* Tài sản */}
+				<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
+					<div className='flex flex-col items-center gap-3'>
+						<div className='flex justify-center *:w-auto!'>
+							<FormCheckBox
+								control={form.control}
+								name={`${basename}.showAssetDropdown` as RowPath}
+							/>
+						</div>
+						{showAssetDropdown && (
+							<div className='w-full'>
+								<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+									Số lượng
+								</label>
+								<FormNumber
+									control={form.control}
+									name={`${basename}.assetQuantity` as RowPath}
+									placeholder='Nhập số lượng'
+								/>
+								<div
+									className={cn(
+										'mt-1 text-xs',
+										isValidTotal ? 'text-green-600' : 'text-red-600',
+									)}
+								>
+									Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+								</div>
+							</div>
+						)}
+					</div>
+				</TableCell>
+			</TableRow>
+			{needsMaintainUnitPriceCreation && materialOrPartId && (
+				<MaintainUnitPriceCreateDialog
+					open={isCreateMaintainDialogOpen}
+					onOpenChange={setIsCreateMaintainDialogOpen}
+					partCode={
+						(form.watch(`${basename}.materialCode` as RowPath) as string) || ''
+					}
+					processGroupOptions={processGroupOptions}
+					equipmentOptions={partEquipments}
+					onCreated={() => {
+						set('hasMaintainUnitPriceEquipment', true);
+					}}
+				/>
+			)}
+		</>
 	);
 }

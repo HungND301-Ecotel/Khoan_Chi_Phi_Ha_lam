@@ -91,6 +91,13 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid PartId { get; set; }
         public IList<EquipmentDto> Equipments { get; set; } = new List<EquipmentDto>();
     }
+
+    public class PartMaintainUnitPriceEquipmentsDto
+    {
+        public Guid PartId { get; set; }
+        public IList<Guid> MaintainUnitPriceEquipmentIds { get; set; } =
+            new List<Guid>();
+    }
 }
 
 

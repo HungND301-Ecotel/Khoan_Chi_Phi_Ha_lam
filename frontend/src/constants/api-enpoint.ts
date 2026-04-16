@@ -351,6 +351,8 @@ export const API = {
 				'/v1/pricing/maintainunitpriceequipment/equipments',
 			EQUIPMENTS_BY_PART_IDS:
 				'/v1/pricing/maintainunitpriceequipment/parts/equipments',
+			MAINTAIN_UNIT_PRICE_EQUIPMENTS_BY_PART_IDS:
+				'/v1/pricing/maintainunitpriceequipment/parts/maintain-unit-price-equipments',
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
 			TRIMMING_IMPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/import',

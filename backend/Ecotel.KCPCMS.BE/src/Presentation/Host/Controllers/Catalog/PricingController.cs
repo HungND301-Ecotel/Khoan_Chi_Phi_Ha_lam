@@ -461,6 +461,15 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpPost("MaintainUnitPriceEquipment/parts/maintain-unit-price-equipments")]
+    [OpenApiOperation("Get MaintainUnitPriceEquipment Ids By Part Ids", "")]
+    public async Task<IActionResult> GetMaintainUnitPriceEquipmentsByPartIds(
+        [FromBody] IList<Guid> partIds)
+    {
+        var result = await Mediator.Send(new GetMaintainUnitPriceEquipmentsByPartIdsQuery(partIds));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpPut("MaintainUnitPriceEquipment")]
     [OpenApiOperation("Update MaintainUnitPriceEquipment", "")]
     public async Task<IActionResult> UpdateMaintainUnitPriceEquipment([FromBody] UpdateMaintainUnitPriceDto updateModel)
