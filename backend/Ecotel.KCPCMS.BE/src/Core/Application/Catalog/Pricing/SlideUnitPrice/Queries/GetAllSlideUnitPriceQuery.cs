@@ -21,12 +21,15 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
 
         var spec = new SlideUnitPricesByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: slideUnitPriceRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.ProcessGroupName).ToList();
+        return result;
     }
 }

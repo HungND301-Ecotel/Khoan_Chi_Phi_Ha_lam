@@ -37,7 +37,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderByDescending(d => d.Code.Length).ThenByDescending(d => d.Code).ToList();
+        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.ProcessName).ToList();
         return result;
     }
 }

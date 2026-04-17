@@ -63,7 +63,10 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             // Longwall calculated properties
             SPdm = e is LongwallElectricityUnitPriceEquipment lwallSPdm ? lwallSPdm.SPdm : null,
             Ptt = e is LongwallElectricityUnitPriceEquipment lwallPtt ? lwallPtt.Ptt : null
-        }).ToList();
+        })
+        .OrderBy(d => d.EquipmentCode)
+        .ThenBy(d => d.EquipmentName)
+        .ToList();
 
         return new PaginationResponse<ElectricityUnitPriceEquipmentDto>(listData, paginationResponse.TotalCount, paginationResponse.CurrentPage, paginationResponse.PageSize);
     }

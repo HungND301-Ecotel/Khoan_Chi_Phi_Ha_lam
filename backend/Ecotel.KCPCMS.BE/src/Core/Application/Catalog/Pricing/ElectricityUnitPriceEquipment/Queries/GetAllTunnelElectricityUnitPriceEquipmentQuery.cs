@@ -46,6 +46,10 @@ public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
                 e.Equipment.Code!.Value.Contains(request.Search));
         }
 
+        query = query
+            .OrderBy(e => e.Equipment!.Code!.Value)
+            .ThenBy(e => e.Equipment.Name);
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         if (!filter.IgnorePagination)

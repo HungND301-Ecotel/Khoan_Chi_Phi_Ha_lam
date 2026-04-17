@@ -22,12 +22,15 @@ public class GetAllCuttingThicknessQueryHandler(IPaginationService paginationSer
 
         var spec = new CuttingThicknessByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: cuttingThicknessRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Value).ToList();
+        return result;
     }
 }

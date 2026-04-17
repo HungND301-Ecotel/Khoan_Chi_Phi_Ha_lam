@@ -48,7 +48,10 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             OtherMaterialValue = m.OtherMaterialValue,
             EndMonth = m.EndMonth,
             Type = m.Type
-        }).ToList();
+        })
+        .OrderBy(d => d.EquipmentCode)
+        .ThenBy(d => d.EquipmentName)
+        .ToList();
 
         return new PaginationResponse<ShortMaintainUnitPriceDto>(listData, paginationResponse.TotalCount, paginationResponse.CurrentPage, paginationResponse.PageSize);
     }

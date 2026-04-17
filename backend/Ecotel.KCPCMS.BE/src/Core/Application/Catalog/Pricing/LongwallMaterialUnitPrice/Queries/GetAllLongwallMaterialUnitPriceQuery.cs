@@ -23,12 +23,15 @@ public class GetAllLongwallMaterialUnitPriceQueryHandler(IPaginationService pagi
 
         var spec = new LongwallMaterialUnitPricesByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: materialUnitPriceRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.ProcessName).ToList();
+        return result;
     }
 }

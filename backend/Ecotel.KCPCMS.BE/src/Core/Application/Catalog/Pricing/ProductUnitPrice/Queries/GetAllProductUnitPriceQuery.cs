@@ -55,7 +55,8 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
         var paginatedQuery = baseQuery
-            .OrderBy(m => m.Product!.Name)
+            .OrderBy(m => m.Product!.Code.Value)
+            .ThenBy(m => m.Product!.Name)
             .Select(m => new ProductUnitPriceBaseData
             {
                 Id = m.Id,

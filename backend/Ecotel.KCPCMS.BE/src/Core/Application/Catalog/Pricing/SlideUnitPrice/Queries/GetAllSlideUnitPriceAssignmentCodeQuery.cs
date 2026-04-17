@@ -22,12 +22,20 @@ public class GetAllSlideUnitPriceAssignmentCodeQueryHandler(IPaginationService p
 
         var spec = new SlideUnitPriceAssignmentCodesByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: slideUnitPriceAssignmentCoceRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data
+            .OrderBy(d => d.ProcessGroupId)
+            .ThenBy(d => d.PassportId)
+            .ThenBy(d => d.HardnessId)
+            .ThenBy(d => d.MaterialId)
+            .ToList();
+        return result;
     }
 }
