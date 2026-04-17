@@ -40,7 +40,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 UnitOfMeasureName = x.Part?.UnitOfMeasure?.Name ?? "",
                 ReplacementTimeStandard = x.ReplacementTimeStandard,
                 AverageMonthlyTunnelProduction = x.AverageMonthlyTunnelProduction,
-                MaterialCostPerMetres = x.GetMaterialCostPerMetres(maintainUnitPrice.StartMonth),
+                MaterialCostPerMetres = x.GetMaterialCostPerMetres(maintainUnitPrice.StartMonth, maintainUnitPrice.Type),
                 MaterialRatePerMetres = x.GetMaterialRate()
             }).ToList();
 

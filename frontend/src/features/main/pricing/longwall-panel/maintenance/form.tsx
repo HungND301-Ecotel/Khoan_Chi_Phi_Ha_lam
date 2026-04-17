@@ -31,6 +31,23 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 
+const LONGWALL_TON_CONVERSION_FACTOR = 1000;
+
+function calculateRegularRepairRates(
+	quantity: number,
+	replacementTimeStandard: number,
+	averageMonthlyTunnelProduction: number,
+) {
+	return quantity / replacementTimeStandard / averageMonthlyTunnelProduction;
+}
+
+function calculateLongwallRegularRepairCost(
+	partCost: number,
+	regularRepairRates: number,
+) {
+	return (partCost * regularRepairRates) / LONGWALL_TON_CONVERSION_FACTOR;
+}
+
 export function LongwallPanelForm({
 	data,
 	row,
@@ -440,13 +457,16 @@ function PricingLongwallPanelCosts({
 		? watchedReplacementTimeStandard
 		: 0;
 
-	const regularRepairRates =
-		watchedQuantity /
-		effectiveReplacementTimeStandard /
-		watchedAverageMonthlyTunnelProduction;
+	const regularRepairRates = calculateRegularRepairRates(
+		watchedQuantity,
+		effectiveReplacementTimeStandard,
+		watchedAverageMonthlyTunnelProduction,
+	);
 
-	const regularRepairCost =
-		(part?.costAmount ?? 0) * Number(regularRepairRates);
+	const regularRepairCost = calculateLongwallRegularRepairCost(
+		part?.costAmount ?? 0,
+		Number(regularRepairRates),
+	);
 
 	const handleRemove = () => {
 		const currentCosts = getValues('costs');
@@ -630,12 +650,16 @@ function groupCostsByEquipment(
 				? cost.replacementTimeStandard
 				: 0;
 
-			const regularRepairRates =
-				cost.quantity /
-				replacementTimeStandard /
-				cost.averageMonthlyTunnelProduction;
+			const regularRepairRates = calculateRegularRepairRates(
+				cost.quantity,
+				replacementTimeStandard,
+				cost.averageMonthlyTunnelProduction,
+			);
 
-			const regularRepairCost = part.costAmount * Number(regularRepairRates);
+			const regularRepairCost = calculateLongwallRegularRepairCost(
+				part.costAmount,
+				Number(regularRepairRates),
+			);
 
 			if (!isNaN(regularRepairCost)) {
 				totalAmount += regularRepairCost;
@@ -706,12 +730,16 @@ function PricingEquipmentOtherPartCosts({
 				? cost.replacementTimeStandard
 				: 0;
 
-			const regularRepairRates =
-				cost.quantity /
-				replacementTimeStandard /
-				cost.averageMonthlyTunnelProduction;
+			const regularRepairRates = calculateRegularRepairRates(
+				cost.quantity,
+				replacementTimeStandard,
+				cost.averageMonthlyTunnelProduction,
+			);
 
-			const regularRepairCost = part.costAmount * Number(regularRepairRates);
+			const regularRepairCost = calculateLongwallRegularRepairCost(
+				part.costAmount,
+				Number(regularRepairRates),
+			);
 
 			if (!isNaN(regularRepairCost)) {
 				totalAmount += regularRepairCost;

@@ -102,7 +102,7 @@ public class MaintainUnitPrice : AuditableEntity<Guid>, IAggregateRoot
             return CachedMaintainUnitPriceTotal.Value;
         }
 
-        double result = MaintainUnitPriceEquipments.Sum(m => m.GetMaterialCostPerMetres(StartMonth));
+        double result = MaintainUnitPriceEquipments.Sum(m => m.GetMaterialCostPerMetres(StartMonth, Type));
 
         if (OtherMaterialValue != null)
         {
