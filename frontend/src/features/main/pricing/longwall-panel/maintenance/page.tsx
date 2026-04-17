@@ -43,7 +43,10 @@ export type LongwallPanelDetail = {
 export function MainPricingMaintenanceLongwallPanelPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
-	const query = useMemo(() => ({ maintainType: 2 }), []);
+	const query = useMemo(
+		() => ({ maintainType: 2, ignorePagination: true }),
+		[],
+	);
 
 	const handleDelete = async ({ data }: ActionDialogProps<LongwallPanel>) => {
 		try {
