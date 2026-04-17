@@ -36,10 +36,17 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
         // Map data
         var equipments = await _equipmentRepository.GetAllAsync(
-            include: e => e.Include(e => e.Code),
+            include: e => e
+                .Include(e => e.Code)
+                .Include(e => e.EquipmentProcessGroups)
+                    .ThenInclude(epg => epg.ProcessGroup),
             disableTracking: true);
 
-        var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
+        var equipmentIdMap = equipments
+            .Where(e => e.Code != null
+                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.LC))
+            .GroupBy(e => e.Code!.Value)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
         var excelItems = maintainUnitPrices.Select(d =>
         {
@@ -160,16 +167,16 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
         var result = new List<LongwallMaintainUnitPriceImportDto>();
 
-        // Find number of MaintainUnitPrice groups (each takes 2 columns, starting from column E)
+        // Find number of MaintainUnitPrice groups (each takes 3 columns, starting from column E)
         int colCount = 5;
         while (!worksheet.Cell(1, colCount).IsEmpty())
         {
-            colCount += 2;
+            colCount += 3;
         }
-        colCount -= 2; // Adjust to last filled column group
+        colCount -= 3; // Adjust to last filled column group
 
-        // Read each MaintainUnitPrice (every 2 columns from E onwards)
-        for (int col = 5; col <= colCount; col += 2)
+        // Read each MaintainUnitPrice (every 3 columns from E onwards)
+        for (int col = 5; col <= colCount; col += 3)
         {
             var startMonth = worksheet.Cell(1, col).GetString(); // Row 1: StartMonth
             var endMonth = worksheet.Cell(2, col).GetString();   // Row 2: EndMonth
@@ -213,18 +220,21 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                 }
 
                 var partIdString = worksheet.Cell(row, 1).GetString(); // Column A: Part Id (hidden)
-                var quantityValue = worksheet.Cell(row, col).GetString();
-                var productionValue = worksheet.Cell(row, col + 1).GetString();
+                var replacementTimeStandardValue = worksheet.Cell(row, col).GetString();
+                var quantityValue = worksheet.Cell(row, col + 1).GetString();
+                var productionValue = worksheet.Cell(row, col + 2).GetString();
 
-                var hasAnyValue = !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAnyValue = !string.IsNullOrWhiteSpace(replacementTimeStandardValue)
+                    || !string.IsNullOrWhiteSpace(quantityValue)
                     || !string.IsNullOrWhiteSpace(productionValue);
 
-                var hasAllValues = !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAllValues = !string.IsNullOrWhiteSpace(replacementTimeStandardValue)
+                    && !string.IsNullOrWhiteSpace(quantityValue)
                     && !string.IsNullOrWhiteSpace(productionValue);
 
                 if (hasAnyValue && !hasAllValues)
                 {
-                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 2 cột: Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
+                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 3 cột: Định mức thời gian thay thế, Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
                 }
 
                 if (!string.IsNullOrWhiteSpace(partIdString) &&
@@ -238,7 +248,8 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         continue;
                     }
 
-                    if (double.TryParse(quantityValue, out var quantity) &&
+                    if (decimal.TryParse(replacementTimeStandardValue, out var replacementTimeStandard) &&
+                        double.TryParse(quantityValue, out var quantity) &&
                         decimal.TryParse(productionValue, out var production))
                     {
                         state.FilledParts++;
@@ -246,7 +257,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         {
                             Quantity = quantity,
                             AverageMonthlyTunnelProduction = production,
-                            ReplacementTimeStandard = 1
+                            ReplacementTimeStandard = replacementTimeStandard
                         };
                     }
                     else
@@ -267,7 +278,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
                 if (state.FilledParts > 0 && state.FilledParts < state.TotalParts)
                 {
-                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 2 thông số cho tất cả phụ tùng.");
+                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 3 thông số cho tất cả phụ tùng.");
                 }
 
                 state.Dto.IsDeleteRequest = state.FilledParts == 0;
@@ -281,9 +292,13 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
     private async Task<bool> CheckExistedReferences(List<LongwallMaintainUnitPriceImportDto> dtoList)
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
-                include: e => e.Include(e => e.Code),
+                include: e => e
+                    .Include(e => e.Code)
+                    .Include(e => e.EquipmentProcessGroups)
+                        .ThenInclude(epg => epg.ProcessGroup),
                 disableTracking: true))
-            .Where(e => e.Code != null)
+            .Where(e => e.Code != null
+                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.LC))
             .Select(e => e.Code!.Value.Trim())
             .ToHashSet();
 
