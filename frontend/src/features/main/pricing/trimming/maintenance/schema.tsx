@@ -1,6 +1,6 @@
 import z from 'zod';
 
-export const tunnelingFormSchema = z.object({
+export const trimmingFormSchema = z.object({
 	type: z.number(),
 	startMonth: z.iso
 		.date({
@@ -46,9 +46,9 @@ export const tunnelingFormSchema = z.object({
 	otherMaterialValues: z.record(z.string(), z.number().optional()).optional(),
 });
 
-export type TunnelingFormSchema = z.infer<typeof tunnelingFormSchema>;
+export type TrimmingFormSchema = z.infer<typeof trimmingFormSchema>;
 
-export const TUNNELING_FORM_DEFAULT: TunnelingFormSchema = {
+export const TRIMMING_FORM_DEFAULT: TrimmingFormSchema = {
 	type: 3,
 	startMonth: '',
 	endMonth: '',
@@ -56,4 +56,3 @@ export const TUNNELING_FORM_DEFAULT: TunnelingFormSchema = {
 	costs: [],
 	otherMaterialValues: {},
 };
-

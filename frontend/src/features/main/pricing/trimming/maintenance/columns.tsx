@@ -1,7 +1,7 @@
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
-export type Tunneling = {
+export type Trimming = {
 	id: string;
 	equipmentId: string;
 	equipmentCode: string;
@@ -12,7 +12,7 @@ export type Tunneling = {
 	totalPrice: number;
 };
 
-export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
+export const MAIN_PRICING_TRIMMING_COLUMNS: ColumnDef<Trimming>[] = [
 	{
 		accessorKey: 'equipmentCode',
 		header: 'Mã thiết bị',
@@ -32,7 +32,7 @@ export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá SCTX (đ/m)',
+		header: 'Chi phí vật tư SCTX cho 1 thiết bị/1 mét lò xén (đ/m)',
 		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 	},
 ];
@@ -54,7 +54,7 @@ export type MaintainUnitPriceEquipment = {
 	materialCostPerMetres: number;
 };
 
-export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceEquipment>[] =
+export const MAIN_PRICING_TRIMMING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceEquipment>[] =
 	[
 		{
 			accessorKey: 'partCode',
@@ -71,7 +71,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 		{
 			accessorKey: 'partCost',
 			header: () => (
-				<span className='h-fit whitespace-normal'>{'Đơn giá (đ)'}</span>
+				<span className='h-fit whitespace-normal'>{'Đơn giá vật tư (đ)'}</span>
 			),
 			cell: ({ row }) => formatNumber(row.original.partCost),
 		},
@@ -97,7 +97,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'averageMonthlyTunnelProduction',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Sản lượng xén lò bình quân (m)'}
+					{'Sản lượng mét lò bình quân tháng (m)'}
 				</span>
 			),
 			cell: ({ row }) =>
@@ -107,7 +107,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'materialRatePerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Định mức vật tư SCTX'}
+					{'Định mức vật tư SCTX cho 1 thiết bị/ 1 mét lò'}
 				</span>
 			),
 			cell: ({ row }) =>
@@ -117,11 +117,10 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'materialCostPerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Chi phí vật tư SCTX (đ)'}
+					{'Chi phí vật tư SCTX cho 1 phụ tùng/1 mét lò xén (đ/m)'}
 				</span>
 			),
 			cell: ({ row }) =>
 				formatNumber(Math.round(row.original.materialCostPerMetres)),
 		},
 	];
-

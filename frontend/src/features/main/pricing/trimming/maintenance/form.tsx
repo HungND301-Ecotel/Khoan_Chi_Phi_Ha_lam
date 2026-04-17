@@ -17,12 +17,12 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
 import { Part } from '@/features/main/catalog/part/main/columns';
-import { Tunneling } from '@/features/main/pricing/trimming/maintenance/columns';
+import { Trimming } from '@/features/main/pricing/trimming/maintenance/columns';
 import { TunnelingDetail } from '@/features/main/pricing/trimming/maintenance/page';
 import {
-	TUNNELING_FORM_DEFAULT,
-	tunnelingFormSchema,
-	TunnelingFormSchema,
+	TRIMMING_FORM_DEFAULT,
+	trimmingFormSchema,
+	TrimmingFormSchema,
 } from '@/features/main/pricing/trimming/maintenance/schema';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
@@ -31,18 +31,18 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 
-export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
+export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const [equipments, setEquipments] = useState<Equipment[]>([]);
 	const [parts, setParts] = useState<Part[]>([]);
 
-	const form = useForm<TunnelingFormSchema>({
-		resolver: zodResolver(tunnelingFormSchema),
+	const form = useForm<TrimmingFormSchema>({
+		resolver: zodResolver(trimmingFormSchema),
 		mode: 'onSubmit',
 		defaultValues: {
-			...TUNNELING_FORM_DEFAULT,
+			...TRIMMING_FORM_DEFAULT,
 			startMonth: new Date().toISOString().substring(0, 10),
 			endMonth: new Date().toISOString().substring(0, 10),
 		},
@@ -152,7 +152,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Tunneling>) {
 		});
 	}, [form, parts, watchedEquipmentIds]);
 
-	const handleSubmit = async (values: TunnelingFormSchema) => {
+	const handleSubmit = async (values: TrimmingFormSchema) => {
 		try {
 			const processedValues = {
 				...values,
@@ -291,10 +291,10 @@ function filterEquipmentsByProcessGroupType(
 }
 
 function syncCostsWithCurrentPartLinks(
-	costs: TunnelingFormSchema['costs'],
+	costs: TrimmingFormSchema['costs'],
 	parts: Part[],
 	equipmentIds: string[],
-): TunnelingFormSchema['costs'] {
+): TrimmingFormSchema['costs'] {
 	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
 	const partOrder = new Map(parts.map((part, index) => [part.id, index]));
 	const partEquipmentMap = new Map(
@@ -346,7 +346,7 @@ function GroupedTunnelingCosts({
 	equipments: Equipment[];
 	parts: Part[];
 }) {
-	const { control, setValue } = useFormContext<TunnelingFormSchema>();
+	const { control, setValue } = useFormContext<TrimmingFormSchema>();
 	const costs = useWatch({ control, name: 'costs' }) || [];
 	const otherMaterialValues =
 		useWatch({ control, name: 'otherMaterialValues' }) || {};
@@ -418,8 +418,7 @@ function PricingTunnelingCosts({
 	index: number;
 	parts: Part[];
 }) {
-	const { control, getValues, setValue } =
-		useFormContext<TunnelingFormSchema>();
+	const { control, getValues, setValue } = useFormContext<TrimmingFormSchema>();
 
 	const watchedQuantity = useWatch({
 		control,
@@ -544,7 +543,7 @@ function PricingTunnelingCosts({
 }
 
 function groupCostsByEquipment(
-	costs: TunnelingFormSchema['costs'],
+	costs: TrimmingFormSchema['costs'],
 	equipments: Equipment[],
 	parts: Part[],
 	otherMaterialValues?: Record<string, number | undefined>,
@@ -638,8 +637,7 @@ function PricingEquipmentOtherPartCosts({
 	equipmentId: string;
 	parts: Part[];
 }) {
-	const { control, setValue, getValues } =
-		useFormContext<TunnelingFormSchema>();
+	const { control, setValue, getValues } = useFormContext<TrimmingFormSchema>();
 
 	const watchedCosts = useWatch({
 		control,

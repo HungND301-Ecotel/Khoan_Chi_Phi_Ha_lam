@@ -3,9 +3,9 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
-	MAIN_PRICING_TUNNELING_COLUMNS,
-	MAIN_PRICING_TUNNELING_EXPAND_COLUMNS,
-	Tunneling,
+	MAIN_PRICING_TRIMMING_COLUMNS,
+	MAIN_PRICING_TRIMMING_EXPAND_COLUMNS,
+	Trimming,
 } from '@/features/main/pricing/trimming/maintenance/columns';
 import { TunnelingForm } from '@/features/main/pricing/trimming/maintenance/form';
 import { api } from '@/lib/api';
@@ -47,7 +47,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 		[],
 	);
 
-	const handleDelete = async ({ data }: ActionDialogProps<Tunneling>) => {
+	const handleDelete = async ({ data }: ActionDialogProps<Trimming>) => {
 		try {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const ids = selected.rows.map((row) => row.original.id);
@@ -75,7 +75,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 
 	const handleImport = async (
 		file: File,
-		data?: ActionDialogProps<Tunneling>['data'],
+		data?: ActionDialogProps<Trimming>['data'],
 	) => {
 		try {
 			const result = await api.import(
@@ -96,7 +96,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 	return (
 		<>
 			<DataTable
-				columns={MAIN_PRICING_TUNNELING_COLUMNS}
+				columns={MAIN_PRICING_TRIMMING_COLUMNS}
 				url={API.PRICING.MAINTENANCE.TRIMMING_LIST}
 				query={query}
 				getRowId={(row) => row.id}
@@ -112,7 +112,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 	);
 }
 
-export function TunnelingExpand({ row }: ActionDialogProps<Tunneling>) {
+export function TunnelingExpand({ row }: ActionDialogProps<Trimming>) {
 	const [detail, setDetail] = useState<TunnelingDetail>();
 
 	useEffect(() => {
@@ -156,7 +156,7 @@ export function TunnelingExpand({ row }: ActionDialogProps<Tunneling>) {
 	return (
 		<div className='mx-10 flex flex-col gap-4'>
 			<DataTable
-				columns={MAIN_PRICING_TUNNELING_EXPAND_COLUMNS}
+				columns={MAIN_PRICING_TRIMMING_EXPAND_COLUMNS}
 				items={itemsWithOther}
 				hasActions={false}
 				hasPagination={false}
