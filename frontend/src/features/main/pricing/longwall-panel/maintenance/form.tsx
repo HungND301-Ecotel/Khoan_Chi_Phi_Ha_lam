@@ -65,6 +65,7 @@ export function LongwallPanelForm({
 		defaultValues: {
 			...LONGWALL_PANEL_FORM_DEFAULT,
 			startMonth: new Date().toISOString().substring(0, 10),
+			endMonth: new Date().toISOString().substring(0, 10),
 		},
 	});
 
