@@ -56,7 +56,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
             EndMonth = maintainUnitPrice.EndMonth,
             OtherMaterialValue = maintainUnitPrice.OtherMaterialValue,
             Type = maintainUnitPrice.Type,
-            MaintainUnitPriceEquipment = costs ?? []
+            MaintainUnitPriceEquipment = costs.OrderBy(c => c.PartCode).ThenBy(c => c.PartName).ToList() ?? []
         };
     }
 }

@@ -42,7 +42,10 @@ export type TunnelingDetail = {
 export function MainPricingMaintenanceTunnelingPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
-	const query = useMemo(() => ({ maintainType: 1 }), []);
+	const query = useMemo(
+		() => ({ maintainType: 1, ignorePagination: true }),
+		[],
+	);
 
 	const handleDelete = async ({ data }: ActionDialogProps<Tunneling>) => {
 		try {
