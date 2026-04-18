@@ -168,3 +168,27 @@ export const MAIN_PRICING_MATERIAL_EXPAND_COLUMNS: ColumnDef<FlatMaterialCost>[]
 			),
 		},
 	];
+
+export type ExpandMaterialAssignmentCost = {
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	totalPrice: number;
+};
+
+export const MAIN_PRICING_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandMaterialAssignmentCost>[] =
+	[
+		{
+			accessorKey: 'assignmentCode',
+			header: 'Mã giao khoán',
+		},
+		{
+			accessorKey: 'assignmentCodeName',
+			header: 'Tên giao khoán',
+		},
+		{
+			accessorKey: 'totalPrice',
+			header: 'Đơn giá vật liệu (đ/m)',
+			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		},
+	];

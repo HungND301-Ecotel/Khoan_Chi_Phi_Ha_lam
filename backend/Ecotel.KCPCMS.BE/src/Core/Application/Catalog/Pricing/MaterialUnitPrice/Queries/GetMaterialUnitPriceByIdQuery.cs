@@ -26,7 +26,7 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
                 .Include(u => u.InsertItem)
                 .Include(u => u.SupportStep)
                 .Include(u => u.ProductionProcess)
-                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         string passportName =
@@ -46,7 +46,7 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             TotalPrice = materialUnitPrice.TotalPrice,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
             Type = materialUnitPrice.Type,
-            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.OrderBy(m => m.AssignmentCode.Code.Value).ThenBy(m => m.AssignmentCode.Name).Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
         };
     }
 }

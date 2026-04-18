@@ -29,7 +29,7 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
                 .Include(u => u.CuttingThickness)
                 .Include(u => u.SeamFace)
                 .Include(u => u.Technology)
-                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         return new LongwallMaterialUnitPriceDetailDto
@@ -48,7 +48,7 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
             StartMonth = materialUnitPrice.StartMonth,
             EndMonth = materialUnitPrice.EndMonth,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
-            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.OrderBy(m => m.AssignmentCode.Code.Value).ThenBy(m => m.AssignmentCode.Name).Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
         };
     }
 }
