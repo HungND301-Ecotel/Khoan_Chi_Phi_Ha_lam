@@ -1,4 +1,5 @@
 using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
@@ -293,7 +294,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 ProcessGroupName = g.Key.ProcessGroupName ?? string.Empty,
                 Items = g.ToList()
             })
-            .OrderBy(g => g.ProcessGroupCode)
+            .OrderByCodeNatural(g => g.ProcessGroupCode)
             .ToList();
 
         return new GetAllAcceptanceReportItemLogResponseDto

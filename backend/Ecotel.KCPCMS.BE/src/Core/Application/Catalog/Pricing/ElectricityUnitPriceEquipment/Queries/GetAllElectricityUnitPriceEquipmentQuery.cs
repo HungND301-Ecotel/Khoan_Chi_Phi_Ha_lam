@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Specifications;
+using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -64,7 +64,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             SPdm = e is LongwallElectricityUnitPriceEquipment lwallSPdm ? lwallSPdm.SPdm : null,
             Ptt = e is LongwallElectricityUnitPriceEquipment lwallPtt ? lwallPtt.Ptt : null
         })
-        .OrderBy(d => d.EquipmentCode)
+        .OrderByCodeNatural(d => d.EquipmentCode)
         .ThenBy(d => d.EquipmentName)
         .ToList();
 

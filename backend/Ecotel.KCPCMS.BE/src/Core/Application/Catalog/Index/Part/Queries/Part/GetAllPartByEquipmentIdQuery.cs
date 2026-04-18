@@ -1,4 +1,5 @@
 using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
@@ -53,12 +54,12 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     Name = epg.ProcessGroup.Name
                 })
                 .DistinctBy(pg => pg.Id)
-                .OrderBy(pg => pg.Code)
+                .OrderByCodeNatural(pg => pg.Code)
                 .ThenBy(pg => pg.Name)
                 .ToList(),
             CurrentCost = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.Amount ?? 0,
             ActualAmount = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.ActualAmount ?? 0
-        }).OrderBy(p => p.Code).ThenBy(p => p.Name).ToList();
+        }).OrderByCodeNatural(p => p.Code).ThenBy(p => p.Name).ToList();
     }
 }
 

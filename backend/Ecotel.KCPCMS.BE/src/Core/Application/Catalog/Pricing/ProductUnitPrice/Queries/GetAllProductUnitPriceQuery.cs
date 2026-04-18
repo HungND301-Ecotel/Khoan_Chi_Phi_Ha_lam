@@ -54,9 +54,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
-        var paginatedQuery = baseQuery
-            .OrderBy(m => m.Product!.Code.Value)
-            .ThenBy(m => m.Product!.Name)
+        var baseDataQuery = baseQuery
             .Select(m => new ProductUnitPriceBaseData
             {
                 Id = m.Id,
@@ -74,14 +72,17 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 DepartmentName = m.Department != null ? m.Department.Name : null
             });
 
-        if (!request.IgnorePagination)
-        {
-            paginatedQuery = paginatedQuery
-                .Skip((request.PageIndex - 1) * request.PageSize)
-                .Take(request.PageSize);
-        }
+        var allBaseData = await baseDataQuery.AsNoTracking().ToListAsync(cancellationToken);
+        var orderedBaseData = allBaseData
+            .OrderByCodeNatural(m => m.ProductCode)
+            .ThenBy(m => m.ProductName);
 
-        var baseDataList = await paginatedQuery.AsNoTracking().ToListAsync(cancellationToken);
+        var baseDataList = request.IgnorePagination
+            ? orderedBaseData.ToList()
+            : orderedBaseData
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
         var productUnitPriceIds = baseDataList.Select(b => b.Id).ToList();
         var productIds = baseDataList.Select(b => b.ProductId).Distinct().ToList();
 

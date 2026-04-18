@@ -83,7 +83,7 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 			].filter(Boolean);
 
 			return (
-				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
+				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
 					{displayParts.map((part, index) => (
 						<span key={`${String(part)}-${index}`}>
 							{index > 0 ? ` | ${part}` : part}

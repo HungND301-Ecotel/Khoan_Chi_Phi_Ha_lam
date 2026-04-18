@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Index.Material.Specifications;
+using Application.Catalog.Index.Material.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -31,7 +31,7 @@ public class GetAllMaterialQueryHandler(IPaginationService paginationService, IR
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        rawList.Data = rawList.Data.OrderBy(d => d.AssignmentCode).ThenBy(d => d.Name).ToList();
+        rawList.Data = rawList.Data.OrderByCodeNatural(d => d.AssignmentCode).ThenBy(d => d.Name).ToList();
         return rawList;
     }
 }

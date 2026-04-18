@@ -34,7 +34,7 @@ public class GetAllAkFactorConfigQueryHandler(
             cancellationToken: cancellationToken);
 
         result.Data = result.Data
-            .OrderBy(d => d.ProcessGroupCode)
+            .OrderByCodeNatural(d => d.ProcessGroupCode)
             .ThenBy(d => d.MinAkDiff ?? decimal.MinValue)
             .ThenBy(d => d.MaxAkDiff ?? decimal.MaxValue)
             .ToList();

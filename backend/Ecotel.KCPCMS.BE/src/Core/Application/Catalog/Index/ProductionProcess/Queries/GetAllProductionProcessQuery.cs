@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Index.ProductionProcess.Specifications;
+using Application.Catalog.Index.ProductionProcess.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -28,7 +28,7 @@ public class GetAllProductionProcessQueryHandler(IPaginationService paginationSe
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.Name).ToList();
+        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.Name).ToList();
 
         return result;
     }

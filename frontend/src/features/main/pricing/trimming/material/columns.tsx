@@ -23,7 +23,7 @@ export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 				row.original;
 
 			return (
-				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
+				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
 					<span>{hardnessName}</span>
 					<span>|</span>
 					<span>{passportName}</span>

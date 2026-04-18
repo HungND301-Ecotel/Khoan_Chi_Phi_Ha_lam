@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactor;
@@ -48,6 +49,6 @@ public class GetAllAdjustmentFactorDetailQueryHandler(IUnitOfWork unitOfWork)
                 MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue,
                 ElectricityAdjustmentValue = ad.ElectricityAdjustmentValue
             }).ToList()
-        }).OrderBy(a => a.Code).ToList();
+        }).OrderByCodeNatural(a => a.Code).ToList();
     }
 }

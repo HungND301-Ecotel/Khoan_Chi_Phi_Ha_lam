@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Specifications;
+using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -49,7 +49,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             EndMonth = m.EndMonth,
             Type = m.Type
         })
-        .OrderBy(d => d.EquipmentCode)
+        .OrderByCodeNatural(d => d.EquipmentCode)
         .ThenBy(d => d.EquipmentName)
         .ToList();
 

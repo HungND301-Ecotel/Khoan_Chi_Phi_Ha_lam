@@ -46,22 +46,21 @@ public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
                 e.Equipment.Code!.Value.Contains(request.Search));
         }
 
-        query = query
-            .OrderBy(e => e.Equipment!.Code!.Value)
-            .ThenBy(e => e.Equipment.Name);
-
         var totalCount = await query.CountAsync(cancellationToken);
+
+        var data = await query.ToListAsync(cancellationToken);
+        IEnumerable<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> sortedData = data
+            .OrderByCodeNatural(e => e.Equipment!.Code!.Value)
+            .ThenBy(e => e.Equipment!.Name);
 
         if (!filter.IgnorePagination)
         {
-            query = query
+            sortedData = sortedData
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize);
         }
 
-        var data = await query.ToListAsync(cancellationToken);
-
-        var listData = data.Select(e => new ElectricityUnitPriceEquipmentDto
+        var listData = sortedData.Select(e => new ElectricityUnitPriceEquipmentDto
         {
             Id = e.Id,
             EquipmentId = e.EquipmentId,

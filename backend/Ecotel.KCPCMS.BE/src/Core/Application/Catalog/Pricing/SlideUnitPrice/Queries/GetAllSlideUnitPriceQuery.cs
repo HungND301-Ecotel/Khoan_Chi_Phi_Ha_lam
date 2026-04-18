@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Pricing.SlideUnitPrice.Specifications;
+using Application.Catalog.Pricing.SlideUnitPrice.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -29,7 +29,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.ProcessGroupName).ToList();
+        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.ProcessGroupName).ToList();
         return result;
     }
 }
