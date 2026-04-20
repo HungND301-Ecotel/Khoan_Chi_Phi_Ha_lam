@@ -11,6 +11,7 @@ using Mapster;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Shared.Constants;
 using LongwallMaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice;
 
 namespace Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
@@ -212,6 +213,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
             })
             .ToList();
+
+        ValidateMonthRangeOverlap(dbEntities, addList, deleteList);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -602,7 +605,61 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         return (powerId, hardnessId);
     }
 
+    private static void ValidateMonthRangeOverlap(
+        IEnumerable<LongwallMaterialUnitPriceEntity> existingEntities,
+        IEnumerable<LongwallMaterialUnitPriceEntity> addedEntities,
+        IEnumerable<LongwallMaterialUnitPriceEntity> deletedEntities)
+    {
+        var deletedIds = deletedEntities
+            .Select(entity => entity.Id)
+            .ToHashSet();
+
+        var finalEntities = existingEntities
+            .Where(entity => !deletedIds.Contains(entity.Id))
+            .Concat(addedEntities)
+            .ToList();
+
+        var groupedEntities = finalEntities
+            .GroupBy(entity => new MonthRangeOverlapKey(
+                entity.LongwallParametersId,
+                entity.CuttingThicknessId,
+                entity.SeamFaceId,
+                entity.PowerId,
+                entity.HardnessId));
+
+        foreach (var group in groupedEntities)
+        {
+            var orderedEntities = group
+                .OrderBy(entity => entity.StartMonth)
+                .ThenBy(entity => entity.EndMonth)
+                .ToList();
+
+            var maxEndMonth = orderedEntities[0].EndMonth;
+
+            for (var index = 1; index < orderedEntities.Count; index++)
+            {
+                var currentEntity = orderedEntities[index];
+                if (maxEndMonth > currentEntity.StartMonth)
+                {
+                    throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+                }
+
+                if (currentEntity.EndMonth > maxEndMonth)
+                {
+                    maxEndMonth = currentEntity.EndMonth;
+                }
+            }
+        }
+    }
+
     private sealed record AssignmentLookupItem(Guid Id, string Display);
+
+    private sealed record MonthRangeOverlapKey(
+        Guid LongwallParametersId,
+        Guid CuttingThicknessId,
+        Guid SeamFaceId,
+        Guid? PowerId,
+        Guid? HardnessId);
 
     private sealed record LongwallRowContext(
         string StartMonth,
