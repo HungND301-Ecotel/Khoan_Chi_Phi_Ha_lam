@@ -40,6 +40,12 @@ export const API = {
 				EXPORT: '/v1/catalog/productionprocess/export',
 			},
 		},
+		FIXED_KEY: {
+			LIST: '/v1/catalog/fixedkey',
+			CREATE: '/v1/catalog/fixedkey',
+			UPDATE: '/v1/catalog/fixedkey',
+			DETAIL: (id: string) => `/v1/catalog/fixedkey/${id}`,
+		},
 		CONTRACT_CODE: {
 			LIST: '/v1/catalog/assignmentcode',
 			CREATE: '/v1/catalog/assignmentcode',

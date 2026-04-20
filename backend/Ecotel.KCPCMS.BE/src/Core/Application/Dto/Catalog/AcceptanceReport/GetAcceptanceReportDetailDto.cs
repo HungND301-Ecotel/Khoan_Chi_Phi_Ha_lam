@@ -35,6 +35,7 @@ public record AcceptanceReportDetailItemDto
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
+    public Guid? MaterialsIncludedInContractRevenueFixedKeyId { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public string? ProcessGroupCode { get; init; }
     public string? ProcessGroupName { get; init; }
@@ -42,16 +43,21 @@ public record AcceptanceReportDetailItemDto
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }
+    public Guid? AdditionalCostFixedKeyId { get; init; }
     public required OtherMaterialDetail OtherMaterialDetail { get; init; }
+    public Guid? OtherMaterialDetailFixedKeyId { get; init; }
     public required double AdditionalCostQuantity { get; init; }
 
     // Vật tư theo hạn mức
     public required QuotaBasedMaterial QuotaBasedMaterial { get; init; }
-    public required QuotaBasedMaterialType QuotaBasedMaterialType { get; init; }
+    public Guid? QuotaBasedMaterialFixedKeyId { get; init; }
+    public QuotaBasedMaterialType? QuotaBasedMaterialType { get; init; }
+    public Guid? QuotaBasedMaterialTypeFixedKeyId { get; init; }
     public List<QuotaBasedMaterialQuantityDto>? QuotaBasedMaterialQuantities { get; init; }
 
     // Tài sản
     public required Asset Asset { get; init; }
+    public Guid? AssetFixedKeyId { get; init; }
     public required double AssetMaterialQuantity { get; init; }
 }
 

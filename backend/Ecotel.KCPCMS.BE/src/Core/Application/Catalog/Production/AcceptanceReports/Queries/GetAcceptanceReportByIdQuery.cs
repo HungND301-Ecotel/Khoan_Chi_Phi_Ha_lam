@@ -1,3 +1,4 @@
+using Application.Catalog.MasterData.FixedKeys;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -32,61 +33,106 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Costs)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaterialsIncludedInContractRevenueFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.AdditionalCostFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.OtherMaterialDetailFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.QuotaBasedMaterialFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.QuotaBasedMaterialTypeFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.AssetFixedKey)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.IssuedDetails)
+                    .ThenInclude(d => d.FixedKey)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.ShippedDetails)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.QuotaBasedMaterialQuantities),
+                    .ThenInclude(d => d.FixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.QuotaBasedMaterialQuantities)
+                    .ThenInclude(d => d.FixedKey),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var productionOutput = acceptanceReport.ProductionOutput;
 
-        var items = acceptanceReport.AcceptanceReportItems.Select(item => new AcceptanceReportDetailItemDto
+        var items = acceptanceReport.AcceptanceReportItems.Select(item =>
         {
-            Id = item.Id,
-            AcceptanceReportId = item.AcceptanceReportId,
-            CategoryProductionOrderId = item.ProductionOrderId,
-            CategoryEquipmentId = item.EquipmentId,
-            AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
-            AdditionalCostEquipmentId = item.AdditionalCostEquipmentId,
-            MaterialId = item.MaterialId,
-            PartId = item.PartId,
-            MaintainUnitPriceEquipmentId = item.MaintainUnitPriceEquipmentId,
-            MaterialCode = item.Material?.Code?.Value,
-            MaterialName = item.Material?.Name,
-            PartCode = item.Part?.Code?.Value ?? item.MaintainUnitPriceEquipment?.Part?.Code?.Value,
-            PartName = item.Part?.Name ?? item.MaintainUnitPriceEquipment?.Part?.Name,
-            PartType = item.Part?.Type ?? item.MaintainUnitPriceEquipment?.Part?.Type,
-            UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
-                              ?? item.Part?.UnitOfMeasure?.Name
-                              ?? item.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
-            Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
-            MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
-            ProcessGroupId = item.ProcessGroupId,
-            ProcessGroupCode = item.ProcessGroup?.Code?.Value,
-            ProcessGroupName = item.ProcessGroup?.Name,
-            MaterialsIncludedInContractRevenueQuantity = item.MaterialsIncludedInContractRevenueQuantity,
-            AdditionalCost = item.AdditionalCost,
-            OtherMaterialDetail = item.OtherMaterialDetail,
-            AdditionalCostQuantity = item.AdditionalCostQuantity,
-            QuotaBasedMaterial = item.QuotaBasedMaterial,
-            QuotaBasedMaterialType = item.QuotaBasedMaterialType,
-            QuotaBasedMaterialQuantities = item.QuotaBasedMaterial != QuotaBasedMaterial.None
-                ? item.QuotaBasedMaterialQuantities
-                    .Select(q => new QuotaBasedMaterialQuantityDto { Type = q.Type, Quantity = q.Quantity })
-                    .ToList()
-                : null,
-            Asset = item.Asset,
-            AssetMaterialQuantity = item.AssetMaterialQuantity,
-            IssuedQuantity = item.IssuedQuantity,
-            ShippedQuantity = item.ShippedQuantity,
-            IssuedDetails = item.IssuedDetails
-                .Select(d => new IssuedDetailDto { Type = d.Type, Quantity = d.Quantity })
-                .ToList(),
-            ShippedDetails = item.ShippedDetails
-                .Select(d => new ShippedDetailDto { Type = d.Type, Quantity = d.Quantity })
-                .ToList(),
-            PlanCost = GetPlanCost(item, productionOutput),
-            ActualCost = GetActualCost(item, productionOutput),
-            ItemType = item.ItemType,
+            var materialsIncludedInContractRevenue = FixedKeyCodeMapper.ResolveMaterialsIncludedInContractRevenue(
+                item.MaterialsIncludedInContractRevenueFixedKey);
+            var additionalCost = FixedKeyCodeMapper.ResolveAdditionalCost(item.AdditionalCostFixedKey);
+            var otherMaterialDetail = FixedKeyCodeMapper.ResolveOtherMaterialDetail(item.OtherMaterialDetailFixedKey);
+            var quotaBasedMaterial = FixedKeyCodeMapper.ResolveQuotaBasedMaterial(item.QuotaBasedMaterialFixedKey);
+            QuotaBasedMaterialType? quotaBasedMaterialType = item.QuotaBasedMaterialTypeFixedKey != null
+                ? FixedKeyCodeMapper.ResolveQuotaBasedMaterialType(item.QuotaBasedMaterialTypeFixedKey)
+                : item.QuotaBasedMaterialQuantities.Select(q => q.FixedKey).FirstOrDefault(q => q != null) is { } quantityFixedKey
+                    ? FixedKeyCodeMapper.ResolveQuotaBasedMaterialType(quantityFixedKey)
+                    : null;
+            var asset = FixedKeyCodeMapper.ResolveAsset(item.AssetFixedKey);
+
+            return new AcceptanceReportDetailItemDto
+            {
+                Id = item.Id,
+                AcceptanceReportId = item.AcceptanceReportId,
+                CategoryProductionOrderId = item.ProductionOrderId,
+                CategoryEquipmentId = item.EquipmentId,
+                AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
+                AdditionalCostEquipmentId = item.AdditionalCostEquipmentId,
+                MaterialId = item.MaterialId,
+                PartId = item.PartId,
+                MaintainUnitPriceEquipmentId = item.MaintainUnitPriceEquipmentId,
+                MaterialCode = item.Material?.Code?.Value,
+                MaterialName = item.Material?.Name,
+                PartCode = item.Part?.Code?.Value ?? item.MaintainUnitPriceEquipment?.Part?.Code?.Value,
+                PartName = item.Part?.Name ?? item.MaintainUnitPriceEquipment?.Part?.Name,
+                PartType = item.Part?.Type ?? item.MaintainUnitPriceEquipment?.Part?.Type,
+                UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
+                                  ?? item.Part?.UnitOfMeasure?.Name
+                                  ?? item.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
+                Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
+                MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
+                MaterialsIncludedInContractRevenueFixedKeyId = item.MaterialsIncludedInContractRevenueFixedKeyId,
+                ProcessGroupId = item.ProcessGroupId,
+                ProcessGroupCode = item.ProcessGroup?.Code?.Value,
+                ProcessGroupName = item.ProcessGroup?.Name,
+                MaterialsIncludedInContractRevenueQuantity = item.MaterialsIncludedInContractRevenueQuantity,
+                AdditionalCost = additionalCost,
+                AdditionalCostFixedKeyId = item.AdditionalCostFixedKeyId,
+                OtherMaterialDetail = otherMaterialDetail,
+                OtherMaterialDetailFixedKeyId = item.OtherMaterialDetailFixedKeyId,
+                AdditionalCostQuantity = item.AdditionalCostQuantity,
+                QuotaBasedMaterial = quotaBasedMaterial,
+                QuotaBasedMaterialFixedKeyId = item.QuotaBasedMaterialFixedKeyId,
+                QuotaBasedMaterialType = quotaBasedMaterialType,
+                QuotaBasedMaterialTypeFixedKeyId = item.QuotaBasedMaterialTypeFixedKeyId,
+                QuotaBasedMaterialQuantities = quotaBasedMaterial != QuotaBasedMaterial.None
+                    ? item.QuotaBasedMaterialQuantities
+                        .Select(q => new QuotaBasedMaterialQuantityDto
+                        {
+                            Type = FixedKeyCodeMapper.ResolveQuotaBasedMaterialType(q.FixedKey),
+                            FixedKeyId = q.FixedKeyId,
+                            Quantity = q.Quantity,
+                        })
+                        .ToList()
+                    : null,
+                Asset = asset,
+                AssetFixedKeyId = item.AssetFixedKeyId,
+                AssetMaterialQuantity = item.AssetMaterialQuantity,
+                IssuedQuantity = item.IssuedQuantity,
+                ShippedQuantity = item.ShippedQuantity,
+                IssuedDetails = item.IssuedDetails
+                    .Select(d => new IssuedDetailDto
+                    {
+                        Type = FixedKeyCodeMapper.ResolveIssuedQuantityType(d.FixedKey),
+                        FixedKeyId = d.FixedKeyId,
+                        Quantity = d.Quantity,
+                    })
+                    .ToList(),
+                ShippedDetails = item.ShippedDetails
+                    .Select(d => new ShippedDetailDto
+                    {
+                        Type = FixedKeyCodeMapper.ResolveShippedQuantityType(d.FixedKey),
+                        FixedKeyId = d.FixedKeyId,
+                        Quantity = d.Quantity,
+                    })
+                    .ToList(),
+                PlanCost = GetPlanCost(item, productionOutput),
+                ActualCost = GetActualCost(item, productionOutput),
+                ItemType = item.ItemType,
+            };
         }).ToList();
 
         return new GetAcceptanceReportDetailDto

@@ -1,9 +1,11 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
+using Application.Catalog.MasterData.FixedKeys;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Entities.MasterData;
 using Domain.Entities.Pricing;
 using Domain.Entities.Production;
 using MediatR;
@@ -23,6 +25,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
     private readonly IWriteRepository<MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<MaintainUnitPriceEquipment>();
+    private readonly IWriteRepository<FixedKey> _fixedKeyRepository = unitOfWork.GetRepository<FixedKey>();
 
     public async Task<CreateAcceptanceReportResponseDto> Handle(CreateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -58,6 +61,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             include: q => q.Include(m => m.Part).ThenInclude(p => p.Costs)
                            .Include(m => m.MaintainUnitPrice),
             disableTracking: true);
+        var fixedKeyLookup = await BuildFixedKeyLookupAsync(createModel.Items, cancellationToken);
 
         var existingAcceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
             predicate: p => p.ProductionOutputId == createModel.ProductionOutputId,
@@ -111,6 +115,12 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 var categoryReference = ProductionReference.Create(item.CategoryProductionOrderId, item.CategoryEquipmentId);
                 var additionalCostReference = ProductionReference.Create(item.AdditionalCostProductionOrderId, item.AdditionalCostEquipmentId);
+                var materialsIncludedInContractRevenue = ResolveMaterialsIncludedInContractRevenue(item, fixedKeyLookup);
+                var additionalCost = ResolveAdditionalCost(item, fixedKeyLookup);
+                var otherMaterialDetail = ResolveOtherMaterialDetail(item, additionalCost, fixedKeyLookup);
+                var quotaBasedMaterial = ResolveQuotaBasedMaterial(item, fixedKeyLookup);
+                var quotaBasedMaterialType = ResolveQuotaBasedMaterialType(item, quotaBasedMaterial, fixedKeyLookup);
+                var asset = ResolveAsset(item, fixedKeyLookup);
 
                 Guid? materialId = null;
                 Guid? partId = null;
@@ -194,18 +204,24 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
-                        item.MaterialsIncludedInContractRevenue,
+                        materialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
-                        item.AdditionalCost,
-                        item.OtherMaterialDetail,
+                        additionalCost,
+                        otherMaterialDetail,
                         item.AdditionalCostQuantity,
-                        item.QuotaBasedMaterial,
-                        item.QuotaBasedMaterialType,
-                        item.Asset,
+                        quotaBasedMaterial,
+                        quotaBasedMaterialType,
+                        asset,
                         item.AssetMaterialQuantity,
-                        MapIssuedDetails(item.IssuedDetails),
-                        MapShippedDetails(item.ShippedDetails),
-                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
+                        MapIssuedDetails(item.IssuedDetails, fixedKeyLookup),
+                        MapShippedDetails(item.ShippedDetails, fixedKeyLookup),
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities, fixedKeyLookup),
+                        item.MaterialsIncludedInContractRevenueFixedKeyId,
+                        item.AdditionalCostFixedKeyId,
+                        item.OtherMaterialDetailFixedKeyId,
+                        item.QuotaBasedMaterialFixedKeyId,
+                        item.QuotaBasedMaterialTypeFixedKeyId,
+                        item.AssetFixedKeyId);
 
                     itemsToUpdate.Add(existingItem);
                 }
@@ -220,23 +236,29 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
-                        item.MaterialsIncludedInContractRevenue,
+                        materialsIncludedInContractRevenue,
                         item.MaterialsIncludedInContractRevenueQuantity,
-                        item.AdditionalCost,
-                        item.OtherMaterialDetail,
+                        additionalCost,
+                        otherMaterialDetail,
                         item.AdditionalCostQuantity,
-                        item.QuotaBasedMaterial,
-                        item.QuotaBasedMaterialType,
-                        item.Asset,
+                        quotaBasedMaterial,
+                        quotaBasedMaterialType,
+                        asset,
                         item.AssetMaterialQuantity,
-                        MapIssuedDetails(item.IssuedDetails),
-                        MapShippedDetails(item.ShippedDetails),
-                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
+                        MapIssuedDetails(item.IssuedDetails, fixedKeyLookup),
+                        MapShippedDetails(item.ShippedDetails, fixedKeyLookup),
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities, fixedKeyLookup),
+                        item.MaterialsIncludedInContractRevenueFixedKeyId,
+                        item.AdditionalCostFixedKeyId,
+                        item.OtherMaterialDetailFixedKeyId,
+                        item.QuotaBasedMaterialFixedKeyId,
+                        item.QuotaBasedMaterialTypeFixedKeyId,
+                        item.AssetFixedKeyId);
 
                     itemsToCreate.Add(reportItem);
                 }
 
-                if (item.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                if (materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
                 {
                     if (!item.ProcessGroupId.HasValue || !processGroupIdsInPeriod.Contains(item.ProcessGroupId.Value))
                     {
@@ -394,14 +416,178 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         return result;
     }
 
-    private static IList<(IssuedQuantityType Type, double Quantity)> MapIssuedDetails(List<IssuedDetailDto> dtos)
-        => dtos.Select(x => (x.Type, x.Quantity)).ToList();
+    private async Task<Dictionary<Guid, FixedKey>> BuildFixedKeyLookupAsync(
+        IEnumerable<CreateAcceptanceReportItemDto> items,
+        CancellationToken cancellationToken)
+    {
+        var ids = items
+            .SelectMany(item => new Guid?[]
+            {
+                item.MaterialsIncludedInContractRevenueFixedKeyId,
+                item.AdditionalCostFixedKeyId,
+                item.OtherMaterialDetailFixedKeyId,
+                item.QuotaBasedMaterialFixedKeyId,
+                item.QuotaBasedMaterialTypeFixedKeyId,
+                item.AssetFixedKeyId,
+            }
+            .Concat(item.IssuedDetails.Select(x => x.FixedKeyId))
+            .Concat(item.ShippedDetails.Select(x => x.FixedKeyId))
+            .Concat(item.QuotaBasedMaterialQuantities?.Select(x => x.FixedKeyId) ?? []))
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .Distinct()
+            .ToList();
 
-    private static IList<(ShippedQuantityType Type, double Quantity)> MapShippedDetails(List<ShippedDetailDto> dtos)
-        => dtos.Select(x => (x.Type, x.Quantity)).ToList();
+        if (!ids.Any())
+        {
+            return new Dictionary<Guid, FixedKey>();
+        }
 
-    private static IList<(QuotaBasedMaterialType Type, double Quantity)>? MapQuotaBasedMaterialQuantities(List<QuotaBasedMaterialQuantityDto>? dtos)
-        => dtos?.Select(x => (x.Type, x.Quantity)).ToList();
+        var fixedKeys = await _fixedKeyRepository.GetAllAsync(
+            predicate: x => ids.Contains(x.Id),
+            disableTracking: true);
+
+        return fixedKeys.ToDictionary(x => x.Id);
+    }
+
+    private static IList<(IssuedQuantityType Type, Guid? FixedKeyId, double Quantity)> MapIssuedDetails(
+        List<IssuedDetailDto> dtos,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => dtos.Select(x =>
+        {
+            var fixedKey = GetRequiredFixedKey(x.FixedKeyId, fixedKeys, nameof(x.FixedKeyId));
+            var resolvedType = FixedKeyCodeMapper.ToIssuedQuantityType(fixedKey);
+            return (Type: resolvedType, FixedKeyId: (Guid?)fixedKey.Id, Quantity: x.Quantity);
+        }).ToList();
+
+    private static IList<(ShippedQuantityType Type, Guid? FixedKeyId, double Quantity)> MapShippedDetails(
+        List<ShippedDetailDto> dtos,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => dtos.Select(x =>
+        {
+            var fixedKey = GetRequiredFixedKey(x.FixedKeyId, fixedKeys, nameof(x.FixedKeyId));
+            var resolvedType = FixedKeyCodeMapper.ToShippedQuantityType(fixedKey);
+            return (Type: resolvedType, FixedKeyId: (Guid?)fixedKey.Id, Quantity: x.Quantity);
+        }).ToList();
+
+    private static IList<(QuotaBasedMaterialType Type, Guid? FixedKeyId, double Quantity)>? MapQuotaBasedMaterialQuantities(
+        List<QuotaBasedMaterialQuantityDto>? dtos,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => dtos?.Select(x =>
+        {
+            var fixedKey = GetRequiredFixedKey(x.FixedKeyId, fixedKeys, nameof(x.FixedKeyId));
+            var resolvedType = FixedKeyCodeMapper.ToQuotaBasedMaterialType(fixedKey);
+            return (Type: resolvedType, FixedKeyId: (Guid?)fixedKey.Id, Quantity: x.Quantity);
+        }).ToList();
+
+    private static MaterialsIncludedInContractRevenue ResolveMaterialsIncludedInContractRevenue(
+        CreateAcceptanceReportItemDto item,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => ResolveOptionalFixedKey(
+            item.MaterialsIncludedInContractRevenueFixedKeyId,
+            fixedKeys,
+            nameof(item.MaterialsIncludedInContractRevenueFixedKeyId),
+            FixedKeyCodeMapper.ResolveMaterialsIncludedInContractRevenue);
+
+    private static AdditionalCost ResolveAdditionalCost(
+        CreateAcceptanceReportItemDto item,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => ResolveOptionalFixedKey(
+            item.AdditionalCostFixedKeyId,
+            fixedKeys,
+            nameof(item.AdditionalCostFixedKeyId),
+            FixedKeyCodeMapper.ResolveAdditionalCost);
+
+    private static OtherMaterialDetail ResolveOtherMaterialDetail(
+        CreateAcceptanceReportItemDto item,
+        AdditionalCost additionalCost,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+    {
+        if (additionalCost != AdditionalCost.SafeAndWelfare)
+        {
+            return OtherMaterialDetail.None;
+        }
+
+        var fixedKey = GetRequiredFixedKey(
+            item.OtherMaterialDetailFixedKeyId,
+            fixedKeys,
+            nameof(item.OtherMaterialDetailFixedKeyId));
+        return FixedKeyCodeMapper.ToOtherMaterialDetail(fixedKey);
+    }
+
+    private static QuotaBasedMaterial ResolveQuotaBasedMaterial(
+        CreateAcceptanceReportItemDto item,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => ResolveOptionalFixedKey(
+            item.QuotaBasedMaterialFixedKeyId,
+            fixedKeys,
+            nameof(item.QuotaBasedMaterialFixedKeyId),
+            FixedKeyCodeMapper.ResolveQuotaBasedMaterial);
+
+    private static QuotaBasedMaterialType? ResolveQuotaBasedMaterialType(
+        CreateAcceptanceReportItemDto item,
+        QuotaBasedMaterial quotaBasedMaterial,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+    {
+        if (quotaBasedMaterial == QuotaBasedMaterial.None)
+        {
+            if (item.QuotaBasedMaterialQuantities?.Any() == true)
+            {
+                throw new BadRequestException("Quota-based material quantities are not allowed when quota-based material is empty.");
+            }
+
+            return null;
+        }
+
+        if (item.QuotaBasedMaterialTypeFixedKeyId.HasValue &&
+            fixedKeys.TryGetValue(item.QuotaBasedMaterialTypeFixedKeyId.Value, out var fixedKey))
+        {
+            return FixedKeyCodeMapper.ToQuotaBasedMaterialType(fixedKey);
+        }
+
+        var quantityFixedKeyId = item.QuotaBasedMaterialQuantities?.FirstOrDefault(x => x.FixedKeyId.HasValue)?.FixedKeyId;
+        if (quantityFixedKeyId.HasValue && fixedKeys.TryGetValue(quantityFixedKeyId.Value, out var quantityFixedKey))
+        {
+            return FixedKeyCodeMapper.ToQuotaBasedMaterialType(quantityFixedKey);
+        }
+
+        throw new BadRequestException("Quota-based material type fixed key is required.");
+    }
+
+    private static Asset ResolveAsset(
+        CreateAcceptanceReportItemDto item,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys)
+        => ResolveOptionalFixedKey(
+            item.AssetFixedKeyId,
+            fixedKeys,
+            nameof(item.AssetFixedKeyId),
+            FixedKeyCodeMapper.ResolveAsset);
+
+    private static TEnum ResolveOptionalFixedKey<TEnum>(
+        Guid? fixedKeyId,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys,
+        string fieldName,
+        Func<FixedKey?, TEnum> resolver)
+        where TEnum : struct, Enum
+        => resolver(fixedKeyId.HasValue ? GetRequiredFixedKey(fixedKeyId, fixedKeys, fieldName) : null);
+
+    private static FixedKey GetRequiredFixedKey(
+        Guid? fixedKeyId,
+        IReadOnlyDictionary<Guid, FixedKey> fixedKeys,
+        string fieldName)
+    {
+        if (!fixedKeyId.HasValue)
+        {
+            throw new BadRequestException($"{fieldName} is required.");
+        }
+
+        if (!fixedKeys.TryGetValue(fixedKeyId.Value, out var fixedKey))
+        {
+            throw new NotFoundException($"Fixed key '{fixedKeyId.Value}' not found.");
+        }
+
+        return fixedKey;
+    }
 
     private static Guid? ResolveMaintainUnitPriceEquipmentId(
         Guid partId,

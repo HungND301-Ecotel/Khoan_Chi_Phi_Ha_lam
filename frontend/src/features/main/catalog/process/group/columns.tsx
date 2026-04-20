@@ -6,6 +6,9 @@ export type ProcessGroup = {
 	code: string;
 	name: string;
 	type: ProcessGroupType;
+	fixedKeyId?: string | null;
+	fixedKeyCode?: string | null;
+	fixedKeyName?: string | null;
 };
 
 export const CATALOG_PROCESS_GROUP_COLUMNS: ColumnDef<ProcessGroup>[] = [
@@ -16,5 +19,11 @@ export const CATALOG_PROCESS_GROUP_COLUMNS: ColumnDef<ProcessGroup>[] = [
 	{
 		accessorKey: 'name',
 		header: 'Tên nhóm công đoạn sản xuất',
+	},
+	{
+		accessorKey: 'fixedKeyName',
+		header: 'Khóa hệ thống',
+		cell: ({ row }) =>
+			row.original.fixedKeyName || row.original.fixedKeyCode || 'Chưa gán',
 	},
 ];

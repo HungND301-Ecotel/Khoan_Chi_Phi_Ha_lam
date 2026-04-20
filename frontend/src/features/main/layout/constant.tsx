@@ -5,6 +5,7 @@ import {
 	ClipboardListIcon,
 	FileBarChart2Icon,
 	FileChartColumnIcon,
+	SettingsIcon,
 } from 'lucide-react';
 import { IconName } from 'lucide-react/dynamic';
 import { type JSX } from 'react';
@@ -221,6 +222,14 @@ export const NAVIGATIONS: Navigation[] = [
 		href: '/report',
 		icon: () => (
 			<FileBarChart2Icon className='size-5 text-blue-500' strokeWidth={2} />
+		),
+	},
+	{
+		type: 'link',
+		name: 'Hệ thống',
+		href: '/system',
+		icon: () => (
+			<SettingsIcon className='size-5 text-slate-600' strokeWidth={2} />
 		),
 	},
 ] as const;

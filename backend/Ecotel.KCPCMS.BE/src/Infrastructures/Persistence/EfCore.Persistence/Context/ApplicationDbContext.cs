@@ -4,6 +4,7 @@ using Application.Common.Interfaces;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
 using Domain.Entities.Index;
+using Domain.Entities.MasterData;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using Domain.Entities.Pricing.MaterialUnitPrice;
@@ -65,6 +66,7 @@ public class ApplicationDbContext(
     public DbSet<SavingsRateConfig> SavingsRateConfigs => Set<SavingsRateConfig>();
     public DbSet<AkFactorConfig> AkFactorConfigs => Set<AkFactorConfig>();
     public DbSet<RevenueCostAdjustmentConfig> RevenueCostAdjustmentConfigs => Set<RevenueCostAdjustmentConfig>();
+    public DbSet<FixedKey> FixedKeys => Set<FixedKey>();
 
     #endregion
 
@@ -148,6 +150,12 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Code>().ToTable(nameof(Code), "Index");
         modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>().ToTable(nameof(PlannedMaintainCostAdjustmentFactorDescription), "Index");
         modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>().ToTable(nameof(PlannedElectricityCostAdjustmentFactorDescription), "Index");
+
+        modelBuilder.Entity<FixedKey>().ToTable(nameof(FixedKey), "MasterData");
+        modelBuilder.Entity<FixedKey>()
+            .HasIndex(x => new { x.Type, x.Code })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
 
         // Assignment Code table
@@ -307,6 +315,11 @@ public class ApplicationDbContext(
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey<ProcessGroup>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProcessGroup>()
+            .HasOne(s => s.FixedKey)
+            .WithMany(h => h.ProcessGroups)
+            .HasForeignKey(s => s.FixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<AkFactorConfig>()
             .HasOne(x => x.ProcessGroup)
@@ -933,6 +946,36 @@ public class ApplicationDbContext(
             .HasForeignKey(i => i.MaterialId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.MaterialsIncludedInContractRevenueFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.MaterialsIncludedInContractRevenueFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.AdditionalCostFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.AdditionalCostFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.OtherMaterialDetailFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.OtherMaterialDetailFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.QuotaBasedMaterialFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.QuotaBasedMaterialFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.QuotaBasedMaterialTypeFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.QuotaBasedMaterialTypeFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasOne(i => i.AssetFixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.AssetFixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItem>()
             .HasMany(i => i.ShippedDetails)
             .WithOne(i => i.AcceptanceReportItem)
             .HasForeignKey(i => i.AcceptanceReportItemId)
@@ -947,6 +990,21 @@ public class ApplicationDbContext(
             .WithOne(i => i.AcceptanceReportItem)
             .HasForeignKey(i => i.AcceptanceReportItemId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItemIssuedDetail>()
+            .HasOne(i => i.FixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.FixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItemShippedDetail>()
+            .HasOne(i => i.FixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.FixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AcceptanceReportItemQuotaBasedMaterialQuantity>()
+            .HasOne(i => i.FixedKey)
+            .WithMany()
+            .HasForeignKey(i => i.FixedKeyId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // AcceptanceReportItemLog table
         modelBuilder.Entity<AcceptanceReportItemLog>()

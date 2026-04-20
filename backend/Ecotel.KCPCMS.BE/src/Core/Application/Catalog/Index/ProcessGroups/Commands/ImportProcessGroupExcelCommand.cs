@@ -67,7 +67,7 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
                         throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name);
+                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, entityToUpdate.FixedKeyId, entityToUpdate.Type);
                     updateList.Add(entityToUpdate);
                 }
             }

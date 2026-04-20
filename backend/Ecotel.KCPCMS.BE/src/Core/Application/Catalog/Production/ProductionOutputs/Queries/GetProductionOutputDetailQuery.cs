@@ -1,3 +1,4 @@
+using Application.Catalog.MasterData.FixedKeys;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -63,9 +64,23 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
                 .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.MaterialsIncludedInContractRevenueFixedKey)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.AdditionalCostFixedKey)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.OtherMaterialDetailFixedKey)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.QuotaBasedMaterialFixedKey)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.QuotaBasedMaterialTypeFixedKey)
+                .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.AssetFixedKey)
+                .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.IssuedDetails)
+                    .ThenInclude(d => d.FixedKey)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.ShippedDetails)
+                    .ThenInclude(d => d.FixedKey)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.AcceptanceReportItemLogs)
                 .Include(a => a.ProductionOutput),
@@ -126,7 +141,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var groups = new Dictionary<string, MaterialGroupDto>();
 
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+            .Where(i => GetMaterialsIncludedInContractRevenue(i) != MaterialsIncludedInContractRevenue.None)
             .ToList();
 
         // ── Sub-section 1: Vật liệu ──────────────────────────────────────────
@@ -215,7 +230,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         foreach (var prevReport in previousReports)
         {
             var prevItems = prevReport.AcceptanceReportItems
-                .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+                .Where(i => GetMaterialsIncludedInContractRevenue(i) == MaterialsIncludedInContractRevenue.Maintain
                          && IsSctxItem(i))
                 .ToList();
 
@@ -279,12 +294,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var groups = new Dictionary<string, MaterialGroupDto>();
 
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.AdditionalCost != AdditionalCost.None)
+            .Where(i => GetAdditionalCost(i) != AdditionalCost.None)
             .ToList();
 
         // ── Vật liệu ─────────────────────────────────────────────────────────
         foreach (var item in sectionItems
-            .Where(i => i.AdditionalCost == AdditionalCost.Material
+            .Where(i => GetAdditionalCost(i) == AdditionalCost.Material
                      && i.MaterialId.HasValue && i.Material != null))
         {
             string groupCode, groupName, groupKey;
@@ -321,7 +336,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         // ── SCTX TH1 ─────────────────────────────────────────────────────────
         foreach (var item in sectionItems
-            .Where(i => i.AdditionalCost == AdditionalCost.Maintain
+            .Where(i => GetAdditionalCost(i) == AdditionalCost.Maintain
                      && IsSctxItem(i)))
         {
             var part = GetSctxPart(item)!;
@@ -367,7 +382,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         foreach (var prevReport in previousReports)
         {
             var prevItems = prevReport.AcceptanceReportItems
-                .Where(i => i.AdditionalCost == AdditionalCost.Maintain
+                .Where(i => GetAdditionalCost(i) == AdditionalCost.Maintain
                          && IsSctxItem(i))
                 .ToList();
 
@@ -402,17 +417,18 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         // ── OtherMaterial ─────────────────────────────────────────────────────
         foreach (var item in sectionItems
-            .Where(i => i.AdditionalCost == AdditionalCost.SafeAndWelfare
+            .Where(i => GetAdditionalCost(i) == AdditionalCost.SafeAndWelfare
                      && i.MaterialId.HasValue && i.Material != null))
         {
-            var groupKey = $"BO_{item.OtherMaterialDetail}";
+            var otherMaterialDetail = GetOtherMaterialDetail(item);
+            var groupKey = $"BO_{otherMaterialDetail}";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
-                GroupCode = item.OtherMaterialDetail.ToString()!,
+                GroupCode = otherMaterialDetail.ToString()!,
                 GroupName = "",
                 MaterialType = MatTypeLabel.VatLieu,
                 AdditionalCostType = AdditionalCost.SafeAndWelfare,
-                OtherMaterialDetail = item.OtherMaterialDetail,
+                OtherMaterialDetail = otherMaterialDetail,
                 Materials = new(),
                 SubGroups = new()
             });
@@ -438,13 +454,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var groups = new Dictionary<string, MaterialGroupDto>();
 
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None
+            .Where(i => GetQuotaBasedMaterial(i) != QuotaBasedMaterial.None
                      && i.MaterialId.HasValue && i.Material != null)
             .ToList();
 
         foreach (var item in sectionItems)
         {
-            var (groupKey, groupName, hasSubGroup) = item.QuotaBasedMaterial switch
+            var quotaBasedMaterial = GetQuotaBasedMaterial(item);
+            var (groupKey, groupName, hasSubGroup) = quotaBasedMaterial switch
             {
                 QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
                 QuotaBasedMaterial.SupportAccessories => ("SupportAccessories", "Phụ kiện", true),
@@ -466,7 +483,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
             if (hasSubGroup)
             {
-                var subCode = item.QuotaBasedMaterialType == QuotaBasedMaterialType.New ? "New" : "Reusable";
+                var subCode = GetQuotaBasedMaterialType(item) == QuotaBasedMaterialType.New ? "New" : "Reusable";
                 var subGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == subCode);
                 if (subGroup == null)
                 {
@@ -505,7 +522,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReport report, ProductionOutput productionOutput)
     {
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.Asset != Asset.None && i.MaterialId.HasValue && i.Material != null)
+            .Where(i => GetAsset(i) != Asset.None && i.MaterialId.HasValue && i.Material != null)
             .ToList();
 
         if (sectionItems.Any())
@@ -860,6 +877,24 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
                     .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.MaterialsIncludedInContractRevenueFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.AdditionalCostFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.OtherMaterialDetailFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.QuotaBasedMaterialFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.QuotaBasedMaterialTypeFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.AssetFixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.IssuedDetails)
+                            .ThenInclude(d => d.FixedKey)
+                    .Include(a => a.AcceptanceReportItems)
+                        .ThenInclude(i => i.ShippedDetails)
+                            .ThenInclude(d => d.FixedKey)
+                    .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(i => i.AcceptanceReportItemLogs),
                 disableTracking: true);
 
@@ -962,14 +997,36 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         };
     }
 
+    private static MaterialsIncludedInContractRevenue GetMaterialsIncludedInContractRevenue(AcceptanceReportItem item)
+        => FixedKeyCodeMapper.ResolveMaterialsIncludedInContractRevenue(item.MaterialsIncludedInContractRevenueFixedKey);
+
+    private static AdditionalCost GetAdditionalCost(AcceptanceReportItem item)
+        => FixedKeyCodeMapper.ResolveAdditionalCost(item.AdditionalCostFixedKey);
+
+    private static OtherMaterialDetail GetOtherMaterialDetail(AcceptanceReportItem item)
+        => FixedKeyCodeMapper.ResolveOtherMaterialDetail(item.OtherMaterialDetailFixedKey);
+
+    private static QuotaBasedMaterial GetQuotaBasedMaterial(AcceptanceReportItem item)
+        => FixedKeyCodeMapper.ResolveQuotaBasedMaterial(item.QuotaBasedMaterialFixedKey);
+
+    private static QuotaBasedMaterialType GetQuotaBasedMaterialType(AcceptanceReportItem item)
+        => item.QuotaBasedMaterialTypeFixedKey != null
+            ? FixedKeyCodeMapper.ResolveQuotaBasedMaterialType(item.QuotaBasedMaterialTypeFixedKey)
+            : item.QuotaBasedMaterialQuantities.Select(q => q.FixedKey).FirstOrDefault(q => q != null) is { } quantityFixedKey
+                ? FixedKeyCodeMapper.ResolveQuotaBasedMaterialType(quantityFixedKey)
+                : throw new BadRequestException("Quota-based material type fixed key is required.");
+
+    private static Asset GetAsset(AcceptanceReportItem item)
+        => FixedKeyCodeMapper.ResolveAsset(item.AssetFixedKey);
+
     private static double GetIssuedQuantity(AcceptanceReportItem item, IssuedQuantityType type)
         => item.IssuedDetails
-            .Where(d => d.Type == type)
+            .Where(d => FixedKeyCodeMapper.ResolveIssuedQuantityType(d.FixedKey) == type)
             .Sum(d => d.Quantity);
 
     private static double GetShippedQuantity(AcceptanceReportItem item, ShippedQuantityType type)
         => item.ShippedDetails
-            .Where(d => d.Type == type)
+            .Where(d => FixedKeyCodeMapper.ResolveShippedQuantityType(d.FixedKey) == type)
             .Sum(d => d.Quantity);
 
     private static bool IsSctxItem(AcceptanceReportItem item)

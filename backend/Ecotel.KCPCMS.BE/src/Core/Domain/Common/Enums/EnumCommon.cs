@@ -29,6 +29,20 @@ public enum ProcessGroupType
     XL = 3
 }
 
+public enum FixedKeyType
+{
+    None = 0,
+    ProcessGroup = 1,
+    MaterialsIncludedInContractRevenue = 2,
+    AdditionalCost = 3,
+    OtherMaterialDetail = 4,
+    QuotaBasedMaterial = 5,
+    QuotaBasedMaterialType = 6,
+    Asset = 7,
+    IssuedQuantityType = 8,
+    ShippedQuantityType = 9,
+}
+
 public enum CostType
 {
     Part = 1,

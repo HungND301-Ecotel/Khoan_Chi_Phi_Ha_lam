@@ -91,16 +91,22 @@ export type CreateAcceptanceReportItem = {
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
+	materialsIncludedInContractRevenueFixedKeyId?: string | null;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	additionalCostFixedKeyId?: string | null;
 	otherMaterialDetail: number;
+	otherMaterialDetailFixedKeyId?: string | null;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
+	quotaBasedMaterialFixedKeyId?: string | null;
 	quotaBasedMaterialType: number;
+	quotaBasedMaterialTypeFixedKeyId?: string | null;
 	quotaBasedMaterialQuantity: number;
 	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	asset: number;
+	assetFixedKeyId?: string | null;
 	assetMaterialQuantity: number;
 };
 
@@ -201,10 +207,12 @@ export const SHIPPED_DETAIL_TYPE_BY_KEY = {
 
 export type QuantityDetail = {
 	type: number;
+	fixedKeyId?: string | null;
 	quantity: number;
 };
 
 export type QuotaBasedMaterialQuantityDetail = {
 	type: number;
+	fixedKeyId?: string | null;
 	quantity: number;
 };

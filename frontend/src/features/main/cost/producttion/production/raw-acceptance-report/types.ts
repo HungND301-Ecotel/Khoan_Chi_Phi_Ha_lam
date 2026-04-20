@@ -20,19 +20,25 @@ export type RawAcceptanceReportItem = {
 	shippedQuantity: number;
 	type: number;
 	materialsIncludedInContractRevenue: number;
+	materialsIncludedInContractRevenueFixedKeyId?: string | null;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	additionalCostFixedKeyId?: string | null;
 	otherMaterialDetail: number;
+	otherMaterialDetailFixedKeyId?: string | null;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
+	quotaBasedMaterialFixedKeyId?: string | null;
 	quotaBasedMaterialType: number;
+	quotaBasedMaterialTypeFixedKeyId?: string | null;
 	quotaBasedMaterialQuantity?: number;
 	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	assetMaterialQuantity: number;
 	asset: number;
+	assetFixedKeyId?: string | null;
 };
 
 export type RawAcceptanceReportDetail = {
@@ -67,19 +73,25 @@ export type AcceptanceReportItem = {
 	shippedDetails?: QuantityDetail[];
 	type: number;
 	materialsIncludedInContractRevenue: number;
+	materialsIncludedInContractRevenueFixedKeyId?: string | null;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
+	additionalCostFixedKeyId?: string | null;
 	otherMaterialDetail: number;
+	otherMaterialDetailFixedKeyId?: string | null;
 	additionalCostQuantity: number;
 	quotaBasedMaterial: number;
+	quotaBasedMaterialFixedKeyId?: string | null;
 	quotaBasedMaterialType: number;
+	quotaBasedMaterialTypeFixedKeyId?: string | null;
 	quotaBasedMaterialQuantity?: number;
 	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
 	assetMaterialQuantity: number;
 	asset: number;
+	assetFixedKeyId?: string | null;
 };
 
 export type AcceptanceReportDetail = {
@@ -155,11 +167,13 @@ export const ShippedQuantityType = {
 
 export type QuantityDetail = {
 	type: number;
+	fixedKeyId?: string | null;
 	quantity: number;
 };
 
 export type QuotaBasedMaterialQuantityDetail = {
 	type: number;
+	fixedKeyId?: string | null;
 	quantity: number;
 };
 

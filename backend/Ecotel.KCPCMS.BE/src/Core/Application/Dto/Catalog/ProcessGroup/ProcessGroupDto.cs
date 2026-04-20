@@ -10,6 +10,9 @@ namespace Application.Dto.Catalog.ProcessGroup
         public string Code { get; set; }
         public ProcessGroupType Type { get; set; }
         public string Name { get; set; }
+        public Guid? FixedKeyId { get; set; }
+        public string? FixedKeyCode { get; set; }
+        public string? FixedKeyName { get; set; }
     }
 
     public class ProcessGroupExcelDto
@@ -25,5 +28,6 @@ namespace Application.Dto.Catalog.ProcessGroup
     {
         public string Code { get; set; }
         public string Name { get; set; }
+        public Guid? FixedKeyId { get; set; }
     }
 }

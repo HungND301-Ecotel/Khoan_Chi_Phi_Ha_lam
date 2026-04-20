@@ -57,6 +57,12 @@ import {
 } from 'react-hook-form';
 import { api } from '@/lib/api';
 import { API } from '@/constants/api-enpoint';
+import {
+	ACCEPTANCE_REPORT_FIXED_KEY_CODES,
+	findMappedFixedKeyId,
+	FixedKey,
+	FixedKeyType,
+} from '@/constants/fixed-key';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FieldName = any;
@@ -432,6 +438,7 @@ export function RawAcceptanceReportForm({
 	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
 		Record<string, ProductionOrderOption[]>
 	>({});
+	const [fixedKeys, setFixedKeys] = useState<FixedKey[]>([]);
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 
@@ -482,6 +489,21 @@ export function RawAcceptanceReportForm({
 	useEffect(() => {
 		let isMounted = true;
 
+		const fetchFixedKeys = async () => {
+			try {
+				const response = await api.pagging<FixedKey>(API.CATALOG.FIXED_KEY.LIST, {
+					ignorePagination: true,
+				});
+
+				if (!isMounted) return;
+				setFixedKeys(response.result.data);
+			} catch (err) {
+				if (!isMounted) return;
+				setFixedKeys([]);
+				console.error('Failed to fetch fixed keys:', err);
+			}
+		};
+
 		const fetchProductionOrders = async () => {
 			try {
 				const response = await api.pagging<ProductionOrder>(
@@ -508,6 +530,7 @@ export function RawAcceptanceReportForm({
 			}
 		};
 
+		fetchFixedKeys();
 		fetchProductionOrders();
 
 		return () => {
@@ -832,6 +855,11 @@ export function RawAcceptanceReportForm({
 				return;
 			}
 
+			if (!fixedKeys.length) {
+				error('Chưa tải được fixed key hệ thống');
+				return;
+			}
+
 			// Transform form data to API request
 			const requestData = {
 				id: reportId,
@@ -849,17 +877,45 @@ export function RawAcceptanceReportForm({
 						item.showCategoryDropdown && resolvedCategory
 							? item.categoryProcessGroup || null
 							: null;
+					const materialsIncludedInContractRevenueFixedKeyId =
+						item.showCategoryDropdown && resolvedCategory
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.MaterialsIncludedInContractRevenue,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.materialsIncludedInContractRevenue,
+									resolvedCategory,
+								)
+							: null;
 
 					const additionalCost =
 						item.showAdditionalCostDropdown && item.additionalCostCategory
 							? item.additionalCostCategory
 							: AdditionalCost.None;
+					const additionalCostFixedKeyId =
+						item.showAdditionalCostDropdown && item.additionalCostCategory
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.AdditionalCost,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.additionalCost,
+									item.additionalCostCategory,
+								)
+							: null;
 					const otherMaterialDetail =
 						item.showAdditionalCostDropdown &&
 						item.additionalCostCategory === AdditionalCost.OtherMaterial
 							? (item.otherMaterialDetail ??
 								DEFAULT_OTHER_MATERIAL_DETAIL_VALUE)
 							: OtherMaterialDetail.None;
+					const otherMaterialDetailFixedKeyId =
+						item.showAdditionalCostDropdown &&
+						item.additionalCostCategory === AdditionalCost.OtherMaterial
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.OtherMaterialDetail,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.otherMaterialDetail,
+									Number(otherMaterialDetail),
+								)
+							: null;
 
 					const categoryProductionOrderId =
 						item.showCategoryDropdown &&
@@ -885,14 +941,23 @@ export function RawAcceptanceReportForm({
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
 					let quotaBasedMaterialType: number =
 						CONTRACT_LIMIT_SECONDARY_OPTIONS[0].value;
+					let quotaBasedMaterialFixedKeyId: string | null = null;
+					let quotaBasedMaterialTypeFixedKeyId: string | null = null;
 					let quotaBasedMaterialQuantities:
 						| {
 								type: number;
+								fixedKeyId?: string | null;
 								quantity: number;
 						  }[]
 						| null = null;
 					if (item.showContractLimitDropdown && item.contractLimitCategory) {
 						quotaBasedMaterial = item.contractLimitCategory;
+						quotaBasedMaterialFixedKeyId = findMappedFixedKeyId(
+							fixedKeys,
+							FixedKeyType.QuotaBasedMaterial,
+							ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterial,
+							item.contractLimitCategory,
+						);
 						const selectedSubCategories =
 							item.contractLimitSubCategories &&
 							item.contractLimitSubCategories.length > 0
@@ -904,10 +969,22 @@ export function RawAcceptanceReportForm({
 						quotaBasedMaterialType =
 							selectedSubCategories[0] ??
 							CONTRACT_LIMIT_SECONDARY_OPTIONS[0].value;
+						quotaBasedMaterialTypeFixedKeyId = findMappedFixedKeyId(
+							fixedKeys,
+							FixedKeyType.QuotaBasedMaterialType,
+							ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterialType,
+							quotaBasedMaterialType,
+						);
 						if (selectedSubCategories.length > 0) {
 							quotaBasedMaterialQuantities = selectedSubCategories.map(
 								(type) => ({
 									type,
+									fixedKeyId: findMappedFixedKeyId(
+										fixedKeys,
+										FixedKeyType.QuotaBasedMaterialType,
+										ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterialType,
+										type,
+									),
 									quantity: parseQuantity(
 										item.contractLimitBreakdown?.[String(type)],
 									),
@@ -917,6 +994,7 @@ export function RawAcceptanceReportForm({
 							quotaBasedMaterialQuantities = [
 								{
 									type: quotaBasedMaterialType,
+									fixedKeyId: quotaBasedMaterialTypeFixedKeyId,
 									quantity: parseQuantity(item.contractLimitQuantity),
 								},
 							];
@@ -924,6 +1002,14 @@ export function RawAcceptanceReportForm({
 					}
 
 					const asset = item.showAssetDropdown ? Asset.True : Asset.None;
+					const assetFixedKeyId = item.showAssetDropdown
+						? findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.Asset,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.asset,
+								Asset.True,
+							)
+						: null;
 
 					const receivedTypes =
 						item.receivedTypes && item.receivedTypes.length > 0
@@ -947,6 +1033,12 @@ export function RawAcceptanceReportForm({
 								: parseQuantity(item.receivedQuantity);
 						issuedDetails.push({
 							type: detailType,
+							fixedKeyId: findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.IssuedQuantityType,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.issuedQuantityType,
+								detailType,
+							),
 							quantity,
 						});
 					}
@@ -964,6 +1056,12 @@ export function RawAcceptanceReportForm({
 								: parseQuantity(item.exportedQuantity);
 						shippedDetails.push({
 							type: detailType,
+							fixedKeyId: findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.ShippedQuantityType,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.shippedQuantityType,
+								detailType,
+							),
 							quantity,
 						});
 					}
@@ -979,16 +1077,22 @@ export function RawAcceptanceReportForm({
 						issuedDetails,
 						shippedDetails,
 						materialsIncludedInContractRevenue,
+						materialsIncludedInContractRevenueFixedKeyId,
 						processGroupId,
 						materialsIncludedInContractRevenueQuantity:
 							item.categoryQuantity || 0,
 						additionalCost,
+						additionalCostFixedKeyId,
 						otherMaterialDetail,
+						otherMaterialDetailFixedKeyId,
 						additionalCostQuantity: item.additionalCostQuantity || 0,
 						quotaBasedMaterial,
+						quotaBasedMaterialFixedKeyId,
 						quotaBasedMaterialType,
+						quotaBasedMaterialTypeFixedKeyId,
 						quotaBasedMaterialQuantities,
 						asset,
+						assetFixedKeyId,
 						assetMaterialQuantity: item.assetQuantity || 0,
 					};
 				}),

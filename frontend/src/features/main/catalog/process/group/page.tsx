@@ -63,6 +63,7 @@ export default function MainCatalogProcessGroupPage() {
 			filters={[
 				{ key: 'name', label: 'Tên nhóm công đoạn sản xuất' },
 				{ key: 'code', label: 'Mã nhóm công đoạn sản xuất' },
+				{ key: 'fixedKeyName', label: 'Khóa hệ thống' },
 			]}
 			onCreate={(props) => <ProcessGroupForm {...props} />}
 			onDuplicate={(props) => <ProcessGroupForm {...props} isDuplicate />}

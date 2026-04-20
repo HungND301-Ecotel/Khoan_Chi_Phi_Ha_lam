@@ -2,6 +2,12 @@ import { DataTableImport } from '@/components/datatable/import';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
+import {
+	ACCEPTANCE_REPORT_FIXED_KEY_CODES,
+	findMappedFixedKeyId,
+	FixedKey,
+	FixedKeyType,
+} from '@/constants/fixed-key';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
@@ -179,6 +185,7 @@ export function MaterialImportDialog({
 	const [partEquipmentsByPartId, setPartEquipmentsByPartId] = useState<
 		Record<string, Equipment[]>
 	>({});
+	const [fixedKeys, setFixedKeys] = useState<FixedKey[]>([]);
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 	const popup = usePopup();
@@ -195,6 +202,21 @@ export function MaterialImportDialog({
 
 	useEffect(() => {
 		let isMounted = true;
+
+		const fetchFixedKeys = async () => {
+			try {
+				const response = await api.pagging<FixedKey>(API.CATALOG.FIXED_KEY.LIST, {
+					ignorePagination: true,
+				});
+
+				if (!isMounted) return;
+				setFixedKeys(response.result.data);
+			} catch (error) {
+				if (!isMounted) return;
+				setFixedKeys([]);
+				console.error('Failed to fetch fixed keys:', error);
+			}
+		};
 
 		const fetchProductionOrders = async () => {
 			try {
@@ -222,6 +244,7 @@ export function MaterialImportDialog({
 			}
 		};
 
+		fetchFixedKeys();
 		fetchProductionOrders();
 
 		return () => {
@@ -461,6 +484,11 @@ export function MaterialImportDialog({
 				return;
 			}
 
+			if (!fixedKeys.length) {
+				popup.error('Chưa tải được fixed key hệ thống');
+				return;
+			}
+
 			// Transform form data to API request
 			const requestData: CreateAcceptanceReportRequest = {
 				productionOutputId,
@@ -480,6 +508,15 @@ export function MaterialImportDialog({
 						item.showCategoryDropdown && resolvedCategory
 							? item.categoryProcessGroup || null
 							: null;
+					const materialsIncludedInContractRevenueFixedKeyId =
+						item.showCategoryDropdown && resolvedCategory
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.MaterialsIncludedInContractRevenue,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.materialsIncludedInContractRevenue,
+									resolvedCategory,
+								)
+							: null;
 
 					const isSafetyAndWelfareMaterial =
 						item.type === MaterialType.Material &&
@@ -497,11 +534,30 @@ export function MaterialImportDialog({
 					) {
 						additionalCost = resolvedAdditionalCostCategory;
 					}
+					const additionalCostFixedKeyId =
+						item.showAdditionalCostDropdown && resolvedAdditionalCostCategory
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.AdditionalCost,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.additionalCost,
+									resolvedAdditionalCostCategory,
+								)
+							: null;
 					const otherMaterialDetail =
 						item.showAdditionalCostDropdown &&
 						resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
 							? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 							: OtherMaterialDetail.None;
+					const otherMaterialDetailFixedKeyId =
+						item.showAdditionalCostDropdown &&
+						resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
+							? findMappedFixedKeyId(
+									fixedKeys,
+									FixedKeyType.OtherMaterialDetail,
+									ACCEPTANCE_REPORT_FIXED_KEY_CODES.otherMaterialDetail,
+									otherMaterialDetail,
+								)
+							: null;
 
 					const categoryProductionOrderId =
 						item.showCategoryDropdown &&
@@ -527,14 +583,23 @@ export function MaterialImportDialog({
 					// Map quota based material to enum
 					let quotaBasedMaterial: number = QuotaBasedMaterial.None;
 					let quotaBasedMaterialType: number = QuotaBasedMaterialType.New;
+					let quotaBasedMaterialFixedKeyId: string | null = null;
+					let quotaBasedMaterialTypeFixedKeyId: string | null = null;
 					let quotaBasedMaterialQuantities:
 						| {
 								type: number;
+								fixedKeyId?: string | null;
 								quantity: number;
 						  }[]
 						| null = null;
 					if (item.showContractLimitDropdown && item.contractLimitCategory) {
 						quotaBasedMaterial = item.contractLimitCategory;
+						quotaBasedMaterialFixedKeyId = findMappedFixedKeyId(
+							fixedKeys,
+							FixedKeyType.QuotaBasedMaterial,
+							ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterial,
+							item.contractLimitCategory,
+						);
 						const selectedSubCategories =
 							item.contractLimitSubCategories &&
 							item.contractLimitSubCategories.length > 0
@@ -545,10 +610,22 @@ export function MaterialImportDialog({
 
 						quotaBasedMaterialType =
 							selectedSubCategories[0] ?? QuotaBasedMaterialType.New;
+						quotaBasedMaterialTypeFixedKeyId = findMappedFixedKeyId(
+							fixedKeys,
+							FixedKeyType.QuotaBasedMaterialType,
+							ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterialType,
+							quotaBasedMaterialType,
+						);
 						if (selectedSubCategories.length > 0) {
 							quotaBasedMaterialQuantities = selectedSubCategories.map(
 								(type) => ({
 									type,
+									fixedKeyId: findMappedFixedKeyId(
+										fixedKeys,
+										FixedKeyType.QuotaBasedMaterialType,
+										ACCEPTANCE_REPORT_FIXED_KEY_CODES.quotaBasedMaterialType,
+										type,
+									),
 									quantity: parseQuantity(
 										item.contractLimitBreakdown?.[String(type)],
 									),
@@ -558,6 +635,7 @@ export function MaterialImportDialog({
 							quotaBasedMaterialQuantities = [
 								{
 									type: quotaBasedMaterialType,
+									fixedKeyId: quotaBasedMaterialTypeFixedKeyId,
 									quantity: parseQuantity(item.contractLimitQuantity),
 								},
 							];
@@ -568,6 +646,14 @@ export function MaterialImportDialog({
 					const asset: number = item.showAssetDropdown
 						? Asset.True
 						: Asset.None;
+					const assetFixedKeyId = item.showAssetDropdown
+						? findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.Asset,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.asset,
+								Asset.True,
+							)
+						: null;
 					const assetMaterialQuantity: number = item.assetQuantity || 0;
 
 					const receivedTypes =
@@ -594,6 +680,12 @@ export function MaterialImportDialog({
 
 						issuedDetails.push({
 							type: detailType,
+							fixedKeyId: findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.IssuedQuantityType,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.issuedQuantityType,
+								detailType,
+							),
 							quantity,
 						});
 					}
@@ -613,6 +705,12 @@ export function MaterialImportDialog({
 
 						shippedDetails.push({
 							type: detailType,
+							fixedKeyId: findMappedFixedKeyId(
+								fixedKeys,
+								FixedKeyType.ShippedQuantityType,
+								ACCEPTANCE_REPORT_FIXED_KEY_CODES.shippedQuantityType,
+								detailType,
+							),
 							quantity,
 						});
 					}
@@ -639,17 +737,23 @@ export function MaterialImportDialog({
 						issuedDetails,
 						shippedDetails,
 						materialsIncludedInContractRevenue,
+						materialsIncludedInContractRevenueFixedKeyId,
 						processGroupId,
 						materialsIncludedInContractRevenueQuantity:
 							item.categoryQuantity || 0,
 						additionalCost,
+						additionalCostFixedKeyId,
 						otherMaterialDetail,
+						otherMaterialDetailFixedKeyId,
 						additionalCostQuantity: item.additionalCostQuantity || 0,
 						quotaBasedMaterial,
+						quotaBasedMaterialFixedKeyId,
 						quotaBasedMaterialType,
+						quotaBasedMaterialTypeFixedKeyId,
 						quotaBasedMaterialQuantity: item.contractLimitQuantity || 0,
 						quotaBasedMaterialQuantities,
 						asset,
+						assetFixedKeyId,
 						assetMaterialQuantity,
 					};
 				}),

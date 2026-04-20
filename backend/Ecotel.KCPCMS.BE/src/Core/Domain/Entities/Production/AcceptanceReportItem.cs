@@ -1,6 +1,7 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Entities.MasterData;
 using Domain.Entities.Pricing;
 using Shared.Constants;
 
@@ -19,6 +20,12 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public Guid? ProductionOrderId { get; protected set; }
     public Guid? AdditionalCostProductionOrderId { get; protected set; }
     public Guid? AdditionalCostEquipmentId { get; protected set; }
+    public Guid? MaterialsIncludedInContractRevenueFixedKeyId { get; protected set; }
+    public Guid? AdditionalCostFixedKeyId { get; protected set; }
+    public Guid? OtherMaterialDetailFixedKeyId { get; protected set; }
+    public Guid? QuotaBasedMaterialFixedKeyId { get; protected set; }
+    public Guid? QuotaBasedMaterialTypeFixedKeyId { get; protected set; }
+    public Guid? AssetFixedKeyId { get; protected set; }
 
     public double IssuedQuantity => _issuedDetails.Sum(x => x.Quantity);   // tự tính tổng
 
@@ -35,7 +42,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     //Vật tư theo hạn mức
     public QuotaBasedMaterial QuotaBasedMaterial { get; protected set; }
-    public QuotaBasedMaterialType QuotaBasedMaterialType { get; protected set; }
+    public QuotaBasedMaterialType? QuotaBasedMaterialType { get; protected set; }
     public double QuotaBasedMaterialQuantity => _quotaBasedMaterialQuantities.Sum(x => x.Quantity);
 
     //Tài sản
@@ -50,6 +57,12 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public virtual Equipment? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
+    public virtual FixedKey? MaterialsIncludedInContractRevenueFixedKey { get; protected set; }
+    public virtual FixedKey? AdditionalCostFixedKey { get; protected set; }
+    public virtual FixedKey? OtherMaterialDetailFixedKey { get; protected set; }
+    public virtual FixedKey? QuotaBasedMaterialFixedKey { get; protected set; }
+    public virtual FixedKey? QuotaBasedMaterialTypeFixedKey { get; protected set; }
+    public virtual FixedKey? AssetFixedKey { get; protected set; }
 
     public ProductionReference CategoryProductionReference
         => ProductionReference.Create(ProductionOrderId, EquipmentId);
@@ -113,9 +126,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     }
 
     private static void ValidateQuantityDetails(
-        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
-        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
-        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
+        IList<(IssuedQuantityType Type, Guid? FixedKeyId, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, Guid? FixedKeyId, double Quantity)> shippedDetails,
+        IList<(QuotaBasedMaterialType Type, Guid? FixedKeyId, double Quantity)>? quotaBasedMaterialQuantities,
         QuotaBasedMaterial quotaBasedMaterial)
     {
         if (issuedDetails == null || !issuedDetails.Any())
@@ -200,12 +213,18 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         OtherMaterialDetail otherMaterialDetail,
         double additionalCostQuantity,
         QuotaBasedMaterial quotaBasedMaterial,
-        QuotaBasedMaterialType quotaBasedMaterialType,
+        QuotaBasedMaterialType? quotaBasedMaterialType,
         Asset asset,
         double assetMaterialQuantity,
-        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
-        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
-        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
+        IList<(IssuedQuantityType Type, Guid? FixedKeyId, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, Guid? FixedKeyId, double Quantity)> shippedDetails,
+        IList<(QuotaBasedMaterialType Type, Guid? FixedKeyId, double Quantity)>? quotaBasedMaterialQuantities,
+        Guid? materialsIncludedInContractRevenueFixedKeyId = null,
+        Guid? additionalCostFixedKeyId = null,
+        Guid? otherMaterialDetailFixedKeyId = null,
+        Guid? quotaBasedMaterialFixedKeyId = null,
+        Guid? quotaBasedMaterialTypeFixedKeyId = null,
+        Guid? assetFixedKeyId = null)
     {
         ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
@@ -233,16 +252,24 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             ProductionOrderId = categoryProductionReference.ProductionOrderId,
             AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId,
             AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId,
+            MaterialsIncludedInContractRevenueFixedKeyId = materialsIncludedInContractRevenueFixedKeyId,
+            AdditionalCostFixedKeyId = additionalCostFixedKeyId,
+            OtherMaterialDetailFixedKeyId = otherMaterialDetailFixedKeyId,
+            QuotaBasedMaterialFixedKeyId = quotaBasedMaterialFixedKeyId,
+            QuotaBasedMaterialTypeFixedKeyId = quotaBasedMaterialTypeFixedKeyId,
+            AssetFixedKeyId = assetFixedKeyId,
         };
 
         foreach (var detail in issuedDetails)
         {
-            item._issuedDetails.Add(AcceptanceReportItemIssuedDetail.Create(item.Id, detail.Type, detail.Quantity));
+            item._issuedDetails.Add(
+                AcceptanceReportItemIssuedDetail.Create(item.Id, detail.Type, detail.Quantity, detail.FixedKeyId));
         }
 
         foreach (var detail in shippedDetails)
         {
-            item._shippedDetails.Add(AcceptanceReportItemShippedDetail.Create(item.Id, detail.Type, detail.Quantity));
+            item._shippedDetails.Add(
+                AcceptanceReportItemShippedDetail.Create(item.Id, detail.Type, detail.Quantity, detail.FixedKeyId));
         }
 
         if (quotaBasedMaterial != QuotaBasedMaterial.None && quotaBasedMaterialQuantities != null)
@@ -250,7 +277,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             foreach (var detail in quotaBasedMaterialQuantities)
             {
                 item._quotaBasedMaterialQuantities.Add(
-                    AcceptanceReportItemQuotaBasedMaterialQuantity.Create(item.Id, detail.Type, detail.Quantity));
+                    AcceptanceReportItemQuotaBasedMaterialQuantity.Create(item.Id, detail.Type, detail.Quantity, detail.FixedKeyId));
             }
         }
 
@@ -271,12 +298,18 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         OtherMaterialDetail otherMaterialDetail,
         double additionalCostQuantity,
         QuotaBasedMaterial quotaBasedMaterial,
-        QuotaBasedMaterialType quotaBasedMaterialType,
+        QuotaBasedMaterialType? quotaBasedMaterialType,
         Asset asset,
         double assetMaterialQuantity,
-        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
-        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
-        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
+        IList<(IssuedQuantityType Type, Guid? FixedKeyId, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, Guid? FixedKeyId, double Quantity)> shippedDetails,
+        IList<(QuotaBasedMaterialType Type, Guid? FixedKeyId, double Quantity)>? quotaBasedMaterialQuantities,
+        Guid? materialsIncludedInContractRevenueFixedKeyId = null,
+        Guid? additionalCostFixedKeyId = null,
+        Guid? otherMaterialDetailFixedKeyId = null,
+        Guid? quotaBasedMaterialFixedKeyId = null,
+        Guid? quotaBasedMaterialTypeFixedKeyId = null,
+        Guid? assetFixedKeyId = null)
     {
         ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
@@ -301,18 +334,24 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProductionOrderId = categoryProductionReference.ProductionOrderId;
         AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId;
         AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId;
+        MaterialsIncludedInContractRevenueFixedKeyId = materialsIncludedInContractRevenueFixedKeyId;
+        AdditionalCostFixedKeyId = additionalCostFixedKeyId;
+        OtherMaterialDetailFixedKeyId = otherMaterialDetailFixedKeyId;
+        QuotaBasedMaterialFixedKeyId = quotaBasedMaterialFixedKeyId;
+        QuotaBasedMaterialTypeFixedKeyId = quotaBasedMaterialTypeFixedKeyId;
+        AssetFixedKeyId = assetFixedKeyId;
 
         // Clear và rebuild toàn bộ details (replace strategy)
         _issuedDetails.Clear();
         foreach (var detail in issuedDetails)
         {
-            _issuedDetails.Add(AcceptanceReportItemIssuedDetail.Create(Id, detail.Type, detail.Quantity));
+            _issuedDetails.Add(AcceptanceReportItemIssuedDetail.Create(Id, detail.Type, detail.Quantity, detail.FixedKeyId));
         }
 
         _shippedDetails.Clear();
         foreach (var detail in shippedDetails)
         {
-            _shippedDetails.Add(AcceptanceReportItemShippedDetail.Create(Id, detail.Type, detail.Quantity));
+            _shippedDetails.Add(AcceptanceReportItemShippedDetail.Create(Id, detail.Type, detail.Quantity, detail.FixedKeyId));
         }
 
         _quotaBasedMaterialQuantities.Clear();
@@ -321,7 +360,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             foreach (var detail in quotaBasedMaterialQuantities)
             {
                 _quotaBasedMaterialQuantities.Add(
-                    AcceptanceReportItemQuotaBasedMaterialQuantity.Create(Id, detail.Type, detail.Quantity));
+                    AcceptanceReportItemQuotaBasedMaterialQuantity.Create(Id, detail.Type, detail.Quantity, detail.FixedKeyId));
             }
         }
     }

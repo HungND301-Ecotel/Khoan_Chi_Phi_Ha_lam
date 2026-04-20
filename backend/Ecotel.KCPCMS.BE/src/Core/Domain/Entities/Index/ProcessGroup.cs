@@ -1,5 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
+using Domain.Entities.MasterData;
 using Domain.Entities.Pricing;
 using Shared.Constants;
 
@@ -8,12 +9,14 @@ namespace Domain.Entities.Index
     public class ProcessGroup : AuditableEntity<Guid>, IAggregateRoot
     {
         public Guid CodeId { get; protected set; }
+        public Guid? FixedKeyId { get; protected set; }
         public string Name { get; protected set; }
 
         public ProcessGroupType Type { get; protected set; } = ProcessGroupType.None;
 
         // Navigation properties
         public virtual Code? Code { get; protected set; }
+        public virtual FixedKey? FixedKey { get; protected set; }
 
         private IList<ProductionProcess> _productionProcesses = new List<ProductionProcess>();
         public virtual IReadOnlyCollection<ProductionProcess> ProductionProcesses => _productionProcesses.AsReadOnly();
@@ -32,7 +35,11 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<PartProcessGroup> PartProcessGroups => _partProcessGroups.AsReadOnly();
 
         // constructor
-        public static ProcessGroup Create(string code, string name)
+        public static ProcessGroup Create(
+            string code,
+            string name,
+            Guid? fixedKeyId = null,
+            ProcessGroupType type = ProcessGroupType.None)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -48,10 +55,17 @@ namespace Domain.Entities.Index
             {
                 Code = new Code(code.ToUpper()),
                 Name = name,
+                FixedKeyId = fixedKeyId,
+                Type = type,
             };
         }
 
-        public static ProcessGroup Create(Guid id, string code, string name)
+        public static ProcessGroup Create(
+            Guid id,
+            string code,
+            string name,
+            Guid? fixedKeyId = null,
+            ProcessGroupType type = ProcessGroupType.None)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -68,10 +82,16 @@ namespace Domain.Entities.Index
                 Id = id,
                 Code = new Code(code.ToUpper()),
                 Name = name,
+                FixedKeyId = fixedKeyId,
+                Type = type,
             };
         }
 
-        public void Update(string code, string name)
+        public void Update(
+            string code,
+            string name,
+            Guid? fixedKeyId = null,
+            ProcessGroupType type = ProcessGroupType.None)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -89,11 +109,16 @@ namespace Domain.Entities.Index
             }
 
             Name = name;
+            FixedKeyId = fixedKeyId;
+            Type = type;
         }
 
         public bool CheckChange(ProcessGroup dto)
         {
-            return !(Name == dto.Name && Code?.Value == dto.Code?.Value);
+            return !(Name == dto.Name &&
+                     Code?.Value == dto.Code?.Value &&
+                     FixedKeyId == dto.FixedKeyId &&
+                     Type == dto.Type);
         }
     }
 }

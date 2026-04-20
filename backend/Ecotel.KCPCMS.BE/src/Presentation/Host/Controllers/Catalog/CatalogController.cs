@@ -38,6 +38,8 @@ using Application.Catalog.Index.StoneClampRatio.Commands;
 using Application.Catalog.Index.StoneClampRatio.Queries;
 using Application.Catalog.Index.UnitOfMeasures.Commands;
 using Application.Catalog.Index.UnitOfMeasures.Queries;
+using Application.Catalog.MasterData.FixedKeys.Commands;
+using Application.Catalog.MasterData.FixedKeys.Queries;
 using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
 using Application.Dto.Catalog.AkFactorConfig;
@@ -47,6 +49,7 @@ using Application.Dto.Catalog.Department;
 using Application.Dto.Catalog.Equipment;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
+using Application.Dto.Catalog.MasterData;
 using Application.Dto.Catalog.Metric;
 using Application.Dto.Catalog.NormFactor;
 using Application.Dto.Catalog.Part;
@@ -135,6 +138,47 @@ public class CatalogController : BaseNoAuthController
     {
         var result = await Mediator.Send(new DeleteUnitOfMeasureListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    #endregion
+
+    #region FixedKey
+
+    [HttpGet("FixedKey")]
+    [OpenApiOperation("Get All FixedKey", "")]
+    public async Task<IActionResult> GetAllFixedKey(
+        [FromQuery] FixedKeyType? type,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = "",
+        [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllFixedKeyQuery(pageIndex, pageSize, search, ignorePagination, type));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("FixedKey/{id:guid}")]
+    [OpenApiOperation("Get FixedKey By Id", "")]
+    public async Task<IActionResult> GetFixedKeyById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetFixedKeyByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("FixedKey")]
+    [OpenApiOperation("Create FixedKey", "")]
+    public async Task<IActionResult> CreateFixedKey([FromBody] CreateFixedKeyDto createModel)
+    {
+        var result = await Mediator.Send(new CreateFixedKeyCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("FixedKey")]
+    [OpenApiOperation("Update FixedKey", "")]
+    public async Task<IActionResult> UpdateFixedKey([FromBody] FixedKeyDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateFixedKeyCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
     }
 
     #endregion

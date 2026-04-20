@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Application.Catalog.MasterData.FixedKeys;
 using Application.Catalog.Pricing.Common;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -293,6 +294,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
                         .ThenInclude(i => i.ShippedDetails)
+                            .ThenInclude(d => d.FixedKey)
+                .Include(po => po.AcceptanceReport!)
+                    .ThenInclude(ar => ar.AcceptanceReportItems)
+                        .ThenInclude(i => i.MaterialsIncludedInContractRevenueFixedKey)
                 .Include(po => po.AcceptanceReport!)
                     .ThenInclude(ar => ar.AcceptanceReportItems)
                         .ThenInclude(i => i.AcceptanceReportItemLogs),
@@ -314,7 +319,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }
 
             var sectionAItems = report.AcceptanceReportItems
-                .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                .Where(i => FixedKeyCodeMapper.ResolveMaterialsIncludedInContractRevenue(i.MaterialsIncludedInContractRevenueFixedKey) != MaterialsIncludedInContractRevenue.None)
                 .Where(i => !hasProcessGroupFilter || i.ProcessGroupId == processGroupId)
                 .ToList();
 
@@ -322,7 +327,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             {
                 var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
                 var exportedToProductionQty = item.ShippedDetails
-                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                    .Where(d => FixedKeyCodeMapper.ResolveShippedQuantityType(d.FixedKey) == ShippedQuantityType.XuatChoSanXuat)
                     .Sum(d => d.Quantity);
                 transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
             }

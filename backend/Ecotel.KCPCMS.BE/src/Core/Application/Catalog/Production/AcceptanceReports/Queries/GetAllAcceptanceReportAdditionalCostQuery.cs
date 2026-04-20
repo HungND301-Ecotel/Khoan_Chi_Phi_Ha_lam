@@ -1,3 +1,4 @@
+using Application.Catalog.MasterData.FixedKeys;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -31,7 +32,9 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
                 .Include(a => a.AcceptanceReportItems)
                 .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.UnitOfMeasure)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.Code),
+                .Include(a => a.AcceptanceReportItems).ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(m => m.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.AdditionalCostFixedKey)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.OtherMaterialDetailFixedKey),
             disableTracking: true);
 
         if (acceptanceReport == null)
@@ -41,7 +44,7 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
 
         // Filter items with AdditionalCost != None
         var itemsWithAdditionalCost = acceptanceReport.AcceptanceReportItems
-            .Where(i => i.AdditionalCost != AdditionalCost.None)
+            .Where(i => FixedKeyCodeMapper.ResolveAdditionalCost(i.AdditionalCostFixedKey) != AdditionalCost.None)
             .ToList();
 
         // Group by AdditionalCost type
@@ -49,6 +52,8 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
 
         foreach (var item in itemsWithAdditionalCost)
         {
+            var additionalCost = FixedKeyCodeMapper.ResolveAdditionalCost(item.AdditionalCostFixedKey);
+
             // Determine code and name based on type (Material vs Part)
             string? code;
             string? name;
@@ -77,7 +82,7 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
             };
 
             // Group based on AdditionalCost type
-            switch (item.AdditionalCost)
+            switch (additionalCost)
             {
                 case AdditionalCost.Material:
                     additionalCostsGroup.Material.Add(costItem);
