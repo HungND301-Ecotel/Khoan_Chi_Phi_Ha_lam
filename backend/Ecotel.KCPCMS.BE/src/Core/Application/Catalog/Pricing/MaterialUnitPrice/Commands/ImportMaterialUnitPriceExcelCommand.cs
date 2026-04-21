@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -19,9 +20,11 @@ public record ImportMaterialUnitPriceExcelCommand(
     IFormFile File,
     TunnelExcavationTrimingUnitPriceType Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation) : IRequest<bool>;
 
-public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportMaterialUnitPriceExcelCommand, bool>
+public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportMaterialUnitPriceExcelCommand, bool>
 {
     private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaterialUnitPrice";
 
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
@@ -239,6 +242,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch

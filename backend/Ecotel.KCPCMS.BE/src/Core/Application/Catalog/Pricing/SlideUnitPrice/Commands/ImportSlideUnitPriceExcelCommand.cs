@@ -1,4 +1,5 @@
 using System.Globalization;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,8 +14,10 @@ namespace Application.Catalog.Pricing.SlideUnitPrice.Commands;
 
 public record ImportSlideUnitPriceExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportSlideUnitPriceExcelCommand, bool>
+public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportSlideUnitPriceExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "SlideUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.SlideUnitPrice> _slideUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.SlideUnitPrice>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
@@ -179,6 +182,8 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch

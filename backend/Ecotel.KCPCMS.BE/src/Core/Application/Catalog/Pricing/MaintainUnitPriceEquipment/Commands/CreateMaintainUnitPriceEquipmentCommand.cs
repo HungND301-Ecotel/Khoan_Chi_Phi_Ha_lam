@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,8 +14,10 @@ namespace Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 public record CreateMaintainUnitPriceEquipmentCommand(IList<CreateMaintainUnitPriceEquipmentDto> CreateModel) : IRequest<bool>;
 
 public class CreateMaintainUnitPriceEquipmentCommandHandler(
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateMaintainUnitPriceEquipmentCommand, bool>
+    IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<CreateMaintainUnitPriceEquipmentCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _maintainUnitPricRepository = unitOfWork.GetRepository<MaintainUnitPrice>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
@@ -80,6 +83,8 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
 
         await _maintainUnitPricRepository.InsertAsync(resultEntities);
         await unitOfWork.SaveChangesAsync();
+        cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
 
         return true;
     }

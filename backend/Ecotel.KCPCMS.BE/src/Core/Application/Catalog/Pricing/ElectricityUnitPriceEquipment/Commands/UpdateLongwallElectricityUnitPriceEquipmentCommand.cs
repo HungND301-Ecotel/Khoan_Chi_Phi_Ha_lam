@@ -19,6 +19,7 @@ public class UpdateLongwallElectricityUnitPriceEquipmentCommandHandler(IUnitOfWo
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
 
     public async Task<bool> Handle(UpdateLongwallElectricityUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
     {
@@ -54,6 +55,7 @@ public class UpdateLongwallElectricityUnitPriceEquipmentCommandHandler(IUnitOfWo
         await unitOfWork.SaveChangesAsync();
 
         cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
 
         return true;
     }

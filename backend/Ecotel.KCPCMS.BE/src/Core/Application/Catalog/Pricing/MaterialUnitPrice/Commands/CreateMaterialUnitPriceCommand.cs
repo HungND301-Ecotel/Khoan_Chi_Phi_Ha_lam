@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+﻿using Application.Common.Caching;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
@@ -14,8 +15,10 @@ namespace Application.Catalog.Pricing.MaterialUnitPrice.Commands;
 public record CreateMaterialUnitPriceCommand(CreateMaterialUnitPriceDto CreateModel) : IRequest<bool>;
 
 public class CreateMaterialUnitPriceCommandHandler(
-    IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateMaterialUnitPriceCommand, bool>
+    IUnitOfWork unitOfWork, ICodeService codeService, ICacheService cacheService) : IRequestHandler<CreateMaterialUnitPriceCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaterialUnitPrice";
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
@@ -86,6 +89,8 @@ public class CreateMaterialUnitPriceCommandHandler(
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

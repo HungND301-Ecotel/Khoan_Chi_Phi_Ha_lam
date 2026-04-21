@@ -1,4 +1,5 @@
 using Application.Catalog.Pricing.MaterialUnitPrice.Specifications;
+using Application.Common.Caching;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -13,11 +14,21 @@ public record class GetAllMaterialUnitPricesUnifiedQuery(int PageIndex, int Page
 
 public class GetAllMaterialUnitPricesUnifiedQueryHandler(
     IPaginationService paginationService,
-    IReadRepository<DomainEntities.MaterialUnitPrice> materialUnitPriceRepository)
+    IReadRepository<DomainEntities.MaterialUnitPrice> materialUnitPriceRepository,
+    ICacheService cacheService)
     : IRequestHandler<GetAllMaterialUnitPricesUnifiedQuery, PaginationResponse<AllMaterialUnitPricesDto>>
 {
+    private const string CacheSignalKey = "MaterialUnitPrice";
+
     public async Task<PaginationResponse<AllMaterialUnitPricesDto>> Handle(GetAllMaterialUnitPricesUnifiedQuery request, CancellationToken cancellationToken)
     {
+        var cacheKey = $"GetAllMaterialUnitPricesUnified:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.Type}";
+        var cachedResult = await cacheService.GetAsync<PaginationResponse<AllMaterialUnitPricesDto>>(cacheKey, cancellationToken);
+        if (cachedResult != null)
+        {
+            return cachedResult;
+        }
+
         var filter = new PaginationFilter
         {
             PageNumber = request.PageIndex,
@@ -36,6 +47,7 @@ public class GetAllMaterialUnitPricesUnifiedQueryHandler(
             cancellationToken: cancellationToken);
 
         result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.ProcessName).ToList();
+        cacheService.SetWithSignal(cacheKey, result, CacheSignalKey);
         return result;
     }
 }

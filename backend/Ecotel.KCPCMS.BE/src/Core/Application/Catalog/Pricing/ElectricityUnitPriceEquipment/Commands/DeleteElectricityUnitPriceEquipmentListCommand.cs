@@ -17,6 +17,7 @@ public class DeleteElectricityUnitPriceEquipmentListCommandHandler(IUnitOfWork u
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
 
     public async Task<bool> Handle(DeleteElectricityUnitPriceEquipmentListCommand request, CancellationToken cancellationToken)
     {
@@ -69,6 +70,7 @@ public class DeleteElectricityUnitPriceEquipmentListCommandHandler(IUnitOfWork u
 
             await unitOfWork.CommitAsync(cancellationToken);
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch (Exception)

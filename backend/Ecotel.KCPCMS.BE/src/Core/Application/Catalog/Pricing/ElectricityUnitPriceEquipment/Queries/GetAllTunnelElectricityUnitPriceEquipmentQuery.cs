@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -17,13 +18,22 @@ public record GetAllTunnelElectricityUnitPriceEquipmentQuery(
     ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<PaginationResponse<ElectricityUnitPriceEquipmentDto>>;
 
 public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheService cacheService)
     : IRequestHandler<GetAllTunnelElectricityUnitPriceEquipmentQuery, PaginationResponse<ElectricityUnitPriceEquipmentDto>>
 {
+    private const string CacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
 
     public async Task<PaginationResponse<ElectricityUnitPriceEquipmentDto>> Handle(GetAllTunnelElectricityUnitPriceEquipmentQuery request, CancellationToken cancellationToken)
     {
+        var cacheKey = $"GetAllTunnelElectricityUnitPriceEquipment:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.Type}";
+        var cachedResult = await cacheService.GetAsync<PaginationResponse<ElectricityUnitPriceEquipmentDto>>(cacheKey, cancellationToken);
+        if (cachedResult != null)
+        {
+            return cachedResult;
+        }
+
         var filter = new PaginationFilter
         {
             PageNumber = request.PageIndex,
@@ -77,10 +87,14 @@ public class GetAllTunnelElectricityUnitPriceEquipmentQueryHandler(
             AverageMonthlyTunnelProduction = e is TunnelElectricityUnitPriceEquipment tunnel2 ? tunnel2.AverageMonthlyTunnelProduction : null
         }).ToList();
 
-        return new PaginationResponse<ElectricityUnitPriceEquipmentDto>(
+        var result = new PaginationResponse<ElectricityUnitPriceEquipmentDto>(
             listData,
             totalCount,
             filter.PageNumber,
             filter.PageSize);
+
+        cacheService.SetWithSignal(cacheKey, result, CacheSignalKey);
+
+        return result;
     }
 }

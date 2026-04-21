@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -16,9 +17,11 @@ namespace Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Co
 
 public record ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand, bool>
+public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand, bool>
 {
     private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "TunnelSupportAndDrillingMaterialUnitPrice";
 
     private readonly IWriteRepository<TunnelSupportAndDrillingMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelSupportAndDrillingMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
@@ -226,6 +229,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch

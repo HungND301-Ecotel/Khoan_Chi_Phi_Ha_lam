@@ -27,6 +27,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaterialUnitPrice";
 
     public async Task<bool> Handle(UpdateMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -99,6 +100,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
             await unitOfWork.CommitAsync(cancellationToken);
 
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

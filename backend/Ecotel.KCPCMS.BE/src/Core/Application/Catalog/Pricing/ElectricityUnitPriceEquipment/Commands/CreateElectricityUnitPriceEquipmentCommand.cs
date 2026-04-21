@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+﻿using Application.Common.Caching;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
@@ -12,8 +13,10 @@ namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 public record CreateElectricityUnitPriceEquipmentCommand(IList<CreateElectricityUnitPriceEquipmentDto> CreateModel) : IRequest<bool>;
 
 public class CreateElectricityUnitPriceEquipmentCommandHandler(
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateElectricityUnitPriceEquipmentCommand, bool>
+    IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<CreateElectricityUnitPriceEquipmentCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _electricityUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     public async Task<bool> Handle(CreateElectricityUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
@@ -80,6 +83,8 @@ public class CreateElectricityUnitPriceEquipmentCommandHandler(
 
         await _electricityUnitPriceEquipmentRepository.InsertAsync(resultEntities, cancellationToken);
         await unitOfWork.SaveChangesAsync();
+        cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
         return true;
     }
 }

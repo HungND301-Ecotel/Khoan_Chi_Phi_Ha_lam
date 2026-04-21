@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,9 +14,11 @@ namespace Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 
 public record ImportTrimmingMaintainUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWork unitOfWork)
+public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService)
     : IRequestHandler<ImportTrimmingMaintainUnitPriceEquipmentExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _repository = unitOfWork.GetRepository<MaintainUnitPrice>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
@@ -165,6 +168,8 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch

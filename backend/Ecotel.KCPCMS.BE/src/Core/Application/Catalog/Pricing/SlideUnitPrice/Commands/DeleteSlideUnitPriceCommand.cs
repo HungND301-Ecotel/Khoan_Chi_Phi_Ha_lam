@@ -17,6 +17,7 @@ public class DeleteSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICacheSe
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "SlideUnitPrice";
 
     public async Task<bool> Handle(DeleteSlideUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -47,6 +48,7 @@ public class DeleteSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICacheSe
             await unitOfWork.CommitAsync(cancellationToken);
 
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

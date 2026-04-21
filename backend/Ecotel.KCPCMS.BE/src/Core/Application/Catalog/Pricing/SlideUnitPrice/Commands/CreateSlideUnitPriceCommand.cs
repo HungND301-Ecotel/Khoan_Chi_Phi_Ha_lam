@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+﻿using Application.Common.Caching;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.SlideUnitPrice;
@@ -12,8 +13,10 @@ namespace Application.Catalog.Pricing.SlideUnitPrice.Commands;
 
 public record CreateSlideUnitPriceCommand(CreateSlideUnitPriceDto CreateModel) : IRequest<bool>;
 
-public class CreateSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateSlideUnitPriceCommand, bool>
+public class CreateSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService, ICacheService cacheService) : IRequestHandler<CreateSlideUnitPriceCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "SlideUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.SlideUnitPrice> _slideUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.SlideUnitPrice>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
@@ -123,6 +126,8 @@ public class CreateSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {
