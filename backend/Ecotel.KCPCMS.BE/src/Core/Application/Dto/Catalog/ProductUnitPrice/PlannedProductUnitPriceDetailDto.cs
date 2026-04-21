@@ -68,6 +68,8 @@ public class AdjustmentProductionOutputDto
     public double? ProductionMeters { get; set; }
     public double? StandardProductionMeters { get; set; }
     public double? ActualAshContent { get; set; }
+    public double AkRate { get; set; }
+    public double AkRatePercent { get; set; }
     public double AdjTotalPrice { get; set; }
 }
 public class AdjustmentPlannedOutputDto

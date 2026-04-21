@@ -150,6 +150,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
         var productionOutputsWithAdj = baseData.ProductionOutputs.Select(po =>
         {
             var adjTotalPrice = 0.0;
+            var akRateValue = 0.0;
 
             var plannedOutput = plannedOutputsRaw
                 .Where(o => o.StartMonth <= po.StartMonth && o.EndMonth >= po.EndMonth)
@@ -165,6 +166,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 var plannedElectricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
                 var akDiff = (decimal)(po.ActualAshContent - plannedOutput.PlanAshContent);
                 var akRate = ResolveAkRate(akConfigs, akDiff);
+                akRateValue = (double)akRate;
                 adjTotalPrice = po.ProductionMeters * (plannedMaterialCost * (1 + (double)akRate) + plannedMaintainCost + plannedElectricityCost);
             }
 
@@ -177,6 +179,8 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 ProductionMeters = po.ProductionMeters,
                 StandardProductionMeters = po.StandardProductionMeters,
                 ActualAshContent = po.ActualAshContent,
+                AkRate = akRateValue,
+                AkRatePercent = akRateValue * 100,
                 AdjTotalPrice = adjTotalPrice
             };
         }).ToList();

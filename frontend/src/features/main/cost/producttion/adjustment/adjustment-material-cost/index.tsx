@@ -179,6 +179,7 @@ export function AdjustmentMaterialCost({
 						slideUnitPriceCost,
 						stoneClampRatio,
 						normFactorValue: result.normFactorValue || '-',
+						akRatePercent: result.akRatePercent || 0,
 					},
 				]);
 			} finally {

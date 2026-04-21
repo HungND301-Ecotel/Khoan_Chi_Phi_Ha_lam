@@ -37,4 +37,6 @@ export type AdjustmentProductionOutput = {
 	adjTotalPrice: number;
 	standardProductionMeters: number;
 	actualAshContent?: number;
+	akRate: number;
+	akRatePercent: number;
 };

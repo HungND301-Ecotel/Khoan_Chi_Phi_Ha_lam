@@ -209,6 +209,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             TotalPlannedMaterialPrice = adjustedPlannedMaterialPrice,
             MaterialCost = materialCost,
             SlideUnitPriceCost = slideUnitPriceCost,
+            AkRate = (double)akRate,
+            AkRatePercent = (double)akRate * 100,
             NormFactorValue = normFactorValue,
         };
         return result;

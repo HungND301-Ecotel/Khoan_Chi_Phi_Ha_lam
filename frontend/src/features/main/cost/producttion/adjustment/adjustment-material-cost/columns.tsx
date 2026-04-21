@@ -33,6 +33,8 @@ export type AdjustmentMaterialCostType = {
 	otherMaterialValue?: number;
 	materialCost?: number;
 	slideUnitPriceCost?: number;
+	akRate: number;
+	akRatePercent: number;
 	normFactorValue?: string;
 	totalPlannedMaterialPrice: number;
 	adjustmentMaterialCostAssignmentCodes: AdjustmentMaterialContract[];
@@ -62,6 +64,7 @@ export type AdjustmentMaterialCostSummary = {
 	slideUnitPriceCost: number;
 	stoneClampRatio: string;
 	normFactorValue: string;
+	akRatePercent: number;
 };
 
 export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMaterialCostSummary>[] =
@@ -101,5 +104,12 @@ export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMater
 				<span className='whitespace-normal'>Đơn giá vật liệu (đ/m)</span>
 			),
 			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
+		},
+		{
+			accessorKey: 'akRatePercent',
+			header: () => (
+				<span className='whitespace-normal'>Tỉ lệ điều chỉnh doanh thu</span>
+			),
+			cell: ({ row }) => `${formatNumber(row.original.akRatePercent)}%`,
 		},
 	];
