@@ -18,7 +18,7 @@ import {
 	AkFactorConfigSchema,
 } from './schema';
 
-const AK_FACTOR_CONFIG_SUPPORTS = ['≥', '≤', '<', '>', '%', '-', '.', ','];
+const AK_FACTOR_CONFIG_SUPPORTS = ['%', '-', ','];
 
 export function AkFactorConfigForm({
 	data,
