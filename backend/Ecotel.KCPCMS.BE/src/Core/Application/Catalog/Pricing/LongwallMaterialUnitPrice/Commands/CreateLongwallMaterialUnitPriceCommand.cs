@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -15,8 +16,10 @@ namespace Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 public record CreateLongwallMaterialUnitPriceCommand(CreateLongwallMaterialUnitPriceDto CreateModel) : IRequest<bool>;
 
 public class CreateLongwallMaterialUnitPriceCommandHandler(
-    IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateLongwallMaterialUnitPriceCommand, bool>
+    IUnitOfWork unitOfWork, ICodeService codeService, ICacheService cacheService) : IRequestHandler<CreateLongwallMaterialUnitPriceCommand, bool>
 {
+    private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
+    private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice>();
     private readonly IWriteRepository<LongwallParameters> _longwallParametersRepository = unitOfWork.GetRepository<LongwallParameters>();
     private readonly IWriteRepository<CuttingThickness> _cuttingThicknessRepository = unitOfWork.GetRepository<CuttingThickness>();
@@ -169,6 +172,9 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+
+            cacheService.InvalidateGroup(ProductUnitPriceCacheSignalKey);
+            cacheService.InvalidateGroup(LongwallMaterialUnitPriceCacheSignalKey);
         }
         catch
         {

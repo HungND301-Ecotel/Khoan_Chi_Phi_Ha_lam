@@ -29,7 +29,8 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
-    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
+    private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
     private static readonly Regex InterpolationSeamFaceRegex =
         new(@"^M =\d+([,.]\d+)?m$", RegexOptions.Compiled);
 
@@ -185,7 +186,8 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
 
-            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ProductUnitPriceCacheSignalKey);
+            cacheService.InvalidateGroup(LongwallMaterialUnitPriceCacheSignalKey);
         }
         catch
         {

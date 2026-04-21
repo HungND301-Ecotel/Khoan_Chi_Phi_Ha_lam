@@ -20,7 +20,8 @@ public class DeleteLongwallMaterialUnitPriceListCommandHandler(IUnitOfWork unitO
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository =
         unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
-    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
+    private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
 
     public async Task<bool> Handle(DeleteLongwallMaterialUnitPriceListCommand request, CancellationToken cancellationToken)
     {
@@ -65,7 +66,8 @@ public class DeleteLongwallMaterialUnitPriceListCommandHandler(IUnitOfWork unitO
 
             await unitOfWork.CommitAsync(cancellationToken);
 
-            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ProductUnitPriceCacheSignalKey);
+            cacheService.InvalidateGroup(LongwallMaterialUnitPriceCacheSignalKey);
         }
         catch
         {
