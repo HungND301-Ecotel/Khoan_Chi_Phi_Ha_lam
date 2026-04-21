@@ -35,6 +35,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
+        var importErrors = new List<string>();
+
         var processes = await _processRepository.GetAllAsync(disableTracking: true);
         var passports = await _passportRepository.GetAllAsync(disableTracking: true);
         var hardnesses = await _hardnessRepository.GetAllAsync(disableTracking: true);
@@ -46,7 +48,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
         var assignmentLookup = BuildAssignmentLookup(assignments);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
         {
@@ -61,8 +64,10 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
         if (duplicateCodes.Any())
         {
-            throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
+            importErrors.Add($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
         }
+
+        ThrowIfImportErrors(importErrors);
 
         var processIdMap = processes
             .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
@@ -100,78 +105,89 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
         foreach (var row in importRows)
         {
             var code = row.Code.Trim();
-            if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
+            try
             {
-                throw new BadRequestException($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!passportIdMap.TryGetValue(NormalizeLookupValue(row.PassportName), out var passportId))
-            {
-                throw new BadRequestException($"Hộ chiếu '{row.PassportName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!hardnessIdMap.TryGetValue(NormalizeLookupValue(row.HardnessName), out var hardnessId))
-            {
-                throw new BadRequestException($"Độ kiên cố '{row.HardnessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            Guid? technologyId = null;
-            if (!string.IsNullOrWhiteSpace(row.TechnologyName))
-            {
-                if (!technologyIdMap.TryGetValue(NormalizeLookupValue(row.TechnologyName), out var mappedTechnologyId))
+                if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
                 {
-                    throw new BadRequestException($"Công nghệ '{row.TechnologyName}' không tồn tại cho mã '{code}'.");
+                    importErrors.Add($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
+                    continue;
                 }
 
-                technologyId = mappedTechnologyId;
-            }
-
-            var startMonth = ParseMonthYear(row.StartMonth);
-            var endMonth = ParseMonthYear(row.EndMonth);
-
-            var costDtos = row.AssignmentCosts
-                .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                if (!passportIdMap.TryGetValue(NormalizeLookupValue(row.PassportName), out var passportId))
                 {
-                    AssignmentCodeId = c.AssignmentCodeId,
-                    TotalPrice = c.TotalPrice
-                })
-                .ToList();
-            var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
-
-            if (dbCodeLookup.TryGetValue(code, out var existingEntity))
-            {
-                if (existingEntity.MaterialUnitPriceAssignmentCodes.Any())
-                {
-                    assignmentCostsToDelete.AddRange(existingEntity.MaterialUnitPriceAssignmentCodes);
+                    importErrors.Add($"Hộ chiếu '{row.PassportName}' không tồn tại cho mã '{code}'.");
+                    continue;
                 }
 
-                existingEntity.Update(
-                    code,
-                    processId,
-                    passportId,
-                    hardnessId,
-                    technologyId,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                updateList.Add(existingEntity);
-                matchedCodes.Add(code);
+                if (!hardnessIdMap.TryGetValue(NormalizeLookupValue(row.HardnessName), out var hardnessId))
+                {
+                    importErrors.Add($"Độ kiên cố '{row.HardnessName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                Guid? technologyId = null;
+                if (!string.IsNullOrWhiteSpace(row.TechnologyName))
+                {
+                    if (!technologyIdMap.TryGetValue(NormalizeLookupValue(row.TechnologyName), out var mappedTechnologyId))
+                    {
+                        importErrors.Add($"Công nghệ '{row.TechnologyName}' không tồn tại cho mã '{code}'.");
+                        continue;
+                    }
+
+                    technologyId = mappedTechnologyId;
+                }
+
+                var startMonth = ParseMonthYear(row.StartMonth);
+                var endMonth = ParseMonthYear(row.EndMonth);
+
+                var costDtos = row.AssignmentCosts
+                    .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                    {
+                        AssignmentCodeId = c.AssignmentCodeId,
+                        TotalPrice = c.TotalPrice
+                    })
+                    .ToList();
+                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
+
+                if (dbCodeLookup.TryGetValue(code, out var existingEntity))
+                {
+                    if (existingEntity.MaterialUnitPriceAssignmentCodes.Any())
+                    {
+                        assignmentCostsToDelete.AddRange(existingEntity.MaterialUnitPriceAssignmentCodes);
+                    }
+
+                    existingEntity.Update(
+                        code,
+                        processId,
+                        passportId,
+                        hardnessId,
+                        technologyId,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs);
+                    updateList.Add(existingEntity);
+                    matchedCodes.Add(code);
+                }
+                else
+                {
+                    var newEntity = TunnelSupportAndDrillingMaterialUnitPrice.Create(
+                        code,
+                        processId,
+                        passportId,
+                        hardnessId,
+                        technologyId,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs);
+                    addList.Add(newEntity);
+                    matchedCodes.Add(code);
+                }
             }
-            else
+            catch (Exception ex) when (ex is BadRequestException or ConflictException)
             {
-                var newEntity = TunnelSupportAndDrillingMaterialUnitPrice.Create(
-                    code,
-                    processId,
-                    passportId,
-                    hardnessId,
-                    technologyId,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                addList.Add(newEntity);
-                matchedCodes.Add(code);
+                importErrors.Add($"Mã '{code}': {ex.Message}");
             }
         }
 
@@ -182,6 +198,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
                 return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
             })
             .ToList();
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -219,7 +237,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
     private static List<ParsedTunnelSupportAndDrillingRow> ParseFromCustomTemplate(
         Stream fileStream,
-        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup)
+        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
+        ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheet(1);
@@ -321,8 +340,9 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
                     if (aggregates.ContainsKey(key))
                     {
-                        throw new BadRequestException(
+                        importErrors.Add(
                             $"Dữ liệu bị trùng mã định mức vật liệu '{passport.Value}' trong cùng bộ thông số (dòng {row}).");
+                        continue;
                     }
 
                     aggregates[key] = new ParsedTunnelSupportAndDrillingRow(
@@ -357,7 +377,8 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
                 var assignmentKey = NormalizeLookupValue(assignmentText);
                 if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    continue;
                 }
             }
 
@@ -371,14 +392,16 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
                 if (!TryParseDouble(ttCell, out var totalPrice))
                 {
-                    throw new BadRequestException($"Giá trị TT không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
+                    importErrors.Add($"Giá trị TT không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
+                    continue;
                 }
 
                 if (!currentContext.PassportCodeByName.TryGetValue(passport.name, out var materialCode)
                     || string.IsNullOrWhiteSpace(materialCode))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Thiếu mã định mức vật liệu cho hộ chiếu '{passport.name}' trước khi nhập TT (dòng {row}, cột {passport.valueCol}).");
+                    continue;
                 }
 
                 var key = new TunnelSupportAndDrillingRowKey(
@@ -392,8 +415,9 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
                 if (!aggregates.TryGetValue(key, out var aggregate))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Không tìm thấy dòng thông số cho mã định mức vật liệu '{materialCode}' trước dòng {row}.");
+                    continue;
                 }
 
                 if (isOtherMaterial)
@@ -404,10 +428,18 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
 
                 if (assignment == null)
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    continue;
                 }
 
-                aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                try
+                {
+                    aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                }
+                catch (BadRequestException ex)
+                {
+                    importErrors.Add(ex.Message);
+                }
             }
         }
 
@@ -504,6 +536,21 @@ public class ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommandHandler(
         }
 
         return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 
     private sealed record AssignmentLookupItem(Guid Id, string Display);

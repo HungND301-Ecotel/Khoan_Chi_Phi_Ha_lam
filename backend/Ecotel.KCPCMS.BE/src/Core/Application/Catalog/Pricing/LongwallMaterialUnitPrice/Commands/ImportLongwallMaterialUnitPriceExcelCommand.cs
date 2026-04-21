@@ -41,6 +41,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
+        var importErrors = new List<string>();
+
         var processes = await _processRepository.GetAllAsync(disableTracking: true);
         var longwallParametersList = await _longwallParametersRepository.GetAllAsync(disableTracking: true);
         var cuttingThicknesses = await _cuttingThicknessRepository.GetAllAsync(disableTracking: true);
@@ -55,7 +57,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var assignmentLookup = BuildAssignmentLookup(assignments);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
         {
@@ -70,8 +73,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         if (duplicateCodes.Any())
         {
-            throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
+            importErrors.Add($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
         }
+
+        ThrowIfImportErrors(importErrors);
 
         var processIdMap = processes
             .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
@@ -117,92 +122,104 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         foreach (var row in importRows)
         {
             var code = row.Code.Trim();
-            if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
+            try
             {
-                throw new BadRequestException($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!longwallParametersIdMap.TryGetValue(NormalizeLookupValue(row.LongwallParametersName), out var longwallParametersId))
-            {
-                throw new BadRequestException($"Thông số lò chợ '{row.LongwallParametersName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!cuttingThicknessIdMap.TryGetValue(NormalizeLookupValue(row.CuttingThicknessName), out var cuttingThicknessId))
-            {
-                throw new BadRequestException($"Chiều dày lớp khấu '{row.CuttingThicknessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!seamFaceIdMap.TryGetValue(NormalizeLookupValue(row.SeamFaceName), out var seamFaceId))
-            {
-                throw new BadRequestException($"Mặt vỉa '{row.SeamFaceName}' không tồn tại cho mã '{code}'.");
-            }
-
-            Guid? technologyId = null;
-            if (!string.IsNullOrWhiteSpace(row.TechnologyName))
-            {
-                if (!technologyIdMap.TryGetValue(NormalizeLookupValue(row.TechnologyName), out var mappedTechnologyId))
+                if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
                 {
-                    throw new BadRequestException($"Công nghệ khai thác '{row.TechnologyName}' không tồn tại cho mã '{code}'.");
+                    importErrors.Add($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
+                    continue;
                 }
 
-                technologyId = mappedTechnologyId;
-            }
-
-            var startMonth = ParseMonthYear(row.StartMonth);
-            var endMonth = ParseMonthYear(row.EndMonth);
-            var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
-
-            var costDtos = row.AssignmentCosts
-                .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                if (!longwallParametersIdMap.TryGetValue(NormalizeLookupValue(row.LongwallParametersName), out var longwallParametersId))
                 {
-                    AssignmentCodeId = c.AssignmentCodeId,
-                    TotalPrice = c.TotalPrice
-                })
-                .ToList();
-            var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
-
-            if (dbCodeLookup.TryGetValue(code, out var existing))
-            {
-                if (existing.MaterialUnitPriceAssignmentCodes.Any())
-                {
-                    assignmentCostsToDelete.AddRange(existing.MaterialUnitPriceAssignmentCodes);
+                    importErrors.Add($"Thông số lò chợ '{row.LongwallParametersName}' không tồn tại cho mã '{code}'.");
+                    continue;
                 }
 
-                existing.Update(
-                    code,
-                    processId,
-                    longwallParametersId,
-                    cuttingThicknessId,
-                    seamFaceId,
-                    powerId,
-                    hardnessId,
-                    powerId.HasValue,
-                    technologyId,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                updateList.Add(existing);
-                matchedCodes.Add(code);
+                if (!cuttingThicknessIdMap.TryGetValue(NormalizeLookupValue(row.CuttingThicknessName), out var cuttingThicknessId))
+                {
+                    importErrors.Add($"Chiều dày lớp khấu '{row.CuttingThicknessName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                if (!seamFaceIdMap.TryGetValue(NormalizeLookupValue(row.SeamFaceName), out var seamFaceId))
+                {
+                    importErrors.Add($"Mặt vỉa '{row.SeamFaceName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                Guid? technologyId = null;
+                if (!string.IsNullOrWhiteSpace(row.TechnologyName))
+                {
+                    if (!technologyIdMap.TryGetValue(NormalizeLookupValue(row.TechnologyName), out var mappedTechnologyId))
+                    {
+                        importErrors.Add($"Công nghệ khai thác '{row.TechnologyName}' không tồn tại cho mã '{code}'.");
+                        continue;
+                    }
+
+                    technologyId = mappedTechnologyId;
+                }
+
+                var startMonth = ParseMonthYear(row.StartMonth);
+                var endMonth = ParseMonthYear(row.EndMonth);
+                var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
+
+                var costDtos = row.AssignmentCosts
+                    .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                    {
+                        AssignmentCodeId = c.AssignmentCodeId,
+                        TotalPrice = c.TotalPrice
+                    })
+                    .ToList();
+                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
+
+                if (dbCodeLookup.TryGetValue(code, out var existing))
+                {
+                    if (existing.MaterialUnitPriceAssignmentCodes.Any())
+                    {
+                        assignmentCostsToDelete.AddRange(existing.MaterialUnitPriceAssignmentCodes);
+                    }
+
+                    existing.Update(
+                        code,
+                        processId,
+                        longwallParametersId,
+                        cuttingThicknessId,
+                        seamFaceId,
+                        powerId,
+                        hardnessId,
+                        powerId.HasValue,
+                        technologyId,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs);
+                    updateList.Add(existing);
+                    matchedCodes.Add(code);
+                }
+                else
+                {
+                    var newEntity = LongwallMaterialUnitPriceEntity.Create(
+                        code,
+                        processId,
+                        longwallParametersId,
+                        cuttingThicknessId,
+                        seamFaceId,
+                        powerId,
+                        hardnessId,
+                        powerId.HasValue,
+                        technologyId,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs);
+                    addList.Add(newEntity);
+                    matchedCodes.Add(code);
+                }
             }
-            else
+            catch (Exception ex) when (ex is BadRequestException or ConflictException)
             {
-                var newEntity = LongwallMaterialUnitPriceEntity.Create(
-                    code,
-                    processId,
-                    longwallParametersId,
-                    cuttingThicknessId,
-                    seamFaceId,
-                    powerId,
-                    hardnessId,
-                    powerId.HasValue,
-                    technologyId,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                addList.Add(newEntity);
-                matchedCodes.Add(code);
+                importErrors.Add($"Mã '{code}': {ex.Message}");
             }
         }
 
@@ -214,7 +231,16 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             })
             .ToList();
 
-        ValidateMonthRangeOverlap(dbEntities, addList, deleteList);
+        try
+        {
+            ValidateMonthRangeOverlap(dbEntities, addList, deleteList);
+        }
+        catch (ConflictException ex)
+        {
+            importErrors.Add(ex.Message);
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -252,7 +278,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
     private static List<ParsedLongwallMaterialUnitPriceRow> ParseFromCustomTemplate(
         Stream fileStream,
-        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup)
+        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
+        ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheet(1);
@@ -369,8 +396,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
                     if (aggregates.ContainsKey(key))
                     {
-                        throw new BadRequestException(
+                        importErrors.Add(
                             $"Dữ liệu bị trùng mã định mức vật liệu '{seamFace.Value}' trong cùng bộ thông số (dòng {row}).");
+                        continue;
                     }
 
                     aggregates[key] = new ParsedLongwallMaterialUnitPriceRow(
@@ -408,7 +436,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 var assignmentKey = NormalizeLookupValue(assignmentText);
                 if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    continue;
                 }
             }
 
@@ -422,14 +451,16 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
                 if (!TryParseDouble(ttCell, out var totalPrice))
                 {
-                    throw new BadRequestException($"Giá trị TT không hợp lệ tại dòng {row}, cột {seamFace.valueCol}.");
+                    importErrors.Add($"Giá trị TT không hợp lệ tại dòng {row}, cột {seamFace.valueCol}.");
+                    continue;
                 }
 
                 if (!currentContext.SeamFaceCodeByName.TryGetValue(seamFace.name, out var materialCode)
                     || string.IsNullOrWhiteSpace(materialCode))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Thiếu mã định mức vật liệu cho mặt vỉa '{seamFace.name}' trước khi nhập TT (dòng {row}, cột {seamFace.valueCol}).");
+                    continue;
                 }
 
                 var key = new LongwallRowKey(
@@ -446,8 +477,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
                 if (!aggregates.TryGetValue(key, out var aggregate))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Không tìm thấy dòng thông số cho mã định mức vật liệu '{materialCode}' trước dòng {row}.");
+                    continue;
                 }
 
                 if (isOtherMaterial)
@@ -458,10 +490,18 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
                 if (assignment == null)
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    continue;
                 }
 
-                aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                try
+                {
+                    aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                }
+                catch (BadRequestException ex)
+                {
+                    importErrors.Add(ex.Message);
+                }
             }
         }
 
@@ -558,6 +598,21 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         }
 
         return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 
     private static (Guid? powerId, Guid? hardnessId) ResolvePowerAndHardness(

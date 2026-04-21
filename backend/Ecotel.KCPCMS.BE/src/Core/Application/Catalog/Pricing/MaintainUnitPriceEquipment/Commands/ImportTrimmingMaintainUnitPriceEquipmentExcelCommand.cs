@@ -27,13 +27,13 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
-        using var stream = request.File.OpenReadStream();
-        var maintainUnitPrices = ParseTransposedExcel(stream);
+        var importErrors = new List<string>();
 
-        if (!(await CheckExistedReferences(maintainUnitPrices)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
+        using var stream = request.File.OpenReadStream();
+        var maintainUnitPrices = ParseTransposedExcel(stream, importErrors);
+
+        await CollectReferenceErrors(maintainUnitPrices, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         // Map data
         var equipments = await _equipmentRepository.GetAllAsync(
@@ -49,31 +49,42 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var excelItems = maintainUnitPrices.Select(d =>
+        var excelItems = new List<dynamic>();
+        foreach (var dto in maintainUnitPrices)
         {
-            equipmentIdMap.TryGetValue(d.EquipmentCode, out var equipmentId);
-            var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = ParseMonthYear(d.EndMonth);
-
-            var maintainUnitPriceEquipments = d.PartData
-                .Where(pd => pd.Value.HasValue)
-                .Select(pd => Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
-                    null,
-                    pd.Key, // PartId from Excel
-                    pd.Value!.Value.Quantity,
-                    pd.Value.Value.AverageMonthlyTunnelProduction,
-                    pd.Value.Value.ReplacementTimeStandard))
-                .ToList();
-
-            return new
+            try
             {
-                EquipmentId = equipmentId,
-                StartMonth = startMonth,
-                EndMonth = endMonth,
-                Parts = maintainUnitPriceEquipments,
-                IsDeleteRequest = d.IsDeleteRequest
-            };
-        }).ToList();
+                equipmentIdMap.TryGetValue(dto.EquipmentCode, out var equipmentId);
+                var startMonth = ParseMonthYear(dto.StartMonth);
+                var endMonth = ParseMonthYear(dto.EndMonth);
+
+                var maintainUnitPriceEquipments = dto.PartData
+                    .Where(pd => pd.Value.HasValue)
+                    .Select(pd => Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
+                        null,
+                        pd.Key,
+                        pd.Value!.Value.Quantity,
+                        pd.Value.Value.AverageMonthlyTunnelProduction,
+                        pd.Value.Value.ReplacementTimeStandard))
+                    .ToList();
+
+                excelItems.Add(new
+                {
+                    EquipmentCode = dto.EquipmentCode,
+                    EquipmentId = equipmentId,
+                    StartMonth = startMonth,
+                    EndMonth = endMonth,
+                    Parts = maintainUnitPriceEquipments,
+                    IsDeleteRequest = dto.IsDeleteRequest
+                });
+            }
+            catch (Exception ex) when (ex is BadRequestException or ArgumentException)
+            {
+                importErrors.Add($"Thiết bị '{dto.EquipmentCode}': {ex.Message}");
+            }
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         var dbEntities = await _repository.GetAllAsync(
             predicate: m => m.Type == MaintainUnitPriceType.Trimming,
@@ -94,7 +105,8 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             var key = new TrimmingMaintainUnitPriceLookupKey(excelItem.EquipmentId, excelItem.StartMonth, excelItem.EndMonth);
             if (!processedKeys.Add(key))
             {
-                throw new BadRequestException($"Dữ liệu bị trùng cho mã thiết bị và khoảng thời gian: {excelItem.StartMonth:MM/yyyy} - {excelItem.EndMonth:MM/yyyy}.");
+                importErrors.Add($"Thiết bị '{excelItem.EquipmentCode}' bị trùng khoảng thời gian {excelItem.StartMonth:MM/yyyy} - {excelItem.EndMonth:MM/yyyy}.");
+                continue;
             }
 
             if (excelItem.IsDeleteRequest)
@@ -131,6 +143,8 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             }
         }
 
+        ThrowIfImportErrors(importErrors);
+
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
@@ -160,7 +174,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
         }
     }
 
-    private List<TrimmingMaintainUnitPriceImportDto> ParseTransposedExcel(Stream stream)
+    private List<TrimmingMaintainUnitPriceImportDto> ParseTransposedExcel(Stream stream, ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(stream);
         var worksheet = workbook.Worksheets.First();
@@ -234,7 +248,9 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
                 if (hasAnyValue && !hasAllValues)
                 {
-                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 3 cột: Định mức thời gian thay thế, Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
+                    importErrors.Add($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 3 cột: Định mức thời gian thay thế, Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
+                    row++;
+                    continue;
                 }
 
                 if (!string.IsNullOrWhiteSpace(partIdString) &&
@@ -262,7 +278,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                     }
                     else
                     {
-                        throw new BadRequestException($"Dữ liệu số không hợp lệ tại dòng {row}, cụm cột bắt đầu {col}.");
+                        importErrors.Add($"Dữ liệu số không hợp lệ tại dòng {row}, cụm cột bắt đầu {col}.");
                     }
                 }
 
@@ -278,7 +294,8 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
                 if (state.FilledParts > 0 && state.FilledParts < state.TotalParts)
                 {
-                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 3 thông số cho tất cả phụ tùng.");
+                    importErrors.Add($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 3 thông số cho tất cả phụ tùng.");
+                    continue;
                 }
 
                 state.Dto.IsDeleteRequest = state.FilledParts == 0;
@@ -289,7 +306,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
         return result;
     }
 
-    private async Task<bool> CheckExistedReferences(List<TrimmingMaintainUnitPriceImportDto> dtoList)
+    private async Task CollectReferenceErrors(List<TrimmingMaintainUnitPriceImportDto> dtoList, ICollection<string> importErrors)
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
                 include: e => e
@@ -300,11 +317,16 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             .Where(e => e.Code != null
                 && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.XL))
             .Select(e => e.Code!.Value.Trim())
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelEquipmentCodes = dtoList.Select(d => d.EquipmentCode?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-
-        return excelEquipmentCodes.All(code => dbEquipmentCodes.Contains(code));
+        foreach (var dto in dtoList)
+        {
+            var equipmentCode = dto.EquipmentCode?.Trim();
+            if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
+            {
+                importErrors.Add($"Thiết bị '{equipmentCode}' không tồn tại hoặc không thuộc xén lò.");
+            }
+        }
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -330,6 +352,21 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
         }
 
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 }
 
