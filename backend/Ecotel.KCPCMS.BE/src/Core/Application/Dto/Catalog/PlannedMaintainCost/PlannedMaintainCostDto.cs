@@ -15,7 +15,7 @@ public class CreatePlannedMaintainCostAdjFactorDto
     public Guid MaintainUnitPriceId { get; set; }
     public decimal Quantity { get; set; }
     public double K6AdjustmentFactorValue { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedMaintainCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedMaintainCostAdjustmentFactorValueDto>();
 }
 
 public class UpdatePlannedMaintainCostDto
@@ -32,7 +32,14 @@ public class UpdatePlannedMaintainCostAdjFactorDto
     public Guid MaintainUnitPriceId { get; set; }
     public decimal Quantity { get; set; }
     public double K6AdjustmentFactorValue { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedMaintainCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedMaintainCostAdjustmentFactorValueDto>();
+}
+
+public class PlannedMaintainCostAdjustmentFactorValueDto
+{
+    public Guid? AdjustmentFactorDescriptionId { get; set; }
+    public Guid? AdjustmentFactorId { get; set; }
+    public double? CustomValue { get; set; }
 }
 
 public class PlannedMaintainCostDetailDto

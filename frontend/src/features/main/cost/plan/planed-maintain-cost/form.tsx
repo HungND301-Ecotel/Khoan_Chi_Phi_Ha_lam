@@ -1,6 +1,5 @@
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormArray } from '@/components/form/form-array';
-import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
@@ -13,14 +12,17 @@ import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
+	PLAN_MAINTAIN_ADJUSTMENT_DEFAULT,
 	PLAN_MAINTAIN_COST_DEFAULT,
 	planMaintainCostSchema,
 	PlanMaintainCostSchema,
 } from '@/features/main/cost/plan/planed-maintain-cost/schema';
 import {
 	AdjustmentDetail,
+	PlannedMaintainCostAdjustmentSelection,
 	PlannedMaintainCostDetail,
 } from '@/features/main/cost/plan/planed-maintain-cost/types';
+import { CostPlanAdjustmentFactorInput } from '@/features/main/cost/plan/components/cost-plan-adjustment-factor-input';
 import { ProductCostFormProps } from '@/features/main/cost/plan/types';
 import { Tunneling } from '@/features/main/pricing/tunneling/maintenance/columns';
 import { api } from '@/lib/api';
@@ -81,6 +83,10 @@ export function PlanMaintainCostForm({
 			item.processGroupTypes?.includes(currentProcessGroupType),
 		);
 	}, [tunnelings, plan?.processGroupType]);
+	const selectableAdjustments = useMemo(
+		() => adjustments.filter((adj) => adj.type !== AdjustmentFactorType.K6),
+		[adjustments],
+	);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -128,12 +134,20 @@ export function PlanMaintainCostForm({
 									k6AdjustmentFactorValue,
 									adjustmentFactorDescriptions: sortedAdjustments.map(
 										(adjustment) => {
-											// Find the matching description by adjustmentFactorId
 											const description = adjustmentFactorDescriptions.find(
 												(desc) => desc.adjustmentFactorId === adjustment.id,
 											);
 
-											return description?.id || '';
+											return {
+												adjustmentFactorDescriptionId:
+													description?.adjustmentFactorDescriptionId ?? '',
+												adjustmentFactorId:
+													description?.customValue !== null &&
+													description?.customValue !== undefined
+														? description.adjustmentFactorId
+														: '',
+												customValue: description?.customValue ?? null,
+											};
 										},
 									),
 								};
@@ -163,13 +177,8 @@ export function PlanMaintainCostForm({
 					quantity: NaN,
 					k6AdjustmentFactorValue: 0,
 					adjustmentFactorDescriptions: Array.from(
-						{
-							length:
-								adjustments.filter(
-									(adj) => adj.type !== AdjustmentFactorType.K6,
-								).length || 7,
-						},
-						() => '',
+						{ length: selectableAdjustments.length || 7 },
+						() => ({ ...PLAN_MAINTAIN_ADJUSTMENT_DEFAULT }),
 					),
 				};
 			});
@@ -177,7 +186,7 @@ export function PlanMaintainCostForm({
 		if (updatedCosts.length !== currentCosts.length) {
 			form.setValue('costs', updatedCosts);
 		}
-	}, [watchedMaintainUnitPriceIds, form, tunnelings, isInit, adjustments]);
+	}, [watchedMaintainUnitPriceIds, form, tunnelings, isInit, selectableAdjustments]);
 
 	// Sync maintainUnitPriceIds when costs are removed
 	useEffect(() => {
@@ -204,6 +213,17 @@ export function PlanMaintainCostForm({
 		try {
 			const payload = {
 				...values,
+				costs: values.costs.map((cost) => ({
+					...cost,
+					adjustmentFactorDescriptions: cost.adjustmentFactorDescriptions.map(
+						(adjustment) => ({
+							adjustmentFactorDescriptionId:
+								adjustment.adjustmentFactorDescriptionId || null,
+							adjustmentFactorId: adjustment.adjustmentFactorId || null,
+							customValue: adjustment.customValue,
+						}),
+					),
+				})),
 				trimmingCoefficient:
 					plan?.processGroupType === ProcessGroupType.XL
 						? values.trimmingCoefficient / 100
@@ -362,25 +382,41 @@ export function PlanMaintainCostForm({
 												className='w-full min-w-64 flex-1'
 												key={adjustment.id}
 											>
-												<FormComboBox
-													control={form.control}
-													name={`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`}
-													label={adjustment.code}
-													placeholder={`Chọn ${adjustment.code}`}
-													options={adjustment.adjustmentFactorDescriptions.map(
-														({
-															id,
-															description,
-															maintenanceAdjustmentValue,
-														}) => ({
-															label: formatAdjustmentOptionLabel(
+													<CostPlanAdjustmentFactorInput
+														label={adjustment.code}
+														placeholder={`Chọn ${adjustment.code}`}
+														customPlaceholder={`Nhập ${adjustment.code}`}
+														adjustmentFactorId={adjustment.id}
+														value={watchedAdjustmentFactorDescriptions[currentIndex]}
+														error={
+															form.formState.errors.costs?.[index]
+																?.adjustmentFactorDescriptions?.[currentIndex]
+																?.adjustmentFactorDescriptionId?.message ??
+															form.formState.errors.costs?.[index]
+																?.adjustmentFactorDescriptions?.[currentIndex]
+																?.customValue?.message
+														}
+														onChange={(value: PlannedMaintainCostAdjustmentSelection) => {
+															form.setValue(
+																`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`,
+																value,
+																{ shouldValidate: true, shouldDirty: true },
+															);
+														}}
+														options={adjustment.adjustmentFactorDescriptions.map(
+															({
+																id,
 																description,
 																maintenanceAdjustmentValue,
-															),
-															value: id,
-														}),
-													)}
-												/>
+															}) => ({
+																label: formatAdjustmentOptionLabel(
+																	description,
+																	maintenanceAdjustmentValue,
+																),
+																value: id,
+															}),
+														)}
+													/>
 											</div>
 										);
 									});
@@ -416,9 +452,16 @@ export function PlanMaintainCostForm({
 															return;
 														}
 
+														if (selectedDescriptionId.customValue !== null) {
+															total *= selectedDescriptionId.customValue;
+															return;
+														}
+
 														const description =
 															adjustment.adjustmentFactorDescriptions.find(
-																(desc) => desc.id === selectedDescriptionId,
+																(desc) =>
+																	desc.id ===
+																	selectedDescriptionId.adjustmentFactorDescriptionId,
 															);
 
 														total *=

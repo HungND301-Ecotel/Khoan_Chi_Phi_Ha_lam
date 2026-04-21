@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421072529_updateAdjustmentPlanneed")]
+    partial class updateAdjustmentPlanneed
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2282,8 +2285,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OutputId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedOn\" IS NULL");
+                        .IsUnique();
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -2371,8 +2373,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OutputId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedOn\" IS NULL");
+                        .IsUnique();
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -2481,8 +2482,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("NormFactorId");
 
                     b.HasIndex("OutputId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedOn\" IS NULL");
+                        .IsUnique();
 
                     b.HasIndex("SlideUnitPriceAssignmentCodeId");
 

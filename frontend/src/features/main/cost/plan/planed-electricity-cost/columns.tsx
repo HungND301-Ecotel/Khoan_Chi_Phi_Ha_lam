@@ -53,7 +53,7 @@ export const getPlanedElectricityCostColumns = (
 					);
 
 					return formatNumber(
-						sortedAdjustmentFactors[idx]?.electricityAdjustmentValue ?? 0,
+						sortedAdjustmentFactors[idx]?.effectiveValue ?? 0,
 					);
 				},
 			};

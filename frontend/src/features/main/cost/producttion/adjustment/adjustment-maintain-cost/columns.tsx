@@ -22,11 +22,14 @@ export type AdjustmentMaintainCostItem = {
 
 export type AdjustmentMaintainCostItemDescription = {
 	id: string;
+	adjustmentFactorDescriptionId?: string | null;
 	description: string;
 	adjustmentFactorId: string;
 	adjustmentFactorCode: string;
 	adjustmentFactorName: string;
-	maintenanceAdjustmentValue: number;
+	maintenanceAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
 };
 
 export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostItem>[] =
@@ -71,7 +74,7 @@ export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostI
 						const arrayIndex = idx > 5 ? idx - 1 : idx;
 						const item = sortedDescriptions[arrayIndex];
 						return item
-							? formatNumber(item.maintenanceAdjustmentValue)
+							? formatNumber(item.effectiveValue)
 							: formatNumber(0);
 					},
 				};

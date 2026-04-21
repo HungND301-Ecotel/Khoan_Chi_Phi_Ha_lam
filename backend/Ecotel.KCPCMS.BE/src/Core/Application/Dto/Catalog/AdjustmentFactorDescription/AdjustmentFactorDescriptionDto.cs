@@ -37,21 +37,27 @@ public class ShortAdjustmentFactorDescriptionDto
 public class MaintainAjustmentFactorDescriptionDto
 {
     public Guid Id { get; set; }
+    public Guid? AdjustmentFactorDescriptionId { get; set; }
     public string Description { get; set; } = "";
     public Guid AdjustmentFactorId { get; set; }
     public string AdjustmentFactorCode { get; set; } = "";
     public string AdjustmentFactorName { get; set; } = "";
     public double? MaintenanceAdjustmentValue { get; set; }
+    public double? CustomValue { get; set; }
+    public double EffectiveValue { get; set; }
 }
 
 public class ElectricityAjustmentFactorDescriptionDto
 {
     public Guid Id { get; set; }
+    public Guid? AdjustmentFactorDescriptionId { get; set; }
     public string Description { get; set; } = "";
     public Guid AdjustmentFactorId { get; set; }
     public string AdjustmentFactorCode { get; set; } = "";
     public string AdjustmentFactorName { get; set; } = "";
     public double? ElectricityAdjustmentValue { get; set; }
+    public double? CustomValue { get; set; }
+    public double EffectiveValue { get; set; }
 }
 
 public class CreateAdjustmentFactorDescriptionDto

@@ -26,7 +26,8 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
                 .Include(o => o.PlannedMaintainCost).ThenInclude(o => o.PlannedMaintainCostAdjustmentFactors).ThenInclude(o => o.MaintainUnitPrice).ThenInclude(m => m.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaintainCost).ThenInclude(o => o.PlannedMaintainCostAdjustmentFactors).ThenInclude(o => o.MaintainUnitPrice).ThenInclude(muac => muac.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
                 .Include(o => o.PlannedMaintainCost).ThenInclude(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.MaintainUnitPrice).ThenInclude(m => m.Equipment).ThenInclude(e => e.Code!)
-                .Include(o => o.PlannedMaintainCost).ThenInclude(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!),
+                .Include(o => o.PlannedMaintainCost).ThenInclude(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!)
+                .Include(o => o.PlannedMaintainCost).ThenInclude(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!),
             disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
@@ -66,12 +67,21 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
                     K6AdjustmentFactorValue = p.K6AdjustmentFactorValue,
                     AdjustmentFactorDescriptions = p.PlannedMaintainCostAdjustmentFactorDescriptions.Select(a => new MaintainAjustmentFactorDescriptionDto
                     {
-                        Id = a.AdjustmentFactorDescription?.Id ?? Guid.Empty,
-                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId ?? Guid.Empty,
-                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value ?? string.Empty,
-                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name ?? string.Empty,
-                        Description = a.AdjustmentFactorDescription?.Description ?? "",
-                        MaintenanceAdjustmentValue = a.AdjustmentFactorDescription?.MaintenanceAdjustmentValue ?? 0
+                        Id = a.Id,
+                        AdjustmentFactorDescriptionId = a.AdjustmentFactorDescriptionId,
+                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId
+                            ?? a.AdjustmentFactorId
+                            ?? Guid.Empty,
+                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value
+                            ?? a.AdjustmentFactor?.Code?.Value
+                            ?? string.Empty,
+                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name
+                            ?? a.AdjustmentFactor?.Name
+                            ?? string.Empty,
+                        Description = a.AdjustmentFactorDescription?.Description ?? string.Empty,
+                        MaintenanceAdjustmentValue = a.AdjustmentFactorDescription?.MaintenanceAdjustmentValue,
+                        CustomValue = a.CustomValue,
+                        EffectiveValue = a.EffectiveValue
                     }).OrderBy(a => a.AdjustmentFactorCode).ToList()
                 };
             }).ToList()

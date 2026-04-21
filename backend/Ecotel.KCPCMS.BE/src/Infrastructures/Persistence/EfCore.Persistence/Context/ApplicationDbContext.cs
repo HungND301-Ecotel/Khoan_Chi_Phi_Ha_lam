@@ -146,8 +146,42 @@ public class ApplicationDbContext(
         modelBuilder.Entity<NormFactor>().ToTable(nameof(NormFactor), "Index");
         modelBuilder.Entity<NormFactorAssignmentCode>().ToTable(nameof(NormFactorAssignmentCode), "Index");
         modelBuilder.Entity<Code>().ToTable(nameof(Code), "Index");
-        modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>().ToTable(nameof(PlannedMaintainCostAdjustmentFactorDescription), "Index");
-        modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>().ToTable(nameof(PlannedElectricityCostAdjustmentFactorDescription), "Index");
+        modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>()
+            .ToTable(nameof(PlannedMaintainCostAdjustmentFactorDescription), "Index", tb => tb.HasCheckConstraint(
+                "CK_PlannedMaintainCostAdjustmentFactorDescription_CustomOrReference",
+                @"
+                    (
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NOT NULL AND
+                            ""AdjustmentFactorId"" IS NULL AND
+                            ""CustomValue"" IS NULL
+                        )
+                        OR
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NULL AND
+                            ""AdjustmentFactorId"" IS NOT NULL AND
+                            ""CustomValue"" IS NOT NULL
+                        )
+                    )
+                "));
+        modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>()
+            .ToTable(nameof(PlannedElectricityCostAdjustmentFactorDescription), "Index", tb => tb.HasCheckConstraint(
+                "CK_PlannedElectricityCostAdjustmentFactorDescription_CustomOrReference",
+                @"
+                    (
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NOT NULL AND
+                            ""AdjustmentFactorId"" IS NULL AND
+                            ""CustomValue"" IS NULL
+                        )
+                        OR
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NULL AND
+                            ""AdjustmentFactorId"" IS NOT NULL AND
+                            ""CustomValue"" IS NOT NULL
+                        )
+                    )
+                "));
 
 
         // Assignment Code table
@@ -416,6 +450,11 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.AdjustmentFactorDescriptionId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>()
+            .HasOne(m => m.AdjustmentFactor)
+            .WithMany()
+            .HasForeignKey(s => s.AdjustmentFactorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>()
             .HasOne(m => m.PlannedMaintainCostAdjustmentFactor)
             .WithMany(h => h.PlannedMaintainCostAdjustmentFactorDescriptions)
             .HasForeignKey(s => s.PlannedMaintainCostAdjustmentFactorId)
@@ -427,6 +466,11 @@ public class ApplicationDbContext(
             .WithMany(h => h.PlannedElectricityCostAdjustmentFactorDescriptions)
             .HasForeignKey(s => s.AdjustmentFactorDescriptionId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>()
+            .HasOne(m => m.AdjustmentFactor)
+            .WithMany()
+            .HasForeignKey(s => s.AdjustmentFactorId)
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>()
             .HasOne(m => m.PlannedElectricityCostAdjustmentFactor)
             .WithMany(h => h.PlannedElectricityCostAdjustmentFactorDescriptions)
@@ -735,6 +779,10 @@ public class ApplicationDbContext(
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<PlannedMaterialCost>()
+            .HasIndex(e => e.OutputId)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<PlannedMaterialCost>()
             .HasOne(m => m.MaterialUnitPrice)
             .WithMany(h => h.PlannedMaterialCosts)
             .HasForeignKey(s => s.MaterialUnitPriceId)
@@ -782,6 +830,10 @@ public class ApplicationDbContext(
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<PlannedElectricityCost>()
+            .HasIndex(e => e.OutputId)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<PlannedElectricityCost>()
             .HasOne(m => m.ProductUnitPrice)
             .WithMany(h => h.PlannedElectricityCosts)
             .HasForeignKey(s => s.ProductUnitPriceId)
@@ -807,6 +859,10 @@ public class ApplicationDbContext(
         //PlannedMaintainCost
         modelBuilder.Entity<PlannedMaintainCost>()
             .HasIndex(e => new { e.ProductUnitPriceId, e.OutputId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<PlannedMaintainCost>()
+            .HasIndex(e => e.OutputId)
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<PlannedMaintainCost>()

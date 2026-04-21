@@ -25,10 +25,13 @@ export type PlanedMaintainCostItem = {
 export type PlanedMaintainCostItemDescription = {
 	id: string;
 	description: string;
+	adjustmentFactorDescriptionId?: string | null;
 	adjustmentFactorId: string;
 	adjustmentFactorCode: string;
 	adjustmentFactorName: string;
-	maintenanceAdjustmentValue: number;
+	maintenanceAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
 };
 
 export const getPlanedMaintainCostColumns = (
@@ -86,7 +89,7 @@ export const getPlanedMaintainCostColumns = (
 					const adjustedIdx = idx > 5 ? idx - 1 : idx;
 
 					return formatNumber(
-						sortedDescriptions[adjustedIdx]?.maintenanceAdjustmentValue ?? 0,
+						sortedDescriptions[adjustedIdx]?.effectiveValue ?? 0,
 					);
 				},
 			};

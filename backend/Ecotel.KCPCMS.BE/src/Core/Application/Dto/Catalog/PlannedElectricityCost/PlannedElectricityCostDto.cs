@@ -14,7 +14,7 @@ public class CreatePlannedElectricityCostAdjFactorDto
 {
     public Guid ElectricityUnitPriceEquipmentId { get; set; }
     public decimal Quantity { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedElectricityCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedElectricityCostAdjustmentFactorValueDto>();
 }
 
 public class UpdatePlannedElectricityCostDto
@@ -30,7 +30,14 @@ public class UpdatePlannedElectricityCostAdjFactorDto
 {
     public Guid ElectricityUnitPriceEquipmentId { get; set; }
     public decimal Quantity { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedElectricityCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedElectricityCostAdjustmentFactorValueDto>();
+}
+
+public class PlannedElectricityCostAdjustmentFactorValueDto
+{
+    public Guid? AdjustmentFactorDescriptionId { get; set; }
+    public Guid? AdjustmentFactorId { get; set; }
+    public double? CustomValue { get; set; }
 }
 
 public class PlannedElectricityCostDetailDto

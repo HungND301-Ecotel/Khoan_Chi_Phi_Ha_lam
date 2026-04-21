@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/incompatible-library */
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormArray } from '@/components/form/form-array';
-import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
@@ -14,12 +13,17 @@ import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
+	PLAN_ELECTRICITY_ADJUSTMENT_DEFAULT,
 	PLAN_ELECTRICITY_COST_DEFAULT,
 	planElectricityCostSchema,
 	PlanElectricityCostSchema,
 } from '@/features/main/cost/plan/planed-electricity-cost/schema';
-import { PlanedElectricityCostDetail } from '@/features/main/cost/plan/planed-electricity-cost/types';
+import {
+	PlanedElectricityCostAdjustmentSelection,
+	PlanedElectricityCostDetail,
+} from '@/features/main/cost/plan/planed-electricity-cost/types';
 import { AdjustmentDetail } from '@/features/main/cost/plan/planed-maintain-cost/types';
+import { CostPlanAdjustmentFactorInput } from '@/features/main/cost/plan/components/cost-plan-adjustment-factor-input';
 import { ProductCostFormProps } from '@/features/main/cost/plan/types';
 import { Electricity } from '@/features/main/pricing/tunneling/electricity/columns';
 import { api } from '@/lib/api';
@@ -131,12 +135,20 @@ export function PlanElectricityCostForm({
 									quantity,
 									adjustmentFactorDescriptions: filteredAdjustments.map(
 										(adjustment) => {
-											// Find the matching description by adjustmentFactorId
 											const description = sortedDescriptions.find(
 												(desc) => desc.adjustmentFactorId === adjustment.id,
 											);
 
-											return description?.id || '';
+											return {
+												adjustmentFactorDescriptionId:
+													description?.adjustmentFactorDescriptionId ?? '',
+												adjustmentFactorId:
+													description?.customValue !== null &&
+													description?.customValue !== undefined
+														? description.adjustmentFactorId
+														: '',
+												customValue: description?.customValue ?? null,
+											};
 										},
 									),
 								};
@@ -165,7 +177,7 @@ export function PlanElectricityCostForm({
 				quantity: NaN,
 				adjustmentFactorDescriptions: Array.from(
 					{ length: adjustments.length || 3 },
-					() => '',
+					() => ({ ...PLAN_ELECTRICITY_ADJUSTMENT_DEFAULT }),
 				),
 			};
 		});
@@ -214,7 +226,17 @@ export function PlanElectricityCostForm({
 			const payload = {
 				productUnitPriceId,
 				outputId,
-				costs,
+				costs: costs.map((cost) => ({
+					...cost,
+					adjustmentFactorDescriptions: cost.adjustmentFactorDescriptions.map(
+						(adjustment) => ({
+							adjustmentFactorDescriptionId:
+								adjustment.adjustmentFactorDescriptionId || null,
+							adjustmentFactorId: adjustment.adjustmentFactorId || null,
+							customValue: adjustment.customValue,
+						}),
+					),
+				})),
 				trimmingCoefficient:
 					plan?.processGroupType === ProcessGroupType.XL
 						? trimmingCoefficient / 100
@@ -352,11 +374,27 @@ export function PlanElectricityCostForm({
 								{adjustments.map((adjustment, idx) => {
 									return (
 										<div className='w-full min-w-64 flex-1' key={adjustment.id}>
-											<FormComboBox
-												control={form.control}
-												name={`costs.${index}.adjustmentFactorDescriptions.${idx}`}
+											<CostPlanAdjustmentFactorInput
 												label={adjustment.code}
 												placeholder={`Chọn ${adjustment.code}`}
+												customPlaceholder={`Nhập ${adjustment.code}`}
+												adjustmentFactorId={adjustment.id}
+												value={watchedAdjustmentFactorDescriptions[idx]}
+												error={
+													form.formState.errors.costs?.[index]
+														?.adjustmentFactorDescriptions?.[idx]
+														?.adjustmentFactorDescriptionId?.message ??
+													form.formState.errors.costs?.[index]
+														?.adjustmentFactorDescriptions?.[idx]
+														?.customValue?.message
+												}
+												onChange={(value: PlanedElectricityCostAdjustmentSelection) => {
+													form.setValue(
+														`costs.${index}.adjustmentFactorDescriptions.${idx}`,
+														value,
+														{ shouldValidate: true, shouldDirty: true },
+													);
+												}}
 												options={adjustment.adjustmentFactorDescriptions.map(
 													({
 														id,
@@ -395,9 +433,16 @@ export function PlanElectricityCostForm({
 														return;
 													}
 
+													if (selectedDescriptionId.customValue !== null) {
+														total *= selectedDescriptionId.customValue;
+														return;
+													}
+
 													const description =
 														adjustment.adjustmentFactorDescriptions.find(
-															(desc) => desc.id === selectedDescriptionId,
+															(desc) =>
+																desc.id ===
+																selectedDescriptionId.adjustmentFactorDescriptionId,
 														);
 
 													total *= description?.electricityAdjustmentValue || 1;

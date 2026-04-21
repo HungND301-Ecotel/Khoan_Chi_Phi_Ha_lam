@@ -106,13 +106,13 @@ const extractMaintainFactors = (item?: AdjustmentMaintainCostItem) => {
 	);
 
 	return [
-		sortedDescriptions[0]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[1]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[2]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[3]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[4]?.maintenanceAdjustmentValue ?? 1,
+		sortedDescriptions[0]?.effectiveValue ?? 1,
+		sortedDescriptions[1]?.effectiveValue ?? 1,
+		sortedDescriptions[2]?.effectiveValue ?? 1,
+		sortedDescriptions[3]?.effectiveValue ?? 1,
+		sortedDescriptions[4]?.effectiveValue ?? 1,
 		item.k6AdjustmentFactorValue ?? 1,
-		sortedDescriptions[5]?.maintenanceAdjustmentValue ?? 1,
+		sortedDescriptions[5]?.effectiveValue ?? 1,
 	];
 };
 
@@ -129,9 +129,9 @@ const extractElectricityFactors = (
 	// Electricity currently has fewer K factors than maintain.
 	// Missing factors are normalized to 1 for report display.
 	return [
-		sortedDescriptions[0]?.electricityAdjustmentValue ?? 1,
-		sortedDescriptions[1]?.electricityAdjustmentValue ?? 1,
-		sortedDescriptions[2]?.electricityAdjustmentValue ?? 1,
+		sortedDescriptions[0]?.effectiveValue ?? 1,
+		sortedDescriptions[1]?.effectiveValue ?? 1,
+		sortedDescriptions[2]?.effectiveValue ?? 1,
 		1,
 		1,
 		1,

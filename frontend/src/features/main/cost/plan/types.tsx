@@ -64,3 +64,27 @@ export type ProductCostExpandProps = {
 };
 
 export type ProductCostFormProps = Omit<ProductCostExpandProps, 'isOpen'>;
+
+export type CostPlanAdjustmentSelection = {
+	adjustmentFactorDescriptionId: string;
+	adjustmentFactorId: string;
+	customValue: number | null;
+};
+
+export type CostPlanAdjustmentDetail = {
+	id: string;
+	adjustmentFactorDescriptionId?: string | null;
+	description: string;
+	adjustmentFactorId: string;
+	adjustmentFactorCode: string;
+	adjustmentFactorName: string;
+	maintenanceAdjustmentValue?: number | null;
+	electricityAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
+};
+
+export type CostPlanAdjustmentOption = {
+	value: string;
+	label: string;
+};

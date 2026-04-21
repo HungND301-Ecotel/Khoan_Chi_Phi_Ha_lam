@@ -324,7 +324,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
                 AdjustmentValues = f.PlannedMaintainCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.MaintenanceAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -367,7 +371,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.ElectricityAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);

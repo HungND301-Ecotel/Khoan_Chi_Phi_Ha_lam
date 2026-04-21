@@ -3,6 +3,7 @@ using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.PlannedElectricityCost;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using MediatR;
@@ -23,6 +24,7 @@ public class UpdatePlannedElectricityCostCommandHandler(
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<AdjustmentFactorDescription> _adjustmentFactorDescriptionRepository = unitOfWork.GetRepository<AdjustmentFactorDescription>();
+    private readonly IWriteRepository<AdjustmentFactor> _adjustmentFactorRepository = unitOfWork.GetRepository<AdjustmentFactor>();
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _electricityUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
@@ -55,28 +57,58 @@ public class UpdatePlannedElectricityCostCommandHandler(
             throw new NotFoundException(CustomResponseMessage.ElectricityUnitPriceEquipmentNotFound);
         }
 
-        var adjustmentFactorIds = request.UpdateModel.Costs
+        var adjustmentFactorDescriptionIds = request.UpdateModel.Costs
             .SelectMany(c => c.AdjustmentFactorDescriptions)
+            .Select(c => c.AdjustmentFactorDescriptionId)
+            .Where(c => c.HasValue)
+            .Select(c => c!.Value)
+            .Distinct()
+            .ToList();
+        var customAdjustmentFactorIds = request.UpdateModel.Costs
+            .SelectMany(c => c.AdjustmentFactorDescriptions)
+            .Select(c => c.AdjustmentFactorId)
+            .Where(c => c.HasValue)
+            .Select(c => c!.Value)
             .Distinct()
             .ToList();
 
-        if (!adjustmentFactorIds.Any())
+        if (!request.UpdateModel.Costs.SelectMany(c => c.AdjustmentFactorDescriptions).Any())
         {
             throw new BadRequestException(CustomResponseMessage.AdjustmentFactorDescriptionEmpty);
         }
 
+        ValidateAdjustmentFactorInputs(request.UpdateModel.Costs.SelectMany(c => c.AdjustmentFactorDescriptions));
+
         var adjDescriptions = await _adjustmentFactorDescriptionRepository.GetAllAsync(
-            predicate: p => adjustmentFactorIds.Contains(p.Id),
+            predicate: p => adjustmentFactorDescriptionIds.Contains(p.Id),
             disableTracking: true);
 
         var adjMap = adjDescriptions.ToDictionary(a => a.Id, a => a);
 
-        if (adjDescriptions.Count != adjustmentFactorIds.Count)
+        if (adjDescriptions.Count != adjustmentFactorDescriptionIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.AdjustmentFactorDescriptionNotFound);
         }
 
-        var costs = request.UpdateModel.Costs.Select(c => PlannedElectricityCostAdjustmentFactor.Create(Guid.Empty, c.ElectricityUnitPriceEquipmentId, c.Quantity, c.AdjustmentFactorDescriptions.Select(a => adjMap.GetValueOrDefault(a)).ToList())).ToList();
+        int countCustomAdjustmentFactors = await _adjustmentFactorRepository.CountAsync(
+            p => customAdjustmentFactorIds.Contains(p.Id) && p.Type != AdjustmentFactorType.K6);
+
+        if (countCustomAdjustmentFactors != customAdjustmentFactorIds.Count)
+        {
+            throw new NotFoundException(CustomResponseMessage.AdjustmentFactorNotFound);
+        }
+
+        var costs = request.UpdateModel.Costs.Select(c => PlannedElectricityCostAdjustmentFactor.Create(
+            Guid.Empty,
+            c.ElectricityUnitPriceEquipmentId,
+            c.Quantity,
+            c.AdjustmentFactorDescriptions.Select(a => new PlannedElectricityAdjustmentFactorInput(
+                a.AdjustmentFactorDescriptionId,
+                a.AdjustmentFactorId,
+                a.CustomValue,
+                a.AdjustmentFactorDescriptionId.HasValue
+                    ? adjMap.GetValueOrDefault(a.AdjustmentFactorDescriptionId.Value)
+                    : null)).ToList())).ToList();
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -105,5 +137,24 @@ public class UpdatePlannedElectricityCostCommandHandler(
 
         cacheService.InvalidateGroup(CacheSignalKey);
         return true;
+    }
+
+    private static void ValidateAdjustmentFactorInputs(IEnumerable<PlannedElectricityCostAdjustmentFactorValueDto> adjustmentFactors)
+    {
+        foreach (var adjustmentFactor in adjustmentFactors)
+        {
+            var hasAdjustmentFactorDescription = adjustmentFactor.AdjustmentFactorDescriptionId.HasValue;
+            var hasCustomValue = adjustmentFactor.AdjustmentFactorId.HasValue || adjustmentFactor.CustomValue.HasValue;
+
+            if (hasAdjustmentFactorDescription == hasCustomValue)
+            {
+                throw new BadRequestException(CustomResponseMessage.InvalidParams);
+            }
+
+            if (hasCustomValue && (!adjustmentFactor.AdjustmentFactorId.HasValue || !adjustmentFactor.CustomValue.HasValue))
+            {
+                throw new BadRequestException(CustomResponseMessage.InvalidParams);
+            }
+        }
     }
 }
