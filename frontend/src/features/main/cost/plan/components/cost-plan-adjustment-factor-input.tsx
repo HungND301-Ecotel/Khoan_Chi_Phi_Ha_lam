@@ -24,7 +24,7 @@ import {
 } from '@/features/main/cost/plan/types';
 import { cn } from '@/lib/utils';
 import { Check, ChevronDownIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
 
 const CUSTOM_OPTION_VALUE = '__custom__';
@@ -52,6 +52,8 @@ export function CostPlanAdjustmentFactorInput({
 	onChange,
 }: CostPlanAdjustmentFactorInputProps) {
 	const [open, setOpen] = useState(false);
+	const customInputRef = useRef<HTMLInputElement | null>(null);
+	const previousIsCustomModeRef = useRef(false);
 	const currentValue: CostPlanAdjustmentSelection = value ?? {
 		adjustmentFactorDescriptionId: '',
 		adjustmentFactorId: '',
@@ -76,6 +78,14 @@ export function CostPlanAdjustmentFactorInput({
 		],
 		[options],
 	);
+
+	useEffect(() => {
+		if (isCustomMode && !previousIsCustomModeRef.current) {
+			customInputRef.current?.focus();
+		}
+
+		previousIsCustomModeRef.current = isCustomMode;
+	}, [isCustomMode]);
 
 	const handleSelect = (selectedValue: string) => {
 		if (selectedValue === CUSTOM_OPTION_VALUE) {
@@ -109,6 +119,7 @@ export function CostPlanAdjustmentFactorInput({
 					>
 						{isCustomMode ? (
 							<NumericFormat
+								getInputRef={customInputRef}
 								decimalSeparator=','
 								thousandSeparator='.'
 								value={currentValue.customValue ?? undefined}
