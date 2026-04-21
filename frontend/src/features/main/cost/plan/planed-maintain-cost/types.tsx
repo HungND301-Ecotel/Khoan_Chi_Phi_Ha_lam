@@ -17,7 +17,8 @@ export type AdjustmentDetail = Factor & {
 
 export type PlannedMaintainCostDetailItemDescription = CostPlanAdjustmentDetail;
 
-export type PlannedMaintainCostAdjustmentSelection = CostPlanAdjustmentSelection;
+export type PlannedMaintainCostAdjustmentSelection =
+	CostPlanAdjustmentSelection;
 
 export type PlannedMaintainCostDetailItem = {
 	maintainUnitPriceId: string;

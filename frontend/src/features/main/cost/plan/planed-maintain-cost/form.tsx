@@ -32,7 +32,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 
-function formatAdjustmentOptionLabel(description: string, value?: number | null) {
+function formatAdjustmentOptionLabel(
+	description: string,
+	value?: number | null,
+) {
 	if (value === null || value === undefined) {
 		return description;
 	}
@@ -186,7 +189,13 @@ export function PlanMaintainCostForm({
 		if (updatedCosts.length !== currentCosts.length) {
 			form.setValue('costs', updatedCosts);
 		}
-	}, [watchedMaintainUnitPriceIds, form, tunnelings, isInit, selectableAdjustments]);
+	}, [
+		watchedMaintainUnitPriceIds,
+		form,
+		tunnelings,
+		isInit,
+		selectableAdjustments,
+	]);
 
 	// Sync maintainUnitPriceIds when costs are removed
 	useEffect(() => {
@@ -382,41 +391,45 @@ export function PlanMaintainCostForm({
 												className='w-full min-w-64 flex-1'
 												key={adjustment.id}
 											>
-													<CostPlanAdjustmentFactorInput
-														label={adjustment.code}
-														placeholder={`Chọn ${adjustment.code}`}
-														customPlaceholder={`Nhập ${adjustment.code}`}
-														adjustmentFactorId={adjustment.id}
-														value={watchedAdjustmentFactorDescriptions[currentIndex]}
-														error={
-															form.formState.errors.costs?.[index]
-																?.adjustmentFactorDescriptions?.[currentIndex]
-																?.adjustmentFactorDescriptionId?.message ??
-															form.formState.errors.costs?.[index]
-																?.adjustmentFactorDescriptions?.[currentIndex]
-																?.customValue?.message
-														}
-														onChange={(value: PlannedMaintainCostAdjustmentSelection) => {
-															form.setValue(
-																`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`,
-																value,
-																{ shouldValidate: true, shouldDirty: true },
-															);
-														}}
-														options={adjustment.adjustmentFactorDescriptions.map(
-															({
-																id,
+												<CostPlanAdjustmentFactorInput
+													label={adjustment.code}
+													placeholder={`Chọn ${adjustment.code}`}
+													customPlaceholder={`Nhập ${adjustment.code}`}
+													adjustmentFactorId={adjustment.id}
+													value={
+														watchedAdjustmentFactorDescriptions[currentIndex]
+													}
+													error={
+														form.formState.errors.costs?.[index]
+															?.adjustmentFactorDescriptions?.[currentIndex]
+															?.adjustmentFactorDescriptionId?.message ??
+														form.formState.errors.costs?.[index]
+															?.adjustmentFactorDescriptions?.[currentIndex]
+															?.customValue?.message
+													}
+													onChange={(
+														value: PlannedMaintainCostAdjustmentSelection,
+													) => {
+														form.setValue(
+															`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`,
+															value,
+															{ shouldValidate: true, shouldDirty: true },
+														);
+													}}
+													options={adjustment.adjustmentFactorDescriptions.map(
+														({
+															id,
+															description,
+															maintenanceAdjustmentValue,
+														}) => ({
+															label: formatAdjustmentOptionLabel(
 																description,
 																maintenanceAdjustmentValue,
-															}) => ({
-																label: formatAdjustmentOptionLabel(
-																	description,
-																	maintenanceAdjustmentValue,
-																),
-																value: id,
-															}),
-														)}
-													/>
+															),
+															value: id,
+														}),
+													)}
+												/>
 											</div>
 										);
 									});

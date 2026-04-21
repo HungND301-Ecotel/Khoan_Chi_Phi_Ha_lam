@@ -32,7 +32,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-function formatAdjustmentOptionLabel(description: string, value?: number | null) {
+function formatAdjustmentOptionLabel(
+	description: string,
+	value?: number | null,
+) {
 	if (value === null || value === undefined) {
 		return description;
 	}
@@ -385,10 +388,12 @@ export function PlanElectricityCostForm({
 														?.adjustmentFactorDescriptions?.[idx]
 														?.adjustmentFactorDescriptionId?.message ??
 													form.formState.errors.costs?.[index]
-														?.adjustmentFactorDescriptions?.[idx]
-														?.customValue?.message
+														?.adjustmentFactorDescriptions?.[idx]?.customValue
+														?.message
 												}
-												onChange={(value: PlanedElectricityCostAdjustmentSelection) => {
+												onChange={(
+													value: PlanedElectricityCostAdjustmentSelection,
+												) => {
 													form.setValue(
 														`costs.${index}.adjustmentFactorDescriptions.${idx}`,
 														value,

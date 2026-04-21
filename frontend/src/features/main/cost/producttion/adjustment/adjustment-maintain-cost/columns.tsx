@@ -73,9 +73,7 @@ export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostI
 
 						const arrayIndex = idx > 5 ? idx - 1 : idx;
 						const item = sortedDescriptions[arrayIndex];
-						return item
-							? formatNumber(item.effectiveValue)
-							: formatNumber(0);
+						return item ? formatNumber(item.effectiveValue) : formatNumber(0);
 					},
 				};
 			},

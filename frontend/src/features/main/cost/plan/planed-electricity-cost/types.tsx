@@ -5,7 +5,8 @@ import {
 
 export type PlanedElectricityCostDetailDescription = CostPlanAdjustmentDetail;
 
-export type PlanedElectricityCostAdjustmentSelection = CostPlanAdjustmentSelection;
+export type PlanedElectricityCostAdjustmentSelection =
+	CostPlanAdjustmentSelection;
 
 export type PlanedElectricityCostDetailCost = {
 	electricityUnitPriceEquipmentId: string;

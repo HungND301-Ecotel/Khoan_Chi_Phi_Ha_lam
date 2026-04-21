@@ -47,21 +47,20 @@ export const planMaintainCostSchema = z.object({
 		.nonempty({
 			error: 'Mã thiết bị không được để trống',
 		}),
-	costs: z
-		.array(
-			z.object({
-				maintainUnitPriceId: z.string().nonempty({
-					error: 'Mã định mức SCTX không được để trống',
-				}),
-				quantity: z.coerce
-					.number<number>({ error: 'Số lượng không được để trống' })
-					.gt(0, { error: 'Không được để trống' }),
-				adjustmentFactorDescriptions: z.array(
-					plannedMaintainAdjustmentFactorSchema,
-				),
-				k6AdjustmentFactorValue: z.number(),
+	costs: z.array(
+		z.object({
+			maintainUnitPriceId: z.string().nonempty({
+				error: 'Mã định mức SCTX không được để trống',
 			}),
-		),
+			quantity: z.coerce
+				.number<number>({ error: 'Số lượng không được để trống' })
+				.gt(0, { error: 'Không được để trống' }),
+			adjustmentFactorDescriptions: z.array(
+				plannedMaintainAdjustmentFactorSchema,
+			),
+			k6AdjustmentFactorValue: z.number(),
+		}),
+	),
 });
 
 export type PlanMaintainCostSchema = z.infer<typeof planMaintainCostSchema>;
@@ -74,8 +73,9 @@ export const PLAN_MAINTAIN_COST_DEFAULT: PlanMaintainCostSchema = {
 	costs: [],
 };
 
-export const PLAN_MAINTAIN_ADJUSTMENT_DEFAULT: PlannedMaintainCostAdjustmentSelection = {
-	adjustmentFactorDescriptionId: '',
-	adjustmentFactorId: '',
-	customValue: null,
-};
+export const PLAN_MAINTAIN_ADJUSTMENT_DEFAULT: PlannedMaintainCostAdjustmentSelection =
+	{
+		adjustmentFactorDescriptionId: '',
+		adjustmentFactorId: '',
+		customValue: null,
+	};

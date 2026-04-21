@@ -74,8 +74,9 @@ export const PLAN_ELECTRICITY_COST_DEFAULT: PlanElectricityCostSchema = {
 	costs: [],
 };
 
-export const PLAN_ELECTRICITY_ADJUSTMENT_DEFAULT: PlanedElectricityCostAdjustmentSelection = {
-	adjustmentFactorDescriptionId: '',
-	adjustmentFactorId: '',
-	customValue: null,
-};
+export const PLAN_ELECTRICITY_ADJUSTMENT_DEFAULT: PlanedElectricityCostAdjustmentSelection =
+	{
+		adjustmentFactorDescriptionId: '',
+		adjustmentFactorId: '',
+		customValue: null,
+	};

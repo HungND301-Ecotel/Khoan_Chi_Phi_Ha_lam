@@ -101,7 +101,12 @@ export function CostPlanAdjustmentFactorInput({
 			<Label>{label}</Label>
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverAnchor asChild>
-					<InputGroup className={cn('h-9 rounded-sm border-[#999999]', open && 'border-primary border-2')}>
+					<InputGroup
+						className={cn(
+							'h-9 rounded-sm border-[#999999]',
+							open && 'border-primary border-2',
+						)}
+					>
 						{isCustomMode ? (
 							<NumericFormat
 								decimalSeparator=','
@@ -146,13 +151,18 @@ export function CostPlanAdjustmentFactorInput({
 				>
 					<Command>
 						<CommandInput placeholder='Tìm kiếm' />
-						<CommandList className='max-h-58' onWheel={(event) => event.stopPropagation()}>
+						<CommandList
+							className='max-h-58'
+							onWheel={(event) => event.stopPropagation()}
+						>
 							<CommandEmpty>Không tìm thấy.</CommandEmpty>
 							<CommandGroup>
 								{dropdownOptions.map((option) => {
-									const isSelected = option.value === CUSTOM_OPTION_VALUE
-										? isCustomMode
-										: currentValue.adjustmentFactorDescriptionId === option.value;
+									const isSelected =
+										option.value === CUSTOM_OPTION_VALUE
+											? isCustomMode
+											: currentValue.adjustmentFactorDescriptionId ===
+												option.value;
 
 									return (
 										<CommandItem
@@ -161,7 +171,12 @@ export function CostPlanAdjustmentFactorInput({
 											onSelect={() => handleSelect(option.value)}
 										>
 											{option.label}
-											<Check className={cn('ml-auto', isSelected ? 'opacity-100' : 'opacity-0')} />
+											<Check
+												className={cn(
+													'ml-auto',
+													isSelected ? 'opacity-100' : 'opacity-0',
+												)}
+											/>
 										</CommandItem>
 									);
 								})}
