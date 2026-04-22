@@ -86,7 +86,8 @@ public class UpdatePlannedMaterialCostCommandHandler(
             request.UpdateModel.SlideUnitPriceAssignmentCodeId, request.UpdateModel.NormFactorId,
             request.UpdateModel.StoneClampRatioReferenceId,
             request.UpdateModel.MaterialReferenceId,
-            request.UpdateModel.OutputId);
+            request.UpdateModel.OutputId,
+            request.UpdateModel.LowValuePerishableSupplyInclusion);
 
         _plannedMaterialCostRepository.Update(existPlannedMaterial);
         await unitOfWork.SaveChangesAsync();

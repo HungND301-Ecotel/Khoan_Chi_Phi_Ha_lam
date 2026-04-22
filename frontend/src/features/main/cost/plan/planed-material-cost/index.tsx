@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
+import { LowValuePerishableSupplyInclusion } from '@/constants/low-value-perishable-supply';
 import { ProcessGroupType } from '@/constants/process-group';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
@@ -104,7 +105,8 @@ export function PlanedMaterialCost({
 				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
 				const stoneClampRatioReferenceId =
 					result.stoneClampRatioReferenceId ||
-					(result as unknown as { stoneClampRatioId?: string }).stoneClampRatioId;
+					(result as unknown as { stoneClampRatioId?: string })
+						.stoneClampRatioId;
 				const stoneClampRatio =
 					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
 						?.value || '-';
@@ -165,6 +167,13 @@ export function PlanedMaterialCost({
 						materialUnitPriceCost: result.materialCost || 0,
 						slideUsage,
 						slideUnitPriceCost,
+						lowValuePerishableSupplyUsage:
+							result.lowValuePerishableSupplyInclusion ===
+							LowValuePerishableSupplyInclusion.Include
+								? 'Gồm đơn giá vật tư mau hỏng rẻ tiền'
+								: 'Không gồm đơn giá vật tư mau hỏng rẻ tiền',
+						lowValuePerishableSupplyUnitPriceCost:
+							result.lowValuePerishableSupplyUnitPriceCost || 0,
 						stoneClampRatio,
 						normFactorValue: result.normFactorValue || '-',
 					},

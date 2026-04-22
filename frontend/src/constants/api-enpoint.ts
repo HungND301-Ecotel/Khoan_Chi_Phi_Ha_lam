@@ -405,6 +405,31 @@ export const API = {
 				EXPORT: '/v1/pricing/longwallelectricityunitpriceequipment/export',
 			},
 		},
+		LOW_VALUE_PERISHABLE_SUPPLY: {
+			DELETES: '/v1/pricing/LowValuePerishableSupplyUnitPrice',
+			TUNNELING: {
+				LIST: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				CREATE: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				UPDATE: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				DELETE: (id: string) =>
+					`/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/${id}`,
+				IMPORT: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/import',
+				EXPORT: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/export',
+			},
+			LONGWALL: {
+				LIST: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				CREATE: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				UPDATE: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				DELETE: (id: string) =>
+					`/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/${id}`,
+				IMPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/import',
+				EXPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/export',
+			},
+		},
 	},
 
 	COST: {

@@ -16,6 +16,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
     private readonly IWriteRepository<SavingsRateConfig> _savingsRateConfigRepository = unitOfWork.GetRepository<SavingsRateConfig>();
@@ -58,6 +59,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 .Include(p => p.Product).ThenInclude(pr => pr!.ProcessGroup)
                 .Include(p => p.Product).ThenInclude(pr => pr!.ProcessGroup).ThenInclude(pr => pr!.Code)
                 .Include(p => p.UnitOfMeasure)
+                .Include(p => p.Outputs)
+                    .ThenInclude(o => o.PlannedMaterialCost)
+                        .ThenInclude(pmc => pmc!.ProductUnitPrice)
+                            .ThenInclude(pup => pup!.Product)
                 .Include(p => p.Outputs)
                     .ThenInclude(o => o.PlannedMaterialCost)
                         .ThenInclude(pmc => pmc!.MaterialUnitPrice)
@@ -103,42 +108,16 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .Select(o => o.PlannedMaterialCost!)
             .ToList();
 
-        var currentTunnelMaterials = allMonthPlannedMaterialCosts
-            .Where(c => c.NormFactor != null
-                && c.NormFactor.NormFactorAssignmentCodes.Any(nfa => nfa.TargetHardnessId.HasValue)
-                && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
-            .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
-            .ToList();
-
-        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (currentTunnelMaterials.Any())
-        {
-            var targetHardnessIds = allMonthPlannedMaterialCosts
-                .Where(c => c.NormFactor != null)
-                .SelectMany(c => c.NormFactor!.NormFactorAssignmentCodes
-                    .Where(nfa => nfa.TargetHardnessId.HasValue)
-                    .Select(nfa => nfa.TargetHardnessId!.Value))
-                .Distinct()
-                .ToList();
-            var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();
-            var passportIds = currentTunnelMaterials.Select(x => x.PassportId).Distinct().ToList();
-            var insertItemIds = currentTunnelMaterials.Select(x => x.InsertItemId).Distinct().ToList();
-            var supportStepIds = currentTunnelMaterials.Select(x => x.SupportStepId).Distinct().ToList();
-
-            tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => targetHardnessIds.Contains(x.HardnessId)
-                    && processIds.Contains(x.ProcessId)
-                    && passportIds.Contains(x.PassportId)
-                    && insertItemIds.Contains(x.InsertItemId)
-                    && supportStepIds.Contains(x.SupportStepId))
-                .Include(x => x.MaterialUnitPriceAssignmentCodes)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-        }
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
+            allMonthPlannedMaterialCosts,
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
 
         var plannedMaterialUnitCostById = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
             allMonthPlannedMaterialCosts,
-            tunnelMaterials);
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
 
         var groupedProductUnitPrices = productUnitPrices
             .GroupBy(p => new

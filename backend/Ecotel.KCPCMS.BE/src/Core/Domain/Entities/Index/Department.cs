@@ -19,6 +19,9 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
     private IList<ProductionOutput> _productionOutputs = new List<ProductionOutput>();
     public virtual IReadOnlyCollection<ProductionOutput> ProductionOutputs => _productionOutputs.AsReadOnly();
 
+    private IList<LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPrices = new List<LowValuePerishableSupplyUnitPrice>();
+    public IReadOnlyList<LowValuePerishableSupplyUnitPrice> LowValuePerishableSupplyUnitPrices => _lowValuePerishableSupplyUnitPrices.ToList();
+
     public static Department Create(string code, string name)
     {
         if (string.IsNullOrWhiteSpace(code))

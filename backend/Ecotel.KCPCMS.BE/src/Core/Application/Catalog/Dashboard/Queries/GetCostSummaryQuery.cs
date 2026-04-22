@@ -20,6 +20,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
@@ -324,46 +325,23 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         var plannedMaterialCosts = await _plannedMaterialCostRepository.GetAll()
             .Where(c => plannedMaterialCostIds.Contains(c.Id))
             .Include(c => c.Output)
+            .Include(c => c.ProductUnitPrice).ThenInclude(p => p.Product)
             .Include(c => c.SlideUnitPriceAssignmentCode)
             .Include(c => c.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
             .Include(c => c.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var currentTunnelMaterials = plannedMaterialCosts
-            .Where(c => c.NormFactor != null
-                && c.NormFactor.NormFactorAssignmentCodes.Any(nfa => nfa.TargetHardnessId.HasValue)
-                && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
-            .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
-            .ToList();
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
+            plannedMaterialCosts,
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
 
-        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (currentTunnelMaterials.Any())
-        {
-            var targetHardnessIds = plannedMaterialCosts
-                .Where(c => c.NormFactor != null)
-                .SelectMany(c => c.NormFactor!.NormFactorAssignmentCodes
-                    .Where(nfa => nfa.TargetHardnessId.HasValue)
-                    .Select(nfa => nfa.TargetHardnessId!.Value))
-                .Distinct()
-                .ToList();
-            var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();
-            var passportIds = currentTunnelMaterials.Select(x => x.PassportId).Distinct().ToList();
-            var insertItemIds = currentTunnelMaterials.Select(x => x.InsertItemId).Distinct().ToList();
-            var supportStepIds = currentTunnelMaterials.Select(x => x.SupportStepId).Distinct().ToList();
-
-            tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => targetHardnessIds.Contains(x.HardnessId)
-                    && processIds.Contains(x.ProcessId)
-                    && passportIds.Contains(x.PassportId)
-                    && insertItemIds.Contains(x.InsertItemId)
-                    && supportStepIds.Contains(x.SupportStepId))
-                .Include(x => x.MaterialUnitPriceAssignmentCodes)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-        }
-
-        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(plannedMaterialCosts, tunnelMaterials);
+        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+            plannedMaterialCosts,
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
     }
 
     #endregion

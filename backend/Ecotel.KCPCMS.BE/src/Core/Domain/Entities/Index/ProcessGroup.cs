@@ -21,6 +21,9 @@ namespace Domain.Entities.Index
         private IList<AdjustmentFactor> _adjustmentFactors = new List<AdjustmentFactor>();
         public IReadOnlyList<AdjustmentFactor> AdjustmentFactors => _adjustmentFactors.ToList();
 
+        private IList<LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPrices = new List<LowValuePerishableSupplyUnitPrice>();
+        public IReadOnlyList<LowValuePerishableSupplyUnitPrice> LowValuePerishableSupplyUnitPrices => _lowValuePerishableSupplyUnitPrices.ToList();
+
         private IList<Product> _products = new List<Product>();
         public IReadOnlyList<Product> Products => _products.ToList();
 

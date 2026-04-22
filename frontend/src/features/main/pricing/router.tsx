@@ -1,6 +1,8 @@
 import { MainPricingLayout } from '@/features/main/pricing/layout';
 import { LongwallPanelMaterialPage } from '@/features/main/pricing/longwall-panel/material/page';
+import { MainPricingLowValuePerishableSupplyLongwallPage } from '@/features/main/pricing/longwall-panel/low-value-perishable-supply/page';
 import { MainPricingElectricityPage } from '@/features/main/pricing/tunneling/electricity/page';
+import { MainPricingLowValuePerishableSupplyTunnelingPage } from '@/features/main/pricing/tunneling/low-value-perishable-supply/page';
 import { MainPricingMaterialPage } from '@/features/main/pricing/tunneling/material/page';
 import { MainPricingSlidePage } from '@/features/main/pricing/tunneling/slide/page';
 import { MainPricingTrimmingElectricityPage } from '@/features/main/pricing/trimming/electricity/page';
@@ -45,6 +47,14 @@ const MainPricingRouter: RouteObject = {
 					},
 				},
 				{
+					path: 'low-value-perishable-supply',
+					element: <MainPricingLowValuePerishableSupplyTunnelingPage />,
+					handle: {
+						breadcrumb: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						title: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+					},
+				},
+				{
 					path: 'slide',
 					element: <MainPricingSlidePage />,
 					handle: {
@@ -72,6 +82,14 @@ const MainPricingRouter: RouteObject = {
 					handle: {
 						breadcrumb: 'Đơn giá và định mức vật liệu',
 						title: 'Đơn giá và định mức vật liệu',
+					},
+				},
+				{
+					path: 'low-value-perishable-supply',
+					element: <MainPricingLowValuePerishableSupplyLongwallPage />,
+					handle: {
+						breadcrumb: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						title: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
 					},
 				},
 				{

@@ -7,6 +7,8 @@ using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 using Application.Catalog.Pricing.LongwallMaterialUnitPrice.Queries;
+using Application.Catalog.Pricing.LowValuePerishableSupplyUnitPrice.Commands;
+using Application.Catalog.Pricing.LowValuePerishableSupplyUnitPrice.Queries;
 using Application.Catalog.Pricing.LumpSumFinalSettlement.Commands;
 using Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
@@ -28,6 +30,7 @@ using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Querie
 using Application.Dto.Catalog.ActualElectricityCost;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
+using Application.Dto.Catalog.LowValuePerishableSupplyUnitPrice;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
 using Application.Dto.Catalog.MaintainUnitPriceEquipment;
 using Application.Dto.Catalog.MaterialUnitPrice;
@@ -813,6 +816,141 @@ public class PricingController : BaseNoAuthController
     public async Task<IActionResult> DeleteElectricityUnitPriceEquipmentList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteElectricityUnitPriceEquipmentListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region LowValuePerishableSupplyUnitPrice
+
+    [HttpGet("TunnelLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> GetAllTunnelLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.TunnelExcavation));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TunnelLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Create Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> CreateTunnelLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
+    {
+        foreach (var item in createModel)
+        {
+            item.Type = LowValuePerishableSupplyType.TunnelExcavation;
+        }
+
+        var result = await Mediator.Send(new CreateLowValuePerishableSupplyUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("TunnelLowValuePerishableSupplyUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Tunnel LowValuePerishableSupplyUnitPrice By Id (Đào lò)", "")]
+    public async Task<IActionResult> GetTunnelLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetLowValuePerishableSupplyUnitPriceByIdQuery(id, LowValuePerishableSupplyType.TunnelExcavation));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TunnelLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Update Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> UpdateTunnelLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
+    {
+        updateModel.Type = LowValuePerishableSupplyType.TunnelExcavation;
+        var result = await Mediator.Send(new UpdateLowValuePerishableSupplyUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TunnelLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> DeleteTunnelLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TunnelLowValuePerishableSupplyUnitPrice/export")]
+    [OpenApiOperation("Export Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> ExportTunnelLowValuePerishableSupplyUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.TunnelExcavation));
+        return File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_gia_vat_tu_mau_hong_dao_lo.xlsx");
+    }
+
+    [HttpPost("TunnelLowValuePerishableSupplyUnitPrice/import")]
+    [OpenApiOperation("Import Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
+    public async Task<IActionResult> ImportTunnelLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.TunnelExcavation));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("LongwallLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> GetAllLongwallLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.Longwall));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("LongwallLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Create Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> CreateLongwallLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
+    {
+        foreach (var item in createModel)
+        {
+            item.Type = LowValuePerishableSupplyType.Longwall;
+        }
+
+        var result = await Mediator.Send(new CreateLowValuePerishableSupplyUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("LongwallLowValuePerishableSupplyUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Longwall LowValuePerishableSupplyUnitPrice By Id (Lò chợ)", "")]
+    public async Task<IActionResult> GetLongwallLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetLowValuePerishableSupplyUnitPriceByIdQuery(id, LowValuePerishableSupplyType.Longwall));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("LongwallLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Update Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> UpdateLongwallLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
+    {
+        updateModel.Type = LowValuePerishableSupplyType.Longwall;
+        var result = await Mediator.Send(new UpdateLowValuePerishableSupplyUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("LongwallLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> DeleteLongwallLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("LongwallLowValuePerishableSupplyUnitPrice/export")]
+    [OpenApiOperation("Export Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> ExportLongwallLowValuePerishableSupplyUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.Longwall));
+        return File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_gia_vat_tu_mau_hong_lo_cho.xlsx");
+    }
+
+    [HttpPost("LongwallLowValuePerishableSupplyUnitPrice/import")]
+    [OpenApiOperation("Import Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
+    public async Task<IActionResult> ImportLongwallLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.Longwall));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpDelete("LowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Delete LowValuePerishableSupplyUnitPrice List", "")]
+    public async Task<IActionResult> DeleteLowValuePerishableSupplyUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion

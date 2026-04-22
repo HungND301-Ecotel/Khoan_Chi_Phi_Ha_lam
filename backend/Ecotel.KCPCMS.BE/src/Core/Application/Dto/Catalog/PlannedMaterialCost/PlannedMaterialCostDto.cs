@@ -9,11 +9,13 @@ public class PlannedMaterialCostDetailDto
     public Guid? NormFactorId { get; set; }
     public Guid? StoneClampRatioReferenceId { get; set; }
     public Guid? MaterialReferenceId { get; set; }
+    public Domain.Common.Enums.LowValuePerishableSupplyInclusion LowValuePerishableSupplyInclusion { get; set; }
     public Guid OutputId { get; set; }
     public double? OtherMaterialValue { get; set; }
     public double TotalPlannedMaterialPrice { get; set; }
     public double MaterialCost { get; set; }
     public double SlideUnitPriceCost { get; set; }
+    public double LowValuePerishableSupplyUnitPriceCost { get; set; }
     public string NormFactorValue { get; set; } = string.Empty;
     public IList<PlannedMaterialCostAssignmentCode> PlannedMaterialCostAssignmentCodes { get; set; } = new List<PlannedMaterialCostAssignmentCode>();
 }
@@ -48,6 +50,7 @@ public class CreatePlannedMaterialCostDto
     public Guid? NormFactorId { get; set; }
     public Guid? StoneClampRatioReferenceId { get; set; }
     public Guid? MaterialReferenceId { get; set; }
+    public Domain.Common.Enums.LowValuePerishableSupplyInclusion LowValuePerishableSupplyInclusion { get; set; }
     public Guid OutputId { get; set; }
 
 }
@@ -60,5 +63,6 @@ public class UpdatePlannedMaterialCostDto
     public Guid? NormFactorId { get; set; }
     public Guid? StoneClampRatioReferenceId { get; set; }
     public Guid? MaterialReferenceId { get; set; }
+    public Domain.Common.Enums.LowValuePerishableSupplyInclusion LowValuePerishableSupplyInclusion { get; set; }
     public Guid OutputId { get; set; }
 }

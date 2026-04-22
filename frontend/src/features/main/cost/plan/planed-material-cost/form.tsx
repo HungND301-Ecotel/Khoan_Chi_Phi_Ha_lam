@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import {
+	LOW_VALUE_PERISHABLE_SUPPLY_INCLUSION_OPTIONS,
+	LowValuePerishableSupplyInclusion,
+} from '@/constants/low-value-perishable-supply';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Asset } from '@/features/main/catalog/asset/types';
@@ -106,17 +110,21 @@ export function PlanMaterialCostForm({
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
 
-	const form = useForm<PlanMaterialCostSchema>({
-		resolver: zodResolver(planMaterialCostSchema),
-		mode: 'onSubmit',
-		defaultValues: {
-			...PLAN_MATERIAL_COST_DEFAULT,
-			outputId: output?.id,
-			productUnitPriceId: plan?.id,
-			slideUnitPriceAssignmentCodeId: '',
-			materialReferenceId: '',
+	const form = useForm<PlanMaterialCostSchema, unknown, PlanMaterialCostSchema>(
+		{
+			resolver: zodResolver(planMaterialCostSchema),
+			mode: 'onSubmit',
+			defaultValues: {
+				...PLAN_MATERIAL_COST_DEFAULT,
+				outputId: output?.id,
+				productUnitPriceId: plan?.id,
+				slideUnitPriceAssignmentCodeId: '',
+				materialReferenceId: '',
+				lowValuePerishableSupplyInclusion:
+					LowValuePerishableSupplyInclusion.Exclude,
+			},
 		},
-	});
+	);
 
 	const watchedStoneClampRatioReferenceId = form.watch(
 		'stoneClampRatioReferenceId',
@@ -210,6 +218,9 @@ export function PlanMaterialCostForm({
 							slideUnitPriceAssignmentCodeId:
 								slideUnitPriceAssignmentCodeId || '',
 							materialReferenceId: materialReferenceIdFromDetail || '',
+							lowValuePerishableSupplyInclusion:
+								detail.result.lowValuePerishableSupplyInclusion ||
+								LowValuePerishableSupplyInclusion.Exclude,
 							outputId: output?.id,
 							productUnitPriceId: plan?.id,
 						});
@@ -468,6 +479,16 @@ export function PlanMaterialCostForm({
 					value: material.id,
 				}))}
 			/>
+			{(plan?.processGroupType === ProcessGroupType.DL ||
+				plan?.processGroupType === ProcessGroupType.LC) && (
+				<FormComboBox
+					control={form.control}
+					name='lowValuePerishableSupplyInclusion'
+					label='Đơn giá vật tư mau hỏng rẻ tiền'
+					placeholder='Chọn hình thức áp dụng'
+					options={LOW_VALUE_PERISHABLE_SUPPLY_INCLUSION_OPTIONS}
+				/>
+			)}
 			{plan?.processGroupType === ProcessGroupType.DL && (
 				<FormRow>
 					<div className='flex-2'>

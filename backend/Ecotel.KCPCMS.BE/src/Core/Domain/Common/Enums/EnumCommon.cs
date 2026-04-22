@@ -55,6 +55,12 @@ public enum MaintainUnitPriceType
     Trimming = 3
 }
 
+public enum LowValuePerishableSupplyType
+{
+    TunnelExcavation = 1,
+    Longwall = 2,
+}
+
 public enum OutputType
 {
     PlanOutput = 1,
@@ -134,6 +140,12 @@ public enum QuotaBasedMaterialType
 {
     New = 1,
     Reusable = 2
+}
+
+public enum LowValuePerishableSupplyInclusion
+{
+    Exclude = 1,
+    Include = 2
 }
 
 public enum Asset

@@ -1,4 +1,5 @@
 import { ProcessGroupType } from '@/constants/process-group';
+import { LowValuePerishableSupplyInclusion } from '@/constants/low-value-perishable-supply';
 import z from 'zod';
 
 export const planMaterialCostSchema = z
@@ -25,6 +26,7 @@ export const planMaterialCostSchema = z
 			.string()
 			.nullable()
 			.transform((val) => (val === '' ? null : val)),
+		lowValuePerishableSupplyInclusion: z.number(),
 		outputId: z.string().nonempty({
 			error: 'Mã kế hoạch không được để trống',
 		}),
@@ -55,5 +57,6 @@ export const PLAN_MATERIAL_COST_DEFAULT: PlanMaterialCostSchema = {
 	materialReferenceId: null,
 	normFactorId: null,
 	stoneClampRatioReferenceId: null,
+	lowValuePerishableSupplyInclusion: LowValuePerishableSupplyInclusion.Exclude,
 	outputId: '',
 };

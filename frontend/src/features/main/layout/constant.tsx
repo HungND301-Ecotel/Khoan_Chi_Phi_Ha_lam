@@ -141,6 +141,11 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 					{
 						type: 'link',
+						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						href: '/pricing/tunneling/low-value-perishable-supply',
+					},
+					{
+						type: 'link',
 						name: 'Đơn giá và định mức máng trượt',
 						href: '/pricing/tunneling/slide',
 					},
@@ -186,6 +191,11 @@ export const NAVIGATIONS: Navigation[] = [
 						type: 'link',
 						name: 'Đơn giá và định mức vật liệu',
 						href: '/pricing/longwall-panel/material',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						href: '/pricing/longwall-panel/low-value-perishable-supply',
 					},
 					{
 						type: 'link',

@@ -1,5 +1,5 @@
-using Application.Common.Events;
 using Application.Common.Caching;
+using Application.Common.Events;
 using Application.Common.Interfaces;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
@@ -72,6 +72,7 @@ public class ApplicationDbContext(
     public DbSet<MaterialUnitPrice> MaterialUnitPrices => Set<MaterialUnitPrice>();
     public DbSet<SlideUnitPrice> SlideUnitPrices => Set<SlideUnitPrice>();
     public DbSet<MaintainUnitPrice> MaintainUnitPrices => Set<MaintainUnitPrice>();
+    public DbSet<LowValuePerishableSupplyUnitPrice> LowValuePerishableSupplyUnitPrices => Set<LowValuePerishableSupplyUnitPrice>();
     public DbSet<SlideUnitPriceAssignmentCode> SlideUnitPriceAssignmentCodes => Set<SlideUnitPriceAssignmentCode>();
     public DbSet<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => Set<MaintainUnitPriceEquipment>();
     public DbSet<ElectricityUnitPriceEquipment> ElectricityUnitPriceEquipments => Set<ElectricityUnitPriceEquipment>();
@@ -546,6 +547,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<MaterialUnitPriceAssignmentCode>().ToTable(nameof(MaterialUnitPriceAssignmentCode), "Pricing");
         modelBuilder.Entity<SlideUnitPrice>().ToTable(nameof(SlideUnitPrice), "Pricing");
         modelBuilder.Entity<MaintainUnitPrice>().ToTable(nameof(MaintainUnitPrice), "Pricing");
+        modelBuilder.Entity<LowValuePerishableSupplyUnitPrice>().ToTable(nameof(LowValuePerishableSupplyUnitPrice), "Pricing");
         modelBuilder.Entity<SlideUnitPriceAssignmentCode>().ToTable(nameof(SlideUnitPriceAssignmentCode), "Pricing");
         modelBuilder.Entity<MaintainUnitPriceEquipment>().ToTable(nameof(MaintainUnitPriceEquipment), "Pricing");
 
@@ -719,6 +721,31 @@ public class ApplicationDbContext(
             .HasOne(m => m.Part)
             .WithMany(h => h.MaintainUnitPriceEquipments)
             .HasForeignKey(s => s.PartId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+
+        //MaintainUnitPrice table
+        modelBuilder.Entity<LowValuePerishableSupplyUnitPrice>()
+            .HasIndex(e => new
+            {
+                e.ProcessGroupId,
+                e.DepartmentId,
+                e.StartMonth,
+                e.Type,
+                e.EndMonth
+            })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
+        modelBuilder.Entity<LowValuePerishableSupplyUnitPrice>()
+            .HasOne(m => m.ProcessGroup)
+            .WithMany(h => h.LowValuePerishableSupplyUnitPrices)
+            .HasForeignKey(s => s.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LowValuePerishableSupplyUnitPrice>()
+            .HasOne(m => m.Department)
+            .WithMany(h => h.LowValuePerishableSupplyUnitPrices)
+            .HasForeignKey(s => s.DepartmentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         //ElectricityUnitPriceEquipment table

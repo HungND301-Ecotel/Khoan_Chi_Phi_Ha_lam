@@ -18,11 +18,13 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     public async Task<PlannedMaterialCostDetailDto> Handle(GetPlannedMaterialCostByIdQuery request, CancellationToken cancellationToken)
     {
         var materialUnitPrice = await _plannedMaterialCostRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
             include: t => t
+                .Include(m => m.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(m => m.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
                 .Include(m => m.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness)
                 .Include(m => m.NormFactor).ThenInclude(n => n.Hardness)
@@ -138,9 +140,16 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
 
         var slideUnitPriceCost = materialUnitPrice.SlideUnitPriceAssignmentCode?.Amount ?? 0;
 
-        var totalByCostId = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
             new List<Domain.Entities.Pricing.PlannedMaterialCost> { materialUnitPrice },
-            tunnelMaterials);
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
+        var calculationResults = PlannedMaterialCostCalculator.CalculateResultsByCostId(
+            new List<Domain.Entities.Pricing.PlannedMaterialCost> { materialUnitPrice },
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
+        var calculation = calculationResults.GetValueOrDefault(materialUnitPrice.Id, new PlannedMaterialCostCalculationResult());
 
         var result = new PlannedMaterialCostDetailDto
         {
@@ -152,11 +161,13 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             NormFactorId = materialUnitPrice.NormFactorId,
             StoneClampRatioReferenceId = materialUnitPrice.StoneClampRatioReferenceId,
             MaterialReferenceId = materialUnitPrice.MaterialReferenceId,
+            LowValuePerishableSupplyInclusion = materialUnitPrice.LowValuePerishableSupplyInclusion,
             PlannedMaterialCostAssignmentCodes = mCost,
             MaterialCost = materialCost,
             SlideUnitPriceCost = slideUnitPriceCost,
+            LowValuePerishableSupplyUnitPriceCost = calculation.LowValuePerishableSupplyUnitPriceCost,
             NormFactorValue = normFactorValue,
-            TotalPlannedMaterialPrice = totalByCostId.GetValueOrDefault(materialUnitPrice.Id, 0)
+            TotalPlannedMaterialPrice = calculation.TotalPrice
         };
         return result;
     }
