@@ -64,7 +64,7 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                         EffectiveValue = a.EffectiveValue
                     }).ToList()
                 };
-            }).ToList()
+            }).OrderBy(m => m.EquipmentCode).ThenBy(m => m.EquipmentName).ToList()
         };
         return mCost;
     }

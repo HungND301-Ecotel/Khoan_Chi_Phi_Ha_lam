@@ -62,7 +62,7 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                         EffectiveValue = a.EffectiveValue
                     }).ToList()
                 };
-            }).ToList()
+            }).OrderBy(m => m.EquipmentCode).ThenBy(m => m.EquipmentName).ToList()
         };
         return mCost;
     }

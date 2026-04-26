@@ -33,10 +33,10 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var cacheKey = $"{CacheSignalKey}:All:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.ScenarioType}:{request.DepartmentId}";
 
         var cachedResult = await cacheService.GetAsync<PaginationResponse<ProductUnitPriceDto>>(cacheKey, cancellationToken);
-        if (cachedResult != null)
-        {
-            return cachedResult;
-        }
+        //if (cachedResult != null)
+        //{
+        //    return cachedResult;
+        //}
 
         var searchTerm = (request.Search ?? "").Trim();
 
@@ -315,6 +315,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
+                MaintainUnitPriceType = f.MaintainUnitPrice.Type,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
                 MaintainStartMonth = f.MaintainUnitPrice.StartMonth,
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
@@ -346,7 +347,12 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
                         var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
-                        return partCost * (m.Quantity / (double)(m.ReplacementTimeStandard * m.AverageMonthlyTunnelProduction));
+                        return MaintainCostCalculator.CalculateMaterialCostPerMetre(
+                            partCost,
+                            m.Quantity,
+                            m.ReplacementTimeStandard,
+                            m.AverageMonthlyTunnelProduction,
+                            f.MaintainUnitPriceType);
                     }),
                     AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                 }).ToList());
@@ -443,6 +449,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         {
             return 0;
         }
+
+        var output = plannedOutputs[0];
+        var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
+        var maintainCost = CalculateMaintainCost(output.PlannedMaintainCostId, plannedMaintainFactors);
+        var electricityCost = CalculatePlannedElectricityCost(output.PlannedElectricityCostId, plannedElectricityFactors);
 
         return plannedOutputs.Sum(output =>
         {

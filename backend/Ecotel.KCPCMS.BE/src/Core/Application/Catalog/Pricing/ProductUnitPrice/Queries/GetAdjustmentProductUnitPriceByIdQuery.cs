@@ -255,6 +255,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
+                MaintainUnitPriceType = f.MaintainUnitPrice.Type,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
                 MaintainStartMonth = f.MaintainUnitPrice.StartMonth,
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
@@ -286,7 +287,12 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
                         var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
-                        return partCost * (m.Quantity / (double)(m.ReplacementTimeStandard * m.AverageMonthlyTunnelProduction));
+                        return MaintainCostCalculator.CalculateMaterialCostPerMetre(
+                            partCost,
+                            m.Quantity,
+                            m.ReplacementTimeStandard,
+                            m.AverageMonthlyTunnelProduction,
+                            f.MaintainUnitPriceType);
                     }),
                     AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                 }).ToList());
