@@ -61,7 +61,7 @@ export const getPlanedElectricityCostColumns = (
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá điện năng (đ/m)',
-			cell: ({ row }) => formatNumber(row.original.totalPrice),
+			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 		},
 	];
 };
