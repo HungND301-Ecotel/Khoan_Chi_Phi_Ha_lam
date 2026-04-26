@@ -33,10 +33,10 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var cacheKey = $"{CacheSignalKey}:All:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.ScenarioType}:{request.DepartmentId}";
 
         var cachedResult = await cacheService.GetAsync<PaginationResponse<ProductUnitPriceDto>>(cacheKey, cancellationToken);
-        //if (cachedResult != null)
-        //{
-        //    return cachedResult;
-        //}
+        if (cachedResult != null)
+        {
+            return cachedResult;
+        }
 
         var searchTerm = (request.Search ?? "").Trim();
 
