@@ -123,12 +123,11 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
             if (dbLookup.TryGetValue(key, out var entityToUpdate))
             {
-                var newParts = excelItem.Parts.ToList();
                 entityToUpdate.Update(
                     excelItem.EquipmentId,
                     excelItem.StartMonth,
                     excelItem.EndMonth,
-                    newParts,
+                    excelItem.Parts,
                     entityToUpdate.OtherMaterialValue,
                     entityToUpdate.Type);
                 updateList.Add(entityToUpdate);
