@@ -309,7 +309,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 g => g.Select(f =>
                 {
                     // Use abstract methods to calculate cost per metre
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
 
                     return new PlannedElectricityFactorData
                     {

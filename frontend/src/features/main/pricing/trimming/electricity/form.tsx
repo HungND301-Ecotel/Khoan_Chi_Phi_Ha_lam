@@ -393,12 +393,12 @@ function ElectricityCostRow({
 						<TooltipTrigger asChild>
 							<Input
 								readOnly
-								value={formatNumber(powerCost)}
+								value={formatNumber(powerCost, { maximumFractionDigits: 0 })}
 								className='read-only:bg-transparent'
 							/>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>{formatNumber(powerCost)}</p>
+							<p>{formatNumber(powerCost, { maximumFractionDigits: 0 })}</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
@@ -415,4 +415,3 @@ function filterEquipmentsByProcessGroupType(
 		(item.processGroups ?? []).some((group) => group.type === processGroupType),
 	);
 }
-

@@ -143,7 +143,9 @@ export const LONGWALL_ELECTRICITY_COLUMNS: ColumnDef<LongwallElectricity>[] = [
 			</span>
 		),
 		cell: ({ row }) =>
-			formatNumber(Math.round(row.original.electricityCostPerMetres ?? 0)),
+			formatNumber(row.original.electricityCostPerMetres ?? 0, {
+				maximumFractionDigits: 0,
+			}),
 	},
 	{
 		accessorKey: 'time',

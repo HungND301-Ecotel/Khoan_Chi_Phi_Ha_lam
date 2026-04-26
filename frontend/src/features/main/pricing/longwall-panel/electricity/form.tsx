@@ -515,12 +515,18 @@ function ElectricityCostRow({
 						<TooltipTrigger asChild>
 							<Input
 								readOnly
-								value={formatNumber(Math.round(electricityCostPerTon))}
+								value={formatNumber(electricityCostPerTon, {
+									maximumFractionDigits: 0,
+								})}
 								className='read-only:bg-transparent'
 							/>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>{formatNumber(Math.round(electricityCostPerTon))}</p>
+							<p>
+								{formatNumber(electricityCostPerTon, {
+									maximumFractionDigits: 0,
+								})}
+							</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>

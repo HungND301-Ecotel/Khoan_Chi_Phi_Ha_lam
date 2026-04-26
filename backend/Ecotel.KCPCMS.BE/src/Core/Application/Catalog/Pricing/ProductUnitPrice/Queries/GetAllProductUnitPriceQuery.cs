@@ -392,7 +392,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 g => g.Key,
                 g => g.Select(f =>
                 {
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
 
                     return new PlannedElectricityFactorData
                     {

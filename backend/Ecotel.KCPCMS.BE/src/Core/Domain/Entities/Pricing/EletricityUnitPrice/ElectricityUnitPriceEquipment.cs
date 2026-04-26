@@ -23,6 +23,11 @@ public abstract class ElectricityUnitPriceEquipment : AuditableEntity<Guid>, IAg
     public abstract double GetElectricityConsumePerMetres();
     public abstract double GetElectricityCostPerMetres();
 
+    public double GetRoundedElectricityCostPerMetres()
+    {
+        return Math.Round(GetElectricityCostPerMetres(), 0, MidpointRounding.AwayFromZero);
+    }
+
     // Common method
     public double GetCurrentElectricityCost()
     {

@@ -78,7 +78,10 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 				{'Chi phí điện năng 1 thiết bị/1 mét lò xén (đ/m)'}
 			</span>
 		),
-		cell: ({ row }) => formatNumber(row.original.electricityCostPerMetres),
+		cell: ({ row }) =>
+			formatNumber(row.original.electricityCostPerMetres, {
+				maximumFractionDigits: 0,
+			}),
 	},
 	{
 		accessorKey: 'time',
@@ -94,4 +97,3 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 		),
 	},
 ];
-

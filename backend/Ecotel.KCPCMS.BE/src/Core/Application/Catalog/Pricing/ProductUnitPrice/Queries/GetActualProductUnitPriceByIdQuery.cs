@@ -220,7 +220,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 g => g.Key,
                 g => g.Select(f =>
                 {
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
 
                     return new PlannedElectricityFactorData
                     {

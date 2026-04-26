@@ -60,7 +60,7 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                     EquipmentName = p.ElectricityUnitPriceEquipment.Equipment?.Name ?? string.Empty,
                     Quantity = p.Quantity,
                     ElectricityUnitPriceEquipmentId = p.ElectricityUnitPriceId,
-                    ElectricityUnitPrice = p.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres(),
+                    ElectricityUnitPrice = p.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres(),
                     TotalPrice = p.GetCurrentElectricityCost(),
                     AdjustmentFactorDescriptions = p.PlannedElectricityCostAdjustmentFactorDescriptions.Select(a => new ElectricityAjustmentFactorDescriptionDto
                     {
