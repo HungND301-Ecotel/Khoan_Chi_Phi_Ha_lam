@@ -52,7 +52,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var excelItems = new List<dynamic>();
+        var excelItems = new List<TrimmingMaintainUnitPriceImportItem>();
         foreach (var dto in maintainUnitPrices)
         {
             try
@@ -71,7 +71,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         pd.Value.Value.ReplacementTimeStandard))
                     .ToList();
 
-                excelItems.Add(new
+                excelItems.Add(new TrimmingMaintainUnitPriceImportItem
                 {
                     EquipmentCode = dto.EquipmentCode,
                     EquipmentId = equipmentId,
@@ -124,12 +124,11 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
             if (dbLookup.TryGetValue(key, out var entityToUpdate))
             {
-                var newParts = excelItem.Parts.ToList();
                 entityToUpdate.Update(
                     excelItem.EquipmentId,
                     excelItem.StartMonth,
                     excelItem.EndMonth,
-                    newParts,
+                    excelItem.Parts,
                     entityToUpdate.OtherMaterialValue,
                     entityToUpdate.Type);
                 updateList.Add(entityToUpdate);
@@ -385,6 +384,16 @@ internal class TrimmingMaintainUnitPriceImportDto
 }
 
 internal readonly record struct TrimmingMaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth, DateOnly EndMonth);
+
+internal class TrimmingMaintainUnitPriceImportItem
+{
+    public string EquipmentCode { get; set; } = string.Empty;
+    public Guid EquipmentId { get; set; }
+    public DateOnly StartMonth { get; set; }
+    public DateOnly EndMonth { get; set; }
+    public IList<Domain.Entities.Pricing.MaintainUnitPriceEquipment> Parts { get; set; } = new List<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
+    public bool IsDeleteRequest { get; set; }
+}
 
 internal struct TrimmingPartEquipmentData
 {

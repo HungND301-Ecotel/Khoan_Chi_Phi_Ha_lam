@@ -51,7 +51,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var excelItems = new List<dynamic>();
+        var excelItems = new List<LongwallMaintainUnitPriceImportItem>();
         foreach (var dto in maintainUnitPrices)
         {
             try
@@ -70,7 +70,7 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                         pd.Value.Value.ReplacementTimeStandard))
                     .ToList();
 
-                excelItems.Add(new
+                excelItems.Add(new LongwallMaintainUnitPriceImportItem
                 {
                     EquipmentCode = dto.EquipmentCode,
                     EquipmentId = equipmentId,
@@ -383,6 +383,16 @@ internal class LongwallMaintainUnitPriceImportDto
 }
 
 internal readonly record struct LongwallMaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth, DateOnly EndMonth);
+
+internal class LongwallMaintainUnitPriceImportItem
+{
+    public string EquipmentCode { get; set; } = string.Empty;
+    public Guid EquipmentId { get; set; }
+    public DateOnly StartMonth { get; set; }
+    public DateOnly EndMonth { get; set; }
+    public IList<Domain.Entities.Pricing.MaintainUnitPriceEquipment> Parts { get; set; } = new List<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
+    public bool IsDeleteRequest { get; set; }
+}
 
 internal class LongwallEquipmentImportState
 {

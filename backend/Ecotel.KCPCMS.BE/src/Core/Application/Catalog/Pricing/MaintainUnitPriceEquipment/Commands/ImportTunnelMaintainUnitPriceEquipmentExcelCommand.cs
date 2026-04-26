@@ -52,7 +52,7 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var excelItems = new List<dynamic>();
+        var excelItems = new List<TunnelMaintainUnitPriceImportItem>();
         foreach (var dto in maintainUnitPrices)
         {
             try
@@ -71,7 +71,7 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                         pd.Value.Value.ReplacementTimeStandard))
                     .ToList();
 
-                excelItems.Add(new
+                excelItems.Add(new TunnelMaintainUnitPriceImportItem
                 {
                     EquipmentCode = dto.EquipmentCode,
                     EquipmentId = equipmentId,
@@ -124,12 +124,11 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
 
             if (dbLookup.TryGetValue(key, out var entityToUpdate))
             {
-                var newParts = excelItem.Parts.ToList();
                 entityToUpdate.Update(
                     excelItem.EquipmentId,
                     excelItem.StartMonth,
                     excelItem.EndMonth,
-                    newParts,
+                    excelItem.Parts,
                     entityToUpdate.OtherMaterialValue,
                     entityToUpdate.Type);
                 updateList.Add(entityToUpdate);
@@ -385,6 +384,16 @@ internal class TunnelMaintainUnitPriceImportDto
 }
 
 internal readonly record struct MaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth, DateOnly EndMonth);
+
+internal class TunnelMaintainUnitPriceImportItem
+{
+    public string EquipmentCode { get; set; } = string.Empty;
+    public Guid EquipmentId { get; set; }
+    public DateOnly StartMonth { get; set; }
+    public DateOnly EndMonth { get; set; }
+    public IList<Domain.Entities.Pricing.MaintainUnitPriceEquipment> Parts { get; set; } = new List<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
+    public bool IsDeleteRequest { get; set; }
+}
 
 internal struct TunnelPartEquipmentData
 {
