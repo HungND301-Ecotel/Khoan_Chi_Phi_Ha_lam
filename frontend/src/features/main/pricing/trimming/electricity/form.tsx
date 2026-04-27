@@ -32,7 +32,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 
-export function ElectricityForm({ data, row }: ActionDialogProps<Electricity>) {
+export function ElectricityForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Electricity> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -127,7 +131,7 @@ export function ElectricityForm({ data, row }: ActionDialogProps<Electricity>) {
 			const processedValues = {
 				...values,
 			};
-			if (row) {
+			if (row && !isDuplicate) {
 				const cost = processedValues.costs.find(
 					(c: {
 						equipmentId: string;
@@ -167,7 +171,7 @@ export function ElectricityForm({ data, row }: ActionDialogProps<Electricity>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row ? 'cập nhật' : 'tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row && !isDuplicate ? 'cập nhật' : 'tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -204,12 +208,12 @@ export function ElectricityForm({ data, row }: ActionDialogProps<Electricity>) {
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}
-				disabled={!!row}
+				disabled={!!row && !isDuplicate}
 			/>
 
 			<ElectricityCost form={form} values={equipments} />
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

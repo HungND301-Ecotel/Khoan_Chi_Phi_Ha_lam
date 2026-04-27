@@ -115,7 +115,11 @@ function groupCostsByAssignmentCode(
 	});
 }
 
-export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
+export function SlideForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Slide> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -196,7 +200,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 						form.reset({
 							startMonth: row.startMonth.substring(0, 10),
 							endMonth: row.endMonth.substring(0, 10),
-							code: row.code,
+							code: isDuplicate ? '' : row.code,
 							processGroupId: row.processGroupId,
 							passportId: row.passportId,
 							hardnessId: row.hardnessId,
@@ -208,7 +212,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 				}
 			},
 		);
-	}, [form, row]);
+	}, [form, isDuplicate, row]);
 
 	useEffect(() => {
 		const prevContracts = prevSelectedContractsRef.current;
@@ -283,7 +287,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 			const processedValues = {
 				...values,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.PRICING.SLIDE.UPDATE, {
 					id: row.id,
 					...processedValues,
@@ -294,7 +298,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -381,7 +385,7 @@ export function SlideForm({ data, row }: ActionDialogProps<Slide>) {
 				/>
 			)}
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

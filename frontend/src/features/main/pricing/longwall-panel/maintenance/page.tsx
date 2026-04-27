@@ -103,6 +103,7 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <LongwallPanelForm {...props} />}
+				onDuplicate={(props) => <LongwallPanelForm {...props} isDuplicate />}
 				onUpdate={(props) => <LongwallPanelForm {...props} />}
 				onExpand={(props) => <LongwallPanelExpand {...props} />}
 				onDelete={handleDelete}

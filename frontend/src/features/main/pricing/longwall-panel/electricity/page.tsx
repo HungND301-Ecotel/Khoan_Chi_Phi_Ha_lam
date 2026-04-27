@@ -92,6 +92,9 @@ export function MainPricingLongwallElectricityPage() {
 				{ key: 'equipmentName', label: 'Tên thiết bị' },
 			]}
 			onCreate={(props) => <ElectricityForm {...props} onSuccess={fetchData} />}
+			onDuplicate={(props) => (
+				<ElectricityForm {...props} onSuccess={fetchData} isDuplicate />
+			)}
 			onUpdate={(props) => <ElectricityForm {...props} onSuccess={fetchData} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

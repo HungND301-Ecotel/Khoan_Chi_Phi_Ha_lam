@@ -37,7 +37,8 @@ import {
 export function SupportAndDrillingForm({
 	data,
 	row,
-}: ActionDialogProps<SupportAndDrillingMaterial>) {
+	isDuplicate = false,
+}: ActionDialogProps<SupportAndDrillingMaterial> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -108,7 +109,7 @@ export function SupportAndDrillingForm({
 							form.reset({
 								startMonth: detail.startMonth.substring(0, 10),
 								endMonth: detail.endMonth.substring(0, 10),
-								code: detail.code,
+								code: isDuplicate ? '' : detail.code,
 								processId: detail.processId,
 								technologyId: detail.technologyId ?? '',
 								passportId: detail.passportId,
@@ -120,7 +121,7 @@ export function SupportAndDrillingForm({
 				}
 			},
 		);
-	}, [form, row]);
+	}, [form, isDuplicate, row]);
 
 	useEffect(() => {
 		const prevContracts = prevSelectedCodesRef.current;
@@ -172,7 +173,7 @@ export function SupportAndDrillingForm({
 				technologyId: values.technologyId,
 			};
 
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.PRICING.MATERIAL.SUPPORT_AND_DRILLING.UPDATE, {
 					id: row.id,
 					...payload,
@@ -186,7 +187,7 @@ export function SupportAndDrillingForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -269,7 +270,7 @@ export function SupportAndDrillingForm({
 
 			<GroupedSupportAndDrillingCosts contracts={contracts} />
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

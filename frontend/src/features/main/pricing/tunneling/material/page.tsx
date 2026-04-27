@@ -138,6 +138,7 @@ export function MainPricingMaterialPage() {
 						{ key: 'processName', label: 'Công đoạn sản xuất' },
 					]}
 					onCreate={(props) => <MaterialForm {...props} />}
+					onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}
 					onUpdate={(props) => <MaterialForm {...props} />}
 					onDelete={handleDelete}
 					onExport={handleExport}
@@ -156,6 +157,9 @@ export function MainPricingMaterialPage() {
 						{ key: 'technologyName', label: 'Công nghệ' },
 					]}
 					onCreate={(props) => <SupportAndDrillingForm {...props} />}
+					onDuplicate={(props) => (
+						<SupportAndDrillingForm {...props} isDuplicate />
+					)}
 					onUpdate={(props) => <SupportAndDrillingForm {...props} />}
 					onDelete={handleDeleteSupportAndDrilling}
 					onExport={handleExportSupportAndDrilling}

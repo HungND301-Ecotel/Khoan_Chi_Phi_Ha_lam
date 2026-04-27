@@ -106,6 +106,7 @@ export function LongwallPanelMaterialPage() {
 				{ key: 'technologyName', label: 'Công nghệ khai thác' },
 			]}
 			onCreate={(props) => <LongwallMaterialForm {...props} />}
+			onDuplicate={(props) => <LongwallMaterialForm {...props} isDuplicate />}
 			onUpdate={(props) => <LongwallMaterialForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

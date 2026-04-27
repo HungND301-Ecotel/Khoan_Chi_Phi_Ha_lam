@@ -76,6 +76,7 @@ export function MainPricingTrimmingMaterialPage() {
 				{ key: 'processName', label: 'Công đoạn sản xuất' },
 			]}
 			onCreate={(props) => <MaterialForm {...props} />}
+			onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}
 			onUpdate={(props) => <MaterialForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

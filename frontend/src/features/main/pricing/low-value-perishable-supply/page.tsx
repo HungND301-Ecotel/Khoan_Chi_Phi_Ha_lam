@@ -79,6 +79,9 @@ export function LowValuePerishableSupplyPage({
 			onCreate={(props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} />
 			)}
+			onDuplicate={(props) => (
+				<LowValuePerishableSupplyForm {...props} type={type} isDuplicate />
+			)}
 			onUpdate={(props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} />
 			)}

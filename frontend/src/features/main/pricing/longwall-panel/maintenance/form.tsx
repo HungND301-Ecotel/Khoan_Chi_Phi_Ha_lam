@@ -51,7 +51,8 @@ function calculateLongwallRegularRepairCost(
 export function LongwallPanelForm({
 	data,
 	row,
-}: ActionDialogProps<LongwallPanel>) {
+	isDuplicate = false,
+}: ActionDialogProps<LongwallPanel> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -133,7 +134,7 @@ export function LongwallPanelForm({
 	}, [form, row]);
 
 	useEffect(() => {
-		if (!watchedStartMonth || row) return;
+		if (!watchedStartMonth || (row && !isDuplicate)) return;
 
 		const promises = Promise.all([
 			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
@@ -155,7 +156,7 @@ export function LongwallPanelForm({
 			);
 			setParts(partsRes.result.data);
 		});
-	}, [watchedStartMonth, row]);
+	}, [isDuplicate, watchedStartMonth, row]);
 
 	useEffect(() => {
 		if (parts.length === 0 || !Array.isArray(watchedEquipmentIds)) return;
@@ -180,7 +181,7 @@ export function LongwallPanelForm({
 
 			const { costs, startMonth: startMonth, equipmentIds } = processedValues;
 
-			if (row) {
+			if (row && !isDuplicate) {
 				const body = {
 					equipmentId: row.equipmentId,
 					startMonth: startMonth,
@@ -283,7 +284,7 @@ export function LongwallPanelForm({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}
-				disabled={!!row}
+				disabled={!!row && !isDuplicate}
 			/>
 
 			{watchedCosts.length > 0 && (
@@ -292,7 +293,7 @@ export function LongwallPanelForm({
 				</div>
 			)}
 
-			<DataTableEditConfirm isEdit={false} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

@@ -32,7 +32,11 @@ import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
 import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Material, MaterialDetail } from './type';
 
-export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
+export function MaterialForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Material> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -88,7 +92,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 					form.reset({
 						startMonth: row.startMonth.substring(0, 10),
 						endMonth: row.endMonth.substring(0, 10),
-						code: row.code,
+						code: isDuplicate ? '' : row.code,
 						processId: row.processId,
 						passportId: row.passportId,
 						hardnessId: row.hardnessId,
@@ -117,7 +121,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 				}
 			},
 		);
-	}, [form, row]);
+	}, [form, isDuplicate, row]);
 
 	useEffect(() => {
 		const prevContracts = prevSelectedCodesRef.current;
@@ -157,7 +161,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 
 	const handleSubmit = async (values: MaterialFormSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.PRICING.MATERIAL.TRIMMING.UPDATE, {
 					id: row.id,
 					...values,
@@ -168,7 +172,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -259,7 +263,7 @@ export function MaterialForm({ data, row }: ActionDialogProps<Material>) {
 
 			<GroupedMaterialCosts contracts={contracts} />
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

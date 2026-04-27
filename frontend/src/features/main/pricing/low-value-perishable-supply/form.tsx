@@ -27,12 +27,14 @@ import { LowValuePerishableSupplyUnitPrice } from './columns';
 type LowValuePerishableSupplyFormProps =
 	ActionDialogProps<LowValuePerishableSupplyUnitPrice> & {
 		type: LowValuePerishableSupplyType;
+		isDuplicate?: boolean;
 	};
 
 export function LowValuePerishableSupplyForm({
 	data,
 	row,
 	type,
+	isDuplicate = false,
 }: LowValuePerishableSupplyFormProps) {
 	useMeta();
 	const { setOpen } = useDialog();
@@ -86,7 +88,7 @@ export function LowValuePerishableSupplyForm({
 			type,
 		};
 
-		if (row) {
+		if (row && !isDuplicate) {
 			await api.put(
 				type === LowValuePerishableSupplyType.TunnelExcavation
 					? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TUNNELING.UPDATE
@@ -155,7 +157,7 @@ export function LowValuePerishableSupplyForm({
 				placeholder='Nhập đơn giá'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

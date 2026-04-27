@@ -102,6 +102,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <TunnelingForm {...props} />}
+				onDuplicate={(props) => <TunnelingForm {...props} isDuplicate />}
 				onUpdate={(props) => <TunnelingForm {...props} />}
 				onExpand={(props) => <TunnelingExpand {...props} />}
 				onDelete={handleDelete}

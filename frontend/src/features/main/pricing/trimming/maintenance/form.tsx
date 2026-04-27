@@ -31,7 +31,11 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 
-export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
+export function TunnelingForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Trimming> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -113,7 +117,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 	}, [form, row]);
 
 	useEffect(() => {
-		if (!watchedStartMonth || row) return;
+		if (!watchedStartMonth || (row && !isDuplicate)) return;
 
 		const promises = Promise.all([
 			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
@@ -135,7 +139,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 			);
 			setParts(partsRes.result.data);
 		});
-	}, [watchedStartMonth, row]);
+	}, [isDuplicate, watchedStartMonth, row]);
 
 	useEffect(() => {
 		if (parts.length === 0 || !Array.isArray(watchedEquipmentIds)) return;
@@ -164,7 +168,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 				equipmentIds,
 			} = processedValues;
 
-			if (row) {
+			if (row && !isDuplicate) {
 				const body = {
 					equipmentId: row.equipmentId,
 					startMonth: startMonth,
@@ -267,7 +271,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}
-				disabled={!!row}
+				disabled={!!row && !isDuplicate}
 			/>
 
 			{watchedCosts.length > 0 && (
@@ -276,7 +280,7 @@ export function TunnelingForm({ data, row }: ActionDialogProps<Trimming>) {
 				</div>
 			)}
 
-			<DataTableEditConfirm isEdit={false} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
