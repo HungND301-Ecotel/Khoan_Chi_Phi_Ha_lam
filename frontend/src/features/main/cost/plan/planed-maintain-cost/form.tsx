@@ -32,6 +32,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 
+function isK6Adjustment(adjustment: AdjustmentDetail) {
+	return (
+		adjustment.type === AdjustmentFactorType.K6 || adjustment.code === 'K6'
+	);
+}
+
 function formatAdjustmentOptionLabel(
 	description: string,
 	value?: number | null,
@@ -73,6 +79,11 @@ export function PlanMaintainCostForm({
 
 	const watchedMaintainUnitPriceIds = form.watch('maintainUnitPriceIds');
 	const watchedCosts = form.watch('costs');
+	const maintainAdjustmentCount =
+		plan?.processGroupType === ProcessGroupType.DL ||
+		plan?.processGroupType === ProcessGroupType.XL
+			? 7
+			: 8;
 	const filteredTunnelings = useMemo(() => {
 		const currentProcessGroupType = plan?.processGroupType as
 			| ProcessGroupType
@@ -87,7 +98,7 @@ export function PlanMaintainCostForm({
 		);
 	}, [tunnelings, plan?.processGroupType]);
 	const selectableAdjustments = useMemo(
-		() => adjustments.filter((adj) => adj.type !== AdjustmentFactorType.K6),
+		() => adjustments.filter((adj) => !isK6Adjustment(adj)),
 		[adjustments],
 	);
 
@@ -104,7 +115,7 @@ export function PlanMaintainCostForm({
 			setAdjustments(
 				adjustments.result
 					.sort((a, b) => a.code.localeCompare(b.code))
-					.slice(0, 8),
+					.slice(0, maintainAdjustmentCount),
 			);
 
 			if (!id) return;
@@ -128,8 +139,8 @@ export function PlanMaintainCostForm({
 							}) => {
 								const sortedAdjustments = adjustments.result
 									.sort((a, b) => a.code.localeCompare(b.code))
-									.slice(0, 8)
-									.filter((adj) => adj.type !== AdjustmentFactorType.K6); // Exclude K6
+									.slice(0, maintainAdjustmentCount)
+									.filter((adj) => !isK6Adjustment(adj)); // Exclude K6
 
 								return {
 									maintainUnitPriceId,
@@ -160,7 +171,7 @@ export function PlanMaintainCostForm({
 					setIsInit(false);
 				});
 		});
-	}, [id, form, plan, output]);
+	}, [id, form, plan, output, maintainAdjustmentCount]);
 
 	useEffect(() => {
 		if (isInit) return;
@@ -368,7 +379,7 @@ export function PlanMaintainCostForm({
 								{(() => {
 									let descriptionIndex = 0;
 									return adjustments.map((adjustment) => {
-										if (adjustment.type === AdjustmentFactorType.K6) {
+										if (isK6Adjustment(adjustment)) {
 											return (
 												<div
 													className='w-full min-w-64 flex-1'
@@ -451,7 +462,7 @@ export function PlanMaintainCostForm({
 												total *= watchedK6Value || 1;
 
 												const nonK6Adjustments = adjustments.filter(
-													(adj) => adj.type !== AdjustmentFactorType.K6,
+													(adj) => !isK6Adjustment(adj),
 												);
 
 												nonK6Adjustments.forEach(
