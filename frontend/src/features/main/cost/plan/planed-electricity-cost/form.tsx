@@ -78,7 +78,9 @@ export function PlanElectricityCostForm({
 		const electricityEndpoint =
 			plan?.processGroupType === ProcessGroupType.LC
 				? API.PRICING.ELECTRICITY.LONGWALL_PANEL.LIST
-				: API.PRICING.ELECTRICITY.TUNNELING.LIST;
+				: plan?.processGroupType === ProcessGroupType.XL
+					? API.PRICING.ELECTRICITY.TRIMMING.LIST
+					: API.PRICING.ELECTRICITY.TUNNELING.LIST;
 
 		const promises = Promise.all([
 			api.pagging<Electricity>(electricityEndpoint),
