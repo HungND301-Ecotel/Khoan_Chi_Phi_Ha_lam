@@ -60,8 +60,7 @@ interface LongwallMaterialDetail {
 	otherMaterialValue?: number;
 }
 
-interface LongwallMaterialFormProps
-	extends ActionDialogProps<LongwallMaterial> {
+interface LongwallMaterialFormProps extends ActionDialogProps<LongwallMaterial> {
 	isDuplicate?: boolean;
 }
 

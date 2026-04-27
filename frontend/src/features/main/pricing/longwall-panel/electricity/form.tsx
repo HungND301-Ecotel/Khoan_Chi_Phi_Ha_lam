@@ -36,7 +36,7 @@ export function ElectricityForm({
 	data,
 	row,
 	onSuccess,
- 	isDuplicate = false,
+	isDuplicate = false,
 }: ActionDialogProps<LongwallElectricity> & {
 	onSuccess?: () => Promise<void> | void;
 	isDuplicate?: boolean;

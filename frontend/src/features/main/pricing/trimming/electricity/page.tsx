@@ -30,7 +30,9 @@ export function MainPricingTrimmingElectricityPage() {
 
 	const handleExport = async () => {
 		try {
-			const filename = await api.export(API.PRICING.ELECTRICITY.TRIMMING.EXPORT);
+			const filename = await api.export(
+				API.PRICING.ELECTRICITY.TRIMMING.EXPORT,
+			);
 			popup.success(`Đã xuất file ${filename}`);
 		} catch (error) {
 			popup.error(error);
@@ -42,7 +44,10 @@ export function MainPricingTrimmingElectricityPage() {
 		data?: ActionDialogProps<Electricity>['data'],
 	) => {
 		try {
-			const result = await api.import(API.PRICING.ELECTRICITY.TRIMMING.IMPORT, file);
+			const result = await api.import(
+				API.PRICING.ELECTRICITY.TRIMMING.IMPORT,
+				file,
+			);
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {
