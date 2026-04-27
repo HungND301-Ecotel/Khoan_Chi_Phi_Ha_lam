@@ -42,10 +42,12 @@ export function PlanedMaintainCost({
 		useState<PlanedMaintainCostDetail>();
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
+	const [plannedMaintainPrice, setPlannedMaintainPrice] = useState<number>(0);
 
 	useEffect(() => {
 		if (!id) {
 			setPlanedMaintainCost(undefined);
+			setPlannedMaintainPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -65,6 +67,7 @@ export function PlanedMaintainCost({
 						? res.result.trimmingCoefficient || 1
 						: 1;
 				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
+				setPlannedMaintainPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
 	}, [id, reloadKey, output?.productionMeters, plan?.processGroupType]);
@@ -74,6 +77,12 @@ export function PlanedMaintainCost({
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
 					<ItemTitle>Doanh thu SCTX kế hoạch ban đầu</ItemTitle>
+				</ItemContent>
+
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(plannedMaintainPrice)}
+					</ItemTitle>
 				</ItemContent>
 
 				<ItemContent className='me-7.5 w-24'>

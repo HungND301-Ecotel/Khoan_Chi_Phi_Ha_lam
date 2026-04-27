@@ -39,12 +39,15 @@ export function PlanedElectricityCost({
 	const [planedElectricityCost, setPlanedElectricityCost] =
 		useState<PlanedElectricityCostDetail>();
 	const [total, setTotal] = useState<number>(0);
+	const [plannedElectricityPrice, setPlannedElectricityPrice] =
+		useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setPlanedElectricityCost(undefined);
 			setTotal(0);
+			setPlannedElectricityPrice(0);
 			setLoading(false);
 			return;
 		}
@@ -62,6 +65,7 @@ export function PlanedElectricityCost({
 						? res.result.trimmingCoefficient || 1
 						: 1;
 				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
+				setPlannedElectricityPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
 	}, [id, reloadKey, output?.productionMeters, plan?.processGroupType]);
@@ -72,6 +76,13 @@ export function PlanedElectricityCost({
 				<ItemContent>
 					<ItemTitle>Doanh thu điện năng kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
+
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(plannedElectricityPrice)}
+					</ItemTitle>
+				</ItemContent>
+
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
 						{loading ? <Spinner /> : formatNumber(Math.round(total ?? 0))}

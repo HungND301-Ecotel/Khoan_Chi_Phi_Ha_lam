@@ -48,12 +48,14 @@ export function PlanedMaterialCost({
 	reloadKey,
 }: ProductCostExpandProps) {
 	const [summary, setSummary] = useState<PlanedMaterialCostSummary[]>([]);
+	const [plannedMaterialPrice, setPlannedMaterialPrice] = useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setSummary([]);
+			setPlannedMaterialPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -74,6 +76,7 @@ export function PlanedMaterialCost({
 					]);
 
 				const { result } = detailRes;
+				setPlannedMaterialPrice(result.totalPlannedMaterialPrice || 0);
 				setTotal(
 					result.totalPlannedMaterialPrice * (output?.productionMeters || 1),
 				);
@@ -191,6 +194,11 @@ export function PlanedMaterialCost({
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
 					<ItemTitle>Doanh thu vật liệu kế hoạch ban đầu</ItemTitle>
+				</ItemContent>
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(plannedMaterialPrice)}
+					</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
