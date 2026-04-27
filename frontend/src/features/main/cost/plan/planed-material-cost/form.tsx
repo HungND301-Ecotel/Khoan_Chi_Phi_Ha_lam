@@ -142,6 +142,9 @@ export function PlanMaterialCostForm({
 		if (groupType === ProcessGroupType.LC) {
 			return material.type === 2;
 		}
+		if (groupType === ProcessGroupType.XL) {
+			return material.type === 4;
+		}
 		return true;
 	});
 

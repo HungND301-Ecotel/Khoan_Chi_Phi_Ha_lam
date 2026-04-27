@@ -95,7 +95,8 @@ public enum MaterialUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò
     Longwall = 2,          // Lò chợ
-    TunnelSupportAndDrilling = 3
+    TunnelSupportAndDrilling = 3,
+    Trimming = 4
 }
 
 
