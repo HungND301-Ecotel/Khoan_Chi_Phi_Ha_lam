@@ -411,7 +411,8 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
 
         var baseCost = factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
         var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
-        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
+        return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+            baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient));
     }
 
     #endregion

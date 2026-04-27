@@ -275,8 +275,9 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
         // Calculate Planned Electricity Cost
         var plannedElectricityCost = output.PlannedElectricityCostId.HasValue &&
             plannedElectricityFactors.TryGetValue(output.PlannedElectricityCostId.Value, out var elecFactors)
-            ? elecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
-                * NormalizeTrimmingCoefficient(elecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
+            ? Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+                elecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                * NormalizeTrimmingCoefficient(elecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1))
             : 0;
 
         // Calculate Total Price

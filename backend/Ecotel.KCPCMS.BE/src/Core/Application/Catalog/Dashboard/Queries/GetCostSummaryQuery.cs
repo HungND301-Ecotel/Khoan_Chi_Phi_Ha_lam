@@ -447,7 +447,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+            factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor));
     }
 
     private async Task<Dictionary<int, double>> LoadCustomCostsByMonth(
