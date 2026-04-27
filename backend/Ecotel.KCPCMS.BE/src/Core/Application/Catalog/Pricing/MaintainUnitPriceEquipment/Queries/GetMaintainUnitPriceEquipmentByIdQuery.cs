@@ -44,7 +44,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 MaterialRatePerMetres = x.GetMaterialRate()
             }).ToList();
 
-        double totalPrice = costs?.Sum(c => c.MaterialCostPerMetres) ?? 0;
+        double totalPrice = maintainUnitPrice.GetRoundedMaintainTotalPrice();
 
         return new MaintainUnitPriceDto
         {

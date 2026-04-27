@@ -53,7 +53,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
                 .Select(epg => epg.ProcessGroup.Type)
                 .Distinct()
                 .ToList(),
-            TotalPrice = m.GetMaintainTotalPrice(),
+            TotalPrice = m.GetRoundedMaintainTotalPrice(),
             StartMonth = m.StartMonth,
             OtherMaterialValue = m.OtherMaterialValue,
             EndMonth = m.EndMonth,

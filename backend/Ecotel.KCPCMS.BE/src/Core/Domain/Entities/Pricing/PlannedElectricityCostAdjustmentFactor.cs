@@ -37,9 +37,9 @@ public class PlannedElectricityCostAdjustmentFactor : AuditableEntity<Guid>
                 return CachedAdjustmentFactorTotal.Value;
             }
 
-            CachedAdjustmentFactorTotal = (double)Quantity *
+            CachedAdjustmentFactorTotal = PlannedElectricityCost.RoundPlannedTotalPrice((double)Quantity *
                      ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres() *
-             _plannedElectricityCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue);
+             _plannedElectricityCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue));
             return CachedAdjustmentFactorTotal.Value;
         }
 

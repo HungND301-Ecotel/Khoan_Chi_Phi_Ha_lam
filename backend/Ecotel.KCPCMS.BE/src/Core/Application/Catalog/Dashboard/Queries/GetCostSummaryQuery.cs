@@ -435,7 +435,12 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.AdjustmentFactor);
+        return Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+            factors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+                f.Quantity *
+                Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
+                    f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
+                f.AdjustmentFactor)));
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -448,7 +453,8 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         }
 
         return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-            factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor));
+            factors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+                f.Quantity * f.CostPerMetre * f.AdjustmentFactor)));
     }
 
     private async Task<Dictionary<int, double>> LoadCustomCostsByMonth(

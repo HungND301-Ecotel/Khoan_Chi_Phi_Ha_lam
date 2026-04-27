@@ -285,15 +285,22 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             // Planned Maintain Cost
             var plannedMaintainCost = plannedOutput.PlannedMaintainCostId.HasValue &&
                 plannedMaintainFactors.TryGetValue(plannedOutput.PlannedMaintainCostId.Value, out var pMaintainFactors)
-                ? pMaintainFactors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor)
-                    * NormalizeTrimmingCoefficient(pMaintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
+                ? Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+                    pMaintainFactors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+                        f.Quantity *
+                        Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
+                            f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
+                        f.K6AdjustmentFactorValue *
+                        f.AdjustmentFactor)) *
+                    NormalizeTrimmingCoefficient(pMaintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1))
                 : 0;
 
             // Planned Electricity Cost
             var plannedElectricityCost = plannedOutput.PlannedElectricityCostId.HasValue &&
                 plannedElectricityFactors.TryGetValue(plannedOutput.PlannedElectricityCostId.Value, out var pElecFactors)
                 ? Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-                    pElecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                    pElecFactors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+                        f.Quantity * f.CostPerMetre * f.AdjustmentFactor))
                     * NormalizeTrimmingCoefficient(pElecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1))
                 : 0;
 

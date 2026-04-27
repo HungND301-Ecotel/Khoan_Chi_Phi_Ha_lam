@@ -22,11 +22,16 @@ public class PlannedMaintainCost : AuditableEntity<Guid>
     {
         if (CachedPlannedMaintainTotal.HasValue)
         {
-            return CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient();
+            return RoundPlannedTotalPrice(CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient());
         }
 
         CachedPlannedMaintainTotal = _plannedMaintainCostAdjustmentFactors.Sum(p => p.GetCurrentMaintainCost());
-        return CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient();
+        return RoundPlannedTotalPrice(CachedPlannedMaintainTotal.Value * GetNormalizedTrimmingCoefficient());
+    }
+
+    public static double RoundPlannedTotalPrice(double totalPrice)
+    {
+        return Math.Round(totalPrice, 0, MidpointRounding.AwayFromZero);
     }
 
     public static PlannedMaintainCost Create(

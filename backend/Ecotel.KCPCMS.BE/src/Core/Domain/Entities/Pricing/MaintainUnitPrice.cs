@@ -112,4 +112,14 @@ public class MaintainUnitPrice : AuditableEntity<Guid>, IAggregateRoot
         CachedMaintainUnitPriceTotal = result;
         return CachedMaintainUnitPriceTotal.Value;
     }
+
+    public double GetRoundedMaintainTotalPrice()
+    {
+        return RoundMaintainUnitPrice(GetMaintainTotalPrice());
+    }
+
+    public static double RoundMaintainUnitPrice(double maintainUnitPrice)
+    {
+        return Math.Round(maintainUnitPrice, 0, MidpointRounding.AwayFromZero);
+    }
 }

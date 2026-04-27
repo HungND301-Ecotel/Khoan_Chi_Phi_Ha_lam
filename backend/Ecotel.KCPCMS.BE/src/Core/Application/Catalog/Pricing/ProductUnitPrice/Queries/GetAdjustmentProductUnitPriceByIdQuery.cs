@@ -395,9 +395,15 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        var baseCost = factors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+            f.Quantity *
+            Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
+                f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
+            f.K6AdjustmentFactorValue *
+            f.AdjustmentFactor));
         var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
-        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
+        return Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+            baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient));
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -409,7 +415,8 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        var baseCost = factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
+            f.Quantity * f.CostPerMetre * f.AdjustmentFactor));
         var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
         return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
             baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient));
