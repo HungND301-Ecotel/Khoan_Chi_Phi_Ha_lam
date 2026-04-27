@@ -60,9 +60,10 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                             OriginalQuantity = 1,
                             CoefficientValue = coefficientValue,
                             FinalQuantity = coefficientValue,
-                            MaterialCost = originalAmount,
-                            MaterialUnitPriceCost = originalAmount,
-                            TotalPrice = originalAmount * coefficientValue,
+                            MaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount),
+                            MaterialUnitPriceCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount),
+                            TotalPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
+                                Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount) * coefficientValue),
                 }]
             });
         }
@@ -113,7 +114,8 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                 .FirstOrDefault();
         }
 
-        var materialCost = SumMaterialUnitPriceCost(materialUnitPrice.MaterialUnitPrice) + materialUnitPrice.MaterialUnitPrice.OtherMaterialvalue;
+        var materialCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(
+            SumMaterialUnitPriceCost(materialUnitPrice.MaterialUnitPrice) + materialUnitPrice.MaterialUnitPrice.OtherMaterialvalue);
         if (targetHardnessId.HasValue && materialUnitPrice.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
             var targetMaterial = ResolveTargetTunnelMaterialUnitPrice(
@@ -123,7 +125,8 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
 
             if (targetMaterial != null)
             {
-                materialCost = SumMaterialUnitPriceCost(targetMaterial) + targetMaterial.OtherMaterialvalue;
+                materialCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(
+                    SumMaterialUnitPriceCost(targetMaterial) + targetMaterial.OtherMaterialvalue);
             }
         }
 
@@ -138,7 +141,8 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                 $"{coefficientValue.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
         }
 
-        var slideUnitPriceCost = materialUnitPrice.SlideUnitPriceAssignmentCode?.Amount ?? 0;
+        var slideUnitPriceCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(
+            materialUnitPrice.SlideUnitPriceAssignmentCode?.Amount ?? 0);
 
         var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
             new List<Domain.Entities.Pricing.PlannedMaterialCost> { materialUnitPrice },
@@ -167,7 +171,7 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             SlideUnitPriceCost = slideUnitPriceCost,
             LowValuePerishableSupplyUnitPriceCost = calculation.LowValuePerishableSupplyUnitPriceCost,
             NormFactorValue = normFactorValue,
-            TotalPlannedMaterialPrice = calculation.TotalPrice
+            TotalPlannedMaterialPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(calculation.TotalPrice)
         };
         return result;
     }

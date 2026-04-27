@@ -156,7 +156,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         }
 
         // SlideUnitPriceCost
-        var slideUnitPriceCost = plannedMaterialCost.SlideUnitPriceAssignmentCode?.Amount ?? 0;
+        var slideUnitPriceCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(
+            plannedMaterialCost.SlideUnitPriceAssignmentCode?.Amount ?? 0);
 
         var mCost = new List<AdjustmentMaterialCostAssignmentCode>();
 
@@ -178,9 +179,10 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
                     OriginalQuantity = 1,
                     CoefficientValue = coefficientValue,
                     FinalQuantity = coefficientValue,
-                    MaterialCost = originalAmount,
-                    MaterialUnitPriceCost = originalAmount,
-                    TotalPrice = originalAmount * coefficientValue,
+                    MaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount),
+                    MaterialUnitPriceCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount),
+                    TotalPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
+                        Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(originalAmount) * coefficientValue),
                 }]
             });
         }
@@ -203,7 +205,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             .ToListAsync(cancellationToken);
         var akDiff = (decimal)(adjustmentOutputInfo.ActualAshContent - plannedOutput.PlanAshContent);
         var akRate = ResolveAkRate(akConfigs, akDiff);
-        var adjustedPlannedMaterialPrice = basePlannedMaterialPrice * (1 + (double)akRate);
+        var adjustedPlannedMaterialPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
+            basePlannedMaterialPrice * (1 + (double)akRate));
 
         var result = new AdjustmentMaterialCostDetailDto
         {
@@ -216,7 +219,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             AdjustmentMaterialCostAssignmentCodes = mCost,
             StoneClampRatioReferenceId = plannedMaterialCost.StoneClampRatioReferenceId,
             TotalPlannedMaterialPrice = adjustedPlannedMaterialPrice,
-            MaterialCost = materialCost,
+            MaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(materialCost),
             SlideUnitPriceCost = slideUnitPriceCost,
             LowValuePerishableSupplyUnitPriceCost = baseCalculation.LowValuePerishableSupplyUnitPriceCost,
             AkRate = (double)akRate,
