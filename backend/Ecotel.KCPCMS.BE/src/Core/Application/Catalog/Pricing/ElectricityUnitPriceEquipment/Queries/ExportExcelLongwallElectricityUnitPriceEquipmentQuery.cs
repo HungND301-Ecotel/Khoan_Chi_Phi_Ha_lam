@@ -54,7 +54,7 @@ public class ExportExcelLongwallElectricityUnitPriceEquipmentQueryHandler(IExcel
             AverageMonthlyTunnelProduction = e.AverageMonthlyTunnelProduction,
             StartMonth = e.StartMonth.ToString("MM/yyyy"),
             EndMonth = e.EndMonth.ToString("MM/yyyy")
-        });
+        }).OrderBy(m => m.EquipmentCode);
 
         return excelService.ExportToExcel(
             data: dtoList,

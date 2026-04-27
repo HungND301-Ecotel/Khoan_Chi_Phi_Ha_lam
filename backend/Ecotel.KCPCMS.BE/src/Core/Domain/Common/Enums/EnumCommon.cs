@@ -103,7 +103,7 @@ public enum ElectricityUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò
     Longwall = 2,           // Lò chợ
-    Trimming = 3           // Lò chợ
+    Trimming = 3           // Xén lò
 }
 
 public enum MaterialsIncludedInContractRevenue

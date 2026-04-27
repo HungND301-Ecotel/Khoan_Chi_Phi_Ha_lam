@@ -52,7 +52,7 @@ public class ExportExcelTunnelElectricityUnitPriceEquipmentQueryHandler(IExcelSe
             AverageMonthlyTunnelProduction = e.AverageMonthlyTunnelProduction,
             StartMonth = e.StartMonth.ToString("MM/yyyy"),
             EndMonth = e.EndMonth.ToString("MM/yyyy")
-        });
+        }).OrderBy(e => e.EquipmentCode);
 
         return excelService.ExportToExcel(
             data: dtoList,

@@ -37,22 +37,48 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<TunnelElectricityUnitPriceEquipmentExcelDto>(stream) ?? [];
 
-        await CollectReferenceErrors(dtos, importErrors);
+        await CollectReferenceErrors(dtos, importErrors, request.Type);
 
         // Map data to Entity Model
+        var processGroupType = ResolveProcessGroupType(request.Type);
         var equipments = await _equipmentRepository.GetAllAsync(
-            include: e => e.Include(e => e.Code),
+            include: e => e
+                .Include(e => e.Code)
+                .Include(e => e.EquipmentProcessGroups)
+                    .ThenInclude(epg => epg.ProcessGroup),
             disableTracking: true);
-        var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
+        var equipmentCodeGroups = equipments
+            .Where(e => e.Code != null
+                && !string.IsNullOrWhiteSpace(e.Code!.Value)
+                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == processGroupType))
+            .GroupBy(e => e.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var duplicateGroup in equipmentCodeGroups.Where(g => g.Count() > 1))
+        {
+            importErrors.Add($"Mã thiết bị '{duplicateGroup.Key}' đang bị trùng trong danh mục thiết bị.");
+        }
+
+        ThrowIfImportErrors(importErrors);
+
+        var equipmentIdMap = equipmentCodeGroups.ToDictionary(
+            g => g.Key,
+            g => g
+                .OrderByDescending(e => e.LastModifiedOn ?? e.CreatedOn)
+                .ThenByDescending(e => e.CreatedOn)
+                .First()
+                .Id,
+            StringComparer.OrdinalIgnoreCase);
 
         var excelEntities = new List<TunnelElectricityUnitPriceEquipment>();
         foreach (var item in dtos.Select((dto, index) => new { dto, rowNumber = index + 2 }))
         {
             try
             {
-                if (!equipmentIdMap.TryGetValue(item.dto.EquipmentCode, out var equipmentId))
+                var equipmentCode = item.dto.EquipmentCode?.Trim();
+                if (string.IsNullOrWhiteSpace(equipmentCode) || !equipmentIdMap.TryGetValue(equipmentCode, out var equipmentId))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{item.dto.EquipmentCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
                     continue;
                 }
 
@@ -152,12 +178,17 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         }
     }
 
-    private async Task CollectReferenceErrors(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors)
+    private async Task CollectReferenceErrors(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors, ElectricityUnitPriceType type)
     {
+        var processGroupType = ResolveProcessGroupType(type);
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
-                include: e => e.Include(e => e.Code),
+                include: e => e
+                    .Include(e => e.Code)
+                    .Include(e => e.EquipmentProcessGroups)
+                        .ThenInclude(epg => epg.ProcessGroup),
                 disableTracking: true))
-            .Where(e => e.Code != null)
+            .Where(e => e.Code != null
+                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == processGroupType))
             .Select(e => e.Code!.Value.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -209,5 +240,16 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         }
 
         throw new ExcelImportException(errors);
+    }
+
+    private static ProcessGroupType ResolveProcessGroupType(ElectricityUnitPriceType type)
+    {
+        return type switch
+        {
+            ElectricityUnitPriceType.TunnelExcavation => ProcessGroupType.DL,
+            ElectricityUnitPriceType.Longwall => ProcessGroupType.LC,
+            ElectricityUnitPriceType.Trimming => ProcessGroupType.XL,
+            _ => throw new BadRequestException($"Loại đơn giá điện không hợp lệ: {type}")
+        };
     }
 }
