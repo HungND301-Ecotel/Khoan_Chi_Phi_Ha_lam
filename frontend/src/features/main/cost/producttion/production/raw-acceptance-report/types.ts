@@ -4,7 +4,7 @@ export type RawAcceptanceReportItem = {
 	materialId: string | null;
 	partId?: string | null;
 	partType?: number | null;
-	maintainUnitPriceEquipmentId?: string | null;
+	usageTime?: number;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
@@ -48,7 +48,7 @@ export type AcceptanceReportItem = {
 	materialId: string | null;
 	partId?: string | null;
 	partType?: number | null;
-	maintainUnitPriceEquipmentId?: string | null;
+	usageTime?: number;
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;

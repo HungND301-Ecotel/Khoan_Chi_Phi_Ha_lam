@@ -2,9 +2,6 @@ using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
-using Domain.Common.Enums;
-using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -18,8 +15,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 {
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
-    private readonly IWriteRepository<MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<MaintainUnitPriceEquipment>();
 
     public async Task<UpdateAcceptanceReportResponseDto> Handle(UpdateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -53,11 +48,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         var processGroupIdsInPeriod = productionOutput.ProductionOutputProcessGroups
             .Select(x => x.ProcessGroupId)
             .ToHashSet();
-
-        var allParts = await _partRepository.GetAllAsync(disableTracking: true);
-        var allMaintainUnitPriceEquipments = await _maintainUnitPriceEquipmentRepository.GetAllAsync(
-            include: q => q.Include(m => m.MaintainUnitPrice),
-            disableTracking: true);
 
         // Get existing items for comparison (include QuotaBasedMaterialQuantities for EF tracking)
         var existingItems = await _acceptanceReportItemRepository.GetAllAsync(
@@ -105,31 +95,11 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.AdditionalCostProductionOrderId,
                         updateItem.AdditionalCostEquipmentId);
 
-                    Guid? resolvedMaintainUnitPriceEquipmentId = existingItem.MaintainUnitPriceEquipmentId;
-
-                    if (existingItem.PartId.HasValue)
-                    {
-                        var part = allParts.FirstOrDefault(p => p.Id == existingItem.PartId.Value);
-                        if (part?.Type == PartType.Part)
-                        {
-                            resolvedMaintainUnitPriceEquipmentId = ResolveMaintainUnitPriceEquipmentId(
-                                existingItem.PartId.Value,
-                                categoryReference.EquipmentId,
-                                productionOutput.StartMonth,
-                                productionOutput.EndMonth,
-                                allMaintainUnitPriceEquipments);
-                        }
-                        else
-                        {
-                            resolvedMaintainUnitPriceEquipmentId = null;
-                        }
-                    }
-
                     existingItem.Update(
                         updateItem.ProcessGroupId,
                         existingItem.MaterialId,
                         existingItem.PartId,
-                        resolvedMaintainUnitPriceEquipmentId,
+                        updateItem.UsageTime,
                         updateItem.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -178,29 +148,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             await unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
-    }
-
-    private static Guid? ResolveMaintainUnitPriceEquipmentId(
-        Guid partId,
-        Guid? equipmentId,
-        DateOnly startMonth,
-        DateOnly endMonth,
-        IEnumerable<MaintainUnitPriceEquipment> maintainItems)
-    {
-        if (!equipmentId.HasValue)
-        {
-            return null;
-        }
-
-        return maintainItems
-            .Where(m => m.PartId == partId
-                        && m.MaintainUnitPrice != null
-                        && m.MaintainUnitPrice.EquipmentId == equipmentId.Value
-                        && m.MaintainUnitPrice.StartMonth <= startMonth
-                        && m.MaintainUnitPrice.EndMonth >= endMonth)
-            .OrderByDescending(m => m.MaintainUnitPrice!.StartMonth)
-            .Select(m => (Guid?)m.Id)
-            .FirstOrDefault();
     }
 }
 

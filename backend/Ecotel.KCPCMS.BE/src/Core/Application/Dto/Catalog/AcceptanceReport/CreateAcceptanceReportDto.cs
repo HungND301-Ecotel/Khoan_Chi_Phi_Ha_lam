@@ -8,7 +8,7 @@ public record CreateAcceptanceReportItemDto
 
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }
-    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+    public required double UsageTime { get; init; }
 
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }

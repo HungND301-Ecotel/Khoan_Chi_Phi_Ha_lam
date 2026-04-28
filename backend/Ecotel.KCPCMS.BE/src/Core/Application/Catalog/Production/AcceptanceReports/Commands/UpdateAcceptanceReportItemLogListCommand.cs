@@ -83,10 +83,25 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                     continue;
                 }
 
+                var requestedUsageTime = updateModel.UsageTime;
+                var isNewItemInCurrentPeriod = log.AcceptanceReportId == currentAcceptanceReportId
+                    && (log.IssuedQuantity > 0 || log.TotalAmount > 0 || log.PendingValueStartPeriod == 0);
+
+                if (!isNewItemInCurrentPeriod && Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
+                {
+                    throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
+                }
+
                 // Check: Log này có thuộc kỳ hiện tại không?
                 if (log.AcceptanceReportId == currentAcceptanceReportId)
                 {
                     // Case 1: Log thuộc kỳ hiện tại → Update trực tiếp
+                    if (isNewItemInCurrentPeriod)
+                    {
+                        log.AcceptanceReportItem.UpdateUsageTime(requestedUsageTime);
+                        log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
+                    }
+
                     log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(log);
 
@@ -118,7 +133,12 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                     if (existingOverrideLog != null)
                     {
                         // Đã có log override → Update log override đó
-                        log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
+                        if (Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
+                        {
+                            throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
+                        }
+
+                        existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                         _logRepository.Update(existingOverrideLog);
 
                         await RecalculateFutureLogs(
@@ -176,7 +196,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                             pendingValueStartPeriod: pendingValueStart,
                             issuedQuantity: 0,
                             unitPrice: 0,
-                            usageTime: log.UsageTime,
+                            usageTime: log.AcceptanceReportItem.UsageTime,
                             allocatedTime: totalAllocatedTime,
                             actualOutput: actualOutput,
                             plannedOutput: plannedOutput,

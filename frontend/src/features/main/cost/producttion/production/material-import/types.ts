@@ -11,7 +11,6 @@ export type AcceptanceReportItemDto = {
 	materialId?: string | null;
 	partId?: string | null;
 	partType?: number | null;
-	maintainUnitPriceEquipmentId?: string | null;
 	materialCode: string;
 	unitOfMeasureName: string;
 	type: number;
@@ -81,7 +80,7 @@ export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
 	materialId?: string | null;
 	partId?: string | null;
-	maintainUnitPriceEquipmentId?: string | null;
+	usageTime: number;
 	type: number;
 	itemType: number;
 	categoryProductionOrderId: string | null;

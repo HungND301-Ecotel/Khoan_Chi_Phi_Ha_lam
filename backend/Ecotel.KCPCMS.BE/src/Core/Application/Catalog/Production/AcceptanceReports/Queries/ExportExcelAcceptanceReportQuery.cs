@@ -26,11 +26,8 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
                     .ThenInclude(i => i.Material)
                     .ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                    .ThenInclude(i => i.Part)
                     .ThenInclude(p => p.Code)
-                      .Include(a => a.AcceptanceReportItems)
-                          .ThenInclude(i => i.Part)
-                          .ThenInclude(p => p.Code)
                  .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(a => a.IssuedDetails)
                  .Include(a => a.AcceptanceReportItems)
@@ -62,7 +59,6 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
             Id = item.Id,
             MaterialCode = item.Material?.Code?.Value
                 ?? item.Part?.Code?.Value
-                ?? item?.MaintainUnitPriceEquipment?.Part?.Code?.Value
                 ?? "",
             IssuedQuantity = item.IssuedQuantity,
             ShippedQuantity = item.ShippedQuantity

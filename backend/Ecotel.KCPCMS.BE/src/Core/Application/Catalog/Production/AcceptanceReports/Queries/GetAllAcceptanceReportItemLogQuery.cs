@@ -50,10 +50,10 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
                 .Include(l => l.AcceptanceReportItem)
-                        .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                    .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.Code)
                 .Include(l => l.AcceptanceReportItem)
-                        .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                    .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.UnitOfMeasure),
             disableTracking: true);
 
@@ -66,10 +66,10 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
                 .Include(l => l.AcceptanceReportItem)
-                        .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                    .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.Code)
                 .Include(l => l.AcceptanceReportItem)
-                        .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                    .ThenInclude(m => m.Part)
                             .ThenInclude(p => p.UnitOfMeasure),
             disableTracking: true);
 
@@ -88,7 +88,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
         foreach (var log in th1Logs)
         {
             var item = log.AcceptanceReportItem;
-            var part = item?.MaintainUnitPriceEquipment?.Part;
+            var part = item?.Part;
             if (part == null)
             {
                 continue;
@@ -152,10 +152,10 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                         .ThenInclude(i => i.ProcessGroup)
                             .ThenInclude(pg => pg.Code)
                     .Include(l => l.AcceptanceReportItem)
-                            .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                            .ThenInclude(m => m.Part)
                                 .ThenInclude(p => p.Code)
                     .Include(l => l.AcceptanceReportItem)
-                            .ThenInclude(m => m.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
+                            .ThenInclude(m => m.Part)
                                 .ThenInclude(p => p.UnitOfMeasure),
                 disableTracking: true);
 
@@ -167,7 +167,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             var totalAllocatedTime = group.Sum(l => l.AllocationRatio);
 
             var item = latestLog.AcceptanceReportItem;
-            var part = item?.MaintainUnitPriceEquipment?.Part;
+            var part = item?.Part;
             if (part == null)
             {
                 continue;

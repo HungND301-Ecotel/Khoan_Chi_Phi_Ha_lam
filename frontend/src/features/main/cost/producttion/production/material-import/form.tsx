@@ -14,10 +14,8 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { PlusCircleIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import { MaintainUnitPriceCreateDialog } from './maintain-unit-price-create-dialog';
 import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
@@ -62,12 +60,6 @@ type ProductionOrderOption = {
 	label: string;
 };
 
-type EquipmentOption = {
-	id: string;
-	code: string;
-	name: string;
-};
-
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -88,7 +80,6 @@ type MaterialImportFormProps = {
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
-	partEquipmentsByPartId: Record<string, EquipmentOption[]>;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -282,7 +273,6 @@ export function MaterialImportForm({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
-	partEquipmentsByPartId,
 }: MaterialImportFormProps) {
 	const form = useFormContext<MaterialsForm>();
 	const { fields, remove } = useFieldArray({
@@ -423,7 +413,6 @@ export function MaterialImportForm({
 									orderOrEquipmentOptionsByItemId={
 										orderOrEquipmentOptionsByItemId
 									}
-									partEquipmentsByPartId={partEquipmentsByPartId}
 									onRemove={() => remove(index)}
 								/>
 							))}
@@ -573,20 +562,16 @@ function MaterialImportRow({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
-	partEquipmentsByPartId,
 }: {
 	index: number;
 	displayIndex?: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
-	partEquipmentsByPartId: Record<string, EquipmentOption[]>;
 	onRemove: () => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
 	const basename = `materials.${index}` as const;
-	const [isCreateMaintainDialogOpen, setIsCreateMaintainDialogOpen] =
-		useState(false);
 
 	// ── Watch helpers (typed via RowPath) ────────────────────────────────────
 	const w = <K extends keyof MaterialRowValues>(key: K) =>
@@ -625,8 +610,6 @@ function MaterialImportRow({
 	const materialTypeValue = w('type');
 	const itemTypeValue = w('itemType');
 	const materialOrPartId = w('materialOrPartId');
-	const partTypeValue = w('partType');
-	const hasMaintainUnitPriceEquipment = w('hasMaintainUnitPriceEquipment');
 	const receivedTypes = w('receivedTypes') as string[] | undefined;
 	const exportedTypes = w('exportedTypes') as string[] | undefined;
 	const receivedBreakdown = w('receivedBreakdown') as
@@ -1320,13 +1303,6 @@ function MaterialImportRow({
 	const showReceivedBreakdown = activeReceivedKeys.length > 1;
 	const showExportedBreakdown = activeExportedKeys.length > 1;
 	const materialBadge = getMaterialBadge(materialTypeValue, itemTypeValue);
-	const needsMaintainUnitPriceCreation =
-		materialTypeValue === MaterialType.SparePart &&
-		Number(partTypeValue ?? 1) === 1 &&
-		!hasMaintainUnitPriceEquipment;
-	const partEquipments = materialOrPartId
-		? (partEquipmentsByPartId[materialOrPartId] ?? [])
-		: [];
 
 	// ── Render ───────────────────────────────────────────────────────────────
 	return (
@@ -1357,31 +1333,9 @@ function MaterialImportRow({
 										`${basename}.materialCode` as RowPath,
 									) as string) || ''
 								}
-								className={cn(
-									'font-medium',
-									needsMaintainUnitPriceCreation
-										? 'border-red-500 bg-red-50 text-red-700'
-										: 'border-slate-300 bg-slate-100 text-slate-500',
-								)}
+								className='border-slate-300 bg-slate-100 font-medium text-slate-500'
 							/>
-							{needsMaintainUnitPriceCreation && (
-								<Button
-									type='button'
-									variant='outline'
-									size='icon'
-									className='size-9 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700'
-									onClick={() => setIsCreateMaintainDialogOpen(true)}
-									title='Tạo mới đơn giá và định mức SCTX'
-								>
-									<PlusCircleIcon className='size-4' />
-								</Button>
-							)}
 						</div>
-						{needsMaintainUnitPriceCreation && (
-							<span className='text-[11px] font-medium text-red-600'>
-								Chưa có đơn giá và định mức SCTX cho phụ tùng này
-							</span>
-						)}
 						<span className={materialBadge.className}>
 							{materialBadge.label}
 						</span>
@@ -1795,20 +1749,6 @@ function MaterialImportRow({
 					</div>
 				</TableCell>
 			</TableRow>
-			{needsMaintainUnitPriceCreation && materialOrPartId && (
-				<MaintainUnitPriceCreateDialog
-					open={isCreateMaintainDialogOpen}
-					onOpenChange={setIsCreateMaintainDialogOpen}
-					partCode={
-						(form.watch(`${basename}.materialCode` as RowPath) as string) || ''
-					}
-					processGroupOptions={processGroupOptions}
-					equipmentOptions={partEquipments}
-					onCreated={() => {
-						set('hasMaintainUnitPriceEquipment', true);
-					}}
-				/>
-			)}
 		</>
 	);
 }

@@ -133,6 +133,18 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         Calculate();
     }
 
+    public void UpdateUsageTime(double usageTime, string note = "")
+    {
+        if (usageTime < 0)
+        {
+            throw new ArgumentException("Thời gian sử dụng không được âm");
+        }
+
+        UsageTime = usageTime;
+        Note = note;
+        Calculate();
+    }
+
     public void UpdatePlannedOutput(double plannedOutput, string note = "")
     {
         PlannedOutput = plannedOutput;

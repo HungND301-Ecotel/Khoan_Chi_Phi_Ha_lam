@@ -1,7 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Domain.Entities.Production;
@@ -10,10 +9,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
-    public Guid? MaintainUnitPriceEquipmentId { get; protected set; }
     public Guid? PartId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
+    public double UsageTime { get; protected set; }
 
     public ItemType ItemType { get; protected set; }
     public Guid? ProductionOrderId { get; protected set; }
@@ -45,7 +44,6 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual MaintainUnitPriceEquipment? MaintainUnitPriceEquipment { get; protected set; }
     public virtual Part? Part { get; protected set; }
     public virtual Equipment? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
@@ -185,12 +183,20 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         }
     }
 
+    private static void ValidateUsageTime(double usageTime)
+    {
+        if (usageTime < 0)
+        {
+            throw new ArgumentException("Thời gian sử dụng không được âm");
+        }
+    }
+
     public static AcceptanceReportItem Create(
         Guid acceptanceReportId,
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
-        Guid? maintainUnitPriceEquipmentId,
+        double usageTime,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -211,6 +217,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
+        ValidateUsageTime(usageTime);
 
         var item = new AcceptanceReportItem
         {
@@ -218,8 +225,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             ProcessGroupId = processGroupId,
             MaterialId = materialId,
             PartId = partId,
-            MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
             EquipmentId = categoryProductionReference.EquipmentId,
+            UsageTime = usageTime,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
             AdditionalCost = additionalCost,
@@ -261,7 +268,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
-        Guid? maintainUnitPriceEquipmentId,
+        double usageTime,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -282,12 +289,13 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
+        ValidateUsageTime(usageTime);
 
         ProcessGroupId = processGroupId;
         MaterialId = materialId;
         PartId = partId;
-        MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId;
         EquipmentId = categoryProductionReference.EquipmentId;
+        UsageTime = usageTime;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;
         AdditionalCost = additionalCost;
@@ -324,5 +332,11 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
                     AcceptanceReportItemQuotaBasedMaterialQuantity.Create(Id, detail.Type, detail.Quantity));
             }
         }
+    }
+
+    public void UpdateUsageTime(double usageTime)
+    {
+        ValidateUsageTime(usageTime);
+        UsageTime = usageTime;
     }
 }

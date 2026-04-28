@@ -254,28 +254,29 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }
         }
 
-        var outputsWithAcceptanceReport = await _productionOutputRepository.GetAllAsync(
-            predicate: po => po.StartMonth.Year == year
+        var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
+            .Where(po => po.StartMonth.Year == year
                 && po.StartMonth.Month == month
                 && (!hasDepartmentFilter || po.DepartmentId == departmentId)
-                && po.AcceptanceReport != null,
-            include: q => q.AsSplitQuery()
-                .Include(po => po.ProductionOutputProcessGroups)
-                .Include(po => po.AcceptanceReport!)
-                    .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.Material)
-                            .ThenInclude(m => m!.Costs)
-                .Include(po => po.AcceptanceReport!)
-                    .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part)
-                            .ThenInclude(part => part!.Costs)
-                .Include(po => po.AcceptanceReport!)
-                    .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.ShippedDetails)
-                .Include(po => po.AcceptanceReport!)
-                    .ThenInclude(ar => ar.AcceptanceReportItems)
-                        .ThenInclude(i => i.AcceptanceReportItemLogs),
-            disableTracking: true);
+                && po.AcceptanceReport != null)
+            .AsSplitQuery()
+            .Include(po => po.ProductionOutputProcessGroups)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Material)
+                        .ThenInclude(m => m!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(part => part!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.ShippedDetails)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.AcceptanceReportItemLogs)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
         var transferredMaterial = 0m;
         var transferredMaintain = 0m;
@@ -306,7 +307,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
             }
 
-            foreach (var item in sectionAItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
+            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
             {
                 var logsOfCurrentReport = item.AcceptanceReportItemLogs
                     .Where(l => l.AcceptanceReportId == report.Id);

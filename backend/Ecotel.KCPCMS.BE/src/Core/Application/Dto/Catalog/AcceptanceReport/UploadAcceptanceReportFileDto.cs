@@ -18,7 +18,6 @@ public record AcceptanceReportItemDto
 
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }
-    public Guid? MaintainUnitPriceEquipmentId { get; init; }
 
     public required string MaterialCode { get; init; }
     public required string UnitOfMeasureName { get; init; }

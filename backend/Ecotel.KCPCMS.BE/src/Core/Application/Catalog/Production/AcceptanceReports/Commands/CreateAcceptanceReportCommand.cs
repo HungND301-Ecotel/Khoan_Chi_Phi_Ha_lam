@@ -4,7 +4,6 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +21,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
-    private readonly IWriteRepository<MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<MaintainUnitPriceEquipment>();
 
     public async Task<CreateAcceptanceReportResponseDto> Handle(CreateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -53,10 +51,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
         var allParts = await _partRepository.GetAllAsync(
             include: q => q.Include(p => p.Costs),
-            disableTracking: true);
-        var allMaintainUnitPriceEquipments = await _maintainUnitPriceEquipmentRepository.GetAllAsync(
-            include: q => q.Include(m => m.Part).ThenInclude(p => p.Costs)
-                           .Include(m => m.MaintainUnitPrice),
             disableTracking: true);
 
         var existingAcceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
@@ -114,7 +108,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                 Guid? materialId = null;
                 Guid? partId = null;
-                Guid? maintainUnitPriceEquipmentId = null;
                 Part? part = null;
 
                 if (item.Type == AcceptanceReportItemType.Material)
@@ -134,51 +127,18 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
                 else if (item.Type == AcceptanceReportItemType.Part)
                 {
-                    if (item.PartId.HasValue)
-                    {
-                        part = allParts.FirstOrDefault(p => p.Id == item.PartId.Value);
-                        if (part == null)
-                        {
-                            throw new NotFoundException($"Part with Id '{item.PartId.Value}' not found");
-                        }
-
-                        partId = part.Id;
-                    }
-                    else if (item.MaintainUnitPriceEquipmentId.HasValue)
-                    {
-                        var maintainItem = allMaintainUnitPriceEquipments.FirstOrDefault(m => m.Id == item.MaintainUnitPriceEquipmentId.Value);
-                        if (maintainItem == null)
-                        {
-                            throw new NotFoundException($"MaintainUnitPriceEquipment with Id '{item.MaintainUnitPriceEquipmentId.Value}' not found");
-                        }
-
-                        part = maintainItem.Part;
-                        partId = maintainItem.PartId;
-                        maintainUnitPriceEquipmentId = maintainItem.Id;
-                    }
-                    else
+                    if (!item.PartId.HasValue)
                     {
                         throw new NotFoundException("PartId is required for SCTX item");
                     }
 
-                    if (part == null || !partId.HasValue)
+                    part = allParts.FirstOrDefault(p => p.Id == item.PartId.Value);
+                    if (part == null)
                     {
-                        throw new NotFoundException("Part not found for SCTX item");
+                        throw new NotFoundException($"Part with Id '{item.PartId.Value}' not found");
                     }
 
-                    if (part.Type == PartType.Part)
-                    {
-                        maintainUnitPriceEquipmentId = ResolveMaintainUnitPriceEquipmentId(
-                            partId.Value,
-                            categoryReference.EquipmentId,
-                            productionOutput.StartMonth,
-                            productionOutput.EndMonth,
-                            allMaintainUnitPriceEquipments);
-                    }
-                    else
-                    {
-                        maintainUnitPriceEquipmentId = null;
-                    }
+                    partId = part.Id;
                 }
 
                 if (item.AcceptanceReportItemId.HasValue)
@@ -190,7 +150,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.ProcessGroupId,
                         materialId,
                         partId,
-                        maintainUnitPriceEquipmentId,
+                        item.UsageTime,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -216,7 +176,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.ProcessGroupId,
                         materialId,
                         partId,
-                        maintainUnitPriceEquipmentId,
+                        item.UsageTime,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
@@ -279,12 +239,12 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
             foreach (var item in allProcessedItems)
             {
-                if (item.MaintainUnitPriceEquipmentId.HasValue &&
+                if (item.PartId.HasValue &&
                     item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain &&
                     item.IssuedQuantity > 0)
                 {
-                    var maintainItem = allMaintainUnitPriceEquipments.FirstOrDefault(m => m.Id == item.MaintainUnitPriceEquipmentId.Value);
-                    if (maintainItem == null)
+                    var part = allParts.FirstOrDefault(p => p.Id == item.PartId.Value);
+                    if (part == null)
                     {
                         continue;
                     }
@@ -294,12 +254,12 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                     if (existingLog == null)
                     {
-                        var cost = maintainItem.Part?.Costs?.FirstOrDefault(c =>
+                        var cost = part.Costs?.FirstOrDefault(c =>
                             c.StartMonth <= productionOutput.StartMonth &&
                             c.EndMonth >= productionOutput.EndMonth);
 
                         var unitPrice = (decimal)(cost?.Amount ?? 0);
-                        var usageTime = (double)maintainItem.ReplacementTimeStandard;
+                        var usageTime = item.UsageTime;
 
                         var actualOutput = productionOutput.ProductionMeters;
                         var plannedOutput = 1.0;
@@ -403,26 +363,4 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private static IList<(QuotaBasedMaterialType Type, double Quantity)>? MapQuotaBasedMaterialQuantities(List<QuotaBasedMaterialQuantityDto>? dtos)
         => dtos?.Select(x => (x.Type, x.Quantity)).ToList();
 
-    private static Guid? ResolveMaintainUnitPriceEquipmentId(
-        Guid partId,
-        Guid? equipmentId,
-        DateOnly startMonth,
-        DateOnly endMonth,
-        IEnumerable<MaintainUnitPriceEquipment> maintainItems)
-    {
-        if (!equipmentId.HasValue)
-        {
-            return null;
-        }
-
-        return maintainItems
-            .Where(m => m.PartId == partId
-                        && m.MaintainUnitPrice != null
-                        && m.MaintainUnitPrice.EquipmentId == equipmentId.Value
-                        && m.MaintainUnitPrice.StartMonth <= startMonth
-                        && m.MaintainUnitPrice.EndMonth >= endMonth)
-            .OrderByDescending(m => m.MaintainUnitPrice!.StartMonth)
-            .Select(m => (Guid?)m.Id)
-            .FirstOrDefault();
-    }
 }

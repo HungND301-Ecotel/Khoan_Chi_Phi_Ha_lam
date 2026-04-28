@@ -97,7 +97,6 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 var itemType = (int)(material?.MaterialType ?? MaterialType.MaterialOutContract);
                 Guid? materialId = null;
                 Guid? partId = null;
-                Guid? maintainUnitPriceEquipmentId = null;
                 PartType? partType = null;
                 string unitOfMeasureName;
 
@@ -128,7 +127,6 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     ReportItemId = reportItemId,
                     MaterialId = materialId,
                     PartId = partId,
-                    MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
                     Type = type,
                     ItemType = (ItemType)itemType,
                     PartType = partType,

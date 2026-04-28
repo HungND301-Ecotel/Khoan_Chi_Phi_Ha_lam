@@ -5,6 +5,7 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 public record UpdateAcceptanceReportItemDto
 {
     public required Guid Id { get; init; }
+    public required double UsageTime { get; init; }
 
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }

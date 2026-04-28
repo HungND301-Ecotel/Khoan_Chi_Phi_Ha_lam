@@ -4,6 +4,7 @@ public record UpdateAcceptanceReportItemLogDto
 {
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
+    public required double UsageTime { get; init; }
     public required double AllocationRatio { get; init; }
     public required bool IsFullAccounting { get; init; }
     public required string Note { get; init; }

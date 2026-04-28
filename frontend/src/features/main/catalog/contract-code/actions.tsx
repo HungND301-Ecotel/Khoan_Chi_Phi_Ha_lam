@@ -193,7 +193,7 @@ export function ContractCodeForm({
 			/>
 
 			<MultiSelect
-				label='Vật tư liên kết'
+				label='Danh sách vật tư, tài sản'
 				placeholder='Chọn vật tư'
 				values={selectedMaterials}
 				onValuesChange={setSelectedMaterials}

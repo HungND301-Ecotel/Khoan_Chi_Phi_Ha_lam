@@ -29,9 +29,6 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.UnitOfMeasure)
-                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Costs)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.IssuedDetails)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.ShippedDetails)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(a => a.QuotaBasedMaterialQuantities),
@@ -49,15 +46,14 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             AdditionalCostEquipmentId = item.AdditionalCostEquipmentId,
             MaterialId = item.MaterialId,
             PartId = item.PartId,
-            MaintainUnitPriceEquipmentId = item.MaintainUnitPriceEquipmentId,
+            UsageTime = item.UsageTime,
             MaterialCode = item.Material?.Code?.Value,
             MaterialName = item.Material?.Name,
-            PartCode = item.Part?.Code?.Value ?? item.MaintainUnitPriceEquipment?.Part?.Code?.Value,
-            PartName = item.Part?.Name ?? item.MaintainUnitPriceEquipment?.Part?.Name,
-            PartType = item.Part?.Type ?? item.MaintainUnitPriceEquipment?.Part?.Type,
+            PartCode = item.Part?.Code?.Value,
+            PartName = item.Part?.Name,
+            PartType = item.Part?.Type,
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
-                              ?? item.Part?.UnitOfMeasure?.Name
-                              ?? item.MaintainUnitPriceEquipment?.Part?.UnitOfMeasure?.Name,
+                              ?? item.Part?.UnitOfMeasure?.Name,
             Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             ProcessGroupId = item.ProcessGroupId,
@@ -125,16 +121,6 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return matchingCost != null ? (decimal)matchingCost.Amount : 0;
         }
 
-        if (item.MaintainUnitPriceEquipmentId.HasValue && item.MaintainUnitPriceEquipment?.Part?.Costs != null)
-        {
-            var matchingCost = item.MaintainUnitPriceEquipment.Part.Costs.FirstOrDefault(c =>
-                c.CostType == CostType.Part &&
-                c.StartMonth <= productionOutput.StartMonth &&
-                c.EndMonth >= productionOutput.EndMonth);
-
-            return matchingCost != null ? (decimal)matchingCost.Amount : 0;
-        }
-
         return 0;
     }
 
@@ -158,16 +144,6 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
         if (item.PartId.HasValue && item.Part?.Costs != null)
         {
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
-                c.CostType == CostType.Part &&
-                c.StartMonth <= productionOutput.StartMonth &&
-                c.EndMonth >= productionOutput.EndMonth);
-
-            return matchingCost != null ? (decimal)matchingCost.ActualAmount : 0;
-        }
-
-        if (item.MaintainUnitPriceEquipmentId.HasValue && item.MaintainUnitPriceEquipment?.Part?.Costs != null)
-        {
-            var matchingCost = item.MaintainUnitPriceEquipment.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);

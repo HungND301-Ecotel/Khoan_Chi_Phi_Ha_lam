@@ -59,11 +59,6 @@ type PartEquipmentMapping = {
 	equipments: Equipment[];
 };
 
-type PartMaintainUnitPriceEquipmentMapping = {
-	partId: string;
-	maintainUnitPriceEquipmentIds: string[];
-};
-
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -175,9 +170,6 @@ export function MaterialImportDialog({
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
 	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
 		Record<string, ProductionOrderOption[]>
-	>({});
-	const [partEquipmentsByPartId, setPartEquipmentsByPartId] = useState<
-		Record<string, Equipment[]>
 	>({});
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
@@ -334,41 +326,22 @@ export function MaterialImportDialog({
 				string,
 				ProductionOrderOption[]
 			> = {};
-			const fetchedPartEquipmentsByPartId: Record<string, Equipment[]> = {};
-			const fetchedHasMaintainUnitPriceEquipmentByPartId: Record<
-				string,
-				boolean
-			> = {};
 
 			if (partIds.length > 0) {
-				const [equipmentMappingsRes, maintainMappingsRes] = await Promise.all([
-					api.post<PartEquipmentMapping[], string[]>(
-						API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS,
-						partIds,
-					),
-					api.post<PartMaintainUnitPriceEquipmentMapping[], string[]>(
-						API.PRICING.MAINTENANCE
-							.MAINTAIN_UNIT_PRICE_EQUIPMENTS_BY_PART_IDS,
-						partIds,
-					),
-				]);
+				const equipmentMappingsRes = await api.post<
+					PartEquipmentMapping[],
+					string[]
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
 
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					const sortedEquipments = [...(mapping.equipments ?? [])].sort((a, b) =>
-						a.code.localeCompare(b.code),
+					const sortedEquipments = [...(mapping.equipments ?? [])].sort(
+						(a, b) => a.code.localeCompare(b.code),
 					);
-					fetchedPartEquipmentsByPartId[mapping.partId] = sortedEquipments;
-					fetchedEquipmentOptionsByPartId[mapping.partId] = sortedEquipments.map(
-						(equipment) => ({
+					fetchedEquipmentOptionsByPartId[mapping.partId] =
+						sortedEquipments.map((equipment) => ({
 							value: toEquipmentOptionValue(equipment.id),
 							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
-						}),
-					);
-				}
-
-				for (const mapping of maintainMappingsRes.result ?? []) {
-					fetchedHasMaintainUnitPriceEquipmentByPartId[mapping.partId] =
-						(mapping.maintainUnitPriceEquipmentIds?.length ?? 0) > 0;
+						}));
 				}
 			}
 
@@ -376,30 +349,13 @@ export function MaterialImportDialog({
 				if (!fetchedEquipmentOptionsByPartId[partId]) {
 					fetchedEquipmentOptionsByPartId[partId] = [];
 				}
-				if (!fetchedPartEquipmentsByPartId[partId]) {
-					fetchedPartEquipmentsByPartId[partId] = [];
-				}
-				if (fetchedHasMaintainUnitPriceEquipmentByPartId[partId] == null) {
-					fetchedHasMaintainUnitPriceEquipmentByPartId[partId] = false;
-				}
 			}
 
 			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
-			setPartEquipmentsByPartId(fetchedPartEquipmentsByPartId);
 
 			// Transform API response to form schema
 			const formattedData: MaterialFormSchema[] =
 				response.result.acceptanceReports.map((item) => {
-					const isSparePartTypeOne =
-						item.type === MaterialType.SparePart && item.partType === 1;
-					const hasMaintainUnitPriceEquipment =
-						Boolean(item.maintainUnitPriceEquipmentId) ||
-						(isSparePartTypeOne &&
-							Boolean(
-								item.partId
-									? fetchedHasMaintainUnitPriceEquipmentByPartId[item.partId]
-									: false,
-							));
 					const isSafetyAndWelfareMaterial =
 						item.type === MaterialType.Material &&
 						item.itemType === ItemType.SafetyAndWelfare;
@@ -420,9 +376,6 @@ export function MaterialImportDialog({
 						acceptanceReportItemId: item.reportItemId || undefined,
 						materialOrPartId: item.partId ?? item.materialId ?? '',
 						partType: item.partType ?? null,
-						maintainUnitPriceEquipmentId:
-							item.maintainUnitPriceEquipmentId ?? null,
-						hasMaintainUnitPriceEquipment,
 						materialCode: item.materialCode,
 						unitOfMeasureName: item.unitOfMeasureName,
 						type: item.type,
@@ -447,7 +400,6 @@ export function MaterialImportDialog({
 			setFilePath('');
 			setImportedItems([]);
 			setEquipmentOptionsByPartId({});
-			setPartEquipmentsByPartId({});
 			setOrderOrEquipmentOptionsByItemId({});
 		} finally {
 			setIsLoading(false);
@@ -627,8 +579,7 @@ export function MaterialImportDialog({
 							item.type === MaterialType.SparePart
 								? item.materialOrPartId || null
 								: null,
-						maintainUnitPriceEquipmentId:
-							item.maintainUnitPriceEquipmentId ?? null,
+						usageTime: 0,
 						type: item.type || 1,
 						itemType: item.itemType || 1,
 						categoryProductionOrderId,
@@ -664,7 +615,6 @@ export function MaterialImportDialog({
 			setFilePath('');
 			setImportedItems([]);
 			setEquipmentOptionsByPartId({});
-			setPartEquipmentsByPartId({});
 			setOrderOrEquipmentOptionsByItemId({});
 			setOpen(false);
 			popup.success('Dữ liệu được lưu thành công');
@@ -692,7 +642,6 @@ export function MaterialImportDialog({
 						processGroupOptions={processGroupOptions}
 						productionOrderOptions={productionOrderOptions}
 						orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
-						partEquipmentsByPartId={partEquipmentsByPartId}
 					/>
 				</FormProvider>
 			)}
