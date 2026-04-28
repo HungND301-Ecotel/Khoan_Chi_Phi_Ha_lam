@@ -1,6 +1,7 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { Accordion } from '@/components/ui/accordion';
 import { LongTermMaterialCosts } from '@/features/main/cost/producttion/production/longterm-material-cost';
+import { ProductionProductList } from '@/features/main/cost/producttion/production/production-product-list';
 import { RawAcceptanceReport } from '@/features/main/cost/producttion/production/raw-acceptance-report';
 import { useCallback, useState } from 'react';
 import { Production } from './columns';
@@ -39,6 +40,11 @@ export function ProductionExpand({ row, data }: ActionDialogProps<Production>) {
 				value={opened}
 				onValueChange={setOpened}
 			>
+				<ProductionProductList
+					productionOutputId={row.id}
+					isOpen={opened.includes('production-product-list')}
+					reloadKey={reloadKey}
+				/>
 				<RawAcceptanceReport
 					id={row.id}
 					plan={undefined}
