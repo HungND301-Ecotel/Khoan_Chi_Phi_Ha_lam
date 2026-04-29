@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 
 import { AdjustmentCostExpandProps } from '@/features/main/cost/producttion/adjustment/adjustment-material-cost';
 import { api } from '@/lib/api';
@@ -20,24 +21,28 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import {
-	ADJUSTMENT_MAINTAIN_COST_COLUMNS,
 	AdjustmentMaintainCostDetail,
+	getAdjustmentMaintainCostColumns,
 } from './columns';
 
 export function AdjustmentMaintainCost({
 	id,
 	isOpen,
+	adjustment,
 	productionOutput,
 	multiplyByProductionMeters = true,
 }: AdjustmentCostExpandProps) {
 	const [adjustmentMaintainCost, setAdjustmentMaintainCost] =
 		useState<AdjustmentMaintainCostDetail>();
+	const [adjustmentMaintainPrice, setAdjustmentMaintainPrice] =
+		useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setAdjustmentMaintainCost(undefined);
+			setAdjustmentMaintainPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -54,20 +59,36 @@ export function AdjustmentMaintainCost({
 					const { totalPrice } = item;
 					total += totalPrice;
 				});
+				const trimmingCoefficient =
+					adjustment?.processGroupType === ProcessGroupType.XL ? 1 : 1;
+				setAdjustmentMaintainPrice(total * trimmingCoefficient);
 				setTotal(
 					multiplyByProductionMeters
-						? total * (productionOutput?.productionMeters || 1)
+						? total *
+								(productionOutput?.productionMeters || 1) *
+								trimmingCoefficient
 						: total,
 				);
 			})
 			.finally(() => setLoading(false));
-	}, [id, productionOutput?.productionMeters, multiplyByProductionMeters]);
+	}, [
+		id,
+		adjustment?.processGroupType,
+		productionOutput?.productionMeters,
+		multiplyByProductionMeters,
+	]);
 
 	return (
 		<AccordionItem value={'adjustment-maintain-cost'} className='border-none'>
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
 					<ItemTitle>Doanh thu SCTX điều chỉnh</ItemTitle>
+				</ItemContent>
+
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(adjustmentMaintainPrice)}
+					</ItemTitle>
 				</ItemContent>
 
 				<ItemContent className='me-7.5 w-24'>
@@ -95,7 +116,9 @@ export function AdjustmentMaintainCost({
 			<AccordionContent className='p-0 px-2 pt-2'>
 				{id && isOpen && (
 					<DataTable
-						columns={ADJUSTMENT_MAINTAIN_COST_COLUMNS}
+						columns={getAdjustmentMaintainCostColumns(
+							adjustment?.processGroupType as ProcessGroupType | undefined,
+						)}
 						items={adjustmentMaintainCost?.costs}
 						compact={true}
 						hasActions={false}

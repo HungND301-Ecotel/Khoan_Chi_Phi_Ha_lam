@@ -122,7 +122,7 @@ function buildProcessGroupPayload(
 			productId: product.productId,
 			productionMeters: product.productionMeters,
 			actualAshContent: akProcessGroupIds.has(group.processGroupId)
-				? product.actualAshContent ?? 0
+				? (product.actualAshContent ?? 0)
 				: 0,
 		})),
 	}));
@@ -222,35 +222,38 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST, {
 				ignorePagination: true,
 			}),
-			api.pagging<{ processGroupId: string }>(API.CATALOG.AK_FACTOR_CONFIG.LIST, {
-				ignorePagination: true,
-			}),
+			api.pagging<{ processGroupId: string }>(
+				API.CATALOG.AK_FACTOR_CONFIG.LIST,
+				{
+					ignorePagination: true,
+				},
+			),
 		]);
 
 		promises.then(
 			([departmentRes, processGroupRes, productRes, akFactorConfigRes]) => {
-			setDepartments(
-				[...departmentRes.result.data].sort((a, b) =>
-					a.code.localeCompare(b.code),
-				),
-			);
-			setProcessGroups(
-				[...processGroupRes.result.data].sort((a, b) =>
-					a.code.localeCompare(b.code),
-				),
-			);
-			setProducts(
-				[...productRes.result.data].sort((a, b) =>
-					a.code.localeCompare(b.code),
-				),
-			);
-			setAkProcessGroupIds(
-				new Set(
-					(akFactorConfigRes.result.data || [])
-						.map((item) => item.processGroupId)
-						.filter((id) => !!id),
-				),
-			);
+				setDepartments(
+					[...departmentRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setProcessGroups(
+					[...processGroupRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setProducts(
+					[...productRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setAkProcessGroupIds(
+					new Set(
+						(akFactorConfigRes.result.data || [])
+							.map((item) => item.processGroupId)
+							.filter((id) => !!id),
+					),
+				);
 			},
 		);
 	}, []);
@@ -411,7 +414,8 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 				{groupFields.map((field, groupIndex) => {
 					const group = watchedGroups[groupIndex] || createGroupDefault();
 					const isAkApplicableForGroup =
-						!!group.processGroupId && akProcessGroupIds.has(group.processGroupId);
+						!!group.processGroupId &&
+						akProcessGroupIds.has(group.processGroupId);
 					const availableProducts = products.filter(
 						(product) => product.processGroupId === group.processGroupId,
 					);

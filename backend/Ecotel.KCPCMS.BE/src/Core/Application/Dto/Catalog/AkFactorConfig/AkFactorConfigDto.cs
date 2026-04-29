@@ -9,10 +9,9 @@ public class AkFactorConfigDto : IDto
     public Guid ProcessGroupId { get; set; }
     public string ProcessGroupCode { get; set; } = string.Empty;
     public string ProcessGroupName { get; set; } = string.Empty;
-    public decimal? MinAkDiff { get; set; }
-    public decimal? MaxAkDiff { get; set; }
-    public decimal? MinAdjustmentRate { get; set; }
-    public decimal? MaxAdjustmentRate { get; set; }
+    public string? AkDiffOperator { get; set; }
+    public decimal? AkDiffValue { get; set; }
+    public decimal? AdjustmentRate { get; set; }
     public string? AkDiffDisplay { get; set; }
     public string? AdjustmentRateDisplay { get; set; }
     public string? Description { get; set; }

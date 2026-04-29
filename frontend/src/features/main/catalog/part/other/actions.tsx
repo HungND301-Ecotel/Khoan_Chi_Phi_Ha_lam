@@ -166,7 +166,7 @@ export function OtherPartForm({
 				}))}
 			/>
 
-			<FormArray control={form.control} name='costs' label='Đơn giá SCTX (đ)'>
+			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
 				{(index) => (
 					<div className='flex w-full gap-4'>
 						<FormMonthYear

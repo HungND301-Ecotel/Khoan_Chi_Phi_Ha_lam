@@ -31,7 +31,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var plannedOutput = await _outputRepository.GetFirstOrDefaultAsync(
             predicate: o => o.Id == request.Id,
             include: o => o
-                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product)
+                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product).ThenInclude(p => p.ProcessGroup)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness)
@@ -203,10 +203,16 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
-        var akDiff = (decimal)(adjustmentOutputInfo.ActualAshContent - plannedOutput.PlanAshContent);
-        var akRate = ResolveAkRate(akConfigs, akDiff);
+        var hasAkConfigs = akConfigs.Any();
+        var akDiff = hasAkConfigs
+            ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
+            : 0;
+        var akRate = hasAkConfigs
+            ? AkFactorConfig.ResolveRate(akConfigs, akDiff)
+            : 0;
+        var akAdjustmentAmount = hasAkConfigs ? akDiff * (decimal)basePlannedMaterialPrice * akRate : 0;
         var adjustedPlannedMaterialPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
-            basePlannedMaterialPrice * (1 + (double)akRate));
+            basePlannedMaterialPrice + (double)akAdjustmentAmount);
 
         var result = new AdjustmentMaterialCostDetailDto
         {
@@ -227,32 +233,5 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             NormFactorValue = normFactorValue,
         };
         return result;
-    }
-
-    private static decimal ResolveAkRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
-    {
-        foreach (var config in configs)
-        {
-            var minMatched = !config.MinAkDiff.HasValue || akDiff >= config.MinAkDiff.Value;
-            var maxMatched = !config.MaxAkDiff.HasValue || akDiff <= config.MaxAkDiff.Value;
-            if (!minMatched || !maxMatched)
-            {
-                continue;
-            }
-
-            if (config.MinAdjustmentRate.HasValue && config.MaxAdjustmentRate.HasValue)
-            {
-                if (config.MinAdjustmentRate == config.MaxAdjustmentRate)
-                {
-                    return config.MinAdjustmentRate.Value;
-                }
-            }
-            else
-            {
-                return config.MinAdjustmentRate ?? config.MaxAdjustmentRate ?? 0;
-            }
-        }
-
-        return 0;
     }
 }

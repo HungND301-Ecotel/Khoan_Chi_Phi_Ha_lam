@@ -1,6 +1,8 @@
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AkFactorConfig;
+using Domain.Common.Enums;
 using MediatR;
 using Shared.Constants;
 using AkFactorConfigEntity = Domain.Entities.Index.AkFactorConfig;
@@ -17,11 +19,15 @@ public class CreateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
 
     public async Task<bool> Handle(CreateAkFactorConfigCommand request, CancellationToken cancellationToken)
     {
-        var processGroupExists = await _processGroupRepository.ExistsAsync(x => x.Id == request.CreateModel.ProcessGroupId);
-        if (!processGroupExists)
+        var processGroup = await _processGroupRepository.GetFirstOrDefaultAsync(
+            predicate: x => x.Id == request.CreateModel.ProcessGroupId,
+            disableTracking: true);
+        if (processGroup == null)
         {
-            throw new Application.Common.Exceptions.NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
+            throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
         }
+
+        ValidateAkFactorConfig(processGroup.Type, request.CreateModel.AkDiffDisplay, request.CreateModel.AdjustmentRateDisplay);
 
         var newAkFactorConfig = AkFactorConfigEntity.Create(
             request.CreateModel.ProcessGroupId,
@@ -33,5 +39,23 @@ public class CreateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
         await unitOfWork.SaveChangesAsync();
 
         return true;
+    }
+
+    private static void ValidateAkFactorConfig(ProcessGroupType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay)
+    {
+        if (!AkFactorConfigEntity.SupportsProcessGroupType(processGroupType))
+        {
+            throw new BadRequestException("Nhóm công đoạn sản xuất không hợp lệ để cấu hình hệ số Ak.");
+        }
+
+        if (!AkFactorConfigEntity.HasValidAkDiffCondition(akDiffDisplay))
+        {
+            throw new BadRequestException("Chênh lệch Ak không đúng định dạng. Vui lòng dùng dạng > 0, <= -0,5 hoặc = 1.");
+        }
+
+        if (!AkFactorConfigEntity.HasValidAdjustmentRate(adjustmentRateDisplay))
+        {
+            throw new BadRequestException("Tỷ lệ điều chỉnh doanh thu không đúng định dạng. Vui lòng dùng một giá trị duy nhất, ví dụ 1,5%.");
+        }
     }
 }

@@ -10,12 +10,10 @@ export const AkFactorConfigSchema = z
 	})
 	.superRefine((values, ctx) => {
 		const numberPattern = '-?(?:\\d+)(?:[\\.,]\\d+)?';
-		const rangeRegex = new RegExp(
-			`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*$`,
+		const akConditionRegex = new RegExp(
+			`^\\s*(?:[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|=\\s*${numberPattern}|${numberPattern})\\s*$`,
 		);
-		const percentRangeRegex = new RegExp(
-			`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*%\\s*$`,
-		);
+		const percentValueRegex = new RegExp(`^\\s*${numberPattern}\\s*%\\s*$`);
 
 		if (!values.processGroupId) {
 			ctx.addIssue({
@@ -33,12 +31,12 @@ export const AkFactorConfigSchema = z
 			});
 		}
 
-		if (values.akDiffDisplay && !rangeRegex.test(values.akDiffDisplay)) {
+		if (values.akDiffDisplay && !akConditionRegex.test(values.akDiffDisplay)) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['akDiffDisplay'],
 				message:
-					'Chênh lệch Ak không đúng định dạng. Ví dụ: "≥ 1", "< 2", "-1,5", "1 - 2".',
+					'Chênh lệch Ak không đúng định dạng. Ví dụ: "> 0", "≤ -0,5", "= 1", "-1,5".',
 			});
 		}
 
@@ -52,13 +50,13 @@ export const AkFactorConfigSchema = z
 
 		if (
 			values.adjustmentRateDisplay &&
-			!percentRangeRegex.test(values.adjustmentRateDisplay)
+			!percentValueRegex.test(values.adjustmentRateDisplay)
 		) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['adjustmentRateDisplay'],
 				message:
-					'Tỷ lệ điều chỉnh doanh thu không đúng định dạng. Ví dụ: "-1,5%", "≥ 1,5%", "1 - 2%".',
+					'Tỷ lệ điều chỉnh doanh thu không đúng định dạng. Ví dụ: "1,5%", "-0,5%".',
 			});
 		}
 	});

@@ -1,3 +1,4 @@
+import { ProcessGroupType } from '@/constants/process-group';
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -33,6 +34,7 @@ export type AdjustmentMaterialCostType = {
 	otherMaterialValue?: number;
 	materialCost?: number;
 	slideUnitPriceCost?: number;
+	lowValuePerishableSupplyUnitPriceCost?: number;
 	akRate: number;
 	akRatePercent: number;
 	normFactorValue?: string;
@@ -62,32 +64,59 @@ export type AdjustmentMaterialCostSummary = {
 	materialUnitPriceCost: number;
 	slideUsage: string;
 	slideUnitPriceCost: number;
+	lowValuePerishableSupplyUnitPriceCost?: number;
 	stoneClampRatio: string;
 	normFactorValue: string;
 	akRatePercent: number;
 };
 
-export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMaterialCostSummary>[] =
-	[
+export const getAdjustmentMaterialCostSummaryColumns = (
+	processGroupType?: number,
+): ColumnDef<AdjustmentMaterialCostSummary>[] => {
+	const columns: ColumnDef<AdjustmentMaterialCostSummary>[] = [
 		{
 			accessorKey: 'materialCode',
 			header: () => (
 				<span className='whitespace-normal'>Mã định mức đơn giá vật liệu</span>
 			),
 		},
-		{
-			accessorKey: 'slideUsage',
+	];
+
+	if (processGroupType === ProcessGroupType.DL) {
+		columns.push(
+			{
+				accessorKey: 'slideUsage',
+				header: () => (
+					<span className='whitespace-normal'>Sử dụng máng trượt</span>
+				),
+			},
+			{
+				accessorKey: 'slideUnitPriceCost',
+				header: () => (
+					<span className='whitespace-normal'>Đơn giá máng trượt (đ/m)</span>
+				),
+				cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
+			},
+		);
+	}
+
+	if (
+		processGroupType === ProcessGroupType.DL ||
+		processGroupType === ProcessGroupType.LC
+	) {
+		columns.push({
+			accessorKey: 'lowValuePerishableSupplyUnitPriceCost',
 			header: () => (
-				<span className='whitespace-normal'>Sử dụng máng trượt</span>
+				<span className='whitespace-normal'>
+					Đơn giá vật tư mau hỏng rẻ tiền (đ/m)
+				</span>
 			),
-		},
-		{
-			accessorKey: 'slideUnitPriceCost',
-			header: () => (
-				<span className='whitespace-normal'>Đơn giá máng trượt (đ/m)</span>
-			),
-			cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
-		},
+			cell: ({ row }) =>
+				formatNumber(row.original.lowValuePerishableSupplyUnitPriceCost || 0),
+		});
+	}
+
+	columns.push(
 		{
 			accessorKey: 'stoneClampRatio',
 			header: () => <span className='whitespace-normal'>Tỷ lệ đá kẹp</span>,
@@ -105,11 +134,15 @@ export const ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS: ColumnDef<AdjustmentMater
 			),
 			cell: ({ row }) => formatNumber(row.original.materialUnitPriceCost),
 		},
-		{
-			accessorKey: 'akRatePercent',
-			header: () => (
-				<span className='whitespace-normal'>Tỉ lệ điều chỉnh doanh thu</span>
-			),
-			cell: ({ row }) => `${formatNumber(row.original.akRatePercent)}%`,
-		},
-	];
+	);
+
+	columns.push({
+		accessorKey: 'akRatePercent',
+		header: () => (
+			<span className='whitespace-normal'>Tỉ lệ điều chỉnh doanh thu</span>
+		),
+		cell: ({ row }) => `${formatNumber(row.original.akRatePercent)}%`,
+	});
+
+	return columns;
+};

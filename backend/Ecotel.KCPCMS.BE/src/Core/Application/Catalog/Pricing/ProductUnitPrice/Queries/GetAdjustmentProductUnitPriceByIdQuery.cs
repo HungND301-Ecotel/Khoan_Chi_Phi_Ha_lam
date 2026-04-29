@@ -165,10 +165,14 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 var plannedMaterialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
                 var plannedMaintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
                 var plannedElectricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
-                var akDiff = (decimal)(po.ActualAshContent - plannedOutput.PlanAshContent);
-                var akRate = ResolveAkRate(akConfigs, akDiff);
+                var hasAkConfigs = akConfigs.Any();
+                var akDiff = hasAkConfigs
+                    ? (decimal)(plannedOutput.PlanAshContent - po.ActualAshContent)
+                    : 0;
+                var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
                 akRateValue = (double)akRate;
-                adjTotalPrice = po.ProductionMeters * (plannedMaterialCost * (1 + (double)akRate) + plannedMaintainCost + plannedElectricityCost);
+                var adjustedMaterialCost = plannedMaterialCost + ((double)akDiff * plannedMaterialCost * (double)akRate);
+                adjTotalPrice = po.ProductionMeters * (adjustedMaterialCost + plannedMaintainCost + plannedElectricityCost);
             }
 
             return new AdjustmentProductionOutputDto
@@ -211,33 +215,6 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
     }
 
     #region Helper Methods
-
-    private static decimal ResolveAkRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
-    {
-        foreach (var config in configs)
-        {
-            var minMatched = !config.MinAkDiff.HasValue || akDiff >= config.MinAkDiff.Value;
-            var maxMatched = !config.MaxAkDiff.HasValue || akDiff <= config.MaxAkDiff.Value;
-            if (!minMatched || !maxMatched)
-            {
-                continue;
-            }
-
-            if (config.MinAdjustmentRate.HasValue && config.MaxAdjustmentRate.HasValue)
-            {
-                if (config.MinAdjustmentRate == config.MaxAdjustmentRate)
-                {
-                    return config.MinAdjustmentRate.Value;
-                }
-            }
-            else
-            {
-                return config.MinAdjustmentRate ?? config.MaxAdjustmentRate ?? 0;
-            }
-        }
-
-        return 0;
-    }
 
     private async Task<Dictionary<Guid, List<MaintainFactorData>>> LoadPlannedMaintainFactors(
         List<Guid> costIds, CancellationToken cancellationToken)

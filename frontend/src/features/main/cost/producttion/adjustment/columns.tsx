@@ -10,6 +10,8 @@ export type ProductionAdjustment = {
 	processGroupCode: string;
 	processGroupName?: string;
 	processGroupType?: number;
+	unitOfMeasureId?: string;
+	unitOfMeasureName?: string;
 	departmentId?: string;
 	departmentCode?: string;
 	departmentName?: string;
@@ -72,15 +74,14 @@ export const MAIN_COST_ADJUSTMENT_COLUMNS: ColumnDef<ProductionAdjustment>[] = [
 		header: () => <span className='whitespace-normal'>Mã nhóm CĐSX</span>,
 	},
 	{
+		accessorKey: 'unitOfMeasureName',
+		header: () => <span className='whitespace-normal'>Đơn vị tính</span>,
+		cell: ({ row }) => row.original.unitOfMeasureName ?? '',
+	},
+	{
 		id: 'time',
 		header: () => <span>Thời gian</span>,
-		cell: ({ row }) => (
-			<span>
-				<span>{formatDate(row.original.startMonth)}</span>
-				<br />
-				<span>{formatDate(row.original.endMonth)}</span>
-			</span>
-		),
+		cell: ({ row }) => formatDate(row.original.startMonth),
 	},
 	{
 		accessorKey: 'totalProductionMeters',

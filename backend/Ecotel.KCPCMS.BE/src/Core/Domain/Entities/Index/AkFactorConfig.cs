@@ -1,16 +1,16 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Domain.Common.Contracts;
+using Domain.Common.Enums;
 
 namespace Domain.Entities.Index;
 
 public class AkFactorConfig : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid ProcessGroupId { get; protected set; }
-    public decimal? MinAkDiff { get; protected set; }
-    public decimal? MaxAkDiff { get; protected set; }
-    public decimal? MinAdjustmentRate { get; protected set; }
-    public decimal? MaxAdjustmentRate { get; protected set; }
+    public string? AkDiffOperator { get; protected set; }
+    public decimal? AkDiffValue { get; protected set; }
+    public decimal? AdjustmentRate { get; protected set; }
     public string? AkDiffDisplay { get; protected set; }
     public string? AdjustmentRateDisplay { get; protected set; }
     public string? Description { get; protected set; }
@@ -23,16 +23,15 @@ public class AkFactorConfig : AuditableEntity<Guid>, IAggregateRoot
         string? adjustmentRateInput,
         string? description)
     {
-        var (minAkDiff, maxAkDiff) = ParseRangeValue(akDiffInput);
-        var (minRate, maxRate) = ParseRangeValue(adjustmentRateInput, isPercent: true);
+        var (akDiffOperator, akDiffValue) = ParseAkDiffCondition(akDiffInput);
+        var adjustmentRate = ParseAdjustmentRate(adjustmentRateInput);
 
         return new AkFactorConfig
         {
             ProcessGroupId = processGroupId,
-            MinAkDiff = minAkDiff,
-            MaxAkDiff = maxAkDiff,
-            MinAdjustmentRate = minRate,
-            MaxAdjustmentRate = maxRate,
+            AkDiffOperator = akDiffOperator,
+            AkDiffValue = akDiffValue,
+            AdjustmentRate = adjustmentRate,
             AkDiffDisplay = akDiffInput?.Trim(),
             AdjustmentRateDisplay = adjustmentRateInput?.Trim(),
             Description = description
@@ -41,80 +40,150 @@ public class AkFactorConfig : AuditableEntity<Guid>, IAggregateRoot
 
     public void Update(Guid processGroupId, string? akDiffInput, string? adjustmentRateInput, string? description)
     {
-        var (minAkDiff, maxAkDiff) = ParseRangeValue(akDiffInput);
-        var (minRate, maxRate) = ParseRangeValue(adjustmentRateInput, isPercent: true);
+        var (akDiffOperator, akDiffValue) = ParseAkDiffCondition(akDiffInput);
+        var adjustmentRate = ParseAdjustmentRate(adjustmentRateInput);
 
         ProcessGroupId = processGroupId;
-        MinAkDiff = minAkDiff;
-        MaxAkDiff = maxAkDiff;
-        MinAdjustmentRate = minRate;
-        MaxAdjustmentRate = maxRate;
+        AkDiffOperator = akDiffOperator;
+        AkDiffValue = akDiffValue;
+        AdjustmentRate = adjustmentRate;
         AkDiffDisplay = akDiffInput?.Trim();
         AdjustmentRateDisplay = adjustmentRateInput?.Trim();
         Description = description;
     }
 
-    public decimal ResolveRateByAkDiff(decimal akDiff)
+    public bool IsMatch(decimal akDiff)
     {
-        var minMatched = !MinAkDiff.HasValue || akDiff >= MinAkDiff.Value;
-        var maxMatched = !MaxAkDiff.HasValue || akDiff <= MaxAkDiff.Value;
-        if (!minMatched || !maxMatched)
+        if (string.IsNullOrWhiteSpace(AkDiffOperator) || !AkDiffValue.HasValue)
         {
-            return 0;
+            return false;
         }
 
-        if (MinAdjustmentRate.HasValue && MaxAdjustmentRate.HasValue)
+        return AkDiffOperator switch
         {
-            return MinAdjustmentRate == MaxAdjustmentRate ? MinAdjustmentRate.Value : 0;
-        }
-
-        return MinAdjustmentRate ?? MaxAdjustmentRate ?? 0;
+            ">" => akDiff > AkDiffValue.Value,
+            ">=" => akDiff >= AkDiffValue.Value,
+            "<" => akDiff < AkDiffValue.Value,
+            "<=" => akDiff <= AkDiffValue.Value,
+            "=" => akDiff == AkDiffValue.Value,
+            _ => false
+        };
     }
 
-    private static (decimal? min, decimal? max) ParseRangeValue(string? input, bool isPercent = false)
+    public decimal ResolveRateByAkDiff(decimal akDiff)
+    {
+        return IsMatch(akDiff) ? AdjustmentRate ?? 0 : 0;
+    }
+
+    public static bool HasValidAkDiffCondition(string? input)
+    {
+        var (akDiffOperator, akDiffValue) = ParseAkDiffCondition(input);
+        return !string.IsNullOrWhiteSpace(akDiffOperator) && akDiffValue.HasValue;
+    }
+
+    public static bool HasValidAdjustmentRate(string? input)
+    {
+        return ParseAdjustmentRate(input).HasValue;
+    }
+
+    public static bool SupportsProcessGroupType(ProcessGroupType processGroupType)
+    {
+        return processGroupType != ProcessGroupType.None;
+    }
+
+    public static decimal ResolveRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
+    {
+        return configs
+            .Where(config => config.IsMatch(akDiff))
+            .OrderBy(config => GetOperatorPriority(config.AkDiffOperator))
+            .ThenByDescending(config => IsGreaterOperator(config.AkDiffOperator))
+            .ThenByDescending(config => IsGreaterOperator(config.AkDiffOperator) ? config.AkDiffValue : null)
+            .ThenBy(config => IsLowerOperator(config.AkDiffOperator) ? config.AkDiffValue : null)
+            .Select(config => config.AdjustmentRate ?? 0)
+            .FirstOrDefault();
+    }
+
+    public static int GetOperatorPriority(string? akDiffOperator)
+    {
+        return akDiffOperator switch
+        {
+            "=" => 0,
+            ">" => 1,
+            ">=" => 2,
+            "<" => 3,
+            "<=" => 4,
+            _ => 5
+        };
+    }
+
+    private static bool IsGreaterOperator(string? akDiffOperator)
+    {
+        return akDiffOperator is ">" or ">=";
+    }
+
+    private static bool IsLowerOperator(string? akDiffOperator)
+    {
+        return akDiffOperator is "<" or "<=";
+    }
+
+    private static (string? akDiffOperator, decimal? akDiffValue) ParseAkDiffCondition(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
             return (null, null);
         }
 
-        var normalized = input
-            .Replace("%", "")
-            .Trim();
-
-        var rangeMatch = Regex.Match(normalized, @"^(-?[\d.,]+)\s*[-–]\s*(-?[\d.,]+)$");
-        if (rangeMatch.Success)
+        var normalized = input.Trim();
+        var conditionMatch = Regex.Match(normalized, @"^(?<operator>>=|<=|>|<|=|≥|≤)\s*(?<value>-?[\d.,]+)$");
+        if (conditionMatch.Success)
         {
-            var min = ParseLocalizedDecimal(rangeMatch.Groups[1].Value);
-            var max = ParseLocalizedDecimal(rangeMatch.Groups[2].Value);
-            return isPercent ? (min / 100, max / 100) : (min, max);
-        }
-
-        var gteMatch = Regex.Match(normalized, @"^[≥>]=?\s*(-?[\d.,]+)$");
-        if (gteMatch.Success)
-        {
-            var value = ParseLocalizedDecimal(gteMatch.Groups[1].Value);
-            return isPercent ? (value / 100, null) : (value, null);
-        }
-
-        var lteMatch = Regex.Match(normalized, @"^[≤<]=?\s*(-?[\d.,]+)$");
-        if (lteMatch.Success)
-        {
-            var value = ParseLocalizedDecimal(lteMatch.Groups[1].Value);
-            return isPercent ? (null, value / 100) : (null, value);
+            var conditionOperator = NormalizeOperator(conditionMatch.Groups["operator"].Value);
+            var conditionValue = ParseLocalizedDecimal(conditionMatch.Groups["value"].Value);
+            return (conditionOperator, conditionValue);
         }
 
         try
         {
-            var plain = ParseLocalizedDecimal(normalized);
-            return isPercent ? (plain / 100, plain / 100) : (plain, plain);
+            var exactValue = ParseLocalizedDecimal(normalized);
+            return ("=", exactValue);
         }
         catch
         {
-            // ignore parse error and fallback to null range
+            // ignore parse error and fallback to null condition
         }
 
         return (null, null);
+    }
+
+    private static decimal? ParseAdjustmentRate(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return null;
+        }
+
+        var normalized = input.Replace("%", "").Trim();
+
+        try
+        {
+            return ParseLocalizedDecimal(normalized) / 100;
+        }
+        catch
+        {
+            // ignore parse error and fallback to null rate
+        }
+
+        return null;
+    }
+
+    private static string NormalizeOperator(string value)
+    {
+        return value switch
+        {
+            "≥" => ">=",
+            "≤" => "<=",
+            _ => value
+        };
     }
 
     private static decimal ParseLocalizedDecimal(string input)

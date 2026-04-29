@@ -3,6 +3,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AkFactorConfig;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Domain.Entities.Index;
@@ -32,7 +33,7 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
         var processGroupByCode = processGroups
             .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
             .GroupBy(x => x.Code!.Value)
-            .ToDictionary(x => x.Key, x => x.First().Id);
+            .ToDictionary(x => x.Key, x => x.First());
 
         var deleteList = new List<AkFactorConfigEntity>();
         var updateList = new List<AkFactorConfigEntity>();
@@ -42,23 +43,25 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
         var entitiesToDelete = dbEntities.Where(x => !excelIds.Contains(x.Id)).ToList();
         deleteList.AddRange(entitiesToDelete);
 
-        foreach (var dto in dtos)
+        foreach (var dto in dtos.Select((item, index) => new { Item = item, RowNumber = index + 2 }))
         {
-            if (string.IsNullOrWhiteSpace(dto.ProcessGroupCode) ||
-                !processGroupByCode.TryGetValue(dto.ProcessGroupCode.Trim(), out var processGroupId))
+            if (string.IsNullOrWhiteSpace(dto.Item.ProcessGroupCode) ||
+                !processGroupByCode.TryGetValue(dto.Item.ProcessGroupCode.Trim(), out var processGroup))
             {
-                throw new BadRequestException($"ProcessGroupCode khong hop le: {dto.ProcessGroupCode}");
+                throw new BadRequestException($"ProcessGroupCode khong hop le: {dto.Item.ProcessGroupCode}");
             }
 
-            if (dto.Id != Guid.Empty && dbEntities.Any(x => x.Id == dto.Id))
+            ValidateAkFactorConfig(processGroup.Type, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.RowNumber);
+
+            if (dto.Item.Id != Guid.Empty && dbEntities.Any(x => x.Id == dto.Item.Id))
             {
-                var entityToUpdate = dbEntities.First(x => x.Id == dto.Id);
-                entityToUpdate.Update(processGroupId, dto.AkDiffDisplay, dto.AdjustmentRateDisplay, dto.Description);
+                var entityToUpdate = dbEntities.First(x => x.Id == dto.Item.Id);
+                entityToUpdate.Update(processGroup.Id, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.Item.Description);
                 updateList.Add(entityToUpdate);
             }
             else
             {
-                addList.Add(AkFactorConfigEntity.Create(processGroupId, dto.AkDiffDisplay, dto.AdjustmentRateDisplay, dto.Description));
+                addList.Add(AkFactorConfigEntity.Create(processGroup.Id, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.Item.Description));
             }
         }
 
@@ -88,6 +91,24 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
         {
             await unitOfWork.RollbackAsync(cancellationToken);
             throw;
+        }
+    }
+
+    private static void ValidateAkFactorConfig(ProcessGroupType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay, int rowNumber)
+    {
+        if (!AkFactorConfigEntity.SupportsProcessGroupType(processGroupType))
+        {
+            throw new BadRequestException($"Nhóm công đoạn sản xuất không hợp lệ để cấu hình hệ số Ak ở dòng {rowNumber}.");
+        }
+
+        if (!AkFactorConfigEntity.HasValidAkDiffCondition(akDiffDisplay))
+        {
+            throw new BadRequestException($"Chênh lệch Ak không đúng định dạng ở dòng {rowNumber}. Vui lòng dùng dạng > 0, <= -0,5 hoặc = 1.");
+        }
+
+        if (!AkFactorConfigEntity.HasValidAdjustmentRate(adjustmentRateDisplay))
+        {
+            throw new BadRequestException($"Tỷ lệ điều chỉnh doanh thu không đúng định dạng ở dòng {rowNumber}. Vui lòng dùng một giá trị duy nhất, ví dụ 1,5%.");
         }
     }
 }

@@ -35,8 +35,10 @@ public class GetAllAkFactorConfigQueryHandler(
 
         result.Data = result.Data
             .OrderByCodeNatural(d => d.ProcessGroupCode)
-            .ThenBy(d => d.MinAkDiff ?? decimal.MinValue)
-            .ThenBy(d => d.MaxAkDiff ?? decimal.MaxValue)
+            .ThenBy(d => Domain.Entities.Index.AkFactorConfig.GetOperatorPriority(d.AkDiffOperator))
+            .ThenByDescending(d => d.AkDiffOperator is ">" or ">=" ? d.AkDiffValue : null)
+            .ThenBy(d => d.AkDiffOperator is "<" or "<=" ? d.AkDiffValue : null)
+            .ThenBy(d => d.AkDiffValue ?? decimal.MinValue)
             .ToList();
         return result;
     }

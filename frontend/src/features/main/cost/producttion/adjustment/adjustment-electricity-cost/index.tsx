@@ -30,12 +30,15 @@ export function AdjustmentElectricityCost({
 }: AdjustmentCostExpandProps) {
 	const [adjustmentElectricityCost, setAdjustmentElectricityCost] =
 		useState<AdjustmentElectricityCostDetail>();
+	const [adjustmentElectricityPrice, setAdjustmentElectricityPrice] =
+		useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setAdjustmentElectricityCost(undefined);
+			setAdjustmentElectricityPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -51,6 +54,7 @@ export function AdjustmentElectricityCost({
 				res.result.costs.forEach(({ totalPrice }) => {
 					total += totalPrice;
 				});
+				setAdjustmentElectricityPrice(total);
 				setTotal(
 					multiplyByProductionMeters
 						? total * (productionOutput?.productionMeters || 1)
@@ -68,6 +72,11 @@ export function AdjustmentElectricityCost({
 			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
 				<ItemContent>
 					<ItemTitle>Doanh thu điện năng điều chỉnh</ItemTitle>
+				</ItemContent>
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(adjustmentElectricityPrice)}
+					</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>

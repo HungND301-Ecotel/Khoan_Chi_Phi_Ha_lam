@@ -118,6 +118,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     o.PlanAshContent,
                     ProductId = o.ProductUnitPrice!.ProductId,
                     DepartmentId = o.ProductUnitPrice.DepartmentId,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.Type,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                     PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -136,6 +137,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     EndMonth = o.EndMonth,
                     ProductionMeters = o.ProductionMeters,
                     PlanAshContent = o.PlanAshContent,
+                    ProcessGroupType = o.ProcessGroupType,
                     PlannedMaterialCostId = o.PlannedMaterialCostId,
                     PlannedMaintainCostId = o.PlannedMaintainCostId,
                     PlannedElectricityCostId = o.PlannedElectricityCostId
@@ -155,6 +157,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     EndMonth = o.EndMonth,
                     ProductionMeters = o.ProductionMeters,
                     PlanAshContent = o.PlanAshContent,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.Type,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                     PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -497,37 +500,14 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             var materialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
-            var akDiff = (decimal)(productionOutput.ActualAshContent - plannedOutput.PlanAshContent);
-            var akRate = ResolveAkRate(akConfigs, akDiff);
-            return productionOutput.ProductionMeters * (materialCost * (1 + (double)akRate) + maintainCost + electricityCost);
+            var hasAkConfigs = akConfigs.Any();
+            var akDiff = hasAkConfigs
+                ? (decimal)(plannedOutput.PlanAshContent - productionOutput.ActualAshContent)
+                : 0;
+            var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
+            var adjustedMaterialCost = materialCost + ((double)akDiff * materialCost * (double)akRate);
+            return productionOutput.ProductionMeters * (adjustedMaterialCost + maintainCost + electricityCost);
         });
-    }
-
-    private static decimal ResolveAkRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)
-    {
-        foreach (var config in configs)
-        {
-            var minMatched = !config.MinAkDiff.HasValue || akDiff >= config.MinAkDiff.Value;
-            var maxMatched = !config.MaxAkDiff.HasValue || akDiff <= config.MaxAkDiff.Value;
-            if (!minMatched || !maxMatched)
-            {
-                continue;
-            }
-
-            if (config.MinAdjustmentRate.HasValue && config.MaxAdjustmentRate.HasValue)
-            {
-                if (config.MinAdjustmentRate == config.MaxAdjustmentRate)
-                {
-                    return config.MinAdjustmentRate.Value;
-                }
-            }
-            else
-            {
-                return config.MinAdjustmentRate ?? config.MaxAdjustmentRate ?? 0;
-            }
-        }
-
-        return 0;
     }
 
     private static double CalculatePlannedMaterialCost(
@@ -608,6 +588,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
         public double PlanAshContent { get; set; }
+        public ProcessGroupType ProcessGroupType { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }

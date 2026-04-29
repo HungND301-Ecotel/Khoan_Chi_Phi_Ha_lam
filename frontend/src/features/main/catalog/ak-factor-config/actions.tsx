@@ -18,7 +18,7 @@ import {
 	AkFactorConfigSchema,
 } from './schema';
 
-const AK_FACTOR_CONFIG_SUPPORTS = ['%', '-', ','];
+const AK_FACTOR_CONFIG_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
 
 export function AkFactorConfigForm({
 	data,
@@ -105,7 +105,7 @@ export function AkFactorConfigForm({
 				control={form.control}
 				name='akDiffDisplay'
 				label='Chênh lệch Ak'
-				placeholder='Nhập chênh lệch Ak'
+				placeholder='Ví dụ: > 0 hoặc ≤ -0,5'
 				type='text'
 				supports={AK_FACTOR_CONFIG_SUPPORTS}
 			/>
@@ -113,7 +113,7 @@ export function AkFactorConfigForm({
 				control={form.control}
 				name='adjustmentRateDisplay'
 				label='Tỷ lệ điều chỉnh doanh thu'
-				placeholder='Nhập tỷ lệ điều chỉnh doanh thu'
+				placeholder='Ví dụ: 1,5%'
 				type='text'
 				supports={AK_FACTOR_CONFIG_SUPPORTS}
 			/>

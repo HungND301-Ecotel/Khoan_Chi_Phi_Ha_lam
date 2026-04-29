@@ -1,3 +1,4 @@
+import { ProcessGroupType } from '@/constants/process-group';
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -32,8 +33,20 @@ export type AdjustmentMaintainCostItemDescription = {
 	effectiveValue: number;
 };
 
-export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostItem>[] =
-	[
+export const getAdjustmentMaintainCostColumns = (
+	processGroupType?: ProcessGroupType,
+): ColumnDef<AdjustmentMaintainCostItem>[] => {
+	const getLength = () => {
+		if (
+			processGroupType === ProcessGroupType.DL ||
+			processGroupType === ProcessGroupType.XL
+		) {
+			return 7;
+		}
+		return 8;
+	};
+
+	return [
 		{
 			accessorKey: 'equipmentCode',
 			header: 'Mã thiết bị',
@@ -55,32 +68,35 @@ export const ADJUSTMENT_MAINTAIN_COST_COLUMNS: ColumnDef<AdjustmentMaintainCostI
 			header: 'Số lượng',
 			cell: ({ row }) => formatNumber(row.original.quantity),
 		},
-		...Array.from({ length: 7 }).map<ColumnDef<AdjustmentMaintainCostItem>>(
-			(_, idx) => {
-				const name = `K${idx + 1}`;
-				return {
-					id: name,
-					header: name,
-					cell: ({ row }) => {
-						if (idx === 5) {
-							return formatNumber(row.original.k6AdjustmentFactorValue);
-						}
+		...Array.from({ length: getLength() }).map<
+			ColumnDef<AdjustmentMaintainCostItem>
+		>((_, idx) => {
+			const name = `K${idx + 1}`;
+			return {
+				id: name,
+				header: name,
+				cell: ({ row }) => {
+					if (idx === 5) {
+						return formatNumber(row.original.k6AdjustmentFactorValue);
+					}
 
-						const sortedDescriptions =
-							row.original.adjustmentFactorDescriptions.sort((a, b) =>
-								a.adjustmentFactorCode.localeCompare(b.adjustmentFactorCode),
-							);
+					const sortedDescriptions =
+						row.original.adjustmentFactorDescriptions.sort((a, b) =>
+							a.adjustmentFactorCode.localeCompare(b.adjustmentFactorCode),
+						);
 
-						const arrayIndex = idx > 5 ? idx - 1 : idx;
-						const item = sortedDescriptions[arrayIndex];
-						return item ? formatNumber(item.effectiveValue) : formatNumber(0);
-					},
-				};
-			},
-		),
+					const adjustedIdx = idx > 5 ? idx - 1 : idx;
+
+					return formatNumber(
+						sortedDescriptions[adjustedIdx]?.effectiveValue ?? 0,
+					);
+				},
+			};
+		}),
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá SCTX (đ/m) ',
 			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
 		},
 	];
+};
