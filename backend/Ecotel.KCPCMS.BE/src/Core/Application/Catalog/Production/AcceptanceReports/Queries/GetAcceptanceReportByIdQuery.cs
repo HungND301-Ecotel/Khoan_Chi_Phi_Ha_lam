@@ -90,7 +90,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = acceptanceReport.Id,
             ProductionOutputId = acceptanceReport.ProductionOutputId,
             FilePath = acceptanceReport.FilePath,
-            Items = items.OrderBy(i => i.MaterialCode).ThenBy(i => i.PartCode).ToList()
+            Items = items.ToList()
         };
     }
 

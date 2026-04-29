@@ -147,7 +147,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
             return new UploadAcceptanceReportResponseDto
             {
                 FilePath = "",
-                AcceptanceReports = acceptanceReports.OrderBy(a => a.MaterialCode).ToList()
+                AcceptanceReports = acceptanceReports
             };
         }
         catch (Exception ex) when (ex is not BadRequestException && ex is not ExcelImportException)
