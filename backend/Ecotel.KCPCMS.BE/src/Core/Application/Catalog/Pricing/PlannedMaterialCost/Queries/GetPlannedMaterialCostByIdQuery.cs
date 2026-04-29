@@ -31,13 +31,13 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                 .Include(m => m.Output)
                 .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
-                .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.AssignmentCode).ThenInclude(a => a.Code)
+                .Include(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.AssignmentCode).ThenInclude(a => a.Code)
                 .Include(m => m.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var mCost = new List<PlannedMaterialCostAssignmentCode>();
         var normFactorAssignment = materialUnitPrice.NormFactor?.NormFactorAssignmentCodes
-            .FirstOrDefault(x => x.AssignmentCodeId == materialUnitPrice.SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId)
+            .FirstOrDefault(x => x.AssignmentCodeId == materialUnitPrice.SlideUnitPriceAssignmentCode?.AssignmentCodeId)
             ?? materialUnitPrice.NormFactor?.NormFactorAssignmentCodes.FirstOrDefault();
         var coefficientValue = normFactorAssignment?.Value ?? 1;
         var targetHardnessId = normFactorAssignment?.TargetHardnessId;
@@ -49,9 +49,9 @@ public class GetPlannedMaterialCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             var originalAmount = materialUnitPrice.SlideUnitPriceAssignmentCode.Amount;
             mCost.Add(new PlannedMaterialCostAssignmentCode
             {
-                AssignmentCodeId = currentSlide.AssigmentCodeId,
-                AssignmentCode = currentSlide.AssignmentCode.Code.Value,
-                AssignmentCodeName = currentSlide.AssignmentCode.Name,
+                AssignmentCodeId = materialUnitPrice.SlideUnitPriceAssignmentCode.AssignmentCodeId,
+                AssignmentCode = materialUnitPrice.SlideUnitPriceAssignmentCode.AssignmentCode?.Code?.Value ?? string.Empty,
+                AssignmentCodeName = materialUnitPrice.SlideUnitPriceAssignmentCode.AssignmentCode?.Name ?? string.Empty,
                 Costs = [ new PlannedMaterialCostDto {
                             MaterialId = currentSlide.Id,
                             MaterialCode = currentSlide?.Code.Value ?? "",

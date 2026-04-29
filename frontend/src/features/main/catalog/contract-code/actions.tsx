@@ -20,13 +20,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
-
 type Material = {
 	id: string;
 	code: string;
 	name: string;
-	assignmentCodeId?: string | null;
 };
 
 type ContractCodeDetail = {
@@ -110,25 +107,10 @@ export function ContractCodeForm({
 	}, [form, selectedMaterials]);
 
 	const materialOptions = useMemo(() => {
-		const currentAssignmentCodeId = row?.id?.toLowerCase() ?? '';
-
 		return Object.values(
 			(materials ?? []).reduce<Record<string, MultiSelectOption>>(
 				(acc, material) => {
-					const assignmentCodeId = (
-						material.assignmentCodeId ?? EMPTY_GUID
-					).toLowerCase();
-					const canSelect =
-						assignmentCodeId === EMPTY_GUID ||
-						(currentAssignmentCodeId !== '' &&
-							assignmentCodeId === currentAssignmentCodeId);
-
-					if (
-						!canSelect ||
-						!material.id ||
-						!material.code ||
-						acc[material.id]
-					) {
+					if (!material.id || !material.code || acc[material.id]) {
 						return acc;
 					}
 
@@ -141,7 +123,7 @@ export function ContractCodeForm({
 				{},
 			),
 		).sort((a, b) => a.label.localeCompare(b.label));
-	}, [materials, row?.id]);
+	}, [materials]);
 
 	const handleSubmit = async (values: ContractCodeSchema) => {
 		try {

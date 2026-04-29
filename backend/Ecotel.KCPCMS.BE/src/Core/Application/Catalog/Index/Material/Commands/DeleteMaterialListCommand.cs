@@ -31,7 +31,10 @@ public class DeleteMaterialListCommandHandler(IUnitOfWork unitOfWork) : IRequest
 
         var materialsToDelete = await _materialRepository.GetAllAsync(
             predicate: x => distinctIds.Contains(x.Id),
-            include: x => x.Include(x => x.UnitOfMeasure).Include(x => x.AssignmentCode).Include(t => t.Costs).Include(t => t.Code),
+            include: x => x.Include(x => x.UnitOfMeasure)
+                .Include(x => x.AssignmentCodeMaterials)
+                .Include(t => t.Costs)
+                .Include(t => t.Code),
             disableTracking: true);
 
         if (materialsToDelete == null || !materialsToDelete.Any())

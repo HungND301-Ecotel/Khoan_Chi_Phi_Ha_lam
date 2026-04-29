@@ -18,7 +18,7 @@ public class GetSlideUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
     {
         var slideUnitPrice = await _slideUnitPriceRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
-            include: t => t.Include(u => u.SlideUnitPriceAssignmentCodes).ThenInclude(u => u.Material).ThenInclude(u => u.AssignmentCode).ThenInclude(a => a.Code)
+            include: t => t.Include(u => u.SlideUnitPriceAssignmentCodes).ThenInclude(u => u.AssignmentCode).ThenInclude(a => a.Code)
                 .Include(u => u.SlideUnitPriceAssignmentCodes).ThenInclude(u => u.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(u => u.SlideUnitPriceAssignmentCodes).ThenInclude(u => u.Material).ThenInclude(m => m.Costs)
                 .Include(u => u.SlideUnitPriceAssignmentCodes).ThenInclude(u => u.Material).ThenInclude(m => m.Code)
@@ -27,7 +27,7 @@ public class GetSlideUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var materialCosts = slideUnitPrice.SlideUnitPriceAssignmentCodes
-            .GroupBy(a => a.Material?.AssigmentCodeId)
+            .GroupBy(a => a.AssignmentCodeId)
             .Select(group =>
             {
                 var costs = group.Select(c =>
@@ -49,10 +49,10 @@ public class GetSlideUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
 
                 return new SlideUnitPriceAssignmentCodeDetailDto
                 {
-                    AssignmentCodeId = group.Key ?? Guid.Empty,
-                    AssignmentCode = group.First().Material?.AssignmentCode?.Code?.Value ?? "",
-                    IsSlideAssignmentCode = group.First().Material?.AssignmentCode.IsSlideAssignmentCode ?? false,
-                    AssignmentCodeName = group.First().Material?.AssignmentCode?.Name ?? "",
+                    AssignmentCodeId = group.Key,
+                    AssignmentCode = group.First().AssignmentCode?.Code?.Value ?? "",
+                    IsSlideAssignmentCode = group.First().AssignmentCode?.IsSlideAssignmentCode ?? false,
+                    AssignmentCodeName = group.First().AssignmentCode?.Name ?? "",
                     Costs = costs
                 };
             }).ToList();

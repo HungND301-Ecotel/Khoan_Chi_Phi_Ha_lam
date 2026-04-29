@@ -96,7 +96,6 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                     dto.Code,
                     dto.Name,
                     unitOfMeasureId,
-                    entityToUpdate.AssigmentCodeId,
                     request.MaterialType));
                 bool isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), incomingCosts);
 
@@ -111,7 +110,6 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                         dto.Code,
                         dto.Name,
                         unitOfMeasureId,
-                        entityToUpdate.AssigmentCodeId,
                         request.MaterialType);
 
                     if (isCostChanged)
@@ -131,7 +129,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                     throw new ConflictException($"Dòng {rowNumber}: Mã vật tư/tài sản '{dto.Code}' đã tồn tại.");
                 }
 
-                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, null, request.MaterialType);
+                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, request.MaterialType);
                 newMaterial.AddMaterialCost(incomingCosts);
                 addList.Add(newMaterial);
             }

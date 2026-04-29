@@ -10,14 +10,21 @@ namespace Domain.Entities.Index
     {
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
-        public Guid? AssigmentCodeId { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
 
         // Navigation properties
-        public virtual AssignmentCode? AssignmentCode { get; protected set; }
         public virtual UnitOfMeasure? UnitOfMeasure { get; protected set; }
         public virtual Code? Code { get; protected set; }
+
+        private IList<AssignmentCodeMaterial> _assignmentCodeMaterials = new List<AssignmentCodeMaterial>();
+        public virtual IReadOnlyCollection<AssignmentCodeMaterial> AssignmentCodeMaterials => _assignmentCodeMaterials.AsReadOnly();
+        public AssignmentCode? AssignmentCode => _assignmentCodeMaterials
+            .Where(x => x.AssignmentCode != null)
+            .Select(x => x.AssignmentCode!)
+            .OrderBy(x => x.Code != null ? x.Code.Value : string.Empty)
+            .FirstOrDefault();
+        public Guid? AssigmentCodeId => AssignmentCode?.Id;
 
         private IList<Cost> _costs = new List<Cost>();
         public virtual IReadOnlyCollection<Cost> Costs => _costs.AsReadOnly();
@@ -30,7 +37,7 @@ namespace Domain.Entities.Index
         private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
         public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
         //constructor
-        public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        public static Material Create(string code, string name, Guid? unitOfMeasureId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -52,12 +59,11 @@ namespace Domain.Entities.Index
                 Name = name,
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
-                AssigmentCodeId = assigmentCodeId,
                 MaterialType = materialType
             };
         }
 
-        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -80,12 +86,11 @@ namespace Domain.Entities.Index
                 Name = name,
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
-                AssigmentCodeId = assigmentCodeId,
                 MaterialType = materialType
             };
         }
 
-        public void Update(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        public void Update(string code, string name, Guid? unitOfMeasureId, MaterialType materialType)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -104,7 +109,6 @@ namespace Domain.Entities.Index
             }
 
             UnitOfMeasureId = unitOfMeasureId;
-            AssigmentCodeId = assigmentCodeId;
             MaterialType = materialType;
         }
 
@@ -134,7 +138,7 @@ namespace Domain.Entities.Index
 
         public bool CheckChange(Material dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && AssigmentCodeId == dto.AssigmentCodeId && UnitOfMeasureId == dto.UnitOfMeasureId && MaterialType == dto.MaterialType);
+            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && UnitOfMeasureId == dto.UnitOfMeasureId && MaterialType == dto.MaterialType);
         }
     }
 }

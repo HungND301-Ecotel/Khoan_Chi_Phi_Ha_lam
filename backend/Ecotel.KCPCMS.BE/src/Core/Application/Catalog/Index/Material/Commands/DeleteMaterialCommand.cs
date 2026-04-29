@@ -16,7 +16,10 @@ public class DeleteMaterialCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
     {
         var existMaterial = await _materialRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.DeleteId,
-            include: t => t.Include(x => x.UnitOfMeasure).Include(x => x.AssignmentCode).Include(t => t.Costs).Include(t => t.Code),
+            include: t => t.Include(x => x.UnitOfMeasure)
+                .Include(x => x.AssignmentCodeMaterials)
+                .Include(t => t.Costs)
+                .Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);

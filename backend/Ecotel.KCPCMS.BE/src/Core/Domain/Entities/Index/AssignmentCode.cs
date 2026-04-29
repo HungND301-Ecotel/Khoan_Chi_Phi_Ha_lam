@@ -15,8 +15,13 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
     public virtual UnitOfMeasure? UnitOfMeasure { get; protected set; }
     public virtual Code? Code { get; protected set; }
 
-    private IList<Material> _materials = new List<Material>();
-    public virtual IReadOnlyCollection<Material> Materials => _materials.AsReadOnly();
+    private IList<AssignmentCodeMaterial> _assignmentCodeMaterials = new List<AssignmentCodeMaterial>();
+    public virtual IReadOnlyCollection<AssignmentCodeMaterial> AssignmentCodeMaterials => _assignmentCodeMaterials.AsReadOnly();
+    public IReadOnlyCollection<Material> Materials => _assignmentCodeMaterials
+        .Where(x => x.Material != null)
+        .Select(x => x.Material!)
+        .ToList()
+        .AsReadOnly();
     private IList<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodes = new List<MaterialUnitPriceAssignmentCode>();
     public virtual IReadOnlyCollection<MaterialUnitPriceAssignmentCode> MaterialUnitPriceAssignmentCodes => _materialUnitPriceAssignmentCodes.AsReadOnly();
 

@@ -23,7 +23,7 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
             include: s => s
                 .Include(s => s.UnitOfMeasure)
                 .Include(s => s.Code)
-                .Include(s => s.Materials).ThenInclude(m => m.Code),
+                .Include(s => s.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Code),
             disableTracking: true);
 
         var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(selector: u => u.Name, disableTracking: true);
@@ -45,9 +45,9 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
         var dtoList = new List<AssignmentCodeExcelDto>();
         foreach (var item in list.OrderBy(x => x.Code!.Value).ThenBy(x => x.Name))
         {
-            var linkedMaterialCodes = item.Materials
-                .Where(m => m.Code != null)
-                .Select(m => m.Code!.Value)
+            var linkedMaterialCodes = item.AssignmentCodeMaterials
+                .Where(m => m.Material?.Code != null)
+                .Select(m => m.Material!.Code!.Value)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(code => code)
                 .ToList();

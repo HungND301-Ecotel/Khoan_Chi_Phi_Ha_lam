@@ -25,6 +25,7 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
             predicate: p => p.MaterialType == request.MaterialType,
             include: p => p
             .Include(p => p.UnitOfMeasure)
+            .Include(p => p.AssignmentCodeMaterials).ThenInclude(am => am.AssignmentCode).ThenInclude(a => a.Code)
             .Include(p => p.Costs)
             .Include(p => p.Code!),
             disableTracking: true);
@@ -36,7 +37,11 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
             { nameof(MaterialExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() },
         };
         var dtoList = list
-            .OrderBy(d => d.AssignmentCode != null && d.AssignmentCode.Code != null ? d.AssignmentCode.Code.Value : string.Empty)
+            .OrderBy(d => d.AssignmentCodeMaterials
+                .Where(am => am.AssignmentCode?.Code != null)
+                .Select(am => am.AssignmentCode!.Code!.Value)
+                .OrderBy(code => code)
+                .FirstOrDefault() ?? string.Empty)
             .ThenBy(d => d.Name)
             .Select(l =>
         {

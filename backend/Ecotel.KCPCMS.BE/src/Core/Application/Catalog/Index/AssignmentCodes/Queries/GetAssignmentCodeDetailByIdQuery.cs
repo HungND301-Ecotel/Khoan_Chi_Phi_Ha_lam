@@ -24,9 +24,9 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             include: t => t
                 .Include(c => c.UnitOfMeasure)
                 .Include(c => c.Code)
-                .Include(c => c.Materials).ThenInclude(m => m.Code)
-                .Include(c => c.Materials).ThenInclude(m => m.UnitOfMeasure)
-                .Include(c => c.Materials).ThenInclude(m => m.Costs),
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Code)
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.UnitOfMeasure)
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
 
@@ -37,7 +37,9 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             Name = detail.Name,
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
-            Materials = detail.Materials
+            Materials = detail.AssignmentCodeMaterials
+                .Where(link => link.Material != null)
+                .Select(link => link.Material!)
                 .Select(m => new AssignmentCodeMaterialDto
                 {
                     Id = m.Id,

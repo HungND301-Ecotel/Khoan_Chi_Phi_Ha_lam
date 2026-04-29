@@ -16,6 +16,7 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 {
     private readonly IWriteRepository<AssignmentCode> _assignemntcodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
+    private readonly IWriteRepository<AssignmentCodeMaterial> _assignmentCodeMaterialRepository = unitOfWork.GetRepository<AssignmentCodeMaterial>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     public async Task<bool> Handle(UpdateAssignmentCodeCommand request, CancellationToken cancellationToken)
     {
@@ -31,7 +32,8 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 
         var existAssignmentCode = await _assignemntcodeRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.UpdateModel.Id,
-            include: t => t.Include(t => t.Code),
+            include: t => t.Include(t => t.Code)
+                .Include(t => t.AssignmentCodeMaterials),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, existAssignmentCode.CodeId))
@@ -46,11 +48,6 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         {
             existAssignmentCode.Update(request.UpdateModel.Name, request.UpdateModel.Code, request.UpdateModel.UnitOfMeasureId);
 
-            var currentLinkedMaterials = await _materialRepository.GetAllAsync(
-                predicate: m => m.AssigmentCodeId == existAssignmentCode.Id,
-                include: m => m.Include(x => x.Code),
-                disableTracking: false);
-
             var selectedMaterials = materialIds.Any()
                 ? await _materialRepository.GetAllAsync(
                     predicate: m => materialIds.Contains(m.Id),
@@ -63,28 +60,25 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                 throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
             }
 
-            var selectedMaterialIdSet = selectedMaterials
-                .Select(m => m.Id)
-                .ToHashSet();
+            var currentLinkMap = existAssignmentCode.AssignmentCodeMaterials
+                .ToDictionary(x => x.MaterialId);
+            var selectedMaterialIdSet = selectedMaterials.Select(m => m.Id).ToHashSet();
 
-            foreach (var material in currentLinkedMaterials.Where(m => !selectedMaterialIdSet.Contains(m.Id)))
+            var linksToDelete = existAssignmentCode.AssignmentCodeMaterials
+                .Where(link => !selectedMaterialIdSet.Contains(link.MaterialId))
+                .ToList();
+            if (linksToDelete.Any())
             {
-                material.Update(
-                    material.Code?.Value ?? string.Empty,
-                    material.Name,
-                    material.UnitOfMeasureId,
-                    null,
-                    material.MaterialType);
+                _assignmentCodeMaterialRepository.Delete(linksToDelete);
             }
 
-            foreach (var material in selectedMaterials)
+            var linksToAdd = selectedMaterials
+                .Where(material => !currentLinkMap.ContainsKey(material.Id))
+                .Select(material => AssignmentCodeMaterial.Create(existAssignmentCode, material))
+                .ToList();
+            if (linksToAdd.Any())
             {
-                material.Update(
-                    material.Code?.Value ?? string.Empty,
-                    material.Name,
-                    material.UnitOfMeasureId,
-                    existAssignmentCode.Id,
-                    material.MaterialType);
+                await _assignmentCodeMaterialRepository.InsertAsync(linksToAdd, cancellationToken);
             }
 
             await unitOfWork.SaveChangesAsync();

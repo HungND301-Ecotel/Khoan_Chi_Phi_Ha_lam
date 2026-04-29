@@ -38,7 +38,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.Hardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
-                .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.AssignmentCode).ThenInclude(a => a.Code)
+                .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.AssignmentCode).ThenInclude(a => a.Code)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
@@ -68,7 +68,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
 
         var plannedMaterialCost = plannedOutput.PlannedMaterialCost;
         var normFactorAssignment = plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes
-            .FirstOrDefault(x => x.AssignmentCodeId == plannedMaterialCost.SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId)
+            .FirstOrDefault(x => x.AssignmentCodeId == plannedMaterialCost.SlideUnitPriceAssignmentCode?.AssignmentCodeId)
             ?? plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes.FirstOrDefault();
         var coefficientValue = normFactorAssignment?.Value ?? 1;
         var targetHardnessId = normFactorAssignment?.TargetHardnessId;
@@ -167,9 +167,9 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             var originalAmount = plannedMaterialCost.SlideUnitPriceAssignmentCode.Amount;
             mCost.Add(new AdjustmentMaterialCostAssignmentCode
             {
-                AssignmentCodeId = currentSlide.AssigmentCodeId,
-                AssignmentCode = currentSlide.AssignmentCode.Code.Value,
-                AssignmentCodeName = currentSlide.AssignmentCode.Name,
+                AssignmentCodeId = plannedMaterialCost.SlideUnitPriceAssignmentCode.AssignmentCodeId,
+                AssignmentCode = plannedMaterialCost.SlideUnitPriceAssignmentCode.AssignmentCode?.Code?.Value ?? string.Empty,
+                AssignmentCodeName = plannedMaterialCost.SlideUnitPriceAssignmentCode.AssignmentCode?.Name ?? string.Empty,
                 Costs = [new AdjustmentMaterialCostDto
                 {
                     MaterialId = currentSlide.Id,

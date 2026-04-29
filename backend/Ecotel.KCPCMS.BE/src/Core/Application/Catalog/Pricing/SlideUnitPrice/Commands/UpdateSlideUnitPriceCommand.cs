@@ -71,7 +71,7 @@ public class UpdateSlideUnitPriceCommandHandler(
         var assignmentList =
             await _assignmentCodeRepository.GetAllAsync(
                 predicate: a => assigmentCodeIds.Contains(a.Id),
-                include: a => a.Include(a => a.Materials).ThenInclude(m => m.Costs),
+                include: a => a.Include(a => a.AssignmentCodeMaterials).ThenInclude(am => am.Material).ThenInclude(m => m.Costs),
                 disableTracking: true);
 
         if (assigmentCodeIds.Count != assignmentList.Count)
@@ -89,7 +89,11 @@ public class UpdateSlideUnitPriceCommandHandler(
                 throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
             }
 
-            var assMaterialIds = assCode.Materials.Select(m => m.Id).ToHashSet();
+            var assMaterials = assCode.AssignmentCodeMaterials
+                .Where(link => link.Material != null)
+                .Select(link => link.Material!)
+                .ToList();
+            var assMaterialIds = assMaterials.Select(m => m.Id).ToHashSet();
             var extraMaterialIds = group.Costs
                 .Select(c => c.MaterialId)
                 .Where(id => !assMaterialIds.Contains(id))
@@ -112,11 +116,11 @@ public class UpdateSlideUnitPriceCommandHandler(
 
             foreach (var cost in group.Costs)
             {
-                var material = assCode.Materials.FirstOrDefault(c => c.Id == cost.MaterialId);
+                var material = assMaterials.FirstOrDefault(c => c.Id == cost.MaterialId);
                 var currentMonth = DateOnly.FromDateTime(DateTime.UtcNow);
                 var curCost = material?.Costs.FirstOrDefault(c =>
                     c.StartMonth <= currentMonth && c.EndMonth >= currentMonth)?.Amount;
-                unitPriceAssignmentCodes.Add(Domain.Entities.Pricing.SlideUnitPriceAssignmentCode.Create(material?.Id ?? DefaultIdType.Empty, cost.Amount ?? 0));
+                unitPriceAssignmentCodes.Add(Domain.Entities.Pricing.SlideUnitPriceAssignmentCode.Create(group.AssignmentCodeId, material?.Id ?? DefaultIdType.Empty, cost.Amount ?? 0));
             }
         }
 

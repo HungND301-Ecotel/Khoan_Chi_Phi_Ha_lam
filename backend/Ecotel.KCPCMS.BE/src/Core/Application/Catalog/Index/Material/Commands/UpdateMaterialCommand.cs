@@ -47,7 +47,7 @@ public class UpdateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService c
             _costRepository.Delete(existedMaterial.Costs.ToList());
             await unitOfWork.SaveChangesAsync();
 
-            existedMaterial.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, existedMaterial.AssigmentCodeId, request.UpdateModel.MaterialType);
+            existedMaterial.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.MaterialType);
 
             var costList = new List<Cost>();
             foreach (var cost in request.UpdateModel.Costs)

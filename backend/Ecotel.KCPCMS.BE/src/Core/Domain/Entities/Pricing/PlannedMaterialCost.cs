@@ -42,7 +42,7 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         {
             slideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
 
-            var assignmentCodeId = SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId;
+            var assignmentCodeId = SlideUnitPriceAssignmentCode?.AssignmentCodeId;
             if (assignmentCodeId.HasValue && NormFactor != null)
             {
                 var matchedNormFactor = NormFactor.NormFactorAssignmentCodes

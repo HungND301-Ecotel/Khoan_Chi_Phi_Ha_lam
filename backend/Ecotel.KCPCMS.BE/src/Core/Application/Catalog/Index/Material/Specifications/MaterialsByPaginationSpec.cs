@@ -16,7 +16,7 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
 
         Query
             .Include(m => m.UnitOfMeasure)
-            .Include(m => m.AssignmentCode).ThenInclude(a => a.Code)
+            .Include(m => m.AssignmentCodeMaterials).ThenInclude(am => am.AssignmentCode).ThenInclude(a => a.Code)
             .Include(m => m.Costs)
             .Include(m => m.Code)
             .Where(m =>
@@ -33,9 +33,21 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
             Name = m.Name,
             UnitOfMeasureId = m.UnitOfMeasureId,
             UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
-            AssignmentCodeId = m.AssignmentCode != null ? m.AssignmentCode.Id : DefaultIdType.Empty,
-            AssignmentCode = m.AssignmentCode != null && m.AssignmentCode.Code != null ? m.AssignmentCode.Code.Value : string.Empty,
-            IsSlideAssignmentCode = m.AssignmentCode != null ? m.AssignmentCode.IsSlideAssignmentCode : false,
+            AssignmentCodeId = m.AssignmentCodeMaterials
+                .Where(am => am.AssignmentCode != null)
+                .OrderBy(am => am.AssignmentCode!.Code != null ? am.AssignmentCode.Code.Value : string.Empty)
+                .Select(am => (Guid?)am.AssignmentCodeId)
+                .FirstOrDefault() ?? DefaultIdType.Empty,
+            AssignmentCode = m.AssignmentCodeMaterials
+                .Where(am => am.AssignmentCode != null && am.AssignmentCode.Code != null)
+                .OrderBy(am => am.AssignmentCode!.Code!.Value)
+                .Select(am => am.AssignmentCode!.Code!.Value)
+                .FirstOrDefault() ?? string.Empty,
+            IsSlideAssignmentCode = m.AssignmentCodeMaterials
+                .Where(am => am.AssignmentCode != null)
+                .OrderBy(am => am.AssignmentCode!.Code != null ? am.AssignmentCode.Code.Value : string.Empty)
+                .Select(am => (bool?)am.AssignmentCode!.IsSlideAssignmentCode)
+                .FirstOrDefault() ?? false,
             CostAmount = m.Costs
                     .Where(c => c.CostType == CostType.Material &&
                                 c.StartMonth <= checkDate &&

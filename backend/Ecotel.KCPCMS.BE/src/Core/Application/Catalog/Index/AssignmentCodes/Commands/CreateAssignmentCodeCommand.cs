@@ -16,6 +16,7 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 {
     private readonly IWriteRepository<AssignmentCode> _assignemntcodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
+    private readonly IWriteRepository<AssignmentCodeMaterial> _assignmentCodeMaterialRepository = unitOfWork.GetRepository<AssignmentCodeMaterial>();
     public async Task<bool> Handle(CreateAssignmentCodeCommand request, CancellationToken cancellationToken)
     {
         if (await codeService.IsCodeExisted(request.CreateModel.Code))
@@ -44,15 +45,11 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                     throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
                 }
 
-                foreach (var material in materials)
-                {
-                    material.Update(
-                        material.Code?.Value ?? string.Empty,
-                        material.Name,
-                        material.UnitOfMeasureId,
-                        newAssignmentCode.Id,
-                        material.MaterialType);
-                }
+                var links = materials
+                    .Select(material => AssignmentCodeMaterial.Create(newAssignmentCode, material))
+                    .ToList();
+
+                await _assignmentCodeMaterialRepository.InsertAsync(links, cancellationToken);
             }
 
             await unitOfWork.SaveChangesAsync();
