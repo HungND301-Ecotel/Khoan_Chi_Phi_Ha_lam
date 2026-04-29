@@ -24,7 +24,6 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
         var list = await _materialEntityRepository.GetAllAsync(
             predicate: p => p.MaterialType == request.MaterialType,
             include: p => p
-            .Include(p => p.AssignmentCode).ThenInclude(a => a.Code)
             .Include(p => p.UnitOfMeasure)
             .Include(p => p.Costs)
             .Include(p => p.Code!),
@@ -47,7 +46,6 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
                 Code = l.Code?.Value ?? "",
                 Name = l.Name,
                 UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
-                AssignmentCode = l.AssignmentCode?.Code?.Value ?? "",
                 Cost = costService.BuildExcelCostString(l.Costs.ToList()),
             };
         });
