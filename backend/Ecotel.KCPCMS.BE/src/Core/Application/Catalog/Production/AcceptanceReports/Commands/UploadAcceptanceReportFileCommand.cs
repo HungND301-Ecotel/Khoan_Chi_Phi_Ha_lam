@@ -30,11 +30,6 @@ public class UploadAcceptanceReportFileCommandHandler(
                            .Include(p => p.UnitOfMeasure),
             disableTracking: true);
 
-        if ((materials == null || !materials.Any()) && (parts == null || !parts.Any()))
-        {
-            throw new ApplicationException(CustomResponseMessage.MaterialPartNotFound);
-        }
-
         using var fileStream = request.File.OpenReadStream();
         return await excelService.ProcessExcelFileAsync(
             request.ProductionOutputId,

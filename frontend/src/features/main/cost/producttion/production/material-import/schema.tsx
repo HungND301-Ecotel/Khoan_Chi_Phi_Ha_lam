@@ -1,5 +1,9 @@
 import z from 'zod';
 
+function isUnresolvedRow(data: { resolutionStatus?: string | null }): boolean {
+	return data.resolutionStatus === 'unresolved';
+}
+
 function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	if (type === 1) return 2; // Material -> Vật liệu
 	if (type === 2) return 3; // SparePart -> SCTX
@@ -17,6 +21,11 @@ export const materialFormSchema = z
 		id: z.string().optional(),
 		acceptanceReportItemId: z.string().optional(),
 		materialOrPartId: z.string().optional(),
+		resolutionStatus: z.enum(['resolved', 'unresolved']).optional(),
+		unresolvedReason: z.string().optional(),
+		sourceRowNumber: z.number().nullable().optional(),
+		createdEntityGroup: z.enum(['material', 'part']).nullable().optional(),
+		createdSpecificType: z.number().nullable().optional(),
 		partType: z.number().nullable().optional(),
 		materialCode: z.string().min(1, { message: 'Mã vật tư là bắt buộc' }),
 		unitOfMeasureName: z.string().optional(),
@@ -58,6 +67,7 @@ export const materialFormSchema = z
 	})
 	.refine(
 		(data) =>
+			isUnresolvedRow(data) ||
 			data.showCategoryDropdown ||
 			data.showAdditionalCostDropdown ||
 			data.showContractLimitDropdown ||
@@ -69,6 +79,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			if (!data.showCategoryDropdown || !categoryValue) return true;
@@ -81,6 +92,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			if (!data.showCategoryDropdown || categoryValue !== 3) return true;
@@ -93,6 +105,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			const needsEquipment =
@@ -107,6 +120,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			if (
 				!data.showAdditionalCostDropdown ||
 				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
@@ -122,6 +136,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			if (
 				!data.showAdditionalCostDropdown ||
 				data.additionalCostCategory !== 4
@@ -137,6 +152,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const requiresSubCategory =
 				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
 			if (!data.showContractLimitDropdown || !requiresSubCategory) {
@@ -151,6 +167,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const requiresSubCategory =
 				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
 			if (!data.showContractLimitDropdown || !requiresSubCategory) {
@@ -174,6 +191,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			const hasCategoryActive =
@@ -240,6 +258,11 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	id: undefined,
 	acceptanceReportItemId: undefined,
 	materialOrPartId: undefined,
+	resolutionStatus: 'resolved',
+	unresolvedReason: undefined,
+	sourceRowNumber: null,
+	createdEntityGroup: null,
+	createdSpecificType: null,
 	partType: null,
 	materialCode: '',
 	unitOfMeasureName: undefined,

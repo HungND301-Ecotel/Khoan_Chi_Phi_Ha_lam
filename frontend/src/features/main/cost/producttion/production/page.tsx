@@ -88,7 +88,8 @@ function groupByDepartment(
 			const itemEnd = toTimestamp(item.endMonth);
 			if (
 				item.endMonth &&
-				(existedEnd === undefined || (itemEnd !== undefined && itemEnd > existedEnd))
+				(existedEnd === undefined ||
+					(itemEnd !== undefined && itemEnd > existedEnd))
 			) {
 				existed.endMonth = item.endMonth;
 			}

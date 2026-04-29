@@ -47,7 +47,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
             }
 
             var acceptanceReports = new List<AcceptanceReportItemDto>();
-            var importErrors = new List<string>();
+            var unresolvedAcceptanceReports = new List<UnresolvedAcceptanceReportItemDto>();
+            var fatalErrors = new List<string>();
 
             foreach (var row in worksheet.RowsUsed())
             {
@@ -70,24 +71,24 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 }
                 else if (!string.IsNullOrWhiteSpace(idStr))
                 {
-                    importErrors.Add($"Id không đúng định dạng Guid ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Id không đúng định dạng Guid ở dòng {rowNumber}.");
                 }
 
                 if (string.IsNullOrWhiteSpace(materialCode))
                 {
-                    importErrors.Add($"Mã vật tư không thể trống ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Mã vật tư không thể trống ở dòng {rowNumber}.");
                     continue;
                 }
 
                 if (!TryParseQuantity(quantityReceived, out var receivedValue))
                 {
-                    importErrors.Add($"Số lượng nhập phải là số ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Số lượng nhập phải là số ở dòng {rowNumber}.");
                     continue;
                 }
 
                 if (!TryParseQuantity(quantityDispensed, out var dispensedValue))
                 {
-                    importErrors.Add($"Số lượng xuất phải là số ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Số lượng xuất phải là số ở dòng {rowNumber}.");
                     continue;
                 }
 
@@ -111,7 +112,15 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
 
                     if (part == null)
                     {
-                        importErrors.Add($"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}.");
+                        unresolvedAcceptanceReports.Add(new UnresolvedAcceptanceReportItemDto
+                        {
+                            RowNumber = rowNumber,
+                            ReportItemId = reportItemId,
+                            MaterialCode = materialCode,
+                            IssuedQuantity = receivedValue,
+                            ShippedQuantity = dispensedValue,
+                            UnresolvedReason = $"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}."
+                        });
                         continue;
                     }
 
@@ -137,9 +146,9 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 });
             }
 
-            ThrowIfImportErrors(importErrors);
+            ThrowIfImportErrors(fatalErrors);
 
-            if (!acceptanceReports.Any())
+            if (!acceptanceReports.Any() && !unresolvedAcceptanceReports.Any())
             {
                 throw new BadRequestException(CustomResponseMessage.ExcelFileHasNoValidData);
             }
@@ -147,7 +156,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
             return new UploadAcceptanceReportResponseDto
             {
                 FilePath = "",
-                AcceptanceReports = acceptanceReports
+                AcceptanceReports = acceptanceReports,
+                UnresolvedAcceptanceReports = unresolvedAcceptanceReports
             };
         }
         catch (Exception ex) when (ex is not BadRequestException && ex is not ExcelImportException)

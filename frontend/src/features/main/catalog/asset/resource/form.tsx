@@ -42,12 +42,18 @@ export type AssetResourceDetail = {
 
 type AssetResourceFormProps = ActionDialogProps<Asset> & {
 	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: AssetResourceFormSchema) => Promise<void> | void;
 };
 
 export function AssetResourceForm({
 	data,
 	row,
 	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
 }: AssetResourceFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -90,6 +96,11 @@ export function AssetResourceForm({
 							: ASSET_RESOURCE_FORM_DEFAULT.costs,
 						materialType: 4,
 					});
+				} else if (defaultCode) {
+					form.reset({
+						...ASSET_RESOURCE_FORM_DEFAULT,
+						code: defaultCode,
+					});
 				}
 			} catch (error) {
 				console.error('Error fetching data:', error);
@@ -97,7 +108,7 @@ export function AssetResourceForm({
 		};
 
 		fetchData();
-	}, [row, form, isDuplicate]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -140,9 +151,10 @@ export function AssetResourceForm({
 					assigmentCodeId: null,
 				});
 			}
+			await onCreated?.(processedValues);
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);

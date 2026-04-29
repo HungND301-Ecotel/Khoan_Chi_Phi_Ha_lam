@@ -108,6 +108,7 @@ namespace Application.Dto.Catalog.Part
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public PartType PartType { get; set; } = PartType.Part;
+        public IList<Guid> EquipmentIds { get; set; } = new List<Guid>();
         public IList<MaintainCostDto> Costs { get; set; } = new List<MaintainCostDto>();
     }
 

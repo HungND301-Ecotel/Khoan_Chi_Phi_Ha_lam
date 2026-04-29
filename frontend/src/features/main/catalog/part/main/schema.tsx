@@ -7,6 +7,9 @@ export const partSchema = z.object({
 	name: z.string().min(1, {
 		message: 'Tên phụ tùng không được để trống',
 	}),
+	equipmentIds: z.array(z.string()).min(1, {
+		message: 'Phải chọn ít nhất 1 thiết bị',
+	}),
 	unitOfMeasureId: z
 		.string()
 		.trim()
@@ -51,6 +54,7 @@ export type PartSchema = z.infer<typeof partSchema>;
 export const PART_SCHEMA_DEFAULT: PartSchema = {
 	code: '',
 	name: '',
+	equipmentIds: [],
 	unitOfMeasureId: '',
 	costs: [
 		{

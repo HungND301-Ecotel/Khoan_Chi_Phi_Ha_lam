@@ -39,12 +39,18 @@ export type OtherPartDetail = {
 
 type OtherPartFormProps = ActionDialogProps<OtherPart> & {
 	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: OtherPartSchema) => Promise<void> | void;
 };
 
 export function OtherPartForm({
 	data,
 	row,
 	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
 }: OtherPartFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -94,7 +100,15 @@ export function OtherPartForm({
 		]);
 
 		promises.then(() => {
-			if (!row) return;
+			if (!row) {
+				if (defaultCode) {
+					form.reset({
+						...OTHER_PART_SCHEMA_DEFAULT,
+						code: defaultCode,
+					});
+				}
+				return;
+			}
 			api.get<OtherPartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
 				const { costs, ...otherPart } = res.result;
 				form.reset({
@@ -111,7 +125,7 @@ export function OtherPartForm({
 				});
 			});
 		});
-	}, [row, form, isDuplicate]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	const handleSubmit = async (values: OtherPartSchema) => {
 		try {
@@ -128,9 +142,11 @@ export function OtherPartForm({
 				await api.post(API.CATALOG.PART.CREATE, processedValues);
 			}
 
+			await onCreated?.(processedValues);
+
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);

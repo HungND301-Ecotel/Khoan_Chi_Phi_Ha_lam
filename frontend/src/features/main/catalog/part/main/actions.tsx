@@ -4,12 +4,14 @@ import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormMonthYear } from '@/components/form/form-month-year';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
+import { Equipment } from '@/features/main/catalog/equipment/columns';
 import { Part } from '@/features/main/catalog/part/main/columns';
 import {
 	PART_SCHEMA_DEFAULT,
@@ -29,6 +31,7 @@ export type PartDetail = {
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	partType: number;
+	equipmentIds?: string[];
 	costs: Array<{
 		startMonth: string;
 		endMonth: string;
@@ -40,13 +43,33 @@ export type PartDetail = {
 
 type PartFormProps = ActionDialogProps<Part> & {
 	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: PartSchema) => Promise<void> | void;
 };
 
-export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
+function getEquipmentOptionLabel(equipment: Equipment): string {
+	const processGroupCode = equipment.processGroups?.[0]?.code?.trim();
+	if (processGroupCode) {
+		return `${processGroupCode} - ${equipment.code} - ${equipment.name}`;
+	}
+
+	return `${equipment.code} - ${equipment.name}`;
+}
+
+export function PartForm({
+	data,
+	row,
+	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
+}: PartFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
+	const [equipments, setEquipments] = useState<Equipment[]>([]);
 
 	const form = useForm<PartSchema>({
 		resolver: zodResolver(partSchema),
@@ -84,17 +107,32 @@ export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
 	}, [costs, form]);
 
 	useEffect(() => {
-		const promises = Promise.all([api.pagging<Unit>(API.CATALOG.UNIT.LIST)]);
+		const promises = Promise.all([
+			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
+				ignorePagination: true,
+			}),
+		]);
 
-		promises.then(([unitsRes]) => {
+		promises.then(([unitsRes, equipmentsRes]) => {
 			setUnits(unitsRes.result.data);
+			setEquipments(equipmentsRes.result.data);
 
-			if (!row) return;
+			if (!row) {
+				if (defaultCode) {
+					form.reset({
+						...PART_SCHEMA_DEFAULT,
+						code: defaultCode,
+					});
+				}
+				return;
+			}
 			api.get<PartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
 				const { costs, ...part } = res.result;
 				form.reset({
 					...part,
 					code: isDuplicate ? '' : part.code,
+					equipmentIds: part.equipmentIds ?? row.equipmentIds ?? [],
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -106,7 +144,7 @@ export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
 				});
 			});
 		});
-	}, [row, form, isDuplicate]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	const handleSubmit = async (values: PartSchema) => {
 		try {
@@ -123,9 +161,11 @@ export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
 				await api.post(API.CATALOG.PART.CREATE, processedValues);
 			}
 
+			await onCreated?.(processedValues);
+
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -159,6 +199,26 @@ export function PartForm({ data, row, isDuplicate = false }: PartFormProps) {
 					value: unit.id,
 					label: unit.name,
 				}))}
+			/>
+
+			<FormMultiSelect
+				control={form.control}
+				name='equipmentIds'
+				label='Thiết bị'
+				placeholder='Chọn thiết bị'
+				options={equipments
+					.slice()
+					.sort((a, b) =>
+						getEquipmentOptionLabel(a).localeCompare(
+							getEquipmentOptionLabel(b),
+							'vi',
+							{ sensitivity: 'base' },
+						),
+					)
+					.map((equipment) => ({
+						value: equipment.id,
+						label: getEquipmentOptionLabel(equipment),
+					}))}
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>

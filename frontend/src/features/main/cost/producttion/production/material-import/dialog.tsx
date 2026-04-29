@@ -14,11 +14,16 @@ import {
 	MaterialFormSchema,
 	materialsFormSchema,
 } from './schema';
+import { UnresolvedCatalogCreateDialog } from './unresolved/unresolved-catalog-create-dialog';
+import type { UnresolvedCatalogCreateSelection } from './unresolved/unresolved-catalog-create-dialog';
+import { UnresolvedCreateDialog } from './unresolved/unresolved-create-dialog';
+import { UnresolvedCreateSchema } from './unresolved/unresolved-create-schema';
 import {
 	AdditionalCost,
 	Asset,
 	CreateAcceptanceReportRequest,
 	Equipment,
+	ImportResolutionStatus,
 	ItemType,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
@@ -27,6 +32,8 @@ import {
 	QuantityDetail,
 	QuotaBasedMaterial,
 	QuotaBasedMaterialType,
+	RECEIVED_TYPE_OPTIONS,
+	EXPORTED_TYPE_OPTIONS,
 	ISSUED_DETAIL_TYPE_BY_KEY,
 	SHIPPED_DETAIL_TYPE_BY_KEY,
 	UploadAcceptanceReportResponseDto,
@@ -57,6 +64,20 @@ type ImportedItemMeta = {
 type PartEquipmentMapping = {
 	partId: string;
 	equipments: Equipment[];
+};
+
+type MaterialLookupItem = {
+	id: string;
+	code: string;
+	unitOfMeasureName: string;
+	materialType: number;
+};
+
+type PartLookupItem = {
+	id: string;
+	code: string;
+	unitOfMeasureName: string;
+	partType: number;
 };
 
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
@@ -116,6 +137,10 @@ type ProductionOutputScopeResponse = {
 	}[];
 };
 
+type MaterialsFormValues = {
+	materials: MaterialFormSchema[];
+};
+
 function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	if (type === MaterialType.Material) {
 		return MaterialsIncludedInContractRevenue.Material;
@@ -154,6 +179,59 @@ function parseQuantity(value: number | string | null | undefined): number {
 	return Number.isFinite(normalized) ? normalized : 0;
 }
 
+function normalizeCode(value?: string | null): string {
+	return value?.trim().toUpperCase() ?? '';
+}
+
+function mapResolvedImportItem(item: {
+	reportItemId?: string | null;
+	materialId?: string | null;
+	partId?: string | null;
+	partType?: number | null;
+	materialCode: string;
+	unitOfMeasureName: string;
+	type: number;
+	itemType: number;
+	issuedQuantity: number;
+	shippedQuantity: number;
+}): MaterialFormSchema {
+	const isSafetyAndWelfareMaterial =
+		item.type === MaterialType.Material &&
+		item.itemType === ItemType.SafetyAndWelfare;
+	const isAssetMaterial =
+		item.type === MaterialType.Material && item.itemType === ItemType.Resource;
+	const isQuotaMaterial =
+		item.type === MaterialType.Material &&
+		item.itemType === ItemType.QuotaMaterials;
+	const defaultCategory = getDefaultCategoryByMaterialType(item.type);
+	const defaultAdditionalCost = isSafetyAndWelfareMaterial
+		? AdditionalCost.OtherMaterial
+		: getDefaultAdditionalCostByMaterialType(item.type);
+
+	return {
+		...MATERIAL_FORM_DEFAULT,
+		id: item.partId ?? item.materialId ?? '',
+		acceptanceReportItemId: item.reportItemId || undefined,
+		materialOrPartId: item.partId ?? item.materialId ?? '',
+		resolutionStatus: ImportResolutionStatus.Resolved,
+		partType: item.partType ?? null,
+		materialCode: item.materialCode,
+		unitOfMeasureName: item.unitOfMeasureName,
+		type: item.type,
+		itemType: item.itemType,
+		quantityReceived: item.issuedQuantity,
+		quantityExported: item.shippedQuantity,
+		receivedTypes: [RECEIVED_TYPE_OPTIONS[0].value],
+		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
+		quantity: item.issuedQuantity + item.shippedQuantity,
+		category: defaultCategory,
+		additionalCostCategory: defaultAdditionalCost,
+		showAdditionalCostDropdown: isSafetyAndWelfareMaterial,
+		showAssetDropdown: isAssetMaterial,
+		showContractLimitDropdown: isQuotaMaterial,
+	};
+}
+
 export function MaterialImportDialog({
 	onSave,
 	productionOutputId,
@@ -173,10 +251,15 @@ export function MaterialImportDialog({
 	>({});
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
+	const [unresolvedCreateIndex, setUnresolvedCreateIndex] = useState<
+		number | null
+	>(null);
+	const [unresolvedCreateSelection, setUnresolvedCreateSelection] =
+		useState<UnresolvedCatalogCreateSelection | null>(null);
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 
-	const form = useForm<{ materials: MaterialFormSchema[] }>({
+	const form = useForm<MaterialsFormValues>({
 		resolver: zodResolver(materialsFormSchema),
 		defaultValues: {
 			materials: [],
@@ -354,44 +437,29 @@ export function MaterialImportDialog({
 			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
 
 			// Transform API response to form schema
-			const formattedData: MaterialFormSchema[] =
-				response.result.acceptanceReports.map((item) => {
-					const isSafetyAndWelfareMaterial =
-						item.type === MaterialType.Material &&
-						item.itemType === ItemType.SafetyAndWelfare;
-					const isAssetMaterial =
-						item.type === MaterialType.Material &&
-						item.itemType === ItemType.Resource;
-					const isQuotaMaterial =
-						item.type === MaterialType.Material &&
-						item.itemType === ItemType.QuotaMaterials;
-					const defaultCategory = getDefaultCategoryByMaterialType(item.type);
-					const defaultAdditionalCost = isSafetyAndWelfareMaterial
-						? AdditionalCost.OtherMaterial
-						: getDefaultAdditionalCostByMaterialType(item.type);
+			const resolvedData: MaterialFormSchema[] =
+				response.result.acceptanceReports.map((item) =>
+					mapResolvedImportItem(item),
+				);
 
-					return {
-						...MATERIAL_FORM_DEFAULT,
-						id: item.partId ?? item.materialId ?? '',
-						acceptanceReportItemId: item.reportItemId || undefined,
-						materialOrPartId: item.partId ?? item.materialId ?? '',
-						partType: item.partType ?? null,
-						materialCode: item.materialCode,
-						unitOfMeasureName: item.unitOfMeasureName,
-						type: item.type,
-						itemType: item.itemType,
-						quantityReceived: item.issuedQuantity,
-						quantityExported: item.shippedQuantity,
-						quantity: item.issuedQuantity + item.shippedQuantity,
-						category: defaultCategory,
-						additionalCostCategory: defaultAdditionalCost,
-						showAdditionalCostDropdown: isSafetyAndWelfareMaterial,
-						showAssetDropdown: isAssetMaterial,
-						showContractLimitDropdown: isQuotaMaterial,
-					};
-				});
+			const unresolvedData: MaterialFormSchema[] = (
+				response.result.unresolvedAcceptanceReports || []
+			).map((item) => ({
+				...MATERIAL_FORM_DEFAULT,
+				id: `unresolved:${item.rowNumber}:${item.materialCode}`,
+				acceptanceReportItemId: item.reportItemId || undefined,
+				materialOrPartId: undefined,
+				resolutionStatus: ImportResolutionStatus.Unresolved,
+				unresolvedReason: item.unresolvedReason,
+				sourceRowNumber: item.rowNumber,
+				materialCode: item.materialCode,
+				unitOfMeasureName: item.unitOfMeasureName,
+				quantityReceived: item.issuedQuantity,
+				quantityExported: item.shippedQuantity,
+				quantity: item.issuedQuantity + item.shippedQuantity,
+			}));
 
-			form.setValue('materials', formattedData);
+			form.setValue('materials', [...resolvedData, ...unresolvedData]);
 			setShowForm(true);
 		} catch (error) {
 			popup.error(error);
@@ -406,8 +474,159 @@ export function MaterialImportDialog({
 		}
 	};
 
+	const handleSelectUnresolvedType = async (values: UnresolvedCreateSchema) => {
+		if (unresolvedCreateIndex == null) {
+			return;
+		}
+
+		setUnresolvedCreateSelection({
+			entityGroup: values.entityGroup,
+			specificType: values.specificType ?? 1,
+		});
+	};
+
+	const handleCreatedCatalogItem = async (values: { code: string }) => {
+		const unresolvedIndex = unresolvedCreateIndex;
+		const unresolvedSelection = unresolvedCreateSelection;
+		if (unresolvedIndex == null || unresolvedSelection == null) {
+			return;
+		}
+
+		const normalizedCode = normalizeCode(values.code);
+		const specificType = unresolvedSelection.specificType;
+		if (!normalizedCode) {
+			popup.error('Không tìm thấy mã cần tạo mới');
+			return;
+		}
+
+		if (unresolvedSelection.entityGroup === 'material') {
+			const materialsRes = await api.pagging<MaterialLookupItem>(
+				API.CATALOG.ASSET.LIST,
+				{
+					ignorePagination: true,
+					materialType: specificType,
+					search: values.code,
+				},
+			);
+
+			const createdMaterial = materialsRes.result.data.find(
+				(item) => normalizeCode(item.code) === normalizedCode,
+			);
+
+			if (!createdMaterial) {
+				throw new Error('Không tìm thấy vật tư vừa tạo.');
+			}
+
+			form.setValue(
+				`materials.${unresolvedIndex}`,
+				mapResolvedImportItem({
+					reportItemId:
+						form.getValues(
+							`materials.${unresolvedIndex}.acceptanceReportItemId`,
+						) ?? null,
+					materialId: createdMaterial.id,
+					materialCode:
+						form.getValues(`materials.${unresolvedIndex}.materialCode`) ??
+						createdMaterial.code,
+					unitOfMeasureName: createdMaterial.unitOfMeasureName,
+					type: MaterialType.Material,
+					itemType: specificType,
+					issuedQuantity:
+						form.getValues(`materials.${unresolvedIndex}.quantityReceived`) ??
+						0,
+					shippedQuantity:
+						form.getValues(`materials.${unresolvedIndex}.quantityExported`) ??
+						0,
+				}),
+			);
+		} else {
+			const partsRes = await api.pagging<PartLookupItem>(
+				API.CATALOG.PART.LIST,
+				{
+					ignorePagination: true,
+					partType: specificType,
+					search: values.code,
+				},
+			);
+
+			const createdPart = partsRes.result.data.find(
+				(item) => normalizeCode(item.code) === normalizedCode,
+			);
+
+			if (!createdPart) {
+				throw new Error('Không tìm thấy phụ tùng vừa tạo.');
+			}
+
+			if (specificType === 1) {
+				const equipmentMappingsRes = await api.post<
+					PartEquipmentMapping[],
+					string[]
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [createdPart.id]);
+
+				const nextEquipmentOptionsByPartId = { ...equipmentOptionsByPartId };
+				for (const mapping of equipmentMappingsRes.result ?? []) {
+					nextEquipmentOptionsByPartId[mapping.partId] = (
+						mapping.equipments ?? []
+					)
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((equipment) => ({
+							value: toEquipmentOptionValue(equipment.id),
+							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+						}));
+				}
+				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);
+			}
+
+			setImportedItems((prev) => [
+				...prev.filter((item) => item.materialOrPartId !== createdPart.id),
+				{
+					materialOrPartId: createdPart.id,
+					type: MaterialType.SparePart,
+				},
+			]);
+
+			form.setValue(
+				`materials.${unresolvedIndex}`,
+				mapResolvedImportItem({
+					reportItemId:
+						form.getValues(
+							`materials.${unresolvedIndex}.acceptanceReportItemId`,
+						) ?? null,
+					partId: createdPart.id,
+					partType: createdPart.partType,
+					materialCode:
+						form.getValues(`materials.${unresolvedIndex}.materialCode`) ??
+						createdPart.code,
+					unitOfMeasureName: createdPart.unitOfMeasureName,
+					type: MaterialType.SparePart,
+					itemType: specificType,
+					issuedQuantity:
+						form.getValues(`materials.${unresolvedIndex}.quantityReceived`) ??
+						0,
+					shippedQuantity:
+						form.getValues(`materials.${unresolvedIndex}.quantityExported`) ??
+						0,
+				}),
+			);
+		}
+
+		setUnresolvedCreateSelection(null);
+		setUnresolvedCreateIndex(null);
+	};
+
 	const handleSave = async (data: MaterialFormSchema[]) => {
 		try {
+			const unresolvedItems = data.filter(
+				(item) => item.resolutionStatus === ImportResolutionStatus.Unresolved,
+			);
+			if (unresolvedItems.length > 0) {
+				popup.error(
+					`Còn ${unresolvedItems.length} dòng chưa được tạo mới trong danh mục. Vui lòng xử lý trước khi lưu.`,
+				);
+				return;
+			}
+
 			if (!productionOutputId) {
 				popup.error('Không tìm thấy mã sản xuất');
 				return;
@@ -623,9 +842,7 @@ export function MaterialImportDialog({
 		}
 	};
 
-	const handleFormSubmit = async (formData: {
-		materials: MaterialFormSchema[];
-	}) => {
+	const handleFormSubmit = async (formData: MaterialsFormValues) => {
 		await handleSave(formData.materials);
 	};
 
@@ -637,14 +854,68 @@ export function MaterialImportDialog({
 				</div>
 			) : (
 				<FormProvider context={form} onSubmit={handleFormSubmit}>
-					<MaterialImportForm
-						onCancel={() => setShowForm(false)}
-						processGroupOptions={processGroupOptions}
-						productionOrderOptions={productionOrderOptions}
-						orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
-					/>
+					{(() => {
+						const unresolvedCount = form
+							.watch('materials')
+							.filter(
+								(item) =>
+									item.resolutionStatus === ImportResolutionStatus.Unresolved,
+							).length;
+
+						return (
+							<MaterialImportForm
+								onCancel={() => setShowForm(false)}
+								processGroupOptions={processGroupOptions}
+								productionOrderOptions={productionOrderOptions}
+								orderOrEquipmentOptionsByItemId={
+									orderOrEquipmentOptionsByItemId
+								}
+								unresolvedCount={unresolvedCount}
+								onCreateUnresolved={(index: number) => {
+									setUnresolvedCreateIndex(index);
+								}}
+							/>
+						);
+					})()}
 				</FormProvider>
 			)}
+			<UnresolvedCreateDialog
+				open={
+					unresolvedCreateIndex != null && unresolvedCreateSelection == null
+				}
+				onOpenChange={(open) => {
+					if (!open) {
+						setUnresolvedCreateSelection(null);
+						setUnresolvedCreateIndex(null);
+					}
+				}}
+				defaultCode={
+					unresolvedCreateIndex != null
+						? (form.getValues(
+								`materials.${unresolvedCreateIndex}.materialCode`,
+							) ?? '')
+						: ''
+				}
+				onSubmit={handleSelectUnresolvedType}
+			/>
+			<UnresolvedCatalogCreateDialog
+				open={unresolvedCreateSelection != null}
+				onOpenChange={(open) => {
+					if (!open) {
+						setUnresolvedCreateSelection(null);
+						setUnresolvedCreateIndex(null);
+					}
+				}}
+				selection={unresolvedCreateSelection}
+				defaultCode={
+					unresolvedCreateIndex != null
+						? (form.getValues(
+								`materials.${unresolvedCreateIndex}.materialCode`,
+							) ?? '')
+						: ''
+				}
+				onCreated={handleCreatedCatalogItem}
+			/>
 		</>
 	);
 }

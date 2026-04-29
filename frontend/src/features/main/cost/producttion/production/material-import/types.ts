@@ -19,10 +19,29 @@ export type AcceptanceReportItemDto = {
 	shippedQuantity: number;
 };
 
+export type UnresolvedAcceptanceReportItemDto = {
+	rowNumber: number;
+	reportItemId: string | null;
+	materialCode: string;
+	unitOfMeasureName: string;
+	issuedQuantity: number;
+	shippedQuantity: number;
+	unresolvedReason: string;
+};
+
 export type UploadAcceptanceReportResponseDto = {
 	filePath: string;
 	acceptanceReports: AcceptanceReportItemDto[];
+	unresolvedAcceptanceReports: UnresolvedAcceptanceReportItemDto[];
 };
+
+export const ImportResolutionStatus = {
+	Resolved: 'resolved',
+	Unresolved: 'unresolved',
+} as const;
+
+export type ImportResolutionStatusValue =
+	(typeof ImportResolutionStatus)[keyof typeof ImportResolutionStatus];
 
 export type ProductionOrder = {
 	id: string;
