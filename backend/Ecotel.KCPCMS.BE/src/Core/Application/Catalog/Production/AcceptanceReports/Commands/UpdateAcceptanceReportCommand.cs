@@ -94,9 +94,12 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     var additionalCostReference = ProductionReference.Create(
                         updateItem.AdditionalCostProductionOrderId,
                         updateItem.AdditionalCostEquipmentId);
+                    var processGroupId = existingItem.PartId.HasValue
+                        ? updateItem.ProcessGroupId
+                        : null;
 
                     existingItem.Update(
-                        updateItem.ProcessGroupId,
+                        processGroupId,
                         existingItem.MaterialId,
                         existingItem.PartId,
                         updateItem.UsageTime,
@@ -116,9 +119,10 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.ShippedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
                         updateItem.QuotaBasedMaterialQuantities?.Select(x => (x.Type, x.Quantity)).ToList());
 
-                    if (updateItem.MaterialsIncludedInContractRevenue != Domain.Common.Enums.MaterialsIncludedInContractRevenue.None)
+                    if (existingItem.PartId.HasValue &&
+                        updateItem.MaterialsIncludedInContractRevenue != Domain.Common.Enums.MaterialsIncludedInContractRevenue.None)
                     {
-                        if (!updateItem.ProcessGroupId.HasValue || !processGroupIdsInPeriod.Contains(updateItem.ProcessGroupId.Value))
+                        if (!processGroupId.HasValue || !processGroupIdsInPeriod.Contains(processGroupId.Value))
                         {
                             throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
                         }

@@ -6,9 +6,14 @@ function parseSchemaNumber(value: number | string | null | undefined): number {
 	return Number.isFinite(normalized) ? normalized : 0;
 }
 
+function requiresCategoryProcessGroup(data: { type?: number | null }): boolean {
+	return data.type === 2;
+}
+
 export const rawAcceptanceReportItemSchema = z
 	.object({
 		id: z.string().optional(),
+		usageTime: z.number().optional(),
 		materialCode: z.string(),
 		materialName: z.string(),
 		unit: z.string(),
@@ -78,6 +83,7 @@ export const rawAcceptanceReportItemSchema = z
 			if (
 				data.showCategoryDropdown &&
 				data.category &&
+				requiresCategoryProcessGroup(data) &&
 				!data.categoryProcessGroup
 			) {
 				return false;
@@ -190,7 +196,7 @@ export const rawAcceptanceReportItemSchema = z
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
 				data.category &&
-				data.categoryProcessGroup &&
+				(!requiresCategoryProcessGroup(data) || data.categoryProcessGroup) &&
 				(data.category !== 3 || data.categoryProductionOrderId != null) &&
 				!(
 					data.category === 3 &&

@@ -104,7 +104,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             throw new ArgumentException(CustomResponseMessage.MaterialIdRequired);
         }
 
-        if ((materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None) && processGroupId == null)
+        if (partId != null &&
+            materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None &&
+            processGroupId == null)
         {
             throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
         }

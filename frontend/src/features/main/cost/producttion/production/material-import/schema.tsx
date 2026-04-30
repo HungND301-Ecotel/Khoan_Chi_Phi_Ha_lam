@@ -10,6 +10,10 @@ function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	return null;
 }
 
+function requiresCategoryProcessGroup(data: { type?: number | null }): boolean {
+	return data.type === 2;
+}
+
 function parseSchemaNumber(value: number | string | null | undefined): number {
 	if (value == null || value === '') return 0;
 	const normalized = Number(value);
@@ -83,6 +87,7 @@ export const materialFormSchema = z
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			if (!data.showCategoryDropdown || !categoryValue) return true;
+			if (!requiresCategoryProcessGroup(data)) return true;
 			return !!data.categoryProcessGroup;
 		},
 		{
@@ -197,7 +202,7 @@ export const materialFormSchema = z
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
 				categoryValue &&
-				data.categoryProcessGroup &&
+				(!requiresCategoryProcessGroup(data) || data.categoryProcessGroup) &&
 				(categoryValue !== 3 || data.categoryProductionOrderId != null) &&
 				!(
 					categoryValue === 3 &&

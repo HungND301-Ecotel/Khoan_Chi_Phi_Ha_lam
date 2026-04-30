@@ -648,7 +648,9 @@ export function MaterialImportDialog({
 					}
 
 					const processGroupId =
-						item.showCategoryDropdown && resolvedCategory
+						item.showCategoryDropdown &&
+						resolvedCategory &&
+						item.type === MaterialType.SparePart
 							? item.categoryProcessGroup || null
 							: null;
 

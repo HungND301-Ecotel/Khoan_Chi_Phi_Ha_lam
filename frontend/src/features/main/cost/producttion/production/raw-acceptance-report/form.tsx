@@ -726,6 +726,7 @@ export function RawAcceptanceReportForm({
 
 						return {
 							id: item.id || '',
+							usageTime: item.usageTime ?? 0,
 							materialOrPartId,
 							materialCode: materialCode || '',
 							materialName: materialName || '',
@@ -846,7 +847,9 @@ export function RawAcceptanceReportForm({
 							: MaterialsIncludedInContractRevenue.None;
 
 					const processGroupId =
-						item.showCategoryDropdown && resolvedCategory
+						item.showCategoryDropdown &&
+						resolvedCategory &&
+						item.type === MaterialType.SparePart
 							? item.categoryProcessGroup || null
 							: null;
 
@@ -970,6 +973,7 @@ export function RawAcceptanceReportForm({
 
 					return {
 						id: item.id || '',
+						usageTime: item.usageTime ?? 0,
 						itemType: item.itemType ?? 0,
 						categoryProductionOrderId,
 						categoryEquipmentId,
@@ -1062,6 +1066,9 @@ export function RawAcceptanceReportForm({
 										</TableCell>
 										<TableCell className='sticky left-16 z-20 w-[8%] min-w-32 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 											Mã vật tư
+										</TableCell>
+										<TableCell className='w-[20%] min-w-60 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+											Tên vật tư
 										</TableCell>
 										<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 											Đơn vị tính
@@ -1177,7 +1184,7 @@ function RawAcceptanceReportRows({
 			{visibleItemIndexes.length === 0 && (
 				<TableRow>
 					<TableCell
-						colSpan={9}
+						colSpan={10}
 						className='py-6 text-center text-sm text-slate-500'
 					>
 						Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -1402,6 +1409,8 @@ function RawAcceptanceReportRow({
 	const isSparePartByEquipment =
 		materialTypeValue === MaterialType.SparePart &&
 		itemTypeValue === ItemType.InContract;
+	const categoryNeedsProcessGroup =
+		materialTypeValue === MaterialType.SparePart;
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrEquipmentOptions =
 		(materialOrPartId
@@ -1625,7 +1634,11 @@ function RawAcceptanceReportRow({
 				);
 			}
 
-			if (!categoryProcessGroupValue && processGroupOptions.length === 1) {
+			if (
+				categoryNeedsProcessGroup &&
+				!categoryProcessGroupValue &&
+				processGroupOptions.length === 1
+			) {
 				form.setValue(
 					`${basename}.categoryProcessGroup` as FieldName,
 					processGroupOptions[0].value,
@@ -1806,7 +1819,7 @@ function RawAcceptanceReportRow({
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
+			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
 			(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
@@ -1820,7 +1833,7 @@ function RawAcceptanceReportRow({
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
 			prev.category &&
-			prev.categoryProcessGroup &&
+			(!categoryNeedsProcessGroup || prev.categoryProcessGroup) &&
 			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
 				(prev.categoryProductionOrderId != null &&
 					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
@@ -1924,6 +1937,7 @@ function RawAcceptanceReportRow({
 		contractLimitCategoryValue,
 		exportedQuantityWatch,
 		isSparePartByEquipment,
+		categoryNeedsProcessGroup,
 		form,
 		basename,
 		showCategoryDropdown,
@@ -1934,6 +1948,12 @@ function RawAcceptanceReportRow({
 
 	useEffect(() => {
 		if (!showCategoryDropdown || !resolvedCategoryValue) return;
+		if (!categoryNeedsProcessGroup) {
+			if (categoryProcessGroupValue != null) {
+				form.setValue(`${basename}.categoryProcessGroup` as FieldName, null);
+			}
+			return;
+		}
 		if (processGroupOptions.length !== 1) return;
 		if (categoryProcessGroupValue) return;
 
@@ -1944,6 +1964,7 @@ function RawAcceptanceReportRow({
 	}, [
 		showCategoryDropdown,
 		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
 		categoryProcessGroupValue,
 		processGroupOptions,
 		form,
@@ -2164,6 +2185,7 @@ function RawAcceptanceReportRow({
 	]);
 
 	const materialCode = form.watch(`${basename}.materialCode` as FieldName);
+	const materialName = form.watch(`${basename}.materialName` as FieldName);
 	const unit = form.watch(`${basename}.unit` as FieldName);
 	const receivedQuantity = form.watch(
 		`${basename}.receivedQuantity` as FieldName,
@@ -2188,7 +2210,7 @@ function RawAcceptanceReportRow({
 		const hasCategoryActive =
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
+			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
 			(!categoryNeedsEquipment || categoryEquipmentId != null);
 		const hasAdditionalCostActive =
@@ -2280,6 +2302,13 @@ function RawAcceptanceReportRow({
 					/>
 					<span className={materialBadge.className}>{materialBadge.label}</span>
 				</div>
+			</TableCell>
+			<TableCell className='w-[20%] min-w-60 border-b border-slate-200 px-4 py-4'>
+				<Input
+					readOnly
+					value={materialName || ''}
+					className='border-slate-300 bg-slate-100 text-slate-500'
+				/>
 			</TableCell>
 			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 				<Input
@@ -2419,7 +2448,7 @@ function RawAcceptanceReportRow({
 						)}
 					{showCategoryDropdown && (
 						<>
-							{resolvedCategoryValue && (
+							{resolvedCategoryValue && categoryNeedsProcessGroup && (
 								<div className='w-full'>
 									<FormComboBox
 										control={form.control}
@@ -2455,7 +2484,7 @@ function RawAcceptanceReportRow({
 								</>
 							)}
 							{resolvedCategoryValue &&
-								categoryProcessGroupValue &&
+								(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 								(!categoryNeedsProductionOrder ||
 									categoryProductionOrderId != null) &&
 								(!categoryNeedsEquipment || categoryEquipmentId != null) && (

@@ -651,6 +651,8 @@ function MaterialImportRow({
 	const isSparePartByEquipment =
 		materialTypeValue === MaterialType.SparePart &&
 		itemTypeValue === ItemType.InContract;
+	const categoryNeedsProcessGroup =
+		materialTypeValue === MaterialType.SparePart;
 
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrEquipmentOptions =
@@ -858,7 +860,11 @@ function MaterialImportRow({
 				]);
 			if (categoryValue == null && defaultCategoryByType != null)
 				set('category', defaultCategoryByType);
-			if (!categoryProcessGroupValue && processGroupOptions.length === 1)
+			if (
+				categoryNeedsProcessGroup &&
+				!categoryProcessGroupValue &&
+				processGroupOptions.length === 1
+			)
 				set('categoryProcessGroup', processGroupOptions[0].value);
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
@@ -986,11 +992,16 @@ function MaterialImportRow({
 
 	useEffect(() => {
 		if (!showCategoryDropdown || !resolvedCategoryValue) return;
+		if (!categoryNeedsProcessGroup) {
+			if (categoryProcessGroupValue != null) set('categoryProcessGroup', null);
+			return;
+		}
 		if (processGroupOptions.length !== 1 || categoryProcessGroupValue) return;
 		set('categoryProcessGroup', processGroupOptions[0].value);
 	}, [
 		showCategoryDropdown,
 		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
 		categoryProcessGroupValue,
 		processGroupOptions,
 	]);
@@ -1089,7 +1100,7 @@ function MaterialImportRow({
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
+			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
 			(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
@@ -1103,7 +1114,7 @@ function MaterialImportRow({
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
 			prev.category &&
-			prev.categoryProcessGroup &&
+			(!categoryNeedsProcessGroup || prev.categoryProcessGroup) &&
 			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
 				(prev.categoryProductionOrderId != null &&
 					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
@@ -1166,6 +1177,7 @@ function MaterialImportRow({
 		contractLimitCategoryValue,
 		quantityExported,
 		isSparePartByEquipment,
+		categoryNeedsProcessGroup,
 		showCategoryDropdown,
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
@@ -1269,7 +1281,7 @@ function MaterialImportRow({
 		if (
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
+			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
 			(!categoryNeedsEquipment || categoryEquipmentId != null) &&
 			categoryQuantity != null
@@ -1615,7 +1627,7 @@ function MaterialImportRow({
 								)}
 							{showCategoryDropdown && (
 								<>
-									{resolvedCategoryValue && (
+									{resolvedCategoryValue && categoryNeedsProcessGroup && (
 										<div className='w-full'>
 											<FormComboBox
 												control={form.control}
@@ -1651,7 +1663,7 @@ function MaterialImportRow({
 										</>
 									)}
 									{resolvedCategoryValue &&
-										categoryProcessGroupValue &&
+										(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
 										(!categoryNeedsProductionOrder ||
 											categoryProductionOrderId != null) &&
 										(!categoryNeedsEquipment ||

@@ -105,6 +105,9 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 var categoryReference = ProductionReference.Create(item.CategoryProductionOrderId, item.CategoryEquipmentId);
                 var additionalCostReference = ProductionReference.Create(item.AdditionalCostProductionOrderId, item.AdditionalCostEquipmentId);
+                var processGroupId = item.Type == AcceptanceReportItemType.Part
+                    ? item.ProcessGroupId
+                    : null;
 
                 Guid? materialId = null;
                 Guid? partId = null;
@@ -147,7 +150,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         ?? throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
 
                     existingItem.Update(
-                        item.ProcessGroupId,
+                        processGroupId,
                         materialId,
                         partId,
                         item.UsageTime,
@@ -173,7 +176,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 {
                     var reportItem = AcceptanceReportItem.Create(
                         acceptanceReport.Id,
-                        item.ProcessGroupId,
+                        processGroupId,
                         materialId,
                         partId,
                         item.UsageTime,
@@ -196,9 +199,10 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     itemsToCreate.Add(reportItem);
                 }
 
-                if (item.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                if (item.Type == AcceptanceReportItemType.Part &&
+                    item.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
                 {
-                    if (!item.ProcessGroupId.HasValue || !processGroupIdsInPeriod.Contains(item.ProcessGroupId.Value))
+                    if (!processGroupId.HasValue || !processGroupIdsInPeriod.Contains(processGroupId.Value))
                     {
                         throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
                     }
@@ -265,7 +269,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         var plannedOutput = 1.0;
                         var standardOutput = productionOutput.StandardProductionMeters;
 
-                        if (item.ProcessGroupId.HasValue && outputByProcessGroup.TryGetValue(item.ProcessGroupId.Value, out var metrics))
+                            if (item.ProcessGroupId.HasValue && outputByProcessGroup.TryGetValue(item.ProcessGroupId.Value, out var metrics))
                         {
                             actualOutput = metrics.ActualOutput;
                             plannedOutput = metrics.PlannedOutput;
