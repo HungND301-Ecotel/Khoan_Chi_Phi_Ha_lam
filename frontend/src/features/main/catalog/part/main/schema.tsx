@@ -7,9 +7,7 @@ export const partSchema = z.object({
 	name: z.string().min(1, {
 		message: 'Tên phụ tùng không được để trống',
 	}),
-	equipmentIds: z.array(z.string()).min(1, {
-		message: 'Phải chọn ít nhất 1 thiết bị',
-	}),
+	equipmentIds: z.array(z.string()),
 	unitOfMeasureId: z
 		.string()
 		.trim()

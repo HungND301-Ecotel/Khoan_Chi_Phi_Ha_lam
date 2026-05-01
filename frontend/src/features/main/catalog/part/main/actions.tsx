@@ -4,14 +4,12 @@ import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Equipment } from '@/features/main/catalog/equipment/columns';
 import { Part } from '@/features/main/catalog/part/main/columns';
 import {
 	PART_SCHEMA_DEFAULT,
@@ -48,10 +46,6 @@ type PartFormProps = ActionDialogProps<Part> & {
 	onCreated?: (values: PartSchema) => Promise<void> | void;
 };
 
-function getEquipmentOptionLabel(equipment: Equipment): string {
-	return `${equipment.code} - ${equipment.name}`;
-}
-
 export function PartForm({
 	data,
 	row,
@@ -64,7 +58,6 @@ export function PartForm({
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
-	const [equipments, setEquipments] = useState<Equipment[]>([]);
 
 	const form = useForm<PartSchema>({
 		resolver: zodResolver(partSchema),
@@ -102,16 +95,10 @@ export function PartForm({
 	}, [costs, form]);
 
 	useEffect(() => {
-		const promises = Promise.all([
-			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
-				ignorePagination: true,
-			}),
-		]);
+		const promises = Promise.all([api.pagging<Unit>(API.CATALOG.UNIT.LIST)]);
 
-		promises.then(([unitsRes, equipmentsRes]) => {
+		promises.then(([unitsRes]) => {
 			setUnits(unitsRes.result.data);
-			setEquipments(equipmentsRes.result.data);
 
 			if (!row) {
 				if (defaultCode) {
@@ -127,7 +114,7 @@ export function PartForm({
 				form.reset({
 					...part,
 					code: isDuplicate ? '' : part.code,
-					equipmentIds: part.equipmentIds ?? row.equipmentIds ?? [],
+					equipmentIds: [],
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -145,6 +132,7 @@ export function PartForm({
 		try {
 			const processedValues = {
 				...values,
+				equipmentIds: [],
 				partType: 1,
 			};
 			if (row?.id && !isDuplicate) {
@@ -194,26 +182,6 @@ export function PartForm({
 					value: unit.id,
 					label: unit.name,
 				}))}
-			/>
-
-			<FormMultiSelect
-				control={form.control}
-				name='equipmentIds'
-				label='Thiết bị'
-				placeholder='Chọn thiết bị'
-				options={equipments
-					.slice()
-					.sort((a, b) =>
-						getEquipmentOptionLabel(a).localeCompare(
-							getEquipmentOptionLabel(b),
-							'vi',
-							{ sensitivity: 'base' },
-						),
-					)
-					.map((equipment) => ({
-						value: equipment.id,
-						label: getEquipmentOptionLabel(equipment),
-					}))}
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
