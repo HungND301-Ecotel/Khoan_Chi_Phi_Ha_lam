@@ -40,24 +40,22 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
         return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId);
     }
 
-    public async Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId)
+    public async Task<bool> IsEquipmentCodeExisted(string code)
     {
         var normalizedCode = code.ToUpper();
         return await _equipmentRepository.GetAll()
             .Where(e => e.Code != null
-                        && e.Code.Value == normalizedCode
-                        && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroupId == processGroupId))
+                        && e.Code.Value == normalizedCode)
             .AnyAsync();
     }
 
-    public async Task<bool> IsEquipmentCodeExisted(string code, Guid processGroupId, Guid curEquipmentId)
+    public async Task<bool> IsEquipmentCodeExisted(string code, Guid curEquipmentId)
     {
         var normalizedCode = code.ToUpper();
         return await _equipmentRepository.GetAll()
             .Where(e => e.Id != curEquipmentId
                         && e.Code != null
-                        && e.Code.Value == normalizedCode
-                        && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroupId == processGroupId))
+                        && e.Code.Value == normalizedCode)
             .AnyAsync();
     }
 

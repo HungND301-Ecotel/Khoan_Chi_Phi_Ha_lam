@@ -93,8 +93,16 @@ export function PlanMaintainCostForm({
 			return tunnelings;
 		}
 
-		return tunnelings.filter((item) =>
-			item.processGroupTypes?.includes(currentProcessGroupType),
+		const maintainTypeByProcessGroup: Record<ProcessGroupType, number> = {
+			[ProcessGroupType.None]: 0,
+			[ProcessGroupType.DL]: 1,
+			[ProcessGroupType.LC]: 2,
+			[ProcessGroupType.XL]: 3,
+		};
+
+		return tunnelings.filter(
+			(item) =>
+				item.type === maintainTypeByProcessGroup[currentProcessGroupType],
 		);
 	}, [tunnelings, plan?.processGroupType]);
 	const selectableAdjustments = useMemo(

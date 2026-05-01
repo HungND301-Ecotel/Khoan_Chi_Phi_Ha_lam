@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
-import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Equipment } from '@/features/main/catalog/equipment/columns';
@@ -71,6 +70,7 @@ export function LongwallPanelForm({
 	});
 
 	const watchedEquipmentIds = form.watch('equipmentIds');
+	const watchedSelectedPartIds = form.watch('selectedPartIds');
 	const watchedCosts = form.watch('costs');
 	const watchedStartMonth = form.watch('startMonth');
 
@@ -87,12 +87,7 @@ export function LongwallPanelForm({
 			}),
 		]);
 		promises.then(([equipments, assets]) => {
-			setEquipments(
-				filterEquipmentsByProcessGroupType(
-					equipments.result.data,
-					ProcessGroupType.LC,
-				),
-			);
+			setEquipments(equipments.result.data);
 			setParts(assets.result.data);
 
 			if (!row) return;
@@ -119,6 +114,13 @@ export function LongwallPanelForm({
 							})),
 						assets.result.data,
 						[equipmentId],
+						Array.from(
+							new Set(
+								maintainUnitPriceEquipment
+									.filter((cost: any) => (cost.partType ?? 1) === 1)
+									.map((cost: any) => cost.partId),
+							),
+						),
 					);
 
 					form.reset({
@@ -126,6 +128,13 @@ export function LongwallPanelForm({
 						startMonth: startMonth.substring(0, 10),
 						endMonth: res.result.endMonth.substring(0, 10),
 						equipmentIds: [equipmentId],
+						selectedPartIds: Array.from(
+							new Set(
+								maintainUnitPriceEquipment
+									.filter((cost: any) => (cost.partType ?? 1) === 1)
+									.map((cost: any) => cost.partId),
+							),
+						),
 						costs,
 						otherMaterialValues: { [equipmentId]: otherMaterialValue },
 					});
@@ -148,30 +157,51 @@ export function LongwallPanelForm({
 			}),
 		]);
 		promises.then(([equipmentsRes, partsRes]) => {
-			setEquipments(
-				filterEquipmentsByProcessGroupType(
-					equipmentsRes.result.data,
-					ProcessGroupType.LC,
-				),
-			);
+			setEquipments(equipmentsRes.result.data);
 			setParts(partsRes.result.data);
 		});
 	}, [isDuplicate, watchedStartMonth, row]);
 
 	useEffect(() => {
-		if (parts.length === 0 || !Array.isArray(watchedEquipmentIds)) return;
+		if (
+			parts.length === 0 ||
+			!Array.isArray(watchedEquipmentIds) ||
+			!Array.isArray(watchedSelectedPartIds)
+		)
+			return;
+
+		const availablePartIds = new Set(
+			getLinkedParts(parts, watchedEquipmentIds).map((part) => part.id),
+		);
+		const normalizedSelectedPartIds = watchedSelectedPartIds.filter((partId) =>
+			availablePartIds.has(partId),
+		);
+
+		if (
+			normalizedSelectedPartIds.length !== watchedSelectedPartIds.length ||
+			normalizedSelectedPartIds.some(
+				(partId, index) => partId !== watchedSelectedPartIds[index],
+			)
+		) {
+			form.setValue('selectedPartIds', normalizedSelectedPartIds, {
+				shouldValidate: false,
+			});
+		}
 
 		const existingCosts = form.getValues('costs');
 		const costs = syncCostsWithCurrentPartLinks(
 			existingCosts,
 			parts,
 			watchedEquipmentIds,
+			normalizedSelectedPartIds,
 		);
 
 		form.setValue('costs', costs, {
 			shouldValidate: false,
 		});
-	}, [form, parts, watchedEquipmentIds]);
+	}, [form, parts, watchedEquipmentIds, watchedSelectedPartIds]);
+
+	const selectedPartOptions = getPartOptions(parts, watchedEquipmentIds);
 
 	const handleSubmit = async (values: LongwallPanelFormSchema) => {
 		try {
@@ -287,6 +317,15 @@ export function LongwallPanelForm({
 				disabled={!!row && !isDuplicate}
 			/>
 
+			<FormMultiSelect
+				control={form.control}
+				name='selectedPartIds'
+				label='Phụ tùng'
+				placeholder='Chọn phụ tùng'
+				options={selectedPartOptions}
+				disabled={watchedEquipmentIds.length === 0}
+			/>
+
 			{watchedCosts.length > 0 && (
 				<div className='scrollbar-sm max-h-100 overflow-auto'>
 					<GroupedLongwallPanelCosts equipments={equipments} parts={parts} />
@@ -297,29 +336,23 @@ export function LongwallPanelForm({
 		</FormProvider>
 	);
 }
-
-function filterEquipmentsByProcessGroupType(
-	items: Equipment[],
-	processGroupType: ProcessGroupType,
-) {
-	return items.filter((item) =>
-		(item.processGroups ?? []).some((group) => group.type === processGroupType),
-	);
-}
-
 function syncCostsWithCurrentPartLinks(
 	costs: LongwallPanelFormSchema['costs'],
 	parts: Part[],
 	equipmentIds: string[],
+	selectedPartIds: string[],
 ): LongwallPanelFormSchema['costs'] {
+	const selectedPartIdSet = new Set(selectedPartIds);
+	const linkedParts = parts.filter((part) => selectedPartIdSet.has(part.id));
 	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
-	const partOrder = new Map(parts.map((part, index) => [part.id, index]));
+	const partOrder = new Map(linkedParts.map((part, index) => [part.id, index]));
 	const partEquipmentMap = new Map(
-		parts.map((part) => [part.id, new Set(part.equipmentIds ?? [])]),
+		linkedParts.map((part) => [part.id, new Set(part.equipmentIds ?? [])]),
 	);
 
 	const filteredCosts = costs.filter((cost) => {
 		if (!equipmentOrder.has(cost.equipmentId)) return false;
+		if (!selectedPartIdSet.has(cost.partId)) return false;
 		const linkedEquipmentIds = partEquipmentMap.get(cost.partId);
 		return !!linkedEquipmentIds?.has(cost.equipmentId);
 	});
@@ -328,7 +361,7 @@ function syncCostsWithCurrentPartLinks(
 		filteredCosts.map((cost) => `${cost.equipmentId}-${cost.partId}`),
 	);
 
-	const newCosts = parts.flatMap((part) =>
+	const newCosts = linkedParts.flatMap((part) =>
 		(part.equipmentIds ?? [])
 			.filter((equipmentId) => equipmentOrder.has(equipmentId))
 			.filter(
@@ -354,6 +387,24 @@ function syncCostsWithCurrentPartLinks(
 			(partOrder.get(b.partId) ?? Number.MAX_SAFE_INTEGER)
 		);
 	});
+}
+
+function getLinkedParts(parts: Part[], equipmentIds: string[]) {
+	const equipmentIdSet = new Set(equipmentIds);
+	return parts.filter((part) =>
+		(part.equipmentIds ?? []).some((equipmentId) =>
+			equipmentIdSet.has(equipmentId),
+		),
+	);
+}
+
+function getPartOptions(parts: Part[], equipmentIds: string[]) {
+	return getLinkedParts(parts, equipmentIds)
+		.map((part) => ({
+			label: `${part.code} - ${part.name}`,
+			value: part.id,
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label, 'vi'));
 }
 
 function GroupedLongwallPanelCosts({

@@ -49,11 +49,6 @@ type PartFormProps = ActionDialogProps<Part> & {
 };
 
 function getEquipmentOptionLabel(equipment: Equipment): string {
-	const processGroupCode = equipment.processGroups?.[0]?.code?.trim();
-	if (processGroupCode) {
-		return `${processGroupCode} - ${equipment.code} - ${equipment.name}`;
-	}
-
 	return `${equipment.code} - ${equipment.name}`;
 }
 

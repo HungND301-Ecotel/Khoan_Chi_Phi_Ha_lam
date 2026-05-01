@@ -6,7 +6,7 @@ export type Tunneling = {
 	equipmentId: string;
 	equipmentCode: string;
 	equipmentName: string;
-	processGroupTypes: number[];
+	type: number;
 	startMonth: string;
 	endMonth: string;
 	totalPrice: number;

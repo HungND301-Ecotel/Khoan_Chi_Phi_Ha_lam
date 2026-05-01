@@ -1,6 +1,5 @@
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
-import { Badge } from '@/components/ui/badge';
 
 export type Equipment = {
 	id: string;
@@ -9,12 +8,6 @@ export type Equipment = {
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	currentPrice: number;
-	processGroups: Array<{
-		id: string;
-		code: string;
-		type: number;
-		name: string;
-	}>;
 };
 
 export type EquipmentPartDetail = {
@@ -26,13 +19,6 @@ export type EquipmentPartDetail = {
 	currentCost: number;
 	actualAmount: number;
 };
-
-const getProcessGroupsSortValue = (processGroups: Equipment['processGroups']) =>
-	(processGroups ?? [])
-		.map((item) => `${item.code} ${item.name}`.trim())
-		.sort((a, b) => a.localeCompare(b, 'vi', { sensitivity: 'base' }))
-		.join(' | ');
-
 export const CATALOG_EQUIPMENT_EXPAND_COLUMNS: ColumnDef<EquipmentPartDetail>[] =
 	[
 		{
@@ -67,30 +53,6 @@ export const CATALOG_EQUIPMENT_COLUMNS: ColumnDef<Equipment>[] = [
 	{
 		accessorKey: 'name',
 		header: 'Tên thiết bị',
-	},
-	{
-		id: 'processGroups',
-		accessorFn: (row) => getProcessGroupsSortValue(row.processGroups),
-		header: 'Nhóm công đoạn sản xuất',
-		sortingFn: (rowA, rowB, columnId) =>
-			String(rowA.getValue(columnId)).localeCompare(
-				String(rowB.getValue(columnId)),
-				'vi',
-				{ sensitivity: 'base' },
-			),
-		cell: ({ row }) => (
-			<div className='flex flex-wrap gap-1'>
-				{(row.original.processGroups ?? []).map((item) => (
-					<Badge
-						key={item.id}
-						variant='secondary'
-						className='whitespace-normal'
-					>
-						{item.code} - {item.name}
-					</Badge>
-				))}
-			</div>
-		),
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

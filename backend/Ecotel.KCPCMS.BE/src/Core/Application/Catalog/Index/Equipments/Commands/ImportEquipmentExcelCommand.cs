@@ -18,10 +18,8 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
     private readonly IWriteRepository<EquipmentPart> _equipmentPartRepository = unitOfWork.GetRepository<EquipmentPart>();
-    private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
 
     public async Task<bool> Handle(ImportEquipmentExcelCommand request, CancellationToken cancellationToken)
@@ -38,7 +36,7 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         var normalizedRows = BuildNormalizedRows(dtos, importErrors);
 
         var groupedRows = normalizedRows
-            .GroupBy(r => BuildEquipmentKey(r.EquipmentCodeNormalized, r.ProcessGroupCode), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(r => BuildEquipmentKey(r.EquipmentCodeNormalized), StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unitNames = normalizedRows
@@ -47,22 +45,10 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var processGroupCodes = normalizedRows
-            .Select(r => r.ProcessGroupCode)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
         var unitOfMeasure = await _unitOfMeasureRepository.GetAllAsync(
             predicate: p => unitNames.Contains(p.Name),
             disableTracking: true);
         var unitOfMeasureIdMap = unitOfMeasure.ToDictionary(p => p.Name.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
-
-        var processGroups = await _processGroupRepository.GetAllAsync(
-            predicate: p => p.Code != null && processGroupCodes.Contains(p.Code.Value),
-            include: p => p.Include(p => p.Code!),
-            disableTracking: true);
-        var processGroupMap = processGroups.ToDictionary(p => p.Code!.Value.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
 
         var parts = await _partRepository.GetAllAsync(
             predicate: p => p.Code != null,
@@ -82,11 +68,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 importErrors.Add($"Mã thiết bị '{firstRow.EquipmentCodeDisplay}' có đơn vị tính '{firstRow.UnitName}' không tồn tại ở dòng {firstRow.RowNumber}.");
             }
 
-            if (!processGroupMap.ContainsKey(firstRow.ProcessGroupCode))
-            {
-                importErrors.Add($"Mã thiết bị '{firstRow.EquipmentCodeDisplay}' có công đoạn sản xuất '{firstRow.ProcessGroupDisplay}' không tồn tại.");
-            }
-
             var invalidPartCodes = rowGroup
                 .SelectMany(r => r.PartCodes)
                 .Where(code => !string.IsNullOrWhiteSpace(code) && !partCodeMap.ContainsKey(code))
@@ -99,17 +80,12 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             }
         }
 
-        var excelDtos = new List<(Equipment Entity, int RowNumber, string EquipmentKey, Guid ProcessGroupId, List<Guid> PartIds, string CostString)>();
+        var excelDtos = new List<(Equipment Entity, int RowNumber, string EquipmentKey, List<Guid> PartIds, string CostString)>();
 
         foreach (var rowGroup in groupedRows)
         {
             var rows = rowGroup.OrderBy(r => r.RowNumber).ToList();
             var firstRow = rows.First();
-
-            if (!processGroupMap.TryGetValue(firstRow.ProcessGroupCode, out var processGroup))
-            {
-                continue;
-            }
 
             Guid? unitOfMeasureId = null;
             if (!string.IsNullOrWhiteSpace(firstRow.UnitName)
@@ -132,8 +108,8 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 var costList = costService.ParseExcelCostString(firstRow.CostString, CostType.Electricity, equipmentId);
                 equipmentEntity.AddCost(costList);
 
-                var equipmentKey = BuildEquipmentKey(firstRow.EquipmentCodeNormalized, processGroup.Id);
-                excelDtos.Add((equipmentEntity, firstRow.RowNumber, equipmentKey, processGroup.Id, mappedPartIds, firstRow.CostString));
+                var equipmentKey = BuildEquipmentKey(firstRow.EquipmentCodeNormalized);
+                excelDtos.Add((equipmentEntity, firstRow.RowNumber, equipmentKey, mappedPartIds, firstRow.CostString));
             }
             catch (Exception ex)
             {
@@ -147,42 +123,25 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             include: p => p
                 .Include(p => p.Code)
                 .Include(p => p.Costs)
-                .Include(p => p.EquipmentProcessGroups)
                 .Include(p => p.EquipmentParts),
             disableTracking: false);
 
         var deleteList = new List<Equipment>();
         var deleteCost = new List<Cost>();
         var insertCostsForUpdate = new List<Cost>();
-        var deleteEquipmentProcessGroups = new List<EquipmentProcessGroup>();
-        var insertEquipmentProcessGroups = new List<EquipmentProcessGroup>();
         var deleteEquipmentParts = new List<EquipmentPart>();
         var insertEquipmentParts = new List<EquipmentPart>();
         var updateList = new List<Equipment>();
         var addList = new List<Equipment>();
 
         var excelEquipmentKeys = excelDtos.Select(x => x.EquipmentKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        deleteList.AddRange(dbEquipments.Where(x =>
-        {
-            var processGroupId = x.EquipmentProcessGroups.Select(epg => (Guid?)epg.ProcessGroupId).FirstOrDefault();
-            if (!processGroupId.HasValue || x.Code == null)
-            {
-                return true;
-            }
-
-            var key = BuildEquipmentKey(NormalizeEquipmentCode(x.Code.Value), processGroupId.Value);
-            return !excelEquipmentKeys.Contains(key);
-        }));
+        deleteList.AddRange(dbEquipments.Where(x => x.Code == null || !excelEquipmentKeys.Contains(BuildEquipmentKey(NormalizeEquipmentCode(x.Code.Value)))));
 
         var codeToDelete = deleteList.Where(x => x.Code != null).Select(x => x.Code!).ToList();
 
         var dbEquipmentDict = dbEquipments
-            .Where(p => p.Code != null
-                        && !string.IsNullOrWhiteSpace(p.Code.Value)
-                        && p.EquipmentProcessGroups.Any())
-            .GroupBy(p => BuildEquipmentKey(
-                    NormalizeEquipmentCode(p.Code!.Value),
-                    p.EquipmentProcessGroups.Select(epg => epg.ProcessGroupId).First()),
+            .Where(p => p.Code != null && !string.IsNullOrWhiteSpace(p.Code.Value))
+            .GroupBy(p => BuildEquipmentKey(NormalizeEquipmentCode(p.Code!.Value)),
                 StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
@@ -196,7 +155,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         {
             var dto = excelDto.Entity;
             var rowNumber = excelDto.RowNumber;
-            var processGroupIdByRow = excelDto.ProcessGroupId;
             var partIdsByRow = excelDto.PartIds.Distinct().OrderBy(id => id).ToList();
 
             if (dbEquipmentDict.TryGetValue(excelDto.EquipmentKey, out var entityToUpdate))
@@ -228,14 +186,13 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             }
             else
             {
-                if (await codeService.IsEquipmentCodeExisted(dto.Code!.Value, processGroupIdByRow))
+                if (await codeService.IsEquipmentCodeExisted(dto.Code!.Value))
                 {
                     importErrors.Add($"Mã thiết bị '{dto.Code!.Value}' đã tồn tại ở dòng {rowNumber}.");
                     continue;
                 }
 
                 addList.Add(dto);
-                insertEquipmentProcessGroups.Add(EquipmentProcessGroup.Create(dto.Id, processGroupIdByRow));
                 insertEquipmentParts.AddRange(partIdsByRow.Select(partId => EquipmentPart.Create(dto.Id, partId)));
             }
         }
@@ -266,11 +223,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                     _costRepository.Delete(deleteCost);
                 }
 
-                if (deleteEquipmentProcessGroups.Any())
-                {
-                    _equipmentProcessGroupRepository.Delete(deleteEquipmentProcessGroups);
-                }
-
                 if (deleteEquipmentParts.Any())
                 {
                     _equipmentPartRepository.Delete(deleteEquipmentParts);
@@ -282,11 +234,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
             if (insertCostsForUpdate.Any())
             {
                 await _costRepository.InsertAsync(insertCostsForUpdate, cancellationToken);
-            }
-
-            if (insertEquipmentProcessGroups.Any())
-            {
-                await _equipmentProcessGroupRepository.InsertAsync(insertEquipmentProcessGroups, cancellationToken);
             }
 
             if (insertEquipmentParts.Any())
@@ -311,7 +258,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
 
         string? currentCode = null;
         string? currentName = null;
-        string? currentProcessGroup = null;
         string currentUnit = string.Empty;
         string currentCost = string.Empty;
 
@@ -322,7 +268,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
 
             var codeInput = (dto.Code ?? string.Empty).Trim();
             var nameInput = (dto.Name ?? string.Empty).Trim();
-            var processInput = (dto.ProcessGroup ?? string.Empty).Trim();
             var unitInput = (dto.UnitOfMeasureName ?? string.Empty).Trim();
             var costInput = (dto.Cost ?? string.Empty).Trim();
 
@@ -334,15 +279,8 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(processInput))
-                {
-                    errors.Add($"Mã thiết bị '{codeInput}' thiếu công đoạn sản xuất ở dòng {rowNumber}.");
-                    continue;
-                }
-
                 currentCode = codeInput;
                 currentName = nameInput;
-                currentProcessGroup = processInput;
                 currentUnit = unitInput;
                 currentCost = costInput;
             }
@@ -357,11 +295,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 if (!string.IsNullOrWhiteSpace(nameInput))
                 {
                     currentName = nameInput;
-                }
-
-                if (!string.IsNullOrWhiteSpace(processInput))
-                {
-                    currentProcessGroup = processInput;
                 }
 
                 if (!string.IsNullOrWhiteSpace(unitInput))
@@ -381,49 +314,17 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(currentProcessGroup))
-            {
-                errors.Add($"Mã thiết bị '{currentCode}' thiếu công đoạn sản xuất ở dòng {rowNumber}.");
-                continue;
-            }
-
-            var processGroupCode = ParseProcessGroupCode(currentProcessGroup);
-            if (string.IsNullOrWhiteSpace(processGroupCode))
-            {
-                errors.Add($"Mã thiết bị '{currentCode}' có công đoạn sản xuất '{currentProcessGroup}' không hợp lệ ở dòng {rowNumber}.");
-                continue;
-            }
-
             rows.Add(new EquipmentImportRow(
                 RowNumber: rowNumber,
                 EquipmentCodeDisplay: currentCode,
                 EquipmentCodeNormalized: NormalizeEquipmentCode(currentCode),
                 EquipmentName: currentName,
-                ProcessGroupDisplay: currentProcessGroup,
-                ProcessGroupCode: processGroupCode,
                 UnitName: currentUnit,
                 CostString: currentCost,
                 PartCodes: ParsePartCodes(dto.PartCode)));
         }
 
         return rows;
-    }
-
-    private static string ParseProcessGroupCode(string? processGroupValue)
-    {
-        var value = (processGroupValue ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var splitIndex = value.IndexOf(" - ", StringComparison.Ordinal);
-        if (splitIndex > 0)
-        {
-            value = value[..splitIndex];
-        }
-
-        return value.Trim().ToUpperInvariant();
     }
 
     private static List<string> ParsePartCodes(string? partCodes)
@@ -451,8 +352,7 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         throw new ExcelImportException(errors);
     }
 
-    private static string BuildEquipmentKey(string normalizedCode, Guid processGroupId) => $"{normalizedCode}|{processGroupId:N}";
-    private static string BuildEquipmentKey(string normalizedCode, string processGroupCode) => $"{normalizedCode}|{processGroupCode}";
+    private static string BuildEquipmentKey(string normalizedCode) => normalizedCode;
     private static string NormalizeEquipmentCode(string? equipmentCode) => (equipmentCode ?? string.Empty).Trim().ToUpperInvariant();
     private static string NormalizePartCode(string? partCode)
     {
@@ -470,8 +370,6 @@ public class ImportEquipmentExcelCommandHandler(IExcelService excelService, IUni
         string EquipmentCodeDisplay,
         string EquipmentCodeNormalized,
         string EquipmentName,
-        string ProcessGroupDisplay,
-        string ProcessGroupCode,
         string UnitName,
         string CostString,
         List<string> PartCodes);

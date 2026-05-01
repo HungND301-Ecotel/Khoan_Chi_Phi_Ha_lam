@@ -41,14 +41,11 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
         // Map data
         var equipments = await _equipmentRepository.GetAllAsync(
             include: e => e
-                .Include(e => e.Code)
-                .Include(e => e.EquipmentProcessGroups)
-                    .ThenInclude(epg => epg.ProcessGroup),
+                .Include(e => e.Code),
             disableTracking: true);
 
         var equipmentIdMap = equipments
-            .Where(e => e.Code != null
-                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.XL))
+            .Where(e => e.Code != null)
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
 
@@ -314,12 +311,9 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
                 include: e => e
-                    .Include(e => e.Code)
-                    .Include(e => e.EquipmentProcessGroups)
-                        .ThenInclude(epg => epg.ProcessGroup),
+                    .Include(e => e.Code),
                 disableTracking: true))
-            .Where(e => e.Code != null
-                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.XL))
+            .Where(e => e.Code != null)
             .Select(e => e.Code!.Value.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -328,7 +322,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             var equipmentCode = dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Thiết bị '{equipmentCode}' không tồn tại hoặc không thuộc xén lò.");
+                importErrors.Add($"Thiết bị '{equipmentCode}' không tồn tại.");
             }
         }
     }

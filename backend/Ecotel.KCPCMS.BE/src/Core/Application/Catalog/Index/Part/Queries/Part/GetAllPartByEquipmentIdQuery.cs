@@ -20,8 +20,7 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: t => t.EquipmentParts.Any(e => e.EquipmentId == request.EquipmentId),
             include: t => t
                 .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
-                .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.EquipmentProcessGroups)
-                    .ThenInclude(epg => epg.ProcessGroup).ThenInclude(pg => pg.Code)
+                .Include(t => t.PartProcessGroups).ThenInclude(ppg => ppg.ProcessGroup).ThenInclude(pg => pg.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
@@ -43,15 +42,13 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .ToList(),
             UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
-            ProcessGroups = partDetail.EquipmentParts
-                .Where(ep => ep.EquipmentId == request.EquipmentId && ep.Equipment != null)
-                .SelectMany(ep => ep.Equipment!.EquipmentProcessGroups)
-                .Where(epg => epg.ProcessGroup?.Code != null)
-                .Select(epg => new PartProcessGroupDto
+            ProcessGroups = partDetail.PartProcessGroups
+                .Where(ppg => ppg.ProcessGroup?.Code != null)
+                .Select(ppg => new PartProcessGroupDto
                 {
-                    Id = epg.ProcessGroupId,
-                    Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
+                    Id = ppg.ProcessGroupId,
+                    Code = ppg.ProcessGroup!.Code!.Value,
+                    Name = ppg.ProcessGroup.Name
                 })
                 .DistinctBy(pg => pg.Id)
                 .OrderByCodeNatural(pg => pg.Code)

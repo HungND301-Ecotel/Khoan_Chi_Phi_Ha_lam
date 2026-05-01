@@ -18,7 +18,6 @@ import {
 	equipmentSchema,
 	EquipmentSchema,
 } from '@/features/main/catalog/equipment/schema';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,12 +37,6 @@ export type EquipmentDetail = {
 		costType: number;
 		amount: number;
 	}>;
-	processGroups: Array<{
-		id: string;
-		code: string;
-		name: string;
-	}>;
-	processGroupId?: string;
 	partIds: string[];
 	parts: Array<{
 		id: string;
@@ -66,7 +59,6 @@ export function EquipmentForm({
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
-	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [parts, setParts] = useState<Part[]>([]);
 	const [otherParts, setOtherParts] = useState<Part[]>([]);
 	const [selectedParts, setSelectedParts] = useState<MultiSelectOption[]>([]);
@@ -83,7 +75,6 @@ export function EquipmentForm({
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
 			api.pagging<Part>(API.CATALOG.PART.LIST, {
 				ignorePagination: true,
 				partType: 1,
@@ -94,9 +85,8 @@ export function EquipmentForm({
 			}),
 		]);
 
-		promises.then(([units, processGroups, parts, otherParts]) => {
+		promises.then(([units, parts, otherParts]) => {
 			setUnits(units.result.data);
-			setProcessGroups(processGroups.result.data);
 			setParts(parts.result.data);
 			setOtherParts(otherParts.result.data);
 			if (row) {
@@ -105,7 +95,6 @@ export function EquipmentForm({
 					.then((res) => {
 						const {
 							costs,
-							processGroups,
 							parts: selectedPartsFromApi,
 							partIds,
 							...equipment
@@ -135,8 +124,6 @@ export function EquipmentForm({
 						form.reset({
 							...equipment,
 							code: isDuplicate ? '' : equipment.code,
-							processGroupId:
-								equipment.processGroupId ?? processGroups.at(0)?.id ?? '',
 							partIds: partIds ?? [],
 							costs:
 								costs.map((cost) => ({
@@ -210,17 +197,6 @@ export function EquipmentForm({
 				options={units.map((unit) => ({
 					value: unit.id,
 					label: unit.name,
-				}))}
-			/>
-
-			<FormComboBox
-				control={form.control}
-				name='processGroupId'
-				label='Nhóm công đoạn sản xuất'
-				placeholder='Chọn nhóm công đoạn sản xuất'
-				options={processGroups.map((processGroup) => ({
-					value: processGroup.id,
-					label: `${processGroup.code} - ${processGroup.name}`,
 				}))}
 			/>
 

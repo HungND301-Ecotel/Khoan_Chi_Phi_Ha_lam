@@ -37,7 +37,6 @@ public class ApplicationDbContext(
     public DbSet<Cost> Costs => Set<Cost>();
     public DbSet<Equipment> Equipments => Set<Equipment>();
     public DbSet<EquipmentPart> EquipmentParts => Set<EquipmentPart>();
-    public DbSet<EquipmentProcessGroup> EquipmentProcessGroups => Set<EquipmentProcessGroup>();
     public DbSet<PartProcessGroup> PartProcessGroups => Set<PartProcessGroup>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Part> Parts => Set<Part>();
@@ -119,7 +118,6 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Cost>().ToTable(nameof(Cost), "Index");
         modelBuilder.Entity<Equipment>().ToTable(nameof(Equipment), "Index");
         modelBuilder.Entity<EquipmentPart>().ToTable(nameof(EquipmentPart), "Index");
-        modelBuilder.Entity<EquipmentProcessGroup>().ToTable(nameof(EquipmentProcessGroup), "Index");
         modelBuilder.Entity<PartProcessGroup>().ToTable(nameof(PartProcessGroup), "Index");
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
         modelBuilder.Entity<Part>().ToTable(nameof(Part), "Index");
@@ -258,11 +256,6 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Equipment>()
-            .HasMany(s => s.EquipmentProcessGroups)
-            .WithOne(h => h.Equipment)
-            .HasForeignKey(s => s.EquipmentId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Equipment>()
             .HasMany(l => l.ActualEletricityEquipment)
             .WithOne(l => l.Equipment)
             .HasForeignKey(l => l.EquipmentId)
@@ -300,11 +293,6 @@ public class ApplicationDbContext(
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
 
-        modelBuilder.Entity<EquipmentProcessGroup>()
-            .HasIndex(e => new { e.EquipmentId, e.ProcessGroupId })
-            .IsUnique()
-            .HasFilter("\"DeletedOn\" IS NULL");
-
         modelBuilder.Entity<PartProcessGroup>()
             .HasIndex(e => new { e.PartId, e.ProcessGroupId })
             .IsUnique()
@@ -327,10 +315,6 @@ public class ApplicationDbContext(
         // Process Group table
         modelBuilder.Entity<ProcessGroup>()
             .HasMany(s => s.ProductionProcesses)
-            .WithOne(h => h.ProcessGroup)
-            .HasForeignKey(s => s.ProcessGroupId);
-        modelBuilder.Entity<ProcessGroup>()
-            .HasMany(s => s.EquipmentProcessGroups)
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey(s => s.ProcessGroupId);
         modelBuilder.Entity<ProcessGroup>()

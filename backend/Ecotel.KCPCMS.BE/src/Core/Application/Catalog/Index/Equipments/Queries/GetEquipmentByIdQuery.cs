@@ -26,9 +26,6 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 .Include(c => c.Code)
                 .Include(c => c.EquipmentParts)
                     .ThenInclude(c => c.Part)
-                    .ThenInclude(c => c.Code)
-                .Include(c => c.EquipmentProcessGroups)
-                    .ThenInclude(c => c.ProcessGroup)
                     .ThenInclude(c => c.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -41,21 +38,6 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
             Costs = detail.Costs.Adapt<List<ElectricityCostDto>>(),
-            ProcessGroups = detail.EquipmentProcessGroups
-                .Where(epg => epg.ProcessGroup?.Code != null)
-                .Select(epg => new EquipmentProcessGroupDto
-                {
-                    Id = epg.ProcessGroupId,
-                    Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name,
-                    Type = epg.ProcessGroup.Type,
-                })
-                .OrderBy(x => x.Code)
-                .ThenBy(x => x.Name)
-                .ToList(),
-            ProcessGroupId = detail.EquipmentProcessGroups
-                .Select(epg => (Guid?)epg.ProcessGroupId)
-                .FirstOrDefault(),
             PartIds = detail.EquipmentParts
                 .Select(ep => ep.PartId)
                 .Distinct()

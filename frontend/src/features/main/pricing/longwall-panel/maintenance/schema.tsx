@@ -15,6 +15,9 @@ export const longwallPanelFormSchema = z.object({
 	equipmentIds: z
 		.array(z.string().nonempty({ error: 'Mã thiết bị không được để trống' }))
 		.nonempty({ error: 'Mã thiết bị không được để trống' }),
+	selectedPartIds: z.array(
+		z.string().nonempty({ error: 'Mã phụ tùng không được để trống' }),
+	),
 	costs: z
 		.array(
 			z.object({
@@ -53,6 +56,7 @@ export const LONGWALL_PANEL_FORM_DEFAULT: LongwallPanelFormSchema = {
 	startMonth: '',
 	endMonth: '',
 	equipmentIds: [],
+	selectedPartIds: [],
 	costs: [],
 	otherMaterialValues: {},
 };

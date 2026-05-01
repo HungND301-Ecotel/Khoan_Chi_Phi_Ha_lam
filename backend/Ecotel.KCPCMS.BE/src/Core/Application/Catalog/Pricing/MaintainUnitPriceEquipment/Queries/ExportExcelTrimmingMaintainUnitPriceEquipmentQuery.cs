@@ -35,18 +35,16 @@ public class ExportExcelTrimmingMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
 
         var equipments = await _equipmentRepository.GetAllAsync(
             include: e => e
-                .Include(e => e.Code)
-                .Include(e => e.EquipmentProcessGroups)
-                    .ThenInclude(epg => epg.ProcessGroup),
+                .Include(e => e.Code),
             disableTracking: true);
 
-        var filteredEquipmentIds = equipments
-            .Where(e => e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == ProcessGroupType.XL))
+        var equipmentIds = equipments
+            .Where(e => e.Code != null && !string.IsNullOrEmpty(e.Code.Value))
             .Select(e => e.Id)
             .ToHashSet();
 
         var equipmentCodes = equipments
-            .Where(e => filteredEquipmentIds.Contains(e.Id) && e.Code != null && !string.IsNullOrEmpty(e.Code.Value))
+            .Where(e => equipmentIds.Contains(e.Id) && e.Code != null && !string.IsNullOrEmpty(e.Code.Value))
             .Select(e => e.Code!.Value)
             .Distinct()
             .OrderBy(c => c)
@@ -57,14 +55,14 @@ public class ExportExcelTrimmingMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
             include: p => p.Include(p => p.Code).Include(p => p.UnitOfMeasure).Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e!.Code),
             disableTracking: true);
 
-        return ExportTransposedFormat(list.ToList(), equipmentCodes, allParts.ToList(), filteredEquipmentIds);
+        return ExportTransposedFormat(list.ToList(), equipmentCodes, allParts.ToList(), equipmentIds);
     }
 
     private byte[] ExportTransposedFormat(
         List<MaintainUnitPrice> maintainUnitPrices,
         List<string> equipmentCodes,
         List<Part> allParts,
-        HashSet<Guid> filteredEquipmentIds)
+        HashSet<Guid> equipmentIds)
     {
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Định mức bảo dưỡng lò xén");
@@ -82,7 +80,7 @@ public class ExportExcelTrimmingMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
         // Group parts by equipment from database relationship
         var partsByEquipment = allParts
             .SelectMany(p => p.EquipmentParts
-                .Where(e => filteredEquipmentIds.Contains(e.EquipmentId) && e.Equipment != null && e.Equipment.Code != null)
+                .Where(e => equipmentIds.Contains(e.EquipmentId) && e.Equipment != null && e.Equipment.Code != null)
                 .Select(e => new { Part = p, EquipmentId = e.EquipmentId, EquipmentCode = e.Equipment!.Code!.Value }))
             .GroupBy(p => new { p.EquipmentId, p.EquipmentCode })
             .OrderBy(g => g.Key.EquipmentCode)

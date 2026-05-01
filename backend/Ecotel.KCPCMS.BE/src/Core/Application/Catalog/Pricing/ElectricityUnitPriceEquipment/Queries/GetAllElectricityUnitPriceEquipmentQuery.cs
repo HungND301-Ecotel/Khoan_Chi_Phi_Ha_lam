@@ -47,11 +47,6 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             EquipmentId = e.EquipmentId,
             EquipmentCode = e.Equipment!.Code?.Value ?? "",
             EquipmentName = e.Equipment.Name,
-            ProcessGroupTypes = e.Equipment.EquipmentProcessGroups
-                .Where(epg => epg.ProcessGroup != null)
-                .Select(epg => epg.ProcessGroup.Type)
-                .Distinct()
-                .ToList(),
             UnitOfMeasureName = e.Equipment.UnitOfMeasure != null ? e.Equipment.UnitOfMeasure.Name : string.Empty,
             ElectricityConsumePerMetres = e.GetElectricityConsumePerMetres(),
             ElectricityCostPerMetres = e.GetElectricityCostPerMetres(),

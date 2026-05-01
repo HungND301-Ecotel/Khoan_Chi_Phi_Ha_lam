@@ -40,17 +40,13 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         await CollectReferenceErrors(dtos, importErrors, request.Type);
 
         // Map data to Entity Model
-        var processGroupType = ResolveProcessGroupType(request.Type);
         var equipments = await _equipmentRepository.GetAllAsync(
             include: e => e
-                .Include(e => e.Code)
-                .Include(e => e.EquipmentProcessGroups)
-                    .ThenInclude(epg => epg.ProcessGroup),
+                .Include(e => e.Code),
             disableTracking: true);
         var equipmentCodeGroups = equipments
             .Where(e => e.Code != null
-                && !string.IsNullOrWhiteSpace(e.Code!.Value)
-                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == processGroupType))
+                && !string.IsNullOrWhiteSpace(e.Code!.Value))
             .GroupBy(e => e.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -180,15 +176,11 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
     private async Task CollectReferenceErrors(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors, ElectricityUnitPriceType type)
     {
-        var processGroupType = ResolveProcessGroupType(type);
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
                 include: e => e
-                    .Include(e => e.Code)
-                    .Include(e => e.EquipmentProcessGroups)
-                        .ThenInclude(epg => epg.ProcessGroup),
+                    .Include(e => e.Code),
                 disableTracking: true))
-            .Where(e => e.Code != null
-                && e.EquipmentProcessGroups.Any(epg => epg.ProcessGroup != null && epg.ProcessGroup.Type == processGroupType))
+            .Where(e => e.Code != null)
             .Select(e => e.Code!.Value.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -242,14 +234,4 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         throw new ExcelImportException(errors);
     }
 
-    private static ProcessGroupType ResolveProcessGroupType(ElectricityUnitPriceType type)
-    {
-        return type switch
-        {
-            ElectricityUnitPriceType.TunnelExcavation => ProcessGroupType.DL,
-            ElectricityUnitPriceType.Longwall => ProcessGroupType.LC,
-            ElectricityUnitPriceType.Trimming => ProcessGroupType.XL,
-            _ => throw new BadRequestException($"Loại đơn giá điện không hợp lệ: {type}")
-        };
-    }
 }

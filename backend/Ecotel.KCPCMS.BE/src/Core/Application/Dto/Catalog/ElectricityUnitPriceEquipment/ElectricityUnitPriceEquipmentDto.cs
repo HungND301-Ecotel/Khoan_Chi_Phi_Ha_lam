@@ -9,7 +9,6 @@ namespace Application.Dto.Catalog.ElectricityUnitPriceEquipment
         public Guid EquipmentId { get; set; }
         public string EquipmentCode { get; set; }
         public string EquipmentName { get; set; }
-        public IList<ProcessGroupType> ProcessGroupTypes { get; set; } = new List<ProcessGroupType>();
         public string UnitOfMeasureName { get; set; }
         public double EquipmentElectricityCost { get; set; }
         public double ElectricityConsumePerMetres { get; set; }

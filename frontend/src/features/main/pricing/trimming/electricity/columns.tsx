@@ -6,7 +6,6 @@ export type Electricity = {
 	equipmentId: string;
 	equipmentCode: string;
 	equipmentName: string;
-	processGroupTypes: number[];
 	unitOfMeasureName: string;
 	equipmentElectricityCost: number;
 	monthlyElectricityCost: number;
