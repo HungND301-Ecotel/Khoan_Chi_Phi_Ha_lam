@@ -4,10 +4,6 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export const CATALOG_ASSET_QUOTA_MATERIALS_COLUMNS: ColumnDef<Asset>[] = [
 	{
-		accessorKey: 'assignmentCode',
-		header: 'Mã giao khoán',
-	},
-	{
 		accessorKey: 'code',
 		header: 'Mã vật tư, tài sản',
 	},

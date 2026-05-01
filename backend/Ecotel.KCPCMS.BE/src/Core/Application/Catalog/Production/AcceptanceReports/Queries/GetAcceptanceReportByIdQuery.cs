@@ -23,6 +23,8 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             include: q => q
                 .Include(a => a.ProductionOutput)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.ProcessGroup).ThenInclude(pg => pg.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.CategoryAllocations).ThenInclude(c => c.ProcessGroup).ThenInclude(pg => pg.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.CategoryAllocations).ThenInclude(c => c.Equipments)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.Costs)
@@ -60,6 +62,18 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             ProcessGroupCode = item.ProcessGroup?.Code?.Value,
             ProcessGroupName = item.ProcessGroup?.Name,
             MaterialsIncludedInContractRevenueQuantity = item.MaterialsIncludedInContractRevenueQuantity,
+            CategoryAllocations = item.CategoryAllocations
+                .Select(allocation => new AcceptanceReportCategoryAllocationDetailDto
+                {
+                    ProcessGroupId = allocation.ProcessGroupId,
+                    ProcessGroupCode = allocation.ProcessGroup?.Code?.Value,
+                    ProcessGroupName = allocation.ProcessGroup?.Name,
+                    Quantity = allocation.Quantity,
+                    EquipmentIds = allocation.Equipments
+                        .Select(equipment => equipment.EquipmentId)
+                        .ToList(),
+                })
+                .ToList(),
             AdditionalCost = item.AdditionalCost,
             OtherMaterialDetail = item.OtherMaterialDetail,
             AdditionalCostQuantity = item.AdditionalCostQuantity,

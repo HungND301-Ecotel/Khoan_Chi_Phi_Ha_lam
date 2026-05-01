@@ -93,6 +93,8 @@ public class ApplicationDbContext(
     public DbSet<ActualElectricityCost> ActualElectricityCosts => Set<ActualElectricityCost>();
     public DbSet<ActualEletricityEquipment> ActualEletricityEquipments => Set<ActualEletricityEquipment>();
     public DbSet<AcceptanceReportItem> AcceptanceReportItems => Set<AcceptanceReportItem>();
+    public DbSet<AcceptanceReportItemCategoryAllocation> AcceptanceReportItemCategoryAllocations => Set<AcceptanceReportItemCategoryAllocation>();
+    public DbSet<AcceptanceReportItemCategoryAllocationEquipment> AcceptanceReportItemCategoryAllocationEquipments => Set<AcceptanceReportItemCategoryAllocationEquipment>();
     public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
     public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
     public DbSet<AcceptanceReportItemLog> AcceptanceReportItemLogs => Set<AcceptanceReportItemLog>();
@@ -910,6 +912,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOutputProduct>().ToTable(nameof(ProductionOutputProduct), "Production");
         modelBuilder.Entity<AcceptanceReport>().ToTable(nameof(AcceptanceReport), "Production");
         modelBuilder.Entity<AcceptanceReportItem>().ToTable(nameof(AcceptanceReportItem), "Production");
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>().ToTable(nameof(AcceptanceReportItemCategoryAllocation), "Production");
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocationEquipment>().ToTable(nameof(AcceptanceReportItemCategoryAllocationEquipment), "Production");
         modelBuilder.Entity<ActualElectricityCost>().ToTable(nameof(ActualElectricityCost), "Production");
         modelBuilder.Entity<ActualEletricityEquipment>().ToTable(nameof(ActualEletricityEquipment), "Production");
         modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
@@ -939,6 +943,10 @@ public class ApplicationDbContext(
             .WithOne(p => p.ProductionOutputProcessGroup)
             .HasForeignKey(p => p.ProductionOutputProcessGroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductionOutputProduct>()
+            .Property(p => p.PlannedOutput)
+            .HasDefaultValue(0d);
 
         modelBuilder.Entity<ProductionOutputProduct>()
             .Property(p => p.ActualAshContent)
@@ -1009,6 +1017,40 @@ public class ApplicationDbContext(
             .WithOne(i => i.AcceptanceReportItem)
             .HasForeignKey(i => i.AcceptanceReportItemId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasMany(i => i.CategoryAllocations)
+            .WithOne(i => i.AcceptanceReportItem)
+            .HasForeignKey(i => i.AcceptanceReportItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>()
+            .HasOne(i => i.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(i => i.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>()
+            .HasMany(i => i.Equipments)
+            .WithOne(i => i.AcceptanceReportItemCategoryAllocation)
+            .HasForeignKey(i => i.AcceptanceReportItemCategoryAllocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>()
+            .HasMany(i => i.AcceptanceReportItemLogs)
+            .WithOne(i => i.AcceptanceReportItemCategoryAllocation)
+            .HasForeignKey(i => i.AcceptanceReportItemCategoryAllocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocationEquipment>()
+            .HasOne(i => i.Equipment)
+            .WithMany()
+            .HasForeignKey(i => i.EquipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>()
+            .HasIndex(i => new { i.AcceptanceReportItemId, i.ProcessGroupId })
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<AcceptanceReportItemCategoryAllocationEquipment>()
+            .HasIndex(i => new { i.AcceptanceReportItemCategoryAllocationId, i.EquipmentId })
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         // AcceptanceReportItemLog table
         modelBuilder.Entity<AcceptanceReportItemLog>()

@@ -148,6 +148,7 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
+                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }

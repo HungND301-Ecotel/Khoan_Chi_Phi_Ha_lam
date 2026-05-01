@@ -27,7 +27,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var productionOutput = await _productionOutputRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == request.ProductionOutputId,
-            include: q => q.Include(p => p.Department).ThenInclude(d => d.Code),
+            include: q => q
+                .Include(p => p.Department).ThenInclude(d => d.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputProducts),
             disableTracking: true)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -723,12 +726,15 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var latestLog = oldLogs.First();
         var pendingStart = latestLog.PendingValueEndPeriod;
+        var plannedOutput = productionOutput.ProductionOutputProcessGroups
+            .SelectMany(x => x.ProductionOutputProducts)
+            .Sum(x => x.PlannedOutput);
 
         decimal accountedThisPeriod = 0;
         if (latestLog.UsageTime > 0 && productionOutput.StandardProductionMeters > 0)
         {
             var valueByStandard = (pendingStart / (decimal)latestLog.UsageTime)
-                * ((decimal)productionOutput.ProductionMeters
+                * ((decimal)plannedOutput
                    / (decimal)productionOutput.StandardProductionMeters);
             accountedThisPeriod = Math.Min(pendingStart, valueByStandard * (decimal)latestLog.AllocationRatio);
         }

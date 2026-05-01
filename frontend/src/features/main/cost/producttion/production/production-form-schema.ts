@@ -4,6 +4,13 @@ const productionGroupProductSchema = z.object({
 	productId: z.string().nonempty({
 		error: 'Sản phẩm không được để trống',
 	}),
+	plannedOutput: z.coerce
+		.number<number>({
+			error: 'Sản lượng kế hoạch phải là số.',
+		})
+		.min(0, {
+			error: 'Sản lượng kế hoạch không được âm.',
+		}),
 	productionMeters: z.coerce
 		.number<number>({
 			error: 'Sản lượng thực tế phải là số.',
@@ -67,6 +74,9 @@ export const productionFormSchema = z
 		mode: z.enum(['create', 'edit']),
 		startMonth: z.string().nonempty({ error: 'Thời gian không được để trống' }),
 		departmentId: z.string().nonempty({ error: 'Đơn vị không được để trống' }),
+		plannedOutput: z.coerce
+			.number<number>({ error: 'Sản lượng kế hoạch phải là số' })
+			.optional(),
 		productionMeters: z.coerce
 			.number<number>({ error: 'Sản lượng thực tế phải là số' })
 			.optional(),
@@ -104,6 +114,7 @@ export function getProductionFormDefault(
 			mode: 'edit',
 			startMonth: '',
 			departmentId: '',
+			plannedOutput: 0,
 			productionMeters: 0,
 			standardProductionMeters: 0,
 			groups: [],

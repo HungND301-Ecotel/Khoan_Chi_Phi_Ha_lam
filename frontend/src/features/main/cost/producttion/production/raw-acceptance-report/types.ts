@@ -5,6 +5,7 @@ export type RawAcceptanceReportItem = {
 	partId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
+	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
@@ -49,6 +50,7 @@ export type AcceptanceReportItem = {
 	partId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
+	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
@@ -161,6 +163,12 @@ export type QuantityDetail = {
 export type QuotaBasedMaterialQuantityDetail = {
 	type: number;
 	quantity: number;
+};
+
+export type CategoryAllocation = {
+	processGroupId: string | null;
+	quantity: number | null;
+	equipmentIds: string[];
 };
 
 // Dropdown options

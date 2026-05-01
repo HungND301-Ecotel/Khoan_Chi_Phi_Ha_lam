@@ -20,6 +20,7 @@ public class CreateProductionOutputProcessGroupDto
 public class CreateProductionOutputProductDto
 {
     public Guid ProductId { get; set; }
+    public double PlannedOutput { get; set; }
     public double ProductionMeters { get; set; }
     public double ActualAshContent { get; set; }
 }

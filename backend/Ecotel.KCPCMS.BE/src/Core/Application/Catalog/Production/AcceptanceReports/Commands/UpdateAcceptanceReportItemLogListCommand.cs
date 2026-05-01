@@ -62,7 +62,9 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
 
         var logs = await _logRepository.GetAllAsync(
             predicate: l => logIds.Contains(l.Id),
-            include: q => q.Include(l => l.AcceptanceReportItem),
+            include: q => q
+                .Include(l => l.AcceptanceReportItemCategoryAllocation)
+                .Include(l => l.AcceptanceReportItem),
             disableTracking: false);
 
         if (logs.Count != updateModels.Count)
@@ -102,11 +104,13 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                         log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
                     }
 
+                    RefreshLogOutputMetrics(log, outputByProcessGroup, updateModel.Note);
                     log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(log);
 
                     await RecalculateFutureLogs(
                         log.AcceptanceReportItemId,
+                        log.AcceptanceReportItemCategoryAllocationId,
                         log.PeriodStartMonth,
                         log.PendingValueEndPeriod,
                         cancellationToken);
@@ -127,6 +131,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                     var existingOverrideLog = await _logRepository.GetFirstOrDefaultAsync(
                         predicate: l =>
                             l.AcceptanceReportItemId == log.AcceptanceReportItemId &&
+                            l.AcceptanceReportItemCategoryAllocationId == log.AcceptanceReportItemCategoryAllocationId &&
                             l.AcceptanceReportId == currentAcceptanceReportId,
                         disableTracking: false);
 
@@ -138,13 +143,15 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                             throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
                         }
 
+                        RefreshLogOutputMetrics(existingOverrideLog, outputByProcessGroup, updateModel.Note);
                         existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                         _logRepository.Update(existingOverrideLog);
 
                         await RecalculateFutureLogs(
-                            log.AcceptanceReportItemId,
-                            log.PeriodStartMonth,
-                            log.PendingValueEndPeriod,
+                            existingOverrideLog.AcceptanceReportItemId,
+                            existingOverrideLog.AcceptanceReportItemCategoryAllocationId,
+                            existingOverrideLog.PeriodStartMonth,
+                            existingOverrideLog.PendingValueEndPeriod,
                             cancellationToken);
 
                         results.Add(new UpdateAcceptanceReportItemLogResponseDto
@@ -163,6 +170,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                         var allPreviousLogs = await _logRepository.GetAllAsync(
                             predicate: l =>
                                 l.AcceptanceReportItemId == log.AcceptanceReportItemId &&
+                                l.AcceptanceReportItemCategoryAllocationId == log.AcceptanceReportItemCategoryAllocationId &&
                                 l.PeriodEndMonth < productionOutput.StartMonth,
                             disableTracking: true);
 
@@ -180,8 +188,9 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                         var plannedOutput = log.PlannedOutput;
                         var standardOutput = productionOutput.StandardProductionMeters;
 
-                        if (log.AcceptanceReportItem?.ProcessGroupId.HasValue == true
-                            && outputByProcessGroup.TryGetValue(log.AcceptanceReportItem.ProcessGroupId.Value, out var metrics))
+                        var processGroupId = ResolveProcessGroupId(log);
+                        if (processGroupId.HasValue
+                            && outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
                         {
                             actualOutput = metrics.ActualOutput;
                             plannedOutput = metrics.PlannedOutput;
@@ -202,6 +211,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                             plannedOutput: plannedOutput,
                             standardOutput: standardOutput,
                             allocationRatio: finalAllocationRatio,
+                            acceptanceReportItemCategoryAllocationId: log.AcceptanceReportItemCategoryAllocationId,
                             isFullAccounting: updateModel.IsFullAccounting,
                             note: updateModel.Note);
 
@@ -237,29 +247,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
 
         foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
         {
-            var plannedOutput = 0.0;
-
-            foreach (var product in processGroup.ProductionOutputProducts)
-            {
-                var productUnitPriceLink = productionOutput.ProductUnitPriceProductionOutputs
-                    .FirstOrDefault(x => x.ProductUnitPrice?.ProductId == product.ProductId);
-
-                if (productUnitPriceLink?.ProductUnitPrice?.Outputs == null)
-                {
-                    continue;
-                }
-
-                var matchingPlan = productUnitPriceLink.ProductUnitPrice.Outputs
-                    .FirstOrDefault(o => o.OutputType == OutputType.PlanOutput
-                        && o.StartMonth == productionOutput.StartMonth
-                        && o.EndMonth == productionOutput.EndMonth
-                        && Math.Abs(o.ProductionMeters - productUnitPriceLink.ProductionMeters) < 0.0001);
-
-                if (matchingPlan != null)
-                {
-                    plannedOutput += matchingPlan.ProductionMeters;
-                }
-            }
+            var plannedOutput = processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput);
 
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
@@ -272,6 +260,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
 
     private async Task RecalculateFutureLogs(
             Guid acceptanceReportItemId,
+            Guid? acceptanceReportItemCategoryAllocationId,
             DateOnly fromPeriodStartMonth,
             decimal newPendingValueEnd,
             CancellationToken cancellationToken)
@@ -280,6 +269,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
         var futureLogs = await _logRepository.GetAllAsync(
             predicate: l =>
                 l.AcceptanceReportItemId == acceptanceReportItemId &&
+                l.AcceptanceReportItemCategoryAllocationId == acceptanceReportItemCategoryAllocationId &&
                 l.PeriodStartMonth > fromPeriodStartMonth,
             disableTracking: false);
 
@@ -298,5 +288,22 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
             _logRepository.Update(futureLog);
             currentPendingValue = futureLog.PendingValueEndPeriod;
         }
+    }
+
+    private static Guid? ResolveProcessGroupId(AcceptanceReportItemLog log)
+        => log.AcceptanceReportItemCategoryAllocation?.ProcessGroupId ?? log.AcceptanceReportItem?.ProcessGroupId;
+
+    private static void RefreshLogOutputMetrics(
+        AcceptanceReportItemLog log,
+        Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> outputByProcessGroup,
+        string note)
+    {
+        var processGroupId = ResolveProcessGroupId(log);
+        if (!processGroupId.HasValue || !outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
+        {
+            return;
+        }
+
+        log.UpdateOutputMetrics(metrics.ActualOutput, metrics.PlannedOutput, metrics.StandardOutput, note);
     }
 }

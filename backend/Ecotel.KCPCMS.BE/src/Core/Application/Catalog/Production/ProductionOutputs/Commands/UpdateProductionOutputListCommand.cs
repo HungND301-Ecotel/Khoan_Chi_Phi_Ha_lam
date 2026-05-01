@@ -216,6 +216,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
+                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }
@@ -395,7 +396,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
         {
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
-                0,
+                processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput),
                 processGroup.StandardProductionMeters);
         }
 

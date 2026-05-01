@@ -2,7 +2,7 @@
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
-import { FormNumber } from '@/components/form/form-number';
+import { FormNumber, FormNumberInput } from '@/components/form/form-number';
 import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
@@ -22,6 +22,7 @@ import { ProductCostFormProps } from '@/features/main/cost/plan/types';
 import {
 	RAW_ACCEPTANCE_REPORT_FORM_DEFAULT,
 	rawAcceptanceReportFormSchema,
+	RawAcceptanceReportFormInput,
 	RawAcceptanceReportFormSchema,
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/schema';
 import { AcceptanceReportDetail } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
@@ -50,6 +51,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	FormProvider,
+	Resolver,
 	useFieldArray,
 	useForm,
 	useFormContext,
@@ -179,6 +181,170 @@ function parseQuantity(value: number | string | null | undefined): number {
 	if (value == null || value === '') return 0;
 	const normalized = Number(value);
 	return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function parseAllocationQuantity(
+	value: number | string | null | undefined,
+): number {
+	return parseQuantity(value);
+}
+
+function createCategoryAllocation(
+	processGroupId: string | null = null,
+	quantity: number | null = null,
+	equipmentIds: string[] = [],
+): {
+	processGroupId: string | null;
+	quantity: number | null;
+	equipmentIds: string[];
+} {
+	return {
+		processGroupId,
+		quantity,
+		equipmentIds,
+	};
+}
+
+function extractCategoryProcessGroupIds(
+	allocations:
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.processGroupId)
+		.filter((value): value is string => Boolean(value));
+}
+
+function extractCategoryEquipmentIds(
+	allocations:
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.equipmentIds?.[0])
+		.filter((value): value is string => Boolean(value));
+}
+
+function syncCategoryAllocations(
+	processGroupIds: string[],
+	currentAllocations:
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined,
+	totalQuantity: number,
+	needsEquipment: boolean,
+) {
+	const previousAllocationByProcessGroupId = new Map(
+		(currentAllocations ?? [])
+			.filter((allocation) => allocation.processGroupId)
+			.map((allocation) => [allocation.processGroupId as string, allocation]),
+	);
+	const previousQuantities = processGroupIds.map((processGroupId) =>
+		parseAllocationQuantity(
+			previousAllocationByProcessGroupId.get(processGroupId)?.quantity,
+		),
+	);
+	const hasExistingQuantities = previousQuantities.some(
+		(quantity) => quantity > 0,
+	);
+	const nextQuantities = hasExistingQuantities
+		? previousQuantities
+		: processGroupIds.map((_, index) => {
+				const base =
+					processGroupIds.length > 0
+						? totalQuantity / processGroupIds.length
+						: 0;
+				return index === processGroupIds.length - 1
+					? Number(
+							(totalQuantity - base * (processGroupIds.length - 1)).toFixed(2),
+						)
+					: Number(base.toFixed(2));
+			});
+	const quantityDelta = Number(
+		(
+			totalQuantity -
+			nextQuantities.reduce((sum, quantity) => sum + quantity, 0)
+		).toFixed(2),
+	);
+
+	if (processGroupIds.length > 0 && Math.abs(quantityDelta) >= 0.01) {
+		nextQuantities[processGroupIds.length - 1] = Number(
+			(
+				(nextQuantities[processGroupIds.length - 1] ?? 0) + quantityDelta
+			).toFixed(2),
+		);
+	}
+
+	return processGroupIds.map((processGroupId, index) => {
+		const previousAllocation =
+			previousAllocationByProcessGroupId.get(processGroupId);
+		const equipmentIds = needsEquipment
+			? (previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ?? [])
+			: [];
+
+		return createCategoryAllocation(
+			processGroupId,
+			nextQuantities[index] ?? 0,
+			equipmentIds,
+		);
+	});
+}
+
+function getCategoryAllocationSignature(
+	allocations:
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined,
+): string {
+	return JSON.stringify(
+		(allocations ?? []).map((allocation) => ({
+			processGroupId: allocation.processGroupId ?? null,
+			quantity: parseAllocationQuantity(allocation.quantity),
+			equipmentIds: allocation.equipmentIds ?? [],
+		})),
+	);
+}
+
+function buildCategoryAllocationsForPayload(
+	allocations:
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined,
+	materialsIncludedInContractRevenue: number,
+) {
+	if (
+		materialsIncludedInContractRevenue !==
+		MaterialsIncludedInContractRevenue.Maintain
+	) {
+		return null;
+	}
+
+	const normalized = (allocations ?? [])
+		.filter((allocation) => allocation.processGroupId)
+		.map((allocation) => ({
+			processGroupId: allocation.processGroupId,
+			quantity: parseQuantity(allocation.quantity),
+			equipmentIds: Array.from(new Set(allocation.equipmentIds ?? [])),
+		}));
+
+	return normalized.length > 0 ? normalized : null;
 }
 
 function mapIssuedDetailsToBreakdown(details?: QuantityDetail[]) {
@@ -435,8 +601,10 @@ export function RawAcceptanceReportForm({
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 
-	const form = useForm<RawAcceptanceReportFormSchema>({
-		resolver: zodResolver(rawAcceptanceReportFormSchema),
+	const form = useForm<RawAcceptanceReportFormInput>({
+		resolver: zodResolver(
+			rawAcceptanceReportFormSchema,
+		) as Resolver<RawAcceptanceReportFormInput>,
 		mode: 'onSubmit',
 		defaultValues: {
 			...RAW_ACCEPTANCE_REPORT_FORM_DEFAULT,
@@ -723,6 +891,30 @@ export function RawAcceptanceReportForm({
 										)
 									: null;
 						const materialOrPartId = item.partId ?? item.materialId ?? '';
+						const initialCategoryAllocations = showCategoryDropdown
+							? item.categoryAllocations && item.categoryAllocations.length > 0
+								? item.categoryAllocations.map((allocation) => ({
+										processGroupId: allocation.processGroupId ?? null,
+										quantity:
+											allocation.quantity ??
+											item.materialsIncludedInContractRevenueQuantity ??
+											null,
+										equipmentIds: allocation.equipmentIds ?? [],
+									}))
+								: item.processGroupId
+									? [
+											createCategoryAllocation(
+												item.processGroupId,
+												item.materialsIncludedInContractRevenueQuantity ?? null,
+												item.categoryEquipmentId
+													? [item.categoryEquipmentId]
+													: [],
+											),
+										]
+									: []
+							: [];
+						const firstCategoryAllocation =
+							initialCategoryAllocations[0] ?? null;
 
 						return {
 							id: item.id || '',
@@ -747,8 +939,13 @@ export function RawAcceptanceReportForm({
 								? item.materialsIncludedInContractRevenue
 								: null,
 							categoryProcessGroup: showCategoryDropdown
-								? item.processGroupId || null
+								? (firstCategoryAllocation?.processGroupId ??
+										item.processGroupId) ||
+									null
 								: null,
+							categoryProcessGroupIds: extractCategoryProcessGroupIds(
+								initialCategoryAllocations,
+							),
 							categoryProductionOrderId:
 								showCategoryDropdown &&
 								item.materialsIncludedInContractRevenue ===
@@ -759,8 +956,14 @@ export function RawAcceptanceReportForm({
 								showCategoryDropdown &&
 								item.materialsIncludedInContractRevenue ===
 									MaterialsIncludedInContractRevenue.Maintain
-									? (item.categoryEquipmentId ?? null)
+									? (firstCategoryAllocation?.equipmentIds?.[0] ??
+										item.categoryEquipmentId ??
+										null)
 									: null,
+							categoryEquipmentIds: extractCategoryEquipmentIds(
+								initialCategoryAllocations,
+							),
+							categoryAllocations: initialCategoryAllocations,
 							additionalCostCategory: showAdditionalCostDropdown
 								? item.additionalCost
 								: null,
@@ -825,8 +1028,9 @@ export function RawAcceptanceReportForm({
 		fetchAcceptanceReport();
 	}, [id, output?.acceptanceReportId]);
 
-	const handleSubmit = async (values: RawAcceptanceReportFormSchema) => {
+	const handleSubmit = async (values: RawAcceptanceReportFormInput) => {
 		try {
+			const parsedValues = rawAcceptanceReportFormSchema.parse(values);
 			const reportId = acceptanceReportId || output?.acceptanceReportId || '';
 			if (!reportId) {
 				error('Thiếu thông tin cần thiết');
@@ -837,7 +1041,7 @@ export function RawAcceptanceReportForm({
 			const requestData = {
 				id: reportId,
 				filePath: filePath ?? '',
-				items: values.items.map((item) => {
+				items: parsedValues.items.map((item) => {
 					const resolvedCategory =
 						item.category ?? getDefaultCategoryByMaterialType(item.type);
 
@@ -846,11 +1050,19 @@ export function RawAcceptanceReportForm({
 							? resolvedCategory
 							: MaterialsIncludedInContractRevenue.None;
 
+					const categoryAllocations = buildCategoryAllocationsForPayload(
+						item.categoryAllocations,
+						materialsIncludedInContractRevenue,
+					);
+					const firstCategoryAllocation = categoryAllocations?.[0] ?? null;
+
 					const processGroupId =
 						item.showCategoryDropdown &&
 						resolvedCategory &&
 						item.type === MaterialType.SparePart
-							? item.categoryProcessGroup || null
+							? (firstCategoryAllocation?.processGroupId ??
+									item.categoryProcessGroup) ||
+								null
 							: null;
 
 					const additionalCost =
@@ -872,7 +1084,9 @@ export function RawAcceptanceReportForm({
 					const categoryEquipmentId =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? (item.categoryEquipmentId ?? null)
+							? (firstCategoryAllocation?.equipmentIds?.[0] ??
+								item.categoryEquipmentId ??
+								null)
 							: null;
 
 					const additionalSelection =
@@ -975,6 +1189,7 @@ export function RawAcceptanceReportForm({
 						id: item.id || '',
 						usageTime: item.usageTime ?? 0,
 						itemType: item.itemType ?? 0,
+						categoryAllocations,
 						categoryProductionOrderId,
 						categoryEquipmentId,
 						additionalCostProductionOrderId:
@@ -1079,7 +1294,7 @@ export function RawAcceptanceReportForm({
 										<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Số lượng xuất
 										</TableCell>
-										<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+										<TableCell className='w-[18%] min-w-80 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 											Vật tư tính vào doanh thu khoán
 										</TableCell>
 										<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
@@ -1334,6 +1549,10 @@ function RawAcceptanceReportRow({
 		control: form.control,
 		name: `${basename}.categoryProcessGroup` as FieldName,
 	});
+	const categoryProcessGroupIds = useWatch({
+		control: form.control,
+		name: `${basename}.categoryProcessGroupIds` as FieldName,
+	}) as string[] | undefined;
 	const categoryProductionOrderId = useWatch({
 		control: form.control,
 		name: `${basename}.categoryProductionOrderId` as FieldName,
@@ -1342,6 +1561,24 @@ function RawAcceptanceReportRow({
 		control: form.control,
 		name: `${basename}.categoryEquipmentId` as FieldName,
 	});
+	const categoryQuantity = useWatch({
+		control: form.control,
+		name: `${basename}.categoryQuantity` as FieldName,
+	});
+	const categoryEquipmentIds = useWatch({
+		control: form.control,
+		name: `${basename}.categoryEquipmentIds` as FieldName,
+	}) as string[] | undefined;
+	const categoryAllocations = useWatch({
+		control: form.control,
+		name: `${basename}.categoryAllocations` as FieldName,
+	}) as
+		| {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+		  }[]
+		| undefined;
 	const additionalCostCategoryValue = useWatch({
 		control: form.control,
 		name: `${basename}.additionalCostCategory` as FieldName,
@@ -1474,6 +1711,18 @@ function RawAcceptanceReportRow({
 		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
 	const categoryNeedsEquipment =
 		categoryNeedsProductionOrder && isSparePartByEquipment;
+	const categorySelectedProcessGroupIds = categoryProcessGroupIds ?? [];
+	const categorySelectedEquipmentIds = categoryEquipmentIds ?? [];
+	const categoryAllocationRows = (categoryAllocations ?? []).filter(
+		(allocation) => allocation.processGroupId,
+	);
+	const hasValidCategoryAllocations =
+		!categoryNeedsProcessGroup || categorySelectedProcessGroupIds.length > 0;
+	const hasValidCategoryEquipments =
+		!categoryNeedsEquipment ||
+		(categorySelectedProcessGroupIds.length > 0 &&
+			categorySelectedEquipmentIds.length >=
+				categorySelectedProcessGroupIds.length);
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategoryValue === AdditionalCost.Material ||
 		additionalCostCategoryValue === AdditionalCost.Maintain;
@@ -1491,6 +1740,38 @@ function RawAcceptanceReportRow({
 		(acc, type) => acc + (Number(contractLimitBreakdown?.[String(type)]) || 0),
 		0,
 	);
+	const set = (key: string, value: unknown) => {
+		form.setValue(`${basename}.${key}` as FieldName, value);
+	};
+
+	const updateCategoryAllocation = (
+		processGroupId: string,
+		updater: (allocation: {
+			processGroupId: string | null;
+			quantity: number | null;
+			equipmentIds: string[];
+		}) => {
+			processGroupId: string | null;
+			quantity: number | null;
+			equipmentIds: string[];
+		},
+	) => {
+		const nextAllocations = categoryAllocationRows.map((allocation) =>
+			allocation.processGroupId === processGroupId
+				? updater(allocation)
+				: allocation,
+		);
+
+		set('categoryAllocations', nextAllocations);
+		set('categoryEquipmentIds', extractCategoryEquipmentIds(nextAllocations));
+		set(
+			'categoryQuantity',
+			nextAllocations.reduce(
+				(sum, allocation) => sum + parseAllocationQuantity(allocation.quantity),
+				0,
+			),
+		);
+	};
 
 	useEffect(() => {
 		if (!receivedTypes || receivedTypes.length === 0) {
@@ -1655,17 +1936,6 @@ function RawAcceptanceReportRow({
 					categoryProductionOrderOptions[0].value,
 				);
 			}
-			if (
-				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
-				categoryNeedsEquipment &&
-				categoryEquipmentId == null &&
-				categoryEquipmentOptions.length > 0
-			) {
-				form.setValue(
-					`${basename}.categoryEquipmentId` as FieldName,
-					categoryEquipmentOptions[0].value,
-				);
-			}
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown) {
 				resetCellFields(form, basename, [
@@ -1731,8 +2001,11 @@ function RawAcceptanceReportRow({
 		if (justDisabledCategory) {
 			form.setValue(`${basename}.category` as FieldName, null);
 			form.setValue(`${basename}.categoryProcessGroup` as FieldName, null);
+			form.setValue(`${basename}.categoryProcessGroupIds` as FieldName, []);
 			form.setValue(`${basename}.categoryProductionOrderId` as FieldName, null);
 			form.setValue(`${basename}.categoryEquipmentId` as FieldName, null);
+			form.setValue(`${basename}.categoryEquipmentIds` as FieldName, []);
+			form.setValue(`${basename}.categoryAllocations` as FieldName, []);
 			form.setValue(`${basename}.categoryQuantity` as FieldName, null);
 		}
 		if (justDisabledAdditional) {
@@ -1808,8 +2081,6 @@ function RawAcceptanceReportRow({
 		const prev = prevDropdownState.current;
 		const categoryRequiresProductionOrder =
 			resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
-		const categoryRequiresEquipment =
-			categoryRequiresProductionOrder && isSparePartByEquipment;
 		const additionalRequiresProductionOrder =
 			additionalCostCategoryValue === AdditionalCost.Material ||
 			additionalCostCategoryValue === AdditionalCost.Maintain;
@@ -1819,9 +2090,9 @@ function RawAcceptanceReportRow({
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+			hasValidCategoryAllocations &&
 			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
-			(!categoryRequiresEquipment || categoryEquipmentId != null),
+			hasValidCategoryEquipments,
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
@@ -1833,10 +2104,13 @@ function RawAcceptanceReportRow({
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
 			prev.category &&
-			(!categoryNeedsProcessGroup || prev.categoryProcessGroup) &&
+			(!categoryNeedsProcessGroup ||
+				categorySelectedProcessGroupIds.length > 0) &&
 			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
 				(prev.categoryProductionOrderId != null &&
-					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
+					(!isSparePartByEquipment ||
+						categorySelectedEquipmentIds.length >=
+							categorySelectedProcessGroupIds.length))),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
@@ -1929,6 +2203,8 @@ function RawAcceptanceReportRow({
 		categoryValue,
 		resolvedCategoryValue,
 		categoryProcessGroupValue,
+		categorySelectedProcessGroupIds,
+		categorySelectedEquipmentIds,
 		categoryProductionOrderId,
 		categoryEquipmentId,
 		additionalCostCategoryValue,
@@ -1944,6 +2220,121 @@ function RawAcceptanceReportRow({
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
 		showAssetDropdown,
+	]);
+
+	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+				set('categoryProcessGroupIds', []);
+			}
+			if ((categoryEquipmentIds?.length ?? 0) > 0) {
+				set('categoryEquipmentIds', []);
+			}
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			return;
+		}
+
+		if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+			return;
+		}
+
+		const nextProcessGroupIds =
+			extractCategoryProcessGroupIds(categoryAllocations).length > 0
+				? extractCategoryProcessGroupIds(categoryAllocations)
+				: categoryProcessGroupValue
+					? [categoryProcessGroupValue]
+					: processGroupOptions.length === 1
+						? [processGroupOptions[0].value]
+						: [];
+
+		if (nextProcessGroupIds.length > 0) {
+			set('categoryProcessGroupIds', nextProcessGroupIds);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryProcessGroupIds,
+		categoryProcessGroupValue,
+		categoryEquipmentIds,
+		categoryAllocations,
+		processGroupOptions,
+	]);
+
+	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			return;
+		}
+
+		const processGroupIds = categoryProcessGroupIds ?? [];
+		if (processGroupIds.length === 0) {
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			if (categoryProcessGroupValue != null) {
+				set('categoryProcessGroup', null);
+			}
+			if (categoryEquipmentId != null) {
+				set('categoryEquipmentId', null);
+			}
+			return;
+		}
+
+		const derivedEquipmentIds =
+			(categoryEquipmentIds?.length ?? 0) > 0
+				? (categoryEquipmentIds ?? [])
+				: extractCategoryEquipmentIds(categoryAllocations);
+		const nextAllocations = syncCategoryAllocations(
+			processGroupIds,
+			categoryAllocations,
+			parseAllocationQuantity(categoryQuantity),
+			categoryNeedsEquipment,
+		);
+		const normalizedEquipmentIds = categoryNeedsEquipment
+			? derivedEquipmentIds.slice(0, processGroupIds.length)
+			: [];
+
+		if (
+			(categoryEquipmentIds ?? [])
+				.slice(0, processGroupIds.length)
+				.join(',') !== normalizedEquipmentIds.join(',')
+		) {
+			set('categoryEquipmentIds', normalizedEquipmentIds);
+		}
+
+		if (categoryProcessGroupValue !== processGroupIds[0]) {
+			set('categoryProcessGroup', processGroupIds[0]);
+		}
+		if ((categoryEquipmentId ?? null) !== (normalizedEquipmentIds[0] ?? null)) {
+			set('categoryEquipmentId', normalizedEquipmentIds[0] ?? null);
+		}
+		if (
+			getCategoryAllocationSignature(categoryAllocations) !==
+			getCategoryAllocationSignature(nextAllocations)
+		) {
+			set('categoryAllocations', nextAllocations);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryNeedsEquipment,
+		categoryProcessGroupIds,
+		categoryEquipmentIds,
+		categoryAllocations,
+		categoryQuantity,
+		categoryProcessGroupValue,
+		categoryEquipmentId,
 	]);
 
 	useEffect(() => {
@@ -2002,12 +2393,6 @@ function RawAcceptanceReportRow({
 		}
 
 		if (categoryNeedsEquipment) {
-			if (categoryEquipmentId == null && categoryEquipmentOptions.length > 0) {
-				form.setValue(
-					`${basename}.categoryEquipmentId` as FieldName,
-					categoryEquipmentOptions[0].value,
-				);
-			}
 			return;
 		}
 
@@ -2193,9 +2578,6 @@ function RawAcceptanceReportRow({
 	const watchedExportedQuantity = form.watch(
 		`${basename}.exportedQuantity` as FieldName,
 	);
-	const categoryQuantity = form.watch(
-		`${basename}.categoryQuantity` as FieldName,
-	);
 	const additionalCostQuantity = form.watch(
 		`${basename}.additionalCostQuantity` as FieldName,
 	);
@@ -2210,9 +2592,9 @@ function RawAcceptanceReportRow({
 		const hasCategoryActive =
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+			hasValidCategoryAllocations &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
-			(!categoryNeedsEquipment || categoryEquipmentId != null);
+			hasValidCategoryEquipments;
 		const hasAdditionalCostActive =
 			showAdditionalCostDropdown &&
 			additionalCostCategoryValue &&
@@ -2426,7 +2808,7 @@ function RawAcceptanceReportRow({
 			</TableCell>
 
 			{/* Vật tư tính vào doanh thu khoán */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+			<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4'>
 				<div className='flex flex-col items-center gap-3'>
 					<div className='flex justify-center *:w-auto!'>
 						<FormCheckBox
@@ -2450,11 +2832,20 @@ function RawAcceptanceReportRow({
 						<>
 							{resolvedCategoryValue && categoryNeedsProcessGroup && (
 								<div className='w-full'>
-									<FormComboBox
+									<FormMultiSelect
 										control={form.control}
-										name={`${basename}.categoryProcessGroup` as FieldName}
+										name={`${basename}.categoryProcessGroupIds` as FieldName}
 										options={processGroupOptions}
 										placeholder='Chọn nhóm công đoạn'
+									/>
+								</div>
+							)}
+							{resolvedCategoryValue && !categoryNeedsProcessGroup && (
+								<div className='w-full'>
+									<FormNumber
+										control={form.control}
+										name={`${basename}.categoryQuantity` as FieldName}
+										placeholder='Nhập số lượng'
 									/>
 								</div>
 							)}
@@ -2473,30 +2864,108 @@ function RawAcceptanceReportRow({
 									</div>
 									{categoryNeedsEquipment && (
 										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={`${basename}.categoryEquipmentId` as FieldName}
-												options={categoryEquipmentOptions}
-												placeholder='Chọn thiết bị'
-											/>
+											<div className='space-y-2'>
+												<div className='flex w-full items-start gap-2'>
+													{categoryAllocationRows.map((allocation) => {
+														const processGroupId =
+															allocation.processGroupId ?? '';
+														const processGroupLabel =
+															processGroupOptions.find(
+																(option) => option.value === processGroupId,
+															)?.label ?? processGroupId;
+														const selectedEquipmentId =
+															allocation.equipmentIds?.[0] ?? '';
+
+														return (
+															<div
+																key={`${processGroupId}-equipment`}
+																className='min-w-0 flex-1'
+															>
+																<label
+																	className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																	title={processGroupLabel}
+																>
+																	{processGroupLabel}
+																</label>
+																<FormComboBox
+																	value={selectedEquipmentId}
+																	onValueChange={(value) => {
+																		updateCategoryAllocation(
+																			processGroupId,
+																			(currentAllocation) => ({
+																				...currentAllocation,
+																				equipmentIds: value ? [value] : [],
+																			}),
+																		);
+																	}}
+																	options={categoryEquipmentOptions}
+																	placeholder='Chọn thiết bị'
+																/>
+															</div>
+														);
+													})}
+												</div>
+											</div>
+										</div>
+									)}
+									{categoryNeedsProcessGroup && (
+										<div className='w-full'>
+											<div className='space-y-2'>
+												<div className='flex w-full items-start gap-2'>
+													{categoryAllocationRows.map((allocation) => {
+														const processGroupId =
+															allocation.processGroupId ?? '';
+														const processGroupLabel =
+															processGroupOptions.find(
+																(option) => option.value === processGroupId,
+															)?.label ?? processGroupId;
+
+														return (
+															<div
+																key={`${processGroupId}-quantity`}
+																className='min-w-0 flex-1'
+															>
+																<label
+																	className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																	title={processGroupLabel}
+																>
+																	{processGroupLabel}
+																</label>
+																<FormNumberInput
+																	value={parseAllocationQuantity(
+																		allocation.quantity,
+																	)}
+																	onValueChange={(value) => {
+																		updateCategoryAllocation(
+																			processGroupId,
+																			(currentAllocation) => ({
+																				...currentAllocation,
+																				quantity: value ?? 0,
+																			}),
+																		);
+																	}}
+																	placeholder='Nhập số lượng'
+																/>
+															</div>
+														);
+													})}
+												</div>
+												{categoryAllocationRows.length === 0 && (
+													<p className='text-xs text-slate-500'>
+														Chọn nhóm công đoạn để nhập số lượng theo từng nhóm.
+													</p>
+												)}
+											</div>
 										</div>
 									)}
 								</>
 							)}
 							{resolvedCategoryValue &&
-								(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+								hasValidCategoryAllocations &&
 								(!categoryNeedsProductionOrder ||
 									categoryProductionOrderId != null) &&
-								(!categoryNeedsEquipment || categoryEquipmentId != null) && (
+								hasValidCategoryEquipments && (
 									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.categoryQuantity` as FieldName}
-											placeholder='Nhập số lượng'
-										/>
 										<div
 											className={cn(
 												'mt-1 text-xs',

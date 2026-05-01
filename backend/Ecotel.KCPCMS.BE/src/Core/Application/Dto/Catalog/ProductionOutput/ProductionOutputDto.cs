@@ -31,6 +31,7 @@ public class ProductionOutputProductDto
     public Guid ProductId { get; set; }
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
+    public double PlannedOutput { get; set; }
     public double ProductionMeters { get; set; }
     public double ActualAshContent { get; set; }
 }

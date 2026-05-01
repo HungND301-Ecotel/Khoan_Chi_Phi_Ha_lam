@@ -20,6 +20,7 @@ public record UpdateAcceptanceReportItemDto
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public required double MaterialsIncludedInContractRevenueQuantity { get; init; }
+    public List<AcceptanceReportCategoryAllocationDto>? CategoryAllocations { get; init; }
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }

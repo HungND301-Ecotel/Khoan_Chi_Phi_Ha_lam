@@ -1,7 +1,7 @@
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
-import { FormNumber } from '@/components/form/form-number';
+import { FormNumber, FormNumberInput } from '@/components/form/form-number';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
 	ADDITIONAL_COST_OPTIONS,
+	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
 	EXPORTED_TYPE_OPTIONS,
@@ -43,6 +44,9 @@ type MaterialRowValues = MaterialFormSchema & {
 	exportedBreakdown?: Record<string, number | string>;
 	contractLimitSubCategories?: string[];
 	contractLimitBreakdown?: Record<string, number | string>;
+	categoryProcessGroupIds?: string[];
+	categoryEquipmentIds?: string[];
+	categoryAllocations?: CategoryAllocation[];
 };
 
 type MaterialsExtendedForm = { materials: MaterialRowValues[] };
@@ -100,6 +104,116 @@ function getDefaultAdditionalCostByMaterialType(
 	if (type === MaterialType.Material) return AdditionalCost.Material;
 	if (type === MaterialType.SparePart) return AdditionalCost.Maintain;
 	return null;
+}
+
+function createCategoryAllocation(
+	processGroupId: string | null = null,
+	quantity: number | null = null,
+	equipmentIds: string[] = [],
+): CategoryAllocation {
+	return {
+		processGroupId,
+		quantity,
+		equipmentIds,
+	};
+}
+
+function parseAllocationQuantity(
+	value: number | string | null | undefined,
+): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function splitAllocationQuantities(total: number, count: number): number[] {
+	if (count <= 0) return [];
+	const safeTotal = Number.isFinite(total) ? total : 0;
+	const base = Number((safeTotal / count).toFixed(2));
+	const quantities = Array.from({ length: count }, () => base);
+	const allocated = quantities.reduce((sum, value) => sum + value, 0);
+	quantities[count - 1] = Number((safeTotal - (allocated - base)).toFixed(2));
+	return quantities;
+}
+
+function extractCategoryProcessGroupIds(
+	allocations: CategoryAllocation[] | undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.processGroupId)
+		.filter((value): value is string => Boolean(value));
+}
+
+function extractCategoryEquipmentIds(
+	allocations: CategoryAllocation[] | undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.equipmentIds?.[0])
+		.filter((value): value is string => Boolean(value));
+}
+
+function syncCategoryAllocations(
+	processGroupIds: string[],
+	currentAllocations: CategoryAllocation[] | undefined,
+	totalQuantity: number,
+	needsEquipment: boolean,
+): CategoryAllocation[] {
+	const previousAllocationByProcessGroupId = new Map(
+		(currentAllocations ?? [])
+			.filter((allocation) => allocation.processGroupId)
+			.map((allocation) => [allocation.processGroupId as string, allocation]),
+	);
+	const previousQuantities = processGroupIds.map((processGroupId) =>
+		parseAllocationQuantity(
+			previousAllocationByProcessGroupId.get(processGroupId)?.quantity,
+		),
+	);
+	const hasExistingQuantities = previousQuantities.some(
+		(quantity) => quantity > 0,
+	);
+	const nextQuantities = hasExistingQuantities
+		? previousQuantities
+		: splitAllocationQuantities(totalQuantity, processGroupIds.length);
+	const quantityDelta = Number(
+		(
+			totalQuantity -
+			nextQuantities.reduce((sum, quantity) => sum + quantity, 0)
+		).toFixed(2),
+	);
+
+	if (processGroupIds.length > 0 && Math.abs(quantityDelta) >= 0.01) {
+		nextQuantities[processGroupIds.length - 1] = Number(
+			(
+				(nextQuantities[processGroupIds.length - 1] ?? 0) + quantityDelta
+			).toFixed(2),
+		);
+	}
+
+	return processGroupIds.map((processGroupId, index) => {
+		const previousAllocation =
+			previousAllocationByProcessGroupId.get(processGroupId);
+		const equipmentIds = needsEquipment
+			? (previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ?? [])
+			: [];
+
+		return createCategoryAllocation(
+			processGroupId,
+			nextQuantities[index] ?? 0,
+			equipmentIds,
+		);
+	});
+}
+
+function getCategoryAllocationSignature(
+	allocations: CategoryAllocation[] | undefined,
+): string {
+	return JSON.stringify(
+		(allocations ?? []).map((allocation) => ({
+			processGroupId: allocation.processGroupId ?? null,
+			quantity: parseAllocationQuantity(allocation.quantity),
+			equipmentIds: allocation.equipmentIds ?? [],
+		})),
+	);
 }
 
 function getMaterialBadge(
@@ -404,7 +518,7 @@ export function MaterialImportForm({
 								<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Số lượng xuất
 								</TableCell>
-								<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+								<TableCell className='w-[18%] min-w-80 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Vật tư tính vào doanh thu khoán
 								</TableCell>
 								<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
@@ -608,8 +722,17 @@ function MaterialImportRow({
 	const showAssetDropdown = w('showAssetDropdown');
 	const categoryValue = w('category');
 	const categoryProcessGroupValue = w('categoryProcessGroup');
+	const categoryProcessGroupIds = w('categoryProcessGroupIds') as
+		| string[]
+		| undefined;
 	const categoryProductionOrderId = w('categoryProductionOrderId');
 	const categoryEquipmentId = w('categoryEquipmentId');
+	const categoryEquipmentIds = w('categoryEquipmentIds') as
+		| string[]
+		| undefined;
+	const categoryAllocations = w('categoryAllocations') as
+		| CategoryAllocation[]
+		| undefined;
 	const additionalCostCategory = w('additionalCostCategory');
 	const additionalCostProductionOrderId = w('additionalCostProductionOrderId');
 	const otherMaterialDetailValue = w('otherMaterialDetail');
@@ -695,6 +818,18 @@ function MaterialImportRow({
 		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
 	const categoryNeedsEquipment =
 		categoryNeedsProductionOrder && isSparePartByEquipment;
+	const categorySelectedProcessGroupIds = categoryProcessGroupIds ?? [];
+	const categorySelectedEquipmentIds = categoryEquipmentIds ?? [];
+	const categoryAllocationRows = (categoryAllocations ?? []).filter(
+		(allocation) => allocation.processGroupId,
+	);
+	const hasValidCategoryAllocations =
+		!categoryNeedsProcessGroup || categorySelectedProcessGroupIds.length > 0;
+	const hasValidCategoryEquipments =
+		!categoryNeedsEquipment ||
+		(categorySelectedProcessGroupIds.length > 0 &&
+			categorySelectedEquipmentIds.length >=
+				categorySelectedProcessGroupIds.length);
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -718,6 +853,27 @@ function MaterialImportRow({
 		key: K,
 		value: MaterialRowValues[K],
 	) => form.setValue(`${basename}.${key}` as RowPath, value as never);
+
+	const updateCategoryAllocation = (
+		processGroupId: string,
+		updater: (allocation: CategoryAllocation) => CategoryAllocation,
+	) => {
+		const nextAllocations = categoryAllocationRows.map((allocation) =>
+			allocation.processGroupId === processGroupId
+				? updater(allocation)
+				: allocation,
+		);
+
+		set('categoryAllocations', nextAllocations);
+		set('categoryEquipmentIds', extractCategoryEquipmentIds(nextAllocations));
+		set(
+			'categoryQuantity',
+			nextAllocations.reduce(
+				(sum, allocation) => sum + parseAllocationQuantity(allocation.quantity),
+				0,
+			),
+		);
+	};
 
 	// ── Initialize MultiSelect defaults on mount ─────────────────────────────
 	useEffect(() => {
@@ -875,14 +1031,6 @@ function MaterialImportRow({
 					'categoryProductionOrderId',
 					categoryProductionOrderOptions[0].value,
 				);
-			if (
-				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
-				categoryNeedsEquipment &&
-				categoryEquipmentId == null &&
-				categoryEquipmentOptions.length > 0
-			) {
-				set('categoryEquipmentId', categoryEquipmentOptions[0].value);
-			}
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown)
 				resetCellFields(form, basename, [
@@ -930,8 +1078,11 @@ function MaterialImportRow({
 		if (justDisabledCategory) {
 			set('category', null);
 			set('categoryProcessGroup', null);
+			set('categoryProcessGroupIds', []);
 			set('categoryProductionOrderId', null);
 			set('categoryEquipmentId', null);
+			set('categoryEquipmentIds', []);
+			set('categoryAllocations', []);
 			set('categoryQuantity', null);
 		}
 		if (justDisabledAdditional) {
@@ -991,6 +1142,121 @@ function MaterialImportRow({
 	]);
 
 	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+				set('categoryProcessGroupIds', []);
+			}
+			if ((categoryEquipmentIds?.length ?? 0) > 0) {
+				set('categoryEquipmentIds', []);
+			}
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			return;
+		}
+
+		if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+			return;
+		}
+
+		const nextProcessGroupIds =
+			extractCategoryProcessGroupIds(categoryAllocations).length > 0
+				? extractCategoryProcessGroupIds(categoryAllocations)
+				: categoryProcessGroupValue
+					? [categoryProcessGroupValue]
+					: processGroupOptions.length === 1
+						? [processGroupOptions[0].value]
+						: [];
+
+		if (nextProcessGroupIds.length > 0) {
+			set('categoryProcessGroupIds', nextProcessGroupIds);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryProcessGroupIds,
+		categoryProcessGroupValue,
+		categoryEquipmentIds,
+		categoryAllocations,
+		processGroupOptions,
+	]);
+
+	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			return;
+		}
+
+		const processGroupIds = categoryProcessGroupIds ?? [];
+		if (processGroupIds.length === 0) {
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			if (categoryProcessGroupValue != null) {
+				set('categoryProcessGroup', null);
+			}
+			if (categoryEquipmentId != null) {
+				set('categoryEquipmentId', null);
+			}
+			return;
+		}
+
+		const derivedEquipmentIds =
+			(categoryEquipmentIds?.length ?? 0) > 0
+				? (categoryEquipmentIds ?? [])
+				: extractCategoryEquipmentIds(categoryAllocations);
+		const nextAllocations = syncCategoryAllocations(
+			processGroupIds,
+			categoryAllocations,
+			parseAllocationQuantity(categoryQuantity),
+			categoryNeedsEquipment,
+		);
+		const normalizedEquipmentIds = categoryNeedsEquipment
+			? derivedEquipmentIds.slice(0, processGroupIds.length)
+			: [];
+
+		if (
+			(categoryEquipmentIds ?? [])
+				.slice(0, processGroupIds.length)
+				.join(',') !== normalizedEquipmentIds.join(',')
+		) {
+			set('categoryEquipmentIds', normalizedEquipmentIds);
+		}
+
+		if (categoryProcessGroupValue !== processGroupIds[0]) {
+			set('categoryProcessGroup', processGroupIds[0]);
+		}
+		if ((categoryEquipmentId ?? null) !== (normalizedEquipmentIds[0] ?? null)) {
+			set('categoryEquipmentId', normalizedEquipmentIds[0] ?? null);
+		}
+		if (
+			getCategoryAllocationSignature(categoryAllocations) !==
+			getCategoryAllocationSignature(nextAllocations)
+		) {
+			set('categoryAllocations', nextAllocations);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryNeedsEquipment,
+		categoryProcessGroupIds,
+		categoryEquipmentIds,
+		categoryAllocations,
+		categoryQuantity,
+		categoryProcessGroupValue,
+		categoryEquipmentId,
+	]);
+
+	useEffect(() => {
 		if (!showCategoryDropdown || !resolvedCategoryValue) return;
 		if (!categoryNeedsProcessGroup) {
 			if (categoryProcessGroupValue != null) set('categoryProcessGroup', null);
@@ -1025,9 +1291,6 @@ function MaterialImportRow({
 			set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
 		}
 		if (categoryNeedsEquipment) {
-			if (categoryEquipmentId == null && categoryEquipmentOptions.length > 0) {
-				set('categoryEquipmentId', categoryEquipmentOptions[0].value);
-			}
 			return;
 		}
 		if (categoryEquipmentId != null) set('categoryEquipmentId', null);
@@ -1281,9 +1544,9 @@ function MaterialImportRow({
 		if (
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+			hasValidCategoryAllocations &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
-			(!categoryNeedsEquipment || categoryEquipmentId != null) &&
+			hasValidCategoryEquipments &&
 			categoryQuantity != null
 		)
 			total += Number(categoryQuantity);
@@ -1425,7 +1688,7 @@ function MaterialImportRow({
 							</div>
 						</div>
 					</TableCell>
-					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4 text-center'>
+					<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4 text-center'>
 						<span className='text-sm text-slate-400'>-</span>
 					</TableCell>
 					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4 text-center'>
@@ -1604,7 +1867,7 @@ function MaterialImportRow({
 					</TableCell>
 
 					{/* Vật tư tính vào doanh thu khoán */}
-					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+					<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4'>
 						<div className='flex flex-col items-center gap-3'>
 							<div className='flex justify-center *:w-auto!'>
 								<FormCheckBox
@@ -1629,11 +1892,20 @@ function MaterialImportRow({
 								<>
 									{resolvedCategoryValue && categoryNeedsProcessGroup && (
 										<div className='w-full'>
-											<FormComboBox
+											<FormMultiSelect
 												control={form.control}
-												name={`${basename}.categoryProcessGroup` as RowPath}
+												name={`${basename}.categoryProcessGroupIds` as RowPath}
 												options={processGroupOptions}
 												placeholder='Chọn nhóm công đoạn'
+											/>
+										</div>
+									)}
+									{resolvedCategoryValue && !categoryNeedsProcessGroup && (
+										<div className='w-full'>
+											<FormNumber
+												control={form.control}
+												name={`${basename}.categoryQuantity` as RowPath}
+												placeholder='Nhập số lượng'
 											/>
 										</div>
 									)}
@@ -1652,31 +1924,109 @@ function MaterialImportRow({
 											</div>
 											{categoryNeedsEquipment && (
 												<div className='w-full'>
-													<FormComboBox
-														control={form.control}
-														name={`${basename}.categoryEquipmentId` as RowPath}
-														options={categoryEquipmentOptions}
-														placeholder='Chọn thiết bị'
-													/>
+													<div className='space-y-2'>
+														<div className='flex w-full items-start gap-2'>
+															{categoryAllocationRows.map((allocation) => {
+																const processGroupId =
+																	allocation.processGroupId ?? '';
+																const processGroupLabel =
+																	processGroupOptions.find(
+																		(option) => option.value === processGroupId,
+																	)?.label ?? processGroupId;
+																const selectedEquipmentId =
+																	allocation.equipmentIds?.[0] ?? '';
+
+																return (
+																	<div
+																		key={`${processGroupId}-equipment`}
+																		className='min-w-0 flex-1'
+																	>
+																		<label
+																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																			title={processGroupLabel}
+																		>
+																			{processGroupLabel}
+																		</label>
+																		<FormComboBox
+																			value={selectedEquipmentId}
+																			onValueChange={(value) => {
+																				updateCategoryAllocation(
+																					processGroupId,
+																					(currentAllocation) => ({
+																						...currentAllocation,
+																						equipmentIds: value ? [value] : [],
+																					}),
+																				);
+																			}}
+																			options={categoryEquipmentOptions}
+																			placeholder='Chọn thiết bị'
+																		/>
+																	</div>
+																);
+															})}
+														</div>
+													</div>
+												</div>
+											)}
+											{categoryNeedsProcessGroup && (
+												<div className='w-full'>
+													<div className='space-y-2'>
+														<div className='flex w-full items-start gap-2'>
+															{categoryAllocationRows.map((allocation) => {
+																const processGroupId =
+																	allocation.processGroupId ?? '';
+																const processGroupLabel =
+																	processGroupOptions.find(
+																		(option) => option.value === processGroupId,
+																	)?.label ?? processGroupId;
+
+																return (
+																	<div
+																		key={`${processGroupId}-quantity`}
+																		className='min-w-0 flex-1'
+																	>
+																		<label
+																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																			title={processGroupLabel}
+																		>
+																			{processGroupLabel}
+																		</label>
+																		<FormNumberInput
+																			value={parseAllocationQuantity(
+																				allocation.quantity,
+																			)}
+																			onValueChange={(value) => {
+																				updateCategoryAllocation(
+																					processGroupId,
+																					(currentAllocation) => ({
+																						...currentAllocation,
+																						quantity: value ?? 0,
+																					}),
+																				);
+																			}}
+																			placeholder='Nhập số lượng'
+																		/>
+																	</div>
+																);
+															})}
+														</div>
+														{categoryAllocationRows.length === 0 && (
+															<p className='text-xs text-slate-500'>
+																Chọn nhóm công đoạn để nhập số lượng theo từng
+																nhóm.
+															</p>
+														)}
+													</div>
 												</div>
 											)}
 										</>
 									)}
 									{resolvedCategoryValue &&
-										(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+										hasValidCategoryAllocations &&
 										(!categoryNeedsProductionOrder ||
 											categoryProductionOrderId != null) &&
-										(!categoryNeedsEquipment ||
-											categoryEquipmentId != null) && (
+										hasValidCategoryEquipments && (
 											<div className='w-full'>
-												<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-													Số lượng vật tư
-												</label>
-												<FormNumber
-													control={form.control}
-													name={`${basename}.categoryQuantity` as RowPath}
-													placeholder='Nhập số lượng'
-												/>
 												<div
 													className={cn(
 														'mt-1 text-xs',

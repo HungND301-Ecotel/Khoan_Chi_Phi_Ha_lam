@@ -102,6 +102,7 @@ export type CreateAcceptanceReportItem = {
 	usageTime: number;
 	type: number;
 	itemType: number;
+	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
 	categoryEquipmentId: string | null;
 	additionalCostProductionOrderId: string | null;
@@ -220,6 +221,12 @@ export const SHIPPED_DETAIL_TYPE_BY_KEY = {
 export type QuantityDetail = {
 	type: number;
 	quantity: number;
+};
+
+export type CategoryAllocation = {
+	processGroupId: string | null;
+	quantity: number | null;
+	equipmentIds: string[];
 };
 
 export type QuotaBasedMaterialQuantityDetail = {

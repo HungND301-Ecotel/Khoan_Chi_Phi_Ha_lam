@@ -181,6 +181,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
+                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }

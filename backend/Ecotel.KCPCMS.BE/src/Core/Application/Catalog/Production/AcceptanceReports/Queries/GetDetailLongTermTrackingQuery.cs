@@ -50,6 +50,9 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         var th1Logs = await _logRepository.GetAllAsync(
             predicate: l => l.AcceptanceReportId == request.AcceptanceReportId,
             include: q => q
+                .Include(l => l.AcceptanceReportItemCategoryAllocation)
+                    .ThenInclude(i => i.ProcessGroup)
+                        .ThenInclude(pg => pg.Code)
                 .Include(l => l.AcceptanceReportItem)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
@@ -67,6 +70,9 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 l.AcceptanceReportId != request.AcceptanceReportId &&
                 l.PeriodEndMonth < productionOutput.StartMonth,
             include: q => q
+                .Include(l => l.AcceptanceReportItemCategoryAllocation)
+                    .ThenInclude(i => i.ProcessGroup)
+                        .ThenInclude(pg => pg.Code)
                 .Include(l => l.AcceptanceReportItem)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
@@ -79,12 +85,12 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             disableTracking: true);
 
         // Lấy AcceptanceReportItemId của TH1 để loại trừ khỏi TH2
-        var th1ItemIds = th1Logs.Select(l => l.AcceptanceReportItemId).ToHashSet();
+        var th1ItemIds = th1Logs.Select(GetTrackingKey).ToHashSet();
 
         // Group theo AcceptanceReportItemId, loại trừ các item đã có trong TH1
         var previousLogsGrouped = previousLogs
-            .Where(l => !th1ItemIds.Contains(l.AcceptanceReportItemId))
-            .GroupBy(l => l.AcceptanceReportItemId)
+            .Where(l => !th1ItemIds.Contains(GetTrackingKey(l)))
+            .GroupBy(GetTrackingKey)
             .ToList();
 
         var items = new List<DetailLongTermTrackingItemDto>();
@@ -94,7 +100,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         {
             var item = log.AcceptanceReportItem;
             var part = item?.Part;
-            if (part == null)
+            if (!ShouldDisplayLongTermTracking(item, log))
             {
                 continue;
             }
@@ -102,24 +108,34 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             // Phân biệt log thật sự mới vs log override
             var isNewItem = log.IssuedQuantity > 0 || log.TotalAmount > 0;
 
+            var processGroupInfo = ResolveProcessGroupInfo(log);
             var currentActualOutput = log.ActualOutput;
             var currentPlannedOutput = log.PlannedOutput;
             var currentStandardOutput = log.StandardOutput;
 
-            if (item?.ProcessGroupId.HasValue == true && outputByProcessGroup.TryGetValue(item.ProcessGroupId.Value, out var groupOutput))
+            if (processGroupInfo.ProcessGroupId.HasValue && outputByProcessGroup.TryGetValue(processGroupInfo.ProcessGroupId.Value, out var groupOutput))
             {
                 currentActualOutput = groupOutput.ActualOutput;
                 currentPlannedOutput = groupOutput.PlannedOutput;
                 currentStandardOutput = groupOutput.StandardOutput;
             }
 
+            var dynamicValues = CalculateCurrentPeriodValues(
+                totalValueToAccount: log.TotalValueToAccount,
+                usageTime: log.UsageTime,
+                remainingTime: log.RemainingTime,
+                plannedOutput: currentPlannedOutput,
+                standardOutput: currentStandardOutput,
+                allocationRatio: log.AllocationRatio,
+                isFullAccounting: log.IsFullAccounting);
+
             items.Add(new DetailLongTermTrackingItemDto
             {
                 Id = log.Id,
                 AcceptanceReportItemId = item!.Id,
-                ProcessGroupId = item.ProcessGroupId,
-                ProcessGroupCode = item.ProcessGroup?.Code?.Value,
-                ProcessGroupName = item.ProcessGroup?.Name,
+                ProcessGroupId = processGroupInfo.ProcessGroupId,
+                ProcessGroupCode = processGroupInfo.ProcessGroupCode,
+                ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value ?? string.Empty,
                 PartName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
@@ -135,10 +151,10 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ActualOutput = currentActualOutput,
                 PlannedOutput = currentPlannedOutput,
                 StandardOutput = currentStandardOutput,
-                ValueByStandard = log.ValueByStandard,
+                ValueByStandard = dynamicValues.ValueByStandard,
                 AllocationRatio = log.AllocationRatio,
-                AccountedValueThisPeriod = log.AccountedValueThisPeriod,
-                PendingValueEndPeriod = log.PendingValueEndPeriod,
+                AccountedValueThisPeriod = dynamicValues.AccountedValueThisPeriod,
+                PendingValueEndPeriod = dynamicValues.PendingValueEndPeriod,
                 Note = log.Note,
                 IsNewItem = isNewItem,
                 IsFullAccounting = log.IsFullAccounting,
@@ -151,9 +167,13 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             // Check xem đã có log override cho kỳ hiện tại chưa?
             var overrideLog = await _logRepository.GetFirstOrDefaultAsync(
                 predicate: l =>
-                    l.AcceptanceReportItemId == group.Key &&
+                    l.AcceptanceReportItemId == group.Key.AcceptanceReportItemId &&
+                    l.AcceptanceReportItemCategoryAllocationId == group.Key.AcceptanceReportItemCategoryAllocationId &&
                     l.AcceptanceReportId == request.AcceptanceReportId,
                 include: q => q
+                    .Include(l => l.AcceptanceReportItemCategoryAllocation)
+                        .ThenInclude(i => i.ProcessGroup)
+                            .ThenInclude(pg => pg.Code)
                     .Include(l => l.AcceptanceReportItem)
                         .ThenInclude(i => i.ProcessGroup)
                             .ThenInclude(pg => pg.Code)
@@ -174,7 +194,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
 
             var item = latestLog.AcceptanceReportItem;
             var part = item?.Part;
-            if (part == null)
+            if (!ShouldDisplayLongTermTracking(item, overrideLog ?? latestLog))
             {
                 continue;
             }
@@ -201,7 +221,9 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             var plannedOutput = latestLog.PlannedOutput;
             var standardOutput = productionOutput.StandardProductionMeters;
 
-            if (item?.ProcessGroupId.HasValue == true && outputByProcessGroup.TryGetValue(item.ProcessGroupId.Value, out var groupOutput))
+            var processGroupInfo = ResolveProcessGroupInfo(overrideLog ?? latestLog);
+
+            if (processGroupInfo.ProcessGroupId.HasValue && outputByProcessGroup.TryGetValue(processGroupInfo.ProcessGroupId.Value, out var groupOutput))
             {
                 actualOutput = groupOutput.ActualOutput;
                 plannedOutput = groupOutput.PlannedOutput;
@@ -263,9 +285,9 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             {
                 Id = logIdToDisplay,
                 AcceptanceReportItemId = item!.Id,
-                ProcessGroupId = item.ProcessGroupId,
-                ProcessGroupCode = item.ProcessGroup?.Code?.Value,
-                ProcessGroupName = item.ProcessGroup?.Name,
+                ProcessGroupId = processGroupInfo.ProcessGroupId,
+                ProcessGroupCode = processGroupInfo.ProcessGroupCode,
+                ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value ?? string.Empty,
                 PartName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
@@ -324,35 +346,62 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         };
     }
 
+    private static (Guid AcceptanceReportItemId, Guid? AcceptanceReportItemCategoryAllocationId) GetTrackingKey(AcceptanceReportItemLog log)
+        => (log.AcceptanceReportItemId, log.AcceptanceReportItemCategoryAllocationId);
+
+    private static (Guid? ProcessGroupId, string? ProcessGroupCode, string? ProcessGroupName) ResolveProcessGroupInfo(AcceptanceReportItemLog log)
+    {
+        if (log.AcceptanceReportItemCategoryAllocation?.ProcessGroup != null)
+        {
+            return (
+                log.AcceptanceReportItemCategoryAllocation.ProcessGroupId,
+                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Code?.Value,
+                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Name);
+        }
+
+        return (
+            log.AcceptanceReportItem?.ProcessGroupId,
+            log.AcceptanceReportItem?.ProcessGroup?.Code?.Value,
+            log.AcceptanceReportItem?.ProcessGroup?.Name);
+    }
+
+    private static bool ShouldDisplayLongTermTracking(AcceptanceReportItem? item, AcceptanceReportItemLog log)
+        => item?.Part != null
+            && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+            && log.TotalValueToAccount > 0;
+
+    private static (decimal ValueByStandard, decimal AccountedValueThisPeriod, decimal PendingValueEndPeriod) CalculateCurrentPeriodValues(
+        decimal totalValueToAccount,
+        double usageTime,
+        double remainingTime,
+        double plannedOutput,
+        double standardOutput,
+        double allocationRatio,
+        bool isFullAccounting)
+    {
+        decimal valueByStandard = 0;
+        if (usageTime > 0 && standardOutput > 0)
+        {
+            valueByStandard = (totalValueToAccount / (decimal)usageTime)
+                * ((decimal)plannedOutput / (decimal)standardOutput);
+        }
+
+        if (Math.Abs(remainingTime) < 0.0001 || isFullAccounting)
+        {
+            return (totalValueToAccount, totalValueToAccount, 0);
+        }
+
+        var accountedValueThisPeriod = Math.Min(totalValueToAccount, valueByStandard * (decimal)allocationRatio);
+        return (valueByStandard, accountedValueThisPeriod, totalValueToAccount - accountedValueThisPeriod);
+    }
+
     private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(ProductionOutput productionOutput)
     {
         var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
 
         foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
         {
-            var plannedOutput = 0.0;
-
-            foreach (var product in processGroup.ProductionOutputProducts)
-            {
-                var productUnitPriceLink = productionOutput.ProductUnitPriceProductionOutputs
-                    .FirstOrDefault(x => x.ProductUnitPrice?.ProductId == product.ProductId);
-
-                if (productUnitPriceLink?.ProductUnitPrice?.Outputs == null)
-                {
-                    continue;
-                }
-
-                var matchingPlan = productUnitPriceLink.ProductUnitPrice.Outputs
-                    .FirstOrDefault(o => o.OutputType == OutputType.PlanOutput
-                        && o.StartMonth == productionOutput.StartMonth
-                        && o.EndMonth == productionOutput.EndMonth
-                        && Math.Abs(o.ProductionMeters - productUnitPriceLink.ProductionMeters) < 0.0001);
-
-                if (matchingPlan != null)
-                {
-                    plannedOutput += matchingPlan.ProductionMeters;
-                }
-            }
+            var plannedOutput = processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput);
 
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,

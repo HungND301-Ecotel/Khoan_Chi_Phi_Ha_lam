@@ -7,10 +7,11 @@ import type { ProcessGroup } from '@/features/main/catalog/process/group/columns
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ReactNode, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Resolver, useForm } from 'react-hook-form';
 import { MaterialImportForm } from './form';
 import {
 	MATERIAL_FORM_DEFAULT,
+	MaterialsFormInput,
 	MaterialFormSchema,
 	materialsFormSchema,
 } from './schema';
@@ -21,6 +22,7 @@ import { UnresolvedCreateSchema } from './unresolved/unresolved-create-schema';
 import {
 	AdditionalCost,
 	Asset,
+	CategoryAllocation,
 	CreateAcceptanceReportRequest,
 	Equipment,
 	ImportResolutionStatus,
@@ -137,10 +139,6 @@ type ProductionOutputScopeResponse = {
 	}[];
 };
 
-type MaterialsFormValues = {
-	materials: MaterialFormSchema[];
-};
-
 function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	if (type === MaterialType.Material) {
 		return MaterialsIncludedInContractRevenue.Material;
@@ -177,6 +175,28 @@ function parseQuantity(value: number | string | null | undefined): number {
 	if (value == null || value === '') return 0;
 	const normalized = Number(value);
 	return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function buildCategoryAllocationsForPayload(
+	allocations: CategoryAllocation[] | undefined,
+	materialsIncludedInContractRevenue: number,
+): CategoryAllocation[] | null {
+	if (
+		materialsIncludedInContractRevenue !==
+		MaterialsIncludedInContractRevenue.Maintain
+	) {
+		return null;
+	}
+
+	const normalized = (allocations ?? [])
+		.filter((allocation) => allocation.processGroupId)
+		.map((allocation) => ({
+			processGroupId: allocation.processGroupId,
+			quantity: parseQuantity(allocation.quantity),
+			equipmentIds: Array.from(new Set(allocation.equipmentIds ?? [])),
+		}));
+
+	return normalized.length > 0 ? normalized : null;
 }
 
 function normalizeCode(value?: string | null): string {
@@ -225,6 +245,9 @@ function mapResolvedImportItem(item: {
 		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
 		quantity: item.issuedQuantity + item.shippedQuantity,
 		category: defaultCategory,
+		categoryProcessGroupIds: [],
+		categoryEquipmentIds: [],
+		categoryAllocations: [],
 		additionalCostCategory: defaultAdditionalCost,
 		showAdditionalCostDropdown: isSafetyAndWelfareMaterial,
 		showAssetDropdown: isAssetMaterial,
@@ -259,8 +282,8 @@ export function MaterialImportDialog({
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 
-	const form = useForm<MaterialsFormValues>({
-		resolver: zodResolver(materialsFormSchema),
+	const form = useForm<MaterialsFormInput>({
+		resolver: zodResolver(materialsFormSchema) as Resolver<MaterialsFormInput>,
 		defaultValues: {
 			materials: [],
 		},
@@ -646,12 +669,19 @@ export function MaterialImportDialog({
 					if (item.showCategoryDropdown && resolvedCategory) {
 						materialsIncludedInContractRevenue = resolvedCategory;
 					}
+					const categoryAllocations = buildCategoryAllocationsForPayload(
+						item.categoryAllocations,
+						materialsIncludedInContractRevenue,
+					);
+					const firstCategoryAllocation = categoryAllocations?.[0] ?? null;
 
 					const processGroupId =
 						item.showCategoryDropdown &&
 						resolvedCategory &&
 						item.type === MaterialType.SparePart
-							? item.categoryProcessGroup || null
+							? (firstCategoryAllocation?.processGroupId ??
+									item.categoryProcessGroup) ||
+								null
 							: null;
 
 					const isSafetyAndWelfareMaterial =
@@ -684,7 +714,9 @@ export function MaterialImportDialog({
 					const categoryEquipmentId =
 						item.showCategoryDropdown &&
 						resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-							? (item.categoryEquipmentId ?? null)
+							? (firstCategoryAllocation?.equipmentIds?.[0] ??
+								item.categoryEquipmentId ??
+								null)
 							: null;
 
 					const additionalSelection =
@@ -811,6 +843,7 @@ export function MaterialImportDialog({
 						issuedDetails,
 						shippedDetails,
 						materialsIncludedInContractRevenue,
+						categoryAllocations,
 						processGroupId,
 						materialsIncludedInContractRevenueQuantity:
 							item.categoryQuantity || 0,
@@ -844,8 +877,9 @@ export function MaterialImportDialog({
 		}
 	};
 
-	const handleFormSubmit = async (formData: MaterialsFormValues) => {
-		await handleSave(formData.materials);
+	const handleFormSubmit = async (formData: MaterialsFormInput) => {
+		const parsedFormData = materialsFormSchema.parse(formData);
+		await handleSave(parsedFormData.materials);
 	};
 
 	return (

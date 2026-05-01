@@ -183,6 +183,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
+                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }
@@ -462,7 +463,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         {
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
-                0,
+                processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput),
                 processGroup.StandardProductionMeters);
         }
 

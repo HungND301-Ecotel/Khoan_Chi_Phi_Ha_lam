@@ -94,7 +94,9 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     predicate: p => requestItemIds.Contains(p.Id),
                     include: p => p.Include(p => p.IssuedDetails)
                                    .Include(p => p.ShippedDetails)
-                                   .Include(p => p.QuotaBasedMaterialQuantities),
+                                   .Include(p => p.QuotaBasedMaterialQuantities)
+                                   .Include(p => p.CategoryAllocations)
+                                       .ThenInclude(p => p.Equipments),
                     disableTracking: false)).ToList();
             }
 
@@ -108,6 +110,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 var processGroupId = item.Type == AcceptanceReportItemType.Part
                     ? item.ProcessGroupId
                     : null;
+                var categoryAllocations = MapCategoryAllocations(item.CategoryAllocations);
 
                 Guid? materialId = null;
                 Guid? partId = null;
@@ -168,7 +171,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.AssetMaterialQuantity,
                         MapIssuedDetails(item.IssuedDetails),
                         MapShippedDetails(item.ShippedDetails),
-                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities),
+                        categoryAllocations);
 
                     itemsToUpdate.Add(existingItem);
                 }
@@ -194,7 +198,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         item.AssetMaterialQuantity,
                         MapIssuedDetails(item.IssuedDetails),
                         MapShippedDetails(item.ShippedDetails),
-                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities));
+                        MapQuotaBasedMaterialQuantities(item.QuotaBasedMaterialQuantities),
+                        categoryAllocations);
 
                     itemsToCreate.Add(reportItem);
                 }
@@ -202,7 +207,13 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 if (item.Type == AcceptanceReportItemType.Part &&
                     item.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
                 {
-                    if (!processGroupId.HasValue || !processGroupIdsInPeriod.Contains(processGroupId.Value))
+                    var processGroupIdsToValidate = categoryAllocations != null && categoryAllocations.Any()
+                        ? categoryAllocations.Select(x => x.ProcessGroupId)
+                        : processGroupId.HasValue
+                            ? new[] { processGroupId.Value }
+                            : [];
+
+                    if (!processGroupIdsToValidate.Any() || processGroupIdsToValidate.Any(id => !processGroupIdsInPeriod.Contains(id)))
                     {
                         throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
                     }
@@ -238,14 +249,31 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 await unitOfWork.SaveChangesAsync();
             }
 
+            var processedItemIds = itemsToCreate.Select(x => x.Id)
+                .Concat(itemsToUpdate.Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (processedItemIds.Any())
+            {
+                var existingLogs = await _acceptanceReportItemLogRepository.GetAllAsync(
+                    predicate: p => processedItemIds.Contains(p.AcceptanceReportItemId));
+
+                if (existingLogs.Any())
+                {
+                    _acceptanceReportItemLogRepository.Delete(existingLogs);
+                    await unitOfWork.SaveChangesAsync();
+                }
+            }
+
             var logsToCreate = new List<AcceptanceReportItemLog>();
             var allProcessedItems = itemsToCreate.Union(itemsToUpdate).ToList();
 
             foreach (var item in allProcessedItems)
             {
-                if (item.PartId.HasValue &&
-                    item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain &&
-                    item.IssuedQuantity > 0)
+                var residualQuantity = item.IssuedQuantity - item.ShippedQuantity;
+
+                if (ShouldCreateLongTermTracking(item, residualQuantity))
                 {
                     var part = allParts.FirstOrDefault(p => p.Id == item.PartId.Value);
                     if (part == null)
@@ -253,23 +281,21 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         continue;
                     }
 
-                    var existingLog = await _acceptanceReportItemLogRepository.GetFirstOrDefaultAsync(
-                        predicate: p => p.AcceptanceReportItemId == item.Id);
+                    var cost = part.Costs?.FirstOrDefault(c =>
+                        c.StartMonth <= productionOutput.StartMonth &&
+                        c.EndMonth >= productionOutput.EndMonth);
 
-                    if (existingLog == null)
+                    var unitPrice = (decimal)(cost?.Amount ?? 0);
+                    var usageTime = item.UsageTime;
+
+                    foreach (var trackingAllocation in BuildTrackingAllocations(item, residualQuantity))
                     {
-                        var cost = part.Costs?.FirstOrDefault(c =>
-                            c.StartMonth <= productionOutput.StartMonth &&
-                            c.EndMonth >= productionOutput.EndMonth);
-
-                        var unitPrice = (decimal)(cost?.Amount ?? 0);
-                        var usageTime = item.UsageTime;
-
                         var actualOutput = productionOutput.ProductionMeters;
                         var plannedOutput = 1.0;
                         var standardOutput = productionOutput.StandardProductionMeters;
 
-                            if (item.ProcessGroupId.HasValue && outputByProcessGroup.TryGetValue(item.ProcessGroupId.Value, out var metrics))
+                        if (trackingAllocation.ProcessGroupId.HasValue
+                            && outputByProcessGroup.TryGetValue(trackingAllocation.ProcessGroupId.Value, out var metrics))
                         {
                             actualOutput = metrics.ActualOutput;
                             plannedOutput = metrics.PlannedOutput;
@@ -282,14 +308,15 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                             periodStartMonth: productionOutput.StartMonth,
                             periodEndMonth: productionOutput.EndMonth,
                             pendingValueStartPeriod: 0,
-                            issuedQuantity: item.IssuedQuantity,
+                            issuedQuantity: trackingAllocation.Quantity,
                             unitPrice: unitPrice,
                             usageTime: usageTime,
                             allocatedTime: 0,
                             actualOutput: actualOutput,
                             plannedOutput: plannedOutput,
                             standardOutput: standardOutput,
-                            allocationRatio: 1.0);
+                            allocationRatio: 1.0,
+                            acceptanceReportItemCategoryAllocationId: trackingAllocation.CategoryAllocationId);
 
                         logsToCreate.Add(log);
                     }
@@ -325,29 +352,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
         foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
         {
-            var plannedOutput = 0.0;
-
-            foreach (var product in processGroup.ProductionOutputProducts)
-            {
-                var productUnitPriceLink = productionOutput.ProductUnitPriceProductionOutputs
-                    .FirstOrDefault(x => x.ProductUnitPrice?.ProductId == product.ProductId);
-
-                if (productUnitPriceLink?.ProductUnitPrice?.Outputs == null)
-                {
-                    continue;
-                }
-
-                var matchingPlan = productUnitPriceLink.ProductUnitPrice.Outputs
-                    .FirstOrDefault(o => o.OutputType == OutputType.PlanOutput
-                        && o.StartMonth == productionOutput.StartMonth
-                        && o.EndMonth == productionOutput.EndMonth
-                        && Math.Abs(o.ProductionMeters - productUnitPriceLink.ProductionMeters) < 0.0001);
-
-                if (matchingPlan != null)
-                {
-                    plannedOutput += matchingPlan.ProductionMeters;
-                }
-            }
+            var plannedOutput = processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput);
 
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
@@ -366,5 +371,50 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
     private static IList<(QuotaBasedMaterialType Type, double Quantity)>? MapQuotaBasedMaterialQuantities(List<QuotaBasedMaterialQuantityDto>? dtos)
         => dtos?.Select(x => (x.Type, x.Quantity)).ToList();
+
+    private static IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? MapCategoryAllocations(
+        List<AcceptanceReportCategoryAllocationDto>? dtos)
+        => dtos?.Select(x => (x.ProcessGroupId, x.Quantity, (IList<Guid>)x.EquipmentIds.ToList())).ToList();
+
+    private static IList<(Guid? CategoryAllocationId, Guid? ProcessGroupId, double Quantity)> BuildTrackingAllocations(
+        AcceptanceReportItem item,
+        double residualQuantity)
+    {
+        if (residualQuantity <= 0)
+        {
+            return [];
+        }
+
+        if (item.CategoryAllocations.Any())
+        {
+            var totalAllocationQuantity = item.CategoryAllocations.Sum(x => x.Quantity);
+            if (totalAllocationQuantity <= 0)
+            {
+                return [];
+            }
+
+            return item.CategoryAllocations
+                .Select(allocation => (
+                    CategoryAllocationId: (Guid?)allocation.Id,
+                    ProcessGroupId: (Guid?)allocation.ProcessGroupId,
+                    Quantity: residualQuantity * allocation.Quantity / totalAllocationQuantity))
+                .Where(x => x.Quantity > 0)
+                .ToList();
+        }
+
+        return
+        [
+            (
+                CategoryAllocationId: (Guid?)null,
+                ProcessGroupId: item.ProcessGroupId,
+                Quantity: residualQuantity
+            )
+        ];
+    }
+
+    private static bool ShouldCreateLongTermTracking(AcceptanceReportItem item, double residualQuantity)
+        => item.PartId.HasValue
+            && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+            && residualQuantity > 0;
 
 }
