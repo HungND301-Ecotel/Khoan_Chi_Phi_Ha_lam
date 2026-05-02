@@ -11,6 +11,13 @@ export type DepartmentPlanGroup = {
 	productUnitPriceIds: string[];
 };
 
+export type DepartmentPlanMonthGroup = {
+	id: string;
+	time: string;
+	productUnitPriceIds: string[];
+	products: CostProduct[];
+};
+
 export const PLAN_DEPARTMENT_COLUMNS: ColumnDef<DepartmentPlanGroup>[] = [
 	{
 		accessorKey: 'code',
