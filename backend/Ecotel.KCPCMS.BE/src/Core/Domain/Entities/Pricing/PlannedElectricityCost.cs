@@ -22,16 +22,11 @@ public class PlannedElectricityCost : AuditableEntity<Guid>
     {
         if (CachedPlannedElectricityTotal.HasValue)
         {
-            return RoundPlannedTotalPrice(CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient());
+            return CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient();
         }
 
         CachedPlannedElectricityTotal = _plannedElectricityCostAdjustmentFactors.Sum(p => p.GetCurrentElectricityCost());
-        return RoundPlannedTotalPrice(CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient());
-    }
-
-    public static double RoundPlannedTotalPrice(double totalPrice)
-    {
-        return Math.Round(totalPrice, 0, MidpointRounding.AwayFromZero);
+        return CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient();
     }
 
     public static PlannedElectricityCost Create(

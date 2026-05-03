@@ -581,7 +581,7 @@ function PricingTunnelingCosts({
 				<Label>Chi phí vật tư SCTX (đ)</Label>
 				<Input
 					readOnly
-					value={formatNumber(Math.round(regularRepairCost) || 0)}
+					value={formatNumber(regularRepairCost || 0)}
 					className='read-only:bg-transparent'
 				/>
 			</div>
@@ -809,7 +809,7 @@ function PricingEquipmentOtherPartCosts({
 				<Label>Chi phí vật tư SCTX (đ)</Label>
 				<Input
 					readOnly
-					value={formatNumber(isNaN(otherCost) ? 0 : Math.round(otherCost))}
+					value={formatNumber(isNaN(otherCost) ? 0 : otherCost)}
 					className='read-only:bg-transparent'
 				/>
 			</div>

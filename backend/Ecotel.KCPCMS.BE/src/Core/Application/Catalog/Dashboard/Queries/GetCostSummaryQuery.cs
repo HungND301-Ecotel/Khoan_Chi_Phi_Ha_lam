@@ -309,7 +309,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                 g => g.Select(f =>
                 {
                     // Use abstract methods to calculate cost per metre
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
 
                     return new PlannedElectricityFactorData
                     {
@@ -435,12 +435,10 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             return 0;
         }
 
-        return Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
-            factors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
-                f.Quantity *
-                Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
-                    f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
-                f.AdjustmentFactor)));
+        return factors.Sum(f =>
+            f.Quantity *
+            f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
+            f.AdjustmentFactor);
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -452,9 +450,7 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             return 0;
         }
 
-        return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-            factors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-                f.Quantity * f.CostPerMetre * f.AdjustmentFactor)));
+        return factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
     }
 
     private async Task<Dictionary<int, double>> LoadCustomCostsByMonth(

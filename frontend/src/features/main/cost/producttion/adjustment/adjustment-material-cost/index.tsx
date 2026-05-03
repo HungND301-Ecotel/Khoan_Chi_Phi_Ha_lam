@@ -206,7 +206,7 @@ export function AdjustmentMaterialCost({
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total))}
+						{loading ? <Spinner /> : formatNumber(total)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>

@@ -331,10 +331,9 @@ export function LongwallMaterialForm({
 					yLower +
 					((interpolationPoint - lowerPoint) / (upperPoint - lowerPoint)) *
 						(yUpper - yLower);
-				// Round to 2 decimal places
 				return {
 					assignmentCodeId: id,
-					totalPrice: Math.round(raw * 100) / 100,
+					totalPrice: raw,
 				};
 			}
 			return cost;

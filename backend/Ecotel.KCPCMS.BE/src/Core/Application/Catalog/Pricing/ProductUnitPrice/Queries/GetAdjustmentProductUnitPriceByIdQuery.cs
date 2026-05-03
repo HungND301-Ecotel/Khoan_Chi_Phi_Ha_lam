@@ -309,7 +309,7 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 g => g.Key,
                 g => g.Select(f =>
                 {
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
 
                     return new PlannedElectricityFactorData
                     {
@@ -372,15 +372,13 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        var baseCost = factors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+        var baseCost = factors.Sum(f =>
             f.Quantity *
-            Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
-                f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
+            f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
             f.K6AdjustmentFactorValue *
-            f.AdjustmentFactor));
+            f.AdjustmentFactor);
         var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
-        return Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
-            baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient));
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -392,11 +390,9 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
             return 0;
         }
 
-        var baseCost = factors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-            f.Quantity * f.CostPerMetre * f.AdjustmentFactor));
+        var baseCost = factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
         var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
-        return Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-            baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient));
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     #endregion

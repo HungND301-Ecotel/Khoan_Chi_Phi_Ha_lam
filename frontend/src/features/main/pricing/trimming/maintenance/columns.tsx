@@ -33,7 +33,7 @@ export const MAIN_PRICING_TRIMMING_COLUMNS: ColumnDef<Trimming>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Chi phí vật tư SCTX cho 1 thiết bị/1 mét lò xén (đ/m)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -121,6 +121,6 @@ export const MAIN_PRICING_TRIMMING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceEq
 				</span>
 			),
 			cell: ({ row }) =>
-				formatNumber(Math.round(row.original.materialCostPerMetres)),
+				formatNumber(row.original.materialCostPerMetres),
 		},
 	];

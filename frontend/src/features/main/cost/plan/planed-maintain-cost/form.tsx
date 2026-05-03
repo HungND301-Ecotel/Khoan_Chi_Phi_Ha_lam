@@ -46,9 +46,7 @@ function formatAdjustmentOptionLabel(
 		return description;
 	}
 
-	const valueText = value.toLocaleString('vi-VN', {
-		maximumFractionDigits: 4,
-	});
+	const valueText = formatNumber(value);
 
 	return `${description} - ${valueText}`;
 }
@@ -367,12 +365,7 @@ export function PlanMaintainCostForm({
 									<Label>Đơn giá phụ tùng (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(
-											Math.round(currentTunneling?.totalPrice || 0),
-											{
-												maximumFractionDigits: 0,
-											},
-										)}
+										value={formatNumber(currentTunneling?.totalPrice || 0)}
 									/>
 								</div>
 
@@ -501,7 +494,7 @@ export function PlanMaintainCostForm({
 													},
 												);
 
-												return Math.round(total || 0);
+												return total || 0;
 											})(),
 										)}
 									/>

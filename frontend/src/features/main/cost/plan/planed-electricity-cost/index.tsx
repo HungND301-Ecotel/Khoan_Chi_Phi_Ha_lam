@@ -85,7 +85,7 @@ export function PlanedElectricityCost({
 
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total ?? 0))}
+						{loading ? <Spinner /> : formatNumber(total ?? 0)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>

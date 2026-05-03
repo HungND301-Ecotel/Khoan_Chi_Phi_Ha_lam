@@ -32,7 +32,7 @@ export const MAIN_PRICING_LONGWALL_PANEL_COLUMNS: ColumnDef<LongwallPanel>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Chi phí vật tư SCTX cho 1 thiết bị /1 tấn than NK (đ/t)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -120,6 +120,6 @@ export const MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS: ColumnDef<MaintainUnitP
 				</span>
 			),
 			cell: ({ row }) =>
-				formatNumber(Math.round(row.original.materialCostPerMetres)),
+				formatNumber(row.original.materialCostPerMetres),
 		},
 	];

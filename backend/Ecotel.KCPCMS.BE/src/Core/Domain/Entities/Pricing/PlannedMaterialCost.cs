@@ -56,20 +56,9 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         }
 
         var materialCost = MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0;
-        CachedPlannedMaterialTotal = RoundLineTotal(
-            (RoundUnitPrice(slideCost) + RoundUnitPrice(materialCost)) * coefficientValue);
+        CachedPlannedMaterialTotal = (slideCost + materialCost) * coefficientValue;
 
         return CachedPlannedMaterialTotal.Value;
-    }
-
-    public static double RoundUnitPrice(double unitPrice)
-    {
-        return Math.Round(unitPrice, 0, MidpointRounding.AwayFromZero);
-    }
-
-    public static double RoundLineTotal(double totalPrice)
-    {
-        return Math.Round(totalPrice, 0, MidpointRounding.AwayFromZero);
     }
 
     public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId, LowValuePerishableSupplyInclusion lowValuePerishableSupplyInclusion = LowValuePerishableSupplyInclusion.Exclude)

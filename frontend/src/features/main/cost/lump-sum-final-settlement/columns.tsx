@@ -4,12 +4,11 @@ import { LumpSumFinalSettlement } from './types';
 
 const renderNumber = (
 	value: number | null | undefined,
-	options?: Intl.NumberFormatOptions,
 ) => {
 	if (value == null) {
 		return '';
 	}
-	return formatNumber(value, options);
+	return formatNumber(value);
 };
 
 export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement>[] =
@@ -44,11 +43,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 			accessorKey: 'khoiLuong',
 			header: () => <div className='text-center font-bold'>KH</div>,
 			cell: ({ row }) => (
-				<div className='text-left'>
-					{renderNumber(row.original.plannedQuantity, {
-						maximumFractionDigits: 3,
-					})}
-				</div>
+				<div className='text-left'>{renderNumber(row.original.plannedQuantity)}</div>
 			),
 			size: 100,
 		},
@@ -56,11 +51,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 			accessorKey: 'thanhTien',
 			header: () => <div className='text-center font-bold'>TH</div>,
 			cell: ({ row }) => (
-				<div className='text-left'>
-					{renderNumber(row.original.actualQuantity, {
-						maximumFractionDigits: 3,
-					})}
-				</div>
+				<div className='text-left'>{renderNumber(row.original.actualQuantity)}</div>
 			),
 			size: 100,
 		},
@@ -82,7 +73,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.materials?.unitPrice == null
 									? undefined
-									: Math.round(row.original.materials.unitPrice),
+									: row.original.materials.unitPrice,
 							)}
 						</div>
 					),
@@ -98,7 +89,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.materials?.totalAmount == null
 									? undefined
-									: Math.round(row.original.materials.totalAmount),
+									: row.original.materials.totalAmount,
 							)}
 						</div>
 					),
@@ -124,7 +115,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.maintains?.unitPrice == null
 									? undefined
-									: Math.round(row.original.maintains.unitPrice),
+									: row.original.maintains.unitPrice,
 							)}
 						</div>
 					),
@@ -140,7 +131,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.maintains?.totalAmount == null
 									? undefined
-									: Math.round(row.original.maintains.totalAmount),
+									: row.original.maintains.totalAmount,
 							)}
 						</div>
 					),
@@ -166,7 +157,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.electricities?.unitPrice == null
 									? undefined
-									: Math.round(row.original.electricities.unitPrice),
+									: row.original.electricities.unitPrice,
 							)}
 						</div>
 					),
@@ -182,7 +173,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.electricities?.totalAmount == null
 									? undefined
-									: Math.round(row.original.electricities.totalAmount),
+									: row.original.electricities.totalAmount,
 							)}
 						</div>
 					),
@@ -208,7 +199,7 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 							{renderNumber(
 								row.original.totalAmount == null
 									? undefined
-									: Math.round(row.original.totalAmount),
+									: row.original.totalAmount,
 							)}
 						</div>
 					),

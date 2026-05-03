@@ -54,15 +54,11 @@ public static class PlannedMaterialCostCalculator
 
         if (plannedMaterialCost.NormFactor == null)
         {
-            var roundedSlideCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(slideCost);
-            var roundedMaterialUnitPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(
-                ApplyOtherMaterialValue(currentAssignmentTotals.Values.Sum(), currentMaterialUnitPrice.OtherMaterialvalue));
-            var roundedLowValueCost = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(lowValueCost);
-            var total = roundedSlideCost + roundedMaterialUnitPrice + roundedLowValueCost;
+            var total = slideCost + ApplyOtherMaterialValue(currentAssignmentTotals.Values.Sum(), currentMaterialUnitPrice.OtherMaterialvalue) + lowValueCost;
             return new PlannedMaterialCostCalculationResult
             {
-                TotalPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(total),
-                LowValuePerishableSupplyUnitPriceCost = roundedLowValueCost,
+                TotalPrice = total,
+                LowValuePerishableSupplyUnitPriceCost = lowValueCost,
             };
         }
 
@@ -72,7 +68,7 @@ public static class PlannedMaterialCostCalculator
 
         var unaffectedTotal = currentAssignmentTotals
             .Where(x => !affectedAssignmentCodeIds.Contains(x.Key))
-            .Sum(x => Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(x.Value));
+            .Sum(x => x.Value);
 
         var affectedTotal = 0d;
         foreach (var affectedAssignment in affectedAssignments)
@@ -97,26 +93,20 @@ public static class PlannedMaterialCostCalculator
                 assignmentAmount = targetAssignmentTotals.GetValueOrDefault(assignmentCodeId, assignmentAmount);
             }
 
-            affectedTotal += Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
-                Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(assignmentAmount) * affectedAssignment.Value);
+            affectedTotal += assignmentAmount * affectedAssignment.Value;
         }
 
         if (affectedAssignments.Count > 0)
         {
-            affectedTotal = ApplyOtherMaterialValue(
-                affectedTotal,
-                Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(currentMaterialUnitPrice.OtherMaterialvalue));
+            affectedTotal = ApplyOtherMaterialValue(affectedTotal, currentMaterialUnitPrice.OtherMaterialvalue);
         }
 
         var totalMaterialAssignments = unaffectedTotal + affectedTotal;
-        var roundedSlideUnitPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(slideCost);
-        var roundedLowValueCostForTotal = Domain.Entities.Pricing.PlannedMaterialCost.RoundUnitPrice(lowValueCost);
 
         return new PlannedMaterialCostCalculationResult
         {
-            TotalPrice = Domain.Entities.Pricing.PlannedMaterialCost.RoundLineTotal(
-                roundedSlideUnitPrice + totalMaterialAssignments + roundedLowValueCostForTotal),
-            LowValuePerishableSupplyUnitPriceCost = roundedLowValueCostForTotal,
+            TotalPrice = slideCost + totalMaterialAssignments + lowValueCost,
+            LowValuePerishableSupplyUnitPriceCost = lowValueCost,
         };
     }
 

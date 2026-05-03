@@ -224,9 +224,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị chờ hạch toán đầu kỳ (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(item?.pendingValueStartPeriod ?? 0, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(item?.pendingValueStartPeriod ?? 0)}
 									/>
 								</div>
 
@@ -247,7 +245,7 @@ export function LongtermMaterialCostForm({
 									<Label>Thành tiền</Label>
 									<Input
 										readOnly
-										value={formatNumber(amount, { maximumFractionDigits: 0 })}
+										value={formatNumber(amount)}
 									/>
 								</div>
 
@@ -255,9 +253,7 @@ export function LongtermMaterialCostForm({
 									<Label>Tổng giá trị cần hạch toán (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(totalAccountingValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(totalAccountingValue)}
 									/>
 								</div>
 
@@ -265,9 +261,7 @@ export function LongtermMaterialCostForm({
 									<Label>Nguyên giá (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(item?.originAmount ?? 0, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(item?.originAmount ?? 0)}
 									/>
 								</div>
 
@@ -306,9 +300,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị cần hạch toán theo định mức (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(quotaAccountingValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(quotaAccountingValue)}
 									/>
 								</div>
 
@@ -342,9 +334,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị hạch toán kỳ này (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(currentPeriodValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(currentPeriodValue)}
 									/>
 								</div>
 
@@ -352,9 +342,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị cuối kỳ chờ hạch toán kỳ sau (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(endingBalance, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(endingBalance)}
 									/>
 								</div>
 

@@ -78,9 +78,7 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 			</span>
 		),
 		cell: ({ row }) =>
-			formatNumber(row.original.electricityCostPerMetres, {
-				maximumFractionDigits: 0,
-			}),
+			formatNumber(row.original.electricityCostPerMetres),
 	},
 	{
 		accessorKey: 'time',

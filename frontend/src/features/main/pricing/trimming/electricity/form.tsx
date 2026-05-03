@@ -391,12 +391,12 @@ function ElectricityCostRow({
 						<TooltipTrigger asChild>
 							<Input
 								readOnly
-								value={formatNumber(powerCost, { maximumFractionDigits: 0 })}
+								value={formatNumber(powerCost)}
 								className='read-only:bg-transparent'
 							/>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>{formatNumber(powerCost, { maximumFractionDigits: 0 })}</p>
+							<p>{formatNumber(powerCost)}</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>

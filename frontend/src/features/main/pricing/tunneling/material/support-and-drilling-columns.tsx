@@ -38,6 +38,6 @@ export const MAIN_PRICING_SUPPORT_AND_DRILLING_COLUMNS: ColumnDef<SupportAndDril
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá vật liệu (đ/m)',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];

@@ -213,7 +213,7 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
                 g => g.Key,
                 g => g.Select(f =>
                 {
-                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetRoundedElectricityCostPerMetres();
+                    var costPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres();
 
                     return new ElectricityFactorData
                     {
@@ -268,23 +268,19 @@ public class GetPlannedProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, 
         // Calculate Planned Maintain Cost
         var plannedMaintainCost = output.PlannedMaintainCostId.HasValue &&
             plannedMaintainFactors.TryGetValue(output.PlannedMaintainCostId.Value, out var maintainFactors)
-            ? Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
-                maintainFactors.Sum(f => Domain.Entities.Pricing.PlannedMaintainCost.RoundPlannedTotalPrice(
+            ? maintainFactors.Sum(f =>
                     f.Quantity *
-                    Domain.Entities.Pricing.MaintainUnitPrice.RoundMaintainUnitPrice(
-                        f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0)) *
+                    f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
                     f.K6AdjustmentFactorValue *
-                    f.AdjustmentFactor)) *
-                NormalizeTrimmingCoefficient(maintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1))
+                    f.AdjustmentFactor) *
+                NormalizeTrimmingCoefficient(maintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
             : 0;
 
         // Calculate Planned Electricity Cost
         var plannedElectricityCost = output.PlannedElectricityCostId.HasValue &&
             plannedElectricityFactors.TryGetValue(output.PlannedElectricityCostId.Value, out var elecFactors)
-            ? Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-                elecFactors.Sum(f => Domain.Entities.Pricing.PlannedElectricityCost.RoundPlannedTotalPrice(
-                    f.Quantity * f.CostPerMetre * f.AdjustmentFactor))
-                * NormalizeTrimmingCoefficient(elecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1))
+            ? elecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                * NormalizeTrimmingCoefficient(elecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
             : 0;
 
         // Calculate Total Price

@@ -96,12 +96,12 @@ const ExcelReportHeader = ({
 				<div className='space-y-1 text-right text-sm font-bold md:text-base'>
 					<p>
 						<span className='mr-2'>Qkh:</span>
-						{formatNumber(qkh, { maximumFractionDigits: 2 })}
+						{formatNumber(qkh)}
 						<span className='ml-2'>Tấn</span>
 					</p>
 					<p>
 						<span className='mr-2'>Qđm:</span>
-						{formatNumber(qdm, { maximumFractionDigits: 2 })}
+						{formatNumber(qdm)}
 						<span className='ml-2'>Tấn</span>
 					</p>
 					<p className='pt-1'>Bảng số: 03</p>
@@ -229,45 +229,31 @@ const ExcelStructuredTable = ({
 							TỔNG CỘNG
 						</td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalOpeningBalance, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalOpeningBalance)}
 						</td>
 						<td className={borderCellClass}></td>
 						<td className={borderCellClass}></td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalAmount, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalAmount)}
 						</td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalValueToAccount, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalValueToAccount)}
 						</td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalOriginAmount, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalOriginAmount)}
 						</td>
 						<td className={borderCellClass}></td>
 						<td className={borderCellClass}></td>
 						<td className={borderCellClass}></td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalValueByStandard, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalValueByStandard)}
 						</td>
 						<td className={borderCellClass}></td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalAccountedValue, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalAccountedValue)}
 						</td>
 						<td className={cn(borderCellClass, 'text-right')}>
-							{formatNumber(totalEndingBalance, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totalEndingBalance)}
 						</td>
 						<td className={borderCellClass}></td>
 					</tr>
@@ -293,9 +279,7 @@ const ExcelStructuredTable = ({
 								</td>
 								<td className={borderCellClass}>{item.unitOfMeasureName}</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.pendingValueStartPeriod ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.pendingValueStartPeriod ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
 									{formatNumber(item.issuedQuantity ?? 0)}
@@ -304,19 +288,13 @@ const ExcelStructuredTable = ({
 									{formatNumber(item.unitPrice ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.totalAmount ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.totalAmount ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.totalValueToAccount ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.totalValueToAccount ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.originAmount ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.originAmount ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
 									{formatNumber(item.usageTime ?? 0)}
@@ -328,25 +306,16 @@ const ExcelStructuredTable = ({
 									{formatNumber(item.remainingTime ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.valueByStandard ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.valueByStandard ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.allocationRatio ?? 0, {
-										minimumFractionDigits: 2,
-										maximumFractionDigits: 2,
-									})}
+									{formatNumber(item.allocationRatio ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.accountedValueThisPeriod ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.accountedValueThisPeriod ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-right')}>
-									{formatNumber(item.pendingValueEndPeriod ?? 0, {
-										maximumFractionDigits: 0,
-									})}
+									{formatNumber(item.pendingValueEndPeriod ?? 0)}
 								</td>
 								<td className={cn(borderCellClass, 'text-left')}>
 									{item.note || ''}

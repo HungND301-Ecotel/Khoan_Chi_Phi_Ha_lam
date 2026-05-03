@@ -33,7 +33,7 @@ export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Chi phí vật tư SCTX cho 1 thiết bị/1 mét lò đào (đ/m)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -121,6 +121,6 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 				</span>
 			),
 			cell: ({ row }) =>
-				formatNumber(Math.round(row.original.materialCostPerMetres)),
+				formatNumber(row.original.materialCostPerMetres),
 		},
 	];

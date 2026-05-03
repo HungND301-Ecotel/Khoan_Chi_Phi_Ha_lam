@@ -809,7 +809,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 
 							<div className='mt-2 text-right font-["Times_New_Roman",Times,serif] text-sm italic'>
 								Tổng giá trị bảng:{' '}
-								{formatNumber(totalReportValue, { maximumFractionDigits: 0 })}{' '}
+								{formatNumber(totalReportValue)}{' '}
 								Đồng
 							</div>
 

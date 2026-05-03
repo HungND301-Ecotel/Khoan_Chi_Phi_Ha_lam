@@ -96,6 +96,6 @@ export const MAIN_COST_ADJUSTMENT_COLUMNS: ColumnDef<ProductionAdjustment>[] = [
 		accessorKey: 'adjustmentTotalCost',
 		header: () => <span>Doanh thu điều chỉnh (đ)</span>,
 		cell: ({ row }) =>
-			formatNumber(Math.round(row.original.adjustmentTotalCost)),
+			formatNumber(row.original.adjustmentTotalCost),
 	},
 ];

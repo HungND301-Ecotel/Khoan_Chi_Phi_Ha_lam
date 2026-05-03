@@ -48,7 +48,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             EquipmentId = m.EquipmentId,
             EquipmentCode = m.Equipment!.Code!.Value,
             EquipmentName = m.Equipment!.Name,
-            TotalPrice = m.GetRoundedMaintainTotalPrice(),
+            TotalPrice = m.GetMaintainTotalPrice(),
             StartMonth = m.StartMonth,
             OtherMaterialValue = m.OtherMaterialValue,
             EndMonth = m.EndMonth,

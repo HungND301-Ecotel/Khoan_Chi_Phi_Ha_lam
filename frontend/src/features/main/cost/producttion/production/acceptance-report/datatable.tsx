@@ -215,12 +215,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		const value = row.data[field] as number;
 		if (!value || value === 0) return null;
 
-		const isQuantityField = quantityFields.includes(
-			field as (typeof quantityFields)[number],
-		);
-		return formatNumber(value, {
-			maximumFractionDigits: isQuantityField ? 3 : 0,
-		});
+		return formatNumber(value);
 	};
 
 	const renderTableContent = () => (

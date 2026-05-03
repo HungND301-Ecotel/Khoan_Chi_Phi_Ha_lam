@@ -616,7 +616,7 @@ function PricingLongwallPanelCosts({
 				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
-					value={formatNumber(Math.round(regularRepairCost) || 0)}
+					value={formatNumber(regularRepairCost || 0)}
 					className={`read-only:bg-transparent ${isNaN(regularRepairCost) ? 'border-destructive' : ''}`}
 					title={isNaN(regularRepairCost) ? 'Vui lòng nhập dữ liệu hợp lệ' : ''}
 				/>
@@ -863,7 +863,7 @@ function PricingEquipmentOtherPartCosts({
 				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
-					value={formatNumber(isNaN(otherCost) ? 0 : Math.round(otherCost))}
+					value={formatNumber(isNaN(otherCost) ? 0 : otherCost)}
 					className={`read-only:bg-transparent ${isNaN(otherCost) ? 'border-destructive' : ''}`}
 					title={isNaN(otherCost) ? 'Vui lòng kiểm tra dữ liệu' : ''}
 				/>

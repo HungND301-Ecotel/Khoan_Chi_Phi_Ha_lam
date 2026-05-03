@@ -59,9 +59,7 @@ export const getAdjustmentMaintainCostColumns = (
 			accessorKey: 'maintainUnitPrice',
 			header: 'Đơn giá (đ)',
 			cell: ({ row }) =>
-				formatNumber(row.original.maintainUnitPrice, {
-					maximumFractionDigits: 0,
-				}),
+				formatNumber(row.original.maintainUnitPrice),
 		},
 		{
 			accessorKey: 'quantity',
@@ -96,7 +94,7 @@ export const getAdjustmentMaintainCostColumns = (
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá SCTX (đ/m) ',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];
 };

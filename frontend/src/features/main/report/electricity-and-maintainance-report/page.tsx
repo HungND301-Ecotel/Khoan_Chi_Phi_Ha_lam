@@ -760,9 +760,7 @@ function ReportGroupRows({
 									rowSpan={rowSpan}
 									className='border border-black px-1 py-1 text-center align-top'
 								>
-									{formatNumber(block.productionMeters, {
-										maximumFractionDigits: 2,
-									})}
+									{formatNumber(block.productionMeters)}
 								</TableCell>
 							)}
 							<TableCell className='border border-black px-1 py-1'>
@@ -780,29 +778,29 @@ function ReportGroupRows({
 									key={`${row.key}-k-${kIndex + 1}`}
 									className='border border-black px-1 py-1 text-center'
 								>
-									{formatNumber(value, { maximumFractionDigits: 2 })}
+									{formatNumber(value)}
 								</TableCell>
 							))}
 
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.maintainUnitPrice == null
 									? ''
-									: formatNumber(Math.round(row.maintainUnitPrice))}
+									: formatNumber(row.maintainUnitPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.maintainTotalPrice == null
 									? ''
-									: formatNumber(Math.round(row.maintainTotalPrice))}
+									: formatNumber(row.maintainTotalPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.electricityUnitPrice == null
 									? ''
-									: formatNumber(Math.round(row.electricityUnitPrice))}
+									: formatNumber(row.electricityUnitPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.electricityTotalPrice == null
 									? ''
-									: formatNumber(Math.round(row.electricityTotalPrice))}
+									: formatNumber(row.electricityTotalPrice)}
 							</TableCell>
 						</TableRow>
 					);

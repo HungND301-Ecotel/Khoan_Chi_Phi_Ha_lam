@@ -529,8 +529,8 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
         worksheet.Row(summaryRow).Style.Fill.BackgroundColor = XLColor.FromHtml("#FEF3C7");
         worksheet.Row(summaryRow).Style.Font.Bold = true;
 
-        SetNumberCell(worksheet.Cell(summaryRow, 4), visibleRows.Sum(x => x.PlannedQuantity ?? 0), 3);
-        SetNumberCell(worksheet.Cell(summaryRow, 5), visibleRows.Sum(x => x.ActualQuantity ?? 0), 3);
+        SetNumberCell(worksheet.Cell(summaryRow, 4), visibleRows.Sum(x => x.PlannedQuantity ?? 0), true);
+        SetNumberCell(worksheet.Cell(summaryRow, 5), visibleRows.Sum(x => x.ActualQuantity ?? 0), true);
         SetNumberCell(worksheet.Cell(summaryRow, 7), visibleRows.Sum(x => x.MaterialsTotalAmount));
         SetNumberCell(worksheet.Cell(summaryRow, 9), visibleRows.Sum(x => x.MaintainsTotalAmount));
         SetNumberCell(worksheet.Cell(summaryRow, 11), visibleRows.Sum(x => x.ElectricitiesTotalAmount));
@@ -562,8 +562,8 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
         worksheet.Cell(rowNumber, 1).Value = row.SttLabel ?? string.Empty;
         worksheet.Cell(rowNumber, 2).Value = row.ProductName ?? string.Empty;
         worksheet.Cell(rowNumber, 3).Value = row.UnitOfMeasureName ?? string.Empty;
-        SetNumberCell(worksheet.Cell(rowNumber, 4), row.PlannedQuantity, 3);
-        SetNumberCell(worksheet.Cell(rowNumber, 5), row.ActualQuantity, 3);
+        SetNumberCell(worksheet.Cell(rowNumber, 4), row.PlannedQuantity, true);
+        SetNumberCell(worksheet.Cell(rowNumber, 5), row.ActualQuantity, true);
         SetNumberCell(worksheet.Cell(rowNumber, 6), row.MaterialsUnitPrice);
         SetNumberCell(worksheet.Cell(rowNumber, 7), row.MaterialsTotalAmount);
         SetNumberCell(worksheet.Cell(rowNumber, 8), row.MaintainsUnitPrice);
@@ -649,7 +649,7 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
         worksheet.Column(12).Width = 18;
     }
 
-    private static void SetNumberCell(IXLCell cell, double? value, int maximumFractionDigits = 0)
+    private static void SetNumberCell(IXLCell cell, double? value, bool allowDecimalDisplay = false)
     {
         if (!value.HasValue)
         {
@@ -657,15 +657,8 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
             return;
         }
 
-        if (maximumFractionDigits > 0)
-        {
-            cell.Value = Math.Round(value.Value, maximumFractionDigits, MidpointRounding.AwayFromZero);
-            cell.Style.NumberFormat.Format = "#,##0.###";
-            return;
-        }
-
-        cell.Value = Math.Round(value.Value, 0, MidpointRounding.AwayFromZero);
-        cell.Style.NumberFormat.Format = "#,##0";
+        cell.Value = value.Value;
+        cell.Style.NumberFormat.Format = allowDecimalDisplay ? "#,##0.###" : "#,##0";
     }
 
     private sealed class ExportRow

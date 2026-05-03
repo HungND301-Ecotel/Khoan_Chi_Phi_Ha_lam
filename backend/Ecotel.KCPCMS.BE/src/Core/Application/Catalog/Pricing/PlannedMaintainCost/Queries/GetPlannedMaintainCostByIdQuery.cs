@@ -42,7 +42,7 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                     EquipmentName = p.MaintainUnitPrice.Equipment?.Name ?? string.Empty,
                     Quantity = p.Quantity,
                     MaintainUnitPriceId = p.MaintainUnitPriceId,
-                    MaintainUnitPrice = p.MaintainUnitPrice.GetRoundedMaintainTotalPrice(),
+                    MaintainUnitPrice = p.MaintainUnitPrice.GetMaintainTotalPrice(),
                     TotalPrice = p.GetCurrentMaintainCost(),
                     K6AdjustmentFactorValue = p.K6AdjustmentFactorValue,
                     AdjustmentFactorDescriptions = p.PlannedMaintainCostAdjustmentFactorDescriptions.Select(a => new MaintainAjustmentFactorDescriptionDto

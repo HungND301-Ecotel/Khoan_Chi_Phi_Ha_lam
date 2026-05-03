@@ -107,7 +107,7 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Đơn giá vật liệu (đ/tấn)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -187,6 +187,6 @@ export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallM
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá vật liệu (đ/tấn)',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];

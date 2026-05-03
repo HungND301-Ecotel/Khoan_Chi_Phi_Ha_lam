@@ -163,7 +163,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 if (plannedMaterialCosts.Any())
                 {
                     materialUnitPrice = plannedMaterialCosts.Sum(p => plannedMaterialUnitCostById.GetValueOrDefault(p.Id, 0));
-                    materialTotalAmount = Math.Round(materialUnitPrice * actualQuantity, 3);
+                    materialTotalAmount = materialUnitPrice * actualQuantity;
                 }
 
                 var maintainUnitPrice = 0.0;
@@ -248,7 +248,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                     .Select(o => o.PlannedElectricityCost!.GetPlannedTotalPrice())
                     .Sum();
 
-                revenueMaterialTotal += Math.Round(materialUnitPrice * monthActualQuantity, 3);
+                revenueMaterialTotal += materialUnitPrice * monthActualQuantity;
                 revenueMaintainTotal += maintainUnitPrice * monthActualQuantity;
                 revenueElectricityTotal += electricityUnitPrice * monthActualQuantity;
             }

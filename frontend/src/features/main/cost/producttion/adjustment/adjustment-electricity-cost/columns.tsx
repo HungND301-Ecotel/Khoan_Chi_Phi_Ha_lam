@@ -27,9 +27,7 @@ export const getAdjustmentElectricityCostColumns = (
 			accessorKey: 'electricityUnitPrice',
 			header: 'Đơn giá (đ)',
 			cell: ({ row }) =>
-				formatNumber(row.original.electricityUnitPrice, {
-					maximumFractionDigits: 0,
-				}),
+				formatNumber(row.original.electricityUnitPrice),
 		},
 		{
 			accessorKey: 'quantity',
@@ -61,7 +59,7 @@ export const getAdjustmentElectricityCostColumns = (
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá điện năng (đ/m)',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];
 };

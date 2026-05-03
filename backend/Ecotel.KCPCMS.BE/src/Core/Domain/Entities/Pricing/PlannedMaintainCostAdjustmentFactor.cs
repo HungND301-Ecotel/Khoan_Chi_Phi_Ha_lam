@@ -37,12 +37,12 @@ public class PlannedMaintainCostAdjustmentFactor : AuditableEntity<Guid>
                 return CachedPlannedMaintainAdjTotal.Value;
             }
 
-                var result = (double)Quantity *
-                    MaintainUnitPrice.GetRoundedMaintainTotalPrice() *
-                    K6AdjustmentFactorValue *
-                    _plannedMaintainCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue);
+            var result = (double)Quantity *
+                MaintainUnitPrice.GetMaintainTotalPrice() *
+                K6AdjustmentFactorValue *
+                _plannedMaintainCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue);
 
-                CachedPlannedMaintainAdjTotal = PlannedMaintainCost.RoundPlannedTotalPrice(result);
+            CachedPlannedMaintainAdjTotal = result;
             return CachedPlannedMaintainAdjTotal.Value;
         }
 

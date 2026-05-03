@@ -55,7 +55,7 @@ export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Đơn giá máng trượt (đ/m)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -171,7 +171,7 @@ export const MAIN_PRICING_SLIDE_EXPAND_COLUMNS: ColumnDef<FlatSlideCost>[] = [
 		header: 'Đơn giá máng trượt (đ/m)',
 		cell: ({ row }) => (
 			<span className={cn(row.original.isGroupRow && 'font-semibold')}>
-				{formatNumber(Math.round(row.original.totalPrice))}
+				{formatNumber(row.original.totalPrice)}
 			</span>
 		),
 	},

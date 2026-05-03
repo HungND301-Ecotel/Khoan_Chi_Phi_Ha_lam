@@ -49,7 +49,7 @@ export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Đơn giá vật liệu (đ/m)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -163,7 +163,7 @@ export const MAIN_PRICING_MATERIAL_EXPAND_COLUMNS: ColumnDef<FlatMaterialCost>[]
 			header: 'Thành tiền (đ)',
 			cell: ({ row }) => (
 				<span className={cn(row.original.isGroupRow && 'font-semibold')}>
-					{formatNumber(Math.round(row.original.totalPrice))}
+					{formatNumber(row.original.totalPrice)}
 				</span>
 			),
 		},
@@ -189,6 +189,6 @@ export const MAIN_PRICING_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandMater
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá vật liệu (đ/m)',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];

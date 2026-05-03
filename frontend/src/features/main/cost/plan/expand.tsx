@@ -100,7 +100,7 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 								{formatNumber(output.productionMeters)}
 							</span>
 							<span className='w-24'>
-								{formatNumber(Math.round(output.totalPrice ?? 0))}
+								{formatNumber(output.totalPrice ?? 0)}
 							</span>
 
 							<AccordionTrigger className='group ms-17.5 cursor-pointer p-0'>

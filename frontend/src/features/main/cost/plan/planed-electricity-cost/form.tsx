@@ -40,9 +40,7 @@ function formatAdjustmentOptionLabel(
 		return description;
 	}
 
-	const valueText = value.toLocaleString('vi-VN', {
-		maximumFractionDigits: 4,
-	});
+	const valueText = formatNumber(value);
 
 	return `${description} - ${valueText}`;
 }
@@ -455,7 +453,7 @@ export function PlanElectricityCostForm({
 													total *= description?.electricityAdjustmentValue || 1;
 												});
 
-												return Math.round(total || 0);
+												return total || 0;
 											})(),
 										)}
 									/>

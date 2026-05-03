@@ -331,7 +331,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-blue-600'>
-							{formatNumber(Math.round(totalPlanned))} VNĐ
+							{formatNumber(totalPlanned)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng doanh thu kế hoạch trong năm {selectedYear}
@@ -347,7 +347,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-cyan-600'>
-							{formatNumber(Math.round(totalAdjustment))} VNĐ
+							{formatNumber(totalAdjustment)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng doanh thu điều chỉnh trong năm {selectedYear}
@@ -361,7 +361,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-emerald-600'>
-							{formatNumber(Math.round(totalActual))} VNĐ
+							{formatNumber(totalActual)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng chi phí trong năm {selectedYear}
@@ -472,7 +472,7 @@ export default function DashboardPage() {
 																Doanh thu:
 															</span>
 															<span className='font-bold text-blue-600 tabular-nums'>
-																{formatNumber(Math.round(plannedRevenue))} VNĐ
+																{formatNumber(plannedRevenue)} VNĐ
 															</span>
 														</div>
 														<div className='flex items-center justify-between gap-10'>
@@ -481,7 +481,7 @@ export default function DashboardPage() {
 																Doanh thu điều chỉnh:
 															</span>
 															<span className='font-bold text-cyan-600 tabular-nums'>
-																{formatNumber(Math.round(adjustmentRevenue))}{' '}
+																{formatNumber(adjustmentRevenue)}{' '}
 																VNĐ
 															</span>
 														</div>
@@ -491,7 +491,7 @@ export default function DashboardPage() {
 																Chi phí:
 															</span>
 															<span className='font-bold text-emerald-600 tabular-nums'>
-																{formatNumber(Math.round(actualCost))} VNĐ
+																{formatNumber(actualCost)} VNĐ
 															</span>
 														</div>
 													</div>
