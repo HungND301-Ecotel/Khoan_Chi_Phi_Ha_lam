@@ -28,6 +28,25 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
             throw new BadRequestException(CustomResponseMessage.NoEquipmentCostsProvided);
         }
 
+        foreach (var model in request.CreateModel)
+        {
+            var normalizedStartMonth = new DateOnly(model.StartMonth.Year, model.StartMonth.Month, 1);
+            var normalizedEndMonth = new DateOnly(model.EndMonth.Year, model.EndMonth.Month, 1);
+
+            var existed = await _maintainUnitPricRepository.GetFirstOrDefaultAsync(
+                predicate: m =>
+                    m.EquipmentId == model.EquipmentId &&
+                    m.Type == model.Type &&
+                    m.StartMonth <= normalizedEndMonth &&
+                    m.EndMonth >= normalizedStartMonth,
+                disableTracking: true);
+
+            if (existed != null)
+            {
+                throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+            }
+        }
+
         var equipmentIds = request.CreateModel.Select(c => c.EquipmentId);
         var equipmentDetails = await _equipmentRepository.GetAllAsync(
             predicate: e => equipmentIds.Contains(e.Id),

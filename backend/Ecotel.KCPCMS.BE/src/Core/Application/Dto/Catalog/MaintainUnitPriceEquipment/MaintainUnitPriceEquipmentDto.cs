@@ -61,6 +61,7 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
 
     public class UpdateMaintainUnitPriceDto
     {
+        public Guid? Id { get; set; }
         public Guid EquipmentId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }

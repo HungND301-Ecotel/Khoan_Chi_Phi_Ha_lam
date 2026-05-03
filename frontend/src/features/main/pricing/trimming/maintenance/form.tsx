@@ -200,6 +200,7 @@ export function TunnelingForm({
 
 			if (row && !isDuplicate) {
 				const body = {
+					id: row.id,
 					equipmentId: row.equipmentId,
 					startMonth: startMonth,
 					endMonth: endMonth,
@@ -680,7 +681,7 @@ function groupCostsByEquipment(
 
 		return {
 			...group,
-			totalAmount: Math.round(totalAmountWithOther),
+			totalAmount: totalAmountWithOther,
 		};
 	});
 }
