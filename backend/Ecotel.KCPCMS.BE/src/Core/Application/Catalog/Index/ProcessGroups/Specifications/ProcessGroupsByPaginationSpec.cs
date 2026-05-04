@@ -15,15 +15,17 @@ public class ProcessGroupsByPaginationSpec : EntitiesByPaginationFilterSpec<Proc
 
         Query
             .Include(pg => pg.Code)
+            .Include(pg => pg.FixedKey)
             .Where(pg => string.IsNullOrWhiteSpace(searchTerm) ||
                          pg.Name.ToLower().Contains(searchTerm) ||
-                         pg.Code.Value.ToLower().Contains(searchTerm));
+                         (pg.FixedKey != null ? pg.FixedKey.Key : pg.Code.Value).ToLower().Contains(searchTerm));
         Query
         .Select(pg => new ProcessGroupDto
         {
             Id = pg.Id,
-            Code = pg.Code.Value,
-            Type = pg.Type,
+            FixedKeyId = pg.FixedKeyId,
+            Code = pg.FixedKey != null ? pg.FixedKey.Key : pg.Code.Value,
+            Type = pg.FixedKey != null ? pg.FixedKey.Type : pg.Type,
             Name = pg.Name,
         });
     }

@@ -43,7 +43,7 @@ public class GetAllLowValuePerishableSupplyUnitPriceQueryHandler(
         IQueryable<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> query = _repository.GetAll()
             .Where(e => e.Type == request.Type)
             .Include(e => e.Department).ThenInclude(d => d!.Code)
-            .Include(e => e.ProcessGroup).ThenInclude(pg => pg!.Code)
+            .Include(e => e.ProcessGroup).ThenInclude(pg => pg!.FixedKey)
             .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -52,7 +52,7 @@ public class GetAllLowValuePerishableSupplyUnitPriceQueryHandler(
                 (e.Department != null && e.Department.Name.Contains(request.Search)) ||
                 (e.Department != null && e.Department.Code != null && e.Department.Code.Value.Contains(request.Search)) ||
                 (e.ProcessGroup != null && e.ProcessGroup.Name.Contains(request.Search)) ||
-                (e.ProcessGroup != null && e.ProcessGroup.Code != null && e.ProcessGroup.Code.Value.Contains(request.Search)));
+                (e.ProcessGroup != null && e.ProcessGroup.FixedKey != null && e.ProcessGroup.FixedKey.Key.Contains(request.Search)));
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
@@ -60,7 +60,7 @@ public class GetAllLowValuePerishableSupplyUnitPriceQueryHandler(
         List<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> data = await query.ToListAsync(cancellationToken);
         IEnumerable<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> sortedData = data
             .OrderByCodeNatural(e => e.Department!.Code!.Value)
-            .ThenBy(e => e.ProcessGroup!.Code!.Value)
+            .ThenBy(e => e.ProcessGroup!.FixedKey!.Key)
             .ThenByDescending(e => e.StartMonth)
             .ThenByDescending(e => e.EndMonth);
 
@@ -78,7 +78,7 @@ public class GetAllLowValuePerishableSupplyUnitPriceQueryHandler(
             DepartmentCode = e.Department?.Code?.Value ?? string.Empty,
             DepartmentName = e.Department?.Name ?? string.Empty,
             ProcessGroupId = e.ProcessGroupId,
-            ProcessGroupCode = e.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = e.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             ProcessGroupName = e.ProcessGroup?.Name ?? string.Empty,
             StartMonth = e.StartMonth,
             EndMonth = e.EndMonth,

@@ -20,13 +20,13 @@ public class ExportExcelProductQueryHandler(IExcelService excelService, IUnitOfW
 
         var list = await _productRepository.GetAllAsync(
             include: s => s
-                .Include(s => s.ProcessGroup).ThenInclude(s => s.Code)
+                .Include(s => s.ProcessGroup).ThenInclude(s => s.FixedKey)
                 .Include(s => s.Code!),
             disableTracking: true);
 
         var processGroups = await _processGroupRepository.GetAllAsync(
-            selector: u => u.Code.Value,
-            include: u => u.Include(u => u.Code),
+            selector: u => u.FixedKey != null ? u.FixedKey.Key : string.Empty,
+            include: u => u.Include(u => u.FixedKey),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -39,7 +39,7 @@ public class ExportExcelProductQueryHandler(IExcelService excelService, IUnitOfW
             Id = s.Id,
             Code = s.Code?.Value ?? "",
             Name = s.Name,
-            ProcessGroupCode = s.ProcessGroup?.Code?.Value ?? ""
+            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
         });
 
         return excelService.ExportToExcel(dtoList, "Công đoạn sản xuất", listHiddenProperty, dropdownConfigs);

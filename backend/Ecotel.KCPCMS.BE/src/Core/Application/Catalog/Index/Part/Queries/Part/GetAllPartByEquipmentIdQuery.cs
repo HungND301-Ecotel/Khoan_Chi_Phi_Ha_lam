@@ -43,11 +43,11 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
             ProcessGroups = partDetail.PartProcessGroups
-                .Where(ppg => ppg.ProcessGroup?.Code != null)
+                .Where(ppg => ppg.ProcessGroup?.FixedKey != null)
                 .Select(ppg => new PartProcessGroupDto
                 {
                     Id = ppg.ProcessGroupId,
-                    Code = ppg.ProcessGroup!.Code!.Value,
+                    Code = ppg.ProcessGroup!.FixedKey!.Key,
                     Name = ppg.ProcessGroup.Name
                 })
                 .DistinctBy(pg => pg.Id)

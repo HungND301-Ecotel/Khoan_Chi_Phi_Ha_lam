@@ -15,10 +15,11 @@ public class AdjustmentFactorsByPaginationSpec
         var searchTerm = (search ?? "").Trim().ToLower();
 
         Query
-            .Include(af => af.ProcessGroup).Include(af => af.Code)
+            .Include(af => af.ProcessGroup).ThenInclude(pg => pg.FixedKey).Include(af => af.Code)
             .Where(af => af.Code != null && (string.IsNullOrWhiteSpace(searchTerm) ||
                                              af.Name.ToLower().Contains(searchTerm) ||
-                                             af.Code.Value.ToLower().Contains(searchTerm)));
+                                             af.Code.Value.ToLower().Contains(searchTerm) ||
+                                             (af.ProcessGroup != null && af.ProcessGroup.FixedKey != null && af.ProcessGroup.FixedKey.Key.ToLower().Contains(searchTerm))));
         Query
             .Select(af => new AdjustmentFactorDto
             {
@@ -28,7 +29,7 @@ public class AdjustmentFactorsByPaginationSpec
                 Type = af.Type,
                 ProcessGroupId = af.ProcessGroupId,
                 ProcessGroupName = af.ProcessGroup != null ? af.ProcessGroup.Name : string.Empty,
-                ProcessGroupCode = af.ProcessGroup != null ? af.ProcessGroup.Code.Value : string.Empty
+                ProcessGroupCode = af.ProcessGroup != null && af.ProcessGroup.FixedKey != null ? af.ProcessGroup.FixedKey.Key : string.Empty
             });
     }
 }

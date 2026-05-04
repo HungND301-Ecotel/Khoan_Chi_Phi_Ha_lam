@@ -9,6 +9,7 @@ export type ProductionAdjustment = {
 	processGroupId: string;
 	processGroupCode: string;
 	processGroupName?: string;
+	fixedKeyType?: number;
 	processGroupType?: number;
 	unitOfMeasureId?: string;
 	unitOfMeasureName?: string;
@@ -95,7 +96,6 @@ export const MAIN_COST_ADJUSTMENT_COLUMNS: ColumnDef<ProductionAdjustment>[] = [
 	{
 		accessorKey: 'adjustmentTotalCost',
 		header: () => <span>Doanh thu điều chỉnh (đ)</span>,
-		cell: ({ row }) =>
-			formatNumber(row.original.adjustmentTotalCost),
+		cell: ({ row }) => formatNumber(row.original.adjustmentTotalCost),
 	},
 ];

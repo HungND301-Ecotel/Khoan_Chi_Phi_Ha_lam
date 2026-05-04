@@ -40,6 +40,12 @@ function DepartmentAdjustmentProductsTable({
 			columns={MAIN_COST_ADJUSTMENT_COLUMNS}
 			url={API.COST.PRODUCT.LIST}
 			query={query}
+			transformData={(rows) =>
+				(rows as ProductionAdjustment[]).map((row) => ({
+					...row,
+					fixedKeyType: row.fixedKeyType,
+				}))
+			}
 			getRowId={(item) => item.id}
 			importCrumb='Doanh thu điều chỉnh'
 			filters={[

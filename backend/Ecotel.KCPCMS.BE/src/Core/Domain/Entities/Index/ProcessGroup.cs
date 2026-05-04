@@ -9,11 +9,13 @@ namespace Domain.Entities.Index
     {
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
+        public Guid? FixedKeyId { get; protected set; }
 
         public ProcessGroupType Type { get; protected set; } = ProcessGroupType.None;
 
         // Navigation properties
         public virtual Code? Code { get; protected set; }
+        public virtual FixedKey? FixedKey { get; protected set; }
 
         private IList<ProductionProcess> _productionProcesses = new List<ProductionProcess>();
         public virtual IReadOnlyCollection<ProductionProcess> ProductionProcesses => _productionProcesses.AsReadOnly();
@@ -72,6 +74,25 @@ namespace Domain.Entities.Index
             };
         }
 
+        public static ProcessGroup Create(FixedKey fixedKey, string name)
+        {
+            ArgumentNullException.ThrowIfNull(fixedKey);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            return new ProcessGroup
+            {
+                Code = new Code(fixedKey.Key),
+                FixedKeyId = fixedKey.Id,
+                FixedKey = fixedKey,
+                Name = name,
+                Type = fixedKey.Type,
+            };
+        }
+
         public void Update(string code, string name)
         {
             if (string.IsNullOrWhiteSpace(code))
@@ -90,6 +111,30 @@ namespace Domain.Entities.Index
             }
 
             Name = name;
+        }
+
+        public void Update(FixedKey fixedKey, string name)
+        {
+            ArgumentNullException.ThrowIfNull(fixedKey);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            if (Code != null)
+            {
+                Code.Value = fixedKey.Key;
+            }
+            else
+            {
+                Code = new Code(fixedKey.Key);
+            }
+
+            FixedKeyId = fixedKey.Id;
+            FixedKey = fixedKey;
+            Name = name;
+            Type = fixedKey.Type;
         }
 
         public bool CheckChange(ProcessGroup dto)

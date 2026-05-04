@@ -86,7 +86,7 @@ export function PlanedMaterialCost({
 				const allSlides = slidesRes.result.data;
 
 				const filteredMaterials = allMaterials.filter((material) => {
-					const groupType = plan?.processGroupType;
+					const groupType = plan?.fixedKeyType;
 					if (groupType === ProcessGroupType.DL) {
 						return material.type === 1;
 					}
@@ -114,7 +114,7 @@ export function PlanedMaterialCost({
 					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
 						?.value || '-';
 
-				if (plan?.processGroupType === ProcessGroupType.DL) {
+				if (plan?.fixedKeyType === ProcessGroupType.DL) {
 					if (!result.slideUnitPriceAssignmentCodeId) {
 						slideUsage = 'Không sử dụng máng trượt';
 					} else if (selectedMaterial && plan) {
@@ -201,9 +201,7 @@ export function PlanedMaterialCost({
 					</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
-					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(total)}
-					</ItemTitle>
+					<ItemTitle>{loading ? <Spinner /> : formatNumber(total)}</ItemTitle>
 				</ItemContent>
 				<ItemActions>
 					<DialogProvider>
@@ -269,9 +267,7 @@ export function PlanedMaterialCost({
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable
-							columns={getPlanedMaterialCostSummaryColumns(
-								plan?.processGroupType,
-							)}
+							columns={getPlanedMaterialCostSummaryColumns(plan?.fixedKeyType)}
 							items={summary}
 							compact={true}
 							hasActions={false}

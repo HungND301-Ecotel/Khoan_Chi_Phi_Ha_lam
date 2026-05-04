@@ -7,6 +7,7 @@ using Domain.Common.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Domain.Entities.Index;
+using Microsoft.EntityFrameworkCore;
 using AkFactorConfigEntity = Domain.Entities.Index.AkFactorConfig;
 
 namespace Application.Catalog.Index.AkFactorConfig.Commands;
@@ -29,10 +30,12 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
 
         var dtos = excelService.ImportFromExcel<AkFactorConfigExcelDto>(stream);
         var dbEntities = await _akFactorConfigRepository.GetAllAsync(disableTracking: true);
-        var processGroups = await _processGroupRepository.GetAllAsync(disableTracking: true);
+        var processGroups = await _processGroupRepository.GetAllAsync(
+            include: x => x.Include(p => p.FixedKey),
+            disableTracking: true);
         var processGroupByCode = processGroups
-            .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
-            .GroupBy(x => x.Code!.Value)
+            .Where(x => x.FixedKey != null && !string.IsNullOrWhiteSpace(x.FixedKey.Key))
+            .GroupBy(x => x.FixedKey!.Key)
             .ToDictionary(x => x.Key, x => x.First());
 
         var deleteList = new List<AkFactorConfigEntity>();
@@ -51,7 +54,7 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
                 throw new BadRequestException($"ProcessGroupCode khong hop le: {dto.Item.ProcessGroupCode}");
             }
 
-            ValidateAkFactorConfig(processGroup.Type, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.RowNumber);
+            ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? ProcessGroupType.None, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.RowNumber);
 
             if (dto.Item.Id != Guid.Empty && dbEntities.Any(x => x.Id == dto.Item.Id))
             {

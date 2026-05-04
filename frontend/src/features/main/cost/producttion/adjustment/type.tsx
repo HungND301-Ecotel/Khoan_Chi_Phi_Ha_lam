@@ -7,7 +7,8 @@ export type AdjustmentCostProductDetail = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: ProcessGroupType;
+	fixedKeyType: ProcessGroupType;
+	processGroupType?: ProcessGroupType;
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -40,3 +41,12 @@ export type AdjustmentProductionOutput = {
 	akRate: number;
 	akRatePercent: number;
 };
+
+export function mapAdjustmentCostProductDetail(
+	detail: AdjustmentCostProductDetail,
+): AdjustmentCostProductDetail {
+	return {
+		...detail,
+		fixedKeyType: detail.fixedKeyType,
+	};
+}

@@ -71,7 +71,14 @@ export default function DashboardPage() {
 	useEffect(() => {
 		api
 			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
-			.then((res) => setGroups(res.result.data))
+			.then((res) =>
+				setGroups(
+					(res.result.data ?? []).map((group) => ({
+						...group,
+						fixedKeyType: group.fixedKeyType,
+					})),
+				),
+			)
 			.catch((error) => console.error('Error fetching process groups:', error));
 	}, []);
 
@@ -163,7 +170,7 @@ export default function DashboardPage() {
 	);
 	const totalActual = data.reduce((sum, item) => sum + item.chiPhiThucHien, 0);
 	const selectedGroupData = groups.find((g) => g.id === selectedGroup);
-	const selectedGroupType = selectedGroupData?.type;
+	const selectedGroupType = selectedGroupData?.fixedKeyType;
 
 	const volumeCards =
 		selectedGroupType === ProcessGroupType.LC
@@ -481,8 +488,7 @@ export default function DashboardPage() {
 																Doanh thu điều chỉnh:
 															</span>
 															<span className='font-bold text-cyan-600 tabular-nums'>
-																{formatNumber(adjustmentRevenue)}{' '}
-																VNĐ
+																{formatNumber(adjustmentRevenue)} VNĐ
 															</span>
 														</div>
 														<div className='flex items-center justify-between gap-10'>

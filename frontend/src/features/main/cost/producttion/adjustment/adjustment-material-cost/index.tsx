@@ -93,7 +93,7 @@ export function AdjustmentMaterialCost({
 				const allSlides = slidesRes.result.data;
 
 				const filteredMaterials = allMaterials.filter((material) => {
-					const groupType = adjustment?.processGroupType;
+					const groupType = adjustment?.fixedKeyType;
 					if (groupType === ProcessGroupType.DL) {
 						return material.type === 1;
 					}
@@ -121,7 +121,7 @@ export function AdjustmentMaterialCost({
 					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
 						?.value || '-';
 
-				if (adjustment?.processGroupType === ProcessGroupType.DL) {
+				if (adjustment?.fixedKeyType === ProcessGroupType.DL) {
 					if (!result.slideUnitPriceAssignmentCodeId) {
 						slideUsage = 'Không sử dụng máng trượt';
 					} else if (selectedMaterial && adjustment) {
@@ -205,9 +205,7 @@ export function AdjustmentMaterialCost({
 					</ItemTitle>
 				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
-					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(total)}
-					</ItemTitle>
+					<ItemTitle>{loading ? <Spinner /> : formatNumber(total)}</ItemTitle>
 				</ItemContent>
 				<ItemActions>
 					<div className='size-5' />
@@ -230,7 +228,7 @@ export function AdjustmentMaterialCost({
 					<div className='space-y-2'>
 						<DataTable
 							columns={getAdjustmentMaterialCostSummaryColumns(
-								adjustment?.processGroupType,
+								adjustment?.fixedKeyType,
 							)}
 							items={summary}
 							compact={true}

@@ -23,14 +23,14 @@ public class ExportExcelAkFactorConfigQueryHandler(IExcelService excelService, I
         };
 
         var list = await _akFactorConfigRepository.GetAll()
-            .Include(x => x.ProcessGroup)
+            .Include(x => x.ProcessGroup).ThenInclude(x => x.FixedKey)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var dtoList = list.Select(x => new AkFactorConfigExcelDto
         {
             Id = x.Id,
-            ProcessGroupCode = x.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = x.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             AkDiffDisplay = x.AkDiffDisplay,
             AdjustmentRateDisplay = x.AdjustmentRateDisplay,
             Description = x.Description

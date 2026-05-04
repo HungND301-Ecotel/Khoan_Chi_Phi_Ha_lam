@@ -61,14 +61,14 @@ export function PlanedElectricityCost({
 					total += totalPrice;
 				});
 				const trimmingCoefficient =
-					plan?.processGroupType === ProcessGroupType.XL
+					plan?.fixedKeyType === ProcessGroupType.XL
 						? res.result.trimmingCoefficient || 1
 						: 1;
 				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
 				setPlannedElectricityPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
-	}, [id, reloadKey, output?.productionMeters, plan?.processGroupType]);
+	}, [id, reloadKey, output?.productionMeters, plan?.fixedKeyType]);
 
 	return (
 		<AccordionItem value={'planed-electricity-cost'} className='border-none'>
@@ -153,7 +153,7 @@ export function PlanedElectricityCost({
 				<AccordionContent className='p-0 px-2 pt-2'>
 					<DataTable
 						columns={getPlanedElectricityCostColumns(
-							plan?.processGroupType as ProcessGroupType | undefined,
+							plan?.fixedKeyType as ProcessGroupType | undefined,
 						)}
 						items={planedElectricityCost?.costs}
 						compact={true}

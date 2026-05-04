@@ -7,6 +7,7 @@ namespace Application.Dto.Catalog.ProcessGroup
     public class ProcessGroupDto : IDto
     {
         public Guid Id { get; set; }
+        public Guid? FixedKeyId { get; set; }
         public string Code { get; set; }
         public ProcessGroupType Type { get; set; }
         public string Name { get; set; }
@@ -23,7 +24,14 @@ namespace Application.Dto.Catalog.ProcessGroup
 
     public class CreateProcessGroupDto
     {
-        public string Code { get; set; }
+        public Guid FixedKeyId { get; set; }
+        public string Name { get; set; }
+    }
+
+    public class UpdateProcessGroupDto
+    {
+        public Guid Id { get; set; }
+        public Guid? FixedKeyId { get; set; }
         public string Name { get; set; }
     }
 }

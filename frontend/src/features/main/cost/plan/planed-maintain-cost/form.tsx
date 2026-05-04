@@ -78,12 +78,12 @@ export function PlanMaintainCostForm({
 	const watchedMaintainUnitPriceIds = form.watch('maintainUnitPriceIds');
 	const watchedCosts = form.watch('costs');
 	const maintainAdjustmentCount =
-		plan?.processGroupType === ProcessGroupType.DL ||
-		plan?.processGroupType === ProcessGroupType.XL
+		plan?.fixedKeyType === ProcessGroupType.DL ||
+		plan?.fixedKeyType === ProcessGroupType.XL
 			? 7
 			: 8;
 	const filteredTunnelings = useMemo(() => {
-		const currentProcessGroupType = plan?.processGroupType as
+		const currentProcessGroupType = plan?.fixedKeyType as
 			| ProcessGroupType
 			| undefined;
 
@@ -102,7 +102,7 @@ export function PlanMaintainCostForm({
 			(item) =>
 				item.type === maintainTypeByProcessGroup[currentProcessGroupType],
 		);
-	}, [tunnelings, plan?.processGroupType]);
+	}, [tunnelings, plan?.fixedKeyType]);
 	const selectableAdjustments = useMemo(
 		() => adjustments.filter((adj) => !isK6Adjustment(adj)),
 		[adjustments],
@@ -251,7 +251,7 @@ export function PlanMaintainCostForm({
 					),
 				})),
 				trimmingCoefficient:
-					plan?.processGroupType === ProcessGroupType.XL
+					plan?.fixedKeyType === ProcessGroupType.XL
 						? values.trimmingCoefficient / 100
 						: 1,
 			};
@@ -317,7 +317,7 @@ export function PlanMaintainCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
-			{plan?.processGroupType === ProcessGroupType.XL && (
+			{plan?.fixedKeyType === ProcessGroupType.XL && (
 				<FormNumber
 					control={form.control}
 					name='trimmingCoefficient'

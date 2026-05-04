@@ -19,14 +19,14 @@ public class GetAkFactorConfigByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
     {
         var entity = await _akFactorConfigRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
-            include: q => q.Include(x => x.ProcessGroup),
+            include: q => q.Include(x => x.ProcessGroup).ThenInclude(x => x.FixedKey),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         return new AkFactorConfigDto
         {
             Id = entity.Id,
             ProcessGroupId = entity.ProcessGroupId,
-            ProcessGroupCode = entity.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = entity.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             ProcessGroupName = entity.ProcessGroup?.Name ?? string.Empty,
             AkDiffOperator = entity.AkDiffOperator,
             AkDiffValue = entity.AkDiffValue,

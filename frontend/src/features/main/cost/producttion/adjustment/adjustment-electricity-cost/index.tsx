@@ -103,7 +103,7 @@ export function AdjustmentElectricityCost({
 				<AccordionContent className='p-0 px-2 pt-2'>
 					<DataTable
 						columns={getAdjustmentElectricityCostColumns(
-							adjustment?.processGroupType,
+							adjustment?.fixedKeyType,
 						)}
 						items={adjustmentElectricityCost?.costs}
 						compact={true}

@@ -21,7 +21,7 @@ public class GetLowValuePerishableSupplyUnitPriceByIdQueryHandler(IUnitOfWork un
         Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice entity = await _repository.GetFirstOrDefaultAsync(
             predicate: e => e.Id == request.Id && e.Type == request.Type,
             include: e => e.Include(x => x.Department).ThenInclude(d => d!.Code)
-                .Include(x => x.ProcessGroup).ThenInclude(pg => pg!.Code),
+                .Include(x => x.ProcessGroup).ThenInclude(pg => pg!.FixedKey),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.LowValuePerishableSupplyUnitPriceNotFound);
 
         return new LowValuePerishableSupplyUnitPriceDto
@@ -31,7 +31,7 @@ public class GetLowValuePerishableSupplyUnitPriceByIdQueryHandler(IUnitOfWork un
             DepartmentCode = entity.Department?.Code?.Value ?? string.Empty,
             DepartmentName = entity.Department?.Name ?? string.Empty,
             ProcessGroupId = entity.ProcessGroupId,
-            ProcessGroupCode = entity.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = entity.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             ProcessGroupName = entity.ProcessGroup?.Name ?? string.Empty,
             StartMonth = entity.StartMonth,
             EndMonth = entity.EndMonth,

@@ -63,14 +63,14 @@ export function PlanedMaintainCost({
 					total += totalPrice;
 				});
 				const trimmingCoefficient =
-					plan?.processGroupType === ProcessGroupType.XL
+					plan?.fixedKeyType === ProcessGroupType.XL
 						? res.result.trimmingCoefficient || 1
 						: 1;
 				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
 				setPlannedMaintainPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
-	}, [id, reloadKey, output?.productionMeters, plan?.processGroupType]);
+	}, [id, reloadKey, output?.productionMeters, plan?.fixedKeyType]);
 
 	return (
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>
@@ -156,7 +156,7 @@ export function PlanedMaintainCost({
 				{id && isOpen && (
 					<DataTable
 						columns={getPlanedMaintainCostColumns(
-							plan?.processGroupType as ProcessGroupType | undefined,
+							plan?.fixedKeyType as ProcessGroupType | undefined,
 						)}
 						items={planedMaintainCost?.costs}
 						compact={true}

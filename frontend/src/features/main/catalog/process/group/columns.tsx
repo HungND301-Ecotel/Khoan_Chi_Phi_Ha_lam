@@ -3,9 +3,11 @@ import { ProcessGroupType } from '@/constants/process-group';
 
 export type ProcessGroup = {
 	id: string;
+	fixedKeyId?: string | null;
 	code: string;
 	name: string;
-	type: ProcessGroupType;
+	fixedKeyType: ProcessGroupType;
+	type?: ProcessGroupType;
 };
 
 export const CATALOG_PROCESS_GROUP_COLUMNS: ColumnDef<ProcessGroup>[] = [

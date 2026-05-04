@@ -12,6 +12,8 @@ using Application.Catalog.Index.Department.Commands;
 using Application.Catalog.Index.Department.Queries;
 using Application.Catalog.Index.Equipments.Commands;
 using Application.Catalog.Index.Equipments.Queries;
+using Application.Catalog.Index.FixedKeys.Commands;
+using Application.Catalog.Index.FixedKeys.Queries;
 using Application.Catalog.Index.LongwallParameters.Commands;
 using Application.Catalog.Index.LongwallParameters.Queries;
 using Application.Catalog.Index.Material.Commands;
@@ -45,6 +47,7 @@ using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.Department;
 using Application.Dto.Catalog.Equipment;
+using Application.Dto.Catalog.FixedKey;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
 using Application.Dto.Catalog.Metric;
@@ -620,7 +623,7 @@ public class CatalogController : BaseNoAuthController
 
     [HttpPut("ProcessGroup")]
     [OpenApiOperation("Update ProcessGroup", "")]
-    public async Task<IActionResult> UpdateProcessGroup([FromBody] ProcessGroupDto updateModel)
+    public async Task<IActionResult> UpdateProcessGroup([FromBody] UpdateProcessGroupDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProcessGroupCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);

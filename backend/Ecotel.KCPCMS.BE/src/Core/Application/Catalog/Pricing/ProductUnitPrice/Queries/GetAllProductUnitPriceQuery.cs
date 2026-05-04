@@ -63,9 +63,13 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductName = m.Product!.Name,
                 ProductCode = m.Product.Code.Value,
                 ProcessGroupId = m.Product.ProcessGroupId,
-                ProcessGroupCode = m.Product.ProcessGroup!.Code.Value,
+                ProcessGroupCode = m.Product.ProcessGroup!.FixedKey != null
+                    ? m.Product.ProcessGroup.FixedKey.Key
+                    : string.Empty,
                 ProcessGroupName = m.Product.ProcessGroup.Name,
-                ProcessGroupType = m.Product.ProcessGroup!.Type,
+                ProcessGroupType = m.Product.ProcessGroup!.FixedKey != null
+                    ? m.Product.ProcessGroup.FixedKey.Type
+                    : ProcessGroupType.None,
                 UnitOfMeasureId = m.UnitOfMeasureId,
                 UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : null,
                 DepartmentId = m.DepartmentId,
@@ -118,7 +122,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     o.PlanAshContent,
                     ProductId = o.ProductUnitPrice!.ProductId,
                     DepartmentId = o.ProductUnitPrice.DepartmentId,
-                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.Type,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type
+                        : ProcessGroupType.None,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                     PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -157,7 +163,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     EndMonth = o.EndMonth,
                     ProductionMeters = o.ProductionMeters,
                     PlanAshContent = o.PlanAshContent,
-                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.Type,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type
+                        : ProcessGroupType.None,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                     PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null

@@ -278,6 +278,13 @@ export const API = {
 			EXPORT: '/v1/catalog/normfactor/export',
 		},
 	},
+	SYSTEM: {
+		FIXED_KEY: {
+			LIST: '/v1/system/fixedkey',
+			UPDATE: '/v1/system/fixedkey',
+			DETAIL: (id: string) => `/v1/system/fixedkey/${id}`,
+		},
+	},
 
 	DASHBOARD: {
 		COST_SUMMARY: '/v1/dashboard/cost-summary',

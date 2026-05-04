@@ -25,6 +25,11 @@ public class ApplicationDbContext(
         events,
         cacheService)
 {
+    private static readonly DateTimeOffset FixedKeySeedTimestamp = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    private static readonly Guid FixedKeyTunnelingId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid FixedKeyLongwallId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid FixedKeyRoadwaySlashingId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
     // Identity DbSets
 
     #region Index
@@ -41,6 +46,7 @@ public class ApplicationDbContext(
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Part> Parts => Set<Part>();
     public DbSet<Department> Departments => Set<Department>();
+    public DbSet<FixedKey> FixedKeys => Set<FixedKey>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
     public DbSet<ProductionProcess> ProductionProcesses => Set<ProductionProcess>();
@@ -124,6 +130,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
         modelBuilder.Entity<Part>().ToTable(nameof(Part), "Index");
         modelBuilder.Entity<Department>().ToTable(nameof(Department), "Index");
+        modelBuilder.Entity<FixedKey>().ToTable(nameof(FixedKey), "Index");
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
         modelBuilder.Entity<ProcessGroup>().ToTable(nameof(ProcessGroup), "Index");
         modelBuilder.Entity<ProductionProcess>().ToTable(nameof(ProductionProcess), "Index");
@@ -314,6 +321,55 @@ public class ApplicationDbContext(
                 ));
 
 
+        // Fixed Key table
+        modelBuilder.Entity<FixedKey>()
+            .Property(x => x.Key)
+            .HasMaxLength(50);
+        modelBuilder.Entity<FixedKey>()
+            .HasIndex(x => x.Key)
+            .IsUnique();
+        modelBuilder.Entity<FixedKey>()
+            .HasData(
+                new
+                {
+                    Id = FixedKeyTunnelingId,
+                    Key = "DL",
+                    Name = "Đào lò",
+                    Type = ProcessGroupType.DL,
+                    CreatedBy = 0L,
+                    CreatedOn = FixedKeySeedTimestamp,
+                    LastModifiedBy = 0L,
+                    LastModifiedOn = FixedKeySeedTimestamp,
+                    DeletedBy = (long?)null,
+                    DeletedOn = (DateTimeOffset?)null,
+                },
+                new
+                {
+                    Id = FixedKeyLongwallId,
+                    Key = "LC",
+                    Name = "Lò chợ",
+                    Type = ProcessGroupType.LC,
+                    CreatedBy = 0L,
+                    CreatedOn = FixedKeySeedTimestamp,
+                    LastModifiedBy = 0L,
+                    LastModifiedOn = FixedKeySeedTimestamp,
+                    DeletedBy = (long?)null,
+                    DeletedOn = (DateTimeOffset?)null,
+                },
+                new
+                {
+                    Id = FixedKeyRoadwaySlashingId,
+                    Key = "XL",
+                    Name = "Xén lò",
+                    Type = ProcessGroupType.XL,
+                    CreatedBy = 0L,
+                    CreatedOn = FixedKeySeedTimestamp,
+                    LastModifiedBy = 0L,
+                    LastModifiedOn = FixedKeySeedTimestamp,
+                    DeletedBy = (long?)null,
+                    DeletedOn = (DateTimeOffset?)null,
+                });
+
         // Process Group table
         modelBuilder.Entity<ProcessGroup>()
             .HasMany(s => s.ProductionProcesses)
@@ -328,6 +384,11 @@ public class ApplicationDbContext(
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey<ProcessGroup>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProcessGroup>()
+            .HasOne(s => s.FixedKey)
+            .WithMany(h => h.ProcessGroups)
+            .HasForeignKey(s => s.FixedKeyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<AkFactorConfig>()
             .HasOne(x => x.ProcessGroup)

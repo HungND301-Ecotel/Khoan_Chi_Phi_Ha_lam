@@ -59,14 +59,14 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             ProcessGroupId = item.ProcessGroupId,
-            ProcessGroupCode = item.ProcessGroup?.Code?.Value,
+            ProcessGroupCode = item.ProcessGroup?.FixedKey?.Key,
             ProcessGroupName = item.ProcessGroup?.Name,
             MaterialsIncludedInContractRevenueQuantity = item.MaterialsIncludedInContractRevenueQuantity,
             CategoryAllocations = item.CategoryAllocations
                 .Select(allocation => new AcceptanceReportCategoryAllocationDetailDto
                 {
                     ProcessGroupId = allocation.ProcessGroupId,
-                    ProcessGroupCode = allocation.ProcessGroup?.Code?.Value,
+                    ProcessGroupCode = allocation.ProcessGroup?.FixedKey?.Key,
                     ProcessGroupName = allocation.ProcessGroup?.Name,
                     Quantity = allocation.Quantity,
                     EquipmentIds = allocation.Equipments
