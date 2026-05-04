@@ -9,6 +9,9 @@ public class AdjustmentFactorDto : IDto
 {
     public Guid Id { get; set; }
     public string Code { get; set; }
+    public Guid? FixedKeyId { get; set; }
+    public string FixedKeyKey { get; set; }
+    public FixedKeyType FixedKeyType { get; set; }
     public string Name { get; set; }
     public AdjustmentFactorType Type { get; set; }
     public Guid ProcessGroupId { get; set; }
@@ -32,6 +35,9 @@ public class AdjustmentFactorDetailDto
 {
     public Guid Id { get; set; }
     public string Code { get; set; }
+    public Guid? FixedKeyId { get; set; }
+    public string FixedKeyKey { get; set; }
+    public FixedKeyType FixedKeyType { get; set; }
     public string Name { get; set; }
     public AdjustmentFactorType Type { get; set; }
     public Guid ProcessGroupId { get; set; }
@@ -42,14 +48,14 @@ public class AdjustmentFactorDetailDto
 public class UpdateAdjustmentFactorDto
 {
     public Guid Id { get; set; }
-    public string Code { get; set; }
+    public Guid FixedKeyId { get; set; }
     public string Name { get; set; }
     public Guid ProcessGroupId { get; set; }
 }
 
 public class CreateAdjustmentFactorDto
 {
-    public string Code { get; set; }
+    public Guid FixedKeyId { get; set; }
     public string Name { get; set; }
     public Guid ProcessGroupId { get; set; }
 }

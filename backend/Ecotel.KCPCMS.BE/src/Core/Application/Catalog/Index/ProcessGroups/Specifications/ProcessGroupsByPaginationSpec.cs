@@ -3,6 +3,7 @@ using Application.Common.Models;
 using Application.Common.Specification;
 using Application.Dto.Catalog.ProcessGroup;
 using Ardalis.Specification;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 
 namespace Application.Catalog.Index.ProcessGroups.Specifications;
@@ -25,7 +26,7 @@ public class ProcessGroupsByPaginationSpec : EntitiesByPaginationFilterSpec<Proc
             Id = pg.Id,
             FixedKeyId = pg.FixedKeyId,
             Code = pg.FixedKey != null ? pg.FixedKey.Key : pg.Code.Value,
-            Type = pg.FixedKey != null ? pg.FixedKey.Type : pg.Type,
+            Type = pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type,
             Name = pg.Name,
         });
     }

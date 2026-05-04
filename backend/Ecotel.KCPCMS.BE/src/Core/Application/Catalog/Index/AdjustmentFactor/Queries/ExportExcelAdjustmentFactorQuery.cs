@@ -2,6 +2,7 @@
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,7 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
 
         var list = await _adjustmentFactorRepository.GetAllAsync(
             include: s => s
+                .Include(s => s.FixedKey)
                 .Include(s => s.ProcessGroup).ThenInclude(s => s.FixedKey)
                 .Include(s => s.Code!),
             disableTracking: true);
@@ -38,8 +40,8 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
         var dtoList = list.Select(s => new AdjustmentFactorExcelDto
         {
             Id = s.Id,
-            Type = (int)s.Type,
-            Code = s.Code?.Value ?? "",
+            Type = (int)(s.FixedKey?.Type ?? FixedKeyType.None),
+            Code = s.FixedKey?.Key ?? s.Code?.Value ?? "",
             Name = s.Name,
             ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
         });

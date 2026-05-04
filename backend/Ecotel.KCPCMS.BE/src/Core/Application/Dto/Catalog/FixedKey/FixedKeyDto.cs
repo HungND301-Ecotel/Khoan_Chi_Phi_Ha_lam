@@ -9,7 +9,7 @@ public class FixedKeyDto : IDto
     public Guid Id { get; set; }
     public string Key { get; set; }
     public string Name { get; set; }
-    public ProcessGroupType Type { get; set; }
+    public FixedKeyType Type { get; set; }
 }
 
 public class FixedKeyExcelDto
@@ -23,12 +23,12 @@ public class FixedKeyExcelDto
     public string Name { get; set; }
 
     [Display(Name = "Loại nghiệp vụ")]
-    public ProcessGroupType Type { get; set; }
+    public FixedKeyType Type { get; set; }
 }
 
 public class CreateFixedKeyDto
 {
     public string Key { get; set; }
     public string Name { get; set; }
-    public ProcessGroupType Type { get; set; }
+    public FixedKeyType Type { get; set; }
 }

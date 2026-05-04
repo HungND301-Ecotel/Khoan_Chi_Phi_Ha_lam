@@ -86,9 +86,9 @@ public class AkFactorConfig : AuditableEntity<Guid>, IAggregateRoot
         return ParseAdjustmentRate(input).HasValue;
     }
 
-    public static bool SupportsProcessGroupType(ProcessGroupType processGroupType)
+    public static bool SupportsProcessGroupType(FixedKeyType processGroupType)
     {
-        return processGroupType != ProcessGroupType.None;
+        return processGroupType != FixedKeyType.None;
     }
 
     public static decimal ResolveRate(IEnumerable<AkFactorConfig> configs, decimal akDiff)

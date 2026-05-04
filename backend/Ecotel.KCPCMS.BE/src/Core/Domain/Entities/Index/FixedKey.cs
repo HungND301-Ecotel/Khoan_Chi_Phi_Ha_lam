@@ -8,12 +8,15 @@ public class FixedKey : AuditableEntity<Guid>, IAggregateRoot
 {
     public string Key { get; protected set; }
     public string Name { get; protected set; }
-    public ProcessGroupType Type { get; protected set; }
+    public FixedKeyType Type { get; protected set; }
 
     private IList<ProcessGroup> _processGroups = new List<ProcessGroup>();
     public virtual IReadOnlyCollection<ProcessGroup> ProcessGroups => _processGroups.AsReadOnly();
 
-    public static FixedKey Create(string key, string name, ProcessGroupType type)
+    private IList<AdjustmentFactor> _adjustmentFactors = new List<AdjustmentFactor>();
+    public virtual IReadOnlyCollection<AdjustmentFactor> AdjustmentFactors => _adjustmentFactors.AsReadOnly();
+
+    public static FixedKey Create(string key, string name, FixedKeyType type)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -33,14 +36,14 @@ public class FixedKey : AuditableEntity<Guid>, IAggregateRoot
         };
     }
 
-    public static FixedKey Create(Guid id, string key, string name, ProcessGroupType type)
+    public static FixedKey Create(Guid id, string key, string name, FixedKeyType type)
     {
         var fixedKey = Create(key, name, type);
         fixedKey.Id = id;
         return fixedKey;
     }
 
-    public void Update(string key, string name, ProcessGroupType type)
+    public void Update(string key, string name, FixedKeyType type)
     {
         if (string.IsNullOrWhiteSpace(key))
         {

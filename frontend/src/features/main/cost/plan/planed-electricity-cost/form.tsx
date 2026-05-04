@@ -96,11 +96,15 @@ export function PlanElectricityCostForm({
 				plan?.fixedKeyType === ProcessGroupType.XL
 			) {
 				filteredAdjustments = adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
 					.slice(0, 3);
 			} else if (plan?.fixedKeyType === ProcessGroupType.LC) {
 				filteredAdjustments = adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
 					.slice(0, 1);
 			}
 

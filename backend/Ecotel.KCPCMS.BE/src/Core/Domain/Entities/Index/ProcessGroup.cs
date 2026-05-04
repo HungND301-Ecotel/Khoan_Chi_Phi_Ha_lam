@@ -87,9 +87,8 @@ namespace Domain.Entities.Index
             {
                 Code = new Code(fixedKey.Key),
                 FixedKeyId = fixedKey.Id,
-                FixedKey = fixedKey,
                 Name = name,
-                Type = fixedKey.Type,
+                Type = fixedKey.Type.ToProcessGroupType(),
             };
         }
 
@@ -132,9 +131,8 @@ namespace Domain.Entities.Index
             }
 
             FixedKeyId = fixedKey.Id;
-            FixedKey = fixedKey;
             Name = name;
-            Type = fixedKey.Type;
+            Type = fixedKey.Type.ToProcessGroupType();
         }
 
         public bool CheckChange(ProcessGroup dto)

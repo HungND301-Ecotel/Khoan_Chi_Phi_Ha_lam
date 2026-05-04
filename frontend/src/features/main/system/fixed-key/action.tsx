@@ -9,7 +9,7 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
 	FixedKey,
-	PROCESS_GROUP_TYPE_OPTIONS,
+	FIXED_KEY_TYPE_OPTIONS,
 } from '@/features/main/system/fixed-key/columns';
 import {
 	FIXED_KEY_SCHEMA_DEFAULT,
@@ -83,7 +83,7 @@ export function FixedKeyForm({ data, row }: ActionDialogProps<FixedKey>) {
 				name='type'
 				label='Loại nghiệp vụ'
 				placeholder='Chọn loại nghiệp vụ'
-				options={PROCESS_GROUP_TYPE_OPTIONS}
+				options={FIXED_KEY_TYPE_OPTIONS}
 				disabled
 			/>
 

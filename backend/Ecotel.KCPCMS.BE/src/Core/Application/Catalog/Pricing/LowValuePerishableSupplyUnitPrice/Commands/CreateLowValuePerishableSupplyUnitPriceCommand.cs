@@ -96,7 +96,7 @@ public class CreateLowValuePerishableSupplyUnitPriceCommandHandler(
             _ => ProcessGroupType.None,
         };
 
-        var actualType = processGroup.FixedKey?.Type ?? ProcessGroupType.None;
+        var actualType = processGroup.FixedKey?.Type.ToProcessGroupType() ?? ProcessGroupType.None;
 
         if (actualType != expectedType)
         {

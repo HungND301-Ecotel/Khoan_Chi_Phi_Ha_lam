@@ -61,7 +61,7 @@ export function MainCatalogAdjustmentFactorPage() {
 			url={API.CATALOG.ADJUSTMENT.FACTOR.LIST}
 			columns={CATALOG_ADJUSTMENT_FACTOR_COLUMNS}
 			filters={[
-				{ key: 'code', label: 'Mã hệ số điều chỉnh' },
+				{ key: 'fixedKeyKey', label: 'Khóa cấu hình' },
 				{ key: 'name', label: 'Tên hệ số điều chỉnh' },
 			]}
 			onCreate={(props) => <FactorForm {...props} />}

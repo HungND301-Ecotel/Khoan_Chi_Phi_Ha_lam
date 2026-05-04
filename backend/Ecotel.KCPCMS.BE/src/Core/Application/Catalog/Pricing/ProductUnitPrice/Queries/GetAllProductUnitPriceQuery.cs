@@ -68,7 +68,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     : string.Empty,
                 ProcessGroupName = m.Product.ProcessGroup.Name,
                 ProcessGroupType = m.Product.ProcessGroup!.FixedKey != null
-                    ? m.Product.ProcessGroup.FixedKey.Type
+                    ? m.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
                     : ProcessGroupType.None,
                 UnitOfMeasureId = m.UnitOfMeasureId,
                 UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : null,
@@ -123,7 +123,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     ProductId = o.ProductUnitPrice!.ProductId,
                     DepartmentId = o.ProductUnitPrice.DepartmentId,
                     ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
-                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
                         : ProcessGroupType.None,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
@@ -164,7 +164,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     ProductionMeters = o.ProductionMeters,
                     PlanAshContent = o.PlanAshContent,
                     ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
-                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
                         : ProcessGroupType.None,
                     PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                     PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,

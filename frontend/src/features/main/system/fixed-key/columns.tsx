@@ -1,11 +1,16 @@
 import { ColumnDef } from '@tanstack/react-table';
+import {
+	ADJUSTMENT_FACTOR_TYPE_LABELS,
+	ADJUSTMENT_FACTOR_TYPE_OPTIONS,
+	isAdjustmentFactorFixedKey,
+} from '@/constants/adjustment-factor-type';
 import { ProcessGroupType } from '@/constants/process-group';
 
 export type FixedKey = {
 	id: string;
 	key: string;
 	name: string;
-	type: ProcessGroupType;
+	type: number;
 };
 
 const PROCESS_GROUP_TYPE_LABELS: Record<ProcessGroupType, string> = {
@@ -15,10 +20,21 @@ const PROCESS_GROUP_TYPE_LABELS: Record<ProcessGroupType, string> = {
 	[ProcessGroupType.XL]: 'Xén lò',
 };
 
+function getFixedKeyTypeLabel(fixedKey: FixedKey) {
+	if (isAdjustmentFactorFixedKey(fixedKey.key)) {
+		return ADJUSTMENT_FACTOR_TYPE_LABELS[fixedKey.type] ?? fixedKey.key;
+	}
+
+	return (
+		PROCESS_GROUP_TYPE_LABELS[fixedKey.type as ProcessGroupType] ??
+		String(fixedKey.type)
+	);
+}
+
 export const CATALOG_FIXED_KEY_COLUMNS: ColumnDef<FixedKey>[] = [
 	{
 		accessorKey: 'key',
-		header: 'Code',
+		header: 'Mã khóa cấu hình',
 	},
 	{
 		accessorKey: 'name',
@@ -27,12 +43,13 @@ export const CATALOG_FIXED_KEY_COLUMNS: ColumnDef<FixedKey>[] = [
 	{
 		accessorKey: 'type',
 		header: 'Loại nghiệp vụ',
-		cell: ({ row }) => PROCESS_GROUP_TYPE_LABELS[row.original.type],
+		cell: ({ row }) => getFixedKeyTypeLabel(row.original),
 	},
 ];
 
-export const PROCESS_GROUP_TYPE_OPTIONS = [
+export const FIXED_KEY_TYPE_OPTIONS = [
 	{ value: ProcessGroupType.DL, label: 'Đào lò' },
 	{ value: ProcessGroupType.LC, label: 'Lò chợ' },
 	{ value: ProcessGroupType.XL, label: 'Xén lò' },
+	...ADJUSTMENT_FACTOR_TYPE_OPTIONS,
 ];

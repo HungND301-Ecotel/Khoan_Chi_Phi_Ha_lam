@@ -29,7 +29,7 @@ public class CreateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
             throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
         }
 
-        ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? ProcessGroupType.None, request.CreateModel.AkDiffDisplay, request.CreateModel.AdjustmentRateDisplay);
+        ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? FixedKeyType.None, request.CreateModel.AkDiffDisplay, request.CreateModel.AdjustmentRateDisplay);
 
         var newAkFactorConfig = AkFactorConfigEntity.Create(
             request.CreateModel.ProcessGroupId,
@@ -43,7 +43,7 @@ public class CreateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
         return true;
     }
 
-    private static void ValidateAkFactorConfig(ProcessGroupType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay)
+    private static void ValidateAkFactorConfig(FixedKeyType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay)
     {
         if (!AkFactorConfigEntity.SupportsProcessGroupType(processGroupType))
         {

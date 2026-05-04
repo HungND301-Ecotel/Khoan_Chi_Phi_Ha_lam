@@ -2,6 +2,7 @@
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ProcessGroup;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public class GetProcessGroupByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestH
                 Id = t.Id,
                 FixedKeyId = t.FixedKeyId,
                 Code = t.FixedKey != null ? t.FixedKey.Key : t.Code != null ? t.Code.Value : string.Empty,
-                Type = t.FixedKey != null ? t.FixedKey.Type : t.Type,
+                Type = t.FixedKey != null ? t.FixedKey.Type.ToProcessGroupType() : t.Type,
                 Name = t.Name,
             })
             .FirstOrDefaultAsync(cancellationToken)

@@ -56,7 +56,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     : string.Empty,
                 ProcessGroupName = p.Product.ProcessGroup.Name,
                 ProcessGroupType = p.Product.ProcessGroup.FixedKey != null
-                    ? p.Product.ProcessGroup.FixedKey.Type
+                    ? p.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
                     : ProcessGroupType.None,
                 ProductionOutputId = p.ProductUnitPriceProductionOutputs.Select(po => po.ProductionOutputId).FirstOrDefault()
             })

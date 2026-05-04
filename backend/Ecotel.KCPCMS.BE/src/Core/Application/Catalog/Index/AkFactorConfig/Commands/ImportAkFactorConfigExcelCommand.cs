@@ -54,7 +54,7 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
                 throw new BadRequestException($"ProcessGroupCode khong hop le: {dto.Item.ProcessGroupCode}");
             }
 
-            ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? ProcessGroupType.None, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.RowNumber);
+            ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? FixedKeyType.None, dto.Item.AkDiffDisplay, dto.Item.AdjustmentRateDisplay, dto.RowNumber);
 
             if (dto.Item.Id != Guid.Empty && dbEntities.Any(x => x.Id == dto.Item.Id))
             {
@@ -97,7 +97,7 @@ public class ImportAkFactorConfigExcelCommandHandler(IExcelService excelService,
         }
     }
 
-    private static void ValidateAkFactorConfig(ProcessGroupType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay, int rowNumber)
+    private static void ValidateAkFactorConfig(FixedKeyType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay, int rowNumber)
     {
         if (!AkFactorConfigEntity.SupportsProcessGroupType(processGroupType))
         {

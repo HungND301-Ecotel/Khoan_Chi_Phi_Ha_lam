@@ -50,7 +50,7 @@ public class ImportLowValuePerishableSupplyUnitPriceExcelCommandHandler(
             : ProcessGroupType.LC;
 
         var processGroups = await _processGroupRepository.GetAllAsync(
-            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type : pg.Type) == processGroupType,
+            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type) == processGroupType,
             include: pg => pg.Include(x => x.Code).Include(x => x.FixedKey),
             disableTracking: true);
         Dictionary<string, ProcessGroup> processGroupMap = processGroups
