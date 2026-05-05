@@ -445,6 +445,7 @@ export function PlanMaintainCostForm({
 																description,
 																maintenanceAdjustmentValue,
 															),
+															sortValue: maintenanceAdjustmentValue,
 															value: id,
 														}),
 													)}

@@ -113,4 +113,5 @@ export type CostPlanAdjustmentDetail = {
 export type CostPlanAdjustmentOption = {
 	value: string;
 	label: string;
+	sortValue?: number | null;
 };

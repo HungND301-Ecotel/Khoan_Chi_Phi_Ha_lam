@@ -53,7 +53,7 @@ export function CostPlanAdjustmentFactorInput({
 }: CostPlanAdjustmentFactorInputProps) {
 	const [open, setOpen] = useState(false);
 	const customInputRef = useRef<HTMLInputElement | null>(null);
-	const previousIsCustomModeRef = useRef(false);
+	const shouldFocusCustomInputRef = useRef(false);
 	const currentValue: CostPlanAdjustmentSelection = value ?? {
 		adjustmentFactorDescriptionId: '',
 		adjustmentFactorId: '',
@@ -71,24 +71,50 @@ export function CostPlanAdjustmentFactorInput({
 			(option) => option.value === currentValue.adjustmentFactorDescriptionId,
 		)?.label;
 	}, [currentValue.adjustmentFactorDescriptionId, isCustomMode, options]);
+	const sortedOptions = useMemo(
+		() =>
+			[...options].sort((left, right) => {
+				const leftSortValue = left.sortValue;
+				const rightSortValue = right.sortValue;
+
+				if (leftSortValue === null || leftSortValue === undefined) {
+					if (rightSortValue === null || rightSortValue === undefined) {
+						return left.label.localeCompare(right.label);
+					}
+
+					return 1;
+				}
+
+				if (rightSortValue === null || rightSortValue === undefined) {
+					return -1;
+				}
+
+				if (leftSortValue !== rightSortValue) {
+					return leftSortValue - rightSortValue;
+				}
+
+				return left.label.localeCompare(right.label);
+			}),
+		[options],
+	);
 	const dropdownOptions = useMemo(
 		() => [
 			{ value: CUSTOM_OPTION_VALUE, label: CUSTOM_OPTION_LABEL },
-			...options,
+			...sortedOptions,
 		],
-		[options],
+		[sortedOptions],
 	);
 
 	useEffect(() => {
-		if (isCustomMode && !previousIsCustomModeRef.current) {
+		if (isCustomMode && shouldFocusCustomInputRef.current) {
 			customInputRef.current?.focus();
+			shouldFocusCustomInputRef.current = false;
 		}
-
-		previousIsCustomModeRef.current = isCustomMode;
 	}, [isCustomMode]);
 
 	const handleSelect = (selectedValue: string) => {
 		if (selectedValue === CUSTOM_OPTION_VALUE) {
+			shouldFocusCustomInputRef.current = true;
 			onChange({
 				adjustmentFactorDescriptionId: '',
 				adjustmentFactorId,
@@ -97,6 +123,8 @@ export function CostPlanAdjustmentFactorInput({
 			setOpen(false);
 			return;
 		}
+
+		shouldFocusCustomInputRef.current = false;
 
 		onChange({
 			adjustmentFactorDescriptionId: selectedValue,

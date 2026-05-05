@@ -416,6 +416,9 @@ export function PlanElectricityCostForm({
 															electricityAdjustmentValue ??
 																maintenanceAdjustmentValue,
 														),
+														sortValue:
+															electricityAdjustmentValue ??
+															maintenanceAdjustmentValue,
 														value: id,
 													}),
 												)}
