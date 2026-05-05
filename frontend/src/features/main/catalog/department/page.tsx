@@ -27,6 +27,32 @@ export function MainCatalogDepartmentPage() {
 		}
 	};
 
+	const handleExport = async () => {
+		try {
+			const filename = await api.export(API.CATALOG.DEPARTMENT.EXPORT);
+			popup.success(`Đã xuất file ${filename}`);
+		} catch (error) {
+			popup.error(error);
+		}
+	};
+
+	const handleImport = async (
+		file: File,
+		data?: ActionDialogProps<Department>['data'],
+	) => {
+		try {
+			const result = await api.import(API.CATALOG.DEPARTMENT.IMPORT, file);
+			if (typeof result === 'string') {
+				popup.success(`Đã tải về danh sách lỗi: ${result}`);
+			} else {
+				popup.success(`Nhập dữ liệu thành công`);
+				await data?.refresh();
+			}
+		} catch (error) {
+			popup.error(error);
+		}
+	};
+
 	return (
 		<DataTable
 			url={API.CATALOG.DEPARTMENT.LIST}
@@ -39,6 +65,8 @@ export function MainCatalogDepartmentPage() {
 			onDuplicate={(props) => <DepartmentForm {...props} isDuplicate />}
 			onUpdate={(props) => <DepartmentForm {...props} />}
 			onDelete={handleDelete}
+			onExport={handleExport}
+			onImport={handleImport}
 		/>
 	);
 }

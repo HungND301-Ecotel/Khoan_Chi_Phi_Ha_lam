@@ -220,6 +220,23 @@ public class CatalogController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("Department/export")]
+    [OpenApiOperation("Export Department", "")]
+    public async Task<IActionResult> ExportDepartment()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelDepartmentQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_vi.xlsx");
+        return result;
+    }
+
+    [HttpPost("Department/import")]
+    [OpenApiOperation("Import Department", "")]
+    public async Task<IActionResult> ImportDepartment([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportDepartmentExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
     [HttpGet("Department/{id:guid}")]
     [OpenApiOperation("Get Department By Id", "")]
     public async Task<IActionResult> GetDepartmentById([FromRoute] Guid id)

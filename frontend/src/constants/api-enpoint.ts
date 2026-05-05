@@ -17,6 +17,8 @@ export const API = {
 			DELETES: '/v1/catalog/department',
 			DELETE: (id: string) => `/v1/catalog/department/${id}`,
 			DETAIL: (id: string) => `/v1/catalog/department/${id}`,
+			IMPORT: '/v1/catalog/department/import',
+			EXPORT: '/v1/catalog/department/export',
 		},
 		PROCESS: {
 			GROUP: {
