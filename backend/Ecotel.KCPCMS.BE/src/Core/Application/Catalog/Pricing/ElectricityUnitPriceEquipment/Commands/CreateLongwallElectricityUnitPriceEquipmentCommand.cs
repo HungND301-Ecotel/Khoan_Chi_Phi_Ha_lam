@@ -3,6 +3,7 @@ using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
@@ -35,6 +36,7 @@ public class CreateLongwallElectricityUnitPriceEquipmentCommandHandler(
             var existed = await _electricityUnitPriceEquipmentRepository.GetFirstOrDefaultAsync(
                 predicate: e =>
                     e.EquipmentId == model.EquipmentId &&
+                    e.ElectricityType == ElectricityUnitPriceType.Longwall &&
                     e.StartMonth < model.EndMonth &&
                     e.EndMonth > model.StartMonth,
                 disableTracking: true);
