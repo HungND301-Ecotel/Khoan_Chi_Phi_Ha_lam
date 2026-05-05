@@ -377,7 +377,7 @@ export function MaterialImportDialog({
 					.map((group) => ({
 						value: group.id,
 						label: `${group.code} - ${group.name}`,
-						type: group.type,
+						type: group.fixedKeyType,
 					}));
 
 				setProcessGroupOptions(options);

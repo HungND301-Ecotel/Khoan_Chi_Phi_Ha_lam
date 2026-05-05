@@ -60,7 +60,7 @@ export function AdjustmentMaintainCost({
 					total += totalPrice;
 				});
 				const trimmingCoefficient =
-					adjustment?.processGroupType === ProcessGroupType.XL ? 1 : 1;
+					adjustment?.fixedKeyType === ProcessGroupType.XL ? 1 : 1;
 				setAdjustmentMaintainPrice(total * trimmingCoefficient);
 				setTotal(
 					multiplyByProductionMeters
@@ -73,7 +73,7 @@ export function AdjustmentMaintainCost({
 			.finally(() => setLoading(false));
 	}, [
 		id,
-		adjustment?.processGroupType,
+		adjustment?.fixedKeyType,
 		productionOutput?.productionMeters,
 		multiplyByProductionMeters,
 	]);
@@ -117,7 +117,7 @@ export function AdjustmentMaintainCost({
 				{id && isOpen && (
 					<DataTable
 						columns={getAdjustmentMaintainCostColumns(
-							adjustment?.processGroupType as ProcessGroupType | undefined,
+							adjustment?.fixedKeyType as ProcessGroupType | undefined,
 						)}
 						items={adjustmentMaintainCost?.costs}
 						compact={true}

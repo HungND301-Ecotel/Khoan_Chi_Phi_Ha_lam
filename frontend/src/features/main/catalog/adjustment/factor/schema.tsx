@@ -1,8 +1,8 @@
 import z from 'zod';
 
 export const factorSchema = z.object({
-	code: z.string().nonempty({
-		error: 'Mã hệ số điều chỉnh không được để trống.',
+	fixedKeyId: z.string().nonempty({
+		error: 'Khóa cấu hình không được để trống.',
 	}),
 	name: z.string().nonempty({
 		error: 'Tên hệ số điều chỉnh không được để trống.',
@@ -15,7 +15,7 @@ export const factorSchema = z.object({
 export type FactorSchema = z.infer<typeof factorSchema>;
 
 export const FACTOR_SCHEMA_DEFAULT: FactorSchema = {
-	code: '',
+	fixedKeyId: '',
 	name: '',
 	processGroupId: '',
 };

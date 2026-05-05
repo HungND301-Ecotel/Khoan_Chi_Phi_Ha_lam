@@ -22,7 +22,7 @@ import {
 } from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
-import { CostProduct } from '@/features/main/cost/plan/types';
+import { CostProduct, mapCostProduct } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -174,7 +174,7 @@ function DepartmentPlanMonthsTable({
 				query,
 			);
 			if (!mounted) return;
-			setProducts(response.result.data ?? []);
+			setProducts((response.result.data ?? []).map(mapCostProduct));
 		};
 
 		loadProducts();

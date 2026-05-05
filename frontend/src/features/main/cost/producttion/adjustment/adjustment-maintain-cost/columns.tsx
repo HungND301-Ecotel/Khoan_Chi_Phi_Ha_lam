@@ -34,12 +34,12 @@ export type AdjustmentMaintainCostItemDescription = {
 };
 
 export const getAdjustmentMaintainCostColumns = (
-	processGroupType?: ProcessGroupType,
+	fixedKeyType?: ProcessGroupType,
 ): ColumnDef<AdjustmentMaintainCostItem>[] => {
 	const getLength = () => {
 		if (
-			processGroupType === ProcessGroupType.DL ||
-			processGroupType === ProcessGroupType.XL
+			fixedKeyType === ProcessGroupType.DL ||
+			fixedKeyType === ProcessGroupType.XL
 		) {
 			return 7;
 		}
@@ -58,8 +58,7 @@ export const getAdjustmentMaintainCostColumns = (
 		{
 			accessorKey: 'maintainUnitPrice',
 			header: 'Đơn giá (đ)',
-			cell: ({ row }) =>
-				formatNumber(row.original.maintainUnitPrice),
+			cell: ({ row }) => formatNumber(row.original.maintainUnitPrice),
 		},
 		{
 			accessorKey: 'quantity',

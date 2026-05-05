@@ -50,12 +50,15 @@ public class ImportLowValuePerishableSupplyUnitPriceExcelCommandHandler(
             : ProcessGroupType.LC;
 
         var processGroups = await _processGroupRepository.GetAllAsync(
-            predicate: pg => pg.Type == processGroupType,
-            include: pg => pg.Include(x => x.Code),
+            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type) == processGroupType,
+            include: pg => pg.Include(x => x.Code).Include(x => x.FixedKey),
             disableTracking: true);
         Dictionary<string, ProcessGroup> processGroupMap = processGroups
-            .Where(pg => pg.Code != null)
-            .ToDictionary(pg => pg.Code!.Value.Trim(), pg => pg, StringComparer.OrdinalIgnoreCase);
+            .Where(pg => !string.IsNullOrWhiteSpace(pg.FixedKey != null ? pg.FixedKey.Key : pg.Code != null ? pg.Code.Value : null))
+            .ToDictionary(
+                pg => (pg.FixedKey != null ? pg.FixedKey.Key : pg.Code!.Value).Trim(),
+                pg => pg,
+                StringComparer.OrdinalIgnoreCase);
 
         List<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> excelEntities = [];
         foreach (var item in dtos.Select((dto, index) => new { dto, rowNumber = index + 2 }))

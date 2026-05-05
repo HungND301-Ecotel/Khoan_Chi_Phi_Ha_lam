@@ -1,11 +1,13 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
+import { FixedKey } from '@/features/main/system/fixed-key/columns';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import {
 	PROCESS_GROUP_SCHEMA_DEFAULT,
@@ -14,7 +16,7 @@ import {
 } from '@/features/main/catalog/process/group/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 export function ProcessGroupForm({
@@ -25,6 +27,7 @@ export function ProcessGroupForm({
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const [fixedKeys, setFixedKeys] = useState<FixedKey[]>([]);
 
 	const form = useForm<ProcessGroupSchema>({
 		resolver: zodResolver(processGroupSchema),
@@ -33,10 +36,23 @@ export function ProcessGroupForm({
 	});
 
 	useEffect(() => {
+		api
+			.pagging<FixedKey>(API.SYSTEM.FIXED_KEY.LIST, {
+				ignorePagination: true,
+			})
+			.then((res) => {
+				setFixedKeys(
+					[...res.result.data].sort((a, b) => a.key.localeCompare(b.key)),
+				);
+			})
+			.catch((error) => popup.error(error));
+	}, [popup]);
+
+	useEffect(() => {
 		if (row) {
 			form.reset({
 				name: row.name,
-				code: isDuplicate ? '' : row.code,
+				fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
 			});
 		}
 	}, [row, form, isDuplicate]);
@@ -65,11 +81,15 @@ export function ProcessGroupForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
+			<FormComboBox
 				control={form.control}
-				name='code'
-				label='Mã nhóm công đoạn sản xuất'
-				placeholder='Nhập mã nhóm công đoạn sản xuất, ví dụ: DL'
+				name='fixedKeyId'
+				label='Khóa cấu hình'
+				placeholder='Chọn khóa cấu hình'
+				options={fixedKeys.map((fixedKey) => ({
+					value: fixedKey.id,
+					label: `${fixedKey.key} - ${fixedKey.name}`,
+				}))}
 			/>
 
 			<FormInput

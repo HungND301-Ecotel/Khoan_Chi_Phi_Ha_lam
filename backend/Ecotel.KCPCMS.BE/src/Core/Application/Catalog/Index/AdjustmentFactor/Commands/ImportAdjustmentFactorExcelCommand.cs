@@ -19,6 +19,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
     private readonly IWriteRepository<AdjustmentFactorEntity> _adjustmentFactorRepository = unitOfWork.GetRepository<AdjustmentFactorEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
+    private readonly IWriteRepository<FixedKey> _fixedKeyRepository = unitOfWork.GetRepository<FixedKey>();
     public async Task<bool> Handle(ImportAdjustmentFactorExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -35,10 +36,16 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
         var processGroupIdMap = processGroups
             .Where(p => p.Code != null && !string.IsNullOrWhiteSpace(p.Code.Value))
             .ToDictionary(p => p.Code!.Value.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var fixedKeys = await _fixedKeyRepository.GetAllAsync(
+            predicate: fk => fk.Type >= FixedKeyType.K1 && fk.Type <= FixedKeyType.K8,
+            disableTracking: true);
+        var fixedKeyMap = fixedKeys
+            .Where(fk => !string.IsNullOrWhiteSpace(fk.Key))
+            .ToDictionary(fk => fk.Key.Trim(), fk => fk, StringComparer.OrdinalIgnoreCase);
 
         var errors = new List<string>();
         var excelRows = new List<ImportRow>();
-        var duplicateChecker = new Dictionary<(Guid ProcessGroupId, string Code), int>();
+        var duplicateChecker = new Dictionary<(Guid ProcessGroupId, Guid FixedKeyId), int>();
 
         for (var i = 0; i < dtos.Count; i++)
         {
@@ -52,24 +59,28 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
                 continue;
             }
 
-            var normalizedCode = dto.Code?.Trim().ToUpperInvariant() ?? string.Empty;
-            var duplicateKey = (processGroupId, normalizedCode);
-            if (!string.IsNullOrWhiteSpace(normalizedCode))
+            var fixedKeyCode = dto.Code?.Trim().ToUpperInvariant() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(fixedKeyCode) || !fixedKeyMap.TryGetValue(fixedKeyCode, out var fixedKey))
             {
-                if (duplicateChecker.TryGetValue(duplicateKey, out var firstRow))
-                {
-                    errors.Add($"Giá trị mã '{dto.Code}' bị trùng trong cùng nhóm công đoạn (dòng {firstRow} và dòng {rowNumber}).");
-                }
-                else
-                {
-                    duplicateChecker[duplicateKey] = rowNumber;
-                }
+                errors.Add($"Giá trị mã hệ số điều chỉnh '{dto.Code}' không tồn tại ở dòng {rowNumber}.");
+                continue;
+            }
+
+            var duplicateKey = (processGroupId, fixedKey.Id);
+            if (duplicateChecker.TryGetValue(duplicateKey, out var firstRow))
+            {
+                errors.Add($"Giá trị mã '{dto.Code}' bị trùng trong cùng nhóm công đoạn (dòng {firstRow} và dòng {rowNumber}).");
+            }
+            else
+            {
+                duplicateChecker[duplicateKey] = rowNumber;
             }
 
             excelRows.Add(new ImportRow
             {
                 Dto = dto,
                 ProcessGroupId = processGroupId,
+                FixedKey = fixedKey,
                 RowNumber = rowNumber
             });
         }
@@ -95,60 +106,61 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
             var row = excelRows[i];
             var dto = row.Dto;
             var rowNumber = row.RowNumber;
-            AdjustmentFactorEntity parsedEntity;
 
-            try
+            if (dto.Id != Guid.Empty && dbAdjustmentFactor.Any(x => x.Id == dto.Id))
             {
-                parsedEntity = AdjustmentFactorEntity.Create(dto.Id, (AdjustmentFactorType)dto.Type, dto.Code, dto.Name, row.ProcessGroupId);
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"Dòng {rowNumber}: {ex.Message}");
-                continue;
-            }
+                var entityToUpdate = dbAdjustmentFactor.First(x => x.Id == dto.Id);
+                var isChanged = entityToUpdate.ProcessGroupId != row.ProcessGroupId
+                                || entityToUpdate.FixedKeyId != row.FixedKey.Id
+                                || !string.Equals(entityToUpdate.Name, dto.Name, StringComparison.Ordinal)
+                                || !string.Equals(entityToUpdate.Code?.Value, row.FixedKey.Key, StringComparison.OrdinalIgnoreCase);
 
-            if (parsedEntity.Id != Guid.Empty && dbAdjustmentFactor.Any(x => x.Id == parsedEntity.Id))
-            {
-                var entityToUpdate = dbAdjustmentFactor.First(x => x.Id == parsedEntity.Id);
-
-                if (entityToUpdate.CheckChange(parsedEntity))
+                if (isChanged)
                 {
                     var isCodeDuplicatedInDb = dbAdjustmentFactor.Any(x =>
                         x.Id != entityToUpdate.Id
                         && !deleteIdSet.Contains(x.Id)
-                        && x.ProcessGroupId == parsedEntity.ProcessGroupId
-                        && x.Code != null
-                        && string.Equals(x.Code.Value, parsedEntity.Code?.Value, StringComparison.OrdinalIgnoreCase));
+                        && x.ProcessGroupId == row.ProcessGroupId
+                        && x.FixedKeyId == row.FixedKey.Id);
 
                     if (isCodeDuplicatedInDb)
                     {
-                        errors.Add($"Giá trị mã '{parsedEntity.Code?.Value}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
+                        errors.Add($"Giá trị mã '{row.FixedKey.Key}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
                         continue;
                     }
 
-                    entityToUpdate.Update(parsedEntity.Code?.Value ?? "", parsedEntity.Type, parsedEntity.Name, parsedEntity.ProcessGroupId);
-                    updateList.Add(entityToUpdate);
+                    try
+                    {
+                        entityToUpdate.Update(row.FixedKey, dto.Name, row.ProcessGroupId);
+                        updateList.Add(entityToUpdate);
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Dòng {rowNumber}: {ex.Message}");
+                    }
                 }
             }
             else
             {
                 var isCodeDuplicatedInDb = dbAdjustmentFactor.Any(x =>
                     !deleteIdSet.Contains(x.Id)
-                    && x.ProcessGroupId == parsedEntity.ProcessGroupId
-                    && x.Code != null
-                    && string.Equals(x.Code.Value, parsedEntity.Code?.Value, StringComparison.OrdinalIgnoreCase));
+                    && x.ProcessGroupId == row.ProcessGroupId
+                    && x.FixedKeyId == row.FixedKey.Id);
 
                 if (isCodeDuplicatedInDb)
                 {
-                    errors.Add($"Giá trị mã '{parsedEntity.Code?.Value}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
+                    errors.Add($"Giá trị mã '{row.FixedKey.Key}' đã tồn tại trong cùng nhóm công đoạn ở dòng {rowNumber}.");
                     continue;
                 }
 
-                addList.Add(AdjustmentFactorEntity.Create(
-                    parsedEntity.Code?.Value ?? "",
-                    parsedEntity.Type,
-                    parsedEntity.Name,
-                    parsedEntity.ProcessGroupId));
+                try
+                {
+                    addList.Add(AdjustmentFactorEntity.Create(row.FixedKey, dto.Name, row.ProcessGroupId));
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Dòng {rowNumber}: {ex.Message}");
+                }
             }
         }
 
@@ -192,6 +204,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
     {
         public AdjustmentFactorExcelDto Dto { get; set; } = default!;
         public Guid ProcessGroupId { get; set; }
+        public FixedKey FixedKey { get; set; } = default!;
         public int RowNumber { get; set; }
     }
 

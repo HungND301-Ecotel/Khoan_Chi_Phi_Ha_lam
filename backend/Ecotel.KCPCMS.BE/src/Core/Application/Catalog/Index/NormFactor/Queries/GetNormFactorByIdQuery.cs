@@ -48,7 +48,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
         {
             Id = normFactor.Id,
             ProcessGroupId = normFactor.ProductionProcess?.ProcessGroupId ?? Guid.Empty,
-            ProcessGroupCode = normFactor.ProductionProcess?.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = normFactor.ProductionProcess?.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             ProcessGroupName = normFactor.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
             ProductionProcessId = normFactor.ProductionProcessId,
             ProductionProcessCode = normFactor.ProductionProcess?.Code?.Value ?? string.Empty,

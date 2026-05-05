@@ -30,7 +30,7 @@ public class GetAllAdjustmentFactorQueryHandler(IPaginationService paginationSer
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.Name).ToList();
+        result.Data = result.Data.OrderByCodeNatural(d => d.FixedKeyKey ?? d.Code).ThenBy(d => d.Name).ToList();
         return result;
     }
 }

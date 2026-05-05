@@ -395,9 +395,9 @@ export function ElectricityAndMaintainanceReportPage() {
 											.join(' - ') || 'Chưa phân nhóm',
 									productName: item.productName,
 									productUnitLabel:
-										item.processGroupType === 1
+										item.fixedKeyType === 1
 											? 'Mét'
-											: item.processGroupType === 2
+											: item.fixedKeyType === 2
 												? 'Tấn'
 												: '',
 									productionMeters,

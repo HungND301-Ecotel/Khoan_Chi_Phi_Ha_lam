@@ -8,6 +8,7 @@ import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
@@ -30,11 +31,11 @@ import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 
 function isK6Adjustment(adjustment: AdjustmentDetail) {
 	return (
-		adjustment.type === AdjustmentFactorType.K6 || adjustment.code === 'K6'
+		adjustment.fixedKeyKey === 'K6' ||
+		adjustment.fixedKeyType === AdjustmentFactorType.K6
 	);
 }
 
@@ -78,12 +79,12 @@ export function PlanMaintainCostForm({
 	const watchedMaintainUnitPriceIds = form.watch('maintainUnitPriceIds');
 	const watchedCosts = form.watch('costs');
 	const maintainAdjustmentCount =
-		plan?.processGroupType === ProcessGroupType.DL ||
-		plan?.processGroupType === ProcessGroupType.XL
+		plan?.fixedKeyType === ProcessGroupType.DL ||
+		plan?.fixedKeyType === ProcessGroupType.XL
 			? 7
 			: 8;
 	const filteredTunnelings = useMemo(() => {
-		const currentProcessGroupType = plan?.processGroupType as
+		const currentProcessGroupType = plan?.fixedKeyType as
 			| ProcessGroupType
 			| undefined;
 
@@ -102,7 +103,7 @@ export function PlanMaintainCostForm({
 			(item) =>
 				item.type === maintainTypeByProcessGroup[currentProcessGroupType],
 		);
-	}, [tunnelings, plan?.processGroupType]);
+	}, [tunnelings, plan?.fixedKeyType]);
 	const selectableAdjustments = useMemo(
 		() => adjustments.filter((adj) => !isK6Adjustment(adj)),
 		[adjustments],
@@ -120,7 +121,9 @@ export function PlanMaintainCostForm({
 			setTunnelings(tunnelings.result.data);
 			setAdjustments(
 				adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
 					.slice(0, maintainAdjustmentCount),
 			);
 
@@ -144,7 +147,11 @@ export function PlanMaintainCostForm({
 								adjustmentFactorDescriptions,
 							}) => {
 								const sortedAdjustments = adjustments.result
-									.sort((a, b) => a.code.localeCompare(b.code))
+									.sort((a, b) =>
+										(a.fixedKeyKey ?? a.code).localeCompare(
+											b.fixedKeyKey ?? b.code,
+										),
+									)
 									.slice(0, maintainAdjustmentCount)
 									.filter((adj) => !isK6Adjustment(adj)); // Exclude K6
 
@@ -251,7 +258,7 @@ export function PlanMaintainCostForm({
 					),
 				})),
 				trimmingCoefficient:
-					plan?.processGroupType === ProcessGroupType.XL
+					plan?.fixedKeyType === ProcessGroupType.XL
 						? values.trimmingCoefficient / 100
 						: 1,
 			};
@@ -317,7 +324,7 @@ export function PlanMaintainCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
-			{plan?.processGroupType === ProcessGroupType.XL && (
+			{plan?.fixedKeyType === ProcessGroupType.XL && (
 				<FormNumber
 					control={form.control}
 					name='trimmingCoefficient'

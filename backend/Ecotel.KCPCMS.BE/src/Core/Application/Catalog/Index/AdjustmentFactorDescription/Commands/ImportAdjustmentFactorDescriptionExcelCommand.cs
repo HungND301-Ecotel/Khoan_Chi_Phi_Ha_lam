@@ -37,10 +37,10 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
         //    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var dbAdjustmentFactorMap = (await _adjustmentFactorRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code).Include(p => p.ProcessGroup).ThenInclude(pg => pg.Code),
+                include: p => p.Include(p => p.Code).Include(p => p.ProcessGroup).ThenInclude(pg => pg.FixedKey),
                 disableTracking: true))
             .Where(p => !string.IsNullOrWhiteSpace(p.Code?.Value))
-            .GroupBy(p => $"{p.ProcessGroup?.Code?.Value?.Trim()}|{p.Code!.Value.Trim()}", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(p => $"{p.ProcessGroup?.FixedKey?.Key?.Trim()}|{p.Code!.Value.Trim()}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < dtos.Count; i++)

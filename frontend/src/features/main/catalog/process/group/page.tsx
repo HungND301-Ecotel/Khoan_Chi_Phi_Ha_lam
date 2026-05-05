@@ -30,32 +30,6 @@ export default function MainCatalogProcessGroupPage() {
 		}
 	};
 
-	const handleExport = async () => {
-		try {
-			const filename = await api.export(API.CATALOG.PROCESS.GROUP.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
-		} catch (error) {
-			popup.error(error);
-		}
-	};
-
-	const handleImport = async (
-		file: File,
-		data?: ActionDialogProps<ProcessGroup>['data'],
-	) => {
-		try {
-			const result = await api.import(API.CATALOG.PROCESS.GROUP.IMPORT, file);
-			if (typeof result === 'string') {
-				popup.success(`Đã tải về danh sách lỗi: ${result}`);
-			} else {
-				popup.success(`Nhập dữ liệu thành công`);
-				await data?.refresh();
-			}
-		} catch (error) {
-			popup.error(error);
-		}
-	};
-
 	return (
 		<DataTable
 			url={API.CATALOG.PROCESS.GROUP.LIST}
@@ -68,8 +42,6 @@ export default function MainCatalogProcessGroupPage() {
 			onDuplicate={(props) => <ProcessGroupForm {...props} isDuplicate />}
 			onUpdate={(props) => <ProcessGroupForm {...props} />}
 			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
 		/>
 	);
 }

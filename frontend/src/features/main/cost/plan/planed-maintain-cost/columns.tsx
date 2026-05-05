@@ -35,12 +35,12 @@ export type PlanedMaintainCostItemDescription = {
 };
 
 export const getPlanedMaintainCostColumns = (
-	processGroupType?: ProcessGroupType,
+	fixedKeyType?: ProcessGroupType,
 ): ColumnDef<PlanedMaintainCostItem>[] => {
 	const getLength = () => {
 		if (
-			processGroupType === ProcessGroupType.DL ||
-			processGroupType === ProcessGroupType.XL
+			fixedKeyType === ProcessGroupType.DL ||
+			fixedKeyType === ProcessGroupType.XL
 		) {
 			return 7;
 		}
@@ -59,8 +59,7 @@ export const getPlanedMaintainCostColumns = (
 		{
 			accessorKey: 'maintainUnitPrice',
 			header: 'Đơn giá (đ)',
-			cell: ({ row }) =>
-				formatNumber(row.original.maintainUnitPrice),
+			cell: ({ row }) => formatNumber(row.original.maintainUnitPrice),
 		},
 		{
 			accessorKey: 'quantity',

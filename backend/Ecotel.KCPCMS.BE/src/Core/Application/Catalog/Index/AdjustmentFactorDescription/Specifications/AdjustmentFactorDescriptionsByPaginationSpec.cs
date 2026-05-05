@@ -16,6 +16,7 @@ public class AdjustmentFactorDescriptionsByPaginationSpec
 
         Query
             .Include(ad => ad.AdjustmentFactor).ThenInclude(af => af.Code)
+            .Include(ad => ad.AdjustmentFactor).ThenInclude(af => af.ProcessGroup).ThenInclude(pg => pg.FixedKey)
             .Where(ad => string.IsNullOrWhiteSpace(searchTerm) ||
                          ad.Description.ToLower().Contains(searchTerm) ||
                          ad.AdjustmentFactor.Code != null && ad.AdjustmentFactor.Code.Value.ToLower().Contains(searchTerm));
@@ -25,7 +26,7 @@ public class AdjustmentFactorDescriptionsByPaginationSpec
                 Id = ad.Id,
                 AdjustmentFactorId = ad.AdjustmentFactorId,
                 Description = ad.Description,
-                AdjustmentFactorCode = ad.AdjustmentFactor != null ? $"{ad.AdjustmentFactor.ProcessGroup.Code.Value} - {ad.AdjustmentFactor.Code.Value}" : string.Empty,
+                AdjustmentFactorCode = ad.AdjustmentFactor != null ? $"{ad.AdjustmentFactor.ProcessGroup.FixedKey.Key} - {ad.AdjustmentFactor.Code.Value}" : string.Empty,
                 ElectricityAdjustmentValue = ad.ElectricityAdjustmentValue,
                 MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue
             });

@@ -71,7 +71,7 @@ export type AdjustmentMaterialCostSummary = {
 };
 
 export const getAdjustmentMaterialCostSummaryColumns = (
-	processGroupType?: number,
+	fixedKeyType?: number,
 ): ColumnDef<AdjustmentMaterialCostSummary>[] => {
 	const columns: ColumnDef<AdjustmentMaterialCostSummary>[] = [
 		{
@@ -82,7 +82,7 @@ export const getAdjustmentMaterialCostSummaryColumns = (
 		},
 	];
 
-	if (processGroupType === ProcessGroupType.DL) {
+	if (fixedKeyType === ProcessGroupType.DL) {
 		columns.push(
 			{
 				accessorKey: 'slideUsage',
@@ -101,8 +101,8 @@ export const getAdjustmentMaterialCostSummaryColumns = (
 	}
 
 	if (
-		processGroupType === ProcessGroupType.DL ||
-		processGroupType === ProcessGroupType.LC
+		fixedKeyType === ProcessGroupType.DL ||
+		fixedKeyType === ProcessGroupType.LC
 	) {
 		columns.push({
 			accessorKey: 'lowValuePerishableSupplyUnitPriceCost',

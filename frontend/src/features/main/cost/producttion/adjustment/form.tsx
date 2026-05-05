@@ -26,7 +26,10 @@ import {
 	ActualFormSchema,
 	actualFormSchema,
 } from './schema';
-import { AdjustmentCostProductDetail } from './type';
+import {
+	AdjustmentCostProductDetail,
+	mapAdjustmentCostProductDetail,
+} from './type';
 import { formatDate } from '@/lib/utils';
 import { FormArray } from '@/components/form/form-array';
 import { FormNumber } from '@/components/form/form-number';
@@ -75,14 +78,14 @@ export function AdjustmentForm({ data, row }: ActionDialogProps<CostProduct>) {
 					API.COST.PRODUCT.DETAIL_ADJUSTMENT(row.id),
 				)
 				.then((res) => {
+					const detail = mapAdjustmentCostProductDetail(res.result);
 					const {
 						productId,
 						unitOfMeasureId,
 						departmentId,
 						outputs,
 						productionOutputs,
-					} =
-						res.result;
+					} = detail;
 					form.reset({
 						productId,
 						unitOfMeasureId,

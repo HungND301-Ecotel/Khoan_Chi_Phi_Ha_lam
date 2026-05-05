@@ -57,7 +57,12 @@ export function LowValuePerishableSupplyForm({
 			}),
 		]).then(([departmentsRes, processGroupsRes]) => {
 			setDepartments(departmentsRes.result.data);
-			setProcessGroups(processGroupsRes.result.data);
+			setProcessGroups(
+				(processGroupsRes.result.data ?? []).map((item) => ({
+					...item,
+					fixedKeyType: item.fixedKeyType,
+				})),
+			);
 
 			if (!row) {
 				return;
@@ -79,7 +84,9 @@ export function LowValuePerishableSupplyForm({
 				? ProcessGroupType.DL
 				: ProcessGroupType.LC;
 
-		return processGroups.filter((item) => item.type === processGroupType);
+		return processGroups.filter(
+			(item) => item.fixedKeyType === processGroupType,
+		);
 	}, [processGroups, type]);
 
 	const handleSubmit = async (values: LowValuePerishableSupplyFormSchema) => {

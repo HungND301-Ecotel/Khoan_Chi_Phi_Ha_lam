@@ -19,7 +19,7 @@ public class ExportExcelProductionProcessQueryHandler(IExcelService excelService
 
         var list = await _productionProcessRepository.GetAllAsync(
             include: s => s
-                .Include(s => s.ProcessGroup).ThenInclude(s => s.Code)
+                .Include(s => s.ProcessGroup).ThenInclude(s => s.FixedKey)
                 .Include(s => s.Code!),
             disableTracking: true);
 
@@ -28,7 +28,7 @@ public class ExportExcelProductionProcessQueryHandler(IExcelService excelService
             Id = s.Id,
             Code = s.Code?.Value ?? "",
             Name = s.Name,
-            ProcessGroupCode = s.ProcessGroup?.Code?.Value ?? ""
+            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
         });
 
         return excelService.ExportToExcel(dtoList, "Công đoạn sản xuất", listHiddenProperty);

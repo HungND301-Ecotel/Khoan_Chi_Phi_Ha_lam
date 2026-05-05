@@ -418,6 +418,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FixedKeyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -431,13 +434,12 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("ProcessGroupId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CodeId")
                         .IsUnique();
+
+                    b.HasIndex("FixedKeyId");
 
                     b.HasIndex("ProcessGroupId");
 
@@ -842,6 +844,173 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("EquipmentPart", "Index");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.FixedKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("FixedKey", "Index");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DL",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Đào lò",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "LC",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Lò chợ",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "XL",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Xén lò",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("44444444-4444-4444-4444-444444444444"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K1",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K1",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = new Guid("55555555-5555-5555-5555-555555555555"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K2",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K2",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = new Guid("66666666-6666-6666-6666-666666666666"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K3",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K3",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = new Guid("77777777-7777-7777-7777-777777777777"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K4",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K4",
+                            Type = 7
+                        },
+                        new
+                        {
+                            Id = new Guid("88888888-8888-8888-8888-888888888888"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K5",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K5",
+                            Type = 8
+                        },
+                        new
+                        {
+                            Id = new Guid("99999999-9999-9999-9999-999999999999"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K6",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K6",
+                            Type = 9
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K7",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K7",
+                            Type = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K8",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K8",
+                            Type = 11
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Hardness", b =>
@@ -1404,6 +1573,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FixedKeyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -1421,6 +1593,8 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("CodeId")
                         .IsUnique();
+
+                    b.HasIndex("FixedKeyId");
 
                     b.ToTable("ProcessGroup", "Index");
                 });
@@ -3648,6 +3822,11 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.FixedKey", "FixedKey")
+                        .WithMany("AdjustmentFactors")
+                        .HasForeignKey("FixedKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
                         .WithMany("AdjustmentFactors")
                         .HasForeignKey("ProcessGroupId")
@@ -3655,6 +3834,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsRequired();
 
                     b.Navigation("Code");
+
+                    b.Navigation("FixedKey");
 
                     b.Navigation("ProcessGroup");
                 });
@@ -3945,7 +4126,14 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.FixedKey", "FixedKey")
+                        .WithMany("ProcessGroups")
+                        .HasForeignKey("FixedKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Code");
+
+                    b.Navigation("FixedKey");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Product", b =>
@@ -4785,6 +4973,13 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("EquipmentParts");
 
                     b.Navigation("MaintainUnitPrices");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.FixedKey", b =>
+                {
+                    b.Navigation("AdjustmentFactors");
+
+                    b.Navigation("ProcessGroups");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Hardness", b =>

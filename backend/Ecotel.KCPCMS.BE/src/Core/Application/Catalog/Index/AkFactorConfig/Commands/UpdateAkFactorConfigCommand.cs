@@ -4,6 +4,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AkFactorConfig;
 using Domain.Common.Enums;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 using AkFactorConfigEntity = Domain.Entities.Index.AkFactorConfig;
 using ProcessGroup = Domain.Entities.Index.ProcessGroup;
@@ -25,13 +26,14 @@ public class UpdateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
 
         var processGroup = await _processGroupRepository.GetFirstOrDefaultAsync(
             predicate: x => x.Id == request.UpdateModel.ProcessGroupId,
+            include: x => x.Include(p => p.FixedKey),
             disableTracking: true);
         if (processGroup == null)
         {
             throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
         }
 
-        ValidateAkFactorConfig(processGroup.Type, request.UpdateModel.AkDiffDisplay, request.UpdateModel.AdjustmentRateDisplay);
+        ValidateAkFactorConfig(processGroup.FixedKey?.Type ?? FixedKeyType.None, request.UpdateModel.AkDiffDisplay, request.UpdateModel.AdjustmentRateDisplay);
 
         existAkFactorConfig.Update(
             request.UpdateModel.ProcessGroupId,
@@ -45,7 +47,7 @@ public class UpdateAkFactorConfigCommandHandler(IUnitOfWork unitOfWork) : IReque
         return true;
     }
 
-    private static void ValidateAkFactorConfig(ProcessGroupType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay)
+    private static void ValidateAkFactorConfig(FixedKeyType processGroupType, string? akDiffDisplay, string? adjustmentRateDisplay)
     {
         if (!AkFactorConfigEntity.SupportsProcessGroupType(processGroupType))
         {

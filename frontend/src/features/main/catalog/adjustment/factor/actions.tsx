@@ -14,10 +14,12 @@ import {
 	FactorSchema,
 } from '@/features/main/catalog/adjustment/factor/schema';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import { FixedKey } from '@/features/main/system/fixed-key/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { isAdjustmentFactorFixedKey } from '@/constants/adjustment-factor-type';
 
 type FactorFormProps = ActionDialogProps<Factor> & {
 	isDuplicate?: boolean;
@@ -32,13 +34,14 @@ export function FactorForm({
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [groups, setGroups] = useState<ProcessGroup[]>([]);
+	const [fixedKeys, setFixedKeys] = useState<FixedKey[]>([]);
 
 	const form = useForm<FactorSchema>({
 		resolver: zodResolver(factorSchema),
 		mode: 'onSubmit',
 		defaultValues: row
 			? {
-					code: isDuplicate ? '' : row.code,
+					fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
 					name: row.name,
 					processGroupId: row.processGroupId,
 				}
@@ -46,9 +49,19 @@ export function FactorForm({
 	});
 
 	useEffect(() => {
-		api
-			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
-			.then((res) => setGroups(res.result.data));
+		Promise.all([
+			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
+			api.pagging<FixedKey>(API.SYSTEM.FIXED_KEY.LIST, {
+				ignorePagination: true,
+			}),
+		]).then(([groupRes, fixedKeyRes]) => {
+			setGroups(groupRes.result.data);
+			setFixedKeys(
+				fixedKeyRes.result.data
+					.filter((fixedKey) => isAdjustmentFactorFixedKey(fixedKey.key))
+					.sort((a, b) => a.key.localeCompare(b.key)),
+			);
+		});
 	}, [row, form]);
 
 	const handleSubmit = async (values: FactorSchema) => {
@@ -77,6 +90,17 @@ export function FactorForm({
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<FormComboBox
 				control={form.control}
+				name='fixedKeyId'
+				label='Khóa cấu hình'
+				placeholder='Chọn khóa cấu hình'
+				options={fixedKeys.map((fixedKey) => ({
+					label: `${fixedKey.key} - ${fixedKey.name}`,
+					value: fixedKey.id,
+				}))}
+			/>
+
+			<FormComboBox
+				control={form.control}
 				name='processGroupId'
 				label='Nhóm công đoạn sản xuất'
 				placeholder='Chọn nhóm công đoạn sản xuất'
@@ -84,13 +108,6 @@ export function FactorForm({
 					label: group.name,
 					value: group.id,
 				}))}
-			/>
-
-			<FormInput
-				control={form.control}
-				name='code'
-				label='Mã hệ số điều chỉnh'
-				placeholder='Nhập mã hệ số điều chỉnh'
 			/>
 
 			<FormInput

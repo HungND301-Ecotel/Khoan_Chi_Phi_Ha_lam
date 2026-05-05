@@ -11,7 +11,7 @@ public class AkFactorConfigsByPaginationSpec : EntitiesByPaginationFilterSpec<Do
     {
         var searchTerm = (search ?? string.Empty).Trim().ToLower();
 
-        Query.Include(x => x.ProcessGroup);
+        Query.Include(x => x.ProcessGroup).ThenInclude(x => x.FixedKey);
 
         Query
             .Where(x => string.IsNullOrWhiteSpace(searchTerm) ||
@@ -19,14 +19,14 @@ public class AkFactorConfigsByPaginationSpec : EntitiesByPaginationFilterSpec<Do
                         (x.AkDiffDisplay != null && x.AkDiffDisplay.ToLower().Contains(searchTerm)) ||
                         (x.AdjustmentRateDisplay != null && x.AdjustmentRateDisplay.ToLower().Contains(searchTerm)) ||
                         (x.ProcessGroup != null && x.ProcessGroup.Name.ToLower().Contains(searchTerm)) ||
-                        (x.ProcessGroup != null && x.ProcessGroup.Code != null && x.ProcessGroup.Code.Value.ToLower().Contains(searchTerm)));
+                        (x.ProcessGroup != null && x.ProcessGroup.FixedKey != null && x.ProcessGroup.FixedKey.Key.ToLower().Contains(searchTerm)));
 
         Query
             .Select(x => new AkFactorConfigDto
             {
                 Id = x.Id,
                 ProcessGroupId = x.ProcessGroupId,
-                ProcessGroupCode = x.ProcessGroup != null && x.ProcessGroup.Code != null ? x.ProcessGroup.Code.Value : string.Empty,
+                ProcessGroupCode = x.ProcessGroup != null && x.ProcessGroup.FixedKey != null ? x.ProcessGroup.FixedKey.Key : string.Empty,
                 ProcessGroupName = x.ProcessGroup != null ? x.ProcessGroup.Name : string.Empty,
                 AkDiffOperator = x.AkDiffOperator,
                 AkDiffValue = x.AkDiffValue,

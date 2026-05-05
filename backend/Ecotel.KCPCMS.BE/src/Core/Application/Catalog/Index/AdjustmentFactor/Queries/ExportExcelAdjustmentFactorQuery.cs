@@ -2,6 +2,7 @@
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,13 +22,14 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
 
         var list = await _adjustmentFactorRepository.GetAllAsync(
             include: s => s
-                .Include(s => s.ProcessGroup).ThenInclude(s => s.Code)
+                .Include(s => s.FixedKey)
+                .Include(s => s.ProcessGroup).ThenInclude(s => s.FixedKey)
                 .Include(s => s.Code!),
             disableTracking: true);
 
         var processGroups = await _processGroupRepository.GetAllAsync(
-            selector: u => u.Code.Value,
-            include: u => u.Include(u => u.Code),
+            selector: u => u.FixedKey != null ? u.FixedKey.Key : string.Empty,
+            include: u => u.Include(u => u.FixedKey),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -38,10 +40,10 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
         var dtoList = list.Select(s => new AdjustmentFactorExcelDto
         {
             Id = s.Id,
-            Type = (int)s.Type,
-            Code = s.Code?.Value ?? "",
+            Type = (int)(s.FixedKey?.Type ?? FixedKeyType.None),
+            Code = s.FixedKey?.Key ?? s.Code?.Value ?? "",
             Name = s.Name,
-            ProcessGroupCode = s.ProcessGroup?.Code?.Value ?? ""
+            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
         });
 
         return excelService.ExportToExcel(dtoList.OrderBy(d => d.ProcessGroupCode).ThenBy(d => d.Code), "Hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);

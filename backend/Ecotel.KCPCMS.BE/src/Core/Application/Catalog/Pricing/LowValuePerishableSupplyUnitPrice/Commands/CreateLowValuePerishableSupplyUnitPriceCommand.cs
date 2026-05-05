@@ -6,6 +6,7 @@ using Application.Dto.Catalog.LowValuePerishableSupplyUnitPrice;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Pricing.LowValuePerishableSupplyUnitPrice.Commands;
@@ -42,6 +43,7 @@ public class CreateLowValuePerishableSupplyUnitPriceCommandHandler(
 
         var processGroups = await _processGroupRepository.GetAllAsync(
             predicate: pg => processGroupIds.Contains(pg.Id),
+            include: pg => pg.Include(x => x.FixedKey),
             disableTracking: true);
         if (processGroups.Count != processGroupIds.Count)
         {
@@ -94,7 +96,9 @@ public class CreateLowValuePerishableSupplyUnitPriceCommandHandler(
             _ => ProcessGroupType.None,
         };
 
-        if (processGroup.Type != expectedType)
+        var actualType = processGroup.FixedKey?.Type.ToProcessGroupType() ?? ProcessGroupType.None;
+
+        if (actualType != expectedType)
         {
             throw new ConflictException(CustomResponseMessage.ProcessGroupNotFound);
         }

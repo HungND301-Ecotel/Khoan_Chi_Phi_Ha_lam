@@ -91,7 +91,7 @@ public class UpdatePlannedElectricityCostCommandHandler(
         }
 
         int countCustomAdjustmentFactors = await _adjustmentFactorRepository.CountAsync(
-            p => customAdjustmentFactorIds.Contains(p.Id) && p.Type != AdjustmentFactorType.K6);
+            p => customAdjustmentFactorIds.Contains(p.Id) && p.FixedKey != null && p.FixedKey.Type != FixedKeyType.K6);
 
         if (countCustomAdjustmentFactors != customAdjustmentFactorIds.Count)
         {

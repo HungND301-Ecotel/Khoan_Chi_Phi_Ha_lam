@@ -74,9 +74,9 @@ export function PlanElectricityCostForm({
 
 	useEffect(() => {
 		const electricityEndpoint =
-			plan?.processGroupType === ProcessGroupType.LC
+			plan?.fixedKeyType === ProcessGroupType.LC
 				? API.PRICING.ELECTRICITY.LONGWALL_PANEL.LIST
-				: plan?.processGroupType === ProcessGroupType.XL
+				: plan?.fixedKeyType === ProcessGroupType.XL
 					? API.PRICING.ELECTRICITY.TRIMMING.LIST
 					: API.PRICING.ELECTRICITY.TUNNELING.LIST;
 
@@ -92,15 +92,19 @@ export function PlanElectricityCostForm({
 
 			let filteredAdjustments: AdjustmentDetail[] = [];
 			if (
-				plan?.processGroupType === ProcessGroupType.DL ||
-				plan?.processGroupType === ProcessGroupType.XL
+				plan?.fixedKeyType === ProcessGroupType.DL ||
+				plan?.fixedKeyType === ProcessGroupType.XL
 			) {
 				filteredAdjustments = adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
 					.slice(0, 3);
-			} else if (plan?.processGroupType === ProcessGroupType.LC) {
+			} else if (plan?.fixedKeyType === ProcessGroupType.LC) {
 				filteredAdjustments = adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
 					.slice(0, 1);
 			}
 
@@ -241,7 +245,7 @@ export function PlanElectricityCostForm({
 					),
 				})),
 				trimmingCoefficient:
-					plan?.processGroupType === ProcessGroupType.XL
+					plan?.fixedKeyType === ProcessGroupType.XL
 						? trimmingCoefficient / 100
 						: 1,
 			};
@@ -310,7 +314,7 @@ export function PlanElectricityCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
-			{plan?.processGroupType === ProcessGroupType.XL && (
+			{plan?.fixedKeyType === ProcessGroupType.XL && (
 				<FormNumber
 					control={form.control}
 					name='trimmingCoefficient'

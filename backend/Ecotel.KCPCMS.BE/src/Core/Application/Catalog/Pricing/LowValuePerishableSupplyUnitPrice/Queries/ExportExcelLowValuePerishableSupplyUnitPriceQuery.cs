@@ -41,9 +41,9 @@ public class ExportExcelLowValuePerishableSupplyUnitPriceQueryHandler(
             : ProcessGroupType.LC;
 
         List<string> processGroupCodes = (await _processGroupRepository.GetAllAsync(
-                predicate: pg => pg.Type == processGroupType,
-                include: pg => pg.Include(x => x.Code),
-                selector: pg => pg.Code != null ? pg.Code.Value : string.Empty,
+            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type) == processGroupType,
+            include: pg => pg.Include(x => x.Code).Include(x => x.FixedKey),
+            selector: pg => pg.FixedKey != null ? pg.FixedKey.Key : pg.Code != null ? pg.Code.Value : string.Empty,
                 disableTracking: true))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
@@ -58,7 +58,7 @@ public class ExportExcelLowValuePerishableSupplyUnitPriceQueryHandler(
         {
             Id = e.Id,
             DepartmentCode = e.Department?.Code?.Value ?? string.Empty,
-            ProcessGroupCode = e.ProcessGroup?.Code?.Value ?? string.Empty,
+            ProcessGroupCode = e.ProcessGroup?.FixedKey?.Key ?? string.Empty,
             StartMonth = e.StartMonth.ToString("MM/yyyy"),
             EndMonth = e.EndMonth.ToString("MM/yyyy"),
             TotalPrice = e.TotalPrice,

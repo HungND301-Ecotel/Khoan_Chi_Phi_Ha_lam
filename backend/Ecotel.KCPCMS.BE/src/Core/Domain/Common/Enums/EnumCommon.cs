@@ -14,11 +14,68 @@ public enum AdjustmentFactorType
     K1 = 1,
     K2 = 2,
     K3 = 3,
-    K4 = 3,
+    K4 = 4,
     K5 = 5,
     K6 = 6,
     K7 = 7,
     K8 = 8,
+}
+
+public enum FixedKeyType
+{
+    None = 0,
+    DL = 1,
+    LC = 2,
+    XL = 3,
+    K1 = 4,
+    K2 = 5,
+    K3 = 6,
+    K4 = 7,
+    K5 = 8,
+    K6 = 9,
+    K7 = 10,
+    K8 = 11
+}
+
+public static class FixedKeyTypeExtensions
+{
+    public static ProcessGroupType ToProcessGroupType(this FixedKeyType type)
+    {
+        return type switch
+        {
+            FixedKeyType.DL => ProcessGroupType.DL,
+            FixedKeyType.LC => ProcessGroupType.LC,
+            FixedKeyType.XL => ProcessGroupType.XL,
+            _ => ProcessGroupType.None,
+        };
+    }
+
+    public static AdjustmentFactorType ToAdjustmentFactorType(this FixedKeyType type)
+    {
+        return type switch
+        {
+            FixedKeyType.K1 => AdjustmentFactorType.K1,
+            FixedKeyType.K2 => AdjustmentFactorType.K2,
+            FixedKeyType.K3 => AdjustmentFactorType.K3,
+            FixedKeyType.K4 => AdjustmentFactorType.K4,
+            FixedKeyType.K5 => AdjustmentFactorType.K5,
+            FixedKeyType.K6 => AdjustmentFactorType.K6,
+            FixedKeyType.K7 => AdjustmentFactorType.K7,
+            FixedKeyType.K8 => AdjustmentFactorType.K8,
+            _ => AdjustmentFactorType.None,
+        };
+    }
+
+    public static FixedKeyType ToFixedKeyType(this ProcessGroupType type)
+    {
+        return type switch
+        {
+            ProcessGroupType.DL => FixedKeyType.DL,
+            ProcessGroupType.LC => FixedKeyType.LC,
+            ProcessGroupType.XL => FixedKeyType.XL,
+            _ => FixedKeyType.None,
+        };
+    }
 }
 
 public enum ProcessGroupType

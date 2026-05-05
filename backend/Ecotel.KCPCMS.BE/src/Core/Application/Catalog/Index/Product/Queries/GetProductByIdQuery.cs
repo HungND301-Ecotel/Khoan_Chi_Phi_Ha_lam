@@ -17,7 +17,7 @@ public class GetProductByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         var productExisted = await _productRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
             include: t => t
-                .Include(t => t.ProcessGroup).ThenInclude(t => t.Code)
+                .Include(t => t.ProcessGroup).ThenInclude(t => t.FixedKey)
                 .Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -27,7 +27,7 @@ public class GetProductByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             Code = productExisted.Code.Value,
             Name = productExisted.Name,
             ProcessGroupId = productExisted.ProcessGroupId,
-            ProcessGroupCode = productExisted.ProcessGroup?.Code?.Value ?? "",
+            ProcessGroupCode = productExisted.ProcessGroup?.FixedKey?.Key ?? "",
             ProcessGroupName = productExisted.ProcessGroup?.Name ?? ""
         };
     }

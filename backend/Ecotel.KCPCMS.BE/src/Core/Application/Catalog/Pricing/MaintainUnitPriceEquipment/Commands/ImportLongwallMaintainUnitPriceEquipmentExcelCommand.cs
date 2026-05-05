@@ -292,12 +292,6 @@ public class ImportLongwallMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
                     continue;
                 }
 
-                if (state.FilledParts > 0 && state.FilledParts < state.TotalParts)
-                {
-                    importErrors.Add($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 3 thông số cho tất cả phụ tùng.");
-                    continue;
-                }
-
                 state.Dto.IsDeleteRequest = state.FilledParts == 0;
                 result.Add(state.Dto);
             }

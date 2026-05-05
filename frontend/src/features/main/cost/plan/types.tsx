@@ -1,3 +1,5 @@
+import { ProcessGroupType } from '@/constants/process-group';
+
 export type CostProduct = {
 	id: string;
 	productId: string;
@@ -5,7 +7,8 @@ export type CostProduct = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: number;
+	fixedKeyType: ProcessGroupType;
+	processGroupType?: number;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	departmentId?: string;
@@ -24,7 +27,8 @@ export type CostProductDetail = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: number;
+	fixedKeyType: ProcessGroupType;
+	processGroupType?: number;
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
@@ -62,6 +66,28 @@ export type ProductCostExpandProps = {
 	isOpen?: boolean;
 	reloadKey?: number;
 };
+
+export function mapCostProduct(product: CostProduct): CostProduct {
+	return {
+		...product,
+		fixedKeyType:
+			product.fixedKeyType ??
+			(product.processGroupType as ProcessGroupType) ??
+			ProcessGroupType.None,
+	};
+}
+
+export function mapCostProductDetail(
+	detail: CostProductDetail,
+): CostProductDetail {
+	return {
+		...detail,
+		fixedKeyType:
+			detail.fixedKeyType ??
+			(detail.processGroupType as ProcessGroupType) ??
+			ProcessGroupType.None,
+	};
+}
 
 export type ProductCostFormProps = Omit<ProductCostExpandProps, 'isOpen'>;
 

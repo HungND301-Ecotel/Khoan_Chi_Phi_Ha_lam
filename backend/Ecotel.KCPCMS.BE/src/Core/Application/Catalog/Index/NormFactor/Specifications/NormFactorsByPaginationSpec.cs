@@ -19,7 +19,7 @@ public class NormFactorsByPaginationSpec
             .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.AssignmentCode).ThenInclude(a => a.Code)
             .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.TargetHardness)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.Code)
-            .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.Code)
+            .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.FixedKey)
             .Include(nf => nf.Hardness)
             .Include(nf => nf.StoneClampRatio)
             .Where(nf => string.IsNullOrWhiteSpace(searchTerm) ||
@@ -30,7 +30,7 @@ public class NormFactorsByPaginationSpec
             {
                 Id = nf.Id,
                 ProcessGroupId = nf.ProductionProcess!.ProcessGroupId,
-                ProcessGroupCode = nf.ProductionProcess.ProcessGroup!.Code!.Value,
+                ProcessGroupCode = nf.ProductionProcess.ProcessGroup!.FixedKey!.Key,
                 ProcessGroupName = nf.ProductionProcess.ProcessGroup.Name,
                 ProductionProcessId = nf.ProductionProcessId,
                 ProductionProcessCode = nf.ProductionProcess != null ? nf.ProductionProcess.Code.Value : string.Empty,

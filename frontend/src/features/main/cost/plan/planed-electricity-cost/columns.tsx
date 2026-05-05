@@ -4,13 +4,12 @@ import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export const getPlanedElectricityCostColumns = (
-	processGroupType?: ProcessGroupType,
+	fixedKeyType?: ProcessGroupType,
 ): ColumnDef<PlanedElectricityCostDetailCost>[] => {
 	const kFactorLength =
-		processGroupType === ProcessGroupType.DL ||
-		processGroupType === ProcessGroupType.XL
+		fixedKeyType === ProcessGroupType.DL || fixedKeyType === ProcessGroupType.XL
 			? 3
-			: processGroupType === ProcessGroupType.LC
+			: fixedKeyType === ProcessGroupType.LC
 				? 1
 				: 3;
 
@@ -26,8 +25,7 @@ export const getPlanedElectricityCostColumns = (
 		{
 			accessorKey: 'electricityUnitPrice',
 			header: 'Đơn giá (đ)',
-			cell: ({ row }) =>
-				formatNumber(row.original.electricityUnitPrice ?? 0),
+			cell: ({ row }) => formatNumber(row.original.electricityUnitPrice ?? 0),
 		},
 		{
 			accessorKey: 'quantity',

@@ -116,7 +116,9 @@ public class GetCostSummaryQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
                     EndMonth = link.ProductionOutput.EndMonth,
                     ProductionMeters = link.ProductionMeters,
                     ProcessGroupType = p.Product != null && p.Product.ProcessGroup != null
-                        ? p.Product.ProcessGroup.Type
+                        ? (p.Product.ProcessGroup.FixedKey != null
+                            ? p.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                            : ProcessGroupType.None)
                         : ProcessGroupType.None
                 }))
             .AsNoTracking()

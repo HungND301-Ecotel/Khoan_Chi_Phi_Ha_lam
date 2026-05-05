@@ -53,9 +53,13 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 DepartmentCode = p.Department != null && p.Department.Code != null ? p.Department.Code.Value : null,
                 DepartmentName = p.Department != null ? p.Department.Name : null,
                 ProcessGroupId = p.Product.ProcessGroupId,
-                ProcessGroupCode = p.Product.ProcessGroup!.Code.Value,
+                ProcessGroupCode = p.Product.ProcessGroup!.FixedKey != null
+                    ? p.Product.ProcessGroup.FixedKey.Key
+                    : string.Empty,
                 ProcessGroupName = p.Product.ProcessGroup.Name,
-                ProcessGroupType = p.Product.ProcessGroup.Type,
+                ProcessGroupType = p.Product.ProcessGroup.FixedKey != null
+                    ? p.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                    : ProcessGroupType.None,
                 ProductionOutputs = p.ProductUnitPriceProductionOutputs
                     .Select(po => new
                     {

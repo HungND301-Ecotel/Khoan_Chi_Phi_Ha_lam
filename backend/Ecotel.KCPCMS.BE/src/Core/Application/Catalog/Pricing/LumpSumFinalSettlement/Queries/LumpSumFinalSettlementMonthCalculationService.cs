@@ -123,7 +123,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .GroupBy(p => new
             {
                 Id = p.Product?.ProcessGroupId ?? Guid.Empty,
-                Code = p.Product?.ProcessGroup?.Code?.Value ?? string.Empty,
+                Code = p.Product?.ProcessGroup?.FixedKey?.Key ?? string.Empty,
                 Name = p.Product?.ProcessGroup?.Name ?? string.Empty
             })
             .OrderBy(g => g.Key.Code)

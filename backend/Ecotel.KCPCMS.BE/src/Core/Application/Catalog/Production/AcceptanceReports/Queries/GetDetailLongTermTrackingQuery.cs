@@ -355,13 +355,13 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         {
             return (
                 log.AcceptanceReportItemCategoryAllocation.ProcessGroupId,
-                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Code?.Value,
+                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.FixedKey?.Key,
                 log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Name);
         }
 
         return (
             log.AcceptanceReportItem?.ProcessGroupId,
-            log.AcceptanceReportItem?.ProcessGroup?.Code?.Value,
+            log.AcceptanceReportItem?.ProcessGroup?.FixedKey?.Key,
             log.AcceptanceReportItem?.ProcessGroup?.Name);
     }
 
