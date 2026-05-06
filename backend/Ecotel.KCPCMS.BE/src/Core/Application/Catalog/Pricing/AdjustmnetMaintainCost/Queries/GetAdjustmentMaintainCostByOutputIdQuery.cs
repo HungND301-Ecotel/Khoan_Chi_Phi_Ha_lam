@@ -65,6 +65,9 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
             ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
             : 0;
         var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
+        var adjustmentMultiplier = hasAkConfigs
+            ? 1 + (double)(akDiff * akRate)
+            : 1;
 
         var plannedMaintainCost = plannedOutput.PlannedMaintainCost
             ?? throw new NotFoundException(CustomResponseMessage.PlannedMaintainCostNotFound);
@@ -86,7 +89,7 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
                     Quantity = p.Quantity,
                     MaintainUnitPriceId = p.MaintainUnitPriceId,
                     MaintainUnitPrice = p.MaintainUnitPrice.GetMaintainTotalPrice(),
-                    TotalPrice = p.GetCurrentMaintainCost(),
+                    TotalPrice = p.GetCurrentMaintainCost() * adjustmentMultiplier,
                     K6AdjustmentFactorValue = p.K6AdjustmentFactorValue,
                     AdjustmentFactorDescriptions = p.PlannedMaintainCostAdjustmentFactorDescriptions.Select(a => new MaintainAjustmentFactorDescriptionDto
                     {

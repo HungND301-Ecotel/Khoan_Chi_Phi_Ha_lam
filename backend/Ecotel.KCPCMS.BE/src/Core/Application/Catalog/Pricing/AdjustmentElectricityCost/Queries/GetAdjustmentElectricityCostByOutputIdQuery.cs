@@ -63,6 +63,9 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
             ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
             : 0;
         var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
+        var adjustmentMultiplier = hasAkConfigs
+            ? 1 + (double)(akDiff * akRate)
+            : 1;
 
         var plannedElectricityCost = plannedOutput.PlannedElectricityCost
             ?? throw new NotFoundException(CustomResponseMessage.PlannedElectricityCostNotFound);
@@ -84,7 +87,7 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                     Quantity = p.Quantity,
                     ElectricityUnitPriceEquipmentId = p.ElectricityUnitPriceId,
                     ElectricityUnitPrice = p.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres(),
-                    TotalPrice = p.GetCurrentElectricityCost(),
+                    TotalPrice = p.GetCurrentElectricityCost() * adjustmentMultiplier,
                     AdjustmentFactorDescriptions = p.PlannedElectricityCostAdjustmentFactorDescriptions.Select(a => new ElectricityAjustmentFactorDescriptionDto
                     {
                         Id = a.Id,

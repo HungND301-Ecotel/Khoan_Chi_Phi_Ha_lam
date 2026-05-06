@@ -213,7 +213,7 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var akRate = hasAkConfigs
             ? AkFactorConfig.ResolveRate(akConfigs, akDiff)
             : 0;
-        var akAdjustmentAmount = hasAkConfigs ? akDiff * (decimal)combinedPlannedCost * akRate : 0;
+        var akAdjustmentAmount = hasAkConfigs ? akDiff * (decimal)basePlannedMaterialPrice * akRate : 0;
         var adjustedPlannedMaterialPrice = basePlannedMaterialPrice + (double)akAdjustmentAmount;
 
         var result = new AdjustmentMaterialCostDetailDto
