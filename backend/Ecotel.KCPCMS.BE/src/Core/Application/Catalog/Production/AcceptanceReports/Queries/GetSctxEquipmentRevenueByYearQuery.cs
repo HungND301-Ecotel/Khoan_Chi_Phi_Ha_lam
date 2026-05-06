@@ -11,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Application.Catalog.Production.AcceptanceReports.Queries;
 
 public record GetSctxEquipmentRevenueByYearQuery(
-    int Year,
+    int FromYear,
+    int ToYear,
     Guid EquipmentId) : IRequest<SctxEquipmentRevenueResponseDto>;
 
 public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
@@ -22,23 +23,25 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
     public async Task<SctxEquipmentRevenueResponseDto> Handle(GetSctxEquipmentRevenueByYearQuery request, CancellationToken cancellationToken)
     {
-        if (request.Year is < 2000 or > 3000)
+        if (request.FromYear is < 2000 or > 3000
+            || request.ToYear is < 2000 or > 3000
+            || request.FromYear > request.ToYear)
         {
             throw new BadRequestException("Year không hợp lệ.");
         }
 
         var logs = await _logRepository.GetAll()
-            .Where(x => x.PeriodStartMonth.Year == request.Year
+            .Where(x => x.PeriodStartMonth.Year >= request.FromYear
+                && x.PeriodStartMonth.Year <= request.ToYear
                 && x.AcceptanceReportItem.EquipmentId == request.EquipmentId
                 && (x.AcceptanceReportItem.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
                     || x.AcceptanceReportItem.AdditionalCost == AdditionalCost.Maintain))
-            .Select(x => new
-            {
-                Month = x.PeriodStartMonth.Month,
+            .Select(x => new LogRow(
+                x.PeriodStartMonth.Year,
+                x.PeriodStartMonth.Month,
                 x.UnitPrice,
                 x.ActualOutput,
-                ProcessGroupId = x.AcceptanceReportItem.ProcessGroupId
-            })
+                x.AcceptanceReportItem.ProcessGroupId))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -55,19 +58,35 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                     && x.ProductUnitPrice != null
                     && x.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                     && processGroupIds.Contains(x.ProductUnitPrice.Product!.ProcessGroupId)
-                    && x.StartMonth.Year <= request.Year
-                    && x.EndMonth.Year >= request.Year)
-                .Select(x => new
-                {
-                    ProcessGroupId = x.ProductUnitPrice!.Product!.ProcessGroupId,
+                    && x.StartMonth.Year <= request.ToYear
+                    && x.EndMonth.Year >= request.FromYear)
+                .Select(x => new PlannedOutputRow(
+                    x.ProductUnitPrice!.Product!.ProcessGroupId,
                     x.StartMonth,
                     x.EndMonth,
-                    x.ProductionMeters
-                })
+                    x.ProductionMeters))
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
-        var plannedOutputByMonth = logs
+        var years = Enumerable.Range(request.FromYear, request.ToYear - request.FromYear + 1)
+            .Select(year => BuildYearResult(year, logs, plannedOutputs))
+            .ToList();
+
+        return new SctxEquipmentRevenueResponseDto
+        {
+            EquipmentId = request.EquipmentId,
+            Years = years
+        };
+    }
+
+    private static SctxEquipmentRevenueByYearDto BuildYearResult(
+        int year,
+        List<LogRow> logs,
+        List<PlannedOutputRow> plannedOutputs)
+    {
+        var yearLogs = logs.Where(x => x.Year == year).ToList();
+
+        var plannedOutputByMonth = yearLogs
             .Where(x => x.ProcessGroupId.HasValue)
             .Select(x => new { x.Month, ProcessGroupId = x.ProcessGroupId!.Value })
             .Distinct()
@@ -76,10 +95,10 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                 g => g.Key,
                 g => g.Sum(mp => plannedOutputs
                     .Where(p => p.ProcessGroupId == mp.ProcessGroupId
-                        && IsMonthWithinRange(p.StartMonth, p.EndMonth, request.Year, mp.Month))
+                        && IsMonthWithinRange(p.StartMonth, p.EndMonth, year, mp.Month))
                     .Sum(p => p.ProductionMeters)));
 
-        var monthMap = logs
+        var monthMap = yearLogs
             .GroupBy(x => x.Month)
             .ToDictionary(
                 g => g.Key,
@@ -128,10 +147,9 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                 })
             .ToList();
 
-        return new SctxEquipmentRevenueResponseDto
+        return new SctxEquipmentRevenueByYearDto
         {
-            Year = request.Year,
-            EquipmentId = request.EquipmentId,
+            Year = year,
             Months = months
         };
     }
@@ -144,4 +162,17 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
         return targetIndex >= startIndex && targetIndex <= endIndex;
     }
+
+    private sealed record LogRow(
+        int Year,
+        int Month,
+        decimal UnitPrice,
+        double ActualOutput,
+        Guid? ProcessGroupId);
+
+    private sealed record PlannedOutputRow(
+        Guid ProcessGroupId,
+        DateOnly StartMonth,
+        DateOnly EndMonth,
+        double ProductionMeters);
 }

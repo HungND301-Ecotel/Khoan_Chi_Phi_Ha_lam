@@ -30,10 +30,14 @@ type SctxRevenueByMonthApi = {
 	adjustedRevenue: number;
 };
 
-type SctxRevenueByEquipmentApiResponse = {
+type SctxRevenueByYearApi = {
 	year: number;
-	equipmentId: string;
 	months: SctxRevenueByMonthApi[];
+};
+
+type SctxRevenueByEquipmentApiResponse = {
+	equipmentId: string;
+	years: SctxRevenueByYearApi[];
 };
 
 interface SctxRevenueRow {
@@ -75,14 +79,29 @@ const buildRowsFromApi = (months: SctxRevenueByMonthApi[]): SctxRevenueRow[] => 
 };
 
 export function SctxRevenueReportDataTable() {
-	const [year, setYear] = useState(String(new Date().getFullYear()));
+	const [fromYear, setFromYear] = useState(String(new Date().getFullYear() - 1));
+	const [toYear, setToYear] = useState(String(new Date().getFullYear()));
 	const [equipments, setEquipments] = useState<EquipmentLookup[]>([]);
 	const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
-	const [rows, setRows] = useState<SctxRevenueRow[]>([]);
+	const [yearData, setYearData] = useState<SctxRevenueByYearApi[]>([]);
 	const [isLoadingEquipments, setIsLoadingEquipments] = useState(false);
 	const [isLoadingRows, setIsLoadingRows] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	const handleFromYearChange = (value: string) => {
+		setFromYear(value);
+		if (Number(value) > Number(toYear)) {
+			setToYear(value);
+		}
+	};
+
+	const handleToYearChange = (value: string) => {
+		setToYear(value);
+		if (Number(value) < Number(fromYear)) {
+			setFromYear(value);
+		}
+	};
 
 	useEffect(() => {
 		let cancelled = false;
@@ -140,7 +159,7 @@ export function SctxRevenueReportDataTable() {
 
 	useEffect(() => {
 		if (!selectedEquipmentId) {
-			setRows([]);
+			setYearData([]);
 			return;
 		}
 
@@ -153,11 +172,12 @@ export function SctxRevenueReportDataTable() {
 			try {
 				const response = await api.post<
 					SctxRevenueByEquipmentApiResponse,
-					{ year: number; equipmentId: string }
+					{ fromYear: number; toYear: number; equipmentId: string }
 				>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT,
 					{
-						year: Number(year),
+						fromYear: Number(fromYear),
+						toYear: Number(toYear),
 						equipmentId: selectedEquipmentId,
 					},
 				);
@@ -166,13 +186,13 @@ export function SctxRevenueReportDataTable() {
 					return;
 				}
 
-				setRows(buildRowsFromApi(response.result.months ?? []));
+				setYearData(response.result.years ?? []);
 			} catch (err) {
 				if (cancelled) {
 					return;
 				}
 
-				setRows([]);
+				setYearData([]);
 				setError(
 					err instanceof Error
 						? err.message
@@ -190,24 +210,36 @@ export function SctxRevenueReportDataTable() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedEquipmentId, year]);
+	}, [selectedEquipmentId, fromYear, toYear]);
 
-	const totals = useMemo(() => {
-		return rows.reduce(
-			(acc, row) => ({
-				plannedQuantity: acc.plannedQuantity + row.plannedQuantity,
-				actualQuantity: acc.actualQuantity + row.actualQuantity,
-				baseRevenue: acc.baseRevenue + row.baseRevenue,
-				adjustedRevenue: acc.adjustedRevenue + row.adjustedRevenue,
-			}),
-			{
-				plannedQuantity: 0,
-				actualQuantity: 0,
-				baseRevenue: 0,
-				adjustedRevenue: 0,
-			},
-		);
-	}, [rows]);
+	const yearRows = useMemo(() => {
+		const sorted = [...yearData].sort((a, b) => a.year - b.year);
+
+		return sorted.map((item) => ({
+			year: item.year,
+			rows: buildRowsFromApi(item.months ?? []),
+		}));
+	}, [yearData]);
+
+	const yearTotals = useMemo(() => {
+		return yearRows.map((group) => ({
+			year: group.year,
+			totals: group.rows.reduce(
+				(acc, row) => ({
+					plannedQuantity: acc.plannedQuantity + row.plannedQuantity,
+					actualQuantity: acc.actualQuantity + row.actualQuantity,
+					baseRevenue: acc.baseRevenue + row.baseRevenue,
+					adjustedRevenue: acc.adjustedRevenue + row.adjustedRevenue,
+				}),
+				{
+					plannedQuantity: 0,
+					actualQuantity: 0,
+					baseRevenue: 0,
+					adjustedRevenue: 0,
+				},
+			),
+		}));
+	}, [yearRows]);
 
 	const selectedEquipment = useMemo(
 		() => equipments.find((item) => item.id === selectedEquipmentId),
@@ -216,6 +248,10 @@ export function SctxRevenueReportDataTable() {
 
 	const displayEquipmentName = selectedEquipment?.name || 'Không xác định';
 	const displayEquipmentCode = selectedEquipment?.code || 'thiet-bi';
+	const displayYearRange =
+		fromYear === toYear
+			? `Năm ${fromYear}`
+			: `Giai đoạn ${fromYear} - ${toYear}`;
 
 	const handleExport = async () => {
 		if (isExporting) {
@@ -227,26 +263,37 @@ export function SctxRevenueReportDataTable() {
 		try {
 			const XLSX = await import('xlsx');
 
-			const excelRows = rows.map((row) => ({
-				'Thời gian': `Tháng ${row.month}`,
-				'Đơn giá (đ/t)': row.unitPrice,
-				'Sản lượng ban đầu (t)': row.plannedQuantity,
-				'Sản lượng thực tế (t)': row.actualQuantity,
-				'Doanh thu SCTX ban đầu (đ)': row.baseRevenue,
-				'Doanh thu SCTX điều chỉnh (đ)': row.adjustedRevenue,
-			}));
+			const excelRows = yearRows.flatMap((group) => {
+				const totals = yearTotals.find(
+					(item) => item.year === group.year,
+				)?.totals;
 
-			excelRows.push({
-				'Thời gian': 'Tổng cộng',
-				'Đơn giá (đ/t)': 0,
-				'Sản lượng ban đầu (t)': totals.plannedQuantity,
-				'Sản lượng thực tế (t)': totals.actualQuantity,
-				'Doanh thu SCTX ban đầu (đ)': totals.baseRevenue,
-				'Doanh thu SCTX điều chỉnh (đ)': totals.adjustedRevenue,
+				const rows = group.rows.map((row) => ({
+					'Năm': group.year,
+					'Thời gian': `Tháng ${row.month}`,
+					'Đơn giá (đ/t)': row.unitPrice,
+					'Sản lượng ban đầu (t)': row.plannedQuantity,
+					'Sản lượng thực tế (t)': row.actualQuantity,
+					'Doanh thu SCTX ban đầu (đ)': row.baseRevenue,
+					'Doanh thu SCTX điều chỉnh (đ)': row.adjustedRevenue,
+				}));
+
+				rows.push({
+					'Năm': group.year,
+					'Thời gian': 'Tổng cộng',
+					'Đơn giá (đ/t)': 0,
+					'Sản lượng ban đầu (t)': totals?.plannedQuantity ?? 0,
+					'Sản lượng thực tế (t)': totals?.actualQuantity ?? 0,
+					'Doanh thu SCTX ban đầu (đ)': totals?.baseRevenue ?? 0,
+					'Doanh thu SCTX điều chỉnh (đ)': totals?.adjustedRevenue ?? 0,
+				});
+
+				return rows;
 			});
 
 			const worksheet = XLSX.utils.json_to_sheet(excelRows);
 			worksheet['!cols'] = [
+				{ wch: 10 },
 				{ wch: 16 },
 				{ wch: 18 },
 				{ wch: 24 },
@@ -264,7 +311,7 @@ export function SctxRevenueReportDataTable() {
 			);
 			XLSX.writeFile(
 				workbook,
-				`bao-cao-doanh-thu-sctx-${normalizedCode}-${year}.xlsx`,
+				`bao-cao-doanh-thu-sctx-${normalizedCode}-${fromYear}-${toYear}.xlsx`,
 			);
 		} finally {
 			setIsExporting(false);
@@ -276,8 +323,23 @@ export function SctxRevenueReportDataTable() {
 			<div className='flex flex-wrap items-end justify-between gap-3'>
 				<div className='flex flex-wrap items-end gap-2'>
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Năm</p>
-						<Select value={year} onValueChange={setYear}>
+						<p className='text-sm font-medium'>Từ năm</p>
+						<Select value={fromYear} onValueChange={handleFromYearChange}>
+							<SelectTrigger className='w-[120px] bg-white'>
+								<SelectValue placeholder='Chọn năm' />
+							</SelectTrigger>
+							<SelectContent className='max-h-64'>
+								{yearOptions.map((item) => (
+									<SelectItem key={item.value} value={item.value}>
+										{item.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+					<div className='space-y-1'>
+						<p className='text-sm font-medium'>Đến năm</p>
+						<Select value={toYear} onValueChange={handleToYearChange}>
 							<SelectTrigger className='w-[120px] bg-white'>
 								<SelectValue placeholder='Chọn năm' />
 							</SelectTrigger>
@@ -322,7 +384,11 @@ export function SctxRevenueReportDataTable() {
 					variant='outline'
 					size='sm'
 					onClick={handleExport}
-					disabled={isExporting || isLoadingRows || rows.length === 0}
+					disabled={
+						isExporting ||
+						isLoadingRows ||
+						yearRows.length === 0
+					}
 					className='h-10 gap-1.5'
 				>
 					{isExporting ? (
@@ -341,7 +407,7 @@ export function SctxRevenueReportDataTable() {
 					<p className='mb-3 text-sm text-red-600'>{error}</p>
 				) : null}
 				<div className='mx-auto w-full overflow-x-auto'>
-					<div className='mx-auto min-h-[210mm] min-w-[1320px] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
+					<div className='mx-auto max-h-[70vh] min-h-[210mm] min-w-[1320px] overflow-y-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 						<div className='font-["Times_New_Roman",Times,serif]'>
 							<div className='flex items-start justify-between gap-8'>
 								<div className='space-y-1 text-left font-bold'>
@@ -358,7 +424,9 @@ export function SctxRevenueReportDataTable() {
 								<p className='text-lg font-bold uppercase md:text-2xl'>
 									Bảng theo dõi doanh thu SCTX thiết bị
 								</p>
-								<p className='mt-2 text-base font-bold md:text-xl'>Năm {year}</p>
+								<p className='mt-2 text-base font-bold md:text-xl'>
+									{displayYearRange}
+								</p>
 							</div>
 
 							<div className='mt-5 space-y-1 text-base md:text-lg'>
@@ -368,84 +436,95 @@ export function SctxRevenueReportDataTable() {
 								</p>
 							</div>
 
-							<table className='mt-5 w-full min-w-[1200px] table-fixed border-collapse text-center text-sm md:text-base'>
-								<thead>
-									<tr className='font-bold'>
-										<th className={borderCellClass}>Thời gian</th>
-										<th className={borderCellClass}>Đơn giá (đ/t)</th>
-										<th className={borderCellClass}>Sản lượng ban đầu (t)</th>
-										<th className={borderCellClass}>Sản lượng thực tế (t)</th>
-										<th className={borderCellClass}>Doanh thu SCTX ban đầu (đ)</th>
-										<th className={borderCellClass}>Doanh thu SCTX điều chỉnh (đ)</th>
-									</tr>
-								</thead>
-								<tbody>
-									{isLoadingRows ? (
-										<tr>
-											<td className={borderCellClass} colSpan={6}>
-												<div className='flex items-center justify-center py-4'>
-													<Spinner />
-												</div>
-											</td>
-										</tr>
-									) : (
-										rows.map((row) => (
-											<tr key={row.month}>
-												<td className={borderCellClass}>Tháng {row.month}</td>
-												<td className={`${borderCellClass} text-right`}>
-													{formatNumber(row.unitPrice, {
-														maximumFractionDigits: 0,
-													})}
-												</td>
-												<td className={`${borderCellClass} text-right`}>
-													{formatNumber(row.plannedQuantity, {
-														maximumFractionDigits: 0,
-													})}
-												</td>
-												<td className={`${borderCellClass} text-right`}>
-													{formatNumber(row.actualQuantity, {
-														maximumFractionDigits: 0,
-													})}
-												</td>
-												<td className={`${borderCellClass} text-right`}>
-													{formatNumber(row.baseRevenue, {
-														maximumFractionDigits: 0,
-													})}
-												</td>
-												<td className={`${borderCellClass} text-right`}>
-													{formatNumber(row.adjustedRevenue, {
-														maximumFractionDigits: 0,
-													})}
-												</td>
-											</tr>
-										))
-									)}
-									<tr className='bg-[#f7f7f7] font-bold'>
-										<td className={borderCellClass}>Tổng cộng</td>
-										<td className={borderCellClass}></td>
-										<td className={`${borderCellClass} text-right`}>
-											{formatNumber(totals.plannedQuantity, {
-												maximumFractionDigits: 0,
-											})}
-										</td>
-										<td className={`${borderCellClass} text-right`}>
-											{formatNumber(totals.actualQuantity, {
-												maximumFractionDigits: 0,
-											})}
-										</td>
-										<td className={`${borderCellClass} text-right`}>
-											{formatNumber(totals.baseRevenue, {
-												maximumFractionDigits: 0,
-											})}
-										</td>
-										<td className={`${borderCellClass} text-right`}>
-											{formatNumber(totals.adjustedRevenue, {
-												maximumFractionDigits: 0,
-											})}
-										</td>
-									</tr>
-								</tbody>
-							</table>
+							{isLoadingRows ? (
+								<div className='flex items-center justify-center py-6'>
+									<Spinner />
+								</div>
+							) : (
+								yearRows.map((group) => {
+									const totals = yearTotals.find(
+										(item) => item.year === group.year,
+									)?.totals;
+
+									return (
+										<div key={group.year} className='mt-5'>
+											<p className='mb-2 text-base font-bold md:text-lg'>
+												Năm {group.year}
+											</p>
+											<table className='w-full min-w-[1200px] table-fixed border-collapse text-center text-sm md:text-base'>
+												<thead>
+													<tr className='font-bold'>
+														<th className={borderCellClass}>Thời gian</th>
+														<th className={borderCellClass}>Đơn giá (đ/t)</th>
+														<th className={borderCellClass}>Sản lượng ban đầu (t)</th>
+														<th className={borderCellClass}>Sản lượng thực tế (t)</th>
+														<th className={borderCellClass}>Doanh thu SCTX ban đầu (đ)</th>
+														<th className={borderCellClass}>
+															Doanh thu SCTX điều chỉnh (đ)
+														</th>
+													</tr>
+												</thead>
+												<tbody>
+													{group.rows.map((row) => (
+														<tr key={`${group.year}-${row.month}`}>
+															<td className={borderCellClass}>Tháng {row.month}</td>
+															<td className={`${borderCellClass} text-right`}>
+																{formatNumber(row.unitPrice, {
+																	maximumFractionDigits: 0,
+																})}
+															</td>
+															<td className={`${borderCellClass} text-right`}>
+																{formatNumber(row.plannedQuantity, {
+																	maximumFractionDigits: 0,
+																})}
+															</td>
+															<td className={`${borderCellClass} text-right`}>
+																{formatNumber(row.actualQuantity, {
+																	maximumFractionDigits: 0,
+																})}
+															</td>
+															<td className={`${borderCellClass} text-right`}>
+																{formatNumber(row.baseRevenue, {
+																	maximumFractionDigits: 0,
+																})}
+															</td>
+															<td className={`${borderCellClass} text-right`}>
+																{formatNumber(row.adjustedRevenue, {
+																	maximumFractionDigits: 0,
+																})}
+															</td>
+														</tr>
+													))}
+													<tr className='bg-[#f7f7f7] font-bold'>
+														<td className={borderCellClass}>Tổng cộng</td>
+														<td className={borderCellClass}></td>
+														<td className={`${borderCellClass} text-right`}>
+															{formatNumber(totals?.plannedQuantity ?? 0, {
+																maximumFractionDigits: 0,
+															})}
+														</td>
+														<td className={`${borderCellClass} text-right`}>
+															{formatNumber(totals?.actualQuantity ?? 0, {
+																maximumFractionDigits: 0,
+															})}
+														</td>
+														<td className={`${borderCellClass} text-right`}>
+															{formatNumber(totals?.baseRevenue ?? 0, {
+																maximumFractionDigits: 0,
+															})}
+														</td>
+														<td className={`${borderCellClass} text-right`}>
+															{formatNumber(totals?.adjustedRevenue ?? 0, {
+																maximumFractionDigits: 0,
+															})}
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									);
+								})
+							)}
 						</div>
 					</div>
 				</div>

@@ -202,7 +202,8 @@ public class ProductionController : BaseNoAuthController
     public async Task<IActionResult> GetSctxRevenueByEquipment([FromBody] GetSctxEquipmentRevenueRequest request)
     {
         var result = await Mediator.Send(new GetSctxEquipmentRevenueByYearQuery(
-            request.Year,
+            request.FromYear,
+            request.ToYear,
             request.EquipmentId));
 
         return Ok(result, MessageCommon.GetDataSuccess);
