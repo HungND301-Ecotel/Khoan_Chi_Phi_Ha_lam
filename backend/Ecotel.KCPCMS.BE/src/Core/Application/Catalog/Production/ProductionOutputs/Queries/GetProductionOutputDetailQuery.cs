@@ -27,6 +27,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var productionOutput = await _productionOutputRepository.GetFirstOrDefaultAsync(
             predicate: p => p.Id == request.ProductionOutputId,
+            include: q => q
+                .Include(p => p.Department).ThenInclude(d => d.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputProducts),
             disableTracking: true)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -42,16 +46,16 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Material).ThenInclude(m => m.Costs)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.EquipmentParts)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
                     .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.UnitOfMeasure)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Costs)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.IssuedDetails)
                 .Include(a => a.AcceptanceReportItems)
@@ -81,6 +85,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ProductionOutputId = productionOutput.Id,
             StartMonth = productionOutput.StartMonth,
             EndMonth = productionOutput.EndMonth,
+            DepartmentId = productionOutput.DepartmentId,
+            DepartmentCode = productionOutput.Department?.Code?.Value ?? string.Empty,
+            DepartmentName = productionOutput.Department?.Name ?? string.Empty,
             ProductionMeters = productionOutput.ProductionMeters,
             StandardProductionMeters = productionOutput.StandardProductionMeters,
             SectionA = sectionA,
@@ -135,8 +142,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         }
 
         // ── Sub-section 2: SCTX TH1 ──────────────────────────────────────────
-        foreach (var item in sectionItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
+        foreach (var item in sectionItems.Where(IsSctxItem))
         {
+            var part = GetSctxPart(item)!;
             var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
@@ -149,21 +157,28 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 SubGroups = new()
             });
 
-            var (plannedPrice, actualPrice) = GetUnitPrices(item.MaintainUnitPriceEquipment!.Part!.Costs, productionOutput.StartMonth);
+            var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
             var th1Logs = item.AcceptanceReportItemLogs
                 .Where(l => l.AcceptanceReportId == report.Id)
                 .ToList();
 
-            foreach (var log in th1Logs)
+            if (th1Logs.Any())
             {
-                group.Materials.Add(BuildSctxTh1Detail(item, item.MaintainUnitPriceEquipment!.Part!, plannedPrice, actualPrice, log));
+                foreach (var log in th1Logs)
+                {
+                    group.Materials.Add(BuildSctxTh1Detail(item, part, plannedPrice, actualPrice, log));
+                }
+            }
+            else
+            {
+                group.Materials.Add(BuildSctxNoLogDetail(item, part, plannedPrice, actualPrice));
             }
         }
 
         // ── Sub-section 3: SCTX TH2 (từ current report — logs kỳ trước còn tồn) ──
-        foreach (var item in sectionItems.Where(i => i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
+        foreach (var item in sectionItems.Where(IsSctxItem))
         {
-            var part = item.MaintainUnitPriceEquipment!.Part!;
+            var part = GetSctxPart(item)!;
             var oldLogs = item.AcceptanceReportItemLogs
                 .Where(l => l.AcceptanceReportId != report.Id && l.RemainingTime > 0)
                 .OrderByDescending(l => l.PeriodEndMonth)
@@ -195,11 +210,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             var prevItems = prevReport.AcceptanceReportItems
                 .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
-                         && i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null)
+                         && IsSctxItem(i))
                 .ToList();
 
             foreach (var item in prevItems)
             {
+                var part = GetSctxPart(item)!;
                 var oldLogs = item.AcceptanceReportItemLogs
                     .Where(l => l.RemainingTime > 0)
                     .OrderByDescending(l => l.PeriodEndMonth)
@@ -222,8 +238,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     SubGroups = new()
                 });
 
-                var (plannedPrice, actualPrice) = GetUnitPrices(item.MaintainUnitPriceEquipment!.Part!.Costs, productionOutput.StartMonth);
-                group.Materials.Add(BuildSctxTh2Detail(item, item.MaintainUnitPriceEquipment!.Part!, plannedPrice, actualPrice, oldLogs, productionOutput));
+                var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildSctxTh2Detail(item, part, plannedPrice, actualPrice, oldLogs, productionOutput));
             }
         }
 
@@ -300,8 +316,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         // ── SCTX TH1 ─────────────────────────────────────────────────────────
         foreach (var item in sectionItems
             .Where(i => i.AdditionalCost == AdditionalCost.Maintain
-                     && i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null))
+                     && IsSctxItem(i)))
         {
+            var part = GetSctxPart(item)!;
             var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item, true);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
@@ -314,13 +331,20 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 SubGroups = new()
             });
 
-            var (plannedPrice, actualPrice) = GetUnitPrices(item.MaintainUnitPriceEquipment!.Part!.Costs, productionOutput.StartMonth);
+            var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
             var th1Logs = item.AcceptanceReportItemLogs
                 .Where(l => l.AcceptanceReportId == report.Id)
                 .ToList();
-            foreach (var log in th1Logs)
+            if (th1Logs.Any())
             {
-                group.Materials.Add(BuildSctxTh1Detail(item, item.MaintainUnitPriceEquipment!.Part!, plannedPrice, actualPrice, log, true));
+                foreach (var log in th1Logs)
+                {
+                    group.Materials.Add(BuildSctxTh1Detail(item, part, plannedPrice, actualPrice, log, true));
+                }
+            }
+            else
+            {
+                group.Materials.Add(BuildSctxNoLogDetail(item, part, plannedPrice, actualPrice, true));
             }
 
             var oldLogs = item.AcceptanceReportItemLogs
@@ -329,7 +353,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 .ToList();
             if (oldLogs.Any())
             {
-                group.Materials.Add(BuildSctxTh2Detail(item, item.MaintainUnitPriceEquipment!.Part!, plannedPrice, actualPrice, oldLogs, productionOutput, true));
+                group.Materials.Add(BuildSctxTh2Detail(item, part, plannedPrice, actualPrice, oldLogs, productionOutput, true));
             }
         }
 
@@ -338,11 +362,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             var prevItems = prevReport.AcceptanceReportItems
                 .Where(i => i.AdditionalCost == AdditionalCost.Maintain
-                         && i.MaintainUnitPriceEquipmentId.HasValue && i.MaintainUnitPriceEquipment?.Part != null)
+                         && IsSctxItem(i))
                 .ToList();
 
             foreach (var item in prevItems)
             {
+                var part = GetSctxPart(item)!;
                 var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item, true);
                 var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
@@ -364,8 +389,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     continue;
                 }
 
-                var (plannedPrice, actualPrice) = GetUnitPrices(item.MaintainUnitPriceEquipment!.Part!.Costs, productionOutput.StartMonth);
-                group.Materials.Add(BuildSctxTh2Detail(item, item.MaintainUnitPriceEquipment!.Part!, plannedPrice, actualPrice, oldLogs, productionOutput, true));
+                var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildSctxTh2Detail(item, part, plannedPrice, actualPrice, oldLogs, productionOutput, true));
             }
         }
 
@@ -509,7 +534,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private static (string key, string code, string name) ResolveSctxGroupKey(
         string prefix, AcceptanceReportItem item, bool useAdditionalCostReference = false)
     {
-        if (item.MaintainUnitPriceEquipment!.Part!.Type == PartType.OtherPart)
+        var part = GetSctxPart(item);
+        if (part?.Type == PartType.OtherPart)
         {
             return ($"{prefix}_VTK", "VTK", "Vật tư khác");
         }
@@ -556,19 +582,21 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReportItem item,
         bool useAdditionalCostReference)
     {
+        var part = GetSctxPart(item);
+
         if (!useAdditionalCostReference)
         {
-            return item.Equipment ?? item.MaintainUnitPriceEquipment?.Part?.EquipmentParts?.FirstOrDefault()?.Equipment;
+            return item.Equipment ?? part?.EquipmentParts?.FirstOrDefault()?.Equipment;
         }
 
         if (item.AdditionalCostEquipmentId.HasValue)
         {
-            return item.MaintainUnitPriceEquipment?.Part?.EquipmentParts?
+            return part?.EquipmentParts?
                 .FirstOrDefault(ep => ep.EquipmentId == item.AdditionalCostEquipmentId.Value)?
                 .Equipment;
         }
 
-        return item.MaintainUnitPriceEquipment?.Part?.EquipmentParts?.FirstOrDefault()?.Equipment;
+        return part?.EquipmentParts?.FirstOrDefault()?.Equipment;
     }
 
     // =========================================================================
@@ -654,6 +682,43 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         };
     }
 
+    private static MaterialDetailDto BuildSctxNoLogDetail(
+        AcceptanceReportItem item,
+        Part part,
+        decimal plannedPrice,
+        decimal actualPrice,
+        bool useAdditionalCostReference = false)
+    {
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        var exported = BuildExportedInPeriod(item, plannedPrice);
+        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var hasProductionOrder = useAdditionalCostReference
+            ? item.AdditionalCostProductionOrderId.HasValue
+            : item.ProductionOrderId.HasValue;
+
+        return new MaterialDetailDto
+        {
+            MaterialId = part.Id,
+            MaterialCode = part.Code?.Value ?? "",
+            MaterialName = part.Name,
+            UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = exported,
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+                    : null,
+                Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+            }
+        };
+    }
+
     private static MaterialDetailDto BuildSctxTh2Detail(
         AcceptanceReportItem item, Part part, decimal plannedPrice, decimal actualPrice,
         List<AcceptanceReportItemLog> oldLogs, ProductionOutput productionOutput,
@@ -661,12 +726,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var latestLog = oldLogs.First();
         var pendingStart = latestLog.PendingValueEndPeriod;
+        var plannedOutput = productionOutput.ProductionOutputProcessGroups
+            .Sum(x => x.PlanProductionMeters);
 
         decimal accountedThisPeriod = 0;
         if (latestLog.UsageTime > 0 && productionOutput.StandardProductionMeters > 0)
         {
             var valueByStandard = (pendingStart / (decimal)latestLog.UsageTime)
-                * ((decimal)productionOutput.ProductionMeters
+                * ((decimal)plannedOutput
                    / (decimal)productionOutput.StandardProductionMeters);
             accountedThisPeriod = Math.Min(pendingStart, valueByStandard * (decimal)latestLog.AllocationRatio);
         }
@@ -771,14 +838,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 include: q => q
                     .Include(a => a.ProductionOutput)
                     .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                     .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.EquipmentParts)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
                             .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                     .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.UnitOfMeasure)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
                     .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(i => i.MaintainUnitPriceEquipment).ThenInclude(m => m.Part).ThenInclude(p => p.Costs)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.Costs)
                     .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(i => i.AcceptanceReportItemLogs),
                 disableTracking: true);
@@ -891,6 +958,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         => item.ShippedDetails
             .Where(d => d.Type == type)
             .Sum(d => d.Quantity);
+
+    private static bool IsSctxItem(AcceptanceReportItem item)
+        => GetSctxPart(item) != null;
+
+    private static Part? GetSctxPart(AcceptanceReportItem item)
+        => item.Part;
 
     private static (decimal planned, decimal actual) GetUnitPrices(IReadOnlyCollection<Cost> costs, DateOnly month)
     {

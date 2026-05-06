@@ -73,6 +73,7 @@ export function MainPricingSlidePage() {
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },
 			]}
 			onCreate={(props) => <SlideForm {...props} />}
+			onDuplicate={(props) => <SlideForm {...props} isDuplicate />}
 			onUpdate={(props) => <SlideForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

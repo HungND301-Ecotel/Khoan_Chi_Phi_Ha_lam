@@ -62,6 +62,7 @@ export function MainCatalogParameterInsertPage() {
 			columns={CATALOG_PARAMETER_INSERT_COLUMNS}
 			filters={[{ key: 'value', label: 'Chèn' }]}
 			onCreate={(props) => <InsertForm {...props} />}
+			onDuplicate={(props) => <InsertForm {...props} isDuplicate />}
 			onUpdate={(props) => <InsertForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

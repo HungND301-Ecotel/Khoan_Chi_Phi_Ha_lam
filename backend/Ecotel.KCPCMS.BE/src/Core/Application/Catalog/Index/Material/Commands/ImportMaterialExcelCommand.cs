@@ -19,8 +19,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
     private readonly IWriteRepository<MaterialEntity> _materialRepository = unitOfWork.GetRepository<MaterialEntity>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
-    private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+    private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
     public async Task<bool> Handle(ImportMaterialExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -35,23 +34,11 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
             return true;
         }
 
-        var isOutContract = request.MaterialType == MaterialType.MaterialOutContract;
-
-        // 1. Tải map dữ liệu tham chiếu (UoM và AssignmentCode)
+        // 1. Tải map dữ liệu tham chiếu (UoM)
         var uomNames = dtos.Select(d => d.UnitOfMeasureName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
         var unitOfMeasureIdMap = (await _unitOfMeasureRepository.GetAllAsync(
             predicate: p => uomNames.Contains(p.Name),
             disableTracking: true)).ToDictionary(p => p.Name, p => p.Id);
-
-        var acCodes = dtos
-            .Select(d => d.AssignmentCode?.Trim())
-            .Where(c => !string.IsNullOrEmpty(c))
-            .Distinct()
-            .ToList();
-        var assignmentCodeIdMap = (await _assignmentCodeRepository.GetAllAsync(
-            predicate: p => acCodes.Contains(p.Code.Value),
-            include: p => p.Include(p => p.Code!),
-            disableTracking: true)).ToDictionary(p => p.Code.Value, p => p.Id);
 
         // 2. Chỉ xử lý dữ liệu trong phạm vi MaterialType của request
         var dbMaterials = await _materialRepository.GetAllAsync(
@@ -90,21 +77,6 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                 throw new BadRequestException($"Dòng {rowNumber}: Đơn vị tính '{unitOfMeasureName}' không tồn tại.");
             }
 
-            Guid? assignmentCodeId = null;
-            if (!isOutContract)
-            {
-                var assignmentCode = dto.AssignmentCode?.Trim() ?? string.Empty;
-                if (string.IsNullOrEmpty(assignmentCode))
-                {
-                    throw new BadRequestException($"Dòng {rowNumber}: Thiếu mã giao khoán cho materialType '{request.MaterialType}'.");
-                }
-                if (!assignmentCodeIdMap.TryGetValue(assignmentCode, out var acId))
-                {
-                    throw new BadRequestException($"Dòng {rowNumber}: Mã giao khoán '{assignmentCode}' không tồn tại.");
-                }
-                assignmentCodeId = acId;
-            }
-
             // Xử lý Cost
             List<Cost> incomingCosts;
             try
@@ -119,7 +91,13 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
             if (dto.Id != Guid.Empty && dbMaterialDict.TryGetValue(dto.Id, out var entityToUpdate))
             {
                 // Logic UPDATE
-                bool isInfoChanged = entityToUpdate.CheckChange(MaterialEntity.Create(dto.Id, dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, request.MaterialType));
+                bool isInfoChanged = entityToUpdate.CheckChange(MaterialEntity.Create(
+                    dto.Id,
+                    dto.Code,
+                    dto.Name,
+                    unitOfMeasureId,
+                    entityToUpdate.AssigmentCodeId,
+                    request.MaterialType));
                 bool isCostChanged = costService.AreCostsChanged(entityToUpdate.Costs.ToList(), incomingCosts);
 
                 if (isInfoChanged || isCostChanged)
@@ -129,7 +107,12 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                         throw new ConflictException($"Dòng {rowNumber}: Mã vật tư/tài sản '{dto.Code}' đã tồn tại.");
                     }
 
-                    entityToUpdate.Update(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, request.MaterialType);
+                    entityToUpdate.Update(
+                        dto.Code,
+                        dto.Name,
+                        unitOfMeasureId,
+                        entityToUpdate.AssigmentCodeId,
+                        request.MaterialType);
 
                     if (isCostChanged)
                     {
@@ -148,7 +131,7 @@ public class ImportMaterialExcelCommandHandler(IExcelService excelService, IUnit
                     throw new ConflictException($"Dòng {rowNumber}: Mã vật tư/tài sản '{dto.Code}' đã tồn tại.");
                 }
 
-                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, assignmentCodeId, request.MaterialType);
+                var newMaterial = MaterialEntity.Create(dto.Code, dto.Name, unitOfMeasureId, null, request.MaterialType);
                 newMaterial.AddMaterialCost(incomingCosts);
                 addList.Add(newMaterial);
             }

@@ -30,10 +30,12 @@ export type PlanedMaterialCostType = {
 	materialReferenceId?: string;
 	normFactorId: string;
 	stoneClampRatioReferenceId?: string;
+	lowValuePerishableSupplyInclusion?: number;
 	outputId: string;
 	otherMaterialValue?: number;
 	materialCost?: number;
 	slideUnitPriceCost?: number;
+	lowValuePerishableSupplyUnitPriceCost?: number;
 	normFactorValue?: string;
 	totalPlannedMaterialPrice: number;
 	plannedMaterialCostAssignmentCodes: PlanedMaterialContract[];
@@ -61,12 +63,14 @@ export type PlanedMaterialCostSummary = {
 	materialUnitPriceCost: number;
 	slideUsage: string;
 	slideUnitPriceCost: number;
+	lowValuePerishableSupplyUsage?: string;
+	lowValuePerishableSupplyUnitPriceCost?: number;
 	stoneClampRatio: string;
 	normFactorValue: string;
 };
 
 export const getPlanedMaterialCostSummaryColumns = (
-	processGroupType?: number,
+	fixedKeyType?: number,
 ): ColumnDef<PlanedMaterialCostSummary>[] => {
 	const columns: ColumnDef<PlanedMaterialCostSummary>[] = [
 		{
@@ -77,7 +81,7 @@ export const getPlanedMaterialCostSummaryColumns = (
 		},
 	];
 
-	if (processGroupType === ProcessGroupType.DL) {
+	if (fixedKeyType === ProcessGroupType.DL) {
 		columns.push(
 			{
 				accessorKey: 'slideUsage',
@@ -93,6 +97,22 @@ export const getPlanedMaterialCostSummaryColumns = (
 				cell: ({ row }) => formatNumber(row.original.slideUnitPriceCost),
 			},
 		);
+	}
+
+	if (
+		fixedKeyType === ProcessGroupType.DL ||
+		fixedKeyType === ProcessGroupType.LC
+	) {
+		columns.push({
+			accessorKey: 'lowValuePerishableSupplyUnitPriceCost',
+			header: () => (
+				<span className='whitespace-normal'>
+					Đơn giá vật tư mau hỏng rẻ tiền (đ/m)
+				</span>
+			),
+			cell: ({ row }) =>
+				formatNumber(row.original.lowValuePerishableSupplyUnitPriceCost || 0),
+		});
 	}
 
 	columns.push(

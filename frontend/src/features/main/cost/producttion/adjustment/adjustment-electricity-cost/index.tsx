@@ -19,22 +19,26 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import { AdjustmentElectricityCostDetail } from './types';
-import { ADJUSTMENT_ELECTRICITY_COST_COLUMNS } from './columns';
+import { getAdjustmentElectricityCostColumns } from './columns';
 
 export function AdjustmentElectricityCost({
 	id,
 	isOpen,
+	adjustment,
 	productionOutput,
 	multiplyByProductionMeters = true,
 }: AdjustmentCostExpandProps) {
 	const [adjustmentElectricityCost, setAdjustmentElectricityCost] =
 		useState<AdjustmentElectricityCostDetail>();
+	const [adjustmentElectricityPrice, setAdjustmentElectricityPrice] =
+		useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setAdjustmentElectricityCost(undefined);
+			setAdjustmentElectricityPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -50,6 +54,7 @@ export function AdjustmentElectricityCost({
 				res.result.costs.forEach(({ totalPrice }) => {
 					total += totalPrice;
 				});
+				setAdjustmentElectricityPrice(total);
 				setTotal(
 					multiplyByProductionMeters
 						? total * (productionOutput?.productionMeters || 1)
@@ -68,9 +73,14 @@ export function AdjustmentElectricityCost({
 				<ItemContent>
 					<ItemTitle>Doanh thu điện năng điều chỉnh</ItemTitle>
 				</ItemContent>
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(adjustmentElectricityPrice)}
+					</ItemTitle>
+				</ItemContent>
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total ?? 0))}
+						{loading ? <Spinner /> : formatNumber(total ?? 0)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>
@@ -92,7 +102,9 @@ export function AdjustmentElectricityCost({
 			{id && isOpen && (
 				<AccordionContent className='p-0 px-2 pt-2'>
 					<DataTable
-						columns={ADJUSTMENT_ELECTRICITY_COST_COLUMNS}
+						columns={getAdjustmentElectricityCostColumns(
+							adjustment?.fixedKeyType,
+						)}
 						items={adjustmentElectricityCost?.costs}
 						compact={true}
 						hasActions={false}

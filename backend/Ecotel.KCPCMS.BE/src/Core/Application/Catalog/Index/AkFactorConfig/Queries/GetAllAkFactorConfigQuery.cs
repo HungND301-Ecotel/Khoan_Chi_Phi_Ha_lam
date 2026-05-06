@@ -1,0 +1,45 @@
+using Application.Catalog.Index.AkFactorConfig.Specifications;
+using Application.Common.Models;
+using Application.Common.Persistence;
+using Application.Common.Services;
+using Application.Dto.Catalog.AkFactorConfig;
+using MediatR;
+
+namespace Application.Catalog.Index.AkFactorConfig.Queries;
+
+public record GetAllAkFactorConfigQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<AkFactorConfigDto>>;
+
+public class GetAllAkFactorConfigQueryHandler(
+    IPaginationService paginationService,
+    IReadRepository<Domain.Entities.Index.AkFactorConfig> AkFactorConfigRepository)
+    : IRequestHandler<GetAllAkFactorConfigQuery, PaginationResponse<AkFactorConfigDto>>
+{
+    public async Task<PaginationResponse<AkFactorConfigDto>> Handle(GetAllAkFactorConfigQuery request, CancellationToken cancellationToken)
+    {
+        var filter = new PaginationFilter
+        {
+            PageNumber = request.PageIndex,
+            PageSize = request.PageSize,
+            IgnorePagination = request.IgnorePagination
+        };
+
+        var spec = new AkFactorConfigsByPaginationSpec(filter, request.Search);
+
+        var result = await paginationService.PaginatedListAsync(
+            repository: AkFactorConfigRepository,
+            spec: spec,
+            pageNumber: filter.PageNumber,
+            pageSize: filter.PageSize,
+            ignorePagination: filter.IgnorePagination,
+            cancellationToken: cancellationToken);
+
+        result.Data = result.Data
+            .OrderByCodeNatural(d => d.ProcessGroupCode)
+            .ThenBy(d => Domain.Entities.Index.AkFactorConfig.GetOperatorPriority(d.AkDiffOperator))
+            .ThenByDescending(d => d.AkDiffOperator is ">" or ">=" ? d.AkDiffValue : null)
+            .ThenBy(d => d.AkDiffOperator is "<" or "<=" ? d.AkDiffValue : null)
+            .ThenBy(d => d.AkDiffValue ?? decimal.MinValue)
+            .ToList();
+        return result;
+    }
+}

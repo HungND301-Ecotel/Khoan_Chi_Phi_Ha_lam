@@ -70,6 +70,8 @@ public static class CustomResponseMessage
     public const string EquipmentPartsInvalid = "EQUIPMENT_PARTS_INVALID";
     public const string MaintainUnitPriceNotFound = "MAINTAIN_UNIT_PRICE_NOT_FOUND";
     public const string MaterialUnitPriceCodeAlreadyExists = "MATERIAL_UNIT_PRICE_CODE_ALREADY_EXISTS";
+    public const string LowValuePerishableSupplyUnitPriceAlreadyExists = "LOW_VALUE_PERISHABLE_SUPPLY_UNIT_PRICE_ALREADY_EXISTS";
+    public const string LowValuePerishableSupplyUnitPriceNotFound = "LOW_VALUE_PERISHABLE_SUPPLY_UNIT_PRICE_NOT_FOUND";
     public const string SlideUnitPriceCodeAlreadyExists = "SLIDE_UNIT_PRICE_CODE_ALREADY_EXISTS";
     public const string MaterialUnitPriceNotFound = "MATERIAL_UNIT_PRICE_NOT_FOUND";
     public const string ProductUnitPriceNotFound = "PRODUCT_UNIT_PRICE_NOT_FOUND";

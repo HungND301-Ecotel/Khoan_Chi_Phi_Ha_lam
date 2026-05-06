@@ -20,7 +20,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function ProductForm({ data, row }: ActionDialogProps<Product>) {
+type ProductFormProps = ActionDialogProps<Product> & {
+	isDuplicate?: boolean;
+};
+
+export function ProductForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ProductFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -30,7 +38,11 @@ export function ProductForm({ data, row }: ActionDialogProps<Product>) {
 		resolver: zodResolver(productFormSchema),
 		mode: 'onSubmit',
 		defaultValues: row
-			? { code: row.code, name: row.name, processGroupId: row.processGroupId }
+			? {
+					code: isDuplicate ? '' : row.code,
+					name: row.name,
+					processGroupId: row.processGroupId,
+				}
 			: PRODUCT_FORM_DEFAULT,
 	});
 
@@ -42,7 +54,7 @@ export function ProductForm({ data, row }: ActionDialogProps<Product>) {
 
 	const handleSubmit = async (values: ProductFormSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PRODUCT.UPDATE, {
 					id: row.id,
 					...values,
@@ -53,7 +65,7 @@ export function ProductForm({ data, row }: ActionDialogProps<Product>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -89,7 +101,7 @@ export function ProductForm({ data, row }: ActionDialogProps<Product>) {
 				placeholder='Nhập tên sản phẩm'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

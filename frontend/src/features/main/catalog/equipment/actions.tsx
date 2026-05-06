@@ -18,7 +18,6 @@ import {
 	equipmentSchema,
 	EquipmentSchema,
 } from '@/features/main/catalog/equipment/schema';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,28 +37,34 @@ export type EquipmentDetail = {
 		costType: number;
 		amount: number;
 	}>;
-	processGroups: Array<{
-		id: string;
-		code: string;
-		name: string;
-	}>;
-	processGroupId?: string;
 	partIds: string[];
 	parts: Array<{
 		id: string;
 		code: string;
 		name: string;
+		partType: number;
 	}>;
 };
 
-export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
+type EquipmentFormProps = ActionDialogProps<Equipment> & {
+	isDuplicate?: boolean;
+};
+
+export function EquipmentForm({
+	data,
+	row,
+	isDuplicate = false,
+}: EquipmentFormProps) {
 	const { breadcrumb } = useMeta();
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
-	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [parts, setParts] = useState<Part[]>([]);
+	const [otherParts, setOtherParts] = useState<Part[]>([]);
 	const [selectedParts, setSelectedParts] = useState<MultiSelectOption[]>([]);
+	const [selectedOtherParts, setSelectedOtherParts] = useState<
+		MultiSelectOption[]
+	>([]);
 
 	const form = useForm<EquipmentSchema>({
 		resolver: zodResolver(equipmentSchema),
@@ -70,21 +75,26 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
-			api.pagging<Part>(API.CATALOG.PART.LIST, { partType: 1 }),
+			api.pagging<Part>(API.CATALOG.PART.LIST, {
+				ignorePagination: true,
+				partType: 1,
+			}),
+			api.pagging<Part>(API.CATALOG.PART.LIST, {
+				ignorePagination: true,
+				partType: 2,
+			}),
 		]);
 
-		promises.then(([units, processGroups, parts]) => {
+		promises.then(([units, parts, otherParts]) => {
 			setUnits(units.result.data);
-			setProcessGroups(processGroups.result.data);
 			setParts(parts.result.data);
+			setOtherParts(otherParts.result.data);
 			if (row) {
 				api
 					.get<EquipmentDetail>(API.CATALOG.EQUIPMENT.DETAIL(row.id))
 					.then((res) => {
 						const {
 							costs,
-							processGroups,
 							parts: selectedPartsFromApi,
 							partIds,
 							...equipment
@@ -95,10 +105,25 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 								value: part.id,
 							}))
 							.sort((a, b) => a.label.localeCompare(b.label));
+
+						const selectedPartItems = (selectedPartsFromApi ?? [])
+							.filter((part) => part.partType !== 2)
+							.map<MultiSelectOption>((part) => ({
+								label: `${part.code} - ${part.name}`,
+								value: part.id,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
+
+						const selectedOtherPartItems = (selectedPartsFromApi ?? [])
+							.filter((part) => part.partType === 2)
+							.map<MultiSelectOption>((part) => ({
+								label: `${part.code} - ${part.name}`,
+								value: part.id,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
 						form.reset({
 							...equipment,
-							processGroupId:
-								equipment.processGroupId ?? processGroups.at(0)?.id ?? '',
+							code: isDuplicate ? '' : equipment.code,
 							partIds: partIds ?? [],
 							costs:
 								costs.map((cost) => ({
@@ -107,25 +132,28 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 									amount: cost.amount,
 								})) || EQUIPMENT_SCHEMA_DEFAULT.costs,
 						});
-						setSelectedParts(selected);
+						setSelectedParts(
+							selectedPartItems.length > 0 ? selectedPartItems : selected,
+						);
+						setSelectedOtherParts(selectedOtherPartItems);
 					});
 			}
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate]);
 
 	useEffect(() => {
-		form.setValue(
-			'partIds',
-			selectedParts.map((item) => item.value),
-		);
-	}, [form, selectedParts]);
+		form.setValue('partIds', [
+			...selectedParts.map((item) => item.value),
+			...selectedOtherParts.map((item) => item.value),
+		]);
+	}, [form, selectedParts, selectedOtherParts]);
 
 	const handleSubmit = async (values: EquipmentSchema) => {
 		try {
 			const processedValues = {
 				...values,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.EQUIPMENT.UPDATE, {
 					id: row?.id,
 					...processedValues,
@@ -136,7 +164,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -172,24 +200,34 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 				}))}
 			/>
 
-			<FormComboBox
-				control={form.control}
-				name='processGroupId'
-				label='Nhóm công đoạn sản xuất'
-				placeholder='Chọn nhóm công đoạn sản xuất'
-				options={processGroups.map((processGroup) => ({
-					value: processGroup.id,
-					label: `${processGroup.code} - ${processGroup.name}`,
-				}))}
-			/>
-
 			<MultiSelect
-				label='Phụ tùng'
-				placeholder='Chọn phụ tùng'
+				label='Phụ tùng theo thiết bị'
+				placeholder='Chọn phụ tùng theo thiết bị'
 				values={selectedParts}
 				onValuesChange={setSelectedParts}
 				options={Object.values(
 					(parts ?? []).reduce<
+						Record<string, { value: string; label: string }>
+					>((acc, item) => {
+						if (!item.id || !item.code || acc[item.id]) {
+							return acc;
+						}
+						acc[item.id] = {
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						};
+						return acc;
+					}, {}),
+				)}
+			/>
+
+			<MultiSelect
+				label='Phụ tùng khác'
+				placeholder='Chọn phụ tùng khác'
+				values={selectedOtherParts}
+				onValuesChange={setSelectedOtherParts}
+				options={Object.values(
+					(otherParts ?? []).reduce<
 						Record<string, { value: string; label: string }>
 					>((acc, item) => {
 						if (!item.id || !item.code || acc[item.id]) {
@@ -236,7 +274,7 @@ export function EquipmentForm({ data, row }: ActionDialogProps<Equipment>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

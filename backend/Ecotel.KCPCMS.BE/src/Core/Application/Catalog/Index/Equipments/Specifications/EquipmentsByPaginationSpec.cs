@@ -16,9 +16,6 @@ public class EquipmentsByPaginationSpec : EntitiesByPaginationFilterSpec<Equipme
             .Include(x => x.UnitOfMeasure)
             .Include(x => x.Costs)
             .Include(x => x.Code)
-            .Include(x => x.EquipmentProcessGroups)
-                .ThenInclude(x => x.ProcessGroup)
-                .ThenInclude(x => x.Code)
             .Where(x => x.Code != null && (string.IsNullOrWhiteSpace(searchTerm) ||
                                            x.Name.ToLower().Contains(searchTerm) ||
                                            x.Code.Value.ToLower().Contains(searchTerm)));
@@ -30,18 +27,7 @@ public class EquipmentsByPaginationSpec : EntitiesByPaginationFilterSpec<Equipme
             Name = x.Name,
             UnitOfMeasureId = x.UnitOfMeasureId,
             UnitOfMeasureName = x.UnitOfMeasure != null ? x.UnitOfMeasure.Name : string.Empty,
-            CurrentPrice = x.GetEffectiveDateCost(checkDate),
-            ProcessGroups = x.EquipmentProcessGroups
-                .Where(epg => epg.ProcessGroup != null && epg.ProcessGroup.Code != null)
-                .Select(epg => new EquipmentProcessGroupDto
-                {
-                    Id = epg.ProcessGroupId,
-                    Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
-                })
-                .OrderBy(epg => epg.Code)
-                .ThenBy(epg => epg.Name)
-                .ToList()
+            CurrentPrice = x.GetEffectiveDateCost(checkDate)
         });
     }
 }

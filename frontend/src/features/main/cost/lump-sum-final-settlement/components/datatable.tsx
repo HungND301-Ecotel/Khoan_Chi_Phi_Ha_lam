@@ -39,6 +39,20 @@ interface LumpSumDataTableProps {
 			| 'electricityUnitPrice',
 		value: number | string,
 	) => void;
+	onEditSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onCancelSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onSaveSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
+	onSpecialQuantityChange?: (
+		row: LumpSumFinalSettlement,
+		value: number,
+	) => void;
+	onSavingCarryForwardChange?: (
+		row: LumpSumFinalSettlement,
+		value: number,
+	) => void;
+	onSaveSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
+	onEditSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
+	onCancelSavingCarryForward?: (row: LumpSumFinalSettlement) => void;
 }
 
 export function LumpSumDataTable({
@@ -52,12 +66,20 @@ export function LumpSumDataTable({
 	onSaveCustomCost,
 	onDeleteCustomCost,
 	onCustomCostChange,
+	onEditSpecialQuantity,
+	onCancelSpecialQuantity,
+	onSaveSpecialQuantity,
+	onSpecialQuantityChange,
+	onSavingCarryForwardChange,
+	onSaveSavingCarryForward,
+	onEditSavingCarryForward,
+	onCancelSavingCarryForward,
 }: LumpSumDataTableProps) {
 	const renderUnitPrice = (value: number | null | undefined) => {
 		if (value == null || value === 0) {
 			return '';
 		}
-		return formatNumber(Math.round(value));
+		return formatNumber(value);
 	};
 
 	const table = useReactTable({
@@ -144,37 +166,25 @@ export function LumpSumDataTable({
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
-							{formatNumber(totals.plannedQuantity, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.plannedQuantity)}
 						</TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
-							{formatNumber(totals.actualQuantity, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.actualQuantity)}
 						</TableCell>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
-							{formatNumber(totals.materialsTotal, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.materialsTotal)}
 						</TableCell>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
-							{formatNumber(totals.maintainsTotal, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.maintainsTotal)}
 						</TableCell>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
-							{formatNumber(totals.electricitiesTotal, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.electricitiesTotal)}
 						</TableCell>
 						<TableCell className='border-r-0 p-2 text-left font-bold'>
-							{formatNumber(totals.totalAmount, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(totals.totalAmount)}
 						</TableCell>
 					</TableRow>
 				</TableHeader>
@@ -190,6 +200,103 @@ export function LumpSumDataTable({
 						</TableRow>
 					) : table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => {
+							if (row.original.isSpecialQuantityRow) {
+								const r = row.original;
+								const isEditing = !!r.isEditing;
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 hover:bg-gray-50'
+									>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-center',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{r.sttLabel || row.index + 1}
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='flex items-center justify-between gap-2'>
+												<span>{r.productName}</span>
+												<div className='flex items-center gap-1'>
+													{isEditing ? (
+														<>
+															<Button
+																variant='default'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onSaveSpecialQuantity?.(r)}
+															>
+																Lưu
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onCancelSpecialQuantity?.(r)}
+															>
+																Hủy
+															</Button>
+														</>
+													) : (
+														<Button
+															variant='outline'
+															size='sm'
+															className='h-8 px-3'
+															onClick={() => onEditSpecialQuantity?.(r)}
+														>
+															Sửa
+														</Button>
+													)}
+												</div>
+											</div>
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-center',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='text-center'>{r.unitOfMeasureName}</div>
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{isEditing ? (
+												<FormNumberInput
+													className='h-8'
+													value={r.actualQuantity ?? 0}
+													onValueChange={(value) =>
+														onSpecialQuantityChange?.(r, Number(value ?? 0))
+													}
+												/>
+											) : (
+												<div className='text-left'>
+													{formatNumber(r.actualQuantity ?? 0)}
+												</div>
+											)}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
 							if (row.original.isCustomCostRow) {
 								const r = row.original;
 								const isEditing = !!r.isEditing;
@@ -279,9 +386,7 @@ export function LumpSumDataTable({
 													}
 												/>
 											) : (
-												formatNumber(r.actualQuantity ?? 0, {
-													maximumFractionDigits: 3,
-												})
+												formatNumber(r.actualQuantity ?? 0)
 											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-1 text-left'>
@@ -298,11 +403,11 @@ export function LumpSumDataTable({
 													}
 												/>
 											) : (
-												formatNumber(Math.round(r.materials?.unitPrice ?? 0))
+												formatNumber(r.materials?.unitPrice ?? 0)
 											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.materials?.totalAmount ?? 0))}
+											{formatNumber(r.materials?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-1 text-left'>
 											{isEditing ? (
@@ -318,11 +423,11 @@ export function LumpSumDataTable({
 													}
 												/>
 											) : (
-												formatNumber(Math.round(r.maintains?.unitPrice ?? 0))
+												formatNumber(r.maintains?.unitPrice ?? 0)
 											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.maintains?.totalAmount ?? 0))}
+											{formatNumber(r.maintains?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-1 text-left'>
 											{isEditing ? (
@@ -339,17 +444,17 @@ export function LumpSumDataTable({
 												/>
 											) : (
 												formatNumber(
-													Math.round(r.electricities?.unitPrice ?? 0),
+													r.electricities?.unitPrice ?? 0,
 												)
 											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{formatNumber(
-												Math.round(r.electricities?.totalAmount ?? 0),
+												r.electricities?.totalAmount ?? 0,
 											)}
 										</TableCell>
 										<TableCell className='p-2 text-left font-medium'>
-											{formatNumber(Math.round(r.totalAmount ?? 0))}
+											{formatNumber(r.totalAmount ?? 0)}
 										</TableCell>
 									</TableRow>
 								);
@@ -389,9 +494,96 @@ export function LumpSumDataTable({
 												row.original.isBold && 'font-bold',
 											)}
 										>
-											{formatNumber(row.original.mergedValue ?? 0, {
-												maximumFractionDigits: 0,
-											})}
+											{formatNumber(row.original.mergedValue ?? 0)}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
+							if (row.original.isSavingCarryForwardInputRow) {
+								const r = row.original;
+								const isEditing = !!r.isEditing;
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 hover:bg-gray-50'
+									>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											{r.sttLabel || row.index + 1}
+										</TableCell>
+										<TableCell
+											className={cn(
+												'border-r-2 border-gray-200 p-2 text-left',
+												r.isBold && 'font-bold',
+											)}
+										>
+											<div className='flex items-center justify-between gap-2'>
+												<span>{r.productName}</span>
+												<div className='flex items-center gap-1'>
+													{isEditing ? (
+														<>
+															<Button
+																variant='default'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onSaveSavingCarryForward?.(r)}
+															>
+																Lưu
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() =>
+																	onCancelSavingCarryForward?.(r)
+																}
+															>
+																Hủy
+															</Button>
+														</>
+													) : (
+														<Button
+															variant='outline'
+															size='sm'
+															className='h-8 px-3'
+															onClick={() => onEditSavingCarryForward?.(r)}
+														>
+															Sửa
+														</Button>
+													)}
+												</div>
+											</div>
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
+											{r.unitOfMeasureName}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell
+											colSpan={5}
+											className='border-r-2 border-gray-200 p-1 text-center'
+										>
+											{isEditing ? (
+												<FormNumberInput
+													className='h-8'
+													value={r.mergedValue ?? 0}
+													onValueChange={(value) =>
+														onSavingCarryForwardChange?.(
+															r,
+															Number(value ?? 0),
+														)
+													}
+												/>
+											) : (
+												formatNumber(r.mergedValue ?? 0)
+											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='p-2 text-left'></TableCell>
@@ -430,24 +622,24 @@ export function LumpSumDataTable({
 											{renderUnitPrice(r.materials?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.materials?.totalAmount ?? 0))}
+											{formatNumber(r.materials?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{renderUnitPrice(r.maintains?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(Math.round(r.maintains?.totalAmount ?? 0))}
+											{formatNumber(r.maintains?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{renderUnitPrice(r.electricities?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{formatNumber(
-												Math.round(r.electricities?.totalAmount ?? 0),
+												r.electricities?.totalAmount ?? 0,
 											)}
 										</TableCell>
 										<TableCell className='p-2 text-left'>
-											{formatNumber(Math.round(r.totalAmount ?? 0))}
+											{formatNumber(r.totalAmount ?? 0)}
 										</TableCell>
 									</TableRow>
 								);

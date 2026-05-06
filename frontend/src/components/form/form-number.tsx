@@ -2,7 +2,7 @@ import { FormControlProps } from '@/components/form/form-provider';
 import { FieldError } from '@/components/ui/field';
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import { ComponentProps } from 'react';
 import {
 	ControllerRenderProps,
@@ -23,8 +23,8 @@ export type FormNumberProps<T extends FieldValues> = FormControlProps<T> &
 		| 'pattern'
 		| 'defaultValue'
 	> & {
-	disabled?: boolean;
-};
+		disabled?: boolean;
+	};
 
 export type FormNumberInputProps = Omit<
 	ComponentProps<'input'>,
@@ -50,6 +50,13 @@ export function FormNumber<T extends FieldValues>({
 		field: { onChange, value, ...field },
 		fieldState,
 	} = useController({ control, name });
+	const numberTitle =
+		(props.readOnly || disabled) &&
+		value !== undefined &&
+		value !== null &&
+		value !== ''
+			? formatNumber(Number(value))
+			: props.title;
 
 	return (
 		<div data-invalid={fieldState.invalid} className='flex flex-col gap-2'>
@@ -72,6 +79,7 @@ export function FormNumber<T extends FieldValues>({
 					id={name}
 					autoComplete={autoComplete}
 					required={required}
+					title={numberTitle}
 					type='text'
 					inputMode='decimal'
 					disabled={disabled}
@@ -91,6 +99,11 @@ export function FormNumberInput({
 	disabled,
 	...props
 }: FormNumberInputProps) {
+	const numberTitle =
+		(props.readOnly || disabled) && value !== undefined && value !== null
+			? formatNumber(value)
+			: props.title;
+
 	return (
 		<InputGroup className={cn(className, disabled && 'bg-transparent')}>
 			<NumericFormat
@@ -102,6 +115,7 @@ export function FormNumberInput({
 				}}
 				customInput={InputGroupInput}
 				autoComplete={autoComplete}
+				title={numberTitle}
 				type='text'
 				inputMode='decimal'
 				disabled={disabled}

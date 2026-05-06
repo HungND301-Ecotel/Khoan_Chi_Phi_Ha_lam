@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -12,13 +13,22 @@ namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Queries;
 public record GetAllLongwallElectricityUnitPriceEquipmentQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination) : IRequest<PaginationResponse<ElectricityUnitPriceEquipmentDto>>;
 
 public class GetAllLongwallElectricityUnitPriceEquipmentQueryHandler(
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ICacheService cacheService)
     : IRequestHandler<GetAllLongwallElectricityUnitPriceEquipmentQuery, PaginationResponse<ElectricityUnitPriceEquipmentDto>>
 {
+    private const string CacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
 
     public async Task<PaginationResponse<ElectricityUnitPriceEquipmentDto>> Handle(GetAllLongwallElectricityUnitPriceEquipmentQuery request, CancellationToken cancellationToken)
     {
+        var cacheKey = $"GetAllLongwallElectricityUnitPriceEquipment:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}";
+        var cachedResult = await cacheService.GetAsync<PaginationResponse<ElectricityUnitPriceEquipmentDto>>(cacheKey, cancellationToken);
+        if (cachedResult != null)
+        {
+            return cachedResult;
+        }
+
         var filter = new PaginationFilter
         {
             PageNumber = request.PageIndex,
@@ -43,16 +53,19 @@ public class GetAllLongwallElectricityUnitPriceEquipmentQueryHandler(
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        var data = await query.ToListAsync(cancellationToken);
+        IEnumerable<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> sortedData = data
+            .OrderByCodeNatural(e => e.Equipment!.Code!.Value)
+            .ThenBy(e => e.Equipment!.Name);
+
         if (!filter.IgnorePagination)
         {
-            query = query
+            sortedData = sortedData
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize);
         }
 
-        var data = await query.ToListAsync(cancellationToken);
-
-        var listData = data.Select(e => new ElectricityUnitPriceEquipmentDto
+        var listData = sortedData.Select(e => new ElectricityUnitPriceEquipmentDto
         {
             Id = e.Id,
             EquipmentId = e.EquipmentId,
@@ -76,10 +89,14 @@ public class GetAllLongwallElectricityUnitPriceEquipmentQueryHandler(
             Ptt = e is LongwallElectricityUnitPriceEquipment lwallPtt ? lwallPtt.Ptt : null
         }).ToList();
 
-        return new PaginationResponse<ElectricityUnitPriceEquipmentDto>(
+        var result = new PaginationResponse<ElectricityUnitPriceEquipmentDto>(
             listData,
             totalCount,
             filter.PageNumber,
             filter.PageSize);
+
+        cacheService.SetWithSignal(cacheKey, result, CacheSignalKey);
+
+        return result;
     }
 }

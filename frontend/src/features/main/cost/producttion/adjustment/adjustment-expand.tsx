@@ -13,6 +13,7 @@ import {
 	AdjustmentCostProductDetail,
 	AdjustmentOutput,
 	AdjustmentProductionOutput,
+	mapAdjustmentCostProductDetail,
 } from './type';
 import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
@@ -50,7 +51,7 @@ export function AdjustmentExpand({
 
 		promises
 			.then(([adjustment]) => {
-				setAdjustment(adjustment.result);
+				setAdjustment(mapAdjustmentCostProductDetail(adjustment.result));
 			})
 			.finally(() => setLoading(false));
 	}, [row?.id]);
@@ -111,9 +112,7 @@ export function AdjustmentExpand({
 							<span className='me-auto'>{formatDate(displayStartMonth)}</span>
 							<span className='w-24.5'>{formatNumber(displayMeters || 0)}</span>
 							<span className='w-24'>
-								{formatNumber(matchedProductionOutput?.adjTotalPrice || 0, {
-									maximumFractionDigits: 0,
-								})}
+								{formatNumber(matchedProductionOutput?.adjTotalPrice || 0)}
 							</span>
 
 							<AccordionTrigger className='group ms-17.5 cursor-pointer p-0'>
@@ -144,9 +143,7 @@ export function AdjustmentExpand({
 									output={hasOutputs ? (item as AdjustmentOutput) : undefined}
 									productionOutput={matchedProductionOutput}
 									callback={data.refresh}
-									isOpen={openedCosts.includes(
-										ADJUSTMENT_MATERIAL_COST_VALUE,
-									)}
+									isOpen={openedCosts.includes(ADJUSTMENT_MATERIAL_COST_VALUE)}
 								/>
 
 								<AdjustmentMaintainCost
@@ -155,9 +152,7 @@ export function AdjustmentExpand({
 									output={hasOutputs ? (item as AdjustmentOutput) : undefined}
 									productionOutput={matchedProductionOutput}
 									callback={data.refresh}
-									isOpen={openedCosts.includes(
-										ADJUSTMENT_MAINTAIN_COST_VALUE,
-									)}
+									isOpen={openedCosts.includes(ADJUSTMENT_MAINTAIN_COST_VALUE)}
 								/>
 
 								<AdjustmentElectricityCost

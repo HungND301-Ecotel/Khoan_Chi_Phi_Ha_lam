@@ -7,14 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export function formatNumber(
-	value: number,
-	options: Intl.NumberFormatOptions = {
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 4,
-	},
-) {
-	return value.toLocaleString('vi-VN', options);
+export function formatNumber(value: number) {
+	return value.toLocaleString('vi-VN');
 }
 
 export function formatDate(value: string) {

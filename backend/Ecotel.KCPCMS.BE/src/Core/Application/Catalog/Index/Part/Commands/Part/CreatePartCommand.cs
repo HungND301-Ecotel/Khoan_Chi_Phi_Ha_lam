@@ -17,6 +17,7 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
 {
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     public async Task<bool> Handle(CreatePartCommand request, CancellationToken cancellationToken)
     {
         if (await codeService.IsPartCodeExisted(request.CreateModel.Code))
@@ -36,10 +37,38 @@ public class CreatePartCommandHandler(IUnitOfWork unitOfWork, ICodeService codeS
         await unitOfWork.BeginTransactionAsync();
         try
         {
-            var newPart = Domain.Entities.Index.Part.Create(
-                request.CreateModel.Code,
-                request.CreateModel.Name,
-                request.CreateModel.UnitOfMeasureId,                request.CreateModel.PartType);
+            Domain.Entities.Index.Part newPart;
+            var equipmentIds = request.CreateModel.EquipmentIds
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (equipmentIds.Any())
+            {
+                var equipments = (await _equipmentRepository.GetAllAsync(
+                    predicate: equipment => equipmentIds.Contains(equipment.Id),
+                    disableTracking: false)).ToList();
+
+                if (equipments.Count != equipmentIds.Count)
+                {
+                    throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
+                }
+
+                newPart = Domain.Entities.Index.Part.Create(
+                    request.CreateModel.Code,
+                    request.CreateModel.Name,
+                    request.CreateModel.UnitOfMeasureId,
+                    equipments,
+                    request.CreateModel.PartType);
+            }
+            else
+            {
+                newPart = Domain.Entities.Index.Part.Create(
+                    request.CreateModel.Code,
+                    request.CreateModel.Name,
+                    request.CreateModel.UnitOfMeasureId,
+                    request.CreateModel.PartType);
+            }
 
             var costList = new List<Cost>();
             foreach (var cost in request.CreateModel.Costs)

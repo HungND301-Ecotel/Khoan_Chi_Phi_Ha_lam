@@ -2,37 +2,62 @@
 export interface LumpSumFinalSettlementListRequest {
 	month: string; // "1".."12"
 	year: string; // e.g. "2024"
-	processGroupId: string;
+	processGroupId?: string | null;
+	departmentId?: string | null;
 }
 
 export interface LumpSumFinalSettlementQuarterListRequest {
 	quarter: string; // "1".."4"
 	year: string; // e.g. "2024"
-	processGroupId: string;
+	processGroupId?: string | null;
+	departmentId?: string | null;
 }
 
 export interface LumpSumFinalSettlementQuarterResponse {
 	items: LumpSumFinalSettlement[];
+	monthBreakdowns?: LumpSumFinalSettlementMonthResponse[];
 	revenuesByMonth: LumpSumQuarterRevenueByMonth[];
+	costsByMonth?: LumpSumQuarterRevenueByMonth[];
+	savingsByMonth?: LumpSumQuarterRevenueByMonth[];
 	transferredCosts?: LumpSumQuarterTransferredCost[];
 	customCosts?: LumpSumQuarterCustomCost[];
+	revenueQuarter?: LumpSumQuarterRevenueByMonth | null;
+	costQuarter?: LumpSumQuarterRevenueByMonth | null;
+	savingQuarter?: LumpSumQuarterRevenueByMonth | null;
 	coalExcavationActualQuantity?: number;
 	coalCrosscutActualQuantity?: number;
 	meterExcavationActualQuantity?: number;
 	meterCrosscutActualQuantity?: number;
+	totalSavingQuarter?: number;
 	acceptedSavingQuarter?: number;
 	savingsValue?: number;
+	revenueAdjustmentRate?: number;
+	savingAddedToIncomeQuarter?: number;
 }
 
 export interface LumpSumFinalSettlementMonthResponse {
 	items: LumpSumFinalSettlement[];
 	revenue?: LumpSumQuarterRevenueByMonth | null;
+	cost?: LumpSumQuarterRevenueByMonth | null;
+	saving?: LumpSumQuarterRevenueByMonth | null;
 	transferredCost?: LumpSumQuarterTransferredCost | null;
 	customCosts?: LumpSumQuarterCustomCost[];
 	coalExcavationActualQuantity?: number;
 	coalCrosscutActualQuantity?: number;
 	meterExcavationActualQuantity?: number;
 	meterCrosscutActualQuantity?: number;
+	totalSavingMonth?: number;
+	savingsValue?: number;
+	acceptedSavingMonth?: number;
+	revenueAdjustmentRate?: number;
+	savingAddedToIncomeMonth?: number;
+	savingCarryForwardByMonths?: LumpSumSavingCarryForwardByMonth[];
+	savingCarryForwardToNextMonths?: number;
+}
+
+export interface LumpSumSavingCarryForwardByMonth {
+	month: number;
+	value: number;
 }
 
 export interface LumpSumQuarterRevenueByMonth {
@@ -84,6 +109,21 @@ export interface UpsertLumpSumQuarterCustomCostRequest {
 	electricityUnitPrice: number;
 }
 
+export interface UpdateLumpSumMonthSpecialQuantityRequest {
+	month: string;
+	year: string;
+	processGroupId?: string | null;
+	coalExcavationActualQuantity: number;
+	coalCrosscutActualQuantity: number;
+}
+
+export interface UpdateLumpSumMonthCarryForwardRequest {
+	month: string;
+	year: string;
+	processGroupId?: string | null;
+	savingCarryForwardToNextMonths: number;
+}
+
 export interface LumpSumFinalSettlement {
 	id?: string;
 	processGroupId?: string;
@@ -94,10 +134,15 @@ export interface LumpSumFinalSettlement {
 	isProcessGroupRow?: boolean;
 	excludeFromSummary?: boolean;
 	isMergedValueRow?: boolean;
+	isSavingCarryForwardInputRow?: boolean;
 	mergedValue?: number;
 	isCustomCostRow?: boolean;
 	isEditing?: boolean;
 	isTransferredDefaultRow?: boolean;
+	isSpecialQuantityRow?: boolean;
+	specialQuantityField?:
+		| 'coalExcavationActualQuantity'
+		| 'coalCrosscutActualQuantity';
 	month?: number;
 	productName?: string;
 	productCode?: string;
@@ -115,12 +160,14 @@ export interface YearFilterForm {
 	month?: string;
 	year?: string;
 	processGroup?: string;
+	department?: string;
 }
 
 export interface QuarterFilterForm {
 	quarter?: string;
 	year?: string;
 	processGroup?: string;
+	department?: string;
 }
 
 export interface ProcessGroup {

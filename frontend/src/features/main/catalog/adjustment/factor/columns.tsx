@@ -2,6 +2,9 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export type Factor = {
 	id: string;
+	fixedKeyId?: string;
+	fixedKeyKey?: string;
+	fixedKeyType?: number;
 	code: string;
 	name: string;
 	processGroupId: string;
@@ -19,8 +22,9 @@ export const CATALOG_ADJUSTMENT_FACTOR_COLUMNS: ColumnDef<Factor>[] = [
 		),
 	},
 	{
-		accessorKey: 'code',
-		header: 'Mã hệ số điều chỉnh',
+		accessorKey: 'fixedKeyKey',
+		header: 'Khóa cấu hình',
+		cell: ({ row }) => row.original.fixedKeyKey ?? row.original.code,
 	},
 	{
 		accessorKey: 'name',

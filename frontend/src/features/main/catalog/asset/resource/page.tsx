@@ -67,6 +67,7 @@ function MainCatalogAssetResourcePage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <AssetResourceForm {...props} />}
+			onDuplicate={(props) => <AssetResourceForm {...props} isDuplicate />}
 			onUpdate={(props) => <AssetResourceForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

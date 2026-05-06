@@ -15,6 +15,9 @@ export const tunnelingFormSchema = z.object({
 	equipmentIds: z
 		.array(z.string().nonempty({ error: 'Mã thiết bị không được để trống' }))
 		.nonempty({ error: 'Mã thiết bị không được để trống' }),
+	selectedPartIds: z.array(
+		z.string().nonempty({ error: 'Mã phụ tùng không được để trống' }),
+	),
 	costs: z
 		.array(
 			z.object({
@@ -53,6 +56,7 @@ export const TUNNELING_FORM_DEFAULT: TunnelingFormSchema = {
 	startMonth: '',
 	endMonth: '',
 	equipmentIds: [],
+	selectedPartIds: [],
 	costs: [],
 	otherMaterialValues: {},
 };

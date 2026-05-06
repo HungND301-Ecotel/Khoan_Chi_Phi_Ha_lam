@@ -6,9 +6,20 @@ function parseSchemaNumber(value: number | string | null | undefined): number {
 	return Number.isFinite(normalized) ? normalized : 0;
 }
 
+function requiresCategoryProcessGroup(data: { type?: number | null }): boolean {
+	return data.type === 2;
+}
+
+const categoryAllocationSchema = z.object({
+	processGroupId: z.string().nullable(),
+	quantity: z.number().nullable().default(null),
+	equipmentIds: z.array(z.string()).default([]),
+});
+
 export const rawAcceptanceReportItemSchema = z
 	.object({
 		id: z.string().optional(),
+		usageTime: z.number().optional(),
 		materialCode: z.string(),
 		materialName: z.string(),
 		unit: z.string(),
@@ -51,8 +62,11 @@ export const rawAcceptanceReportItemSchema = z
 		// Dropdown values
 		category: z.number().nullable().optional(),
 		categoryProcessGroup: z.string().nullable().optional(),
+		categoryProcessGroupIds: z.array(z.string()).optional(),
 		categoryProductionOrderId: z.string().nullable().optional(),
 		categoryEquipmentId: z.string().nullable().optional(),
+		categoryEquipmentIds: z.array(z.string()).optional(),
+		categoryAllocations: z.array(categoryAllocationSchema).optional(),
 		additionalCostCategory: z.number().nullable().optional(),
 		additionalCostProductionOrderId: z.string().nullable().optional(),
 		additionalCostEquipmentId: z.string().nullable().optional(),
@@ -78,15 +92,16 @@ export const rawAcceptanceReportItemSchema = z
 			if (
 				data.showCategoryDropdown &&
 				data.category &&
-				!data.categoryProcessGroup
+				requiresCategoryProcessGroup(data) &&
+				(data.categoryProcessGroupIds?.length ?? 0) === 0
 			) {
 				return false;
 			}
 			return true;
 		},
 		{
-			message: 'Phải chọn nhóm công đoạn',
-			path: ['categoryProcessGroup'],
+			message: 'Phải chọn ít nhất 1 nhóm công đoạn',
+			path: ['categoryProcessGroupIds'],
 		},
 	)
 	.refine(
@@ -97,6 +112,69 @@ export const rawAcceptanceReportItemSchema = z
 		{
 			message: 'Phải chọn quyết định, lệnh sản xuất',
 			path: ['categoryProductionOrderId'],
+		},
+	)
+	.refine(
+		(data) => {
+			const needsEquipment =
+				data.showCategoryDropdown &&
+				data.category === 3 &&
+				data.type === 2 &&
+				data.itemType === 1;
+			if (!needsEquipment) return true;
+			const allocations = data.categoryAllocations ?? [];
+			return (
+				allocations.length > 0 &&
+				(data.categoryEquipmentIds?.length ?? 0) >= allocations.length &&
+				allocations.every(
+					(allocation) => (allocation.equipmentIds?.length ?? 0) > 0,
+				)
+			);
+		},
+		{
+			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 thiết bị',
+			path: ['categoryEquipmentIds'],
+		},
+	)
+	.refine(
+		(data) => {
+			const needsAllocations =
+				data.showCategoryDropdown &&
+				data.category != null &&
+				requiresCategoryProcessGroup(data);
+			if (!needsAllocations) return true;
+
+			const allocations = data.categoryAllocations ?? [];
+			return allocations.every(
+				(allocation) =>
+					allocation.processGroupId != null &&
+					allocation.processGroupId.length > 0,
+			);
+		},
+		{
+			message: 'Mỗi phân bổ phải có nhóm công đoạn',
+			path: ['categoryAllocations'],
+		},
+	)
+	.refine(
+		(data) => {
+			const needsAllocations =
+				data.showCategoryDropdown &&
+				data.category != null &&
+				requiresCategoryProcessGroup(data);
+			if (!needsAllocations) return true;
+
+			const allocations = data.categoryAllocations ?? [];
+			const total = allocations.reduce(
+				(acc, allocation) => acc + parseSchemaNumber(allocation.quantity),
+				0,
+			);
+			return Math.abs(total - parseSchemaNumber(data.categoryQuantity)) < 0.01;
+		},
+		{
+			message:
+				'Tổng số lượng phân bổ theo nhóm công đoạn phải bằng số lượng vật tư của cột',
+			path: ['categoryAllocations'],
 		},
 	)
 	.refine(
@@ -175,22 +253,31 @@ export const rawAcceptanceReportItemSchema = z
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
 				data.category &&
-				data.categoryProcessGroup &&
-				(data.category !== 3 || data.categoryProductionOrderId != null);
+				(!requiresCategoryProcessGroup(data) ||
+					(data.categoryAllocations?.length ?? 0) > 0) &&
+				(data.category !== 3 || data.categoryProductionOrderId != null) &&
+				!(
+					data.category === 3 &&
+					data.type === 2 &&
+					data.itemType === 1 &&
+					(data.categoryAllocations?.some(
+						(allocation) => (allocation.equipmentIds?.length ?? 0) === 0,
+					) ??
+						true)
+				);
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
 				((data.additionalCostCategory !== 2 &&
 					data.additionalCostCategory !== 3) ||
 					data.additionalCostProductionOrderId != null) &&
-				(data.additionalCostCategory !== 4 ||
-					data.otherMaterialDetail != null);
+				(data.additionalCostCategory !== 4 || data.otherMaterialDetail != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown &&
 				data.contractLimitCategory &&
 				((data.contractLimitCategory !== 2 &&
 					data.contractLimitCategory !== 3) ||
-					((data.contractLimitSubCategories?.length ?? 0) > 0));
+					(data.contractLimitSubCategories?.length ?? 0) > 0);
 			const hasAssetActive = data.showAssetDropdown;
 
 			if (
@@ -237,7 +324,11 @@ export const rawAcceptanceReportFormSchema = z.object({
 		.min(1, 'Phải có ít nhất 1 vật tư'),
 });
 
-export type RawAcceptanceReportFormSchema = z.infer<
+export type RawAcceptanceReportFormInput = z.input<
+	typeof rawAcceptanceReportFormSchema
+>;
+
+export type RawAcceptanceReportFormSchema = z.output<
 	typeof rawAcceptanceReportFormSchema
 >;
 

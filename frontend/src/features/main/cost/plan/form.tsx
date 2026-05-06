@@ -15,6 +15,7 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Product } from '@/features/main/catalog/product/columns';
+import { Department } from '@/features/main/catalog/department/columns';
 import { Unit } from '@/features/main/catalog/unit/columns';
 import {
 	PLAN_FORM_DEFAULT,
@@ -30,13 +31,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
+type PlanFormProps = ActionDialogProps<CostProduct> & {
+	defaultDepartmentId?: string;
+	onSuccess?: () => void;
+};
+
+export function PlanForm({
+	data,
+	row,
+	defaultDepartmentId,
+	onSuccess,
+}: PlanFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 
 	const [products, setProducts] = useState<Product[]>([]);
 	const [units, setUnits] = useState<Unit[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
+	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
+		new Set(),
+	);
 
 	const form = useForm<PlanFormSchema>({
 		resolver: zodResolver(planFormSchema),
@@ -49,45 +64,80 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 	const selectedProduct = products.find(
 		(product) => product.id === watchedProductId,
 	);
+	const isAkApplicable =
+		!!selectedProduct?.processGroupId &&
+		akProcessGroupIds.has(selectedProduct.processGroupId);
 
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST),
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
+			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST),
+			api.pagging<{ processGroupId: string }>(API.CATALOG.AK_FACTOR_CONFIG.LIST, {
+				ignorePagination: true,
+			}),
 		]);
 
-		promises.then(([products, units]) => {
+		promises.then(([products, units, departments, akConfigs]) => {
 			setProducts(products.result.data);
 			setUnits(units.result.data);
+			setDepartments(departments.result.data);
+			setAkProcessGroupIds(
+				new Set(
+					(akConfigs.result.data || [])
+						.map((item) => item.processGroupId)
+						.filter((id) => !!id),
+				),
+			);
+
+			if (!row && defaultDepartmentId) {
+				form.setValue('departmentId', defaultDepartmentId);
+			}
 
 			if (!row) return;
 
 			api
 				.get<CostProductDetail>(API.COST.PRODUCT.DETAIL_PLANNED(row.id))
 				.then((res) => {
-					const { productId, unitOfMeasureId, outputs } = res.result;
+					const {
+						productId,
+						unitOfMeasureId,
+						departmentId,
+						outputs,
+					} =
+						res.result;
 					form.reset({
 						productId,
 						unitOfMeasureId,
+						departmentId,
 						outputs: outputs.map(
-							({ startMonth, endMonth, outputType, productionMeters, id }) => ({
+							({
+								startMonth,
+								endMonth,
+								outputType,
+								productionMeters,
+								planAshContent,
+								id,
+							}) => ({
 								startMonth: startMonth.substring(0, 10),
 								endMonth: endMonth.substring(0, 10),
 								outputType,
 								productionMeters,
+								planAshContent: planAshContent ?? 0,
 								id,
 							}),
 						),
 					});
 				});
 		});
-	}, [row, form]);
+	}, [row, form, defaultDepartmentId]);
 
 	const handleSubmit = async ({ outputs, ...values }: PlanFormSchema) => {
 		try {
 			const formattedOutputs = outputs.map((output) => ({
 				...output,
 				endMonth: output.startMonth, // Gán giá trị ở đây
+				planAshContent: isAkApplicable ? (output.planAshContent ?? 0) : 0,
 			}));
 
 			if (row) {
@@ -110,6 +160,7 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
+			onSuccess?.();
 		} catch (error) {
 			popup.error(error);
 		}
@@ -117,6 +168,18 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
+			<FormRow>
+				<FormComboBox
+					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
+					}))}
+				/>
+			</FormRow>
 			<FormRow>
 				<FormComboBox
 					control={form.control}
@@ -186,6 +249,16 @@ export function PlanForm({ data, row }: ActionDialogProps<CostProduct>) {
 								label='Thời gian'
 								className='flex-1'
 							/>
+							{isAkApplicable && (
+								<div className='flex-1'>
+									<FormNumber
+										control={form.control}
+										name={`outputs.${index}.planAshContent`}
+										label='Ak kế hoạch (%)'
+										placeholder='Nhập Ak kế hoạch'
+									/>
+								</div>
+							)}
 							<div className='flex-1'>
 								<FormNumber
 									control={form.control}

@@ -14,6 +14,7 @@ import { PlanedMaterialCost } from '@/features/main/cost/plan/planed-material-co
 import {
 	CostProduct,
 	CostProductDetail,
+	mapCostProductDetail,
 } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
@@ -41,7 +42,7 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 			const planDetail = await api.get<CostProductDetail>(
 				API.COST.PRODUCT.DETAIL_PLANNED(row.id),
 			);
-			setPlan(planDetail.result);
+			setPlan(mapCostProductDetail(planDetail.result));
 		} finally {
 			setLoading(false);
 		}
@@ -100,7 +101,7 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 								{formatNumber(output.productionMeters)}
 							</span>
 							<span className='w-24'>
-								{formatNumber(Math.round(output.totalPrice ?? 0))}
+								{formatNumber(output.totalPrice ?? 0)}
 							</span>
 
 							<AccordionTrigger className='group ms-17.5 cursor-pointer p-0'>
@@ -148,9 +149,7 @@ export function PlanExpand({ row, data }: ActionDialogProps<CostProduct>) {
 									plan={plan}
 									output={output}
 									callback={handleRefreshExpandData}
-									isOpen={openedCosts.includes(
-										PLANED_ELECTRICITY_COST_VALUE,
-									)}
+									isOpen={openedCosts.includes(PLANED_ELECTRICITY_COST_VALUE)}
 									reloadKey={reloadKey}
 								/>
 							</Accordion>

@@ -5,6 +5,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmnetMaterialCost;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
@@ -21,6 +22,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
 
     public async Task<AdjustmentMaterialCostDetailDto> Handle(GetAdjustmentMaterialCostByOutputQuery request, CancellationToken cancellationToken)
     {
@@ -28,9 +31,10 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var plannedOutput = await _outputRepository.GetFirstOrDefaultAsync(
             predicate: o => o.Id == request.Id,
             include: o => o
-                .Include(o => o.ProductUnitPrice)
+                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product).ThenInclude(p => p.ProcessGroup)
+                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
-                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.TargetHardness)
+                .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(pmc => pmc.NormFactor).ThenInclude(n => n.Hardness)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaterialCost).ThenInclude(m => m.SlideUnitPriceAssignmentCode).ThenInclude(muac => muac.Material).ThenInclude(m => m.Code)
@@ -39,21 +43,36 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
-        var adjustmentProductionMeters = await _productUnitPriceRepository.GetAll()
+        var adjustmentOutputInfo = await _productUnitPriceRepository.GetAll()
             .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment &&
-                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId &&
+                        p.DepartmentId == plannedOutput.ProductUnitPrice.DepartmentId)
             .SelectMany(p => p.ProductUnitPriceProductionOutputs)
             .Where(p => p.ProductionOutput!.StartMonth == plannedOutput.StartMonth &&
                         p.ProductionOutput.EndMonth == plannedOutput.EndMonth)
-            .Select(p => p.ProductionMeters)
+            .Select(p => new
+            {
+                p.ProductionMeters,
+                ActualAshContent = p.ProductionOutput!.ProductionOutputProcessGroups
+                    .SelectMany(g => g.ProductionOutputProducts)
+                    .Where(pp => pp.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                    .Select(pp => (double?)pp.ActualAshContent)
+                    .FirstOrDefault() ?? 0
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (adjustmentProductionMeters <= 0)
+        if (adjustmentOutputInfo == null || adjustmentOutputInfo.ProductionMeters <= 0)
         {
             throw new ConflictException(CustomResponseMessage.PleaseProvideTheActualOutputProductionMeters);
         }
 
         var plannedMaterialCost = plannedOutput.PlannedMaterialCost;
+        var normFactorAssignment = plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes
+            .FirstOrDefault(x => x.AssignmentCodeId == plannedMaterialCost.SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId)
+            ?? plannedMaterialCost.NormFactor?.NormFactorAssignmentCodes.FirstOrDefault();
+        var coefficientValue = normFactorAssignment?.Value ?? 1;
+        var targetHardnessId = normFactorAssignment?.TargetHardnessId;
+        var targetHardnessValue = normFactorAssignment?.TargetHardness?.Value;
 
         if (plannedMaterialCost.MaterialUnitPrice == null)
         {
@@ -62,11 +81,11 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
 
         // Load tunnel materials nếu cần (giống GetPlannedMaterialCostByIdQuery)
         IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (plannedMaterialCost.NormFactor?.TargetHardnessId.HasValue == true
+        if (targetHardnessId.HasValue
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterial)
         {
             tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => x.HardnessId == plannedMaterialCost.NormFactor.TargetHardnessId.Value
+                .Where(x => x.HardnessId == targetHardnessId.Value
                     && x.ProcessId == currentTunnelMaterial.ProcessId
                     && x.PassportId == currentTunnelMaterial.PassportId
                     && x.InsertItemId == currentTunnelMaterial.InsertItemId
@@ -110,12 +129,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         }
 
         var materialCost = SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice) + plannedMaterialCost.MaterialUnitPrice.OtherMaterialvalue;
-        if (plannedMaterialCost.NormFactor?.TargetHardnessId.HasValue == true
+        if (targetHardnessId.HasValue
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
             var targetMaterial = ResolveTargetTunnelMaterialUnitPrice(
                 currentTunnelMaterialForCost,
-                plannedMaterialCost.NormFactor.TargetHardnessId.Value,
+                targetHardnessId.Value,
                 tunnelMaterials);
 
             if (targetMaterial != null)
@@ -128,12 +147,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         var normFactorValue = string.Empty;
         if (plannedMaterialCost.NormFactor != null)
         {
-            var hardnessValue = plannedMaterialCost.NormFactor.TargetHardness?.Value
+            var hardnessValue = targetHardnessValue
                 ?? plannedMaterialCost.NormFactor.Hardness?.Value
                 ?? string.Empty;
 
             normFactorValue =
-                $"{plannedMaterialCost.NormFactor.Value.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
+                $"{coefficientValue.ToString(CultureInfo.InvariantCulture)} - {hardnessValue}";
         }
 
         // SlideUnitPriceCost
@@ -145,7 +164,6 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
         {
             var currentSlide = plannedMaterialCost.SlideUnitPriceAssignmentCode.Material;
             var originalAmount = plannedMaterialCost.SlideUnitPriceAssignmentCode.Amount;
-            var coefficientValue = plannedMaterialCost.NormFactor?.Value ?? 1;
             mCost.Add(new AdjustmentMaterialCostAssignmentCode
             {
                 AssignmentCodeId = currentSlide.AssigmentCodeId,
@@ -167,9 +185,31 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             });
         }
 
-        var totalByCostId = PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
             new List<Domain.Entities.Pricing.PlannedMaterialCost> { plannedMaterialCost },
-            tunnelMaterials);
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
+        var calculationResults = PlannedMaterialCostCalculator.CalculateResultsByCostId(
+            new List<Domain.Entities.Pricing.PlannedMaterialCost> { plannedMaterialCost },
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
+        var baseCalculation = calculationResults.GetValueOrDefault(plannedMaterialCost.Id, new PlannedMaterialCostCalculationResult());
+        var basePlannedMaterialPrice = baseCalculation.TotalPrice;
+
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var hasAkConfigs = akConfigs.Any();
+        var akDiff = hasAkConfigs
+            ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
+            : 0;
+        var akRate = hasAkConfigs
+            ? AkFactorConfig.ResolveRate(akConfigs, akDiff)
+            : 0;
+        var akAdjustmentAmount = hasAkConfigs ? akDiff * (decimal)basePlannedMaterialPrice * akRate : 0;
+        var adjustedPlannedMaterialPrice = basePlannedMaterialPrice + (double)akAdjustmentAmount;
 
         var result = new AdjustmentMaterialCostDetailDto
         {
@@ -181,9 +221,12 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             NormFactorId = plannedMaterialCost.NormFactorId,
             AdjustmentMaterialCostAssignmentCodes = mCost,
             StoneClampRatioReferenceId = plannedMaterialCost.StoneClampRatioReferenceId,
-            TotalPlannedMaterialPrice = totalByCostId.GetValueOrDefault(plannedMaterialCost.Id, 0),
+            TotalPlannedMaterialPrice = adjustedPlannedMaterialPrice,
             MaterialCost = materialCost,
             SlideUnitPriceCost = slideUnitPriceCost,
+            LowValuePerishableSupplyUnitPriceCost = baseCalculation.LowValuePerishableSupplyUnitPriceCost,
+            AkRate = (double)akRate,
+            AkRatePercent = (double)akRate * 100,
             NormFactorValue = normFactorValue,
         };
         return result;

@@ -66,7 +66,7 @@ public class GetAllPartQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<Ge
                     .Select(c => c.ActualAmount)
                     .FirstOrDefault(),
             })
-            .OrderBy(p => p.Code)
+            .OrderByCodeNatural(p => p.Code)
             .ThenBy(p => p.Name)
             .ToList();
 

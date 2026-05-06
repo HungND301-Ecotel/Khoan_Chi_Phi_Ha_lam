@@ -6,6 +6,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
 {
     // Tracking keys
     public Guid AcceptanceReportItemId { get; protected set; }
+    public Guid? AcceptanceReportItemCategoryAllocationId { get; protected set; }
     public Guid AcceptanceReportId { get; protected set; }
 
     // Period information
@@ -42,6 +43,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
 
     // Navigation properties
     public virtual AcceptanceReportItem AcceptanceReportItem { get; protected set; }
+    public virtual AcceptanceReportItemCategoryAllocation? AcceptanceReportItemCategoryAllocation { get; protected set; }
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual AcceptanceReportItemLog? PreviousLog { get; protected set; }
 
@@ -59,12 +61,14 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
         double plannedOutput,
         double standardOutput,
         double allocationRatio,
+        Guid? acceptanceReportItemCategoryAllocationId = null,
         bool isFullAccounting = false,
         string note = "")
     {
         var log = new AcceptanceReportItemLog
         {
             AcceptanceReportItemId = acceptanceReportItemId,
+            AcceptanceReportItemCategoryAllocationId = acceptanceReportItemCategoryAllocationId,
             AcceptanceReportId = acceptanceReportId,
             PeriodStartMonth = periodStartMonth,
             PeriodEndMonth = periodEndMonth,
@@ -101,7 +105,7 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
 
         if (UsageTime > 0 && StandardOutput > 0)
         {
-            ValueByStandard = (TotalValueToAccount / (decimal)UsageTime) * (decimal)ActualOutput / (decimal)StandardOutput;
+            ValueByStandard = (TotalValueToAccount / (decimal)UsageTime) * (decimal)PlannedOutput / (decimal)StandardOutput;
         }
         else
         {
@@ -129,6 +133,18 @@ public class AcceptanceReportItemLog : AuditableEntity<Guid>
     {
         AllocationRatio = allocationRatio;
         IsFullAccounting = isFullAccounting;
+        Note = note;
+        Calculate();
+    }
+
+    public void UpdateUsageTime(double usageTime, string note = "")
+    {
+        if (usageTime < 0)
+        {
+            throw new ArgumentException("Thời gian sử dụng không được âm");
+        }
+
+        UsageTime = usageTime;
         Note = note;
         Calculate();
     }

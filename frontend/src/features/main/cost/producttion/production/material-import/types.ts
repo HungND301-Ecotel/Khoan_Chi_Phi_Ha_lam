@@ -9,7 +9,8 @@ export type MaterialImportRow = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	materialId?: string | null;
-	maintainUnitPriceEquipmentId?: string | null;
+	partId?: string | null;
+	partType?: number | null;
 	materialCode: string;
 	unitOfMeasureName: string;
 	type: number;
@@ -18,10 +19,29 @@ export type AcceptanceReportItemDto = {
 	shippedQuantity: number;
 };
 
+export type UnresolvedAcceptanceReportItemDto = {
+	rowNumber: number;
+	reportItemId: string | null;
+	materialCode: string;
+	unitOfMeasureName: string;
+	issuedQuantity: number;
+	shippedQuantity: number;
+	unresolvedReason: string;
+};
+
 export type UploadAcceptanceReportResponseDto = {
 	filePath: string;
 	acceptanceReports: AcceptanceReportItemDto[];
+	unresolvedAcceptanceReports: UnresolvedAcceptanceReportItemDto[];
 };
+
+export const ImportResolutionStatus = {
+	Resolved: 'resolved',
+	Unresolved: 'unresolved',
+} as const;
+
+export type ImportResolutionStatusValue =
+	(typeof ImportResolutionStatus)[keyof typeof ImportResolutionStatus];
 
 export type ProductionOrder = {
 	id: string;
@@ -78,9 +98,11 @@ export const OtherMaterialDetail = {
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
 	materialId?: string | null;
-	maintainUnitPriceEquipmentId?: string | null;
+	partId?: string | null;
+	usageTime: number;
 	type: number;
 	itemType: number;
+	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
 	categoryEquipmentId: string | null;
 	additionalCostProductionOrderId: string | null;
@@ -199,6 +221,12 @@ export const SHIPPED_DETAIL_TYPE_BY_KEY = {
 export type QuantityDetail = {
 	type: number;
 	quantity: number;
+};
+
+export type CategoryAllocation = {
+	processGroupId: string | null;
+	quantity: number | null;
+	equipmentIds: string[];
 };
 
 export type QuotaBasedMaterialQuantityDetail = {

@@ -1,6 +1,7 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
+using Application.Catalog.Pricing.LumpSumFinalSettlement;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
 using Domain.Entities.Production;
 using MediatR;
@@ -37,6 +38,12 @@ public class UpdateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
             processGroupId = parsedProcessGroupId;
         }
 
+        var customName = request.UpdateModel.CustomName?.Trim() ?? string.Empty;
+        if (LumpSumFinalSettlementSpecialQuantityKeys.IsSpecialQuantityKey(customName))
+        {
+            throw new BadRequestException("Custom name is reserved");
+        }
+
         var entity = await _customCostRepository.GetFirstOrDefaultAsync(
             predicate: x => x.Id == request.UpdateModel.Id,
             disableTracking: true)
@@ -46,7 +53,7 @@ public class UpdateLumpSumQuarterCustomCostCommandHandler(IUnitOfWork unitOfWork
             month,
             year,
             processGroupId,
-            request.UpdateModel.CustomName?.Trim() ?? string.Empty,
+            customName,
             request.UpdateModel.ActualQuantity,
             request.UpdateModel.MaterialUnitPrice,
             request.UpdateModel.MaintainUnitPrice,

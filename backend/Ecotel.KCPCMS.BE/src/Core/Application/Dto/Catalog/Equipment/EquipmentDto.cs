@@ -1,21 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Application.Dto.Catalog.Cost;
+using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.Equipment
 {
-    public class EquipmentProcessGroupDto
-    {
-        public Guid Id { get; set; }
-        public string Code { get; set; }
-        public string Name { get; set; }
-    }
-
     public class EquipmentPartDto
     {
         public Guid Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
+        public PartType PartType { get; set; }
     }
 
     public class EquipmentDto : IDto
@@ -26,7 +21,6 @@ namespace Application.Dto.Catalog.Equipment
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
         public double CurrentPrice { get; set; }
-        public IList<EquipmentProcessGroupDto> ProcessGroups { get; set; } = new List<EquipmentProcessGroupDto>();
     }
 
     public class EquipmentExcelDto
@@ -36,8 +30,6 @@ namespace Application.Dto.Catalog.Equipment
         public string Code { get; set; }
         [Display(Name = "Tên thiết bị")]
         public string Name { get; set; }
-        [Display(Name = "Công đoạn sản xuất")]
-        public string ProcessGroup { get; set; }
         [Display(Name = "Phụ tùng")]
         public string PartCode { get; set; }
         [Display(Name = "Đơn vị tính")]
@@ -54,8 +46,6 @@ namespace Application.Dto.Catalog.Equipment
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
-        public IList<EquipmentProcessGroupDto> ProcessGroups { get; set; } = new List<EquipmentProcessGroupDto>();
-        public Guid? ProcessGroupId { get; set; }
         public IList<Guid> PartIds { get; set; } = new List<Guid>();
         public IList<EquipmentPartDto> Parts { get; set; } = new List<EquipmentPartDto>();
     }
@@ -66,7 +56,6 @@ namespace Application.Dto.Catalog.Equipment
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
-        public Guid? ProcessGroupId { get; set; }
         public IList<Guid> PartIds { get; set; } = new List<Guid>();
     }
 
@@ -77,7 +66,6 @@ namespace Application.Dto.Catalog.Equipment
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
-        public Guid? ProcessGroupId { get; set; }
         public IList<Guid> PartIds { get; set; } = new List<Guid>();
     }
 }

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
+import type { Department } from '@/features/main/catalog/department/columns';
 import type { Product } from '@/features/main/catalog/product/columns';
 import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
@@ -34,10 +35,12 @@ import {
 type ProductionOutputDetailProduct = {
 	productId: string;
 	productionMeters: number;
+	actualAshContent?: number;
 };
 
 type ProductionOutputDetailProcessGroup = {
 	processGroupId: string;
+	planProductionMeters: number;
 	standardProductionMeters: number;
 	products: ProductionOutputDetailProduct[];
 };
@@ -46,13 +49,16 @@ type ProductionOutputDetail = {
 	id: string;
 	startMonth: string;
 	endMonth?: string;
+	departmentId?: string | null;
 	acceptanceReportId?: string | null;
 	productionMeters: number;
 	standardProductionMeters: number;
 	processGroups?: ProductionOutputDetailProcessGroup[];
 };
 
-type ProductionFormProps = ActionDialogProps<Production>;
+type ProductionFormProps = ActionDialogProps<Production> & {
+	onSuccess?: () => void;
+};
 type ProductionGroup = NonNullable<ProductionFormSchema['groups']>[number];
 type ProductionGroupProduct = ProductionGroup['products'][number];
 
@@ -84,12 +90,21 @@ function isSameProductionRows(
 			(Number.isNaN(row.productionMeters) &&
 				Number.isNaN(nextRow.productionMeters));
 
-		return sameMeters;
+		const sameAshContent =
+			(row.actualAshContent ?? 0) === (nextRow.actualAshContent ?? 0) ||
+			(Number.isNaN(row.actualAshContent ?? 0) &&
+				Number.isNaN(nextRow.actualAshContent ?? 0));
+
+		return sameMeters && sameAshContent;
 	});
 }
 
 function calculateTotals(groups: ProductionGroup[] = []) {
 	return {
+		plannedOutput: groups.reduce(
+			(sum, group) => sum + (group.planProductionMeters || 0),
+			0,
+		),
 		productionMeters: groups.reduce(
 			(sum, group) =>
 				sum +
@@ -106,18 +121,25 @@ function calculateTotals(groups: ProductionGroup[] = []) {
 	};
 }
 
-function buildProcessGroupPayload(groups: ProductionGroup[] = []) {
+function buildProcessGroupPayload(
+	groups: ProductionGroup[] = [],
+	akProcessGroupIds: Set<string> = new Set(),
+) {
 	return groups.map((group) => ({
 		processGroupId: group.processGroupId,
+		planProductionMeters: group.planProductionMeters,
 		standardProductionMeters: group.standardProductionMeters,
 		products: (group.products || []).map((product) => ({
 			productId: product.productId,
 			productionMeters: product.productionMeters,
+			actualAshContent: akProcessGroupIds.has(group.processGroupId)
+				? (product.actualAshContent ?? 0)
+				: 0,
 		})),
 	}));
 }
 
-export function ProductionForm({ data, row }: ProductionFormProps) {
+export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const isEdit = !!row;
 	const mode: ProductionFormMode = isEdit ? 'edit' : 'create';
 	const popup = usePopup();
@@ -125,6 +147,10 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 	const { breadcrumb } = useMeta();
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [products, setProducts] = useState<Product[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
+	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
+		new Set(),
+	);
 
 	const form = useForm<ProductionFormSchema>({
 		resolver: zodResolver(productionFormSchema),
@@ -161,6 +187,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			.then((res) => {
 				const {
 					startMonth,
+					departmentId,
 					processGroups,
 					productionMeters,
 					standardProductionMeters,
@@ -171,10 +198,12 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 						const mappedProducts = (group.products || []).map((product) => ({
 							productId: product.productId,
 							productionMeters: product.productionMeters,
+							actualAshContent: product.actualAshContent ?? 0,
 						}));
 
 						return {
 							processGroupId: group.processGroupId,
+							planProductionMeters: group.planProductionMeters ?? 0,
 							standardProductionMeters: group.standardProductionMeters,
 							productIds: mappedProducts.map((product) => product.productId),
 							products: mappedProducts,
@@ -185,6 +214,8 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 				form.reset({
 					mode: 'edit',
 					startMonth: startMonth.substring(0, 10),
+					departmentId: departmentId ?? '',
+					plannedOutput: calculateTotals(mappedGroups).plannedOutput,
 					productionMeters,
 					standardProductionMeters,
 					groups:
@@ -195,26 +226,49 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 
 	useEffect(() => {
 		const promises = Promise.all([
+			api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST, {
+				ignorePagination: true,
+			}),
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST, {
 				ignorePagination: true,
 			}),
 			api.pagging<Product>(API.CATALOG.PRODUCT.LIST, {
 				ignorePagination: true,
 			}),
+			api.pagging<{ processGroupId: string }>(
+				API.CATALOG.AK_FACTOR_CONFIG.LIST,
+				{
+					ignorePagination: true,
+				},
+			),
 		]);
 
-		promises.then(([processGroupRes, productRes]) => {
-			setProcessGroups(
-				[...processGroupRes.result.data].sort((a, b) =>
-					a.code.localeCompare(b.code),
-				),
-			);
-			setProducts(
-				[...productRes.result.data].sort((a, b) =>
-					a.code.localeCompare(b.code),
-				),
-			);
-		});
+		promises.then(
+			([departmentRes, processGroupRes, productRes, akFactorConfigRes]) => {
+				setDepartments(
+					[...departmentRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setProcessGroups(
+					[...processGroupRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setProducts(
+					[...productRes.result.data].sort((a, b) =>
+						a.code.localeCompare(b.code),
+					),
+				);
+				setAkProcessGroupIds(
+					new Set(
+						(akFactorConfigRes.result.data || [])
+							.map((item) => item.processGroupId)
+							.filter((id) => !!id),
+					),
+				);
+			},
+		);
 	}, []);
 
 	useEffect(() => {
@@ -239,6 +293,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 				return {
 					productId,
 					productionMeters: existing?.productionMeters ?? 0,
+					actualAshContent: existing?.actualAshContent ?? 0,
 				};
 			});
 
@@ -271,6 +326,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			return {
 				productId,
 				productionMeters: existing?.productionMeters ?? 0,
+				actualAshContent: existing?.actualAshContent ?? 0,
 			};
 		});
 
@@ -290,13 +346,14 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			const groups = values.groups || [];
 			const { productionMeters, standardProductionMeters } =
 				calculateTotals(groups);
-			const processGroups = buildProcessGroupPayload(groups);
+			const processGroups = buildProcessGroupPayload(groups, akProcessGroupIds);
 
 			if (isEdit && row) {
 				await api.put(API.PRODUCTION.PRODUCTION_OUTPUT.UPDATE, {
 					id: row.id,
 					startMonth: values.startMonth,
 					endMonth: values.startMonth,
+					departmentId: values.departmentId,
 					acceptanceReportId: row.acceptanceReportId || null,
 					productionMeters,
 					standardProductionMeters,
@@ -306,6 +363,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 				await api.post(API.PRODUCTION.PRODUCTION_OUTPUT.CREATE, {
 					startMonth: values.startMonth,
 					endMonth: values.startMonth,
+					departmentId: values.departmentId,
 					productionMeters,
 					standardProductionMeters,
 					processGroups,
@@ -318,6 +376,7 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
+			onSuccess?.();
 		} catch (error) {
 			popup.error(error);
 		}
@@ -327,6 +386,18 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
+			<FormRow>
+				<FormComboBox
+					control={form.control}
+					name='departmentId'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
+					options={departments.map((department) => ({
+						label: `${department.code} - ${department.name}`,
+						value: department.id,
+					}))}
+				/>
+			</FormRow>
 			<FormRow>
 				<FormMonthYear
 					control={form.control}
@@ -339,6 +410,10 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			<FormSeparator />
 
 			<FormRow>
+				<div className='flex-1 space-y-2'>
+					<Label>Tổng sản lượng kế hoạch</Label>
+					<Input readOnly value={formatNumber(totals.plannedOutput)} />
+				</div>
 				<div className='flex-1 space-y-2'>
 					<Label>Tổng sản lượng thực tế</Label>
 					<Input readOnly value={formatNumber(totals.productionMeters)} />
@@ -355,6 +430,9 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 			<div className='flex flex-col gap-4'>
 				{groupFields.map((field, groupIndex) => {
 					const group = watchedGroups[groupIndex] || createGroupDefault();
+					const isAkApplicableForGroup =
+						!!group.processGroupId &&
+						akProcessGroupIds.has(group.processGroupId);
 					const availableProducts = products.filter(
 						(product) => product.processGroupId === group.processGroupId,
 					);
@@ -413,6 +491,15 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 								/>
 
 								<div className='flex-1 space-y-2'>
+									<FormNumber
+										control={form.control}
+										name={`groups.${groupIndex}.planProductionMeters`}
+										label='Sản lượng kế hoạch'
+										placeholder='Nhập sản lượng kế hoạch'
+									/>
+								</div>
+
+								<div className='flex-1 space-y-2'>
 									<Label>Sản lượng thực tế</Label>
 									<Input readOnly value={formatNumber(totalProductionMeters)} />
 								</div>
@@ -468,6 +555,17 @@ export function ProductionForm({ data, row }: ProductionFormProps) {
 															placeholder='Nhập sản lượng thực tế'
 														/>
 													</div>
+
+													{isAkApplicableForGroup && (
+														<div className='flex-1'>
+															<FormNumber
+																control={form.control}
+																name={`groups.${groupIndex}.products.${productIndex}.actualAshContent`}
+																label='Ak thực hiện (%)'
+																placeholder='Nhập Ak thực hiện'
+															/>
+														</div>
+													)}
 												</FormRow>
 											);
 										},

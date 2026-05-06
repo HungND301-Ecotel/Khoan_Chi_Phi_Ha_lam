@@ -17,18 +17,31 @@ public record AcceptanceReportItemDto
     public Guid? ReportItemId { get; init; }
 
     public Guid? MaterialId { get; init; }
-    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+    public Guid? PartId { get; init; }
 
     public required string MaterialCode { get; init; }
     public required string UnitOfMeasureName { get; init; }
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
+    public PartType? PartType { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
+}
+
+public record UnresolvedAcceptanceReportItemDto
+{
+    public int RowNumber { get; init; }
+    public Guid? ReportItemId { get; init; }
+    public required string MaterialCode { get; init; }
+    public string UnitOfMeasureName { get; init; } = string.Empty;
+    public required double IssuedQuantity { get; init; }
+    public required double ShippedQuantity { get; init; }
+    public required string UnresolvedReason { get; init; }
 }
 
 public record UploadAcceptanceReportResponseDto
 {
     public string FilePath { get; set; }
     public List<AcceptanceReportItemDto> AcceptanceReports { get; set; } = new();
+    public List<UnresolvedAcceptanceReportItemDto> UnresolvedAcceptanceReports { get; set; } = new();
 }

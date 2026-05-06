@@ -7,6 +7,9 @@ export const actualFormSchema = z.object({
 	unitOfMeasureId: z.string().nonempty({
 		error: 'Đơn vị tính không được để trống',
 	}),
+	departmentId: z.string().nonempty({
+		error: 'Đơn vị không được để trống',
+	}),
 	productionOutputs: z.array(z.string()),
 	outputs: z.array(
 		z
@@ -43,6 +46,7 @@ export type ActualFormSchema = z.infer<typeof actualFormSchema>;
 export const ACTUAL_FORM_DEFAULT: ActualFormSchema = {
 	productId: '',
 	unitOfMeasureId: '',
+	departmentId: '',
 	productionOutputs: [''],
 	outputs: [
 		{

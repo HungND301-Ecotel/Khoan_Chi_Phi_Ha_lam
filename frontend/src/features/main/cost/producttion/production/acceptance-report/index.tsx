@@ -100,12 +100,12 @@ export function AcceptanceReport({
 				</ItemContent>
 				<ItemContent className='w-64'>
 					<ItemTitle className='text-right text-sm'>
-						{loading ? <Spinner /> : formatNumber(Math.round(materialCost))}
+						{loading ? <Spinner /> : formatNumber(materialCost)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemContent className='w-64'>
 					<ItemTitle className='text-right text-sm'>
-						{loading ? <Spinner /> : formatNumber(Math.round(sctxCost))}
+						{loading ? <Spinner /> : formatNumber(sctxCost)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>

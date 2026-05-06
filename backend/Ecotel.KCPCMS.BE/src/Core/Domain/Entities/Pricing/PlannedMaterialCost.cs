@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using MaterialUnitPriceEntity = Domain.Entities.Pricing.MaterialUnitPrice.MaterialUnitPrice;
 
@@ -12,6 +13,7 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
     public Guid? MaterialReferenceId { get; protected set; }
     public Guid? NormFactorId { get; protected set; }
     public Guid? StoneClampRatioReferenceId { get; protected set; }
+    public LowValuePerishableSupplyInclusion LowValuePerishableSupplyInclusion { get; protected set; }
     public Guid OutputId { get; protected set; }
 
     private double? CachedPlannedMaterialTotal { get; set; }
@@ -32,17 +34,34 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
         {
             return CachedPlannedMaterialTotal.Value;
         }
-        double SlideCost = 0;
+
+        double slideCost = 0;
+        double coefficientValue = 1;
+
         if (SlideUnitPriceAssignmentCodeId != null)
         {
-            SlideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
+            slideCost = SlideUnitPriceAssignmentCode?.Amount ?? 0;
+
+            var assignmentCodeId = SlideUnitPriceAssignmentCode?.Material?.AssigmentCodeId;
+            if (assignmentCodeId.HasValue && NormFactor != null)
+            {
+                var matchedNormFactor = NormFactor.NormFactorAssignmentCodes
+                    .FirstOrDefault(x => x.AssignmentCodeId == assignmentCodeId.Value);
+
+                if (matchedNormFactor != null)
+                {
+                    coefficientValue = matchedNormFactor.Value;
+                }
+            }
         }
-        CachedPlannedMaterialTotal = (SlideCost + MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0) * (NormFactor?.Value ?? 1);
+
+        var materialCost = MaterialUnitPrice?.GetCurrentTotalPrice(Output.StartMonth) ?? 0;
+        CachedPlannedMaterialTotal = (slideCost + materialCost) * coefficientValue;
 
         return CachedPlannedMaterialTotal.Value;
     }
 
-    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId)
+    public static PlannedMaterialCost Create(Guid productUnitPriceId, Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId, Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId, LowValuePerishableSupplyInclusion lowValuePerishableSupplyInclusion = LowValuePerishableSupplyInclusion.Exclude)
     {
         return new PlannedMaterialCost
         {
@@ -52,18 +71,21 @@ public class PlannedMaterialCost : AuditableEntity<Guid>
             NormFactorId = normFactorId,
             StoneClampRatioReferenceId = stoneClampRatioReferenceId,
             MaterialReferenceId = materialReferenceId,
+            LowValuePerishableSupplyInclusion = lowValuePerishableSupplyInclusion,
             OutputId = outputId
         };
     }
 
     public void Update(Guid materialUnitPriceId, Guid? slideUnitPriceAssignmentCodeId,
-        Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId)
+        Guid? normFactorId, Guid? stoneClampRatioReferenceId, Guid? materialReferenceId, Guid outputId,
+        LowValuePerishableSupplyInclusion lowValuePerishableSupplyInclusion = LowValuePerishableSupplyInclusion.Exclude)
     {
         MaterialUnitPriceId = materialUnitPriceId;
         SlideUnitPriceAssignmentCodeId = slideUnitPriceAssignmentCodeId;
         NormFactorId = normFactorId;
         StoneClampRatioReferenceId = stoneClampRatioReferenceId;
         MaterialReferenceId = materialReferenceId;
+        LowValuePerishableSupplyInclusion = lowValuePerishableSupplyInclusion;
         OutputId = outputId;
     }
 }

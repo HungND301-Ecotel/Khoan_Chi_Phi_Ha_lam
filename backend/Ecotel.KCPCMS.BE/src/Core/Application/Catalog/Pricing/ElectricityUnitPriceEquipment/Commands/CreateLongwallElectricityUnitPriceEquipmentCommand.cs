@@ -1,7 +1,9 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
@@ -12,8 +14,10 @@ namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 public record CreateLongwallElectricityUnitPriceEquipmentCommand(IList<CreateLongwallElectricityUnitPriceEquipmentDto> CreateModel) : IRequest<bool>;
 
 public class CreateLongwallElectricityUnitPriceEquipmentCommandHandler(
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateLongwallElectricityUnitPriceEquipmentCommand, bool>
+    IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<CreateLongwallElectricityUnitPriceEquipmentCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _electricityUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
@@ -32,6 +36,7 @@ public class CreateLongwallElectricityUnitPriceEquipmentCommandHandler(
             var existed = await _electricityUnitPriceEquipmentRepository.GetFirstOrDefaultAsync(
                 predicate: e =>
                     e.EquipmentId == model.EquipmentId &&
+                    e.ElectricityType == ElectricityUnitPriceType.Longwall &&
                     e.StartMonth < model.EndMonth &&
                     e.EndMonth > model.StartMonth,
                 disableTracking: true);
@@ -77,6 +82,8 @@ public class CreateLongwallElectricityUnitPriceEquipmentCommandHandler(
 
         await _electricityUnitPriceEquipmentRepository.InsertAsync(resultEntities, cancellationToken);
         await unitOfWork.SaveChangesAsync();
+        cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
         return true;
     }
 }

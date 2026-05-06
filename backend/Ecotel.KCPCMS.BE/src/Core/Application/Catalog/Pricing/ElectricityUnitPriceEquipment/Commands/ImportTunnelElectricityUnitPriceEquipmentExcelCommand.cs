@@ -1,8 +1,10 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using MediatR;
@@ -11,11 +13,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 
-public record ImportTunnelElectricityUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
+public record ImportTunnelElectricityUnitPriceEquipmentExcelCommand(
+    IFormFile File,
+    ElectricityUnitPriceType Type = ElectricityUnitPriceType.TunnelExcavation) : IRequest<bool>;
 
-public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork)
+public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICacheService cacheService)
     : IRequestHandler<ImportTunnelElectricityUnitPriceEquipmentExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<TunnelElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<TunnelElectricityUnitPriceEquipment>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
@@ -26,49 +32,88 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
-        using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<TunnelElectricityUnitPriceEquipmentExcelDto>(stream);
+        var importErrors = new List<string>();
 
-        if (!(await CheckExistedReferences(dtos)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
+        using var stream = request.File.OpenReadStream();
+        var dtos = excelService.ImportFromExcel<TunnelElectricityUnitPriceEquipmentExcelDto>(stream) ?? [];
+
+        await CollectReferenceErrors(dtos, importErrors, request.Type);
 
         // Map data to Entity Model
         var equipments = await _equipmentRepository.GetAllAsync(
-            include: e => e.Include(e => e.Code),
+            include: e => e
+                .Include(e => e.Code),
             disableTracking: true);
-        var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
+        var equipmentCodeGroups = equipments
+            .Where(e => e.Code != null
+                && !string.IsNullOrWhiteSpace(e.Code!.Value))
+            .GroupBy(e => e.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var excelEntities = dtos.Select(d =>
+        foreach (var duplicateGroup in equipmentCodeGroups.Where(g => g.Count() > 1))
         {
-            equipmentIdMap.TryGetValue(d.EquipmentCode, out var equipmentId);
-            var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = ParseMonthYear(d.EndMonth);
+            importErrors.Add($"Mã thiết bị '{duplicateGroup.Key}' đang bị trùng trong danh mục thiết bị.");
+        }
 
-            if (d.Id != Guid.Empty)
-            {
-                var entity = TunnelElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    d.MonthlyElectricityCost,
-                    d.AverageMonthlyTunnelProduction,
-                    startMonth,
-                    endMonth);
-                entity.GetType().GetProperty("Id")?.SetValue(entity, d.Id);
-                return entity;
-            }
-            else
-            {
-                return TunnelElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    d.MonthlyElectricityCost,
-                    d.AverageMonthlyTunnelProduction,
-                    startMonth,
-                    endMonth);
-            }
-        }).ToList();
+        ThrowIfImportErrors(importErrors);
 
-        var dbEntities = await _repository.GetAllAsync(disableTracking: false);
+        var equipmentIdMap = equipmentCodeGroups.ToDictionary(
+            g => g.Key,
+            g => g
+                .OrderByDescending(e => e.LastModifiedOn ?? e.CreatedOn)
+                .ThenByDescending(e => e.CreatedOn)
+                .First()
+                .Id,
+            StringComparer.OrdinalIgnoreCase);
+
+        var excelEntities = new List<TunnelElectricityUnitPriceEquipment>();
+        foreach (var item in dtos.Select((dto, index) => new { dto, rowNumber = index + 2 }))
+        {
+            try
+            {
+                var equipmentCode = item.dto.EquipmentCode?.Trim();
+                if (string.IsNullOrWhiteSpace(equipmentCode) || !equipmentIdMap.TryGetValue(equipmentCode, out var equipmentId))
+                {
+                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+                    continue;
+                }
+
+                var startMonth = ParseMonthYear(item.dto.StartMonth);
+                var endMonth = ParseMonthYear(item.dto.EndMonth);
+
+                TunnelElectricityUnitPriceEquipment entity = request.Type == ElectricityUnitPriceType.Trimming
+                    ? TrimmingElectricityUnitPriceEquipment.Create(
+                        equipmentId,
+                        item.dto.MonthlyElectricityCost,
+                        item.dto.AverageMonthlyTunnelProduction,
+                        startMonth,
+                        endMonth)
+                    : TunnelElectricityUnitPriceEquipment.Create(
+                        equipmentId,
+                        item.dto.MonthlyElectricityCost,
+                        item.dto.AverageMonthlyTunnelProduction,
+                        startMonth,
+                        endMonth,
+                        request.Type);
+
+                if (item.dto.Id != Guid.Empty)
+                {
+                    entity.GetType().GetProperty("Id")?.SetValue(entity, item.dto.Id);
+                }
+
+                excelEntities.Add(entity);
+            }
+            catch (Exception ex) when (ex is BadRequestException or ArgumentException)
+            {
+                importErrors.Add($"Dòng {item.rowNumber}: {ex.Message}");
+            }
+        }
+
+        ThrowIfImportErrors(importErrors);
+
+        var dbEntities = await _repository.GetAllAsync(
+            predicate: e => e.ElectricityType == request.Type,
+            disableTracking: false);
 
         var deleteList = new List<TunnelElectricityUnitPriceEquipment>();
         var updateList = new List<TunnelElectricityUnitPriceEquipment>();
@@ -118,6 +163,8 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch
@@ -127,18 +174,24 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         }
     }
 
-    private async Task<bool> CheckExistedReferences(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList)
+    private async Task CollectReferenceErrors(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors, ElectricityUnitPriceType type)
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
-                include: e => e.Include(e => e.Code),
+                include: e => e
+                    .Include(e => e.Code),
                 disableTracking: true))
             .Where(e => e.Code != null)
             .Select(e => e.Code!.Value.Trim())
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelEquipmentCodes = dtoList.Select(d => d.EquipmentCode?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-
-        return excelEquipmentCodes.All(code => dbEquipmentCodes.Contains(code));
+        foreach (var item in dtoList.Select((dto, index) => new { dto, rowNumber = index + 2 }))
+        {
+            var equipmentCode = item.dto.EquipmentCode?.Trim();
+            if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
+            {
+                importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+            }
+        }
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -165,4 +218,20 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
     }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
+
 }

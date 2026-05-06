@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Index.Passport.Specifications;
+using Application.Catalog.Index.Passport.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -30,7 +30,7 @@ public class GetAllProductionOrderQueryHandler(IPaginationService paginationServ
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.Code).ThenBy(d => d.Name).ToList();
+        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.Name).ToList();
         return result;
     }
 }

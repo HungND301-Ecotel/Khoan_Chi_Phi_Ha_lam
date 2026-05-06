@@ -24,6 +24,7 @@ public class UpdateSlideUnitPriceCommandHandler(
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "SlideUnitPrice";
 
     public async Task<bool> Handle(UpdateSlideUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -139,6 +140,7 @@ public class UpdateSlideUnitPriceCommandHandler(
             await unitOfWork.CommitAsync(cancellationToken);
 
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

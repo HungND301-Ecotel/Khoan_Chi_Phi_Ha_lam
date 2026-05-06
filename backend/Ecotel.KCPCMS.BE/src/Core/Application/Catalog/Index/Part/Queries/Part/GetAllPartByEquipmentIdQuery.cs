@@ -1,4 +1,5 @@
 using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Part;
@@ -19,8 +20,7 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: t => t.EquipmentParts.Any(e => e.EquipmentId == request.EquipmentId),
             include: t => t
                 .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
-                .Include(t => t.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e.EquipmentProcessGroups)
-                    .ThenInclude(epg => epg.ProcessGroup).ThenInclude(pg => pg.Code)
+                .Include(t => t.PartProcessGroups).ThenInclude(ppg => ppg.ProcessGroup).ThenInclude(pg => pg.Code)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
@@ -33,30 +33,30 @@ public class GetAllPartByEquipmentIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = partDetail.Id,
             Code = partDetail.Code.Value,
             Name = partDetail.Name,
+            PartType = partDetail.Type,
             EquipmentIds = partDetail.EquipmentParts.Select(e => e.EquipmentId).ToList(),
             EquipmentCodes = partDetail.EquipmentParts
                 .Where(e => e.Equipment?.Code != null)
                 .Select(e => e.Equipment!.Code!.Value)
                 .OrderBy(code => code)
-                .ToList(),            UnitOfMeasureId = partDetail.UnitOfMeasureId,
+                .ToList(),
+            UnitOfMeasureId = partDetail.UnitOfMeasureId,
             UnitOfMeasureName = partDetail.UnitOfMeasure != null ? partDetail.UnitOfMeasure.Name : string.Empty,
-            ProcessGroups = partDetail.EquipmentParts
-                .Where(ep => ep.EquipmentId == request.EquipmentId && ep.Equipment != null)
-                .SelectMany(ep => ep.Equipment!.EquipmentProcessGroups)
-                .Where(epg => epg.ProcessGroup?.Code != null)
-                .Select(epg => new PartProcessGroupDto
+            ProcessGroups = partDetail.PartProcessGroups
+                .Where(ppg => ppg.ProcessGroup?.FixedKey != null)
+                .Select(ppg => new PartProcessGroupDto
                 {
-                    Id = epg.ProcessGroupId,
-                    Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
+                    Id = ppg.ProcessGroupId,
+                    Code = ppg.ProcessGroup!.FixedKey!.Key,
+                    Name = ppg.ProcessGroup.Name
                 })
                 .DistinctBy(pg => pg.Id)
-                .OrderBy(pg => pg.Code)
+                .OrderByCodeNatural(pg => pg.Code)
                 .ThenBy(pg => pg.Name)
                 .ToList(),
             CurrentCost = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.Amount ?? 0,
             ActualAmount = partDetail.Costs.FirstOrDefault(c => c.StartMonth <= curMonth && c.EndMonth >= curMonth)?.ActualAmount ?? 0
-        }).ToList();
+        }).OrderByCodeNatural(p => p.Code).ThenBy(p => p.Name).ToList();
     }
 }
 

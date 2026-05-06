@@ -164,9 +164,7 @@ export function LongTermMaterialCosts({
 												</ItemTitle>
 											</div>
 											<div className='me-40 text-sm font-semibold'>
-												{formatNumber(totalAccountedValueThisPeriod, {
-													maximumFractionDigits: 0,
-												})}
+												{formatNumber(totalAccountedValueThisPeriod)}
 											</div>
 											<ItemActions>
 												<AccordionTrigger className='group p-0'>

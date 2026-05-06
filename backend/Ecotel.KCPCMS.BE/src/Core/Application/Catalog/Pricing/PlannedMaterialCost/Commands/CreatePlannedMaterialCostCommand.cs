@@ -76,7 +76,7 @@ public class CreatePlannedMaterialCostCommandHandler(
             }
         }
 
-        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.NormFactorId, request.CreateModel.StoneClampRatioReferenceId, request.CreateModel.MaterialReferenceId, request.CreateModel.OutputId);
+        var newPlannedMaterialCost = Domain.Entities.Pricing.PlannedMaterialCost.Create(request.CreateModel.ProductUnitPriceId, request.CreateModel.MaterialUnitPriceId, request.CreateModel.SlideUnitPriceAssignmentCodeId, request.CreateModel.NormFactorId, request.CreateModel.StoneClampRatioReferenceId, request.CreateModel.MaterialReferenceId, request.CreateModel.OutputId, request.CreateModel.LowValuePerishableSupplyInclusion);
 
         await _plannedMaterialCostRepository.InsertAsync(newPlannedMaterialCost, cancellationToken);
         await unitOfWork.SaveChangesAsync();

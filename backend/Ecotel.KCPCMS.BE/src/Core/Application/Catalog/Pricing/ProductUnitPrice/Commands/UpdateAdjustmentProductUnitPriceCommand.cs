@@ -21,6 +21,7 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
     private const string CacheSignalKey = "ProductUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
@@ -28,6 +29,7 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
     {
         bool checkExited = await _productUnitPriceRepository.ExistsAsync(p =>
             p.ProductId == request.UpdateModel.ProductId &&
+            p.DepartmentId == request.UpdateModel.DepartmentId &&
             p.Id != request.UpdateModel.Id &&
             p.ScenarioType == ProductUnitPriceScenarioType.Adjustment);
         if (checkExited)
@@ -41,6 +43,15 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
             if (!checkUnitOfMeasureExisted)
             {
                 throw new NotFoundException(CustomResponseMessage.UnitOfMeasureNotFound);
+            }
+        }
+
+        if (request.UpdateModel.DepartmentId != null)
+        {
+            bool checkDepartmentExisted = await _departmentRepository.ExistsAsync(x => x.Id == request.UpdateModel.DepartmentId);
+            if (!checkDepartmentExisted)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
             }
         }
 
@@ -59,7 +70,10 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            exitedProductUnitPrice.Update(request.UpdateModel.ProductId, request.UpdateModel.UnitOfMeasureId);
+            exitedProductUnitPrice.Update(
+                request.UpdateModel.ProductId,
+                request.UpdateModel.UnitOfMeasureId,
+                request.UpdateModel.DepartmentId);
 
             // Update ProductionOutputs relationship - smart update to avoid tracking conflicts
             var existingProductionOutputIds = exitedProductUnitPrice.ProductUnitPriceProductionOutputs
@@ -110,7 +124,9 @@ public class UpdateAdjustmentProductUnitPriceCommandHandler(
         CancellationToken cancellationToken)
     {
         var planProductUnitPrice = await _productUnitPriceRepository.GetFirstOrDefaultAsync(
-            predicate: p => p.ProductId == productUnitPrice.ProductId && p.ScenarioType == ProductUnitPriceScenarioType.Plan,
+            predicate: p => p.ProductId == productUnitPrice.ProductId
+                && p.DepartmentId == productUnitPrice.DepartmentId
+                && p.ScenarioType == ProductUnitPriceScenarioType.Plan,
             include: p => p.Include(x => x.Outputs),
             disableTracking: true);
 

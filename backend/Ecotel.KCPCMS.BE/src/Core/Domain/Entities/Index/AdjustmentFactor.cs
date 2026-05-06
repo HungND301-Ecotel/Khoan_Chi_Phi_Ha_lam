@@ -8,23 +8,20 @@ namespace Domain.Entities.Index
     {
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
-        public AdjustmentFactorType Type { get; protected set; } = AdjustmentFactorType.None;
+        public Guid? FixedKeyId { get; protected set; }
         public Guid ProcessGroupId { get; protected set; }
 
         // Navigation properties
         public virtual ProcessGroup? ProcessGroup { get; protected set; }
         public virtual Code? Code { get; protected set; }
+        public virtual FixedKey? FixedKey { get; protected set; }
 
         private IList<AdjustmentFactorDescription> _adjustmentFactorDescriptions = new List<AdjustmentFactorDescription>();
         public IReadOnlyList<AdjustmentFactorDescription> AdjustmentFactorDescriptions => _adjustmentFactorDescriptions.ToList();
 
-        // Constructor
-        public static AdjustmentFactor Create(string code, string name, Guid processGroupId)
+        public static AdjustmentFactor Create(FixedKey fixedKey, string name, Guid processGroupId)
         {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
+            ArgumentNullException.ThrowIfNull(fixedKey);
 
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -33,82 +30,17 @@ namespace Domain.Entities.Index
 
             return new AdjustmentFactor
             {
-                Code = new Code(code.ToUpper()),
+                Code = new Code(fixedKey.Key),
+                FixedKeyId = fixedKey.Id,
                 Name = name,
                 ProcessGroupId = processGroupId,
             };
         }
 
-        public static AdjustmentFactor Create(string code, AdjustmentFactorType type, string name, Guid processGroupId)
+        public void Update(FixedKey fixedKey, string name, Guid processGroupId)
         {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
+            ArgumentNullException.ThrowIfNull(fixedKey);
 
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
-            }
-
-            return new AdjustmentFactor
-            {
-                Code = new Code(code.ToUpper()),
-                Name = name,
-                ProcessGroupId = processGroupId,
-                Type = type
-            };
-        }
-
-        public static AdjustmentFactor Create(Guid id, string code, string name, Guid processGroupId)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
-            }
-
-            return new AdjustmentFactor
-            {
-                Id = id,
-                Code = new Code(code.ToUpper()),
-                Name = name,
-                ProcessGroupId = processGroupId,
-            };
-        }
-
-        public static AdjustmentFactor Create(Guid id, AdjustmentFactorType type, string code, string name, Guid processGroupId)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
-            }
-
-            return new AdjustmentFactor
-            {
-                Id = id,
-                Code = new Code(code.ToUpper()),
-                Type = type,
-                Name = name,
-                ProcessGroupId = processGroupId,
-            };
-        }
-
-        public void Update(string code, string name, Guid processGroupId)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
@@ -116,32 +48,16 @@ namespace Domain.Entities.Index
 
             if (Code != null)
             {
-                Code.Value = code.ToUpper();
+                Code.Value = fixedKey.Key;
+            }
+            else
+            {
+                Code = new Code(fixedKey.Key);
             }
 
+            FixedKeyId = fixedKey.Id;
             Name = name;
             ProcessGroupId = processGroupId;
-        }
-
-        public void Update(string code, AdjustmentFactorType type, string name, Guid processGroupId)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new ArgumentException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
-            }
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
-            }
-
-            if (Code != null)
-            {
-                Code.Value = code.ToUpper();
-            }
-
-            Name = name;
-            ProcessGroupId = processGroupId;
-            Type = type;
         }
 
         public void UpdateProcessGroupInfo(Guid processGroupId, string processGroupName)
@@ -151,7 +67,7 @@ namespace Domain.Entities.Index
 
         public bool CheckChange(AdjustmentFactor dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == ProcessGroupId);
+            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == dto.ProcessGroupId && FixedKeyId == dto.FixedKeyId);
         }
     }
 }

@@ -59,6 +59,7 @@ export function MainCatalogParameterClampPage() {
 			columns={CATALOG_PARAMETER_CLAMP_COLUMNS}
 			filters={[{ key: 'value', label: 'Tỷ lệ đá kẹp' }]}
 			onCreate={(props) => <ClampForm {...props} />}
+			onDuplicate={(props) => <ClampForm {...props} isDuplicate />}
 			onUpdate={(props) => <ClampForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

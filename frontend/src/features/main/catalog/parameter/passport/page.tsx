@@ -66,6 +66,7 @@ export function MainCatalogParameterPassportPage() {
 				{ key: 'sc', label: 'Sc' },
 			]}
 			onCreate={(props) => <PassportForm {...props} />}
+			onDuplicate={(props) => <PassportForm {...props} isDuplicate />}
 			onUpdate={(props) => <PassportForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

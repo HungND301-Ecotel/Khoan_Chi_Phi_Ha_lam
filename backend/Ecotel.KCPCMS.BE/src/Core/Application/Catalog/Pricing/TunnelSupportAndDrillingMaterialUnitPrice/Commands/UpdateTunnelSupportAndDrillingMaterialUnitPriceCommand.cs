@@ -25,6 +25,7 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "TunnelSupportAndDrillingMaterialUnitPrice";
 
     public async Task<bool> Handle(UpdateTunnelSupportAndDrillingMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -90,6 +91,7 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
             await unitOfWork.CommitAsync(cancellationToken);
 
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

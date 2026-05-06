@@ -44,7 +44,6 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         var productionProcesses = await _productionProcessRepository.GetAllAsync(
             include: q => q.Include(p => p.Code),
             disableTracking: true);
-
         var hardnesses = await _hardnessRepository.GetAllAsync(disableTracking: true);
         var stoneClampRatios = await _stoneClampRatioRepository.GetAllAsync(disableTracking: true);
         var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
@@ -76,7 +75,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             .GroupBy(a => a.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        var mappedRows = new List<MappedNormFactorRow>();
+        var mappedRows = new List<MappedNormFactorAssignmentRow>();
         for (var i = 0; i < dtos.Count; i++)
         {
             var dto = dtos[i];
@@ -93,26 +92,26 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 throw new BadRequestException($"Giá trị tỷ lệ ngậm đá '{dto.StoneClampRatioName}' không tồn tại ở dòng {rowNumber}.");
             }
 
-            var assignmentCodeIds = ResolveAssignmentCodeIds(dto.AffectAssignmentCodes, assignmentCodeByCode, rowNumber);
-
+            var assignmentCodeId = ResolveAssignmentCodeId(dto.AssignmentCode, assignmentCodeByCode, rowNumber);
             var targetHardnessId = ResolveTargetHardnessId(dto.TargetHardnessName, hardnessByName, rowNumber);
 
-            mappedRows.Add(new MappedNormFactorRow(
+            mappedRows.Add(new MappedNormFactorAssignmentRow(
                 dto.Id,
                 rowNumber,
                 productionProcess.Id,
                 hardnessId,
                 stoneClampRatio.Id,
                 steelMeshType,
-                assignmentCodeIds,
+                assignmentCodeId,
                 dto.Value,
                 targetHardnessId));
         }
 
+        var aggregates = BuildAggregates(mappedRows);
+
         var dbNormFactors = await _normFactorRepository.GetAllAsync(
             include: q => q.Include(n => n.NormFactorAssignmentCodes),
             disableTracking: false);
-
         var dbNormFactorDict = dbNormFactors.ToDictionary(n => n.Id);
 
         var deleteList = new List<NormFactorEntity>();
@@ -120,59 +119,54 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         var addList = new List<NormFactorEntity>();
         var assignmentToDelete = new List<NormFactorAssignmentCodeEntity>();
 
-        var excelIds = mappedRows.Select(x => x.Id).Where(id => id != Guid.Empty).ToList();
-        var entitiesToDelete = dbNormFactors.Where(x => !excelIds.Contains(x.Id)).ToList();
-        deleteList.AddRange(entitiesToDelete);
+        var excelExistingIds = aggregates.Where(x => x.Id != Guid.Empty).Select(x => x.Id).ToList();
+        deleteList.AddRange(dbNormFactors.Where(x => !excelExistingIds.Contains(x.Id)));
 
-        foreach (var row in mappedRows)
+        foreach (var aggregate in aggregates)
         {
-            if (row.Id != Guid.Empty && dbNormFactorDict.TryGetValue(row.Id, out var existingEntity))
+            if (aggregate.Id != Guid.Empty && dbNormFactorDict.TryGetValue(aggregate.Id, out var existingEntity))
             {
-                var existingAssignmentIds = existingEntity.NormFactorAssignmentCodes
-                    .Select(x => x.AssignmentCodeId)
-                    .ToHashSet();
-
-                var newAssignmentIds = row.AssignmentCodeIds.ToHashSet();
-
-                var isChanged =
-                    existingEntity.ProductionProcessId != row.ProductionProcessId
-                    || existingEntity.HardnessId != row.HardnessId
-                    || existingEntity.StoneClampRatioId != row.StoneClampRatioId
-                    || existingEntity.SteelMeshType != row.SteelMeshType
-                    || existingEntity.TargetHardnessId != row.TargetHardnessId
-                    || existingEntity.Value != row.Value
-                    || !existingAssignmentIds.SetEquals(newAssignmentIds);
-
-                if (!isChanged)
+                if (!IsNormFactorChanged(existingEntity, aggregate))
                 {
                     continue;
                 }
 
                 existingEntity.Update(
-                    row.ProductionProcessId,
-                    row.HardnessId,
-                    row.StoneClampRatioId,
-                    row.Value,
-                    row.TargetHardnessId,
-                    row.SteelMeshType);
+                    aggregate.ProductionProcessId,
+                    aggregate.HardnessId,
+                    aggregate.StoneClampRatioId,
+                    aggregate.SteelMeshType);
 
-                SyncAssignmentCodes(existingEntity, row.AssignmentCodeIds, assignmentToDelete);
+                if (existingEntity.NormFactorAssignmentCodes.Any())
+                {
+                    assignmentToDelete.AddRange(existingEntity.NormFactorAssignmentCodes);
+                }
+
+                existingEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
+                    .Select(x => NormFactorAssignmentCodeEntity.Create(
+                        x.AssignmentCodeId,
+                        existingEntity.Id,
+                        x.Value,
+                        x.TargetHardnessId))
+                    .ToList());
+
                 updateList.Add(existingEntity);
             }
             else
             {
                 var newEntity = NormFactorEntity.Create(
-                    row.ProductionProcessId,
-                    row.HardnessId,
-                    row.StoneClampRatioId,
-                    row.Value,
-                    row.TargetHardnessId,
-                    row.SteelMeshType);
+                    aggregate.ProductionProcessId,
+                    aggregate.HardnessId,
+                    aggregate.StoneClampRatioId,
+                    aggregate.SteelMeshType);
 
-                newEntity.AddNormFactorAssignmentCode(
-                    row.AssignmentCodeIds
-                        .Select(id => NormFactorAssignmentCodeEntity.Create(id, Guid.Empty))
-                        .ToList());
+                newEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
+                    .Select(x => NormFactorAssignmentCodeEntity.Create(
+                        x.AssignmentCodeId,
+                        Guid.Empty,
+                        x.Value,
+                        x.TargetHardnessId))
+                    .ToList());
 
                 addList.Add(newEntity);
             }
@@ -210,6 +204,87 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             await unitOfWork.RollbackAsync(cancellationToken: cancellationToken);
             throw;
         }
+    }
+
+    private static List<MappedNormFactorAggregate> BuildAggregates(List<MappedNormFactorAssignmentRow> rows)
+    {
+        var byGroup = new Dictionary<string, MappedNormFactorAggregate>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in rows)
+        {
+            var key = row.Id != Guid.Empty
+                ? $"ID:{row.Id:D}"
+                : $"NEW:{row.ProductionProcessId:D}:{row.HardnessId?.ToString("D") ?? "NULL"}:{row.StoneClampRatioId:D}:{(int)row.SteelMeshType}";
+
+            if (!byGroup.TryGetValue(key, out var aggregate))
+            {
+                aggregate = new MappedNormFactorAggregate(
+                    row.Id,
+                    row.ProductionProcessId,
+                    row.HardnessId,
+                    row.StoneClampRatioId,
+                    row.SteelMeshType);
+                byGroup[key] = aggregate;
+            }
+
+            if (aggregate.ProductionProcessId != row.ProductionProcessId
+                || aggregate.HardnessId != row.HardnessId
+                || aggregate.StoneClampRatioId != row.StoneClampRatioId
+                || aggregate.SteelMeshType != row.SteelMeshType)
+            {
+                throw new BadRequestException($"Thông tin nền của NormFactor không đồng nhất ở dòng {row.RowNumber}.");
+            }
+
+            if (aggregate.AssignmentCodes.Any(x => x.AssignmentCodeId == row.AssignmentCodeId))
+            {
+                throw new BadRequestException($"Mã giao khoán bị trùng trong cùng một NormFactor ở dòng {row.RowNumber}.");
+            }
+
+            aggregate.AssignmentCodes.Add(new NormFactorAssignmentCodeUpsertDto
+            {
+                AssignmentCodeId = row.AssignmentCodeId,
+                Value = row.Value,
+                TargetHardnessId = row.TargetHardnessId
+            });
+        }
+
+        return byGroup.Values.ToList();
+    }
+
+    private static bool IsNormFactorChanged(NormFactorEntity existingEntity, MappedNormFactorAggregate aggregate)
+    {
+        if (existingEntity.ProductionProcessId != aggregate.ProductionProcessId
+            || existingEntity.HardnessId != aggregate.HardnessId
+            || existingEntity.StoneClampRatioId != aggregate.StoneClampRatioId
+            || existingEntity.SteelMeshType != aggregate.SteelMeshType)
+        {
+            return true;
+        }
+
+        var existingMap = existingEntity.NormFactorAssignmentCodes
+            .ToDictionary(x => x.AssignmentCodeId, x => (x.Value, x.TargetHardnessId));
+        var newMap = aggregate.AssignmentCodes
+            .ToDictionary(x => x.AssignmentCodeId, x => (x.Value, x.TargetHardnessId));
+
+        if (existingMap.Count != newMap.Count)
+        {
+            return true;
+        }
+
+        foreach (var pair in newMap)
+        {
+            if (!existingMap.TryGetValue(pair.Key, out var oldValue))
+            {
+                return true;
+            }
+
+            if (oldValue.Value != pair.Value.Value || oldValue.TargetHardnessId != pair.Value.TargetHardnessId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static Domain.Entities.Index.ProductionProcess? ResolveProductionProcess(
@@ -258,6 +333,20 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         throw new BadRequestException($"Giá trị độ cứng '{rawValue}' không tồn tại ở dòng {rowNumber}.");
     }
 
+    private static Guid ResolveAssignmentCodeId(
+        string? rawValue,
+        IReadOnlyDictionary<string, Domain.Entities.Index.AssignmentCode> assignmentCodeByCode,
+        int rowNumber)
+    {
+        var code = ExtractCode(rawValue ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(code) || !assignmentCodeByCode.TryGetValue(code, out var assignmentCode))
+        {
+            throw new BadRequestException($"Giá trị mã giao khoán '{rawValue}' không tồn tại ở dòng {rowNumber}.");
+        }
+
+        return assignmentCode.Id;
+    }
+
     private static Guid? ResolveTargetHardnessId(
         string? rawValue,
         IReadOnlyDictionary<string, Domain.Entities.Index.Hardness> hardnessByName,
@@ -288,8 +377,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             return SteelMeshType.None;
         }
 
-        if (int.TryParse(value, out var enumInt)
-            && Enum.IsDefined(typeof(SteelMeshType), enumInt))
+        if (int.TryParse(value, out var enumInt) && Enum.IsDefined(typeof(SteelMeshType), enumInt))
         {
             return (SteelMeshType)enumInt;
         }
@@ -316,33 +404,6 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         throw new BadRequestException($"Giá trị loại lưới thép '{rawValue}' không hợp lệ ở dòng {rowNumber}.");
     }
 
-    private static List<Guid> ResolveAssignmentCodeIds(
-        string? rawValue,
-        IReadOnlyDictionary<string, Domain.Entities.Index.AssignmentCode> assignmentCodeByCode,
-        int rowNumber)
-    {
-        var codes = (rawValue ?? string.Empty)
-            .Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var assignmentIds = new List<Guid>();
-        foreach (var code in codes)
-        {
-            var normalizedCode = ExtractCode(code);
-            if (string.IsNullOrWhiteSpace(normalizedCode)
-                || !assignmentCodeByCode.TryGetValue(normalizedCode, out var assignmentCode))
-            {
-                throw new BadRequestException($"Giá trị mã giao khoán '{code}' không tồn tại ở dòng {rowNumber}.");
-            }
-
-            assignmentIds.Add(assignmentCode.Id);
-        }
-
-        return assignmentIds;
-    }
-
     private static string ExtractCode(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -360,39 +421,29 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         return normalized[..separatorIndex].Trim();
     }
 
-    private static void SyncAssignmentCodes(
-        NormFactorEntity normFactor,
-        IList<Guid> newAssignmentIds,
-        List<NormFactorAssignmentCodeEntity> toDelete)
-    {
-        var existing = normFactor.NormFactorAssignmentCodes.ToList();
-        var existingIds = existing.Select(x => x.AssignmentCodeId).ToHashSet();
-        var newIds = newAssignmentIds.ToHashSet();
-
-        var keep = existing.Where(x => newIds.Contains(x.AssignmentCodeId)).ToList();
-        var add = newIds
-            .Except(existingIds)
-            .Select(id => NormFactorAssignmentCodeEntity.Create(id, normFactor.Id))
-            .ToList();
-        var remove = existing.Where(x => !newIds.Contains(x.AssignmentCodeId)).ToList();
-
-        if (remove.Any())
-        {
-            toDelete.AddRange(remove);
-        }
-
-        keep.AddRange(add);
-        normFactor.AddNormFactorAssignmentCode(keep);
-    }
-
-    private sealed record MappedNormFactorRow(
+    private sealed record MappedNormFactorAssignmentRow(
         Guid Id,
         int RowNumber,
         Guid ProductionProcessId,
         Guid? HardnessId,
         Guid StoneClampRatioId,
         SteelMeshType SteelMeshType,
-        IList<Guid> AssignmentCodeIds,
+        Guid AssignmentCodeId,
         double Value,
         Guid? TargetHardnessId);
+
+    private sealed class MappedNormFactorAggregate(
+        Guid id,
+        Guid productionProcessId,
+        Guid? hardnessId,
+        Guid stoneClampRatioId,
+        SteelMeshType steelMeshType)
+    {
+        public Guid Id { get; } = id;
+        public Guid ProductionProcessId { get; } = productionProcessId;
+        public Guid? HardnessId { get; } = hardnessId;
+        public Guid StoneClampRatioId { get; } = stoneClampRatioId;
+        public SteelMeshType SteelMeshType { get; } = steelMeshType;
+        public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; } = [];
+    }
 }

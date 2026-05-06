@@ -32,7 +32,8 @@ const LONGWALLPARAMETERS_SUPPORTS = [
 export function LongwallparametersForm({
 	data,
 	row,
-}: ActionDialogProps<Longwallparameters>) {
+	isDuplicate = false,
+}: ActionDialogProps<Longwallparameters> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -55,7 +56,7 @@ export function LongwallparametersForm({
 
 	const handleSubmit = async (values: LongwallparametersSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.LONGWALLPARAMETERS.UPDATE, {
 					id: row?.id,
 					...values,
@@ -66,7 +67,7 @@ export function LongwallparametersForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -99,7 +100,7 @@ export function LongwallparametersForm({
 				placeholder='Nhập Mk (m)'
 				supports={LONGWALLPARAMETERS_SUPPORTS}
 			/>
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

@@ -418,6 +418,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FixedKeyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -431,13 +434,12 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("ProcessGroupId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CodeId")
                         .IsUnique();
+
+                    b.HasIndex("FixedKeyId");
 
                     b.HasIndex("ProcessGroupId");
 
@@ -486,6 +488,60 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("AdjustmentFactorId");
 
                     b.ToTable("AdjustmentFactorDescription", "Index");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.AkFactorConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AdjustmentRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("AdjustmentRateDisplay")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AkDiffDisplay")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AkDiffOperator")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("AkDiffValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProcessGroupId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessGroupId");
+
+                    b.ToTable("AkFactorConfig", "Index");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.AssignmentCode", b =>
@@ -666,6 +722,45 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("CuttingThickness", "Index");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Index.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CodeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeId")
+                        .IsUnique();
+
+                    b.ToTable("Department", "Index");
+                });
+
             modelBuilder.Entity("Domain.Entities.Index.Equipment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -751,7 +846,7 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("EquipmentPart", "Index");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Index.EquipmentProcessGroup", b =>
+            modelBuilder.Entity("Domain.Entities.Index.FixedKey", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -769,8 +864,10 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("EquipmentId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
@@ -778,18 +875,142 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("ProcessGroupId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProcessGroupId");
+                    b.HasIndex("Key")
+                        .IsUnique();
 
-                    b.HasIndex("EquipmentId", "ProcessGroupId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedOn\" IS NULL");
+                    b.ToTable("FixedKey", "Index");
 
-                    b.ToTable("EquipmentProcessGroup", "Index");
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "DL",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Đào lò",
+                            Type = 1
+                        },
+                        new
+                        {
+                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "LC",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Lò chợ",
+                            Type = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "XL",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Xén lò",
+                            Type = 3
+                        },
+                        new
+                        {
+                            Id = new Guid("44444444-4444-4444-4444-444444444444"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K1",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K1",
+                            Type = 4
+                        },
+                        new
+                        {
+                            Id = new Guid("55555555-5555-5555-5555-555555555555"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K2",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K2",
+                            Type = 5
+                        },
+                        new
+                        {
+                            Id = new Guid("66666666-6666-6666-6666-666666666666"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K3",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K3",
+                            Type = 6
+                        },
+                        new
+                        {
+                            Id = new Guid("77777777-7777-7777-7777-777777777777"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K4",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K4",
+                            Type = 7
+                        },
+                        new
+                        {
+                            Id = new Guid("88888888-8888-8888-8888-888888888888"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K5",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K5",
+                            Type = 8
+                        },
+                        new
+                        {
+                            Id = new Guid("99999999-9999-9999-9999-999999999999"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K6",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K6",
+                            Type = 9
+                        },
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K7",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K7",
+                            Type = 10
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            CreatedBy = 0L,
+                            CreatedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "K8",
+                            LastModifiedBy = 0L,
+                            LastModifiedOn = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Name = "Hệ số điều chỉnh K8",
+                            Type = 11
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Hardness", b =>
@@ -999,12 +1220,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("StoneClampRatioId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("TargetHardnessId")
-                        .HasColumnType("uuid");
-
-                    b.Property<double>("Value")
-                        .HasColumnType("double precision");
-
                     b.HasKey("Id");
 
                     b.HasIndex("HardnessId");
@@ -1012,8 +1227,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("ProductionProcessId");
 
                     b.HasIndex("StoneClampRatioId");
-
-                    b.HasIndex("TargetHardnessId");
 
                     b.ToTable("NormFactor", "Index");
                 });
@@ -1048,11 +1261,21 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("NormFactorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("TargetHardnessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double precision");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssignmentCodeId");
 
-                    b.HasIndex("NormFactorId");
+                    b.HasIndex("TargetHardnessId");
+
+                    b.HasIndex("NormFactorId", "AssignmentCodeId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("NormFactorAssignmentCode", "Index");
                 });
@@ -1196,7 +1419,10 @@ namespace Migrators.PostgreSQL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AdjustmentFactorDescriptionId")
+                    b.Property<Guid?>("AdjustmentFactorDescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdjustmentFactorId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("CreatedBy")
@@ -1204,6 +1430,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("CustomValue")
+                        .HasColumnType("double precision");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -1224,9 +1453,15 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("AdjustmentFactorDescriptionId");
 
+                    b.HasIndex("AdjustmentFactorId")
+                        .HasDatabaseName("IX_PlannedElectricityCostAdjustmentFactorDescription_Adjustme~1");
+
                     b.HasIndex("PlannedElectricityCostAdjustmentFactorId");
 
-                    b.ToTable("PlannedElectricityCostAdjustmentFactorDescription", "Index");
+                    b.ToTable("PlannedElectricityCostAdjustmentFactorDescription", "Index", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlannedElectricityCostAdjustmentFactorDescription_CustomOrReference", "\r\n                    (\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NOT NULL AND\r\n                            \"AdjustmentFactorId\" IS NULL AND\r\n                            \"CustomValue\" IS NULL\r\n                        )\r\n                        OR\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NULL AND\r\n                            \"AdjustmentFactorId\" IS NOT NULL AND\r\n                            \"CustomValue\" IS NOT NULL\r\n                        )\r\n                    )\r\n                ");
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.PlannedMaintainCostAdjustmentFactorDescription", b =>
@@ -1235,7 +1470,10 @@ namespace Migrators.PostgreSQL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AdjustmentFactorDescriptionId")
+                    b.Property<Guid?>("AdjustmentFactorDescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdjustmentFactorId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("CreatedBy")
@@ -1243,6 +1481,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("CustomValue")
+                        .HasColumnType("double precision");
 
                     b.Property<long?>("DeletedBy")
                         .HasColumnType("bigint");
@@ -1263,9 +1504,15 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("AdjustmentFactorDescriptionId");
 
+                    b.HasIndex("AdjustmentFactorId")
+                        .HasDatabaseName("IX_PlannedMaintainCostAdjustmentFactorDescription_AdjustmentF~1");
+
                     b.HasIndex("PlannedMaintainCostAdjustmentFactorId");
 
-                    b.ToTable("PlannedMaintainCostAdjustmentFactorDescription", "Index");
+                    b.ToTable("PlannedMaintainCostAdjustmentFactorDescription", "Index", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlannedMaintainCostAdjustmentFactorDescription_CustomOrReference", "\r\n                    (\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NOT NULL AND\r\n                            \"AdjustmentFactorId\" IS NULL AND\r\n                            \"CustomValue\" IS NULL\r\n                        )\r\n                        OR\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NULL AND\r\n                            \"AdjustmentFactorId\" IS NOT NULL AND\r\n                            \"CustomValue\" IS NOT NULL\r\n                        )\r\n                    )\r\n                ");
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Power", b =>
@@ -1326,6 +1573,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FixedKeyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -1343,6 +1593,8 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("CodeId")
                         .IsUnique();
+
+                    b.HasIndex("FixedKeyId");
 
                     b.ToTable("ProcessGroup", "Index");
                 });
@@ -1864,6 +2116,59 @@ namespace Migrators.PostgreSQL.Migrations
                     b.UseTphMappingStrategy();
                 });
 
+            modelBuilder.Entity("Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndMonth")
+                        .HasColumnType("date");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProcessGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartMonth")
+                        .HasColumnType("date");
+
+                    b.Property<double>("TotalPrice")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("ProcessGroupId", "DepartmentId", "StartMonth", "Type", "EndMonth")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("LowValuePerishableSupplyUnitPrice", "Pricing");
+                });
+
             modelBuilder.Entity("Domain.Entities.Pricing.MaintainUnitPrice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2098,6 +2403,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<int>("OutputType")
                         .HasColumnType("integer");
 
+                    b.Property<double>("PlanAshContent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0);
+
                     b.Property<Guid>("ProductUnitPriceId")
                         .HasColumnType("uuid");
 
@@ -2147,10 +2457,14 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("ProductUnitPriceId")
                         .HasColumnType("uuid");
 
+                    b.Property<double>("TrimmingCoefficient")
+                        .HasColumnType("double precision");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OutputId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -2232,10 +2546,14 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("ProductUnitPriceId")
                         .HasColumnType("uuid");
 
+                    b.Property<double>("TrimmingCoefficient")
+                        .HasColumnType("double precision");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OutputId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.HasIndex("ProductUnitPriceId", "OutputId")
                         .IsUnique()
@@ -2314,6 +2632,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("LowValuePerishableSupplyInclusion")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("MaterialReferenceId")
                         .HasColumnType("uuid");
 
@@ -2344,7 +2665,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasIndex("NormFactorId");
 
                     b.HasIndex("OutputId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.HasIndex("SlideUnitPriceAssignmentCodeId");
 
@@ -2375,6 +2697,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -2392,9 +2717,11 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DepartmentId");
+
                     b.HasIndex("UnitOfMeasureId");
 
-                    b.HasIndex("ProductId", "ScenarioType")
+                    b.HasIndex("ProductId", "ScenarioType", "DepartmentId")
                         .IsUnique()
                         .HasFilter("\"DeletedOn\" IS NULL");
 
@@ -2646,6 +2973,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<int>("OtherMaterialDetail")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("PartId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ProcessGroupId")
                         .HasColumnType("uuid");
 
@@ -2658,6 +2988,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<int>("QuotaBasedMaterialType")
                         .HasColumnType("integer");
 
+                    b.Property<double>("UsageTime")
+                        .HasColumnType("double precision");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AcceptanceReportId");
@@ -2668,11 +3001,96 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("MaterialId");
 
+                    b.HasIndex("PartId");
+
                     b.HasIndex("ProcessGroupId");
 
                     b.HasIndex("ProductionOrderId");
 
                     b.ToTable("AcceptanceReportItem", "Production");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemCategoryAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AcceptanceReportItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProcessGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Quantity")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessGroupId");
+
+                    b.HasIndex("AcceptanceReportItemId", "ProcessGroupId")
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("AcceptanceReportItemCategoryAllocation", "Production");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemCategoryAllocationEquipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AcceptanceReportItemCategoryAllocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EquipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.HasIndex("AcceptanceReportItemCategoryAllocationId", "EquipmentId")
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.ToTable("AcceptanceReportItemCategoryAllocationEquipment", "Production");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemIssuedDetail", b =>
@@ -2722,6 +3140,9 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AcceptanceReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AcceptanceReportItemCategoryAllocationId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AcceptanceReportItemId")
@@ -2823,6 +3244,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AcceptanceReportId");
+
+                    b.HasIndex("AcceptanceReportItemCategoryAllocationId");
 
                     b.HasIndex("PreviousLogId");
 
@@ -3031,6 +3454,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly>("EndMonth")
                         .HasColumnType("date");
 
@@ -3050,6 +3476,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
 
                     b.ToTable("ProductionOutput", "Production");
                 });
@@ -3078,6 +3506,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double>("PlanProductionMeters")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0);
+
                     b.Property<Guid>("ProcessGroupId")
                         .HasColumnType("uuid");
 
@@ -3104,6 +3537,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<double>("ActualAshContent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0);
 
                     b.Property<long>("CreatedBy")
                         .HasColumnType("bigint");
@@ -3279,6 +3717,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("SupportStepId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
                     b.HasIndex("HardnessId");
 
                     b.HasIndex("InsertItemId");
@@ -3318,6 +3759,19 @@ namespace Migrators.PostgreSQL.Migrations
 
                             t.Property("PassportId")
                                 .HasColumnName("TunnelSupportAndDrillingMaterialUnitPrice_PassportId");
+                        });
+
+                    b.HasDiscriminator().HasValue(3);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.EletricityUnitPrice.TrimmingElectricityUnitPriceEquipment", b =>
+                {
+                    b.HasBaseType("Domain.Entities.Pricing.EletricityUnitPrice.TunnelElectricityUnitPriceEquipment");
+
+                    b.ToTable("ElectricityUnitPriceEquipment", "Pricing", t =>
+                        {
+                            t.Property("AverageMonthlyTunnelProduction")
+                                .HasColumnName("TunnelElectricityUnitPriceEquipment_AverageMonthlyTunnelProduc~");
                         });
 
                     b.HasDiscriminator().HasValue(3);
@@ -3368,6 +3822,11 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.FixedKey", "FixedKey")
+                        .WithMany("AdjustmentFactors")
+                        .HasForeignKey("FixedKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
                         .WithMany("AdjustmentFactors")
                         .HasForeignKey("ProcessGroupId")
@@ -3375,6 +3834,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsRequired();
 
                     b.Navigation("Code");
+
+                    b.Navigation("FixedKey");
 
                     b.Navigation("ProcessGroup");
                 });
@@ -3388,6 +3849,17 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsRequired();
 
                     b.Navigation("AdjustmentFactor");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.AkFactorConfig", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
+                        .WithMany()
+                        .HasForeignKey("ProcessGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProcessGroup");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.AssignmentCode", b =>
@@ -3432,6 +3904,17 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Part");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Index.Department", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Code", "Code")
+                        .WithOne("Department")
+                        .HasForeignKey("Domain.Entities.Index.Department", "CodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Code");
+                });
+
             modelBuilder.Entity("Domain.Entities.Index.Equipment", b =>
                 {
                     b.HasOne("Domain.Entities.Index.Code", "Code")
@@ -3467,25 +3950,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Equipment");
 
                     b.Navigation("Part");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Index.EquipmentProcessGroup", b =>
-                {
-                    b.HasOne("Domain.Entities.Index.Equipment", "Equipment")
-                        .WithMany("EquipmentProcessGroups")
-                        .HasForeignKey("EquipmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
-                        .WithMany("EquipmentProcessGroups")
-                        .HasForeignKey("ProcessGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Equipment");
-
-                    b.Navigation("ProcessGroup");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Material", b =>
@@ -3532,18 +3996,11 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Index.Hardness", "TargetHardness")
-                        .WithMany("TargetedNormFactors")
-                        .HasForeignKey("TargetHardnessId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.Navigation("Hardness");
 
                     b.Navigation("ProductionProcess");
 
                     b.Navigation("StoneClampRatio");
-
-                    b.Navigation("TargetHardness");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.NormFactorAssignmentCode", b =>
@@ -3560,9 +4017,16 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.Hardness", "TargetHardness")
+                        .WithMany("TargetedNormFactorAssignmentCodes")
+                        .HasForeignKey("TargetHardnessId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AssignmentCode");
 
                     b.Navigation("NormFactor");
+
+                    b.Navigation("TargetHardness");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Part", b =>
@@ -3607,14 +4071,21 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.AdjustmentFactorDescription", "AdjustmentFactorDescription")
                         .WithMany("PlannedElectricityCostAdjustmentFactorDescriptions")
                         .HasForeignKey("AdjustmentFactorDescriptionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Index.AdjustmentFactor", "AdjustmentFactor")
+                        .WithMany()
+                        .HasForeignKey("AdjustmentFactorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_PlannedElectricityCostAdjustmentFactorDescription_Adjustme~1");
 
                     b.HasOne("Domain.Entities.Pricing.PlannedElectricityCostAdjustmentFactor", "PlannedElectricityCostAdjustmentFactor")
                         .WithMany("PlannedElectricityCostAdjustmentFactorDescriptions")
                         .HasForeignKey("PlannedElectricityCostAdjustmentFactorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AdjustmentFactor");
 
                     b.Navigation("AdjustmentFactorDescription");
 
@@ -3626,14 +4097,21 @@ namespace Migrators.PostgreSQL.Migrations
                     b.HasOne("Domain.Entities.Index.AdjustmentFactorDescription", "AdjustmentFactorDescription")
                         .WithMany("PlannedMaintainCostAdjustmentFactorDescriptions")
                         .HasForeignKey("AdjustmentFactorDescriptionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Index.AdjustmentFactor", "AdjustmentFactor")
+                        .WithMany()
+                        .HasForeignKey("AdjustmentFactorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_PlannedMaintainCostAdjustmentFactorDescription_AdjustmentF~1");
 
                     b.HasOne("Domain.Entities.Pricing.PlannedMaintainCostAdjustmentFactor", "PlannedMaintainCostAdjustmentFactor")
                         .WithMany("PlannedMaintainCostAdjustmentFactorDescriptions")
                         .HasForeignKey("PlannedMaintainCostAdjustmentFactorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AdjustmentFactor");
 
                     b.Navigation("AdjustmentFactorDescription");
 
@@ -3648,7 +4126,14 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Index.FixedKey", "FixedKey")
+                        .WithMany("ProcessGroups")
+                        .HasForeignKey("FixedKeyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Code");
+
+                    b.Navigation("FixedKey");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Product", b =>
@@ -3731,6 +4216,25 @@ namespace Migrators.PostgreSQL.Migrations
                         .IsRequired();
 
                     b.Navigation("Equipment");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Department", "Department")
+                        .WithMany("LowValuePerishableSupplyUnitPrices")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
+                        .WithMany("LowValuePerishableSupplyUnitPrices")
+                        .HasForeignKey("ProcessGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("ProcessGroup");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.MaintainUnitPrice", b =>
@@ -3952,6 +4456,11 @@ namespace Migrators.PostgreSQL.Migrations
 
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
                 {
+                    b.HasOne("Domain.Entities.Index.Department", "Department")
+                        .WithMany("ProductUnitPrices")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Entities.Index.Product", "Product")
                         .WithMany("ProductUnitPrices")
                         .HasForeignKey("ProductId")
@@ -3962,6 +4471,8 @@ namespace Migrators.PostgreSQL.Migrations
                         .WithMany("ProductUnitPrices")
                         .HasForeignKey("UnitOfMeasureId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Department");
 
                     b.Navigation("Product");
 
@@ -4064,14 +4575,18 @@ namespace Migrators.PostgreSQL.Migrations
                         .WithMany()
                         .HasForeignKey("EquipmentId");
 
-                    b.HasOne("Domain.Entities.Pricing.MaintainUnitPriceEquipment", "MaintainUnitPriceEquipment")
+                    b.HasOne("Domain.Entities.Pricing.MaintainUnitPriceEquipment", null)
                         .WithMany("AcceptanceReportItems")
-                        .HasForeignKey("MaintainUnitPriceEquipmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .HasForeignKey("MaintainUnitPriceEquipmentId");
 
                     b.HasOne("Domain.Entities.Index.Material", "Material")
                         .WithMany("AcceptanceReportItems")
                         .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Entities.Index.Part", "Part")
+                        .WithMany()
+                        .HasForeignKey("PartId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
@@ -4087,13 +4602,51 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Navigation("Equipment");
 
-                    b.Navigation("MaintainUnitPriceEquipment");
-
                     b.Navigation("Material");
+
+                    b.Navigation("Part");
 
                     b.Navigation("ProcessGroup");
 
                     b.Navigation("ProductionOrder");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemCategoryAllocation", b =>
+                {
+                    b.HasOne("Domain.Entities.Production.AcceptanceReportItem", "AcceptanceReportItem")
+                        .WithMany("CategoryAllocations")
+                        .HasForeignKey("AcceptanceReportItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
+                        .WithMany()
+                        .HasForeignKey("ProcessGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcceptanceReportItem");
+
+                    b.Navigation("ProcessGroup");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemCategoryAllocationEquipment", b =>
+                {
+                    b.HasOne("Domain.Entities.Production.AcceptanceReportItemCategoryAllocation", "AcceptanceReportItemCategoryAllocation")
+                        .WithMany("Equipments")
+                        .HasForeignKey("AcceptanceReportItemCategoryAllocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcceptanceReportItemCategoryAllocation");
+
+                    b.Navigation("Equipment");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemIssuedDetail", b =>
@@ -4115,6 +4668,11 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Production.AcceptanceReportItemCategoryAllocation", "AcceptanceReportItemCategoryAllocation")
+                        .WithMany("AcceptanceReportItemLogs")
+                        .HasForeignKey("AcceptanceReportItemCategoryAllocationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Entities.Production.AcceptanceReportItem", "AcceptanceReportItem")
                         .WithMany("AcceptanceReportItemLogs")
                         .HasForeignKey("AcceptanceReportItemId")
@@ -4128,6 +4686,8 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("AcceptanceReport");
 
                     b.Navigation("AcceptanceReportItem");
+
+                    b.Navigation("AcceptanceReportItemCategoryAllocation");
 
                     b.Navigation("PreviousLog");
                 });
@@ -4181,6 +4741,16 @@ namespace Migrators.PostgreSQL.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ProcessGroup");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Department", "Department")
+                        .WithMany("ProductionOutputs")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutputProcessGroup", b =>
@@ -4357,6 +4927,8 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Navigation("AssignmentCode");
 
+                    b.Navigation("Department");
+
                     b.Navigation("Equipment");
 
                     b.Navigation("Material");
@@ -4381,6 +4953,15 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("MaterialUnitPrices");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Index.Department", b =>
+                {
+                    b.Navigation("LowValuePerishableSupplyUnitPrices");
+
+                    b.Navigation("ProductUnitPrices");
+
+                    b.Navigation("ProductionOutputs");
+                });
+
             modelBuilder.Entity("Domain.Entities.Index.Equipment", b =>
                 {
                     b.Navigation("ActualEletricityEquipment");
@@ -4391,9 +4972,14 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Navigation("EquipmentParts");
 
-                    b.Navigation("EquipmentProcessGroups");
-
                     b.Navigation("MaintainUnitPrices");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Index.FixedKey", b =>
+                {
+                    b.Navigation("AdjustmentFactors");
+
+                    b.Navigation("ProcessGroups");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.Hardness", b =>
@@ -4406,7 +4992,7 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Navigation("StoneClampRatios");
 
-                    b.Navigation("TargetedNormFactors");
+                    b.Navigation("TargetedNormFactorAssignmentCodes");
                 });
 
             modelBuilder.Entity("Domain.Entities.Index.InsertItem", b =>
@@ -4459,7 +5045,7 @@ namespace Migrators.PostgreSQL.Migrations
                 {
                     b.Navigation("AdjustmentFactors");
 
-                    b.Navigation("EquipmentProcessGroups");
+                    b.Navigation("LowValuePerishableSupplyUnitPrices");
 
                     b.Navigation("PartProcessGroups");
 
@@ -4618,11 +5204,20 @@ namespace Migrators.PostgreSQL.Migrations
                 {
                     b.Navigation("AcceptanceReportItemLogs");
 
+                    b.Navigation("CategoryAllocations");
+
                     b.Navigation("IssuedDetails");
 
                     b.Navigation("QuotaBasedMaterialQuantities");
 
                     b.Navigation("ShippedDetails");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemCategoryAllocation", b =>
+                {
+                    b.Navigation("AcceptanceReportItemLogs");
+
+                    b.Navigation("Equipments");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>

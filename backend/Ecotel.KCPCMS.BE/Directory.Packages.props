@@ -87,8 +87,8 @@
     <PackageVersion Include="ClosedXML" Version="0.105.0" />
   </ItemGroup>
   <ItemGroup>
-    <PackageVersion Include="MailKit" Version="4.8.0" />
-    <PackageVersion Include="MimeKit" Version="4.15.1" />
+    <PackageVersion Include="MailKit" Version="4.16.0" />
+    <PackageVersion Include="MimeKit" Version="4.16.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0" />

@@ -33,24 +33,36 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
                     .ThenInclude(p => p!.UnitOfMeasure),
             disableTracking: true);
 
-        // Get dropdown data
         var equipments = await _equipmentRepository.GetAllAsync(
-            include: e => e.Include(e => e.Code),
-            selector: e => e.Code != null ? e.Code.Value : "",
+            include: e => e
+                .Include(e => e.Code),
             disableTracking: true);
+
+        var equipmentIds = equipments
+            .Where(e => e.Code != null && !string.IsNullOrEmpty(e.Code.Value))
+            .Select(e => e.Id)
+            .ToHashSet();
+
+        var equipmentCodes = equipments
+            .Where(e => equipmentIds.Contains(e.Id) && e.Code != null && !string.IsNullOrEmpty(e.Code.Value))
+            .Select(e => e.Code!.Value)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
 
         // Get all parts from database with Equipment relationships
         var allParts = await _partRepository.GetAllAsync(
             include: p => p.Include(p => p.Code).Include(p => p.UnitOfMeasure).Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e!.Code),
             disableTracking: true);
 
-        return ExportTransposedFormat(list.ToList(), equipments.Where(c => !string.IsNullOrEmpty(c)).ToList(), allParts.ToList());
+        return ExportTransposedFormat(list.ToList(), equipmentCodes, allParts.ToList(), equipmentIds);
     }
 
     private byte[] ExportTransposedFormat(
         List<MaintainUnitPrice> maintainUnitPrices,
         List<string> equipmentCodes,
-        List<Part> allParts)
+        List<Part> allParts,
+        HashSet<Guid> equipmentIds)
     {
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Định mức bảo dưỡng lò chợ");
@@ -68,7 +80,7 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
         // Group parts by equipment from database relationship
         var partsByEquipment = allParts
             .SelectMany(p => p.EquipmentParts
-                .Where(e => e.Equipment != null && e.Equipment.Code != null)
+                .Where(e => equipmentIds.Contains(e.EquipmentId) && e.Equipment != null && e.Equipment.Code != null)
                 .Select(e => new { Part = p, EquipmentId = e.EquipmentId, EquipmentCode = e.Equipment!.Code!.Value }))
             .GroupBy(p => new { p.EquipmentId, p.EquipmentCode })
             .OrderBy(g => g.Key.EquipmentCode)
@@ -101,15 +113,15 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
             worksheet.Cell(1, currentCol).Value = timeGroup.Key.StartMonth.ToString("MM/yyyy");
             worksheet.Cell(1, currentCol).Style.Fill.BackgroundColor = XLColor.LightBlue;
             worksheet.Cell(1, currentCol).Style.Font.Bold = true;
-            worksheet.Range(1, currentCol, 1, currentCol + 1).Merge();
+            worksheet.Range(1, currentCol, 1, currentCol + 2).Merge();
 
             // Row 2: EndMonth
             worksheet.Cell(2, currentCol).Value = timeGroup.Key.EndMonth.ToString("MM/yyyy");
             worksheet.Cell(2, currentCol).Style.Fill.BackgroundColor = XLColor.LightBlue;
             worksheet.Cell(2, currentCol).Style.Font.Bold = true;
-            worksheet.Range(2, currentCol, 2, currentCol + 1).Merge();
+            worksheet.Range(2, currentCol, 2, currentCol + 2).Merge();
 
-            currentCol += 2;
+            currentCol += 3;
         }
 
         // Freeze panes (now 3 rows: row1=StartMonth, row2=EndMonth, row3=sub-headers)
@@ -151,10 +163,11 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
         currentCol = 5;
         foreach (var _ in timeGroups)
         {
-            worksheet.Cell(currentRow, currentCol).Value = "Số lượng vật tư 1 lần thay thế";
-            worksheet.Cell(currentRow, currentCol + 1).Value = "Sản lượng than bình quân tháng";
+            worksheet.Cell(currentRow, currentCol).Value = "Định mức thời gian thay thế";
+            worksheet.Cell(currentRow, currentCol + 1).Value = "Số lượng vật tư 1 lần thay thế";
+            worksheet.Cell(currentRow, currentCol + 2).Value = "Sản lượng than bình quân tháng";
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 3; i++)
             {
                 worksheet.Cell(currentRow, currentCol + i).Style.Font.Bold = true;
                 worksheet.Cell(currentRow, currentCol + i).Style.Fill.BackgroundColor = XLColor.LightYellow;
@@ -162,7 +175,7 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
                 worksheet.Cell(currentRow, currentCol + i).Style.Alignment.WrapText = true;
             }
 
-            currentCol += 2;
+            currentCol += 3;
         }
 
         currentRow++; // Now at row 4, first data row
@@ -225,19 +238,22 @@ public class ExportExcelLongwallMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
 
                     if (partEquipment != null)
                     {
-                        worksheet.Cell(currentRow, currentCol).Value = partEquipment.Quantity;
-                        worksheet.Cell(currentRow, currentCol + 1).Value = (double)partEquipment.AverageMonthlyTunnelProduction;
+                        worksheet.Cell(currentRow, currentCol).Value = (double)partEquipment.ReplacementTimeStandard;
+                        worksheet.Cell(currentRow, currentCol + 1).Value = partEquipment.Quantity;
+                        worksheet.Cell(currentRow, currentCol + 2).Value = (double)partEquipment.AverageMonthlyTunnelProduction;
 
                         worksheet.Cell(currentRow, currentCol).Style.NumberFormat.Format = "0.00";
                         worksheet.Cell(currentRow, currentCol + 1).Style.NumberFormat.Format = "0.00";
+                        worksheet.Cell(currentRow, currentCol + 2).Style.NumberFormat.Format = "0.00";
                     }
                     else
                     {
                         worksheet.Cell(currentRow, currentCol).Value = "";
                         worksheet.Cell(currentRow, currentCol + 1).Value = "";
+                        worksheet.Cell(currentRow, currentCol + 2).Value = "";
                     }
 
-                    currentCol += 2;
+                    currentCol += 3;
                 }
 
                 currentRow++;

@@ -32,7 +32,8 @@ const REVENUE_COST_ADJUSTMENT_CONFIG_SUPPORTS = [
 export function RevenueCostAdjustmentConfigForm({
 	data,
 	row,
-}: ActionDialogProps<RevenueCostAdjustmentConfig>) {
+	isDuplicate = false,
+}: ActionDialogProps<RevenueCostAdjustmentConfig> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -61,7 +62,7 @@ export function RevenueCostAdjustmentConfigForm({
 		};
 
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.REVENUE_COST_ADJUSTMENT_CONFIG.UPDATE, {
 					id: row.id,
 					...payload,
@@ -75,7 +76,7 @@ export function RevenueCostAdjustmentConfigForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -109,7 +110,7 @@ export function RevenueCostAdjustmentConfigForm({
 				placeholder='Nhập mô tả'
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

@@ -23,7 +23,8 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.MaintainUnitPrice).ThenInclude(m => m.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(p => p.Costs)
             .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.MaintainUnitPrice).ThenInclude(m => m.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
             .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.MaintainUnitPrice).ThenInclude(m => m.Equipment).ThenInclude(e => e.Code!)
-            .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!),
+            .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!)
+            .Include(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.PlannedMaintainCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var mCost = new PlannedMaintainCostDetailDto
@@ -31,6 +32,7 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
             Id = plannedMaintainCost.Id,
             ProductUnitPriceId = plannedMaintainCost.ProductUnitPriceId,
             OutputId = plannedMaintainCost.OutputId,
+            TrimmingCoefficient = plannedMaintainCost.TrimmingCoefficient,
             Costs = plannedMaintainCost.PlannedMaintainCostAdjustmentFactors.Select(p =>
             {
                 return new PlannedMaintainCostAdjDto
@@ -45,15 +47,24 @@ public class GetPlannedMaintainCostByIdQueryHandler(IUnitOfWork unitOfWork) : IR
                     K6AdjustmentFactorValue = p.K6AdjustmentFactorValue,
                     AdjustmentFactorDescriptions = p.PlannedMaintainCostAdjustmentFactorDescriptions.Select(a => new MaintainAjustmentFactorDescriptionDto
                     {
-                        Id = a.AdjustmentFactorDescription?.Id ?? Guid.Empty,
-                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId ?? Guid.Empty,
-                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value ?? string.Empty,
-                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name ?? string.Empty,
-                        Description = a.AdjustmentFactorDescription?.Description ?? "",
-                        MaintenanceAdjustmentValue = a.AdjustmentFactorDescription?.MaintenanceAdjustmentValue ?? 0
+                        Id = a.Id,
+                        AdjustmentFactorDescriptionId = a.AdjustmentFactorDescriptionId,
+                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId
+                            ?? a.AdjustmentFactorId
+                            ?? Guid.Empty,
+                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value
+                            ?? a.AdjustmentFactor?.Code?.Value
+                            ?? string.Empty,
+                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name
+                            ?? a.AdjustmentFactor?.Name
+                            ?? string.Empty,
+                        Description = a.AdjustmentFactorDescription?.Description ?? string.Empty,
+                        MaintenanceAdjustmentValue = a.AdjustmentFactorDescription?.MaintenanceAdjustmentValue,
+                        CustomValue = a.CustomValue,
+                        EffectiveValue = a.EffectiveValue
                     }).ToList()
                 };
-            }).ToList()
+            }).OrderBy(m => m.EquipmentCode).ThenBy(m => m.EquipmentName).ToList()
         };
         return mCost;
     }

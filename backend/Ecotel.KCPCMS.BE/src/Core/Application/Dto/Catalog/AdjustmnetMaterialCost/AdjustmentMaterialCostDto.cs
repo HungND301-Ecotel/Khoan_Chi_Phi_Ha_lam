@@ -13,6 +13,9 @@ public class AdjustmentMaterialCostDetailDto
     public double TotalPlannedMaterialPrice { get; set; }
     public double MaterialCost { get; set; }
     public double SlideUnitPriceCost { get; set; }
+    public double LowValuePerishableSupplyUnitPriceCost { get; set; }
+    public double AkRate { get; set; }
+    public double AkRatePercent { get; set; }
     public string NormFactorValue { get; set; } = string.Empty;
     public IList<AdjustmentMaterialCostAssignmentCode> AdjustmentMaterialCostAssignmentCodes { get; set; } = new List<AdjustmentMaterialCostAssignmentCode>();
 }

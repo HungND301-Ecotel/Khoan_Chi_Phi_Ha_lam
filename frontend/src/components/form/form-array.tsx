@@ -77,7 +77,7 @@ export function FormArray<T extends FieldValues>({
 					onClick={() => append(defaultValue)}
 				>
 					<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
-					<span>Thêm {label?.toLocaleLowerCase()}</span>
+					<span>Thêm {label}</span>
 				</Button>
 			)}
 		</div>

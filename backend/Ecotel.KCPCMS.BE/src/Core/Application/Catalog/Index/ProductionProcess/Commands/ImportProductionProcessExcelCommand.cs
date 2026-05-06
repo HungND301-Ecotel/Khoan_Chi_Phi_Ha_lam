@@ -54,10 +54,10 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
             .ToList();
 
         var processGroup = await _processGroupRepository.GetAllAsync(
-            predicate: p => processGroupCodes.Contains(p.Code.Value),
-            include: p => p.Include(p => p.Code!),
+            predicate: p => p.FixedKey != null && processGroupCodes.Contains(p.FixedKey.Key),
+            include: p => p.Include(p => p.FixedKey),
             disableTracking: true);
-        var processGroupIdMap = processGroup.ToDictionary(p => p.Code.Value.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var processGroupIdMap = processGroup.ToDictionary(p => p.FixedKey!.Key.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var excelDtos = dtos.Select(d =>
         {

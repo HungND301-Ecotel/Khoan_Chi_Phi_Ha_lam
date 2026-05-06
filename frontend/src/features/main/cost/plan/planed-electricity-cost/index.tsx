@@ -39,12 +39,15 @@ export function PlanedElectricityCost({
 	const [planedElectricityCost, setPlanedElectricityCost] =
 		useState<PlanedElectricityCostDetail>();
 	const [total, setTotal] = useState<number>(0);
+	const [plannedElectricityPrice, setPlannedElectricityPrice] =
+		useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setPlanedElectricityCost(undefined);
 			setTotal(0);
+			setPlannedElectricityPrice(0);
 			setLoading(false);
 			return;
 		}
@@ -57,10 +60,15 @@ export function PlanedElectricityCost({
 				res.result.costs.forEach(({ totalPrice }) => {
 					total += totalPrice;
 				});
-				setTotal(total * (output?.productionMeters || 1));
+				const trimmingCoefficient =
+					plan?.fixedKeyType === ProcessGroupType.XL
+						? res.result.trimmingCoefficient || 1
+						: 1;
+				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
+				setPlannedElectricityPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
-	}, [id, reloadKey, output?.productionMeters]);
+	}, [id, reloadKey, output?.productionMeters, plan?.fixedKeyType]);
 
 	return (
 		<AccordionItem value={'planed-electricity-cost'} className='border-none'>
@@ -68,9 +76,16 @@ export function PlanedElectricityCost({
 				<ItemContent>
 					<ItemTitle>Doanh thu điện năng kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
+
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(plannedElectricityPrice)}
+					</ItemTitle>
+				</ItemContent>
+
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total ?? 0))}
+						{loading ? <Spinner /> : formatNumber(total ?? 0)}
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>
@@ -138,7 +153,7 @@ export function PlanedElectricityCost({
 				<AccordionContent className='p-0 px-2 pt-2'>
 					<DataTable
 						columns={getPlanedElectricityCostColumns(
-							plan?.processGroupType as ProcessGroupType | undefined,
+							plan?.fixedKeyType as ProcessGroupType | undefined,
 						)}
 						items={planedElectricityCost?.costs}
 						compact={true}

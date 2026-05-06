@@ -42,44 +42,54 @@ export function usePopup() {
 		throw new Error('usePopup must be used within a PopupProvider');
 	}
 
-	const success = (description: string) => {
-		context.showPopup({ type: 'success', description });
-	};
+	const success = React.useCallback(
+		(description: string) => {
+			context.showPopup({ type: 'success', description });
+		},
+		[context],
+	);
 
-	const error = (error?: unknown) => {
-		let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
-		let errorList: string[] = [];
+	const error = React.useCallback(
+		(error?: unknown) => {
+			let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
+			let errorList: string[] = [];
 
-		if (error instanceof ErrorResponse) {
-			const mappedMessage = ERROR[error.title];
-			const responseErrors = Object.values(error.errors)
-				.flatMap((value) => (Array.isArray(value) ? value : [value]))
-				.filter(
-					(value): value is string =>
-						typeof value === 'string' && value.trim().length > 0,
-				);
+			if (error instanceof ErrorResponse) {
+				const mappedMessage = ERROR[error.title];
+				const responseErrors = Object.values(error.errors)
+					.flatMap((value) => (Array.isArray(value) ? value : [value]))
+					.filter(
+						(value): value is string =>
+							typeof value === 'string' && value.trim().length > 0,
+					);
 
-			errorList = [...new Set(responseErrors)];
+				errorList = [...new Set(responseErrors)];
 
-			if (mappedMessage) {
-				message = mappedMessage;
-			} else {
-				message =
-					error.message.trim() || error.title.trim() || errorList[0] || message;
+				if (mappedMessage) {
+					message = mappedMessage;
+				} else {
+					message =
+						error.message.trim() ||
+						error.title.trim() ||
+						errorList[0] ||
+						message;
+				}
+			} else if (typeof error === 'string' && error.trim()) {
+				message = error;
+			} else if (error instanceof Error && error.message.trim()) {
+				message = error.message;
 			}
-		} else if (typeof error === 'string' && error.trim()) {
-			message = error;
-		} else if (error instanceof Error && error.message.trim()) {
-			message = error.message;
-		}
 
-		context.showPopup({
-			type: 'error',
-			description: message,
-			errorList: errorList.length > 0 ? errorList : undefined,
-		});
-	};
-	return { success, error };
+			context.showPopup({
+				type: 'error',
+				description: message,
+				errorList: errorList.length > 0 ? errorList : undefined,
+			});
+		},
+		[context],
+	);
+
+	return React.useMemo(() => ({ success, error }), [success, error]);
 }
 
 // Standalone function để gọi popup từ bất cứ đâu

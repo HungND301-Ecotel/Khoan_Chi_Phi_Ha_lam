@@ -17,7 +17,7 @@ export type LongtermMaterialDetailItem = {
 	allocatedTime: number; // THỜI GIAN ĐÃ PHÂN BỔ
 	remainingTime: number; // THỜI GIAN CÒN LẠI
 	actualOutput?: number; // SẢN LƯỢNG THỰC TẾ
-	plannedOutput?: number; // SẢN LƯỢNG THỰC TẾ
+	plannedOutput?: number; // SẢN LƯỢNG KẾ HOẠCH
 	standardOutput?: number; // SẢN LƯỢNG TIÊU CHUẨN
 	valueByStandard: number; // GIÁ TRỊ CẦN HẠCH TOÁN THEO ĐỊNH MỨC (Đồng)
 	allocationRatio: number; // TỶ LỆ PHÂN BỔ

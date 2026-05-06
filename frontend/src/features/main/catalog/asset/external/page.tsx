@@ -67,6 +67,7 @@ function MainCatalogAssetExternalPage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <AssetExternalForm {...props} />}
+			onDuplicate={(props) => <AssetExternalForm {...props} isDuplicate />}
 			onUpdate={(props) => <AssetExternalForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

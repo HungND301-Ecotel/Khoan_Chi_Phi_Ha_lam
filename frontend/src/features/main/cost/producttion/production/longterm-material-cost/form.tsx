@@ -81,6 +81,7 @@ export function LongtermMaterialCostForm({
 
 						return {
 							id: item.id,
+							usageTime: item.usageTime ?? 0,
 							// Khi isFullAccounting = true thì để trống tỷ lệ phân bổ
 							allocationRate: item.isFullAccounting
 								? undefined
@@ -127,6 +128,7 @@ export function LongtermMaterialCostForm({
 			const body = values.items.map((item) => ({
 				id: item.id,
 				acceptanceReportId: acceptanceReportId,
+				usageTime: item.usageTime,
 				allocationRatio: item.allocationRate,
 				isFullAccounting: item.isFullAccounting,
 				note: item.note ?? '',
@@ -158,16 +160,19 @@ export function LongtermMaterialCostForm({
 						const item = detailItems[index];
 						const isFullAccounting =
 							form.watch(`items.${index}.isFullAccounting`) ?? false;
+						const watchedUsageTime =
+							form.watch(`items.${index}.usageTime`) ?? 0;
 						const watchedAllocationRate = form.watch(
 							`items.${index}.allocationRate`,
 						);
+						const isUsageTimeEditable = item?.isNewItem === true;
 
 						const remainingPeriod =
-							(item?.usageTime ?? 0) - (item?.allocatedTime ?? 0);
+							watchedUsageTime - (item?.allocatedTime ?? 0);
 
 						// Khi hạch toán hết: thời gian còn lại = 0, thời gian đã phân bổ = thời gian sử dụng
 						const displayAllocatedTime = isFullAccounting
-							? (item?.usageTime ?? 0)
+							? watchedUsageTime
 							: (item?.allocatedTime ?? 0);
 						const displayRemainingPeriod = isFullAccounting
 							? 0
@@ -175,7 +180,8 @@ export function LongtermMaterialCostForm({
 
 						const quotaAccountingValue =
 							remainingPeriod > 0
-								? (((item?.totalValueToAccount ?? 0) / (item?.usageTime || 1)) *
+								? (((item?.totalValueToAccount ?? 0) /
+										(watchedUsageTime || 1)) *
 										(item?.actualOutput || 0)) /
 									(item?.standardOutput || 1)
 								: remainingPeriod === 0
@@ -218,9 +224,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị chờ hạch toán đầu kỳ (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(item?.pendingValueStartPeriod ?? 0, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(item?.pendingValueStartPeriod ?? 0)}
 									/>
 								</div>
 
@@ -241,7 +245,7 @@ export function LongtermMaterialCostForm({
 									<Label>Thành tiền</Label>
 									<Input
 										readOnly
-										value={formatNumber(amount, { maximumFractionDigits: 0 })}
+										value={formatNumber(amount)}
 									/>
 								</div>
 
@@ -249,9 +253,7 @@ export function LongtermMaterialCostForm({
 									<Label>Tổng giá trị cần hạch toán (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(totalAccountingValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(totalAccountingValue)}
 									/>
 								</div>
 
@@ -259,15 +261,24 @@ export function LongtermMaterialCostForm({
 									<Label>Nguyên giá (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(item?.originAmount ?? 0, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(item?.originAmount ?? 0)}
 									/>
 								</div>
 
 								<div className='min-w-44 flex-1 space-y-2'>
-									<Label>Thời gian sử dụng (Ti)</Label>
-									<Input readOnly value={formatNumber(item?.usageTime ?? 0)} />
+									{isUsageTimeEditable ? (
+										<FormNumber
+											control={form.control}
+											name={`items.${index}.usageTime`}
+											label='Thời gian sử dụng (Ti)'
+											placeholder='Nhập thời gian sử dụng'
+										/>
+									) : (
+										<>
+											<Label>Thời gian sử dụng (Ti)</Label>
+											<Input readOnly value={formatNumber(watchedUsageTime)} />
+										</>
+									)}
 								</div>
 
 								{/* Thời gian đã phân bổ: hiển thị = usageTime khi hạch toán hết */}
@@ -289,9 +300,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị cần hạch toán theo định mức (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(quotaAccountingValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(quotaAccountingValue)}
 									/>
 								</div>
 
@@ -325,9 +334,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị hạch toán kỳ này (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(currentPeriodValue, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(currentPeriodValue)}
 									/>
 								</div>
 
@@ -335,9 +342,7 @@ export function LongtermMaterialCostForm({
 									<Label>Giá trị cuối kỳ chờ hạch toán kỳ sau (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(endingBalance, {
-											maximumFractionDigits: 0,
-										})}
+										value={formatNumber(endingBalance)}
 									/>
 								</div>
 

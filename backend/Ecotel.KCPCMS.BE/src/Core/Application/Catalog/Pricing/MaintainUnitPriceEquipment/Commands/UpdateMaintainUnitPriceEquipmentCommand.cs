@@ -19,13 +19,34 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
     private readonly IWriteRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
 
     public async Task<bool> Handle(UpdateMaintainUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
     {
+        var normalizedStartMonth = new DateOnly(request.UpdateModel.StartMonth.Year, request.UpdateModel.StartMonth.Month, 1);
+        var normalizedEndMonth = new DateOnly(request.UpdateModel.EndMonth.Year, request.UpdateModel.EndMonth.Month, 1);
+
+        var maintainUnitPriceId = request.UpdateModel.Id.GetValueOrDefault();
         var existMaintainUnitPrice = await _maintainUnitPriceRepository.GetFirstOrDefaultAsync(
-            predicate: t => t.EquipmentId == request.UpdateModel.EquipmentId,
+            predicate: t =>
+                request.UpdateModel.Id.HasValue && maintainUnitPriceId != Guid.Empty
+                    ? t.Id == maintainUnitPriceId
+                    : t.EquipmentId == request.UpdateModel.EquipmentId &&
+                      t.Type == request.UpdateModel.Type &&
+                      t.StartMonth == normalizedStartMonth &&
+                      t.EndMonth == normalizedEndMonth,
             include: t => t.Include(t => t.MaintainUnitPriceEquipments),
-            disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+            disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.MaintainUnitPriceNotFound);
+
+        if (await _maintainUnitPriceRepository.AnyAsync(t =>
+            t.Id != existMaintainUnitPrice.Id &&
+            t.EquipmentId == request.UpdateModel.EquipmentId &&
+            t.Type == request.UpdateModel.Type &&
+            t.StartMonth <= normalizedEndMonth &&
+            t.EndMonth >= normalizedStartMonth))
+        {
+            throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+        }
 
         var equipmentDetail = await _equipmentRepository.GetFirstOrDefaultAsync(
             predicate: e => e.Id == request.UpdateModel.EquipmentId,
@@ -64,10 +85,10 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
                 request.UpdateModel.OtherMaterialValue,
                 request.UpdateModel.Type);
 
-            _maintainUnitPriceRepository.Update(existMaintainUnitPrice);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

@@ -63,6 +63,7 @@ function MainCatalogContractCodePage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <ContractCodeForm {...props} />}
+			onDuplicate={(props) => <ContractCodeForm {...props} isDuplicate />}
 			onUpdate={(props) => <ContractCodeForm {...props} />}
 			onExpand={(props) => <ContractCodeExpand {...props} />}
 			onDelete={handleDelete}
@@ -101,7 +102,7 @@ function ContractCodeExpand({ row }: ActionDialogProps<ContractCode>) {
 				hasActions={false}
 				hasPagination={false}
 				hasSort={false}
-				hasIndex={false}
+				hasIndex={true}
 				compact={true}
 			/>
 		</div>

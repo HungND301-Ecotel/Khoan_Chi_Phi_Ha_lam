@@ -43,7 +43,16 @@ export type AssetQuotaMaterialsDetail = {
 export function AssetQuotaMaterialsForm({
 	data,
 	row,
-}: ActionDialogProps<Asset>) {
+	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
+}: ActionDialogProps<Asset> & {
+	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: AssetQuotaMaterialsFormSchema) => Promise<void> | void;
+}) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -75,6 +84,7 @@ export function AssetQuotaMaterialsForm({
 
 					form.reset({
 						...formData,
+						code: isDuplicate ? '' : formData.code,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -85,6 +95,11 @@ export function AssetQuotaMaterialsForm({
 							: ASSET_QUOTA_MATERIALS_FORM_DEFAULT.costs,
 						materialType: 5,
 					});
+				} else if (defaultCode) {
+					form.reset({
+						...ASSET_QUOTA_MATERIALS_FORM_DEFAULT,
+						code: defaultCode,
+					});
 				}
 			} catch (error) {
 				console.error('Error fetching data:', error);
@@ -92,7 +107,7 @@ export function AssetQuotaMaterialsForm({
 		};
 
 		fetchData();
-	}, [row]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -123,7 +138,7 @@ export function AssetQuotaMaterialsForm({
 				...values,
 				materialType: 5,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
@@ -135,9 +150,10 @@ export function AssetQuotaMaterialsForm({
 					assigmentCodeId: null,
 				});
 			}
+			await onCreated?.(processedValues);
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -208,7 +224,7 @@ export function AssetQuotaMaterialsForm({
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

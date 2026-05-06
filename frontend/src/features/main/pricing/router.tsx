@@ -1,8 +1,13 @@
 import { MainPricingLayout } from '@/features/main/pricing/layout';
 import { LongwallPanelMaterialPage } from '@/features/main/pricing/longwall-panel/material/page';
+import { MainPricingLowValuePerishableSupplyLongwallPage } from '@/features/main/pricing/longwall-panel/low-value-perishable-supply/page';
 import { MainPricingElectricityPage } from '@/features/main/pricing/tunneling/electricity/page';
+import { MainPricingLowValuePerishableSupplyTunnelingPage } from '@/features/main/pricing/tunneling/low-value-perishable-supply/page';
 import { MainPricingMaterialPage } from '@/features/main/pricing/tunneling/material/page';
 import { MainPricingSlidePage } from '@/features/main/pricing/tunneling/slide/page';
+import { MainPricingTrimmingElectricityPage } from '@/features/main/pricing/trimming/electricity/page';
+import { MainPricingTrimmingMaterialPage } from '@/features/main/pricing/trimming/material/page';
+import { MainPricingMaintenanceTrimmingPage } from '@/features/main/pricing/trimming/maintenance/page';
 import { RouteObject } from 'react-router-dom';
 import { MainPricingLongwallElectricityPage } from './longwall-panel/electricity/page';
 import { MainPricingMaintenanceLongwallPanelPage } from './longwall-panel/maintenance/page';
@@ -42,6 +47,14 @@ const MainPricingRouter: RouteObject = {
 					},
 				},
 				{
+					path: 'low-value-perishable-supply',
+					element: <MainPricingLowValuePerishableSupplyTunnelingPage />,
+					handle: {
+						breadcrumb: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						title: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+					},
+				},
+				{
 					path: 'slide',
 					element: <MainPricingSlidePage />,
 					handle: {
@@ -72,11 +85,49 @@ const MainPricingRouter: RouteObject = {
 					},
 				},
 				{
+					path: 'low-value-perishable-supply',
+					element: <MainPricingLowValuePerishableSupplyLongwallPage />,
+					handle: {
+						breadcrumb: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						title: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+					},
+				},
+				{
 					path: 'maintenance',
 					element: <MainPricingMaintenanceLongwallPanelPage />,
 					handle: {
 						breadcrumb: 'Đơn giá và định mức SCTX',
 						title: 'Đơn giá và định mức SCTX',
+					},
+				},
+			],
+		},
+		{
+			path: 'trimming',
+			handle: { breadcrumb: 'Xén lò' },
+			children: [
+				{
+					index: true,
+					element: <MainPricingTrimmingElectricityPage />,
+					handle: {
+						breadcrumb: 'Đơn giá và định mức điện năng',
+						title: 'Đơn giá và định mức điện năng',
+					},
+				},
+				{
+					path: 'maintenance',
+					element: <MainPricingMaintenanceTrimmingPage />,
+					handle: {
+						breadcrumb: 'Đơn giá và định mức SCTX',
+						title: 'Đơn giá và định mức SCTX',
+					},
+				},
+				{
+					path: 'material',
+					element: <MainPricingTrimmingMaterialPage />,
+					handle: {
+						breadcrumb: 'Đơn giá và định mức vật liệu',
+						title: 'Đơn giá và định mức vật liệu',
 					},
 				},
 			],

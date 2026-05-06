@@ -5,6 +5,7 @@ import MainPricingRouter from '@/features/main/pricing/router';
 import DashboardPage from '@/features/main/dashboard/page';
 import type { RouteObject } from 'react-router-dom';
 import { MainReportRouter } from './report/router';
+import { MainSystemRouter } from './system/router';
 
 const MainRouter: RouteObject = {
 	path: '/',
@@ -18,6 +19,7 @@ const MainRouter: RouteObject = {
 		MainPricingRouter,
 		MainCostRouter,
 		MainReportRouter,
+		MainSystemRouter,
 	],
 };
 

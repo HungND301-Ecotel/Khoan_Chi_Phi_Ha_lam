@@ -32,6 +32,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 PartName = x.Part?.Name ?? "",
                 PartCode = x.Part?.Code?.Value ?? "",
                 PartId = x.PartId,
+                PartType = x.Part?.Type ?? Domain.Common.Enums.PartType.Part,
                 EquipmentId = maintainUnitPrice.EquipmentId,
                 Quantity = x.Quantity,
                 PartCost = x.Part?.GetPartCost(maintainUnitPrice.StartMonth) ?? 0,
@@ -39,11 +40,11 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 UnitOfMeasureName = x.Part?.UnitOfMeasure?.Name ?? "",
                 ReplacementTimeStandard = x.ReplacementTimeStandard,
                 AverageMonthlyTunnelProduction = x.AverageMonthlyTunnelProduction,
-                MaterialCostPerMetres = x.GetMaterialCostPerMetres(maintainUnitPrice.StartMonth),
+                MaterialCostPerMetres = x.GetMaterialCostPerMetres(maintainUnitPrice.StartMonth, maintainUnitPrice.Type),
                 MaterialRatePerMetres = x.GetMaterialRate()
             }).ToList();
 
-        double totalPrice = costs?.Sum(c => c.MaterialCostPerMetres) ?? 0;
+        double totalPrice = maintainUnitPrice.GetMaintainTotalPrice();
 
         return new MaintainUnitPriceDto
         {
@@ -55,7 +56,7 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
             EndMonth = maintainUnitPrice.EndMonth,
             OtherMaterialValue = maintainUnitPrice.OtherMaterialValue,
             Type = maintainUnitPrice.Type,
-            MaintainUnitPriceEquipment = costs ?? []
+            MaintainUnitPriceEquipment = costs.OrderBy(c => c.PartCode).ThenBy(c => c.PartName).ToList() ?? []
         };
     }
 }

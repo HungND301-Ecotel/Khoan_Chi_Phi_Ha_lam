@@ -24,8 +24,6 @@ namespace Application.Dto.Catalog.Material
     public class MaterialExcelDto
     {
         public Guid Id { get; set; }
-        [Display(Name = "Mã giao khoán")]
-        public string AssignmentCode { get; set; }
         [Display(Name = "Mã vật tư, tài sản")]
         public string Code { get; set; }
         [Display(Name = "Tên vật tư, tài sản")]

@@ -25,7 +25,8 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                 .Include(o => o.ProductUnitPrice)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.ElectricityUnitPriceEquipment).ThenInclude(e => e.Equipment).ThenInclude(e => e.Costs)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.ElectricityUnitPriceEquipment).ThenInclude(e => e.Equipment).ThenInclude(e => e.Code)
-                .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.PlannedElectricityCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!), disableTracking: true
+                .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.PlannedElectricityCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!)
+                .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.PlannedElectricityCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!), disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
         var adjustmentProductionMeters = await _productUnitPriceRepository.GetAll()
@@ -63,12 +64,21 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                     TotalPrice = p.GetCurrentElectricityCost(),
                     AdjustmentFactorDescriptions = p.PlannedElectricityCostAdjustmentFactorDescriptions.Select(a => new ElectricityAjustmentFactorDescriptionDto
                     {
-                        Id = a?.AdjustmentFactorDescription?.Id ?? Guid.Empty,
-                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId ?? Guid.Empty,
-                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value ?? string.Empty,
-                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name ?? string.Empty,
-                        Description = a.AdjustmentFactorDescription?.Description ?? "",
-                        ElectricityAdjustmentValue = a.AdjustmentFactorDescription?.ElectricityAdjustmentValue ?? 0
+                        Id = a.Id,
+                        AdjustmentFactorDescriptionId = a.AdjustmentFactorDescriptionId,
+                        AdjustmentFactorId = a.AdjustmentFactorDescription?.AdjustmentFactorId
+                            ?? a.AdjustmentFactorId
+                            ?? Guid.Empty,
+                        AdjustmentFactorCode = a.AdjustmentFactorDescription?.AdjustmentFactor?.Code?.Value
+                            ?? a.AdjustmentFactor?.Code?.Value
+                            ?? string.Empty,
+                        AdjustmentFactorName = a.AdjustmentFactorDescription?.AdjustmentFactor?.Name
+                            ?? a.AdjustmentFactor?.Name
+                            ?? string.Empty,
+                        Description = a.AdjustmentFactorDescription?.Description ?? string.Empty,
+                        ElectricityAdjustmentValue = a.AdjustmentFactorDescription?.ElectricityAdjustmentValue,
+                        CustomValue = a.CustomValue,
+                        EffectiveValue = a.EffectiveValue
                     }).ToList()
                 };
             }).ToList()

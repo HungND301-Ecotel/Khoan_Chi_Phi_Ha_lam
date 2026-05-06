@@ -30,7 +30,11 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
         }
         else if (type == MaterialUnitPriceType.TunnelExcavation)
         {
-            Query.Where(m => m is DomainEntities.TunnelExcavationMaterialUnitPrice);
+            Query.Where(m => m is DomainEntities.TunnelExcavationMaterialUnitPrice && ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Type == TunnelExcavationTrimingUnitPriceType.TunnelExcavation);
+        }
+        else if (type == MaterialUnitPriceType.Trimming)
+        {
+            Query.Where(m => m is DomainEntities.TunnelExcavationMaterialUnitPrice && ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Type == TunnelExcavationTrimingUnitPriceType.Trimming);
         }
 
         if (filter.PageNumber > 0 && filter.PageSize > 0 && !filter.IgnorePagination)
@@ -50,8 +54,11 @@ public sealed class AllMaterialUnitPricesByPaginationSpec
             TotalPrice = m.TotalPrice,
             TechnologyId = m.TechnologyId,
             TechnologyName = m.Technology != null ? m.Technology.Value : null,
-            Type = m is DomainEntities.LongwallMaterialUnitPrice ? MaterialUnitPriceType.Longwall : MaterialUnitPriceType.TunnelExcavation,
-
+            Type = (m is DomainEntities.LongwallMaterialUnitPrice)
+           ? MaterialUnitPriceType.Longwall
+           : ((DomainEntities.TunnelExcavationMaterialUnitPrice)m).Type == TunnelExcavationTrimingUnitPriceType.TunnelExcavation
+             ? MaterialUnitPriceType.TunnelExcavation
+             : MaterialUnitPriceType.Trimming,
             // Longwall Properties
             LongwallParametersId = m is DomainEntities.LongwallMaterialUnitPrice ? ((DomainEntities.LongwallMaterialUnitPrice)m).LongwallParametersId : null,
             LongwallParametersName = m is DomainEntities.LongwallMaterialUnitPrice

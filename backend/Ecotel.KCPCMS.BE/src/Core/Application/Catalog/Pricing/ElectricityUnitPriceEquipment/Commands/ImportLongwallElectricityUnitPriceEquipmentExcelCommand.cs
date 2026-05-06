@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,9 +14,11 @@ namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 
 public record ImportLongwallElectricityUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork)
+public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork, ICacheService cacheService)
     : IRequestHandler<ImportLongwallElectricityUnitPriceEquipmentExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<LongwallElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<LongwallElectricityUnitPriceEquipment>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
@@ -26,13 +29,12 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
-        using var stream = request.File.OpenReadStream();
-        var dtos = excelService.ImportFromExcel<LongwallElectricityUnitPriceEquipmentExcelDto>(stream);
+        var importErrors = new List<string>();
 
-        if (!(await CheckExistedReferences(dtos)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
+        using var stream = request.File.OpenReadStream();
+        var dtos = excelService.ImportFromExcel<LongwallElectricityUnitPriceEquipmentExcelDto>(stream) ?? [];
+
+        await CollectReferenceErrors(dtos, importErrors);
 
         // Map data to Entity Model
         var equipments = await _equipmentRepository.GetAllAsync(
@@ -40,43 +42,58 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             disableTracking: true);
         var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
 
-        var excelEntities = dtos.Select(d =>
+        var excelEntities = new List<LongwallElectricityUnitPriceEquipment>();
+        foreach (var item in dtos.Select((dto, index) => new { dto, rowNumber = index + 2 }))
         {
-            equipmentIdMap.TryGetValue(d.EquipmentCode, out var equipmentId);
-            var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = ParseMonthYear(d.EndMonth);
+            try
+            {
+                if (!equipmentIdMap.TryGetValue(item.dto.EquipmentCode, out var equipmentId))
+                {
+                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{item.dto.EquipmentCode}' không tồn tại.");
+                    continue;
+                }
 
-            if (d.Id != Guid.Empty)
-            {
-                var entity = LongwallElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    startMonth,
-                    endMonth,
-                    d.Quantity,
-                    d.Pdm,
-                    d.Kyc,
-                    d.Kdt,
-                    d.WorkingHour,
-                    d.WorkingDate,
-                    d.AverageMonthlyTunnelProduction);
-                entity.GetType().GetProperty("Id")?.SetValue(entity, d.Id);
-                return entity;
+                var startMonth = ParseMonthYear(item.dto.StartMonth);
+                var endMonth = ParseMonthYear(item.dto.EndMonth);
+
+                if (item.dto.Id != Guid.Empty)
+                {
+                    var entity = LongwallElectricityUnitPriceEquipment.Create(
+                        equipmentId,
+                        startMonth,
+                        endMonth,
+                        item.dto.Quantity,
+                        item.dto.Pdm,
+                        item.dto.Kyc,
+                        item.dto.Kdt,
+                        item.dto.WorkingHour,
+                        item.dto.WorkingDate,
+                        item.dto.AverageMonthlyTunnelProduction);
+                    entity.GetType().GetProperty("Id")?.SetValue(entity, item.dto.Id);
+                    excelEntities.Add(entity);
+                }
+                else
+                {
+                    excelEntities.Add(LongwallElectricityUnitPriceEquipment.Create(
+                        equipmentId,
+                        startMonth,
+                        endMonth,
+                        item.dto.Quantity,
+                        item.dto.Pdm,
+                        item.dto.Kyc,
+                        item.dto.Kdt,
+                        item.dto.WorkingHour,
+                        item.dto.WorkingDate,
+                        item.dto.AverageMonthlyTunnelProduction));
+                }
             }
-            else
+            catch (Exception ex) when (ex is BadRequestException or ArgumentException)
             {
-                return LongwallElectricityUnitPriceEquipment.Create(
-                    equipmentId,
-                    startMonth,
-                    endMonth,
-                    d.Quantity,
-                    d.Pdm,
-                    d.Kyc,
-                    d.Kdt,
-                    d.WorkingHour,
-                    d.WorkingDate,
-                    d.AverageMonthlyTunnelProduction);
+                importErrors.Add($"Dòng {item.rowNumber}: {ex.Message}");
             }
-        }).ToList();
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         var dbEntities = await _repository.GetAllAsync(disableTracking: false);
 
@@ -133,6 +150,8 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch
@@ -142,18 +161,23 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
         }
     }
 
-    private async Task<bool> CheckExistedReferences(List<LongwallElectricityUnitPriceEquipmentExcelDto> dtoList)
+    private async Task CollectReferenceErrors(List<LongwallElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors)
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
                 include: e => e.Include(e => e.Code),
                 disableTracking: true))
             .Where(e => e.Code != null)
             .Select(e => e.Code!.Value.Trim())
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelEquipmentCodes = dtoList.Select(d => d.EquipmentCode?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-
-        return excelEquipmentCodes.All(code => dbEquipmentCodes.Contains(code));
+        foreach (var item in dtoList.Select((dto, index) => new { dto, rowNumber = index + 2 }))
+        {
+            var equipmentCode = item.dto.EquipmentCode?.Trim();
+            if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
+            {
+                importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+            }
+        }
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -179,5 +203,20 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
         }
 
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 }

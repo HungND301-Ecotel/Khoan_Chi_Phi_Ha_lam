@@ -28,7 +28,9 @@ export type PartDetail = {
 	name: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
-	partType: number;	costs: Array<{
+	partType: number;
+	equipmentIds?: string[];
+	costs: Array<{
 		startMonth: string;
 		endMonth: string;
 		costType: number;
@@ -37,7 +39,21 @@ export type PartDetail = {
 	}>;
 };
 
-export function PartForm({ data, row }: ActionDialogProps<Part>) {
+type PartFormProps = ActionDialogProps<Part> & {
+	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: PartSchema) => Promise<void> | void;
+};
+
+export function PartForm({
+	data,
+	row,
+	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
+}: PartFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -79,18 +95,26 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 	}, [costs, form]);
 
 	useEffect(() => {
-		const promises = Promise.all([
-			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-		]);
+		const promises = Promise.all([api.pagging<Unit>(API.CATALOG.UNIT.LIST)]);
 
 		promises.then(([unitsRes]) => {
 			setUnits(unitsRes.result.data);
 
-			if (!row) return;
+			if (!row) {
+				if (defaultCode) {
+					form.reset({
+						...PART_SCHEMA_DEFAULT,
+						code: defaultCode,
+					});
+				}
+				return;
+			}
 			api.get<PartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
 				const { costs, ...part } = res.result;
 				form.reset({
 					...part,
+					code: isDuplicate ? '' : part.code,
+					equipmentIds: [],
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -102,15 +126,16 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				});
 			});
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	const handleSubmit = async (values: PartSchema) => {
 		try {
 			const processedValues = {
 				...values,
+				equipmentIds: [],
 				partType: 1,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PART.UPDATE, {
 					id: row?.id,
 					...processedValues,
@@ -119,9 +144,11 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				await api.post(API.CATALOG.PART.CREATE, processedValues);
 			}
 
+			await onCreated?.(processedValues);
+
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -156,7 +183,6 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 					label: unit.name,
 				}))}
 			/>
-
 
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
 				{(index) => (
@@ -193,11 +219,7 @@ export function PartForm({ data, row }: ActionDialogProps<Part>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
-
-
-
-

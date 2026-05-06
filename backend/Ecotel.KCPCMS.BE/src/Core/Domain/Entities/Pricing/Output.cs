@@ -7,6 +7,7 @@ public class Output : AuditableEntity<Guid>
 {
     public Guid ProductUnitPriceId { get; protected set; }
     public double ProductionMeters { get; protected set; }
+    public double PlanAshContent { get; protected set; }
     public OutputType OutputType { get; protected set; }
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
@@ -49,32 +50,35 @@ public class Output : AuditableEntity<Guid>
         return 0;
     }
 
-    public static Output Create(double productionMeters, DateOnly startMonth, DateOnly endMonth, OutputType outputType)
+    public static Output Create(double productionMeters, DateOnly startMonth, DateOnly endMonth, OutputType outputType, double planAshContent = 0)
     {
         return new Output
         {
             ProductionMeters = productionMeters,
+            PlanAshContent = planAshContent,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
             OutputType = outputType
         };
     }
 
-    public static Output Create(Guid id, double productionMeters, DateOnly startMonth, DateOnly endMonth, OutputType outputType)
+    public static Output Create(Guid id, double productionMeters, DateOnly startMonth, DateOnly endMonth, OutputType outputType, double planAshContent = 0)
     {
         return new Output
         {
             Id = id,
             ProductionMeters = productionMeters,
+            PlanAshContent = planAshContent,
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
             OutputType = outputType
         };
     }
 
-    public void Update(double productionMeters, DateOnly startMonth, DateOnly endMonth)
+    public void Update(double productionMeters, DateOnly startMonth, DateOnly endMonth, double planAshContent = 0)
     {
         ProductionMeters = productionMeters;
+        PlanAshContent = planAshContent;
         StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
         EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
     }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,8 +14,10 @@ namespace Application.Catalog.Pricing.SlideUnitPrice.Commands;
 
 public record ImportSlideUnitPriceExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportSlideUnitPriceExcelCommand, bool>
+public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportSlideUnitPriceExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "SlideUnitPrice";
     private readonly IWriteRepository<Domain.Entities.Pricing.SlideUnitPrice> _slideUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.SlideUnitPrice>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Passport> _passportRepository = unitOfWork.GetRepository<Passport>();
@@ -27,18 +30,18 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
+        var importErrors = new List<string>();
+
         using var stream = request.File.OpenReadStream();
-        var slideUnitPrices = ParseFromCustomTemplate(stream);
+        var slideUnitPrices = ParseFromCustomTemplate(stream, importErrors);
 
         if (!slideUnitPrices.Any())
         {
             throw new BadRequestException("Không có dữ liệu hợp lệ để import.");
         }
 
-        if (!(await CheckExistedReferences(slideUnitPrices)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
+        await CollectReferenceErrors(slideUnitPrices, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         // Map data to Entity Model
         var processGroups = await _processGroupRepository.GetAllAsync(disableTracking: true);
@@ -56,35 +59,41 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
             .GroupBy(m => m.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
-        var excelItems = slideUnitPrices.Select(d =>
+        var excelItems = new List<(SlideUnitPriceImportDto Dto, Domain.Entities.Pricing.SlideUnitPrice Entity)>();
+        foreach (var dto in slideUnitPrices)
         {
-            processGroupIdMap.TryGetValue(d.ProcessGroupName, out var processGroupId);
-            passportIdMap.TryGetValue(d.PassportName, out var passportId);
-            hardnessIdMap.TryGetValue(d.HardnessName, out var hardnessId);
-
-            var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = ParseMonthYear(d.EndMonth);
-
-            var assignmentCodes = d.MaterialAmounts
-                .Where(x => materialIdMap.ContainsKey(x.Key))
-                .Select(x => SlideUnitPriceAssignmentCode.Create(materialIdMap[x.Key], x.Value))
-                .ToList();
-
-            var entity = Domain.Entities.Pricing.SlideUnitPrice.Create(
-                d.Code,
-                processGroupId,
-                hardnessId,
-                passportId,
-                startMonth,
-                endMonth,
-                assignmentCodes);
-
-            return new
+            try
             {
-                Dto = d,
-                Entity = entity
-            };
-        }).ToList();
+                processGroupIdMap.TryGetValue(dto.ProcessGroupName, out var processGroupId);
+                passportIdMap.TryGetValue(dto.PassportName, out var passportId);
+                hardnessIdMap.TryGetValue(dto.HardnessName, out var hardnessId);
+
+                var startMonth = ParseMonthYear(dto.StartMonth);
+                var endMonth = ParseMonthYear(dto.EndMonth);
+
+                var assignmentCodes = dto.MaterialAmounts
+                    .Where(x => materialIdMap.ContainsKey(x.Key))
+                    .Select(x => SlideUnitPriceAssignmentCode.Create(materialIdMap[x.Key], x.Value))
+                    .ToList();
+
+                var entity = Domain.Entities.Pricing.SlideUnitPrice.Create(
+                    dto.Code,
+                    processGroupId,
+                    hardnessId,
+                    passportId,
+                    startMonth,
+                    endMonth,
+                    assignmentCodes);
+
+                excelItems.Add((dto, entity));
+            }
+            catch (Exception ex) when (ex is BadRequestException or ArgumentException)
+            {
+                importErrors.Add($"Mã '{dto.Code}', hộ chiếu '{dto.PassportName}': {ex.Message}");
+            }
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         // Fetch with includes to create lookup keys
         var dbEntitiesForLookup = await _slideUnitPriceRepository.GetAllAsync(
@@ -173,6 +182,8 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch
@@ -208,7 +219,7 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
         string PassportName,
         string HardnessName);
 
-    private static List<SlideUnitPriceImportDto> ParseFromCustomTemplate(Stream stream)
+    private static List<SlideUnitPriceImportDto> ParseFromCustomTemplate(Stream stream, ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(stream);
         var worksheet = workbook.Worksheet(1);
@@ -323,7 +334,8 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
 
                     if (!TryParseDouble(ttCell, out var amount))
                     {
-                        throw new BadRequestException($"Giá trị Tổng tiền không hợp lệ tại dòng {materialRow}, cột {passport.ttCol}.");
+                        importErrors.Add($"Giá trị Tổng tiền không hợp lệ tại dòng {materialRow}, cột {passport.ttCol}.");
+                        continue;
                     }
 
                     materialAmounts[materialCode] = amount;
@@ -348,22 +360,22 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
         return result;
     }
 
-    private async Task<bool> CheckExistedReferences(List<SlideUnitPriceImportDto> dtoList)
+    private async Task CollectReferenceErrors(List<SlideUnitPriceImportDto> dtoList, ICollection<string> importErrors)
     {
         var dbProcessGroupNames = (await _processGroupRepository.GetAllAsync(disableTracking: true))
             .Select(p => p.Name.Trim())
             .Where(n => n != null)
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var dbPassportNames = (await _passportRepository.GetAllAsync(disableTracking: true))
             .Select(p => $"H/c {p.Name}; {p.Sd}; {p.Sc}".Trim())
             .Where(n => n != null)
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var dbHardnessNames = (await _hardnessRepository.GetAllAsync(disableTracking: true))
             .Select(h => h.Value.Trim())
             .Where(n => n != null)
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var dbMaterialCodes = (await _materialRepository.GetAllAsync(
                 include: m => m.Include(m => m.Code),
@@ -372,19 +384,31 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelProcessGroups = dtoList.Select(d => d.ProcessGroupName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-        var excelPassports = dtoList.Select(d => d.PassportName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-        var excelHardnesses = dtoList.Select(d => d.HardnessName?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-        var excelMaterialCodes = dtoList
-            .SelectMany(d => d.MaterialAmounts.Keys)
-            .Select(code => code.Trim())
-            .Where(code => !string.IsNullOrWhiteSpace(code))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var dto in dtoList)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.ProcessGroupName) && !dbProcessGroupNames.Contains(dto.ProcessGroupName.Trim()))
+            {
+                importErrors.Add($"Mã '{dto.Code}' có công đoạn sản xuất '{dto.ProcessGroupName}' không tồn tại.");
+            }
 
-        return excelProcessGroups.All(name => dbProcessGroupNames.Contains(name))
-            && excelPassports.All(name => dbPassportNames.Contains(name))
-            && excelHardnesses.All(name => dbHardnessNames.Contains(name))
-            && excelMaterialCodes.All(code => dbMaterialCodes.Contains(code));
+            if (!string.IsNullOrWhiteSpace(dto.PassportName) && !dbPassportNames.Contains(dto.PassportName.Trim()))
+            {
+                importErrors.Add($"Mã '{dto.Code}' có hộ chiếu '{dto.PassportName}' không tồn tại.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.HardnessName) && !dbHardnessNames.Contains(dto.HardnessName.Trim()))
+            {
+                importErrors.Add($"Mã '{dto.Code}' có độ kiên cố '{dto.HardnessName}' không tồn tại.");
+            }
+
+            foreach (var materialCode in dto.MaterialAmounts.Keys.Select(code => code.Trim()).Where(code => !string.IsNullOrWhiteSpace(code)))
+            {
+                if (!dbMaterialCodes.Contains(materialCode))
+                {
+                    importErrors.Add($"Mã '{dto.Code}' có vật tư '{materialCode}' không tồn tại.");
+                }
+            }
+        }
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -423,6 +447,21 @@ public class ImportSlideUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : I
         var text = cell.GetString().Trim();
         return double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out value)
             || double.TryParse(text, NumberStyles.Any, CultureInfo.CurrentCulture, out value);
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 }
 

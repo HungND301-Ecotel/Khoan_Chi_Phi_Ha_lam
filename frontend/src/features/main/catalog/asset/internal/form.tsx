@@ -40,7 +40,21 @@ export type AssetInternalDetail = {
 	}>;
 };
 
-export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
+type AssetInternalFormProps = ActionDialogProps<Asset> & {
+	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: AssetInternalFormSchema) => Promise<void> | void;
+};
+
+export function AssetInternalForm({
+	data,
+	row,
+	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
+}: AssetInternalFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -72,6 +86,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 
 					form.reset({
 						...data,
+						code: isDuplicate ? '' : data.code,
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -81,6 +96,11 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 								}))
 							: ASSET_INTERNAL_FORM_DEFAULT.costs,
 					});
+				} else if (defaultCode) {
+					form.reset({
+						...ASSET_INTERNAL_FORM_DEFAULT,
+						code: defaultCode,
+					});
 				}
 			} catch (error) {
 				console.error('Error fetching data:', error);
@@ -88,7 +108,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 		};
 
 		fetchData();
-	}, [row]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -118,7 +138,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 			const processedValues = {
 				...values,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.ASSET.UPDATE, {
 					id: row.id,
 					...processedValues,
@@ -131,9 +151,10 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 					isOtherMaterial: false,
 				});
 			}
+			await onCreated?.(processedValues);
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -204,7 +225,7 @@ export function AssetInternalForm({ data, row }: ActionDialogProps<Asset>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

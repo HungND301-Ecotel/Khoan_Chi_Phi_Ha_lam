@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
+import { LowValuePerishableSupplyInclusion } from '@/constants/low-value-perishable-supply';
 import { ProcessGroupType } from '@/constants/process-group';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
@@ -47,12 +48,14 @@ export function PlanedMaterialCost({
 	reloadKey,
 }: ProductCostExpandProps) {
 	const [summary, setSummary] = useState<PlanedMaterialCostSummary[]>([]);
+	const [plannedMaterialPrice, setPlannedMaterialPrice] = useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setSummary([]);
+			setPlannedMaterialPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -73,6 +76,7 @@ export function PlanedMaterialCost({
 					]);
 
 				const { result } = detailRes;
+				setPlannedMaterialPrice(result.totalPlannedMaterialPrice || 0);
 				setTotal(
 					result.totalPlannedMaterialPrice * (output?.productionMeters || 1),
 				);
@@ -82,7 +86,7 @@ export function PlanedMaterialCost({
 				const allSlides = slidesRes.result.data;
 
 				const filteredMaterials = allMaterials.filter((material) => {
-					const groupType = plan?.processGroupType;
+					const groupType = plan?.fixedKeyType;
 					if (groupType === ProcessGroupType.DL) {
 						return material.type === 1;
 					}
@@ -104,12 +108,13 @@ export function PlanedMaterialCost({
 				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
 				const stoneClampRatioReferenceId =
 					result.stoneClampRatioReferenceId ||
-					(result as unknown as { stoneClampRatioId?: string }).stoneClampRatioId;
+					(result as unknown as { stoneClampRatioId?: string })
+						.stoneClampRatioId;
 				const stoneClampRatio =
 					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
 						?.value || '-';
 
-				if (plan?.processGroupType === ProcessGroupType.DL) {
+				if (plan?.fixedKeyType === ProcessGroupType.DL) {
 					if (!result.slideUnitPriceAssignmentCodeId) {
 						slideUsage = 'Không sử dụng máng trượt';
 					} else if (selectedMaterial && plan) {
@@ -165,6 +170,13 @@ export function PlanedMaterialCost({
 						materialUnitPriceCost: result.materialCost || 0,
 						slideUsage,
 						slideUnitPriceCost,
+						lowValuePerishableSupplyUsage:
+							result.lowValuePerishableSupplyInclusion ===
+							LowValuePerishableSupplyInclusion.Include
+								? 'Gồm đơn giá vật tư mau hỏng rẻ tiền'
+								: 'Không gồm đơn giá vật tư mau hỏng rẻ tiền',
+						lowValuePerishableSupplyUnitPriceCost:
+							result.lowValuePerishableSupplyUnitPriceCost || 0,
 						stoneClampRatio,
 						normFactorValue: result.normFactorValue || '-',
 					},
@@ -183,10 +195,13 @@ export function PlanedMaterialCost({
 				<ItemContent>
 					<ItemTitle>Doanh thu vật liệu kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
-				<ItemContent className='me-7.5 w-24'>
+				<ItemContent className='me-2 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total))}
+						{loading ? <Spinner /> : formatNumber(plannedMaterialPrice)}
 					</ItemTitle>
+				</ItemContent>
+				<ItemContent className='me-7.5 w-24'>
+					<ItemTitle>{loading ? <Spinner /> : formatNumber(total)}</ItemTitle>
 				</ItemContent>
 				<ItemActions>
 					<DialogProvider>
@@ -252,9 +267,7 @@ export function PlanedMaterialCost({
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable
-							columns={getPlanedMaterialCostSummaryColumns(
-								plan?.processGroupType,
-							)}
+							columns={getPlanedMaterialCostSummaryColumns(plan?.fixedKeyType)}
 							items={summary}
 							compact={true}
 							hasActions={false}

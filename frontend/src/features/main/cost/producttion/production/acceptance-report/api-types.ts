@@ -145,6 +145,7 @@ export type ProductionOutputProcessGroupDto = {
 	processGroupId: string;
 	processGroupCode?: string;
 	processGroupName?: string;
+	planProductionMeters?: number;
 	standardProductionMeters?: number;
 	productionMeters?: number;
 	products?: ProductionOutputProcessGroupProductDto[];

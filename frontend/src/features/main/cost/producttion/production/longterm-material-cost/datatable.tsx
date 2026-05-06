@@ -313,9 +313,7 @@ export function FixedColumnDataTable({
 
 					{/* Scrollable columns */}
 					<TableCell style={{ minWidth: '150px' }}>
-						{formatNumber(totalOpeningBalance, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalOpeningBalance)}
 					</TableCell>
 					<TableCell
 						className='border-border border-l'
@@ -323,37 +321,27 @@ export function FixedColumnDataTable({
 					></TableCell>
 					<TableCell style={{ minWidth: '100px' }}></TableCell>
 					<TableCell style={{ minWidth: '120px' }}>
-						{formatNumber(totalAmount, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalAmount)}
 					</TableCell>
 					<TableCell
 						className='border-border border-l'
 						style={{ minWidth: '150px' }}
 					>
-						{formatNumber(totalAccountingValue, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalAccountingValue)}
 					</TableCell>
 					<TableCell style={{ minWidth: '120px' }}>
-						{formatNumber(totalOriginalPrice, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalOriginalPrice)}
 					</TableCell>
 					<TableCell style={{ minWidth: '120px' }}></TableCell>
 					<TableCell style={{ minWidth: '120px' }}></TableCell>
 					<TableCell style={{ minWidth: '120px' }}></TableCell>
 					<TableCell style={{ minWidth: '180px' }}>
-						{formatNumber(totalQuotaAccountingValue, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalQuotaAccountingValue)}
 					</TableCell>
 					<TableCell style={{ minWidth: '100px' }}></TableCell>
 					<TableCell style={{ minWidth: '180px' }}></TableCell>
 					<TableCell style={{ minWidth: '180px' }}>
-						{formatNumber(totalEndingBalance, {
-							maximumFractionDigits: 0,
-						})}
+						{formatNumber(totalEndingBalance)}
 					</TableCell>
 					<TableCell style={{ minWidth: '150px' }}></TableCell>
 				</TableRow>
@@ -405,9 +393,7 @@ export function FixedColumnDataTable({
 
 						{/* Scrollable columns */}
 						<TableCell style={{ minWidth: '150px' }}>
-							{formatNumber(item.pendingValueStartPeriod ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.pendingValueStartPeriod ?? 0)}
 						</TableCell>
 						<TableCell
 							className='border-border border-l'
@@ -419,22 +405,16 @@ export function FixedColumnDataTable({
 							{formatNumber(item.unitPrice ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '120px' }}>
-							{formatNumber(item.totalAmount ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.totalAmount ?? 0)}
 						</TableCell>
 						<TableCell
 							className='border-border border-l'
 							style={{ minWidth: '150px' }}
 						>
-							{formatNumber(item.totalValueToAccount ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.totalValueToAccount ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '120px' }}>
-							{formatNumber(item.originAmount ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.originAmount ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '120px' }}>
 							{formatNumber(item.usageTime ?? 0)}
@@ -446,25 +426,16 @@ export function FixedColumnDataTable({
 							{formatNumber(item.remainingTime ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '180px' }}>
-							{formatNumber(item.valueByStandard ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.valueByStandard ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '100px' }}>
-							{formatNumber(item.allocationRatio ?? 0, {
-								minimumFractionDigits: 2,
-								maximumFractionDigits: 2,
-							})}
+							{formatNumber(item.allocationRatio ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '180px' }}>
-							{formatNumber(item.accountedValueThisPeriod ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.accountedValueThisPeriod ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '180px' }}>
-							{formatNumber(item.pendingValueEndPeriod ?? 0, {
-								maximumFractionDigits: 0,
-							})}
+							{formatNumber(item.pendingValueEndPeriod ?? 0)}
 						</TableCell>
 						<TableCell style={{ minWidth: '150px' }}>
 							{item.note || ''}

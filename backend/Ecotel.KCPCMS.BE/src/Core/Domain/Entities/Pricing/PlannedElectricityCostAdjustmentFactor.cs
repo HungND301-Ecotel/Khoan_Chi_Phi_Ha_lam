@@ -5,6 +5,12 @@ using Shared.Constants;
 
 namespace Domain.Entities.Pricing;
 
+public sealed record PlannedElectricityAdjustmentFactorInput(
+    Guid? AdjustmentFactorDescriptionId,
+    Guid? AdjustmentFactorId,
+    double? CustomValue,
+    AdjustmentFactorDescription? AdjustmentFactorDescription);
+
 public class PlannedElectricityCostAdjustmentFactor : AuditableEntity<Guid>
 {
     public Guid PlannedElectricityCostId { get; protected set; }
@@ -32,8 +38,8 @@ public class PlannedElectricityCostAdjustmentFactor : AuditableEntity<Guid>
             }
 
             CachedAdjustmentFactorTotal = (double)Quantity *
-                   ElectricityUnitPriceEquipment.GetElectricityCostPerMetres() *
-                   _plannedElectricityCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1);
+                 ElectricityUnitPriceEquipment.GetElectricityCostPerMetres() *
+         _plannedElectricityCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue);
             return CachedAdjustmentFactorTotal.Value;
         }
 
@@ -44,7 +50,7 @@ public class PlannedElectricityCostAdjustmentFactor : AuditableEntity<Guid>
         Guid plannedElectricityCostId,
         Guid electricityUnitPriceId,
         decimal quantity,
-        List<AdjustmentFactorDescription?> adjustmentFactorDescriptions)
+        IList<PlannedElectricityAdjustmentFactorInput> adjustmentFactorDescriptions)
     {
         var result = new PlannedElectricityCostAdjustmentFactor
         {
@@ -56,19 +62,21 @@ public class PlannedElectricityCostAdjustmentFactor : AuditableEntity<Guid>
         return result;
     }
 
-    public void AddAdjustmentFactorDescription(IList<AdjustmentFactorDescription?> adjustmentFactorDescriptions)
+    public void AddAdjustmentFactorDescription(IList<PlannedElectricityAdjustmentFactorInput> adjustmentFactorDescriptions)
     {
         foreach (var adj in adjustmentFactorDescriptions)
         {
-            if (adj == null)
+            if (adj.AdjustmentFactorDescriptionId.HasValue && adj.AdjustmentFactorDescription == null)
             {
                 throw new ArgumentException(CustomResponseMessage.AdjustmentFactorDescriptionIsNull);
             }
-            _plannedElectricityCostAdjustmentFactorDescriptions.Add(new PlannedElectricityCostAdjustmentFactorDescription
-            {
-                AdjustmentFactorDescriptionId = adj.Id,
-                PlannedElectricityCostAdjustmentFactorId = this.Id
-            });
+
+            _plannedElectricityCostAdjustmentFactorDescriptions.Add(
+                PlannedElectricityCostAdjustmentFactorDescription.Create(
+                    this.Id,
+                    adj.AdjustmentFactorDescriptionId,
+                    adj.AdjustmentFactorId,
+                    adj.CustomValue));
         }
     }
 }

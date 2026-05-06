@@ -11,6 +11,9 @@ public record ProductionOutputDetailResponseDto
     public Guid ProductionOutputId { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
+    public Guid? DepartmentId { get; set; }
+    public string DepartmentCode { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
     public double ProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }
 

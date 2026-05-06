@@ -10,6 +10,16 @@ export const API = {
 			IMPORT: '/v1/catalog/unitofmeasure/import',
 			EXPORT: '/v1/catalog/unitofmeasure/export',
 		},
+		DEPARTMENT: {
+			LIST: '/v1/catalog/department',
+			CREATE: '/v1/catalog/department',
+			UPDATE: '/v1/catalog/department',
+			DELETES: '/v1/catalog/department',
+			DELETE: (id: string) => `/v1/catalog/department/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/department/${id}`,
+			IMPORT: '/v1/catalog/department/import',
+			EXPORT: '/v1/catalog/department/export',
+		},
 		PROCESS: {
 			GROUP: {
 				LIST: '/v1/catalog/processgroup',
@@ -239,15 +249,23 @@ export const API = {
 			IMPORT: '/v1/catalog/savingsrateconfig/import',
 			EXPORT: '/v1/catalog/savingsrateconfig/export',
 		},
+		AK_FACTOR_CONFIG: {
+			LIST: '/v1/catalog/akfactorconfig',
+			CREATE: '/v1/catalog/akfactorconfig',
+			UPDATE: '/v1/catalog/akfactorconfig',
+			DELETES: '/v1/catalog/akfactorconfig',
+			DELETE: (id: string) => `/v1/catalog/akfactorconfig/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/akfactorconfig/${id}`,
+			IMPORT: '/v1/catalog/akfactorconfig/import',
+			EXPORT: '/v1/catalog/akfactorconfig/export',
+		},
 		REVENUE_COST_ADJUSTMENT_CONFIG: {
 			LIST: '/v1/catalog/revenuecostadjustmentconfig',
 			CREATE: '/v1/catalog/revenuecostadjustmentconfig',
 			UPDATE: '/v1/catalog/revenuecostadjustmentconfig',
 			DELETES: '/v1/catalog/revenuecostadjustmentconfig',
-			DELETE: (id: string) =>
-				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
-			DETAIL: (id: string) =>
-				`/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			DELETE: (id: string) => `/v1/catalog/revenuecostadjustmentconfig/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/revenuecostadjustmentconfig/${id}`,
 			IMPORT: '/v1/catalog/revenuecostadjustmentconfig/import',
 			EXPORT: '/v1/catalog/revenuecostadjustmentconfig/export',
 		},
@@ -260,6 +278,13 @@ export const API = {
 			DETAIL: (id: string) => `/v1/catalog/normfactor/${id}`,
 			IMPORT: '/v1/catalog/normfactor/import',
 			EXPORT: '/v1/catalog/normfactor/export',
+		},
+	},
+	SYSTEM: {
+		FIXED_KEY: {
+			LIST: '/v1/system/fixedkey',
+			UPDATE: '/v1/system/fixedkey',
+			DETAIL: (id: string) => `/v1/system/fixedkey/${id}`,
 		},
 	},
 
@@ -279,6 +304,16 @@ export const API = {
 				DETAIL: (id: string) => `/v1/pricing/materialunitprice/${id}`,
 				IMPORT: '/v1/pricing/materialunitprice/import',
 				EXPORT: '/v1/pricing/materialunitprice/export',
+			},
+			TRIMMING: {
+				LIST: '/v1/pricing/trimmingmaterialunitprice',
+				CREATE: '/v1/pricing/trimmingmaterialunitprice',
+				UPDATE: '/v1/pricing/trimmingmaterialunitprice',
+				DELETES: '/v1/pricing/trimmingmaterialunitpricelist',
+				DELETE: (id: string) => `/v1/pricing/trimmingmaterialunitprice/${id}`,
+				DETAIL: (id: string) => `/v1/pricing/trimmingmaterialunitprice/${id}`,
+				IMPORT: '/v1/pricing/trimmingmaterialunitprice/import',
+				EXPORT: '/v1/pricing/trimmingmaterialunitprice/export',
 			},
 			LONGWALL_PANEL: {
 				LIST: '/v1/pricing/longwallmaterialunitprice',
@@ -323,8 +358,21 @@ export const API = {
 			DETAIL: (id: string) => `/v1/pricing/maintainunitpriceequipment/${id}`,
 			EQUIPMENTS_BY_MAINTAIN_IDS:
 				'/v1/pricing/maintainunitpriceequipment/equipments',
+			EQUIPMENTS_BY_PART_IDS:
+				'/v1/pricing/maintainunitpriceequipment/parts/equipments',
+			MAINTAIN_UNIT_PRICE_EQUIPMENTS_BY_PART_IDS:
+				'/v1/pricing/maintainunitpriceequipment/parts/maintain-unit-price-equipments',
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
+			TRIMMING_IMPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/import',
+			TRIMMING_EXPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/export',
+			TRIMMING_LIST: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_CREATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_UPDATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_DELETE: (id: string) =>
+				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
+			TRIMMING_DETAIL: (id: string) =>
+				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
 			LONGWALL_IMPORT: '/v1/pricing/longwallmaintainunitpriceequipment/import',
 			LONGWALL_EXPORT: '/v1/pricing/longwallmaintainunitpriceequipment/export',
 		},
@@ -341,6 +389,18 @@ export const API = {
 				IMPORT: '/v1/pricing/tunnelelectricityunitpriceequipment/import',
 				EXPORT: '/v1/pricing/tunnelelectricityunitpriceequipment/export',
 			},
+			TRIMMING: {
+				LIST: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				CREATE: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				UPDATE: '/v1/pricing/trimmingelectricityunitpriceequipment',
+				DELETES: '/v1/pricing/electricityunitpriceequipment',
+				DELETE: (id: string) =>
+					`/v1/pricing/trimmingelectricityunitpriceequipment/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/trimmingelectricityunitpriceequipment/${id}`,
+				IMPORT: '/v1/pricing/trimmingelectricityunitpriceequipment/import',
+				EXPORT: '/v1/pricing/trimmingelectricityunitpriceequipment/export',
+			},
 			LONGWALL_PANEL: {
 				LIST: '/v1/pricing/longwallelectricityunitpriceequipment',
 				CREATE: '/v1/pricing/longwallelectricityunitpriceequipment',
@@ -352,6 +412,31 @@ export const API = {
 					`/v1/pricing/longwallelectricityunitpriceequipment/${id}`,
 				IMPORT: '/v1/pricing/longwallelectricityunitpriceequipment/import',
 				EXPORT: '/v1/pricing/longwallelectricityunitpriceequipment/export',
+			},
+		},
+		LOW_VALUE_PERISHABLE_SUPPLY: {
+			DELETES: '/v1/pricing/LowValuePerishableSupplyUnitPrice',
+			TUNNELING: {
+				LIST: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				CREATE: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				UPDATE: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice',
+				DELETE: (id: string) =>
+					`/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/${id}`,
+				IMPORT: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/import',
+				EXPORT: '/v1/pricing/TunnelLowValuePerishableSupplyUnitPrice/export',
+			},
+			LONGWALL: {
+				LIST: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				CREATE: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				UPDATE: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice',
+				DELETE: (id: string) =>
+					`/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/${id}`,
+				IMPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/import',
+				EXPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/export',
 			},
 		},
 	},
@@ -422,17 +507,19 @@ export const API = {
 		},
 		LUMP_SUM_FINAL_SETTLEMENT: {
 			LIST: '/v1/pricing/lump-sum-final-settlement/list',
-			MONTH_EXPORT:
-				'/v1/pricing/lump-sum-final-settlement/month-export',
+			MONTH_EXPORT: '/v1/pricing/lump-sum-final-settlement/month-export',
 			QUARTER_LIST: '/v1/pricing/lump-sum-final-settlement/quarter-list',
-			QUARTER_EXPORT:
-				'/v1/pricing/lump-sum-final-settlement/quarter-export',
+			QUARTER_EXPORT: '/v1/pricing/lump-sum-final-settlement/quarter-export',
 			QUARTER_CUSTOM_COST_LIST:
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/list',
 			QUARTER_CUSTOM_COST_CREATE:
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost',
 			QUARTER_CUSTOM_COST_UPDATE:
 				'/v1/pricing/lump-sum-final-settlement/quarter-custom-cost',
+			MONTH_SPECIAL_QUANTITY_UPDATE:
+				'/v1/pricing/lump-sum-final-settlement/month-special-quantity',
+			MONTH_CARRY_FORWARD_UPDATE:
+				'/v1/pricing/lump-sum-final-settlement/month-carry-forward',
 			QUARTER_CUSTOM_COST_DELETE: (id: string) =>
 				`/v1/pricing/lump-sum-final-settlement/quarter-custom-cost/${id}`,
 		},

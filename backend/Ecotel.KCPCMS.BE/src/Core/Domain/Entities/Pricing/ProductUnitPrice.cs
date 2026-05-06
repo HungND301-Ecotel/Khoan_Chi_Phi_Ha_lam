@@ -1,7 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Production;
 
 namespace Domain.Entities.Pricing;
 
@@ -9,11 +8,13 @@ public class ProductUnitPrice : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid ProductId { get; protected set; }
     public Guid? UnitOfMeasureId { get; protected set; }
+    public Guid? DepartmentId { get; protected set; }
     public ProductUnitPriceScenarioType ScenarioType { get; protected set; } = ProductUnitPriceScenarioType.Plan;
 
     //Navigation properties
     public Product? Product { get; protected set; }
     public UnitOfMeasure? UnitOfMeasure { get; protected set; }
+    public Department? Department { get; protected set; }
 
     private IList<Output> _outputs = new List<Output>();
     public virtual IReadOnlyCollection<Output> Outputs => _outputs.AsReadOnly();
@@ -31,20 +32,26 @@ public class ProductUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     public virtual IReadOnlyCollection<ProductUnitPriceProductionOutput> ProductUnitPriceProductionOutputs => _productUnitPriceProductionOutputs.AsReadOnly();
 
     //Constructor
-    public static ProductUnitPrice Create(Guid productId, Guid? unitOfMeasureId, ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Plan)
+    public static ProductUnitPrice Create(
+        Guid productId,
+        Guid? unitOfMeasureId,
+        Guid? departmentId,
+        ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Plan)
     {
         return new ProductUnitPrice
         {
             ProductId = productId,
             UnitOfMeasureId = unitOfMeasureId,
+            DepartmentId = departmentId,
             ScenarioType = scenarioType
         };
     }
 
-    public void Update(Guid productId, Guid? unitOfMeasureId)
+    public void Update(Guid productId, Guid? unitOfMeasureId, Guid? departmentId)
     {
         ProductId = productId;
         UnitOfMeasureId = unitOfMeasureId;
+        DepartmentId = departmentId;
     }
 
     public void AddProductionOutput(Guid productionOutputId, double productionMeters = 0)

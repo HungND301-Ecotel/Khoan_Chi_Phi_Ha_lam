@@ -7,11 +7,8 @@ public class ProductionReference
 
     private ProductionReference(Guid? productionOrderId, Guid? equipmentId)
     {
-        if (productionOrderId.HasValue && equipmentId.HasValue)
-        {
-            throw new ArgumentException("Chỉ được chọn một trong hai: Lệnh sản xuất hoặc Thiết bị");
-        }
-
+        // Keep both values for downstream lookup (e.g. Part + Equipment + period).
+        // Grouping/classification priority (ProductionOrder first) is handled by consumers.
         ProductionOrderId = productionOrderId;
         EquipmentId = equipmentId;
     }

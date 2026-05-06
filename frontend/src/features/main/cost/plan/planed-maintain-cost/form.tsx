@@ -1,6 +1,5 @@
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormArray } from '@/components/form/form-array';
-import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
@@ -9,18 +8,22 @@ import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
 import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import {
+	PLAN_MAINTAIN_ADJUSTMENT_DEFAULT,
 	PLAN_MAINTAIN_COST_DEFAULT,
 	planMaintainCostSchema,
 	PlanMaintainCostSchema,
 } from '@/features/main/cost/plan/planed-maintain-cost/schema';
 import {
 	AdjustmentDetail,
+	PlannedMaintainCostAdjustmentSelection,
 	PlannedMaintainCostDetail,
 } from '@/features/main/cost/plan/planed-maintain-cost/types';
+import { CostPlanAdjustmentFactorInput } from '@/features/main/cost/plan/components/cost-plan-adjustment-factor-input';
 import { ProductCostFormProps } from '@/features/main/cost/plan/types';
 import { Tunneling } from '@/features/main/pricing/tunneling/maintenance/columns';
 import { api } from '@/lib/api';
@@ -28,7 +31,26 @@ import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { AdjustmentFactorType } from '@/constants/adjustment-factor-type';
+
+function isK6Adjustment(adjustment: AdjustmentDetail) {
+	return (
+		adjustment.fixedKeyKey === 'K6' ||
+		adjustment.fixedKeyType === AdjustmentFactorType.K6
+	);
+}
+
+function formatAdjustmentOptionLabel(
+	description: string,
+	value?: number | null,
+) {
+	if (value === null || value === undefined) {
+		return description;
+	}
+
+	const valueText = formatNumber(value);
+
+	return `${description} - ${valueText}`;
+}
 
 export function PlanMaintainCostForm({
 	id,
@@ -56,8 +78,13 @@ export function PlanMaintainCostForm({
 
 	const watchedMaintainUnitPriceIds = form.watch('maintainUnitPriceIds');
 	const watchedCosts = form.watch('costs');
+	const maintainAdjustmentCount =
+		plan?.fixedKeyType === ProcessGroupType.DL ||
+		plan?.fixedKeyType === ProcessGroupType.XL
+			? 7
+			: 8;
 	const filteredTunnelings = useMemo(() => {
-		const currentProcessGroupType = plan?.processGroupType as
+		const currentProcessGroupType = plan?.fixedKeyType as
 			| ProcessGroupType
 			| undefined;
 
@@ -65,10 +92,22 @@ export function PlanMaintainCostForm({
 			return tunnelings;
 		}
 
-		return tunnelings.filter((item) =>
-			item.processGroupTypes?.includes(currentProcessGroupType),
+		const maintainTypeByProcessGroup: Record<ProcessGroupType, number> = {
+			[ProcessGroupType.None]: 0,
+			[ProcessGroupType.DL]: 1,
+			[ProcessGroupType.LC]: 2,
+			[ProcessGroupType.XL]: 3,
+		};
+
+		return tunnelings.filter(
+			(item) =>
+				item.type === maintainTypeByProcessGroup[currentProcessGroupType],
 		);
-	}, [tunnelings, plan?.processGroupType]);
+	}, [tunnelings, plan?.fixedKeyType]);
+	const selectableAdjustments = useMemo(
+		() => adjustments.filter((adj) => !isK6Adjustment(adj)),
+		[adjustments],
+	);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -82,8 +121,10 @@ export function PlanMaintainCostForm({
 			setTunnelings(tunnelings.result.data);
 			setAdjustments(
 				adjustments.result
-					.sort((a, b) => a.code.localeCompare(b.code))
-					.slice(0, 8),
+					.sort((a, b) =>
+						(a.fixedKeyKey ?? a.code).localeCompare(b.fixedKeyKey ?? b.code),
+					)
+					.slice(0, maintainAdjustmentCount),
 			);
 
 			if (!id) return;
@@ -94,6 +135,7 @@ export function PlanMaintainCostForm({
 					form.reset({
 						productUnitPriceId: plan?.id,
 						outputId: output?.id,
+						trimmingCoefficient: (res.result.trimmingCoefficient || 1) * 100,
 						maintainUnitPriceIds: res.result.costs.map((detail) => {
 							return detail.maintainUnitPriceId;
 						}),
@@ -105,9 +147,13 @@ export function PlanMaintainCostForm({
 								adjustmentFactorDescriptions,
 							}) => {
 								const sortedAdjustments = adjustments.result
-									.sort((a, b) => a.code.localeCompare(b.code))
-									.slice(0, 8)
-									.filter((adj) => adj.type !== AdjustmentFactorType.K6); // Exclude K6
+									.sort((a, b) =>
+										(a.fixedKeyKey ?? a.code).localeCompare(
+											b.fixedKeyKey ?? b.code,
+										),
+									)
+									.slice(0, maintainAdjustmentCount)
+									.filter((adj) => !isK6Adjustment(adj)); // Exclude K6
 
 								return {
 									maintainUnitPriceId,
@@ -115,12 +161,20 @@ export function PlanMaintainCostForm({
 									k6AdjustmentFactorValue,
 									adjustmentFactorDescriptions: sortedAdjustments.map(
 										(adjustment) => {
-											// Find the matching description by adjustmentFactorId
 											const description = adjustmentFactorDescriptions.find(
 												(desc) => desc.adjustmentFactorId === adjustment.id,
 											);
 
-											return description?.id || '';
+											return {
+												adjustmentFactorDescriptionId:
+													description?.adjustmentFactorDescriptionId ?? '',
+												adjustmentFactorId:
+													description?.customValue !== null &&
+													description?.customValue !== undefined
+														? description.adjustmentFactorId
+														: '',
+												customValue: description?.customValue ?? null,
+											};
 										},
 									),
 								};
@@ -130,7 +184,7 @@ export function PlanMaintainCostForm({
 					setIsInit(false);
 				});
 		});
-	}, [id, form, plan, output]);
+	}, [id, form, plan, output, maintainAdjustmentCount]);
 
 	useEffect(() => {
 		if (isInit) return;
@@ -150,13 +204,8 @@ export function PlanMaintainCostForm({
 					quantity: NaN,
 					k6AdjustmentFactorValue: 0,
 					adjustmentFactorDescriptions: Array.from(
-						{
-							length:
-								adjustments.filter(
-									(adj) => adj.type !== AdjustmentFactorType.K6,
-								).length || 7,
-						},
-						() => '',
+						{ length: selectableAdjustments.length || 7 },
+						() => ({ ...PLAN_MAINTAIN_ADJUSTMENT_DEFAULT }),
 					),
 				};
 			});
@@ -164,7 +213,13 @@ export function PlanMaintainCostForm({
 		if (updatedCosts.length !== currentCosts.length) {
 			form.setValue('costs', updatedCosts);
 		}
-	}, [watchedMaintainUnitPriceIds, form, tunnelings, isInit, adjustments]);
+	}, [
+		watchedMaintainUnitPriceIds,
+		form,
+		tunnelings,
+		isInit,
+		selectableAdjustments,
+	]);
 
 	// Sync maintainUnitPriceIds when costs are removed
 	useEffect(() => {
@@ -189,10 +244,29 @@ export function PlanMaintainCostForm({
 
 	const handleSubmit = async (values: PlanMaintainCostSchema) => {
 		try {
+			const payload = {
+				...values,
+				costs: values.costs.map((cost) => ({
+					...cost,
+					adjustmentFactorDescriptions: cost.adjustmentFactorDescriptions.map(
+						(adjustment) => ({
+							adjustmentFactorDescriptionId:
+								adjustment.adjustmentFactorDescriptionId || null,
+							adjustmentFactorId: adjustment.adjustmentFactorId || null,
+							customValue: adjustment.customValue,
+						}),
+					),
+				})),
+				trimmingCoefficient:
+					plan?.fixedKeyType === ProcessGroupType.XL
+						? values.trimmingCoefficient / 100
+						: 1,
+			};
+
 			if (id) {
-				await api.put(API.COST.PLANNED_MAINTAIN.UPDATE, { id, ...values });
+				await api.put(API.COST.PLANNED_MAINTAIN.UPDATE, { id, ...payload });
 			} else {
-				await api.post(API.COST.PLANNED_MAINTAIN.CREATE, values);
+				await api.post(API.COST.PLANNED_MAINTAIN.CREATE, payload);
 			}
 
 			setOpen(false);
@@ -250,6 +324,14 @@ export function PlanMaintainCostForm({
 					<Input readOnly value={plan?.unitOfMeasureName} />
 				</div>
 			</FormRow>
+			{plan?.fixedKeyType === ProcessGroupType.XL && (
+				<FormNumber
+					control={form.control}
+					name='trimmingCoefficient'
+					label='Hệ số xén lò (%)'
+					placeholder='Nhập hệ số xén lò'
+				/>
+			)}
 			<FormMultiSelect
 				control={form.control}
 				name='maintainUnitPriceIds'
@@ -290,12 +372,7 @@ export function PlanMaintainCostForm({
 									<Label>Đơn giá phụ tùng (đ)</Label>
 									<Input
 										readOnly
-										value={formatNumber(
-											Math.round(currentTunneling?.totalPrice || 0),
-											{
-												maximumFractionDigits: 0,
-											},
-										)}
+										value={formatNumber(currentTunneling?.totalPrice || 0)}
 									/>
 								</div>
 
@@ -310,7 +387,7 @@ export function PlanMaintainCostForm({
 								{(() => {
 									let descriptionIndex = 0;
 									return adjustments.map((adjustment) => {
-										if (adjustment.type === AdjustmentFactorType.K6) {
+										if (isK6Adjustment(adjustment)) {
 											return (
 												<div
 													className='w-full min-w-64 flex-1'
@@ -333,14 +410,42 @@ export function PlanMaintainCostForm({
 												className='w-full min-w-64 flex-1'
 												key={adjustment.id}
 											>
-												<FormComboBox
-													control={form.control}
-													name={`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`}
+												<CostPlanAdjustmentFactorInput
 													label={adjustment.code}
 													placeholder={`Chọn ${adjustment.code}`}
+													customPlaceholder={`Nhập ${adjustment.code}`}
+													adjustmentFactorId={adjustment.id}
+													value={
+														watchedAdjustmentFactorDescriptions[currentIndex]
+													}
+													error={
+														form.formState.errors.costs?.[index]
+															?.adjustmentFactorDescriptions?.[currentIndex]
+															?.adjustmentFactorDescriptionId?.message ??
+														form.formState.errors.costs?.[index]
+															?.adjustmentFactorDescriptions?.[currentIndex]
+															?.customValue?.message
+													}
+													onChange={(
+														value: PlannedMaintainCostAdjustmentSelection,
+													) => {
+														form.setValue(
+															`costs.${index}.adjustmentFactorDescriptions.${currentIndex}`,
+															value,
+															{ shouldValidate: true, shouldDirty: true },
+														);
+													}}
 													options={adjustment.adjustmentFactorDescriptions.map(
-														({ id, description }) => ({
-															label: description,
+														({
+															id,
+															description,
+															maintenanceAdjustmentValue,
+														}) => ({
+															label: formatAdjustmentOptionLabel(
+																description,
+																maintenanceAdjustmentValue,
+															),
+															sortValue: maintenanceAdjustmentValue,
 															value: id,
 														}),
 													)}
@@ -366,7 +471,7 @@ export function PlanMaintainCostForm({
 												total *= watchedK6Value || 1;
 
 												const nonK6Adjustments = adjustments.filter(
-													(adj) => adj.type !== AdjustmentFactorType.K6,
+													(adj) => !isK6Adjustment(adj),
 												);
 
 												nonK6Adjustments.forEach(
@@ -380,9 +485,16 @@ export function PlanMaintainCostForm({
 															return;
 														}
 
+														if (selectedDescriptionId.customValue !== null) {
+															total *= selectedDescriptionId.customValue;
+															return;
+														}
+
 														const description =
 															adjustment.adjustmentFactorDescriptions.find(
-																(desc) => desc.id === selectedDescriptionId,
+																(desc) =>
+																	desc.id ===
+																	selectedDescriptionId.adjustmentFactorDescriptionId,
 															);
 
 														total *=
@@ -390,7 +502,7 @@ export function PlanMaintainCostForm({
 													},
 												);
 
-												return Math.round(total || 0);
+												return total || 0;
 											})(),
 										)}
 									/>

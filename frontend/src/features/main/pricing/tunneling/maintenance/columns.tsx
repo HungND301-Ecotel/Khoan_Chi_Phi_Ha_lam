@@ -6,7 +6,7 @@ export type Tunneling = {
 	equipmentId: string;
 	equipmentCode: string;
 	equipmentName: string;
-	processGroupTypes: number[];
+	type: number;
 	startMonth: string;
 	endMonth: string;
 	totalPrice: number;
@@ -32,8 +32,8 @@ export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá SCTX (đ/m)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		header: 'Chi phí vật tư SCTX cho 1 thiết bị/1 mét lò đào (đ/m)',
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -71,7 +71,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 		{
 			accessorKey: 'partCost',
 			header: () => (
-				<span className='h-fit whitespace-normal'>{'Đơn giá (đ)'}</span>
+				<span className='h-fit whitespace-normal'>{'Đơn giá vật tư (đ)'}</span>
 			),
 			cell: ({ row }) => formatNumber(row.original.partCost),
 		},
@@ -97,7 +97,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'averageMonthlyTunnelProduction',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Sản lượng đào lò bình quân (m)'}
+					{'Sản lượng mét lò bình quân tháng (m)'}
 				</span>
 			),
 			cell: ({ row }) =>
@@ -107,7 +107,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'materialRatePerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Định mức vật tư SCTX'}
+					{'Định mức vật tư SCTX cho 1 thiết bị/ 1 mét lò'}
 				</span>
 			),
 			cell: ({ row }) =>
@@ -117,10 +117,10 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'materialCostPerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Chi phí vật tư SCTX (đ)'}
+					{'Chi phí vật tư SCTX cho 1 phụ tùng/1 mét lò đào (đ/m)'}
 				</span>
 			),
 			cell: ({ row }) =>
-				formatNumber(Math.round(row.original.materialCostPerMetres)),
+				formatNumber(row.original.materialCostPerMetres),
 		},
 	];

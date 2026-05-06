@@ -5,6 +5,7 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 public record UpdateAcceptanceReportItemDto
 {
     public required Guid Id { get; init; }
+    public required double UsageTime { get; init; }
 
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }
@@ -19,6 +20,7 @@ public record UpdateAcceptanceReportItemDto
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public required double MaterialsIncludedInContractRevenueQuantity { get; init; }
+    public List<AcceptanceReportCategoryAllocationDto>? CategoryAllocations { get; init; }
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }

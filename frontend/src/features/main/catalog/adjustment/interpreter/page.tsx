@@ -75,6 +75,7 @@ export function MainCatalogAdjustmentInterpreterPage() {
 				},
 			]}
 			onCreate={(props) => <InterpreterForm {...props} />}
+			onDuplicate={(props) => <InterpreterForm {...props} isDuplicate />}
 			onUpdate={(props) => <InterpreterForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

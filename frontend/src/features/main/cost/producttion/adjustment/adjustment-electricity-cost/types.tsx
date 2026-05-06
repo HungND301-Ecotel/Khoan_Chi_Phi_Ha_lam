@@ -1,10 +1,13 @@
 export type AdjustmentElectricityCostDetailDescription = {
 	id: string;
+	adjustmentFactorDescriptionId?: string | null;
 	description: string;
 	adjustmentFactorId: string;
 	adjustmentFactorCode: string;
 	adjustmentFactorName: string;
-	electricityAdjustmentValue: number;
+	electricityAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
 };
 
 export type AdjustmentElectricityCostDetailCost = {

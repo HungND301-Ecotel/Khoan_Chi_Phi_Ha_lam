@@ -16,19 +16,11 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
 {
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
-    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
     private readonly IWriteRepository<EquipmentPart> _equipmentPartRepository = unitOfWork.GetRepository<EquipmentPart>();
-    private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     public async Task<bool> Handle(CreateEquipmentCommand request, CancellationToken cancellationToken)
     {
-        var processGroupId = request.CreateModel.ProcessGroupId;
-        if (!processGroupId.HasValue || processGroupId.Value == Guid.Empty)
-        {
-            throw new BadRequestException("Nhóm công đoạn sản xuất không được để trống.");
-        }
-
-        if (await codeService.IsEquipmentCodeExisted(request.CreateModel.Code, processGroupId.Value))
+        if (await codeService.IsEquipmentCodeExisted(request.CreateModel.Code))
         {
             throw new ConflictException(CustomResponseMessage.EquipmentCodeAlreadyExists);
         }
@@ -37,7 +29,6 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
-        await EnsureProcessGroupExist(processGroupId.Value);
         await EnsurePartsExist(partIds);
 
         if (request.CreateModel.UnitOfMeasureId != null)
@@ -74,9 +65,6 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
 
             await _equipmentRepository.InsertAsync(newEquipment, cancellationToken);
 
-            var equipmentProcessGroup = EquipmentProcessGroup.Create(newEquipment.Id, processGroupId.Value);
-            await _equipmentProcessGroupRepository.InsertAsync(equipmentProcessGroup, cancellationToken);
-
             if (partIds.Any())
             {
                 var equipmentParts = partIds
@@ -96,15 +84,6 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
         return true;
     }
 
-    private async Task EnsureProcessGroupExist(Guid processGroupId)
-    {
-        var exists = await _processGroupRepository.ExistsAsync(x => x.Id == processGroupId);
-        if (!exists)
-        {
-            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
-        }
-    }
-
     private async Task EnsurePartsExist(ICollection<Guid> partIds)
     {
         if (!partIds.Any())
@@ -114,7 +93,8 @@ public class CreateEquipmentCommandHandler(IUnitOfWork unitOfWork, ICodeService 
 
         var existingPartIds = await _partRepository.GetAllAsync(
             selector: x => x.Id,
-            predicate: x => partIds.Contains(x.Id) && x.Type == PartType.Part,
+            predicate: x => partIds.Contains(x.Id) &&
+                            (x.Type == PartType.Part || x.Type == PartType.OtherPart),
             disableTracking: true);
 
         var existingIdSet = existingPartIds.ToHashSet();

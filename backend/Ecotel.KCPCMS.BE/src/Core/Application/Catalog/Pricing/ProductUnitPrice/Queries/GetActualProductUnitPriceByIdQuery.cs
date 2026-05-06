@@ -22,6 +22,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
 
@@ -46,10 +47,17 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 ProductCode = p.Product.Code.Value,
                 p.UnitOfMeasureId,
                 UnitOfMeasureName = p.UnitOfMeasure!.Name,
+                p.DepartmentId,
+                DepartmentCode = p.Department != null && p.Department.Code != null ? p.Department.Code.Value : null,
+                DepartmentName = p.Department != null ? p.Department.Name : null,
                 ProcessGroupId = p.Product.ProcessGroupId,
-                ProcessGroupCode = p.Product.ProcessGroup!.Code.Value,
+                ProcessGroupCode = p.Product.ProcessGroup!.FixedKey != null
+                    ? p.Product.ProcessGroup.FixedKey.Key
+                    : string.Empty,
                 ProcessGroupName = p.Product.ProcessGroup.Name,
-                ProcessGroupType = p.Product.ProcessGroup.Type,
+                ProcessGroupType = p.Product.ProcessGroup.FixedKey != null
+                    ? p.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                    : ProcessGroupType.None,
                 ProductionOutputId = p.ProductUnitPriceProductionOutputs.Select(po => po.ProductionOutputId).FirstOrDefault()
             })
             .AsNoTracking()
@@ -70,6 +78,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 StartMonth = o.StartMonth,
                 EndMonth = o.EndMonth,
                 ProductionMeters = o.ProductionMeters,
+                PlanAshContent = o.PlanAshContent,
                 PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
                 PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
                 PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
@@ -98,6 +107,9 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             ProductCode = baseData.ProductCode ?? "",
             UnitOfMeasureId = baseData.UnitOfMeasureId,
             UnitOfMeasureName = baseData.UnitOfMeasureName ?? "",
+            DepartmentId = baseData.DepartmentId,
+            DepartmentCode = baseData.DepartmentCode ?? "",
+            DepartmentName = baseData.DepartmentName ?? "",
             ProcessGroupId = baseData.ProcessGroupId,
             ProcessGroupCode = baseData.ProcessGroupCode ?? "",
             ProcessGroupName = baseData.ProcessGroupName ?? "",
@@ -132,8 +144,10 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             .Select(f => new
             {
                 f.PlannedMaintainCostId,
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
+                MaintainUnitPriceType = f.MaintainUnitPrice.Type,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
                 MaintainStartMonth = f.MaintainUnitPrice.StartMonth,
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
@@ -144,7 +158,11 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
                 AdjustmentValues = f.PlannedMaintainCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.MaintenanceAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -155,12 +173,18 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                 g => g.Select(f => new MaintainFactorData
                 {
                     Quantity = (double)f.Quantity,
+                    TrimmingCoefficient = f.TrimmingCoefficient,
                     K6AdjustmentFactorValue = f.K6AdjustmentFactorValue,
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
                         var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
-                        return partCost * (m.Quantity / (double)(m.ReplacementTimeStandard * m.AverageMonthlyTunnelProduction));
+                        return MaintainCostCalculator.CalculateMaterialCostPerMetre(
+                            partCost,
+                            m.Quantity,
+                            m.ReplacementTimeStandard,
+                            m.AverageMonthlyTunnelProduction,
+                            f.MaintainUnitPriceType);
                     }),
                     AdjustmentFactor = f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val)
                 }).ToList());
@@ -182,10 +206,15 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             .Select(f => new
             {
                 f.PlannedElectricityCostId,
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.ElectricityAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -200,6 +229,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     return new PlannedElectricityFactorData
                     {
                         Quantity = (double)f.Quantity,
+                        TrimmingCoefficient = f.TrimmingCoefficient,
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -217,42 +247,23 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
         var plannedMaterialCosts = await _plannedMaterialCostRepository.GetAll()
             .Where(c => plannedMaterialCostIds.Contains(c.Id))
             .Include(c => c.Output)
+            .Include(c => c.ProductUnitPrice).ThenInclude(p => p.Product)
             .Include(c => c.SlideUnitPriceAssignmentCode)
             .Include(c => c.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
             .Include(c => c.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var currentTunnelMaterials = plannedMaterialCosts
-            .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
-            .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
-            .ToList();
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
+            plannedMaterialCosts,
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
 
-        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (currentTunnelMaterials.Any())
-        {
-            var targetHardnessIds = plannedMaterialCosts
-                .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true)
-                .Select(c => c.NormFactor!.TargetHardnessId!.Value)
-                .Distinct()
-                .ToList();
-            var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();
-            var passportIds = currentTunnelMaterials.Select(x => x.PassportId).Distinct().ToList();
-            var insertItemIds = currentTunnelMaterials.Select(x => x.InsertItemId).Distinct().ToList();
-            var supportStepIds = currentTunnelMaterials.Select(x => x.SupportStepId).Distinct().ToList();
-
-            tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => targetHardnessIds.Contains(x.HardnessId)
-                    && processIds.Contains(x.ProcessId)
-                    && passportIds.Contains(x.PassportId)
-                    && insertItemIds.Contains(x.InsertItemId)
-                    && supportStepIds.Contains(x.SupportStepId))
-                .Include(x => x.MaterialUnitPriceAssignmentCodes)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-        }
-
-        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(plannedMaterialCosts, tunnelMaterials);
+        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+            plannedMaterialCosts,
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
     }
 
     private static ActualOutputDto CalculateOutputDto(
@@ -263,7 +274,12 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
         Dictionary<Guid, double> plannedMaterialCosts)
     {
         var adjTotalPrice = 0.0;
-        if (plannedOutputs.TryGetValue((actualOutput.StartMonth, actualOutput.EndMonth), out var plannedOutput))
+        var plannedOutput = plannedOutputs.Values
+            .Where(o => o.StartMonth <= actualOutput.StartMonth && o.EndMonth >= actualOutput.EndMonth)
+            .OrderBy(o => o.StartMonth)
+            .ThenBy(o => o.EndMonth)
+            .FirstOrDefault();
+        if (plannedOutput != null)
         {
             // Planned Material Cost
             var plannedMaterialCost = plannedOutput.PlannedMaterialCostId.HasValue
@@ -273,13 +289,19 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             // Planned Maintain Cost
             var plannedMaintainCost = plannedOutput.PlannedMaintainCostId.HasValue &&
                 plannedMaintainFactors.TryGetValue(plannedOutput.PlannedMaintainCostId.Value, out var pMaintainFactors)
-                ? pMaintainFactors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor)
+                ? pMaintainFactors.Sum(f =>
+                        f.Quantity *
+                        f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
+                        f.K6AdjustmentFactorValue *
+                        f.AdjustmentFactor) *
+                    NormalizeTrimmingCoefficient(pMaintainFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
                 : 0;
 
             // Planned Electricity Cost
             var plannedElectricityCost = plannedOutput.PlannedElectricityCostId.HasValue &&
                 plannedElectricityFactors.TryGetValue(plannedOutput.PlannedElectricityCostId.Value, out var pElecFactors)
                 ? pElecFactors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor)
+                    * NormalizeTrimmingCoefficient(pElecFactors.FirstOrDefault()?.TrimmingCoefficient ?? 1)
                 : 0;
 
             adjTotalPrice = actualOutput.ProductionMeters * (plannedMaterialCost + plannedMaintainCost + plannedElectricityCost);
@@ -292,6 +314,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
             StartMonth = actualOutput.StartMonth,
             EndMonth = actualOutput.EndMonth,
             ProductionMeters = actualOutput.ProductionMeters,
+            PlanAshContent = plannedOutput?.PlanAshContent ?? 0,
             TotalPrice = 0,
             AdjTotalPrice = adjTotalPrice
         };
@@ -305,6 +328,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
+        public double PlanAshContent { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }
@@ -313,6 +337,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     private class MaintainFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double K6AdjustmentFactorValue { get; set; }
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
@@ -322,8 +347,19 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
     private class PlannedElectricityFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double CostPerMetre { get; set; }
         public double AdjustmentFactor { get; set; }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
     #endregion
 }

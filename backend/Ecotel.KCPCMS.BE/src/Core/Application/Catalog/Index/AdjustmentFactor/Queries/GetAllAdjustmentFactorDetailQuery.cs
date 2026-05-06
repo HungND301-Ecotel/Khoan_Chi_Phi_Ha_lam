@@ -1,8 +1,10 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
+using Domain.Common.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -24,6 +26,7 @@ public class GetAllAdjustmentFactorDetailQueryHandler(IUnitOfWork unitOfWork)
             include: a => a
             .Include(a => a.AdjustmentFactorDescriptions)
             .Include(a => a.ProcessGroup)
+            .Include(a => a.FixedKey)
             .Include(a => a.Code!),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -36,9 +39,12 @@ public class GetAllAdjustmentFactorDetailQueryHandler(IUnitOfWork unitOfWork)
         return adjustmentFactors.Select(a => new AdjustmentFactorDetailDto
         {
             Id = a.Id,
-            Code = a.Code?.Value ?? "",
+            Code = a.FixedKey?.Key ?? a.Code?.Value ?? "",
+            FixedKeyId = a.FixedKeyId,
+            FixedKeyKey = a.FixedKey?.Key ?? a.Code?.Value ?? "",
+            FixedKeyType = a.FixedKey?.Type ?? FixedKeyType.None,
             Name = a.Name,
-            Type = a.Type,
+            Type = (a.FixedKey?.Type ?? FixedKeyType.None).ToAdjustmentFactorType(),
             ProcessGroupId = a.ProcessGroupId,
             ProcessGroupName = a.ProcessGroup?.Name ?? "",
             AdjustmentFactorDescriptions = a.AdjustmentFactorDescriptions.Select(ad => new ShortAdjustmentFactorDescriptionDto
@@ -48,6 +54,6 @@ public class GetAllAdjustmentFactorDetailQueryHandler(IUnitOfWork unitOfWork)
                 MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue,
                 ElectricityAdjustmentValue = ad.ElectricityAdjustmentValue
             }).ToList()
-        }).OrderBy(a => a.Code).ToList();
+        }).OrderByCodeNatural(a => a.FixedKeyKey ?? a.Code).ToList();
     }
 }

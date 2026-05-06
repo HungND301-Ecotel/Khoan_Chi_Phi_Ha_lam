@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,8 +14,10 @@ namespace Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 public record CreateMaintainUnitPriceEquipmentCommand(IList<CreateMaintainUnitPriceEquipmentDto> CreateModel) : IRequest<bool>;
 
 public class CreateMaintainUnitPriceEquipmentCommandHandler(
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateMaintainUnitPriceEquipmentCommand, bool>
+    IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<CreateMaintainUnitPriceEquipmentCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _maintainUnitPricRepository = unitOfWork.GetRepository<MaintainUnitPrice>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
@@ -23,6 +26,25 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
         if (request.CreateModel is null || !request.CreateModel.Any())
         {
             throw new BadRequestException(CustomResponseMessage.NoEquipmentCostsProvided);
+        }
+
+        foreach (var model in request.CreateModel)
+        {
+            var normalizedStartMonth = new DateOnly(model.StartMonth.Year, model.StartMonth.Month, 1);
+            var normalizedEndMonth = new DateOnly(model.EndMonth.Year, model.EndMonth.Month, 1);
+
+            var existed = await _maintainUnitPricRepository.GetFirstOrDefaultAsync(
+                predicate: m =>
+                    m.EquipmentId == model.EquipmentId &&
+                    m.Type == model.Type &&
+                    m.StartMonth <= normalizedEndMonth &&
+                    m.EndMonth >= normalizedStartMonth,
+                disableTracking: true);
+
+            if (existed != null)
+            {
+                throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+            }
         }
 
         var equipmentIds = request.CreateModel.Select(c => c.EquipmentId);
@@ -80,6 +102,8 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
 
         await _maintainUnitPricRepository.InsertAsync(resultEntities);
         await unitOfWork.SaveChangesAsync();
+        cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
 
         return true;
     }

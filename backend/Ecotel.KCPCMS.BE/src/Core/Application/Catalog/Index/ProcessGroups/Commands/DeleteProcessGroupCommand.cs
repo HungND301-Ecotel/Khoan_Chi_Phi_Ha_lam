@@ -24,7 +24,10 @@ public class DeleteProcessGroupCommandHandler(IUnitOfWork unitOfWork) : IRequest
         try
         {
             _processGroupRepository.Delete(existProcessGroup);
-            _codeRepository.Delete(existProcessGroup.Code);
+            if (existProcessGroup.Code != null)
+            {
+                _codeRepository.Delete(existProcessGroup.Code);
+            }
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
 

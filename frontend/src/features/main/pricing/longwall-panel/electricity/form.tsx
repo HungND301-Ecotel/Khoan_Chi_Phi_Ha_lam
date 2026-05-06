@@ -35,8 +35,10 @@ export function ElectricityForm({
 	data,
 	row,
 	onSuccess,
+	isDuplicate = false,
 }: ActionDialogProps<LongwallElectricity> & {
 	onSuccess?: () => Promise<void> | void;
+	isDuplicate?: boolean;
 }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -57,6 +59,10 @@ export function ElectricityForm({
 			try {
 				const response = await api.pagging<Equipment>(
 					API.CATALOG.EQUIPMENT.LIST,
+					{
+						ignorePagination: true,
+						...(row?.startMonth && { date: row.startMonth }),
+					},
 				);
 				setEquipments(response.result.data || []);
 			} catch (error) {
@@ -165,7 +171,7 @@ export function ElectricityForm({
 			const processedValues = {
 				...values,
 			};
-			if (row) {
+			if (row && !isDuplicate) {
 				// UPDATE - single record
 				const updatePayload = {
 					id: row.id,
@@ -192,7 +198,7 @@ export function ElectricityForm({
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row ? 'cập nhật' : 'tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row && !isDuplicate ? 'cập nhật' : 'tạo mới'} thành công.`,
 			);
 			await onSuccess?.();
 			await data?.refresh();
@@ -230,12 +236,12 @@ export function ElectricityForm({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}
-				disabled={!!row}
+				disabled={!!row && !isDuplicate}
 			/>
 
 			<ElectricityCost form={form} values={equipments} />
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
@@ -509,12 +515,14 @@ function ElectricityCostRow({
 						<TooltipTrigger asChild>
 							<Input
 								readOnly
-								value={formatNumber(Math.round(electricityCostPerTon))}
+								value={formatNumber(electricityCostPerTon)}
 								className='read-only:bg-transparent'
 							/>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>{formatNumber(Math.round(electricityCostPerTon))}</p>
+							<p>
+								{formatNumber(electricityCostPerTon)}
+							</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>

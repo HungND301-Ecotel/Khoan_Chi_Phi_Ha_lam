@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.Equipments.Queries;
+
 public record GetEquipmentByIdQuery(DefaultIdType Id) : IRequest<EquipmentDetailDto>;
 
 public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetEquipmentByIdQuery, EquipmentDetailDto>
@@ -25,9 +26,6 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 .Include(c => c.Code)
                 .Include(c => c.EquipmentParts)
                     .ThenInclude(c => c.Part)
-                    .ThenInclude(c => c.Code)
-                .Include(c => c.EquipmentProcessGroups)
-                    .ThenInclude(c => c.ProcessGroup)
                     .ThenInclude(c => c.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -40,20 +38,6 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
             Costs = detail.Costs.Adapt<List<ElectricityCostDto>>(),
-            ProcessGroups = detail.EquipmentProcessGroups
-                .Where(epg => epg.ProcessGroup?.Code != null)
-                .Select(epg => new EquipmentProcessGroupDto
-                {
-                    Id = epg.ProcessGroupId,
-                    Code = epg.ProcessGroup!.Code!.Value,
-                    Name = epg.ProcessGroup.Name
-                })
-                .OrderBy(x => x.Code)
-                .ThenBy(x => x.Name)
-                .ToList(),
-            ProcessGroupId = detail.EquipmentProcessGroups
-                .Select(epg => (Guid?)epg.ProcessGroupId)
-                .FirstOrDefault(),
             PartIds = detail.EquipmentParts
                 .Select(ep => ep.PartId)
                 .Distinct()
@@ -64,7 +48,8 @@ public class GetEquipmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHand
                 {
                     Id = ep.PartId,
                     Code = ep.Part!.Code!.Value,
-                    Name = ep.Part.Name
+                    Name = ep.Part.Name,
+                    PartType = ep.Part.Type
                 })
                 .OrderBy(p => p.Code)
                 .ThenBy(p => p.Name)

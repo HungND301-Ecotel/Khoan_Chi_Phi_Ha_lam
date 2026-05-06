@@ -2,12 +2,20 @@ using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.AcceptanceReport;
 
+public record AcceptanceReportCategoryAllocationDto
+{
+    public required Guid ProcessGroupId { get; init; }
+    public required double Quantity { get; init; }
+    public List<Guid> EquipmentIds { get; init; } = new();
+}
+
 public record CreateAcceptanceReportItemDto
 {
     public Guid? AcceptanceReportItemId { get; init; }
 
     public Guid? MaterialId { get; init; }
-    public Guid? MaintainUnitPriceEquipmentId { get; init; }
+    public Guid? PartId { get; init; }
+    public required double UsageTime { get; init; }
 
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
@@ -24,6 +32,7 @@ public record CreateAcceptanceReportItemDto
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public required double MaterialsIncludedInContractRevenueQuantity { get; init; }
+    public List<AcceptanceReportCategoryAllocationDto>? CategoryAllocations { get; init; }
 
     // Bổ sung chi phí
     public required AdditionalCost AdditionalCost { get; init; }

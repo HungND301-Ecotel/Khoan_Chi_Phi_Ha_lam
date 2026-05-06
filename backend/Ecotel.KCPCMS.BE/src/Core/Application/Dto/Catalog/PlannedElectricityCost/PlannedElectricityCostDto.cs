@@ -6,6 +6,7 @@ public class CreatePlannedElectricityCostDto
 {
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<CreatePlannedElectricityCostAdjFactorDto> Costs { get; set; } = new List<CreatePlannedElectricityCostAdjFactorDto>();
 }
 
@@ -13,7 +14,7 @@ public class CreatePlannedElectricityCostAdjFactorDto
 {
     public Guid ElectricityUnitPriceEquipmentId { get; set; }
     public decimal Quantity { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedElectricityCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedElectricityCostAdjustmentFactorValueDto>();
 }
 
 public class UpdatePlannedElectricityCostDto
@@ -21,6 +22,7 @@ public class UpdatePlannedElectricityCostDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<UpdatePlannedElectricityCostAdjFactorDto> Costs { get; set; } = new List<UpdatePlannedElectricityCostAdjFactorDto>();
 }
 
@@ -28,7 +30,14 @@ public class UpdatePlannedElectricityCostAdjFactorDto
 {
     public Guid ElectricityUnitPriceEquipmentId { get; set; }
     public decimal Quantity { get; set; }
-    public IList<Guid> AdjustmentFactorDescriptions { get; set; } = new List<Guid>();
+    public IList<PlannedElectricityCostAdjustmentFactorValueDto> AdjustmentFactorDescriptions { get; set; } = new List<PlannedElectricityCostAdjustmentFactorValueDto>();
+}
+
+public class PlannedElectricityCostAdjustmentFactorValueDto
+{
+    public Guid? AdjustmentFactorDescriptionId { get; set; }
+    public Guid? AdjustmentFactorId { get; set; }
+    public double? CustomValue { get; set; }
 }
 
 public class PlannedElectricityCostDetailDto
@@ -36,6 +45,7 @@ public class PlannedElectricityCostDetailDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double TrimmingCoefficient { get; set; } = 1;
     public IList<PlannedElectricityCostAdjDto> Costs { get; set; } = new List<PlannedElectricityCostAdjDto>();
 }
 

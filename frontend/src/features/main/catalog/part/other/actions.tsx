@@ -27,7 +27,8 @@ export type OtherPartDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureId: string;
-	unitOfMeasureName: string;	costs: Array<{
+	unitOfMeasureName: string;
+	costs: Array<{
 		startMonth: string;
 		endMonth: string;
 		costType: number;
@@ -36,7 +37,21 @@ export type OtherPartDetail = {
 	}>;
 };
 
-export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
+type OtherPartFormProps = ActionDialogProps<OtherPart> & {
+	isDuplicate?: boolean;
+	defaultCode?: string;
+	successLabel?: string;
+	onCreated?: (values: OtherPartSchema) => Promise<void> | void;
+};
+
+export function OtherPartForm({
+	data,
+	row,
+	isDuplicate = false,
+	defaultCode,
+	successLabel,
+	onCreated,
+}: OtherPartFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -85,11 +100,20 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 		]);
 
 		promises.then(() => {
-			if (!row) return;
+			if (!row) {
+				if (defaultCode) {
+					form.reset({
+						...OTHER_PART_SCHEMA_DEFAULT,
+						code: defaultCode,
+					});
+				}
+				return;
+			}
 			api.get<OtherPartDetail>(API.CATALOG.PART.DETAIL(row.id)).then((res) => {
 				const { costs, ...otherPart } = res.result;
 				form.reset({
 					...otherPart,
+					code: isDuplicate ? '' : otherPart.code,
 					costs: costs?.length
 						? costs.map((cost) => ({
 								startMonth: cost.startMonth.substring(0, 10),
@@ -101,7 +125,7 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				});
 			});
 		});
-	}, [row, form]);
+	}, [row, form, isDuplicate, defaultCode]);
 
 	const handleSubmit = async (values: OtherPartSchema) => {
 		try {
@@ -109,7 +133,7 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				...values,
 				partType: 2,
 			};
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PART.UPDATE, {
 					id: row?.id,
 					...processedValues,
@@ -118,9 +142,11 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				await api.post(API.CATALOG.PART.CREATE, processedValues);
 			}
 
+			await onCreated?.(processedValues);
+
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${successLabel ?? breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -156,7 +182,6 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				}))}
 			/>
 
-
 			<FormArray control={form.control} name='costs' label='Đơn giá vật tư (đ)'>
 				{(index) => (
 					<div className='flex w-full gap-4'>
@@ -176,8 +201,8 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá vật tư (đ)'
-								placeholder='Nhập đơn giá vật tư (đ)'
+								label='Đơn giá kế hoạch (đ)'
+								placeholder='Nhập đơn giá kế hoạch (đ)'
 							/>
 						</div>
 						<div className='flex-1'>
@@ -192,11 +217,7 @@ export function OtherPartForm({ data, row }: ActionDialogProps<OtherPart>) {
 				)}
 			</FormArray>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
-
-
-
-

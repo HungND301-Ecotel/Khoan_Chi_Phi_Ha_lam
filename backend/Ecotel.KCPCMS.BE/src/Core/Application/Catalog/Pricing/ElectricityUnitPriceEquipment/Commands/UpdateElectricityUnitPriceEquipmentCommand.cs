@@ -19,6 +19,7 @@ public class UpdateElectricityUnitPriceEquipmentCommandHandler(IUnitOfWork unitO
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
 
     public async Task<bool> Handle(UpdateElectricityUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
     {
@@ -38,6 +39,11 @@ public class UpdateElectricityUnitPriceEquipmentCommandHandler(IUnitOfWork unitO
             throw new BadRequestException("This command can only update Tunnel Electricity Unit Price Equipment.");
         }
 
+        if (existEntity.ElectricityType != request.UpdateModel.Type)
+        {
+            throw new BadRequestException("Electricity unit price type does not match update payload.");
+        }
+
         tunnelEntity.Update(
             equipmentId: equipment.Id,
             monthlyElectricityCost: request.UpdateModel.MonthlyElectricityCost,
@@ -49,6 +55,7 @@ public class UpdateElectricityUnitPriceEquipmentCommandHandler(IUnitOfWork unitO
         await unitOfWork.SaveChangesAsync();
 
         cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
 
         return true;
     }

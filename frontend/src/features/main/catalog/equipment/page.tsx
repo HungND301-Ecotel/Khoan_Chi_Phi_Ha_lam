@@ -65,6 +65,7 @@ function MainCatalogEquipmentPage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <EquipmentForm {...props} />}
+			onDuplicate={(props) => <EquipmentForm {...props} isDuplicate />}
 			onUpdate={(props) => <EquipmentForm {...props} />}
 			onExpand={(props) => <EquipmentExpand {...props} />}
 			onDelete={handleDelete}
@@ -96,7 +97,7 @@ function EquipmentExpand({ row }: ActionDialogProps<Equipment>) {
 				hasActions={false}
 				hasPagination={false}
 				hasSort={false}
-				hasIndex={false}
+				hasIndex={true}
 				compact={true}
 			/>
 		</div>

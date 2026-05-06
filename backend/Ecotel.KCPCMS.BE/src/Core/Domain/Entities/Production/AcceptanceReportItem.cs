@@ -1,7 +1,6 @@
 ﻿using Domain.Common.Contracts;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Domain.Entities.Production;
@@ -10,9 +9,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
-    public Guid? MaintainUnitPriceEquipmentId { get; protected set; }
+    public Guid? PartId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
+    public double UsageTime { get; protected set; }
 
     public ItemType ItemType { get; protected set; }
     public Guid? ProductionOrderId { get; protected set; }
@@ -44,7 +44,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual MaintainUnitPriceEquipment? MaintainUnitPriceEquipment { get; protected set; }
+    public virtual Part? Part { get; protected set; }
     public virtual Equipment? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
@@ -63,6 +63,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     private IList<AcceptanceReportItemShippedDetail> _shippedDetails = new List<AcceptanceReportItemShippedDetail>();
     public virtual IReadOnlyCollection<AcceptanceReportItemShippedDetail> ShippedDetails => _shippedDetails.AsReadOnly();
+
+    private IList<AcceptanceReportItemCategoryAllocation> _categoryAllocations = new List<AcceptanceReportItemCategoryAllocation>();
+    public virtual IReadOnlyCollection<AcceptanceReportItemCategoryAllocation> CategoryAllocations => _categoryAllocations.AsReadOnly();
 
     private IList<AcceptanceReportItemLog> _acceptanceReportItemLogs = new List<AcceptanceReportItemLog>();
     public virtual IReadOnlyCollection<AcceptanceReportItemLog> AcceptanceReportItemLogs => _acceptanceReportItemLogs.AsReadOnly();
@@ -104,7 +107,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             throw new ArgumentException(CustomResponseMessage.MaterialIdRequired);
         }
 
-        if ((materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None) && processGroupId == null)
+        if (partId != null &&
+            materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None &&
+            processGroupId == null)
         {
             throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
         }
@@ -183,11 +188,100 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         }
     }
 
+    private static void ValidateUsageTime(double usageTime)
+    {
+        if (usageTime < 0)
+        {
+            throw new ArgumentException("Thời gian sử dụng không được âm");
+        }
+    }
+
+    private static void ValidateCategoryAllocations(
+        Guid? partId,
+        Guid? processGroupId,
+        ProductionReference categoryProductionReference,
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        double materialsIncludedInContractRevenueQuantity,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations)
+    {
+        var hasAllocations = categoryAllocations != null && categoryAllocations.Any();
+        var requiresAllocation = partId.HasValue
+            && materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None;
+
+        if (!hasAllocations)
+        {
+            if (requiresAllocation && processGroupId == null)
+            {
+                throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
+            }
+
+            return;
+        }
+
+        if (!requiresAllocation)
+        {
+            throw new ArgumentException("Chỉ phụ tùng thuộc vật tư tính vào doanh thu khoán mới được phân bổ theo nhóm công đoạn");
+        }
+
+        if (categoryAllocations.Any(x => x.ProcessGroupId == Guid.Empty))
+        {
+            throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
+        }
+
+        if (categoryAllocations.Any(x => x.Quantity < 0))
+        {
+            throw new ArgumentException("Số lượng phân bổ theo nhóm công đoạn không được âm");
+        }
+
+        var duplicateProcessGroup = categoryAllocations
+            .GroupBy(x => x.ProcessGroupId)
+            .Any(g => g.Count() > 1);
+        if (duplicateProcessGroup)
+        {
+            throw new ArgumentException("Không được trùng nhóm công đoạn trong cùng một dòng vật tư");
+        }
+
+        var totalAllocationQuantity = categoryAllocations.Sum(x => x.Quantity);
+        if (Math.Abs(totalAllocationQuantity - materialsIncludedInContractRevenueQuantity) >= 0.01)
+        {
+            throw new ArgumentException("Tổng số lượng phân bổ theo nhóm công đoạn phải bằng số lượng vật tư tính vào doanh thu khoán");
+        }
+    }
+
+    private void SyncCategoryAllocations(
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations,
+        Guid? fallbackProcessGroupId,
+        Guid? fallbackEquipmentId)
+    {
+        _categoryAllocations.Clear();
+
+        if (categoryAllocations != null && categoryAllocations.Any())
+        {
+            foreach (var allocation in categoryAllocations)
+            {
+                _categoryAllocations.Add(AcceptanceReportItemCategoryAllocation.Create(
+                    Id,
+                    allocation.ProcessGroupId,
+                    allocation.Quantity,
+                    allocation.EquipmentIds));
+            }
+
+            var firstAllocation = _categoryAllocations.First();
+            ProcessGroupId = firstAllocation.ProcessGroupId;
+            EquipmentId = firstAllocation.Equipments.FirstOrDefault()?.EquipmentId;
+            return;
+        }
+
+        ProcessGroupId = fallbackProcessGroupId;
+        EquipmentId = fallbackEquipmentId;
+    }
+
     public static AcceptanceReportItem Create(
         Guid acceptanceReportId,
         Guid? processGroupId,
         Guid? materialId,
-        Guid? maintainUnitPriceEquipmentId,
+        Guid? partId,
+        double usageTime,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -202,20 +296,23 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         double assetMaterialQuantity,
         IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
-        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
+        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations = null)
     {
-        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, categoryProductionReference, additionalCostProductionReference,
+        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
+        ValidateUsageTime(usageTime);
+        ValidateCategoryAllocations(partId, processGroupId, categoryProductionReference, materialsIncludedInContractRevenue,
+            materialsIncludedInContractRevenueQuantity, categoryAllocations);
 
         var item = new AcceptanceReportItem
         {
             AcceptanceReportId = acceptanceReportId,
-            ProcessGroupId = processGroupId,
             MaterialId = materialId,
-            MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
-            EquipmentId = categoryProductionReference.EquipmentId,
+            PartId = partId,
+            UsageTime = usageTime,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
             AdditionalCost = additionalCost,
@@ -230,6 +327,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId,
             AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId,
         };
+
+        item.SyncCategoryAllocations(categoryAllocations, processGroupId, categoryProductionReference.EquipmentId);
 
         foreach (var detail in issuedDetails)
         {
@@ -256,7 +355,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public void Update(
         Guid? processGroupId,
         Guid? materialId,
-        Guid? maintainUnitPriceEquipmentId,
+        Guid? partId,
+        double usageTime,
         ItemType itemType,
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
@@ -271,17 +371,20 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         double assetMaterialQuantity,
         IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
-        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities)
+        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations = null)
     {
-        ValidateIds(processGroupId, materialId, maintainUnitPriceEquipmentId, categoryProductionReference, additionalCostProductionReference,
+        ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
 
         ValidateQuantityDetails(issuedDetails, shippedDetails, quotaBasedMaterialQuantities, quotaBasedMaterial);
+        ValidateUsageTime(usageTime);
+        ValidateCategoryAllocations(partId, processGroupId, categoryProductionReference, materialsIncludedInContractRevenue,
+            materialsIncludedInContractRevenueQuantity, categoryAllocations);
 
-        ProcessGroupId = processGroupId;
         MaterialId = materialId;
-        MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId;
-        EquipmentId = categoryProductionReference.EquipmentId;
+        PartId = partId;
+        UsageTime = usageTime;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;
         AdditionalCost = additionalCost;
@@ -295,6 +398,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProductionOrderId = categoryProductionReference.ProductionOrderId;
         AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId;
         AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId;
+
+        SyncCategoryAllocations(categoryAllocations, processGroupId, categoryProductionReference.EquipmentId);
 
         // Clear và rebuild toàn bộ details (replace strategy)
         _issuedDetails.Clear();
@@ -318,5 +423,11 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
                     AcceptanceReportItemQuotaBasedMaterialQuantity.Create(Id, detail.Type, detail.Quantity));
             }
         }
+    }
+
+    public void UpdateUsageTime(double usageTime)
+    {
+        ValidateUsageTime(usageTime);
+        UsageTime = usageTime;
     }
 }

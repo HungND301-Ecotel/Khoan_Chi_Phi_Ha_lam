@@ -30,10 +30,28 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 
+const LONGWALL_TON_CONVERSION_FACTOR = 1000;
+
+function calculateRegularRepairRates(
+	quantity: number,
+	replacementTimeStandard: number,
+	averageMonthlyTunnelProduction: number,
+) {
+	return quantity / replacementTimeStandard / averageMonthlyTunnelProduction;
+}
+
+function calculateLongwallRegularRepairCost(
+	partCost: number,
+	regularRepairRates: number,
+) {
+	return (partCost * regularRepairRates) / LONGWALL_TON_CONVERSION_FACTOR;
+}
+
 export function LongwallPanelForm({
 	data,
 	row,
-}: ActionDialogProps<LongwallPanel>) {
+	isDuplicate = false,
+}: ActionDialogProps<LongwallPanel> & { isDuplicate?: boolean }) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -47,10 +65,12 @@ export function LongwallPanelForm({
 		defaultValues: {
 			...LONGWALL_PANEL_FORM_DEFAULT,
 			startMonth: new Date().toISOString().substring(0, 10),
+			endMonth: new Date().toISOString().substring(0, 10),
 		},
 	});
 
 	const watchedEquipmentIds = form.watch('equipmentIds');
+	const watchedSelectedPartIds = form.watch('selectedPartIds');
 	const watchedCosts = form.watch('costs');
 	const watchedStartMonth = form.watch('startMonth');
 
@@ -81,20 +101,41 @@ export function LongwallPanelForm({
 						maintainUnitPriceEquipment,
 						otherMaterialValue,
 					} = res.result;
+					const costs = syncCostsWithCurrentPartLinks(
+						maintainUnitPriceEquipment
+							.filter((cost: any) => (cost.partType ?? 1) === 1)
+							.map((cost: any) => ({
+								partId: cost.partId,
+								quantity: cost.quantity,
+								replacementTimeStandard: cost.replacementTimeStandard,
+								averageMonthlyTunnelProduction:
+									cost.averageMonthlyTunnelProduction,
+								equipmentId: cost.equipmentId,
+							})),
+						assets.result.data,
+						[equipmentId],
+						Array.from(
+							new Set(
+								maintainUnitPriceEquipment
+									.filter((cost: any) => (cost.partType ?? 1) === 1)
+									.map((cost: any) => cost.partId),
+							),
+						),
+					);
 
 					form.reset({
 						type: 2,
 						startMonth: startMonth.substring(0, 10),
 						endMonth: res.result.endMonth.substring(0, 10),
 						equipmentIds: [equipmentId],
-						costs: maintainUnitPriceEquipment.map((cost: any) => ({
-							partId: cost.partId,
-							quantity: cost.quantity,
-							replacementTimeStandard: cost.replacementTimeStandard,
-							averageMonthlyTunnelProduction:
-								cost.averageMonthlyTunnelProduction,
-							equipmentId: cost.equipmentId,
-						})),
+						selectedPartIds: Array.from(
+							new Set(
+								maintainUnitPriceEquipment
+									.filter((cost: any) => (cost.partType ?? 1) === 1)
+									.map((cost: any) => cost.partId),
+							),
+						),
+						costs,
 						otherMaterialValues: { [equipmentId]: otherMaterialValue },
 					});
 				});
@@ -102,7 +143,7 @@ export function LongwallPanelForm({
 	}, [form, row]);
 
 	useEffect(() => {
-		if (!watchedStartMonth || row) return;
+		if (!watchedStartMonth || (row && !isDuplicate)) return;
 
 		const promises = Promise.all([
 			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
@@ -119,59 +160,48 @@ export function LongwallPanelForm({
 			setEquipments(equipmentsRes.result.data);
 			setParts(partsRes.result.data);
 		});
-	}, [watchedStartMonth, row]);
+	}, [isDuplicate, watchedStartMonth, row]);
 
 	useEffect(() => {
-		if (parts.length === 0 || !Array.isArray(watchedEquipmentIds)) return;
+		if (
+			parts.length === 0 ||
+			!Array.isArray(watchedEquipmentIds) ||
+			!Array.isArray(watchedSelectedPartIds)
+		)
+			return;
 
-		const existingEquipmentIdsInCosts = form
-			.getValues('costs')
-			.map(
-				(cost: {
-					partId: string;
-					replacementTimeStandard: number;
-					quantity: number;
-					averageMonthlyTunnelProduction: number;
-					equipmentId: string;
-				}) => cost.equipmentId,
-			);
-
-		const equipmentIdsToAdd = watchedEquipmentIds.filter(
-			(id) => !existingEquipmentIdsInCosts.includes(id),
+		const availablePartIds = new Set(
+			getLinkedParts(parts, watchedEquipmentIds).map((part) => part.id),
+		);
+		const normalizedSelectedPartIds = watchedSelectedPartIds.filter((partId) =>
+			availablePartIds.has(partId),
 		);
 
-		const newCosts = parts.flatMap((part) =>
-			(part.equipmentIds ?? [])
-				.filter((equipmentId) => equipmentIdsToAdd.includes(equipmentId))
-				.map((equipmentId) => ({
-					partId: part.id,
-					replacementTimeStandard: NaN,
-					quantity: NaN,
-					averageMonthlyTunnelProduction: NaN,
-					equipmentId,
-				})),
-		);
+		if (
+			normalizedSelectedPartIds.length !== watchedSelectedPartIds.length ||
+			normalizedSelectedPartIds.some(
+				(partId, index) => partId !== watchedSelectedPartIds[index],
+			)
+		) {
+			form.setValue('selectedPartIds', normalizedSelectedPartIds, {
+				shouldValidate: false,
+			});
+		}
 
-		const costsToKeep = form
-			.getValues('costs')
-			.filter(
-				(cost: {
-					partId: string;
-					replacementTimeStandard: number;
-					quantity: number;
-					averageMonthlyTunnelProduction: number;
-					equipmentId: string;
-				}) => watchedEquipmentIds.includes(cost.equipmentId),
-			);
-
-		const costs = [...costsToKeep, ...newCosts].sort((a, b) =>
-			a.equipmentId.localeCompare(b.equipmentId),
+		const existingCosts = form.getValues('costs');
+		const costs = syncCostsWithCurrentPartLinks(
+			existingCosts,
+			parts,
+			watchedEquipmentIds,
+			normalizedSelectedPartIds,
 		);
 
 		form.setValue('costs', costs, {
 			shouldValidate: false,
 		});
-	}, [form, parts, watchedEquipmentIds]);
+	}, [form, parts, watchedEquipmentIds, watchedSelectedPartIds]);
+
+	const selectedPartOptions = getPartOptions(parts, watchedEquipmentIds);
 
 	const handleSubmit = async (values: LongwallPanelFormSchema) => {
 		try {
@@ -181,8 +211,9 @@ export function LongwallPanelForm({
 
 			const { costs, startMonth: startMonth, equipmentIds } = processedValues;
 
-			if (row) {
+			if (row && !isDuplicate) {
 				const body = {
+					id: row.id,
 					equipmentId: row.equipmentId,
 					startMonth: startMonth,
 					endMonth: processedValues.endMonth,
@@ -284,7 +315,16 @@ export function LongwallPanelForm({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}
-				disabled={!!row}
+				disabled={!!row && !isDuplicate}
+			/>
+
+			<FormMultiSelect
+				control={form.control}
+				name='selectedPartIds'
+				label='Phụ tùng'
+				placeholder='Chọn phụ tùng'
+				options={selectedPartOptions}
+				disabled={watchedEquipmentIds.length === 0}
 			/>
 
 			{watchedCosts.length > 0 && (
@@ -293,9 +333,79 @@ export function LongwallPanelForm({
 				</div>
 			)}
 
-			<DataTableEditConfirm isEdit={false} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
+}
+function syncCostsWithCurrentPartLinks(
+	costs: LongwallPanelFormSchema['costs'],
+	parts: Part[],
+	equipmentIds: string[],
+	selectedPartIds: string[],
+): LongwallPanelFormSchema['costs'] {
+	const selectedPartIdSet = new Set(selectedPartIds);
+	const linkedParts = parts.filter((part) => selectedPartIdSet.has(part.id));
+	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
+	const partOrder = new Map(linkedParts.map((part, index) => [part.id, index]));
+	const partEquipmentMap = new Map(
+		linkedParts.map((part) => [part.id, new Set(part.equipmentIds ?? [])]),
+	);
+
+	const filteredCosts = costs.filter((cost) => {
+		if (!equipmentOrder.has(cost.equipmentId)) return false;
+		if (!selectedPartIdSet.has(cost.partId)) return false;
+		const linkedEquipmentIds = partEquipmentMap.get(cost.partId);
+		return !!linkedEquipmentIds?.has(cost.equipmentId);
+	});
+
+	const existingCostKeys = new Set(
+		filteredCosts.map((cost) => `${cost.equipmentId}-${cost.partId}`),
+	);
+
+	const newCosts = linkedParts.flatMap((part) =>
+		(part.equipmentIds ?? [])
+			.filter((equipmentId) => equipmentOrder.has(equipmentId))
+			.filter(
+				(equipmentId) => !existingCostKeys.has(`${equipmentId}-${part.id}`),
+			)
+			.map((equipmentId) => ({
+				partId: part.id,
+				replacementTimeStandard: NaN,
+				quantity: NaN,
+				averageMonthlyTunnelProduction: NaN,
+				equipmentId,
+			})),
+	);
+
+	return [...filteredCosts, ...newCosts].sort((a, b) => {
+		const equipmentCompare =
+			(equipmentOrder.get(a.equipmentId) ?? Number.MAX_SAFE_INTEGER) -
+			(equipmentOrder.get(b.equipmentId) ?? Number.MAX_SAFE_INTEGER);
+		if (equipmentCompare !== 0) return equipmentCompare;
+
+		return (
+			(partOrder.get(a.partId) ?? Number.MAX_SAFE_INTEGER) -
+			(partOrder.get(b.partId) ?? Number.MAX_SAFE_INTEGER)
+		);
+	});
+}
+
+function getLinkedParts(parts: Part[], equipmentIds: string[]) {
+	const equipmentIdSet = new Set(equipmentIds);
+	return parts.filter((part) =>
+		(part.equipmentIds ?? []).some((equipmentId) =>
+			equipmentIdSet.has(equipmentId),
+		),
+	);
+}
+
+function getPartOptions(parts: Part[], equipmentIds: string[]) {
+	return getLinkedParts(parts, equipmentIds)
+		.map((part) => ({
+			label: `${part.code} - ${part.name}`,
+			value: part.id,
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label, 'vi'));
 }
 
 function GroupedLongwallPanelCosts({
@@ -332,7 +442,9 @@ function GroupedLongwallPanelCosts({
 							label={`${group.equipmentCode} - ${group.equipmentName} - ${formatNumber(group.totalAmount)} (đ)`}
 						/>
 						{group.indices.map((index) => (
-							<FormRow key={index}>
+							<FormRow
+								key={`${group.equipmentId}-${costs[index]?.partId ?? 'unknown'}-${index}`}
+							>
 								<PricingLongwallPanelCosts index={index} parts={parts} />
 							</FormRow>
 						))}
@@ -399,13 +511,16 @@ function PricingLongwallPanelCosts({
 		? watchedReplacementTimeStandard
 		: 0;
 
-	const regularRepairRates =
-		watchedQuantity /
-		effectiveReplacementTimeStandard /
-		watchedAverageMonthlyTunnelProduction;
+	const regularRepairRates = calculateRegularRepairRates(
+		watchedQuantity,
+		effectiveReplacementTimeStandard,
+		watchedAverageMonthlyTunnelProduction,
+	);
 
-	const regularRepairCost =
-		(part?.costAmount ?? 0) * Number(regularRepairRates);
+	const regularRepairCost = calculateLongwallRegularRepairCost(
+		part?.costAmount ?? 0,
+		Number(regularRepairRates),
+	);
 
 	const handleRemove = () => {
 		const currentCosts = getValues('costs');
@@ -501,7 +616,7 @@ function PricingLongwallPanelCosts({
 				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
-					value={formatNumber(Math.round(regularRepairCost) || 0)}
+					value={formatNumber(regularRepairCost || 0)}
 					className={`read-only:bg-transparent ${isNaN(regularRepairCost) ? 'border-destructive' : ''}`}
 					title={isNaN(regularRepairCost) ? 'Vui lòng nhập dữ liệu hợp lệ' : ''}
 				/>
@@ -589,12 +704,16 @@ function groupCostsByEquipment(
 				? cost.replacementTimeStandard
 				: 0;
 
-			const regularRepairRates =
-				cost.quantity /
-				replacementTimeStandard /
-				cost.averageMonthlyTunnelProduction;
+			const regularRepairRates = calculateRegularRepairRates(
+				cost.quantity,
+				replacementTimeStandard,
+				cost.averageMonthlyTunnelProduction,
+			);
 
-			const regularRepairCost = part.costAmount * Number(regularRepairRates);
+			const regularRepairCost = calculateLongwallRegularRepairCost(
+				part.costAmount,
+				Number(regularRepairRates),
+			);
 
 			if (!isNaN(regularRepairCost)) {
 				totalAmount += regularRepairCost;
@@ -608,7 +727,7 @@ function groupCostsByEquipment(
 
 		return {
 			...group,
-			totalAmount: Math.round(totalAmountWithOther),
+			totalAmount: totalAmountWithOther,
 		};
 	});
 }
@@ -665,12 +784,16 @@ function PricingEquipmentOtherPartCosts({
 				? cost.replacementTimeStandard
 				: 0;
 
-			const regularRepairRates =
-				cost.quantity /
-				replacementTimeStandard /
-				cost.averageMonthlyTunnelProduction;
+			const regularRepairRates = calculateRegularRepairRates(
+				cost.quantity,
+				replacementTimeStandard,
+				cost.averageMonthlyTunnelProduction,
+			);
 
-			const regularRepairCost = part.costAmount * Number(regularRepairRates);
+			const regularRepairCost = calculateLongwallRegularRepairCost(
+				part.costAmount,
+				Number(regularRepairRates),
+			);
 
 			if (!isNaN(regularRepairCost)) {
 				totalAmount += regularRepairCost;
@@ -740,7 +863,7 @@ function PricingEquipmentOtherPartCosts({
 				<Label>Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)</Label>
 				<Input
 					readOnly
-					value={formatNumber(isNaN(otherCost) ? 0 : Math.round(otherCost))}
+					value={formatNumber(isNaN(otherCost) ? 0 : otherCost)}
 					className={`read-only:bg-transparent ${isNaN(otherCost) ? 'border-destructive' : ''}`}
 					title={isNaN(otherCost) ? 'Vui lòng kiểm tra dữ liệu' : ''}
 				/>

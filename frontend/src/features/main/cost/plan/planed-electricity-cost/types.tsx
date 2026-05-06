@@ -1,11 +1,12 @@
-export type PlanedElectricityCostDetailDescription = {
-	id: string;
-	description: string;
-	adjustmentFactorId: string;
-	adjustmentFactorCode: string;
-	adjustmentFactorName: string;
-	electricityAdjustmentValue: number;
-};
+import {
+	CostPlanAdjustmentDetail,
+	CostPlanAdjustmentSelection,
+} from '@/features/main/cost/plan/types';
+
+export type PlanedElectricityCostDetailDescription = CostPlanAdjustmentDetail;
+
+export type PlanedElectricityCostAdjustmentSelection =
+	CostPlanAdjustmentSelection;
 
 export type PlanedElectricityCostDetailCost = {
 	electricityUnitPriceEquipmentId: string;
@@ -22,5 +23,6 @@ export type PlanedElectricityCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	trimmingCoefficient: number;
 	costs: PlanedElectricityCostDetailCost[];
 };

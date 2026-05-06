@@ -1,7 +1,9 @@
 using Application.Common.Events;
 using Application.Common.Interfaces;
+using Application.Common.Caching;
 using Domain.Common.Contracts;
 using EfCore.Persistence.Auditing;
+using EfCore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -11,10 +13,12 @@ public abstract class BaseDbContext(
     ICurrentUser currentUser,
     ISerializerService serializer,
     IOptions<DatabaseSettings> dbSettings,
-    IEventPublisher events)
+    IEventPublisher events,
+    ICacheService cacheService)
     : DbContext
 {
     private readonly DatabaseSettings _dbSettings = dbSettings.Value;
+    private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
 
     public DbSet<Trail> AuditTrails => Set<Trail>();
 
@@ -45,6 +49,7 @@ public abstract class BaseDbContext(
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new())
     {
         var auditEntries = HandleAuditingBeforeSaveChanges(currentUser.GetUserId());
+        var shouldInvalidateProductUnitPriceCache = ShouldInvalidateProductUnitPriceCache();
 
         int result = await base.SaveChangesAsync(cancellationToken);
 
@@ -52,7 +57,23 @@ public abstract class BaseDbContext(
 
         await SendDomainEventsAsync();
 
+        if (shouldInvalidateProductUnitPriceCache)
+        {
+            cacheService.InvalidateGroup(ProductUnitPriceCacheSignalKey);
+        }
+
         return result;
+    }
+
+    private bool ShouldInvalidateProductUnitPriceCache()
+    {
+        return ChangeTracker.Entries()
+            .Any(e =>
+                e.State is EntityState.Modified or EntityState.Deleted &&
+                e.Entity.GetType().Namespace is string entityNamespace &&
+                (entityNamespace.StartsWith("Domain.Entities.Pricing", StringComparison.Ordinal) ||
+                 entityNamespace.StartsWith("Domain.Entities.Production", StringComparison.Ordinal) ||
+                 entityNamespace.StartsWith("Domain.Entities.Index", StringComparison.Ordinal)));
     }
 
     private List<AuditTrail> HandleAuditingBeforeSaveChanges(long userId)
@@ -77,6 +98,11 @@ public abstract class BaseDbContext(
                         softDelete.DeletedBy = userId;
                         softDelete.DeletedOn = DateTime.UtcNow;
                         entry.State = EntityState.Modified;
+
+                        ChangeTracker.ApplySoftDeleteCascade(
+                            softDelete,
+                            userId,
+                            DateTimeOffset.UtcNow);
                     }
 
                     break;

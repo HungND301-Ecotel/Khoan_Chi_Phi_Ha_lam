@@ -68,6 +68,7 @@ export function MainPricingElectricityPage() {
 				{ key: 'equipmentName', label: 'Tên thiết bị' },
 			]}
 			onCreate={(props) => <ElectricityForm {...props} />}
+			onDuplicate={(props) => <ElectricityForm {...props} isDuplicate />}
 			onUpdate={(props) => <ElectricityForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

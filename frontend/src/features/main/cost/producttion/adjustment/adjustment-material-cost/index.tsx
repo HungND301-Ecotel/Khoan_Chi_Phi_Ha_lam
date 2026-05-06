@@ -16,9 +16,9 @@ import { ProcessGroupType } from '@/constants/process-group';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
 import { UnifiedMaterial } from '@/features/main/cost/plan/planed-material-cost/type';
 import {
-	ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS,
 	AdjustmentMaterialCostSummary,
 	AdjustmentMaterialCostType,
+	getAdjustmentMaterialCostSummaryColumns,
 } from '@/features/main/cost/producttion/adjustment/adjustment-material-cost/columns';
 import {
 	AdjustmentCostProductDetail,
@@ -53,12 +53,14 @@ export function AdjustmentMaterialCost({
 	productionOutput,
 }: AdjustmentCostExpandProps) {
 	const [summary, setSummary] = useState<AdjustmentMaterialCostSummary[]>([]);
+	const [adjustedMaterialPrice, setAdjustedMaterialPrice] = useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
 
 	useEffect(() => {
 		if (!id) {
 			setSummary([]);
+			setAdjustedMaterialPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -79,6 +81,7 @@ export function AdjustmentMaterialCost({
 					]);
 
 				const { result } = detailRes;
+				setAdjustedMaterialPrice(result.totalPlannedMaterialPrice || 0);
 
 				setTotal(
 					result.totalPlannedMaterialPrice *
@@ -90,7 +93,7 @@ export function AdjustmentMaterialCost({
 				const allSlides = slidesRes.result.data;
 
 				const filteredMaterials = allMaterials.filter((material) => {
-					const groupType = adjustment?.processGroupType;
+					const groupType = adjustment?.fixedKeyType;
 					if (groupType === ProcessGroupType.DL) {
 						return material.type === 1;
 					}
@@ -107,12 +110,18 @@ export function AdjustmentMaterialCost({
 					allMaterials.find(
 						(material) => material.id === result.materialUnitPriceId,
 					);
+				const stoneClampRatioReferenceId =
+					result.stoneClampRatioReferenceId ||
+					(result as unknown as { stoneClampRatioId?: string })
+						.stoneClampRatioId;
 
 				let slideUsage = '-';
 				let slideUnitPriceCost = result.slideUnitPriceCost || 0;
-				let stoneClampRatio = '-';
+				let stoneClampRatio =
+					allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
+						?.value || '-';
 
-				if (adjustment?.processGroupType === ProcessGroupType.DL) {
+				if (adjustment?.fixedKeyType === ProcessGroupType.DL) {
 					if (!result.slideUnitPriceAssignmentCodeId) {
 						slideUsage = 'Không sử dụng máng trượt';
 					} else if (selectedMaterial && adjustment) {
@@ -161,14 +170,6 @@ export function AdjustmentMaterialCost({
 							}
 						}
 					}
-
-					const stoneClampRatioReferenceId =
-						result.stoneClampRatioReferenceId ||
-						(result as unknown as { stoneClampRatioId?: string })
-							.stoneClampRatioId;
-					stoneClampRatio =
-						allClamps.find((clamp) => clamp.id === stoneClampRatioReferenceId)
-							?.value || '-';
 				}
 
 				setSummary([
@@ -177,8 +178,11 @@ export function AdjustmentMaterialCost({
 						materialUnitPriceCost: result.materialCost || 0,
 						slideUsage,
 						slideUnitPriceCost,
+						lowValuePerishableSupplyUnitPriceCost:
+							result.lowValuePerishableSupplyUnitPriceCost || 0,
 						stoneClampRatio,
 						normFactorValue: result.normFactorValue || '-',
+						akRatePercent: result.akRatePercent || 0,
 					},
 				]);
 			} finally {
@@ -195,10 +199,13 @@ export function AdjustmentMaterialCost({
 				<ItemContent>
 					<ItemTitle>Doanh thu vật liệu điều chỉnh</ItemTitle>
 				</ItemContent>
-				<ItemContent className='me-7.5 w-24'>
+				<ItemContent className='me-2 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total))}
+						{loading ? <Spinner /> : formatNumber(adjustedMaterialPrice)}
 					</ItemTitle>
+				</ItemContent>
+				<ItemContent className='me-7.5 w-24'>
+					<ItemTitle>{loading ? <Spinner /> : formatNumber(total)}</ItemTitle>
 				</ItemContent>
 				<ItemActions>
 					<div className='size-5' />
@@ -220,7 +227,9 @@ export function AdjustmentMaterialCost({
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable
-							columns={ADJUSTMENT_MATERIAL_COST_SUMMARY_COLUMNS}
+							columns={getAdjustmentMaterialCostSummaryColumns(
+								adjustment?.fixedKeyType,
+							)}
 							items={summary}
 							compact={true}
 							hasActions={false}

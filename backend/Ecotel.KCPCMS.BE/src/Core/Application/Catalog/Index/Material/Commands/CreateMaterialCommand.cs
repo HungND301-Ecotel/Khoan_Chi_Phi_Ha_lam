@@ -15,22 +15,12 @@ namespace Application.Catalog.Index.Material.Commands
     public class CreateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<CreateMaterialCommand, bool>
     {
         private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
-        private readonly IWriteRepository<AssignmentCode> _assigmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
         private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
         public async Task<bool> Handle(CreateMaterialCommand request, CancellationToken cancellationToken)
         {
             if (await codeService.IsCodeExisted(request.CreateModel.Code))
             {
                 throw new ConflictException(CustomResponseMessage.MaterialCodeAlreadyExists);
-            }
-
-            if (request.CreateModel.MaterialType == Domain.Common.Enums.MaterialType.MaterialInContract)
-            {
-                bool checkAssigmentCodeExisted = await _assigmentCodeRepository.ExistsAsync(x => x.Id == request.CreateModel.AssigmentCodeId);
-                if (!checkAssigmentCodeExisted)
-                {
-                    throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
-                }
             }
 
             if (request.CreateModel.UnitOfMeasureId != null)

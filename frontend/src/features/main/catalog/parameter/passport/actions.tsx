@@ -19,7 +19,11 @@ import { useForm } from 'react-hook-form';
 
 const PASSPORT_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
 
-export function PassportForm({ data, row }: ActionDialogProps<Passport>) {
+export function PassportForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Passport> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -42,7 +46,7 @@ export function PassportForm({ data, row }: ActionDialogProps<Passport>) {
 
 	const handleSubmit = async (values: PassportSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.PASSPORT.UPDATE, {
 					id: row?.id,
 					...values,
@@ -53,7 +57,7 @@ export function PassportForm({ data, row }: ActionDialogProps<Passport>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -86,7 +90,7 @@ export function PassportForm({ data, row }: ActionDialogProps<Passport>) {
 				type='text'
 				supports={PASSPORT_SUPPORTS}
 			/>
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

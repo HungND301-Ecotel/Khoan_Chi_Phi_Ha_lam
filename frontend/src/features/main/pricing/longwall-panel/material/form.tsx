@@ -60,10 +60,15 @@ interface LongwallMaterialDetail {
 	otherMaterialValue?: number;
 }
 
-interface LongwallMaterialFormProps
-	extends ActionDialogProps<LongwallMaterial> {}
+interface LongwallMaterialFormProps extends ActionDialogProps<LongwallMaterial> {
+	isDuplicate?: boolean;
+}
 
-export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
+export function LongwallMaterialForm({
+	data,
+	row,
+	isDuplicate = false,
+}: LongwallMaterialFormProps) {
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
@@ -163,7 +168,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 
 						form.reset({
 							id: detail.id,
-							code: detail.code,
+							code: isDuplicate ? '' : detail.code,
 							longwallParametersId: detail.longwallParameters?.id || '',
 							cuttingThicknessId: detail.cuttingThickness?.id || '',
 							seamFaceId: detail.seamFaceId || row.seamFaceId || '',
@@ -216,7 +221,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 		};
 
 		loadData();
-	}, [row?.id]);
+	}, [isDuplicate, row?.id]);
 
 	useEffect(() => {
 		if (isMechanizedLongwall) {
@@ -326,10 +331,9 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 					yLower +
 					((interpolationPoint - lowerPoint) / (upperPoint - lowerPoint)) *
 						(yUpper - yLower);
-				// Round to 2 decimal places
 				return {
 					assignmentCodeId: id,
-					totalPrice: Math.round(raw * 100) / 100,
+					totalPrice: raw,
 				};
 			}
 			return cost;
@@ -437,7 +441,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 				InterpolationSeamFaceValue: interpolationSeamFaceValue,
 			};
 
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.PRICING.MATERIAL.LONGWALL_PANEL.UPDATE, {
 					id: row.id,
 					...payload,
@@ -779,7 +783,7 @@ export function LongwallMaterialForm({ data, row }: LongwallMaterialFormProps) {
 
 			<GroupedMaterialCosts contracts={contracts} />
 
-			<DataTableEditConfirm isEdit={!!row?.id} />
+			<DataTableEditConfirm isEdit={!!row?.id && !isDuplicate} />
 		</FormProvider>
 	);
 }

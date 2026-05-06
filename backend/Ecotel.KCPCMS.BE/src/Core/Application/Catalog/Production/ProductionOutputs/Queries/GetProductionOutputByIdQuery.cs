@@ -21,6 +21,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: t => t.Id == request.Id,
             include: q => q
                 .Include(p => p.AcceptanceReport)
+                .Include(p => p.Department)
+                    .ThenInclude(d => d.Code)
                 .Include(p => p.ProductionOutputProcessGroups)
                     .ThenInclude(g => g.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
@@ -35,6 +37,9 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = productionOutput.Id,
             StartMonth = productionOutput.StartMonth,
             EndMonth = productionOutput.EndMonth,
+            DepartmentId = productionOutput.DepartmentId,
+            DepartmentCode = productionOutput.Department?.Code?.Value ?? string.Empty,
+            DepartmentName = productionOutput.Department?.Name ?? string.Empty,
             AcceptanceReportId = productionOutput.AcceptanceReport?.Id,
             ProductionMeters = productionOutput.ProductionMeters,
             StandardProductionMeters = productionOutput.StandardProductionMeters,
@@ -42,8 +47,9 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Select(g => new ProductionOutputProcessGroupDto
                 {
                     ProcessGroupId = g.ProcessGroupId,
-                    ProcessGroupCode = g.ProcessGroup?.Code?.Value ?? string.Empty,
+                    ProcessGroupCode = g.ProcessGroup?.FixedKey?.Key ?? string.Empty,
                     ProcessGroupName = g.ProcessGroup?.Name ?? string.Empty,
+                    PlanProductionMeters = g.PlanProductionMeters,
                     StandardProductionMeters = g.StandardProductionMeters,
                     ProductionMeters = g.ProductionMeters,
                     Products = g.ProductionOutputProducts
@@ -52,7 +58,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             ProductId = p.ProductId,
                             ProductCode = p.Product?.Code?.Value ?? string.Empty,
                             ProductName = p.Product?.Name ?? string.Empty,
-                            ProductionMeters = p.ProductionMeters
+                            ProductionMeters = p.ProductionMeters,
+                            ActualAshContent = p.ActualAshContent
                         }).ToList()
                 }).ToList()
         };

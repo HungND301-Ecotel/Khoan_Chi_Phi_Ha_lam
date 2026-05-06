@@ -4,14 +4,16 @@ public class LumpSumFinalSettlementListRequest
 {
     public string Month { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
-    public string ProcessGroupId { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public string? DepartmentId { get; set; }
 }
 
 public class LumpSumFinalSettlementQuarterListRequest
 {
     public string Quarter { get; set; } = string.Empty;
     public string Year { get; set; } = string.Empty;
-    public string ProcessGroupId { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public string? DepartmentId { get; set; }
 }
 
 public class LumpSumQuarterCustomCostListRequest
@@ -44,4 +46,21 @@ public class UpdateLumpSumQuarterCustomCostRequest
     public double MaterialUnitPrice { get; set; }
     public double MaintainUnitPrice { get; set; }
     public double ElectricityUnitPrice { get; set; }
+}
+
+public class UpdateLumpSumMonthSpecialQuantityRequest
+{
+    public string Month { get; set; } = string.Empty;
+    public string Year { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public double CoalExcavationActualQuantity { get; set; }
+    public double CoalCrosscutActualQuantity { get; set; }
+}
+
+public class UpdateLumpSumMonthCarryForwardRequest
+{
+    public string Month { get; set; } = string.Empty;
+    public string Year { get; set; } = string.Empty;
+    public string? ProcessGroupId { get; set; }
+    public double SavingCarryForwardToNextMonths { get; set; }
 }

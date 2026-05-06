@@ -10,7 +10,6 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid EquipmentId { get; set; }
         public string EquipmentCode { get; set; } = string.Empty;
         public string EquipmentName { get; set; } = string.Empty;
-        public IList<ProcessGroupType> ProcessGroupTypes { get; set; } = new List<ProcessGroupType>();
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double? OtherMaterialValue { get; set; }
@@ -39,6 +38,7 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
         public Guid EquipmentId { get; set; }
         public string EquipmentCode { get; set; }
         public Guid PartId { get; set; }
+        public PartType PartType { get; set; }
         public string PartCode { get; set; }
         public string PartName { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
@@ -61,6 +61,7 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
 
     public class UpdateMaintainUnitPriceDto
     {
+        public Guid? Id { get; set; }
         public Guid EquipmentId { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
@@ -83,6 +84,19 @@ namespace Application.Dto.Catalog.MaintainUnitPriceEquipment
     {
         public Guid MaintainUnitPriceEquipmentId { get; set; }
         public IList<EquipmentDto> Equipments { get; set; } = new List<EquipmentDto>();
+    }
+
+    public class PartEquipmentsDto
+    {
+        public Guid PartId { get; set; }
+        public IList<EquipmentDto> Equipments { get; set; } = new List<EquipmentDto>();
+    }
+
+    public class PartMaintainUnitPriceEquipmentsDto
+    {
+        public Guid PartId { get; set; }
+        public IList<Guid> MaintainUnitPriceEquipmentIds { get; set; } =
+            new List<Guid>();
     }
 }
 

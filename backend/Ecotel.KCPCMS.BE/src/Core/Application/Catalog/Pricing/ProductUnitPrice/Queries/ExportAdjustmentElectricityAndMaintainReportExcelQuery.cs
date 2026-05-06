@@ -193,13 +193,13 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
 
         return
         [
-            sorted.ElementAtOrDefault(0)?.MaintenanceAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(1)?.MaintenanceAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(2)?.MaintenanceAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(3)?.MaintenanceAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(4)?.MaintenanceAdjustmentValue ?? 1,
+            sorted.ElementAtOrDefault(0)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(1)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(2)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(3)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(4)?.EffectiveValue ?? 1,
             item.K6AdjustmentFactorValue,
-            sorted.ElementAtOrDefault(5)?.MaintenanceAdjustmentValue ?? 1,
+            sorted.ElementAtOrDefault(5)?.EffectiveValue ?? 1,
         ];
     }
 
@@ -216,9 +216,9 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
 
         return
         [
-            sorted.ElementAtOrDefault(0)?.ElectricityAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(1)?.ElectricityAdjustmentValue ?? 1,
-            sorted.ElementAtOrDefault(2)?.ElectricityAdjustmentValue ?? 1,
+            sorted.ElementAtOrDefault(0)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(1)?.EffectiveValue ?? 1,
+            sorted.ElementAtOrDefault(2)?.EffectiveValue ?? 1,
             1,
             1,
             1,

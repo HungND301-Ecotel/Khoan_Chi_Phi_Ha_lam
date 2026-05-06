@@ -106,13 +106,13 @@ const extractMaintainFactors = (item?: AdjustmentMaintainCostItem) => {
 	);
 
 	return [
-		sortedDescriptions[0]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[1]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[2]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[3]?.maintenanceAdjustmentValue ?? 1,
-		sortedDescriptions[4]?.maintenanceAdjustmentValue ?? 1,
+		sortedDescriptions[0]?.effectiveValue ?? 1,
+		sortedDescriptions[1]?.effectiveValue ?? 1,
+		sortedDescriptions[2]?.effectiveValue ?? 1,
+		sortedDescriptions[3]?.effectiveValue ?? 1,
+		sortedDescriptions[4]?.effectiveValue ?? 1,
 		item.k6AdjustmentFactorValue ?? 1,
-		sortedDescriptions[5]?.maintenanceAdjustmentValue ?? 1,
+		sortedDescriptions[5]?.effectiveValue ?? 1,
 	];
 };
 
@@ -129,9 +129,9 @@ const extractElectricityFactors = (
 	// Electricity currently has fewer K factors than maintain.
 	// Missing factors are normalized to 1 for report display.
 	return [
-		sortedDescriptions[0]?.electricityAdjustmentValue ?? 1,
-		sortedDescriptions[1]?.electricityAdjustmentValue ?? 1,
-		sortedDescriptions[2]?.electricityAdjustmentValue ?? 1,
+		sortedDescriptions[0]?.effectiveValue ?? 1,
+		sortedDescriptions[1]?.effectiveValue ?? 1,
+		sortedDescriptions[2]?.effectiveValue ?? 1,
 		1,
 		1,
 		1,
@@ -395,9 +395,9 @@ export function ElectricityAndMaintainanceReportPage() {
 											.join(' - ') || 'Chưa phân nhóm',
 									productName: item.productName,
 									productUnitLabel:
-										item.processGroupType === 1
+										item.fixedKeyType === 1
 											? 'Mét'
-											: item.processGroupType === 2
+											: item.fixedKeyType === 2
 												? 'Tấn'
 												: '',
 									productionMeters,
@@ -485,7 +485,7 @@ export function ElectricityAndMaintainanceReportPage() {
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Tháng</p>
 						<Select value={month} onValueChange={setMonth}>
-							<SelectTrigger className='w-[150px] bg-white'>
+							<SelectTrigger className='w-37.5 bg-white'>
 								<SelectValue placeholder='Chọn tháng' />
 							</SelectTrigger>
 							<SelectContent>
@@ -501,7 +501,7 @@ export function ElectricityAndMaintainanceReportPage() {
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Năm</p>
 						<Select value={year} onValueChange={setYear}>
-							<SelectTrigger className='w-[120px] bg-white'>
+							<SelectTrigger className='w-30 bg-white'>
 								<SelectValue placeholder='Chọn năm' />
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
@@ -520,7 +520,7 @@ export function ElectricityAndMaintainanceReportPage() {
 							value={selectedProcessGroup}
 							onValueChange={setSelectedProcessGroup}
 						>
-							<SelectTrigger className='w-[260px] bg-white'>
+							<SelectTrigger className='w-65 bg-white'>
 								<SelectValue placeholder='Chọn nhóm công đoạn' />
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
@@ -760,9 +760,7 @@ function ReportGroupRows({
 									rowSpan={rowSpan}
 									className='border border-black px-1 py-1 text-center align-top'
 								>
-									{formatNumber(block.productionMeters, {
-										maximumFractionDigits: 2,
-									})}
+									{formatNumber(block.productionMeters)}
 								</TableCell>
 							)}
 							<TableCell className='border border-black px-1 py-1'>
@@ -780,29 +778,29 @@ function ReportGroupRows({
 									key={`${row.key}-k-${kIndex + 1}`}
 									className='border border-black px-1 py-1 text-center'
 								>
-									{formatNumber(value, { maximumFractionDigits: 2 })}
+									{formatNumber(value)}
 								</TableCell>
 							))}
 
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.maintainUnitPrice == null
 									? ''
-									: formatNumber(Math.round(row.maintainUnitPrice))}
+									: formatNumber(row.maintainUnitPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.maintainTotalPrice == null
 									? ''
-									: formatNumber(Math.round(row.maintainTotalPrice))}
+									: formatNumber(row.maintainTotalPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.electricityUnitPrice == null
 									? ''
-									: formatNumber(Math.round(row.electricityUnitPrice))}
+									: formatNumber(row.electricityUnitPrice)}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-right'>
 								{row.electricityTotalPrice == null
 									? ''
-									: formatNumber(Math.round(row.electricityTotalPrice))}
+									: formatNumber(row.electricityTotalPrice)}
 							</TableCell>
 						</TableRow>
 					);

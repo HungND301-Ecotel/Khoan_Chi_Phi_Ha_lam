@@ -10,9 +10,9 @@ public class DashboardController : BaseNoAuthController
 {
     [HttpGet("cost-summary")]
     [OpenApiOperation("Get cost summary", "")]
-    public async Task<IActionResult> GetCostSummary([FromQuery] Guid? processGroupId, [FromQuery] int year)
+    public async Task<IActionResult> GetCostSummary([FromQuery] Guid? processGroupId, [FromQuery] Guid? departmentId, [FromQuery] int year)
     {
-        var result = await Mediator.Send(new GetCostSummaryQuery(processGroupId, year));
+        var result = await Mediator.Send(new GetCostSummaryQuery(processGroupId, departmentId, year));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 }

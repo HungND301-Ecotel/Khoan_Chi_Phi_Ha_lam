@@ -5,6 +5,7 @@ import {
 	ClipboardListIcon,
 	FileBarChart2Icon,
 	FileChartColumnIcon,
+	Settings2Icon,
 } from 'lucide-react';
 import { IconName } from 'lucide-react/dynamic';
 import { type JSX } from 'react';
@@ -34,6 +35,7 @@ export const NAVIGATIONS: Navigation[] = [
 		),
 		items: [
 			{ type: 'link', name: 'Đơn vị tính', href: '/catalogs/units' },
+			{ type: 'link', name: 'Đơn vị', href: '/catalogs/departments' },
 			{ type: 'link', name: 'Công đoạn sản xuất', href: '/catalogs/processes' },
 			{ type: 'link', name: 'Mã giao khoán', href: '/catalogs/contract-codes' },
 			{
@@ -109,6 +111,11 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
+				name: 'Hệ số Ak',
+				href: '/catalogs/ak-factors',
+			},
+			{
+				type: 'link',
 				name: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
 				href: '/catalogs/revenue-cost-adjustment-configs',
 			},
@@ -135,6 +142,11 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 					{
 						type: 'link',
+						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						href: '/pricing/tunneling/low-value-perishable-supply',
+					},
+					{
+						type: 'link',
 						name: 'Đơn giá và định mức máng trượt',
 						href: '/pricing/tunneling/slide',
 					},
@@ -152,6 +164,27 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'sub-menu',
+				name: 'Xén lò',
+				items: [
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức vật liệu',
+						href: '/pricing/trimming/material',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức SCTX',
+						href: '/pricing/trimming/maintenance',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức điện năng',
+						href: '/pricing/trimming',
+					},
+				],
+			},
+			{
+				type: 'sub-menu',
 				name: 'Lò chợ',
 				href: '/pricing/longwall-panel',
 				items: [
@@ -159,6 +192,11 @@ export const NAVIGATIONS: Navigation[] = [
 						type: 'link',
 						name: 'Đơn giá và định mức vật liệu',
 						href: '/pricing/longwall-panel/material',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						href: '/pricing/longwall-panel/low-value-perishable-supply',
 					},
 					{
 						type: 'link',
@@ -195,6 +233,16 @@ export const NAVIGATIONS: Navigation[] = [
 		icon: () => (
 			<FileBarChart2Icon className='size-5 text-blue-500' strokeWidth={2} />
 		),
+	},
+	{
+		type: 'dropdown',
+		name: 'hệ thống',
+		icon: () => (
+			<Settings2Icon className='size-5 text-slate-500' strokeWidth={2} />
+		),
+		items: [
+			{ type: 'link', name: 'Khóa cấu hình', href: '/system/fixed-keys' },
+		],
 	},
 ] as const;
 

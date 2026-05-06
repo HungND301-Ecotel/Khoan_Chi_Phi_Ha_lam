@@ -8,7 +8,7 @@ public class MaterialUnitPriceAssignmentCode : AuditableEntity<Guid>
 {
     public Guid MaterialUnitPriceId { get; protected set; }
     public Guid AssignmentCodeId { get; protected set; }
-    public double TotalPrice { get; set; }
+    public double TotalPrice { get; protected set; }
 
     public virtual MaterialUnitPriceEntity MaterialUnitPrice { get; protected set; }
     public virtual AssignmentCode AssignmentCode { get; protected set; }

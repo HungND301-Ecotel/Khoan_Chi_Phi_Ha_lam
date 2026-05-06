@@ -1,4 +1,5 @@
 ﻿using Domain.Common.Contracts;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Production;
 using Shared.Constants;
@@ -58,18 +59,19 @@ namespace Domain.Entities.Pricing
             return Quantity / (replacementTime * avgProduction);
         }
 
-        public double GetMaterialCostPerMetres(DateOnly effectiveMonth)
+        public double GetMaterialCostPerMetres(
+            DateOnly effectiveMonth,
+            MaintainUnitPriceType maintainUnitPriceType = MaintainUnitPriceType.TunnelExcavation)
         {
-            if (CachedTotal.HasValue)
+            var baseMaterialCostPerMetres = CachedTotal ??= (Part?.Costs.FirstOrDefault(c =>
+                c.StartMonth <= effectiveMonth && c.EndMonth >= effectiveMonth)?.Amount ?? 0) * GetMaterialRate();
+
+            if (maintainUnitPriceType == MaintainUnitPriceType.Longwall)
             {
-                return CachedTotal.Value;
+                return baseMaterialCostPerMetres / 1000d;
             }
 
-            var curCost = Part?.Costs.FirstOrDefault(c =>
-                c.StartMonth <= effectiveMonth && c.EndMonth >= effectiveMonth)?.Amount ?? 0;
-
-            CachedTotal = curCost * GetMaterialRate();
-            return CachedTotal.Value;
+            return baseMaterialCostPerMetres;
         }
 
 

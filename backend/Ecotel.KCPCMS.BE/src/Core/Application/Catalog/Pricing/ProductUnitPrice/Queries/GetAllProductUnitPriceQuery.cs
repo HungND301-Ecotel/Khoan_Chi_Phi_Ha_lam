@@ -5,6 +5,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using MediatR;
@@ -12,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.ProductUnitPrice.Queries;
 
-public record class GetAllProductUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination, ProductUnitPriceScenarioType ScenarioType) : IRequest<PaginationResponse<ProductUnitPriceDto>>;
+public record class GetAllProductUnitPriceQuery(int PageIndex, int PageSize, string? Search, bool IgnorePagination, ProductUnitPriceScenarioType ScenarioType, Guid? DepartmentId = null) : IRequest<PaginationResponse<ProductUnitPriceDto>>;
 
 public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService cacheService)
     : IRequestHandler<GetAllProductUnitPriceQuery, PaginationResponse<ProductUnitPriceDto>>
@@ -22,12 +23,14 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
 
     public async Task<PaginationResponse<ProductUnitPriceDto>> Handle(GetAllProductUnitPriceQuery request, CancellationToken cancellationToken)
     {
-        var cacheKey = $"{CacheSignalKey}:All:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.ScenarioType}";
+        var cacheKey = $"{CacheSignalKey}:All:{request.PageIndex}:{request.PageSize}:{request.Search ?? "empty"}:{request.IgnorePagination}:{request.ScenarioType}:{request.DepartmentId}";
 
         var cachedResult = await cacheService.GetAsync<PaginationResponse<ProductUnitPriceDto>>(cacheKey, cancellationToken);
         if (cachedResult != null)
@@ -40,15 +43,19 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         // STEP 1: Get paginated ProductUnitPrice base data (lightweight query)
         var baseQuery = _productUnitPriceRepository.GetAll()
             .Where(m => m.ScenarioType == request.ScenarioType)
+            .Where(m => !request.DepartmentId.HasValue || m.DepartmentId == request.DepartmentId)
             .Where(m => m.Product != null &&
                 (string.IsNullOrWhiteSpace(searchTerm) ||
                 EF.Functions.Like(m.Product.Name, $"%{searchTerm}%") ||
-                EF.Functions.Like(m.Product.Code.Value, $"%{searchTerm}%")));
+                EF.Functions.Like(m.Product.Code.Value, $"%{searchTerm}%") ||
+                (m.Department != null && (
+                    EF.Functions.Like(m.Department.Name, $"%{searchTerm}%") ||
+                    (m.Department.Code != null && EF.Functions.Like(m.Department.Code.Value, $"%{searchTerm}%"))
+                ))));
 
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
-        var paginatedQuery = baseQuery
-            .OrderBy(m => m.Product!.Name)
+        var baseDataQuery = baseQuery
             .Select(m => new ProductUnitPriceBaseData
             {
                 Id = m.Id,
@@ -56,23 +63,33 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductName = m.Product!.Name,
                 ProductCode = m.Product.Code.Value,
                 ProcessGroupId = m.Product.ProcessGroupId,
-                ProcessGroupCode = m.Product.ProcessGroup!.Code.Value,
+                ProcessGroupCode = m.Product.ProcessGroup!.FixedKey != null
+                    ? m.Product.ProcessGroup.FixedKey.Key
+                    : string.Empty,
                 ProcessGroupName = m.Product.ProcessGroup.Name,
-                ProcessGroupType = m.Product.ProcessGroup!.Type,
+                ProcessGroupType = m.Product.ProcessGroup!.FixedKey != null
+                    ? m.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                    : ProcessGroupType.None,
                 UnitOfMeasureId = m.UnitOfMeasureId,
-                UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : null
+                UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : null,
+                DepartmentId = m.DepartmentId,
+                DepartmentCode = m.Department != null && m.Department.Code != null ? m.Department.Code.Value : null,
+                DepartmentName = m.Department != null ? m.Department.Name : null
             });
 
-        if (!request.IgnorePagination)
-        {
-            paginatedQuery = paginatedQuery
-                .Skip((request.PageIndex - 1) * request.PageSize)
-                .Take(request.PageSize);
-        }
+        var allBaseData = await baseDataQuery.AsNoTracking().ToListAsync(cancellationToken);
+        var orderedBaseData = allBaseData
+            .OrderByCodeNatural(m => m.ProductCode)
+            .ThenBy(m => m.ProductName);
 
-        var baseDataList = await paginatedQuery.AsNoTracking().ToListAsync(cancellationToken);
+        var baseDataList = request.IgnorePagination
+            ? orderedBaseData.ToList()
+            : orderedBaseData
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
         var productUnitPriceIds = baseDataList.Select(b => b.Id).ToList();
-        var productIds = baseDataList.Select(b => b.ProductId).ToList();
+        var productIds = baseDataList.Select(b => b.ProductId).Distinct().ToList();
 
         if (!productUnitPriceIds.Any())
         {
@@ -84,55 +101,78 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         }
 
         // STEP 2: Get all outputs for these ProductUnitPrices
-        var adjustmentByProductId = baseDataList.ToDictionary(x => x.ProductId, x => x.Id);
-
-        var planUomByProductId = await _productUnitPriceRepository.GetAll()
-            .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Plan && productIds.Contains(p.ProductId))
-            .Select(p => new { p.ProductId, p.UnitOfMeasureId, UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : null })
-            .AsNoTracking()
-            .ToDictionaryAsync(x => x.ProductId, cancellationToken);
-
+        var outputs = new List<OutputData>();
         if (request.ScenarioType == ProductUnitPriceScenarioType.Adjustment)
         {
-            for (int i = 0; i < baseDataList.Count; i++)
-            {
-                var item = baseDataList[i];
-                if (planUomByProductId.TryGetValue(item.ProductId, out var planUom))
-                {
-                    item.UnitOfMeasureId = planUom.UnitOfMeasureId;
-                    item.UnitOfMeasureName = planUom.UnitOfMeasureName;
-                }
-            }
-        }
+            var adjustmentByProductDepartment = baseDataList
+                .GroupBy(x => (x.ProductId, x.DepartmentId))
+                .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var outputsQuery = request.ScenarioType == ProductUnitPriceScenarioType.Adjustment
-            ? _outputRepository.GetAll()
+            var planOutputsRaw = await _outputRepository.GetAll()
                 .Where(o => o.OutputType == OutputType.PlanOutput
                     && o.ProductUnitPrice != null
                     && o.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                     && productIds.Contains(o.ProductUnitPrice.ProductId))
-            : _outputRepository.GetAll()
-                .Where(o => o.OutputType == OutputType.PlanOutput && productUnitPriceIds.Contains(o.ProductUnitPriceId));
+                .Select(o => new
+                {
+                    o.Id,
+                    o.StartMonth,
+                    o.EndMonth,
+                    o.ProductionMeters,
+                    o.PlanAshContent,
+                    ProductId = o.ProductUnitPrice!.ProductId,
+                    DepartmentId = o.ProductUnitPrice.DepartmentId,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                        : ProcessGroupType.None,
+                    PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
+                    PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
+                    PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
+                })
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
 
-        var outputsRaw = await outputsQuery
-            .Select(o => new OutputData
-            {
-                ProductUnitPriceId = request.ScenarioType == ProductUnitPriceScenarioType.Adjustment
-                    ? adjustmentByProductId[o.ProductUnitPrice!.ProductId]
-                    : o.ProductUnitPriceId,
-                Id = o.Id,
-                OutputType = o.OutputType,
-                StartMonth = o.StartMonth,
-                EndMonth = o.EndMonth,
-                ProductionMeters = o.ProductionMeters,
-                PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
-                PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
-                PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
-            })
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var outputs = outputsRaw;
+            outputs = planOutputsRaw
+                .Where(o => adjustmentByProductDepartment.ContainsKey((o.ProductId, o.DepartmentId)))
+                .Select(o => new OutputData
+                {
+                    ProductUnitPriceId = adjustmentByProductDepartment[(o.ProductId, o.DepartmentId)],
+                    Id = o.Id,
+                    OutputType = OutputType.PlanOutput,
+                    StartMonth = o.StartMonth,
+                    EndMonth = o.EndMonth,
+                    ProductionMeters = o.ProductionMeters,
+                    PlanAshContent = o.PlanAshContent,
+                    ProcessGroupType = o.ProcessGroupType,
+                    PlannedMaterialCostId = o.PlannedMaterialCostId,
+                    PlannedMaintainCostId = o.PlannedMaintainCostId,
+                    PlannedElectricityCostId = o.PlannedElectricityCostId
+                })
+                .ToList();
+        }
+        else
+        {
+            outputs = await _outputRepository.GetAll()
+                .Where(o => o.OutputType == OutputType.PlanOutput && productUnitPriceIds.Contains(o.ProductUnitPriceId))
+                .Select(o => new OutputData
+                {
+                    ProductUnitPriceId = o.ProductUnitPriceId,
+                    Id = o.Id,
+                    OutputType = o.OutputType,
+                    StartMonth = o.StartMonth,
+                    EndMonth = o.EndMonth,
+                    ProductionMeters = o.ProductionMeters,
+                    PlanAshContent = o.PlanAshContent,
+                    ProcessGroupType = o.ProductUnitPrice.Product.ProcessGroup!.FixedKey != null
+                        ? o.ProductUnitPrice.Product.ProcessGroup.FixedKey.Type.ToProcessGroupType()
+                        : ProcessGroupType.None,
+                    PlannedMaterialCostId = o.PlannedMaterialCost != null ? o.PlannedMaterialCost.Id : (Guid?)null,
+                    PlannedMaintainCostId = o.PlannedMaintainCost != null ? o.PlannedMaintainCost.Id : (Guid?)null,
+                    PlannedElectricityCostId = o.PlannedElectricityCost != null ? o.PlannedElectricityCost.Id : (Guid?)null
+                })
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+        }
 
         var outputsByProductUnitPrice = outputs.GroupBy(o => o.ProductUnitPriceId).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -145,15 +185,30 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var plannedMaintainFactors = await LoadPlannedMaintainFactors(plannedMaintainCostIds, cancellationToken);
         var plannedElectricityFactors = await LoadPlannedElectricityFactors(plannedElectricityCostIds, cancellationToken);
         var plannedMaterialCosts = await LoadPlannedMaterialCosts(plannedMaterialCostIds, cancellationToken);
+        var processGroupIds = baseDataList.Select(x => x.ProcessGroupId).Distinct().ToList();
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => processGroupIds.Contains(x.ProcessGroupId))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var akConfigsByProcessGroup = akConfigs
+            .GroupBy(x => x.ProcessGroupId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         // STEP 4: Load ProductionOutput data for ActualOutput
-        var adjustmentIdsByProductId = await _productUnitPriceRepository.GetAll()
-            .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment && productIds.Contains(p.ProductId))
-            .Select(p => new { p.ProductId, p.Id })
+        var baseDepartments = baseDataList.Select(x => x.DepartmentId).Distinct().ToList();
+        var adjustmentRows = await _productUnitPriceRepository.GetAll()
+            .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment
+                && productIds.Contains(p.ProductId)
+                && baseDepartments.Contains(p.DepartmentId))
+            .Select(p => new { p.ProductId, p.DepartmentId, p.Id })
             .AsNoTracking()
-            .ToDictionaryAsync(x => x.ProductId, x => x.Id, cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        var adjustmentIds = adjustmentIdsByProductId.Values.Distinct().ToList();
+        var adjustmentIdsByProductDepartment = adjustmentRows
+            .GroupBy(x => (x.ProductId, x.DepartmentId))
+            .ToDictionary(g => g.Key, g => g.First().Id);
+
+        var adjustmentIds = adjustmentIdsByProductDepartment.Values.Distinct().ToList();
 
         var adjustmentProductionOutputsRaw = await _productUnitPriceRepository.GetAll()
             .Where(p => adjustmentIds.Contains(p.Id))
@@ -162,7 +217,12 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProductUnitPriceId = p.Id,
                 ProductionMeters = link.ProductionMeters,
                 StartMonth = link.ProductionOutput!.StartMonth,
-                EndMonth = link.ProductionOutput.EndMonth
+                EndMonth = link.ProductionOutput.EndMonth,
+                ActualAshContent = link.ProductionOutput.ProductionOutputProcessGroups
+                    .SelectMany(g => g.ProductionOutputProducts)
+                    .Where(pp => pp.ProductId == p.ProductId)
+                    .Select(pp => (double?)pp.ActualAshContent)
+                    .FirstOrDefault() ?? 0
             }))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -183,13 +243,20 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
 
             var adjustmentIdForBase = request.ScenarioType == ProductUnitPriceScenarioType.Adjustment
                 ? baseData.Id
-                : adjustmentIdsByProductId.GetValueOrDefault(baseData.ProductId);
+                : adjustmentIdsByProductDepartment.GetValueOrDefault((baseData.ProductId, baseData.DepartmentId));
 
             var productionOutputs = adjustmentIdForBase == Guid.Empty
                 ? new List<ProductionOutputData>()
                 : adjustmentProductionByAdjustmentId.GetValueOrDefault(adjustmentIdForBase) ?? new List<ProductionOutputData>();
 
-            var adjustmentTotalCost = CalculateAdjustmentTotalCost(productOutputs, productionOutputs, plannedMaintainFactors, plannedElectricityFactors, plannedMaterialCosts);
+            var processGroupAkConfigs = akConfigsByProcessGroup.GetValueOrDefault(baseData.ProcessGroupId) ?? new List<AkFactorConfig>();
+            var adjustmentTotalCost = CalculateAdjustmentTotalCost(
+                productOutputs,
+                productionOutputs,
+                plannedMaintainFactors,
+                plannedElectricityFactors,
+                plannedMaterialCosts,
+                processGroupAkConfigs);
 
             double totalProductionMeters;
             DateOnly? startMonth;
@@ -222,6 +289,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 ProcessGroupType = baseData.ProcessGroupType,
                 UnitOfMeasureId = baseData.UnitOfMeasureId ?? Guid.Empty,
                 UnitOfMeasureName = baseData.UnitOfMeasureName,
+                DepartmentId = baseData.DepartmentId,
+                DepartmentCode = baseData.DepartmentCode,
+                DepartmentName = baseData.DepartmentName,
                 StartMonth = startMonth,
                 EndMonth = endMonth,
                 TotalProductionMeters = totalProductionMeters,
@@ -253,8 +323,10 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             .Select(f => new
             {
                 f.PlannedMaintainCostId,
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
                 f.Quantity,
                 f.K6AdjustmentFactorValue,
+                MaintainUnitPriceType = f.MaintainUnitPrice.Type,
                 OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
                 MaintainStartMonth = f.MaintainUnitPrice.StartMonth,
                 Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
@@ -265,7 +337,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
                 AdjustmentValues = f.PlannedMaintainCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.MaintenanceAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -276,12 +352,18 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                 g => g.Select(f => new MaintainFactorData
                 {
                     Quantity = (double)f.Quantity,
+                    TrimmingCoefficient = f.TrimmingCoefficient,
                     K6AdjustmentFactorValue = f.K6AdjustmentFactorValue,
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
                         var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
-                        return partCost * (m.Quantity / (double)(m.ReplacementTimeStandard * m.AverageMonthlyTunnelProduction));
+                        return MaintainCostCalculator.CalculateMaterialCostPerMetre(
+                            partCost,
+                            m.Quantity,
+                            m.ReplacementTimeStandard,
+                            m.AverageMonthlyTunnelProduction,
+                            f.MaintainUnitPriceType);
                     }),
                     AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                 }).ToList());
@@ -303,10 +385,15 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             .Select(f => new
             {
                 f.PlannedElectricityCostId,
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
                 f.Quantity,
                 f.ElectricityUnitPriceEquipment,
                 AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
-                    .Select(d => d.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1.0).ToList()
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.ElectricityAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
             })
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -321,6 +408,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
                     return new PlannedElectricityFactorData
                     {
                         Quantity = (double)f.Quantity,
+                        TrimmingCoefficient = f.TrimmingCoefficient,
                         CostPerMetre = costPerMetre,
                         AdjustmentFactor = f.AdjustmentValues.Any() ? f.AdjustmentValues.Aggregate(1.0, (acc, val) => acc * val) : 1.0
                     };
@@ -338,42 +426,23 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         var plannedMaterialCosts = await _plannedMaterialCostRepository.GetAll()
             .Where(c => plannedMaterialCostIds.Contains(c.Id))
             .Include(c => c.Output)
+            .Include(c => c.ProductUnitPrice).ThenInclude(p => p.Product)
             .Include(c => c.SlideUnitPriceAssignmentCode)
             .Include(c => c.NormFactor).ThenInclude(n => n.NormFactorAssignmentCodes)
             .Include(c => c.MaterialUnitPrice).ThenInclude(m => m.MaterialUnitPriceAssignmentCodes)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var currentTunnelMaterials = plannedMaterialCosts
-            .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true && c.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice)
-            .Select(c => (TunnelExcavationMaterialUnitPrice)c.MaterialUnitPrice!)
-            .ToList();
+        var dependencies = await PlannedMaterialCostCalculationDependencyLoader.LoadAsync(
+            plannedMaterialCosts,
+            _tunnelMaterialUnitPriceRepository,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            cancellationToken);
 
-        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterials = new List<TunnelExcavationMaterialUnitPrice>();
-        if (currentTunnelMaterials.Any())
-        {
-            var targetHardnessIds = plannedMaterialCosts
-                .Where(c => c.NormFactor?.TargetHardnessId.HasValue == true)
-                .Select(c => c.NormFactor!.TargetHardnessId!.Value)
-                .Distinct()
-                .ToList();
-            var processIds = currentTunnelMaterials.Select(x => x.ProcessId).Distinct().ToList();
-            var passportIds = currentTunnelMaterials.Select(x => x.PassportId).Distinct().ToList();
-            var insertItemIds = currentTunnelMaterials.Select(x => x.InsertItemId).Distinct().ToList();
-            var supportStepIds = currentTunnelMaterials.Select(x => x.SupportStepId).Distinct().ToList();
-
-            tunnelMaterials = await _tunnelMaterialUnitPriceRepository.GetAll()
-                .Where(x => targetHardnessIds.Contains(x.HardnessId)
-                    && processIds.Contains(x.ProcessId)
-                    && passportIds.Contains(x.PassportId)
-                    && insertItemIds.Contains(x.InsertItemId)
-                    && supportStepIds.Contains(x.SupportStepId))
-                .Include(x => x.MaterialUnitPriceAssignmentCodes)
-                .AsNoTracking()
-                .ToListAsync(cancellationToken);
-        }
-
-        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(plannedMaterialCosts, tunnelMaterials);
+        return PlannedMaterialCostCalculator.CalculateUnitPricesByCostId(
+            plannedMaterialCosts,
+            dependencies.TunnelMaterialUnitPrices,
+            dependencies.LowValuePerishableSupplyUnitPrices);
     }
 
     #endregion
@@ -392,6 +461,11 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             return 0;
         }
 
+        var output = plannedOutputs[0];
+        var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
+        var maintainCost = CalculateMaintainCost(output.PlannedMaintainCostId, plannedMaintainFactors);
+        var electricityCost = CalculatePlannedElectricityCost(output.PlannedElectricityCostId, plannedElectricityFactors);
+
         return plannedOutputs.Sum(output =>
         {
             var materialCost = CalculatePlannedMaterialCost(output, plannedMaterialCosts);
@@ -406,21 +480,27 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         List<ProductionOutputData> productionOutputs,
         Dictionary<Guid, List<MaintainFactorData>> plannedMaintainFactors,
         Dictionary<Guid, List<PlannedElectricityFactorData>> plannedElectricityFactors,
-        Dictionary<Guid, double> plannedMaterialCosts)
+        Dictionary<Guid, double> plannedMaterialCosts,
+        List<AkFactorConfig> akConfigs)
     {
-        var plannedOutputsDict = outputs
+        var plannedOutputs = outputs
             .Where(o => o.OutputType == OutputType.PlanOutput)
-            .ToDictionary(o => (o.StartMonth, o.EndMonth), o => o);
+            .ToList();
 
-        if (!productionOutputs.Any() || !plannedOutputsDict.Any())
+        if (!productionOutputs.Any() || !plannedOutputs.Any())
         {
             return 0;
         }
 
         return productionOutputs.Sum(productionOutput =>
         {
-            // Find matching PlannedOutput by date range
-            if (!plannedOutputsDict.TryGetValue((productionOutput.StartMonth, productionOutput.EndMonth), out var plannedOutput))
+            // Find matching PlannedOutput by covering date range
+            var plannedOutput = plannedOutputs
+                .Where(o => o.StartMonth <= productionOutput.StartMonth && o.EndMonth >= productionOutput.EndMonth)
+                .OrderBy(o => o.StartMonth)
+                .ThenBy(o => o.EndMonth)
+                .FirstOrDefault();
+            if (plannedOutput == null)
             {
                 return 0;
             }
@@ -428,7 +508,13 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             var materialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
-            return productionOutput.ProductionMeters * (materialCost + maintainCost + electricityCost);
+            var hasAkConfigs = akConfigs.Any();
+            var akDiff = hasAkConfigs
+                ? (decimal)(plannedOutput.PlanAshContent - productionOutput.ActualAshContent)
+                : 0;
+            var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
+            var adjustedMaterialCost = materialCost + ((double)akDiff * materialCost * (double)akRate);
+            return productionOutput.ProductionMeters * (adjustedMaterialCost + maintainCost + electricityCost);
         });
     }
 
@@ -453,7 +539,13 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) * f.K6AdjustmentFactorValue * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f =>
+            f.Quantity *
+            f.EquipmentCost * (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
+            f.K6AdjustmentFactorValue *
+            f.AdjustmentFactor);
+        var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     private static double CalculatePlannedElectricityCost(
@@ -465,7 +557,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             return 0;
         }
 
-        return factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        var baseCost = factors.Sum(f => f.Quantity * f.CostPerMetre * f.AdjustmentFactor);
+        var trimmingCoefficient = factors.FirstOrDefault()?.TrimmingCoefficient ?? 1;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 
     #endregion
@@ -484,6 +578,9 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public ProcessGroupType ProcessGroupType { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string? UnitOfMeasureName { get; set; }
+        public Guid? DepartmentId { get; set; }
+        public string? DepartmentCode { get; set; }
+        public string? DepartmentName { get; set; }
     }
 
     private class OutputData
@@ -494,6 +591,8 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double ProductionMeters { get; set; }
+        public double PlanAshContent { get; set; }
+        public ProcessGroupType ProcessGroupType { get; set; }
         public Guid? PlannedMaterialCostId { get; set; }
         public Guid? PlannedMaintainCostId { get; set; }
         public Guid? PlannedElectricityCostId { get; set; }
@@ -502,6 +601,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
     private class MaintainFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double K6AdjustmentFactorValue { get; set; }
         public double? OtherMaterialValue { get; set; }
         public double EquipmentCost { get; set; }
@@ -511,6 +611,7 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
     private class PlannedElectricityFactorData
     {
         public double Quantity { get; set; }
+        public double TrimmingCoefficient { get; set; }
         public double CostPerMetre { get; set; }
         public double AdjustmentFactor { get; set; }
     }
@@ -521,6 +622,17 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
         public double ProductionMeters { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
+        public double ActualAshContent { get; set; }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
 
     #endregion

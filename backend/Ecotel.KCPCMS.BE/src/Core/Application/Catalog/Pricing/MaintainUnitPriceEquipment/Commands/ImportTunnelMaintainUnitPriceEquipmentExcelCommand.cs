@@ -1,3 +1,4 @@
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -13,9 +14,11 @@ namespace Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 
 public record ImportTunnelMaintainUnitPriceEquipmentExcelCommand(IFormFile File) : IRequest<bool>;
 
-public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWork unitOfWork)
+public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService)
     : IRequestHandler<ImportTunnelMaintainUnitPriceEquipmentExcelCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _repository = unitOfWork.GetRepository<MaintainUnitPrice>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
@@ -27,47 +30,61 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
-        using var stream = request.File.OpenReadStream();
-        var maintainUnitPrices = ParseTransposedExcel(stream);
+        var importErrors = new List<string>();
 
-        if (!(await CheckExistedReferences(maintainUnitPrices)))
-        {
-            throw new BadRequestException("Tồn tại dữ liệu tham chiếu không hợp lệ.");
-        }
+        using var stream = request.File.OpenReadStream();
+        var maintainUnitPrices = ParseTransposedExcel(stream, importErrors);
+
+        await CollectReferenceErrors(maintainUnitPrices, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         // Map data
         var equipments = await _equipmentRepository.GetAllAsync(
-            include: e => e.Include(e => e.Code),
+            include: e => e
+                .Include(e => e.Code),
             disableTracking: true);
 
-        var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
+        var equipmentIdMap = equipments
+            .Where(e => e.Code != null)
+            .GroupBy(e => e.Code!.Value)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
-        var excelItems = maintainUnitPrices.Select(d =>
+        var excelItems = new List<TunnelMaintainUnitPriceImportItem>();
+        foreach (var dto in maintainUnitPrices)
         {
-            equipmentIdMap.TryGetValue(d.EquipmentCode, out var equipmentId);
-            var startMonth = ParseMonthYear(d.StartMonth);
-            var endMonth = ParseMonthYear(d.EndMonth); // 👈 parse từ DTO thay vì gán = startMonth
-
-            // Map parts using Part Id directly (no need to query Part repository)
-            var maintainUnitPriceEquipments = d.PartData
-                .Where(pd => pd.Value.HasValue)
-                .Select(pd => Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
-                    null,
-                    pd.Key, // PartId from Excel
-                    pd.Value!.Value.Quantity,
-                    pd.Value.Value.AverageMonthlyTunnelProduction,
-                    pd.Value.Value.ReplacementTimeStandard))
-                .ToList();
-
-            return new
+            try
             {
-                EquipmentId = equipmentId,
-                StartMonth = startMonth,
-                EndMonth = endMonth,
-                Parts = maintainUnitPriceEquipments,
-                IsDeleteRequest = d.IsDeleteRequest
-            };
-        }).ToList();
+                equipmentIdMap.TryGetValue(dto.EquipmentCode, out var equipmentId);
+                var startMonth = ParseMonthYear(dto.StartMonth);
+                var endMonth = ParseMonthYear(dto.EndMonth);
+
+                var maintainUnitPriceEquipments = dto.PartData
+                    .Where(pd => pd.Value.HasValue)
+                    .Select(pd => Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
+                        null,
+                        pd.Key,
+                        pd.Value!.Value.Quantity,
+                        pd.Value.Value.AverageMonthlyTunnelProduction,
+                        pd.Value.Value.ReplacementTimeStandard))
+                    .ToList();
+
+                excelItems.Add(new TunnelMaintainUnitPriceImportItem
+                {
+                    EquipmentCode = dto.EquipmentCode,
+                    EquipmentId = equipmentId,
+                    StartMonth = startMonth,
+                    EndMonth = endMonth,
+                    Parts = maintainUnitPriceEquipments,
+                    IsDeleteRequest = dto.IsDeleteRequest
+                });
+            }
+            catch (Exception ex) when (ex is BadRequestException or ArgumentException)
+            {
+                importErrors.Add($"Thiết bị '{dto.EquipmentCode}': {ex.Message}");
+            }
+        }
+
+        ThrowIfImportErrors(importErrors);
 
         var dbEntities = await _repository.GetAllAsync(
             predicate: m => m.Type == MaintainUnitPriceType.TunnelExcavation,
@@ -88,7 +105,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
             var key = new MaintainUnitPriceLookupKey(excelItem.EquipmentId, excelItem.StartMonth, excelItem.EndMonth);
             if (!processedKeys.Add(key))
             {
-                throw new BadRequestException($"Dữ liệu bị trùng cho mã thiết bị và khoảng thời gian: {excelItem.StartMonth:MM/yyyy} - {excelItem.EndMonth:MM/yyyy}.");
+                importErrors.Add($"Thiết bị '{excelItem.EquipmentCode}' bị trùng khoảng thời gian {excelItem.StartMonth:MM/yyyy} - {excelItem.EndMonth:MM/yyyy}.");
+                continue;
             }
 
             if (excelItem.IsDeleteRequest)
@@ -103,12 +121,11 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
 
             if (dbLookup.TryGetValue(key, out var entityToUpdate))
             {
-                var newParts = excelItem.Parts.ToList();
                 entityToUpdate.Update(
                     excelItem.EquipmentId,
                     excelItem.StartMonth,
                     excelItem.EndMonth,
-                    newParts,
+                    excelItem.Parts,
                     entityToUpdate.OtherMaterialValue,
                     entityToUpdate.Type);
                 updateList.Add(entityToUpdate);
@@ -124,6 +141,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                     MaintainUnitPriceType.TunnelExcavation));
             }
         }
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -145,6 +164,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch
@@ -154,23 +175,23 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
         }
     }
 
-    private List<TunnelMaintainUnitPriceImportDto> ParseTransposedExcel(Stream stream)
+    private List<TunnelMaintainUnitPriceImportDto> ParseTransposedExcel(Stream stream, ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(stream);
         var worksheet = workbook.Worksheets.First();
 
         var result = new List<TunnelMaintainUnitPriceImportDto>();
 
-        // Find number of MaintainUnitPrice groups (each takes 2 columns, starting from column E)
+        // Find number of MaintainUnitPrice groups (each takes 3 columns, starting from column E)
         int colCount = 5;
         while (!worksheet.Cell(1, colCount).IsEmpty())
         {
-            colCount += 2;
+            colCount += 3;
         }
-        colCount -= 2; // Adjust to last filled column group
+        colCount -= 3; // Adjust to last filled column group
 
-        // Read each MaintainUnitPrice (every 2 columns from E onwards)
-        for (int col = 5; col <= colCount; col += 2)
+        // Read each MaintainUnitPrice (every 3 columns from E onwards)
+        for (int col = 5; col <= colCount; col += 3)
         {
             var startMonth = worksheet.Cell(1, col).GetString(); // Row 1: StartMonth
             var endMonth = worksheet.Cell(2, col).GetString();   // Row 2: EndMonth
@@ -214,18 +235,23 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                 }
 
                 var partIdString = worksheet.Cell(row, 1).GetString(); // Column A: Part Id (hidden)
-                var quantityValue = worksheet.Cell(row, col).GetString();
-                var productionValue = worksheet.Cell(row, col + 1).GetString();
+                var replacementTimeStandardValue = worksheet.Cell(row, col).GetString();
+                var quantityValue = worksheet.Cell(row, col + 1).GetString();
+                var productionValue = worksheet.Cell(row, col + 2).GetString();
 
-                var hasAnyValue = !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAnyValue = !string.IsNullOrWhiteSpace(replacementTimeStandardValue)
+                    || !string.IsNullOrWhiteSpace(quantityValue)
                     || !string.IsNullOrWhiteSpace(productionValue);
 
-                var hasAllValues = !string.IsNullOrWhiteSpace(quantityValue)
+                var hasAllValues = !string.IsNullOrWhiteSpace(replacementTimeStandardValue)
+                    && !string.IsNullOrWhiteSpace(quantityValue)
                     && !string.IsNullOrWhiteSpace(productionValue);
 
                 if (hasAnyValue && !hasAllValues)
                 {
-                    throw new BadRequestException($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 2 cột: Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
+                    importErrors.Add($"Thiếu dữ liệu định mức tại dòng {row}, cụm cột bắt đầu {col}. Vui lòng nhập đủ 3 cột: Định mức thời gian thay thế, Số lượng vật tư 1 lần thay thế, Sản lượng than bình quân tháng.");
+                    row++;
+                    continue;
                 }
 
                 if (!string.IsNullOrWhiteSpace(partIdString) &&
@@ -239,7 +265,8 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                         continue;
                     }
 
-                    if (double.TryParse(quantityValue, out var quantity) &&
+                    if (decimal.TryParse(replacementTimeStandardValue, out var replacementTimeStandard) &&
+                        double.TryParse(quantityValue, out var quantity) &&
                         decimal.TryParse(productionValue, out var production))
                     {
                         state.FilledParts++;
@@ -247,12 +274,12 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                         {
                             Quantity = quantity,
                             AverageMonthlyTunnelProduction = production,
-                            ReplacementTimeStandard = 1
+                            ReplacementTimeStandard = replacementTimeStandard
                         };
                     }
                     else
                     {
-                        throw new BadRequestException($"Dữ liệu số không hợp lệ tại dòng {row}, cụm cột bắt đầu {col}.");
+                        importErrors.Add($"Dữ liệu số không hợp lệ tại dòng {row}, cụm cột bắt đầu {col}.");
                     }
                 }
 
@@ -266,11 +293,6 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
                     continue;
                 }
 
-                if (state.FilledParts > 0 && state.FilledParts < state.TotalParts)
-                {
-                    throw new BadRequestException($"Thiết bị {state.Dto.EquipmentCode} chưa nhập đủ 2 thông số cho tất cả phụ tùng.");
-                }
-
                 state.Dto.IsDeleteRequest = state.FilledParts == 0;
                 result.Add(state.Dto);
             }
@@ -279,18 +301,24 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
         return result;
     }
 
-    private async Task<bool> CheckExistedReferences(List<TunnelMaintainUnitPriceImportDto> dtoList)
+    private async Task CollectReferenceErrors(List<TunnelMaintainUnitPriceImportDto> dtoList, ICollection<string> importErrors)
     {
         var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
-                include: e => e.Include(e => e.Code),
+                include: e => e
+                    .Include(e => e.Code),
                 disableTracking: true))
             .Where(e => e.Code != null)
             .Select(e => e.Code!.Value.Trim())
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var excelEquipmentCodes = dtoList.Select(d => d.EquipmentCode?.Trim()).Where(n => !string.IsNullOrEmpty(n)).Distinct();
-
-        return excelEquipmentCodes.All(code => dbEquipmentCodes.Contains(code));
+        foreach (var dto in dtoList)
+        {
+            var equipmentCode = dto.EquipmentCode?.Trim();
+            if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
+            {
+                importErrors.Add($"Thiết bị '{equipmentCode}' không tồn tại.");
+            }
+        }
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -317,6 +345,21 @@ public class ImportTunnelMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOfWo
 
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
     }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
+    }
 }
 
 internal class TunnelMaintainUnitPriceImportDto
@@ -329,6 +372,16 @@ internal class TunnelMaintainUnitPriceImportDto
 }
 
 internal readonly record struct MaintainUnitPriceLookupKey(Guid EquipmentId, DateOnly StartMonth, DateOnly EndMonth);
+
+internal class TunnelMaintainUnitPriceImportItem
+{
+    public string EquipmentCode { get; set; } = string.Empty;
+    public Guid EquipmentId { get; set; }
+    public DateOnly StartMonth { get; set; }
+    public DateOnly EndMonth { get; set; }
+    public IList<Domain.Entities.Pricing.MaintainUnitPriceEquipment> Parts { get; set; } = new List<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
+    public bool IsDeleteRequest { get; set; }
+}
 
 internal struct TunnelPartEquipmentData
 {

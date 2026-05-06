@@ -1,9 +1,17 @@
 import z from 'zod';
 
+function isUnresolvedRow(data: { resolutionStatus?: string | null }): boolean {
+	return data.resolutionStatus === 'unresolved';
+}
+
 function getDefaultCategoryByMaterialType(type?: number | null): number | null {
 	if (type === 1) return 2; // Material -> Vật liệu
 	if (type === 2) return 3; // SparePart -> SCTX
 	return null;
+}
+
+function requiresCategoryProcessGroup(data: { type?: number | null }): boolean {
+	return data.type === 2;
 }
 
 function parseSchemaNumber(value: number | string | null | undefined): number {
@@ -12,11 +20,23 @@ function parseSchemaNumber(value: number | string | null | undefined): number {
 	return Number.isFinite(normalized) ? normalized : 0;
 }
 
+const categoryAllocationSchema = z.object({
+	processGroupId: z.string().nullable(),
+	quantity: z.number().nullable().default(null),
+	equipmentIds: z.array(z.string()).default([]),
+});
+
 export const materialFormSchema = z
 	.object({
 		id: z.string().optional(),
 		acceptanceReportItemId: z.string().optional(),
 		materialOrPartId: z.string().optional(),
+		resolutionStatus: z.enum(['resolved', 'unresolved']).optional(),
+		unresolvedReason: z.string().optional(),
+		sourceRowNumber: z.number().nullable().optional(),
+		createdEntityGroup: z.enum(['material', 'part']).nullable().optional(),
+		createdSpecificType: z.number().nullable().optional(),
+		partType: z.number().nullable().optional(),
 		materialCode: z.string().min(1, { message: 'Mã vật tư là bắt buộc' }),
 		unitOfMeasureName: z.string().optional(),
 		type: z.number().optional(),
@@ -37,7 +57,11 @@ export const materialFormSchema = z
 		contractLimitQuantity: z.number().nullable().optional(),
 		category: z.number().nullable(),
 		categoryProcessGroup: z.string().nullable(),
+		categoryProcessGroupIds: z.array(z.string()).optional(),
 		categoryProductionOrderId: z.string().nullable(),
+		categoryEquipmentId: z.string().nullable().optional(),
+		categoryEquipmentIds: z.array(z.string()).optional(),
+		categoryAllocations: z.array(categoryAllocationSchema).optional(),
 		showCategoryDropdown: z.boolean(),
 		additionalCostCategory: z.number().nullable(),
 		additionalCostProductionOrderId: z.string().nullable(),
@@ -56,6 +80,7 @@ export const materialFormSchema = z
 	})
 	.refine(
 		(data) =>
+			isUnresolvedRow(data) ||
 			data.showCategoryDropdown ||
 			data.showAdditionalCostDropdown ||
 			data.showContractLimitDropdown ||
@@ -67,18 +92,21 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			if (!data.showCategoryDropdown || !categoryValue) return true;
-			return !!data.categoryProcessGroup;
+			if (!requiresCategoryProcessGroup(data)) return true;
+			return (data.categoryProcessGroupIds?.length ?? 0) > 0;
 		},
 		{
-			message: 'Phải chọn nhóm công đoạn',
-			path: ['categoryProcessGroup'],
+			message: 'Phải chọn ít nhất 1 nhóm công đoạn',
+			path: ['categoryProcessGroupIds'],
 		},
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			if (!data.showCategoryDropdown || categoryValue !== 3) return true;
@@ -91,6 +119,78 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			const needsEquipment =
+				categoryValue === 3 && data.type === 2 && data.itemType === 1;
+			if (!data.showCategoryDropdown || !needsEquipment) return true;
+			const allocations = data.categoryAllocations ?? [];
+			return (
+				allocations.length > 0 &&
+				(data.categoryEquipmentIds?.length ?? 0) >= allocations.length &&
+				allocations.every(
+					(allocation) => (allocation.equipmentIds?.length ?? 0) > 0,
+				)
+			);
+		},
+		{
+			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 thiết bị',
+			path: ['categoryEquipmentIds'],
+		},
+	)
+	.refine(
+		(data) => {
+			if (isUnresolvedRow(data)) return true;
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			if (
+				!data.showCategoryDropdown ||
+				!categoryValue ||
+				!requiresCategoryProcessGroup(data)
+			) {
+				return true;
+			}
+
+			return (data.categoryAllocations ?? []).every(
+				(allocation) =>
+					allocation.processGroupId != null &&
+					allocation.processGroupId.length > 0,
+			);
+		},
+		{
+			message: 'Mỗi phân bổ phải có nhóm công đoạn',
+			path: ['categoryAllocations'],
+		},
+	)
+	.refine(
+		(data) => {
+			if (isUnresolvedRow(data)) return true;
+			const categoryValue =
+				data.category ?? getDefaultCategoryByMaterialType(data.type);
+			if (
+				!data.showCategoryDropdown ||
+				!categoryValue ||
+				!requiresCategoryProcessGroup(data)
+			) {
+				return true;
+			}
+
+			const total = (data.categoryAllocations ?? []).reduce(
+				(acc, allocation) => acc + parseSchemaNumber(allocation.quantity),
+				0,
+			);
+			return Math.abs(total - parseSchemaNumber(data.categoryQuantity)) < 0.01;
+		},
+		{
+			message:
+				'Tổng số lượng phân bổ theo nhóm công đoạn phải bằng số lượng vật tư của cột',
+			path: ['categoryAllocations'],
+		},
+	)
+	.refine(
+		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			if (
 				!data.showAdditionalCostDropdown ||
 				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
@@ -106,6 +206,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			if (
 				!data.showAdditionalCostDropdown ||
 				data.additionalCostCategory !== 4
@@ -121,6 +222,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const requiresSubCategory =
 				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
 			if (!data.showContractLimitDropdown || !requiresSubCategory) {
@@ -135,6 +237,7 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const requiresSubCategory =
 				data.contractLimitCategory === 2 || data.contractLimitCategory === 3;
 			if (!data.showContractLimitDropdown || !requiresSubCategory) {
@@ -158,27 +261,37 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			const hasCategoryActive =
 				data.showCategoryDropdown &&
 				categoryValue &&
-				data.categoryProcessGroup &&
-				(categoryValue !== 3 || data.categoryProductionOrderId != null);
+				(!requiresCategoryProcessGroup(data) ||
+					(data.categoryAllocations?.length ?? 0) > 0) &&
+				(categoryValue !== 3 || data.categoryProductionOrderId != null) &&
+				!(
+					categoryValue === 3 &&
+					data.type === 2 &&
+					data.itemType === 1 &&
+					(data.categoryAllocations?.some(
+						(allocation) => (allocation.equipmentIds?.length ?? 0) === 0,
+					) ??
+						true)
+				);
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
 				((data.additionalCostCategory !== 2 &&
 					data.additionalCostCategory !== 3) ||
 					data.additionalCostProductionOrderId != null) &&
-				(data.additionalCostCategory !== 4 ||
-					data.otherMaterialDetail != null);
+				(data.additionalCostCategory !== 4 || data.otherMaterialDetail != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown &&
 				data.contractLimitCategory &&
 				((data.contractLimitCategory !== 2 &&
 					data.contractLimitCategory !== 3) ||
-					((data.contractLimitSubCategories?.length ?? 0) > 0));
+					(data.contractLimitSubCategories?.length ?? 0) > 0);
 			const hasAssetActive = data.showAssetDropdown;
 
 			if (
@@ -213,12 +326,20 @@ export const materialFormSchema = z
 		},
 	);
 
-export type MaterialFormSchema = z.infer<typeof materialFormSchema>;
+export type MaterialFormInput = z.input<typeof materialFormSchema>;
+
+export type MaterialFormSchema = z.output<typeof materialFormSchema>;
 
 export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	id: undefined,
 	acceptanceReportItemId: undefined,
 	materialOrPartId: undefined,
+	resolutionStatus: 'resolved',
+	unresolvedReason: undefined,
+	sourceRowNumber: null,
+	createdEntityGroup: null,
+	createdSpecificType: null,
+	partType: null,
 	materialCode: '',
 	unitOfMeasureName: undefined,
 	type: undefined,
@@ -235,7 +356,11 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	contractLimitQuantity: null,
 	category: null,
 	categoryProcessGroup: null,
+	categoryProcessGroupIds: [],
 	categoryProductionOrderId: null,
+	categoryEquipmentId: null,
+	categoryEquipmentIds: [],
+	categoryAllocations: [],
 	showCategoryDropdown: false,
 	additionalCostCategory: null,
 	additionalCostProductionOrderId: null,
@@ -254,3 +379,7 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 export const materialsFormSchema = z.object({
 	materials: z.array(materialFormSchema),
 });
+
+export type MaterialsFormInput = z.input<typeof materialsFormSchema>;
+
+export type MaterialsFormSchema = z.output<typeof materialsFormSchema>;

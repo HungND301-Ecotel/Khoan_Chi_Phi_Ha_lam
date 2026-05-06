@@ -20,6 +20,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<ProductUnitPrice>();
 
     public async Task<bool> Handle(CreateProductionOutputListCommand request, CancellationToken cancellationToken)
@@ -29,15 +30,40 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
             throw new BadRequestException(CustomResponseMessage.UpdateIdsEmpty);
         }
 
-        // Kiểm tra khoảng thời gian trùng lặp trong batch và với bản ghi trong DB (O(n log n))
+        // Kiểm tra khoảng thời gian trùng lặp trong batch và với bản ghi trong DB theo từng đơn vị (O(n log n))
         var allRecords = await _productionOutputRepository.GetAllAsync(disableTracking: true);
-        var periods = request.CreateModels
-            .Select((x, i) => (x.StartMonth, x.EndMonth, Index: i))
-            .ToList();
+        var periodsByDepartment = request.CreateModels
+            .Select((x, i) => new { Model = x, Index = i })
+            .GroupBy(x => x.Model.DepartmentId);
 
-        if (OverlapChecker.HasOverlapWithExisting(periods, allRecords))
+        var hasAnyOverlap = periodsByDepartment.Any(group =>
+        {
+            var periods = group.Select(x => (x.Model.StartMonth, x.Model.EndMonth, x.Index));
+            var existingRecords = allRecords.Where(x => x.DepartmentId == group.Key);
+            return OverlapChecker.HasOverlapWithExisting(periods, existingRecords);
+        });
+
+        if (hasAnyOverlap)
         {
             throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
+        }
+
+        var departmentIds = request.CreateModels
+            .Where(x => x.DepartmentId.HasValue)
+            .Select(x => x.DepartmentId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (departmentIds.Any())
+        {
+            var existingDepartmentIds = (await _departmentRepository.GetAllAsync(
+                predicate: x => departmentIds.Contains(x.Id),
+                disableTracking: true)).Select(x => x.Id).ToHashSet();
+
+            if (existingDepartmentIds.Count != departmentIds.Count)
+            {
+                throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+            }
         }
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -62,7 +88,8 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                     createModel.StartMonth,
                     createModel.EndMonth,
                     totalProductionMeters,
-                    totalStandardProductionMeters);
+                    totalStandardProductionMeters,
+                    createModel.DepartmentId);
 
                 if (processGroups.Any())
                 {
@@ -138,6 +165,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
             var groupEntity = ProductionOutputProcessGroup.Create(
                 groupDto.ProcessGroupId,
+                groupDto.PlanProductionMeters,
                 groupDto.StandardProductionMeters);
 
             foreach (var productDto in groupDto.Products)
@@ -152,7 +180,10 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                     throw new ConflictException(CustomResponseMessage.InvalidParams);
                 }
 
-                groupEntity.AddProduct(ProductionOutputProduct.Create(productDto.ProductId, productDto.ProductionMeters));
+                groupEntity.AddProduct(ProductionOutputProduct.Create(
+                    productDto.ProductId,
+                    productDto.ProductionMeters,
+                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);
@@ -180,6 +211,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
         var existingProductUnitPrices = await _productUnitPriceRepository.GetAll()
             .Where(x => productIds.Contains(x.ProductId)
+                && x.DepartmentId == productionOutput.DepartmentId
                 && x.ScenarioType == ProductUnitPriceScenarioType.Adjustment)
             .Include(x => x.ProductUnitPriceProductionOutputs)
             .ToListAsync(cancellationToken);
@@ -191,12 +223,20 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
             if (productUnitPrice == null)
             {
-                productUnitPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(productId, null, ProductUnitPriceScenarioType.Adjustment);
+                productUnitPrice = Domain.Entities.Pricing.ProductUnitPrice.Create(
+                    productId,
+                    null,
+                    productionOutput.DepartmentId,
+                    ProductUnitPriceScenarioType.Adjustment);
                 productUnitPrice.AddProductionOutput(productionOutput.Id, productionMeters);
                 await _productUnitPriceRepository.InsertAsync(productUnitPrice, cancellationToken);
             }
             else
             {
+                productUnitPrice.Update(
+                    productUnitPrice.ProductId,
+                    productUnitPrice.UnitOfMeasureId,
+                    productionOutput.DepartmentId);
                 productUnitPrice.AddProductionOutput(productionOutput.Id, productionMeters);
                 _productUnitPriceRepository.Update(productUnitPrice);
             }

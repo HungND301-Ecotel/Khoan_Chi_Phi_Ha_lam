@@ -31,8 +31,8 @@ export const MAIN_PRICING_LONGWALL_PANEL_COLUMNS: ColumnDef<LongwallPanel>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá SCTX (đ/tấn)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		header: 'Chi phí vật tư SCTX cho 1 thiết bị /1 tấn than NK (đ/t)',
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -70,7 +70,7 @@ export const MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS: ColumnDef<MaintainUnitP
 		{
 			accessorKey: 'partCost',
 			header: () => (
-				<span className='h-fit whitespace-normal'>{'Đơn giá (đ)'}</span>
+				<span className='h-fit whitespace-normal'>{'Đơn giá vật tư (đ/t'}</span>
 			),
 			cell: ({ row }) => formatNumber(row.original.partCost),
 		},
@@ -106,7 +106,7 @@ export const MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS: ColumnDef<MaintainUnitP
 			accessorKey: 'materialRatePerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Định mức SCTX 1 thiết bị/1000 tấn'}
+					{'Định mức vật tư SCTX cho 1 thiết bị /1000 tấn than NK'}
 				</span>
 			),
 			cell: ({ row }) =>
@@ -116,10 +116,10 @@ export const MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS: ColumnDef<MaintainUnitP
 			accessorKey: 'materialCostPerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Chi phí SCTX 1 thiết bị/1 tấn than (đ/t)'}
+					{'Chi phí vật tư SCTX cho 1 phụ tùng/1 tấn than NK (đ/t)'}
 				</span>
 			),
 			cell: ({ row }) =>
-				formatNumber(Math.round(row.original.materialCostPerMetres)),
+				formatNumber(row.original.materialCostPerMetres),
 		},
 	];

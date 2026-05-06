@@ -4,12 +4,12 @@ import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export const getPlanedElectricityCostColumns = (
-	processGroupType?: ProcessGroupType,
+	fixedKeyType?: ProcessGroupType,
 ): ColumnDef<PlanedElectricityCostDetailCost>[] => {
 	const kFactorLength =
-		processGroupType === ProcessGroupType.DL
+		fixedKeyType === ProcessGroupType.DL || fixedKeyType === ProcessGroupType.XL
 			? 3
-			: processGroupType === ProcessGroupType.LC
+			: fixedKeyType === ProcessGroupType.LC
 				? 1
 				: 3;
 
@@ -25,10 +25,7 @@ export const getPlanedElectricityCostColumns = (
 		{
 			accessorKey: 'electricityUnitPrice',
 			header: 'Đơn giá (đ)',
-			cell: ({ row }) =>
-				formatNumber(row.original.electricityUnitPrice ?? 0, {
-					maximumFractionDigits: 0,
-				}),
+			cell: ({ row }) => formatNumber(row.original.electricityUnitPrice ?? 0),
 		},
 		{
 			accessorKey: 'quantity',
@@ -42,18 +39,25 @@ export const getPlanedElectricityCostColumns = (
 			return {
 				id: name,
 				header: name,
-				cell: ({ row }) =>
-					formatNumber(
-						row.original.adjustmentFactorDescriptions?.sort((a, b) =>
-							a.adjustmentFactorCode.localeCompare(b.adjustmentFactorCode),
-						)[idx]?.electricityAdjustmentValue ?? 0,
-					),
+				cell: ({ row }) => {
+					const sortedAdjustmentFactors = [
+						...(row.original?.adjustmentFactorDescriptions ?? []),
+					].sort((a, b) =>
+						(a?.adjustmentFactorCode ?? '').localeCompare(
+							b?.adjustmentFactorCode ?? '',
+						),
+					);
+
+					return formatNumber(
+						sortedAdjustmentFactors[idx]?.effectiveValue ?? 0,
+					);
+				},
 			};
 		}),
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá điện năng (đ/m)',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];
 };

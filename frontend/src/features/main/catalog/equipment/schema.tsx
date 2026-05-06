@@ -12,9 +12,6 @@ export const equipmentSchema = z.object({
 		.trim()
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
-	processGroupId: z.string().min(1, {
-		error: 'Vui lòng chọn nhóm công đoạn sản xuất',
-	}),
 	partIds: z.array(z.string()),
 	costs: z.array(
 		z.object({
@@ -43,7 +40,6 @@ export const EQUIPMENT_SCHEMA_DEFAULT: EquipmentSchema = {
 	code: '',
 	name: '',
 	unitOfMeasureId: '',
-	processGroupId: '',
 	partIds: [],
 	costs: [
 		{

@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Index.AdjustmentFactorDescription.Specifications;
+using Application.Catalog.Index.AdjustmentFactorDescription.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
@@ -30,7 +30,7 @@ public class GetAllAdjustmentFactorDescriptionQueryHandler(IPaginationService pa
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderBy(d => d.AdjustmentFactorCode).ThenBy(d => d.Description).ToList();
+        result.Data = result.Data.OrderByCodeNatural(d => d.AdjustmentFactorCode).ThenBy(d => d.Description).ToList();
         return result;
     }
 }

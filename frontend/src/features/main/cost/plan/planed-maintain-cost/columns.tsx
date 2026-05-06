@@ -6,6 +6,7 @@ export type PlanedMaintainCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	trimmingCoefficient: number;
 	costs: PlanedMaintainCostItem[];
 };
 
@@ -24,17 +25,23 @@ export type PlanedMaintainCostItem = {
 export type PlanedMaintainCostItemDescription = {
 	id: string;
 	description: string;
+	adjustmentFactorDescriptionId?: string | null;
 	adjustmentFactorId: string;
 	adjustmentFactorCode: string;
 	adjustmentFactorName: string;
-	maintenanceAdjustmentValue: number;
+	maintenanceAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
 };
 
 export const getPlanedMaintainCostColumns = (
-	processGroupType?: ProcessGroupType,
+	fixedKeyType?: ProcessGroupType,
 ): ColumnDef<PlanedMaintainCostItem>[] => {
 	const getLength = () => {
-		if (processGroupType === ProcessGroupType.DL) {
+		if (
+			fixedKeyType === ProcessGroupType.DL ||
+			fixedKeyType === ProcessGroupType.XL
+		) {
 			return 7;
 		}
 		return 8; // LONGWALL or default
@@ -52,10 +59,7 @@ export const getPlanedMaintainCostColumns = (
 		{
 			accessorKey: 'maintainUnitPrice',
 			header: 'Đơn giá (đ)',
-			cell: ({ row }) =>
-				formatNumber(row.original.maintainUnitPrice, {
-					maximumFractionDigits: 0,
-				}),
+			cell: ({ row }) => formatNumber(row.original.maintainUnitPrice),
 		},
 		{
 			accessorKey: 'quantity',
@@ -82,7 +86,7 @@ export const getPlanedMaintainCostColumns = (
 					const adjustedIdx = idx > 5 ? idx - 1 : idx;
 
 					return formatNumber(
-						sortedDescriptions[adjustedIdx]?.maintenanceAdjustmentValue ?? 0,
+						sortedDescriptions[adjustedIdx]?.effectiveValue ?? 0,
 					);
 				},
 			};
@@ -90,7 +94,7 @@ export const getPlanedMaintainCostColumns = (
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá SCTX (đ/m) ',
-			cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 	];
 };

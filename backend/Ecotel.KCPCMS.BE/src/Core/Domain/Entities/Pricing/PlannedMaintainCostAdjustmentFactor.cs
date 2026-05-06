@@ -4,6 +4,12 @@ using Shared.Constants;
 
 namespace Domain.Entities.Pricing;
 
+public sealed record PlannedMaintainAdjustmentFactorInput(
+    Guid? AdjustmentFactorDescriptionId,
+    Guid? AdjustmentFactorId,
+    double? CustomValue,
+    AdjustmentFactorDescription? AdjustmentFactorDescription);
+
 public class PlannedMaintainCostAdjustmentFactor : AuditableEntity<Guid>
 {
     public Guid PlannedMaintainCostId { get; protected set; }
@@ -32,9 +38,9 @@ public class PlannedMaintainCostAdjustmentFactor : AuditableEntity<Guid>
             }
 
             var result = (double)Quantity *
-                    MaintainUnitPrice.GetMaintainTotalPrice() *
-                    K6AdjustmentFactorValue *
-                    _plannedMaintainCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.AdjustmentFactorDescription.MaintenanceAdjustmentValue ?? 1);
+                MaintainUnitPrice.GetMaintainTotalPrice() *
+                K6AdjustmentFactorValue *
+                _plannedMaintainCostAdjustmentFactorDescriptions.Aggregate(1.0, (acc, x) => acc * x.EffectiveValue);
 
             CachedPlannedMaintainAdjTotal = result;
             return CachedPlannedMaintainAdjTotal.Value;
@@ -48,7 +54,7 @@ public class PlannedMaintainCostAdjustmentFactor : AuditableEntity<Guid>
         Guid maintainUnitPriceId,
         decimal quantity,
         double k6AdjustmentFactorValue,
-        List<AdjustmentFactorDescription?> adjustmentFactorDescriptions)
+        IList<PlannedMaintainAdjustmentFactorInput> adjustmentFactorDescriptions)
     {
         var result = new PlannedMaintainCostAdjustmentFactor
         {
@@ -61,19 +67,21 @@ public class PlannedMaintainCostAdjustmentFactor : AuditableEntity<Guid>
         return result;
     }
 
-    public void AddAdjustmentFactorDescription(IList<AdjustmentFactorDescription?> adjustmentFactorDescriptions)
+    public void AddAdjustmentFactorDescription(IList<PlannedMaintainAdjustmentFactorInput> adjustmentFactorDescriptions)
     {
         foreach (var adj in adjustmentFactorDescriptions)
         {
-            if (adj == null)
+            if (adj.AdjustmentFactorDescriptionId.HasValue && adj.AdjustmentFactorDescription == null)
             {
                 throw new ArgumentException(CustomResponseMessage.AdjustmentFactorDescriptionIsNull);
             }
-            _plannedMaintainCostAdjustmentFactorDescriptions.Add(new PlannedMaintainCostAdjustmentFactorDescription
-            {
-                AdjustmentFactorDescriptionId = adj.Id,
-                PlannedMaintainCostAdjustmentFactorId = this.Id
-            });
+
+            _plannedMaintainCostAdjustmentFactorDescriptions.Add(
+                PlannedMaintainCostAdjustmentFactorDescription.Create(
+                    this.Id,
+                    adj.AdjustmentFactorDescriptionId,
+                    adj.AdjustmentFactorId,
+                    adj.CustomValue));
         }
     }
 }

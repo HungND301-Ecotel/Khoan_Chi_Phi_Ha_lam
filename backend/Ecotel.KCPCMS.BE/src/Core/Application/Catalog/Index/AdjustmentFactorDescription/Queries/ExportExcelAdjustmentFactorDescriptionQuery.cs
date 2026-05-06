@@ -20,14 +20,14 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
 
         var list = await _adjustmentFactorDescriptionRepository.GetAllAsync(
             include: s => s.Include(s => s.AdjustmentFactor).ThenInclude(a => a.Code!)
-                            .Include(s => s.AdjustmentFactor).ThenInclude(a => a.ProcessGroup).ThenInclude(g => g.Code!),
+                            .Include(s => s.AdjustmentFactor).ThenInclude(a => a.ProcessGroup).ThenInclude(g => g.FixedKey),
             disableTracking: true);
 
         var adjustmentFactors = await _adjustmentFactorRepository.GetAllAsync(
-            selector: u => $"{u.ProcessGroup.Code.Value} - {u.Code.Value}",
+            selector: u => $"{u.ProcessGroup.FixedKey.Key} - {u.Code.Value}",
             include: u => u
                 .Include(u => u.Code)
-                .Include(u => u.ProcessGroup).ThenInclude(p => p.Code),
+                .Include(u => u.ProcessGroup).ThenInclude(p => p.FixedKey),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -38,7 +38,7 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
         var dtoList = list.Select(s => new AdjustmentFactorDescriptionExcelDto
         {
             Id = s.Id,
-            AdjustmentFactorCode = (s.AdjustmentFactor?.ProcessGroup!.Code!.Value + " - " + s.AdjustmentFactor!.Code?.Value) ?? "",
+            AdjustmentFactorCode = (s.AdjustmentFactor?.ProcessGroup!.FixedKey!.Key + " - " + s.AdjustmentFactor!.Code?.Value) ?? "",
             Description = s.Description,
             MaintenanceAdjustmentValue = s.MaintenanceAdjustmentValue,
             ElectricityAdjustmentValue = s.ElectricityAdjustmentValue

@@ -1,11 +1,11 @@
 using System.Globalization;
+using System.Text;
 using Application.Common.Exceptions;
 using Application.Dto.Catalog.AcceptanceReport;
 using Application.Interfaces.Services;
 using ClosedXML.Excel;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
-using Domain.Entities.Pricing;
 using Shared.Constants;
 
 namespace Application.Catalog.Production.AcceptanceReports.Services;
@@ -17,7 +17,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         Stream fileStream,
         string fileName,
         IEnumerable<Material> materialsInDb,
-        IEnumerable<MaintainUnitPriceEquipment> maintainUnitPriceEquipmentsInDb)
+        IEnumerable<Part> partsInDb)
     {
         if (!fileName.EndsWith(".xlsx") && !fileName.EndsWith(".xls"))
         {
@@ -25,9 +25,17 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         }
 
         var materials = materialsInDb.ToList();
-        var maintainItems = maintainUnitPriceEquipmentsInDb
-            .Where(m => m.Part?.Code?.Value != null)
+        var parts = partsInDb
+            .Where(p => p.Code?.Value != null)
             .ToList();
+        var materialByNormalizedCode = materials
+            .Where(m => m.Code?.Value != null)
+            .GroupBy(m => NormalizeCode(m.Code!.Value))
+            .ToDictionary(g => g.Key, g => g.First());
+        var partByNormalizedCode = parts
+            .Where(p => p.Code?.Value != null)
+            .GroupBy(p => NormalizeCode(p.Code!.Value))
+            .ToDictionary(g => g.Key, g => g.First());
 
         try
         {
@@ -39,7 +47,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
             }
 
             var acceptanceReports = new List<AcceptanceReportItemDto>();
-            var importErrors = new List<string>();
+            var unresolvedAcceptanceReports = new List<UnresolvedAcceptanceReportItemDto>();
+            var fatalErrors = new List<string>();
 
             foreach (var row in worksheet.RowsUsed())
             {
@@ -51,6 +60,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
 
                 var idStr = row.Cell(1).Value.ToString()?.Trim();
                 var materialCode = row.Cell(2).Value.ToString()?.Trim();
+                var normalizedMaterialCode = NormalizeCode(materialCode);
                 var quantityReceived = row.Cell(3).Value.ToString()?.Trim();
                 var quantityDispensed = row.Cell(4).Value.ToString()?.Trim();
 
@@ -61,34 +71,34 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 }
                 else if (!string.IsNullOrWhiteSpace(idStr))
                 {
-                    importErrors.Add($"Id không đúng định dạng Guid ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Id không đúng định dạng Guid ở dòng {rowNumber}.");
                 }
 
                 if (string.IsNullOrWhiteSpace(materialCode))
                 {
-                    importErrors.Add($"Mã vật tư không thể trống ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Mã vật tư không thể trống ở dòng {rowNumber}.");
                     continue;
                 }
 
                 if (!TryParseQuantity(quantityReceived, out var receivedValue))
                 {
-                    importErrors.Add($"Số lượng nhập phải là số ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Số lượng nhập phải là số ở dòng {rowNumber}.");
                     continue;
                 }
 
                 if (!TryParseQuantity(quantityDispensed, out var dispensedValue))
                 {
-                    importErrors.Add($"Số lượng xuất phải là số ở dòng {rowNumber}.");
+                    fatalErrors.Add($"Số lượng xuất phải là số ở dòng {rowNumber}.");
                     continue;
                 }
 
-                var material = materials.FirstOrDefault(m =>
-                    m.Code.Value.Equals(materialCode, StringComparison.OrdinalIgnoreCase));
+                materialByNormalizedCode.TryGetValue(normalizedMaterialCode, out var material);
 
                 var type = AcceptanceReportItemType.Material;
                 var itemType = (int)(material?.MaterialType ?? MaterialType.MaterialOutContract);
                 Guid? materialId = null;
-                Guid? maintainUnitPriceEquipmentId = null;
+                Guid? partId = null;
+                PartType? partType = null;
                 string unitOfMeasureName;
 
                 if (material != null)
@@ -98,28 +108,37 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 }
                 else
                 {
-                    var maintainItem = maintainItems
-                        .FirstOrDefault(m => m.Part!.Code!.Value.Equals(materialCode, StringComparison.OrdinalIgnoreCase));
+                    partByNormalizedCode.TryGetValue(normalizedMaterialCode, out var part);
 
-                    if (maintainItem == null)
+                    if (part == null)
                     {
-                        importErrors.Add($"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}.");
+                        unresolvedAcceptanceReports.Add(new UnresolvedAcceptanceReportItemDto
+                        {
+                            RowNumber = rowNumber,
+                            ReportItemId = reportItemId,
+                            MaterialCode = materialCode,
+                            IssuedQuantity = receivedValue,
+                            ShippedQuantity = dispensedValue,
+                            UnresolvedReason = $"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}."
+                        });
                         continue;
                     }
 
                     type = AcceptanceReportItemType.Part;
-                    itemType = (int)(maintainItem.Part?.Type ?? PartType.OtherPart);
-                    maintainUnitPriceEquipmentId = maintainItem.Id;
-                    unitOfMeasureName = maintainItem.Part?.UnitOfMeasure?.Name ?? "N/A";
+                    itemType = (int)part.Type;
+                    partType = part.Type;
+                    partId = part.Id;
+                    unitOfMeasureName = part.UnitOfMeasure?.Name ?? "N/A";
                 }
 
                 acceptanceReports.Add(new AcceptanceReportItemDto
                 {
                     ReportItemId = reportItemId,
                     MaterialId = materialId,
-                    MaintainUnitPriceEquipmentId = maintainUnitPriceEquipmentId,
+                    PartId = partId,
                     Type = type,
                     ItemType = (ItemType)itemType,
+                    PartType = partType,
                     MaterialCode = materialCode,
                     UnitOfMeasureName = unitOfMeasureName,
                     IssuedQuantity = receivedValue,
@@ -127,9 +146,9 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 });
             }
 
-            ThrowIfImportErrors(importErrors);
+            ThrowIfImportErrors(fatalErrors);
 
-            if (!acceptanceReports.Any())
+            if (!acceptanceReports.Any() && !unresolvedAcceptanceReports.Any())
             {
                 throw new BadRequestException(CustomResponseMessage.ExcelFileHasNoValidData);
             }
@@ -137,7 +156,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
             return new UploadAcceptanceReportResponseDto
             {
                 FilePath = "",
-                AcceptanceReports = acceptanceReports.OrderBy(a => a.MaterialCode).ToList()
+                AcceptanceReports = acceptanceReports,
+                UnresolvedAcceptanceReports = unresolvedAcceptanceReports
             };
         }
         catch (Exception ex) when (ex is not BadRequestException && ex is not ExcelImportException)
@@ -169,5 +189,35 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         }
 
         return double.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out parsedValue);
+    }
+
+    private static string NormalizeCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder(value.Length);
+        var previousWasWhitespace = false;
+
+        foreach (var character in value.Trim())
+        {
+            if (char.IsWhiteSpace(character))
+            {
+                if (!previousWasWhitespace)
+                {
+                    builder.Append(' ');
+                    previousWasWhitespace = true;
+                }
+
+                continue;
+            }
+
+            builder.Append(char.ToUpperInvariant(character));
+            previousWasWhitespace = false;
+        }
+
+        return builder.ToString();
     }
 }

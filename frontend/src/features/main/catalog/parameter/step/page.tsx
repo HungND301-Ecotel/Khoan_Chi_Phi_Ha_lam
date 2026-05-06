@@ -58,6 +58,7 @@ export function MainCatalogParameterStepPage() {
 			columns={CATALOG_PARAMETER_STEP_COLUMNS}
 			filters={[{ key: 'value', label: 'Bước chống' }]}
 			onCreate={(props) => <StepForm {...props} />}
+			onDuplicate={(props) => <StepForm {...props} isDuplicate />}
 			onUpdate={(props) => <StepForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

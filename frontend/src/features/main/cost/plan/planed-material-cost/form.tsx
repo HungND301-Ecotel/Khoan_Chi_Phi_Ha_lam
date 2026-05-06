@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import {
+	LOW_VALUE_PERISHABLE_SUPPLY_INCLUSION_OPTIONS,
+	LowValuePerishableSupplyInclusion,
+} from '@/constants/low-value-perishable-supply';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Asset } from '@/features/main/catalog/asset/types';
@@ -25,7 +29,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Check, Pencil, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { UnifiedMaterial } from './type';
 import { ProcessGroupType } from '@/constants/process-group';
@@ -106,17 +110,21 @@ export function PlanMaterialCostForm({
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
 
-	const form = useForm<PlanMaterialCostSchema>({
-		resolver: zodResolver(planMaterialCostSchema),
-		mode: 'onSubmit',
-		defaultValues: {
-			...PLAN_MATERIAL_COST_DEFAULT,
-			outputId: output?.id,
-			productUnitPriceId: plan?.id,
-			slideUnitPriceAssignmentCodeId: '',
-			materialReferenceId: '',
+	const form = useForm<PlanMaterialCostSchema, unknown, PlanMaterialCostSchema>(
+		{
+			resolver: zodResolver(planMaterialCostSchema),
+			mode: 'onSubmit',
+			defaultValues: {
+				...PLAN_MATERIAL_COST_DEFAULT,
+				outputId: output?.id,
+				productUnitPriceId: plan?.id,
+				slideUnitPriceAssignmentCodeId: '',
+				materialReferenceId: '',
+				lowValuePerishableSupplyInclusion:
+					LowValuePerishableSupplyInclusion.Exclude,
+			},
 		},
-	});
+	);
 
 	const watchedStoneClampRatioReferenceId = form.watch(
 		'stoneClampRatioReferenceId',
@@ -125,17 +133,22 @@ export function PlanMaterialCostForm({
 	const watchedMaterialUnitPriceId = form.watch('materialUnitPriceId');
 	const watchedMaterialReferenceId = form.watch('materialReferenceId');
 
-	// Filter materials based on processGroupType
-	const filteredMaterials = materials.filter((material) => {
-		const groupType = plan?.processGroupType;
-		if (groupType === ProcessGroupType.DL) {
-			return material.type === 1;
-		}
-		if (groupType === ProcessGroupType.LC) {
-			return material.type === 2;
-		}
-		return true;
-	});
+	// Filter materials based on FixedKey type
+	const filteredMaterials = useMemo(() => {
+		const groupType = plan?.fixedKeyType;
+		return materials.filter((material) => {
+			if (groupType === ProcessGroupType.DL) {
+				return material.type === 1;
+			}
+			if (groupType === ProcessGroupType.LC) {
+				return material.type === 2;
+			}
+			if (groupType === ProcessGroupType.XL) {
+				return material.type === 4;
+			}
+			return true;
+		});
+	}, [materials, plan?.fixedKeyType]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -210,6 +223,9 @@ export function PlanMaterialCostForm({
 							slideUnitPriceAssignmentCodeId:
 								slideUnitPriceAssignmentCodeId || '',
 							materialReferenceId: materialReferenceIdFromDetail || '',
+							lowValuePerishableSupplyInclusion:
+								detail.result.lowValuePerishableSupplyInclusion ||
+								LowValuePerishableSupplyInclusion.Exclude,
 							outputId: output?.id,
 							productUnitPriceId: plan?.id,
 						});
@@ -359,6 +375,15 @@ export function PlanMaterialCostForm({
 		return detailText ? `${code} - ${detailText}` : code;
 	};
 
+	const materialOptions = useMemo(
+		() =>
+			filteredMaterials.map((material) => ({
+				label: getMaterialLabel(material, plan?.fixedKeyType),
+				value: material.id,
+			})),
+		[filteredMaterials, plan?.fixedKeyType],
+	);
+
 	const handleSubmit = async (values: PlanMaterialCostSchema) => {
 		try {
 			const submitData = {
@@ -463,12 +488,19 @@ export function PlanMaterialCostForm({
 				name='materialUnitPriceId'
 				label='Mã định mức đơn giá vật liệu'
 				placeholder='Chọn mã định mức đơn giá vật liệu'
-				options={filteredMaterials.map((material) => ({
-					label: getMaterialLabel(material, plan?.processGroupType),
-					value: material.id,
-				}))}
+				options={materialOptions}
 			/>
-			{plan?.processGroupType === ProcessGroupType.DL && (
+			{(plan?.fixedKeyType === ProcessGroupType.DL ||
+				plan?.fixedKeyType === ProcessGroupType.LC) && (
+				<FormComboBox
+					control={form.control}
+					name='lowValuePerishableSupplyInclusion'
+					label='Đơn giá vật tư mau hỏng rẻ tiền'
+					placeholder='Chọn hình thức áp dụng'
+					options={LOW_VALUE_PERISHABLE_SUPPLY_INCLUSION_OPTIONS}
+				/>
+			)}
+			{plan?.fixedKeyType === ProcessGroupType.DL && (
 				<FormRow>
 					<div className='flex-2'>
 						<FormComboBox

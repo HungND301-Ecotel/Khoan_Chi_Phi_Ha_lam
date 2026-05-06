@@ -6,6 +6,7 @@ public class PlannedElectricityCost : AuditableEntity<Guid>
 {
     public Guid ProductUnitPriceId { get; protected set; }
     public Guid OutputId { get; protected set; }
+    public double TrimmingCoefficient { get; protected set; } = 1;
 
     private double? CachedPlannedElectricityTotal { get; set; }
 
@@ -21,28 +22,34 @@ public class PlannedElectricityCost : AuditableEntity<Guid>
     {
         if (CachedPlannedElectricityTotal.HasValue)
         {
-            return CachedPlannedElectricityTotal.Value;
+            return CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient();
         }
 
         CachedPlannedElectricityTotal = _plannedElectricityCostAdjustmentFactors.Sum(p => p.GetCurrentElectricityCost());
-        return CachedPlannedElectricityTotal.Value;
+        return CachedPlannedElectricityTotal.Value * GetNormalizedTrimmingCoefficient();
     }
 
-    public static PlannedElectricityCost Create(Guid productUnitPriceId, Guid outputId, IEnumerable<PlannedElectricityCostAdjustmentFactor> list)
+    public static PlannedElectricityCost Create(
+        Guid productUnitPriceId,
+        Guid outputId,
+        double trimmingCoefficient,
+        IEnumerable<PlannedElectricityCostAdjustmentFactor> list)
     {
         var result = new PlannedElectricityCost
         {
             ProductUnitPriceId = productUnitPriceId,
             OutputId = outputId
         };
+        result.SetTrimmingCoefficient(trimmingCoefficient);
         result.AddPlannedElectricityCostAdjustmentFactors(list.ToList());
         return result;
     }
 
-    public void Update(Guid productUnitPriceId, Guid outputId)
+    public void Update(Guid productUnitPriceId, Guid outputId, double trimmingCoefficient)
     {
         ProductUnitPriceId = productUnitPriceId;
         OutputId = outputId;
+        SetTrimmingCoefficient(trimmingCoefficient);
     }
 
     public void ClearPlannedElectricityCostAdjustmentFactors()
@@ -56,5 +63,25 @@ public class PlannedElectricityCost : AuditableEntity<Guid>
         {
             _plannedElectricityCostAdjustmentFactors.Add(item);
         }
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
+    }
+
+    private double GetNormalizedTrimmingCoefficient()
+    {
+        return NormalizeTrimmingCoefficient(TrimmingCoefficient);
+    }
+
+    private void SetTrimmingCoefficient(double trimmingCoefficient)
+    {
+        TrimmingCoefficient = NormalizeTrimmingCoefficient(trimmingCoefficient);
     }
 }

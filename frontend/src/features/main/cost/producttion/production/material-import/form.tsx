@@ -1,7 +1,7 @@
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
-import { FormNumber } from '@/components/form/form-number';
+import { FormNumber, FormNumberInput } from '@/components/form/form-number';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
 	ADDITIONAL_COST_OPTIONS,
+	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
 	EXPORTED_TYPE_OPTIONS,
@@ -43,6 +44,9 @@ type MaterialRowValues = MaterialFormSchema & {
 	exportedBreakdown?: Record<string, number | string>;
 	contractLimitSubCategories?: string[];
 	contractLimitBreakdown?: Record<string, number | string>;
+	categoryProcessGroupIds?: string[];
+	categoryEquipmentIds?: string[];
+	categoryAllocations?: CategoryAllocation[];
 };
 
 type MaterialsExtendedForm = { materials: MaterialRowValues[] };
@@ -52,6 +56,7 @@ type RowPath = Path<MaterialsExtendedForm>;
 type ProcessGroupOption = {
 	value: string;
 	label: string;
+	type: number;
 };
 
 type ProductionOrderOption = {
@@ -62,11 +67,25 @@ type ProductionOrderOption = {
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
+function parseProductionOrderOptionId(value: string): string {
+	return value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX)
+		? value.slice(PRODUCTION_ORDER_OPTION_PREFIX.length)
+		: value;
+}
+
+function parseEquipmentOptionId(value: string): string {
+	return value.startsWith(EQUIPMENT_OPTION_PREFIX)
+		? value.slice(EQUIPMENT_OPTION_PREFIX.length)
+		: value;
+}
+
 type MaterialImportFormProps = {
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	unresolvedCount: number;
+	onCreateUnresolved: (index: number) => void;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,6 +104,116 @@ function getDefaultAdditionalCostByMaterialType(
 	if (type === MaterialType.Material) return AdditionalCost.Material;
 	if (type === MaterialType.SparePart) return AdditionalCost.Maintain;
 	return null;
+}
+
+function createCategoryAllocation(
+	processGroupId: string | null = null,
+	quantity: number | null = null,
+	equipmentIds: string[] = [],
+): CategoryAllocation {
+	return {
+		processGroupId,
+		quantity,
+		equipmentIds,
+	};
+}
+
+function parseAllocationQuantity(
+	value: number | string | null | undefined,
+): number {
+	if (value == null || value === '') return 0;
+	const normalized = Number(value);
+	return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function splitAllocationQuantities(total: number, count: number): number[] {
+	if (count <= 0) return [];
+	const safeTotal = Number.isFinite(total) ? total : 0;
+	const base = Number((safeTotal / count).toFixed(2));
+	const quantities = Array.from({ length: count }, () => base);
+	const allocated = quantities.reduce((sum, value) => sum + value, 0);
+	quantities[count - 1] = Number((safeTotal - (allocated - base)).toFixed(2));
+	return quantities;
+}
+
+function extractCategoryProcessGroupIds(
+	allocations: CategoryAllocation[] | undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.processGroupId)
+		.filter((value): value is string => Boolean(value));
+}
+
+function extractCategoryEquipmentIds(
+	allocations: CategoryAllocation[] | undefined,
+): string[] {
+	return (allocations ?? [])
+		.map((allocation) => allocation.equipmentIds?.[0])
+		.filter((value): value is string => Boolean(value));
+}
+
+function syncCategoryAllocations(
+	processGroupIds: string[],
+	currentAllocations: CategoryAllocation[] | undefined,
+	totalQuantity: number,
+	needsEquipment: boolean,
+): CategoryAllocation[] {
+	const previousAllocationByProcessGroupId = new Map(
+		(currentAllocations ?? [])
+			.filter((allocation) => allocation.processGroupId)
+			.map((allocation) => [allocation.processGroupId as string, allocation]),
+	);
+	const previousQuantities = processGroupIds.map((processGroupId) =>
+		parseAllocationQuantity(
+			previousAllocationByProcessGroupId.get(processGroupId)?.quantity,
+		),
+	);
+	const hasExistingQuantities = previousQuantities.some(
+		(quantity) => quantity > 0,
+	);
+	const nextQuantities = hasExistingQuantities
+		? previousQuantities
+		: splitAllocationQuantities(totalQuantity, processGroupIds.length);
+	const quantityDelta = Number(
+		(
+			totalQuantity -
+			nextQuantities.reduce((sum, quantity) => sum + quantity, 0)
+		).toFixed(2),
+	);
+
+	if (processGroupIds.length > 0 && Math.abs(quantityDelta) >= 0.01) {
+		nextQuantities[processGroupIds.length - 1] = Number(
+			(
+				(nextQuantities[processGroupIds.length - 1] ?? 0) + quantityDelta
+			).toFixed(2),
+		);
+	}
+
+	return processGroupIds.map((processGroupId, index) => {
+		const previousAllocation =
+			previousAllocationByProcessGroupId.get(processGroupId);
+		const equipmentIds = needsEquipment
+			? (previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ?? [])
+			: [];
+
+		return createCategoryAllocation(
+			processGroupId,
+			nextQuantities[index] ?? 0,
+			equipmentIds,
+		);
+	});
+}
+
+function getCategoryAllocationSignature(
+	allocations: CategoryAllocation[] | undefined,
+): string {
+	return JSON.stringify(
+		(allocations ?? []).map((allocation) => ({
+			processGroupId: allocation.processGroupId ?? null,
+			quantity: parseAllocationQuantity(allocation.quantity),
+			equipmentIds: allocation.equipmentIds ?? [],
+		})),
+	);
 }
 
 function getMaterialBadge(
@@ -260,6 +389,8 @@ export function MaterialImportForm({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	unresolvedCount,
+	onCreateUnresolved,
 }: MaterialImportFormProps) {
 	const form = useFormContext<MaterialsForm>();
 	const { fields, remove } = useFieldArray({
@@ -276,6 +407,9 @@ export function MaterialImportForm({
 	const materialBadgeFilters = useMemo(() => {
 		const map = new Map<string, MaterialBadgeFilterOption>();
 		for (const item of watchedMaterials || []) {
+			if (item?.resolutionStatus === 'unresolved') {
+				continue;
+			}
 			const option = getMaterialBadgeFilterOption(item?.type, item?.itemType);
 			if (!map.has(option.key)) {
 				map.set(option.key, option);
@@ -292,6 +426,9 @@ export function MaterialImportForm({
 			.map((_, index) => index)
 			.filter((index) => {
 				const item = watchedMaterials?.[index];
+				if (item?.resolutionStatus === 'unresolved') {
+					return true;
+				}
 				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
 				return selectedMaterialBadgeKeys.includes(key);
 			});
@@ -323,6 +460,12 @@ export function MaterialImportForm({
 
 	return (
 		<div className='flex h-full flex-col gap-6'>
+			{unresolvedCount > 0 && (
+				<div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
+					Có {unresolvedCount} dòng chưa tồn tại trong danh mục. Vui lòng tạo
+					mới từng dòng trước khi lưu phiếu nghiệm thu.
+				</div>
+			)}
 			{materialBadgeFilters.length > 0 && (
 				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
 					<div className='flex flex-wrap gap-3'>
@@ -375,7 +518,7 @@ export function MaterialImportForm({
 								<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Số lượng xuất
 								</TableCell>
-								<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+								<TableCell className='w-[18%] min-w-80 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Vật tư tính vào doanh thu khoán
 								</TableCell>
 								<TableCell className='w-[13%] min-w-44 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
@@ -400,6 +543,7 @@ export function MaterialImportForm({
 									orderOrEquipmentOptionsByItemId={
 										orderOrEquipmentOptionsByItemId
 									}
+									onCreateUnresolved={onCreateUnresolved}
 									onRemove={() => remove(index)}
 								/>
 							))}
@@ -431,7 +575,7 @@ export function MaterialImportForm({
 					type='submit'
 					variant='default'
 					className='h-8 w-24 shadow-none hover:shadow-none'
-					disabled={form.formState.isSubmitting}
+					disabled={form.formState.isSubmitting || unresolvedCount > 0}
 				>
 					{form.formState.isSubmitting ? <Spinner /> : 'Lưu'}
 				</Button>
@@ -447,6 +591,7 @@ type ResetFieldSpec = {
 	dropdown?: string;
 	dropdownSecondary?: string;
 	dropdownTertiary?: string;
+	dropdownQuaternary?: string;
 	quantity?: string;
 };
 
@@ -467,6 +612,11 @@ function resetCellFields(
 		if (field.dropdownTertiary)
 			form.setValue(
 				`${basename}.${field.dropdownTertiary}` as RowPath,
+				null as never,
+			);
+		if (field.dropdownQuaternary)
+			form.setValue(
+				`${basename}.${field.dropdownQuaternary}` as RowPath,
 				null as never,
 			);
 		if (field.quantity)
@@ -543,12 +693,14 @@ function MaterialImportRow({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	onCreateUnresolved,
 }: {
 	index: number;
 	displayIndex?: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	onCreateUnresolved: (index: number) => void;
 	onRemove: () => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
@@ -570,7 +722,17 @@ function MaterialImportRow({
 	const showAssetDropdown = w('showAssetDropdown');
 	const categoryValue = w('category');
 	const categoryProcessGroupValue = w('categoryProcessGroup');
+	const categoryProcessGroupIds = w('categoryProcessGroupIds') as
+		| string[]
+		| undefined;
 	const categoryProductionOrderId = w('categoryProductionOrderId');
+	const categoryEquipmentId = w('categoryEquipmentId');
+	const categoryEquipmentIds = w('categoryEquipmentIds') as
+		| string[]
+		| undefined;
+	const categoryAllocations = w('categoryAllocations') as
+		| CategoryAllocation[]
+		| undefined;
 	const additionalCostCategory = w('additionalCostCategory');
 	const additionalCostProductionOrderId = w('additionalCostProductionOrderId');
 	const otherMaterialDetailValue = w('otherMaterialDetail');
@@ -590,6 +752,8 @@ function MaterialImportRow({
 	const materialTypeValue = w('type');
 	const itemTypeValue = w('itemType');
 	const materialOrPartId = w('materialOrPartId');
+	const resolutionStatus = w('resolutionStatus');
+	const unresolvedReason = w('unresolvedReason');
 	const receivedTypes = w('receivedTypes') as string[] | undefined;
 	const exportedTypes = w('exportedTypes') as string[] | undefined;
 	const receivedBreakdown = w('receivedBreakdown') as
@@ -610,6 +774,8 @@ function MaterialImportRow({
 	const isSparePartByEquipment =
 		materialTypeValue === MaterialType.SparePart &&
 		itemTypeValue === ItemType.InContract;
+	const categoryNeedsProcessGroup =
+		materialTypeValue === MaterialType.SparePart;
 
 	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrEquipmentOptions =
@@ -622,9 +788,16 @@ function MaterialImportRow({
 	const productionOrderOnlyOptions = orderOrEquipmentOptions.filter((option) =>
 		option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
 	);
-	const categoryOrderOrEquipmentOptions = isSparePartByEquipment
-		? [...equipmentOptions, ...productionOrderOnlyOptions]
-		: orderOrEquipmentOptions;
+	const categoryEquipmentOptions = equipmentOptions.map((option) => ({
+		value: parseEquipmentOptionId(option.value),
+		label: option.label,
+	}));
+	const categoryProductionOrderOptions = productionOrderOnlyOptions.map(
+		(option) => ({
+			value: parseProductionOrderOptionId(option.value),
+			label: option.label,
+		}),
+	);
 	const additionalCostOrderOrEquipmentOptions = isSparePartByEquipment
 		? productionOrderOnlyOptions
 		: orderOrEquipmentOptions;
@@ -643,6 +816,20 @@ function MaterialImportRow({
 		contractLimitCategoryValue === QuotaBasedMaterial.SupportAccessories;
 	const categoryNeedsProductionOrder =
 		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+	const categoryNeedsEquipment =
+		categoryNeedsProductionOrder && isSparePartByEquipment;
+	const categorySelectedProcessGroupIds = categoryProcessGroupIds ?? [];
+	const categorySelectedEquipmentIds = categoryEquipmentIds ?? [];
+	const categoryAllocationRows = (categoryAllocations ?? []).filter(
+		(allocation) => allocation.processGroupId,
+	);
+	const hasValidCategoryAllocations =
+		!categoryNeedsProcessGroup || categorySelectedProcessGroupIds.length > 0;
+	const hasValidCategoryEquipments =
+		!categoryNeedsEquipment ||
+		(categorySelectedProcessGroupIds.length > 0 &&
+			categorySelectedEquipmentIds.length >=
+				categorySelectedProcessGroupIds.length);
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -666,6 +853,27 @@ function MaterialImportRow({
 		key: K,
 		value: MaterialRowValues[K],
 	) => form.setValue(`${basename}.${key}` as RowPath, value as never);
+
+	const updateCategoryAllocation = (
+		processGroupId: string,
+		updater: (allocation: CategoryAllocation) => CategoryAllocation,
+	) => {
+		const nextAllocations = categoryAllocationRows.map((allocation) =>
+			allocation.processGroupId === processGroupId
+				? updater(allocation)
+				: allocation,
+		);
+
+		set('categoryAllocations', nextAllocations);
+		set('categoryEquipmentIds', extractCategoryEquipmentIds(nextAllocations));
+		set(
+			'categoryQuantity',
+			nextAllocations.reduce(
+				(sum, allocation) => sum + parseAllocationQuantity(allocation.quantity),
+				0,
+			),
+		);
+	};
 
 	// ── Initialize MultiSelect defaults on mount ─────────────────────────────
 	useEffect(() => {
@@ -723,6 +931,7 @@ function MaterialImportRow({
 		category: null as number | null | undefined,
 		categoryProcessGroup: null as string | null | undefined,
 		categoryProductionOrderId: null as string | null | undefined,
+		categoryEquipmentId: null as string | null | undefined,
 		additionalCostCategory: null as number | null | undefined,
 		additionalCostProductionOrderId: null as string | null | undefined,
 		otherMaterialDetail: null as number | null | undefined,
@@ -757,6 +966,7 @@ function MaterialImportRow({
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
 					dropdownTertiary: 'categoryProductionOrderId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -775,6 +985,7 @@ function MaterialImportRow({
 					dropdown: 'category',
 					dropdownSecondary: 'categoryProcessGroup',
 					dropdownTertiary: 'categoryProductionOrderId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -805,16 +1016,20 @@ function MaterialImportRow({
 				]);
 			if (categoryValue == null && defaultCategoryByType != null)
 				set('category', defaultCategoryByType);
-			if (!categoryProcessGroupValue && processGroupOptions.length === 1)
+			if (
+				categoryNeedsProcessGroup &&
+				!categoryProcessGroupValue &&
+				processGroupOptions.length === 1
+			)
 				set('categoryProcessGroup', processGroupOptions[0].value);
 			if (
 				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
 				categoryProductionOrderId == null &&
-				categoryOrderOrEquipmentOptions.length > 0
+				categoryProductionOrderOptions.length > 0
 			)
 				set(
 					'categoryProductionOrderId',
-					categoryOrderOrEquipmentOptions[0].value,
+					categoryProductionOrderOptions[0].value,
 				);
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown)
@@ -863,7 +1078,11 @@ function MaterialImportRow({
 		if (justDisabledCategory) {
 			set('category', null);
 			set('categoryProcessGroup', null);
+			set('categoryProcessGroupIds', []);
 			set('categoryProductionOrderId', null);
+			set('categoryEquipmentId', null);
+			set('categoryEquipmentIds', []);
+			set('categoryAllocations', []);
 			set('categoryQuantity', null);
 		}
 		if (justDisabledAdditional) {
@@ -896,6 +1115,7 @@ function MaterialImportRow({
 		resolvedCategoryValue,
 		categoryProcessGroupValue,
 		categoryProductionOrderId,
+		categoryEquipmentId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
@@ -903,7 +1123,9 @@ function MaterialImportRow({
 		defaultAdditionalCostByType,
 		isSafetyAndWelfareMaterial,
 		processGroupOptions,
-		categoryOrderOrEquipmentOptions,
+		categoryProductionOrderOptions,
+		categoryEquipmentOptions,
+		categoryNeedsEquipment,
 		additionalCostOrderOrEquipmentOptions,
 		form,
 		basename,
@@ -920,12 +1142,132 @@ function MaterialImportRow({
 	]);
 
 	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+				set('categoryProcessGroupIds', []);
+			}
+			if ((categoryEquipmentIds?.length ?? 0) > 0) {
+				set('categoryEquipmentIds', []);
+			}
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			return;
+		}
+
+		if ((categoryProcessGroupIds?.length ?? 0) > 0) {
+			return;
+		}
+
+		const nextProcessGroupIds =
+			extractCategoryProcessGroupIds(categoryAllocations).length > 0
+				? extractCategoryProcessGroupIds(categoryAllocations)
+				: categoryProcessGroupValue
+					? [categoryProcessGroupValue]
+					: processGroupOptions.length === 1
+						? [processGroupOptions[0].value]
+						: [];
+
+		if (nextProcessGroupIds.length > 0) {
+			set('categoryProcessGroupIds', nextProcessGroupIds);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryProcessGroupIds,
+		categoryProcessGroupValue,
+		categoryEquipmentIds,
+		categoryAllocations,
+		processGroupOptions,
+	]);
+
+	useEffect(() => {
+		if (
+			!showCategoryDropdown ||
+			!resolvedCategoryValue ||
+			!categoryNeedsProcessGroup
+		) {
+			return;
+		}
+
+		const processGroupIds = categoryProcessGroupIds ?? [];
+		if (processGroupIds.length === 0) {
+			if ((categoryAllocations?.length ?? 0) > 0) {
+				set('categoryAllocations', []);
+			}
+			if (categoryProcessGroupValue != null) {
+				set('categoryProcessGroup', null);
+			}
+			if (categoryEquipmentId != null) {
+				set('categoryEquipmentId', null);
+			}
+			return;
+		}
+
+		const derivedEquipmentIds =
+			(categoryEquipmentIds?.length ?? 0) > 0
+				? (categoryEquipmentIds ?? [])
+				: extractCategoryEquipmentIds(categoryAllocations);
+		const nextAllocations = syncCategoryAllocations(
+			processGroupIds,
+			categoryAllocations,
+			parseAllocationQuantity(categoryQuantity),
+			categoryNeedsEquipment,
+		);
+		const normalizedEquipmentIds = categoryNeedsEquipment
+			? derivedEquipmentIds.slice(0, processGroupIds.length)
+			: [];
+
+		if (
+			(categoryEquipmentIds ?? [])
+				.slice(0, processGroupIds.length)
+				.join(',') !== normalizedEquipmentIds.join(',')
+		) {
+			set('categoryEquipmentIds', normalizedEquipmentIds);
+		}
+
+		if (categoryProcessGroupValue !== processGroupIds[0]) {
+			set('categoryProcessGroup', processGroupIds[0]);
+		}
+		if ((categoryEquipmentId ?? null) !== (normalizedEquipmentIds[0] ?? null)) {
+			set('categoryEquipmentId', normalizedEquipmentIds[0] ?? null);
+		}
+		if (
+			getCategoryAllocationSignature(categoryAllocations) !==
+			getCategoryAllocationSignature(nextAllocations)
+		) {
+			set('categoryAllocations', nextAllocations);
+		}
+	}, [
+		showCategoryDropdown,
+		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
+		categoryNeedsEquipment,
+		categoryProcessGroupIds,
+		categoryEquipmentIds,
+		categoryAllocations,
+		categoryQuantity,
+		categoryProcessGroupValue,
+		categoryEquipmentId,
+	]);
+
+	useEffect(() => {
 		if (!showCategoryDropdown || !resolvedCategoryValue) return;
+		if (!categoryNeedsProcessGroup) {
+			if (categoryProcessGroupValue != null) set('categoryProcessGroup', null);
+			return;
+		}
 		if (processGroupOptions.length !== 1 || categoryProcessGroupValue) return;
 		set('categoryProcessGroup', processGroupOptions[0].value);
 	}, [
 		showCategoryDropdown,
 		resolvedCategoryValue,
+		categoryNeedsProcessGroup,
 		categoryProcessGroupValue,
 		processGroupOptions,
 	]);
@@ -939,21 +1281,29 @@ function MaterialImportRow({
 		if (resolvedCategoryValue !== MaterialsIncludedInContractRevenue.Maintain) {
 			if (categoryProductionOrderId != null)
 				set('categoryProductionOrderId', null);
+			if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 			return;
 		}
 		if (
-			categoryOrderOrEquipmentOptions.length === 0 ||
-			categoryProductionOrderId != null
-		)
+			categoryProductionOrderId == null &&
+			categoryProductionOrderOptions.length > 0
+		) {
+			set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
+		}
+		if (categoryNeedsEquipment) {
 			return;
-		set('categoryProductionOrderId', categoryOrderOrEquipmentOptions[0].value);
+		}
+		if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 	}, [
 		showCategoryDropdown,
 		categoryValue,
 		defaultCategoryByType,
 		resolvedCategoryValue,
 		categoryProductionOrderId,
-		categoryOrderOrEquipmentOptions,
+		categoryEquipmentId,
+		categoryProductionOrderOptions,
+		categoryEquipmentOptions,
+		categoryNeedsEquipment,
 	]);
 
 	useEffect(() => {
@@ -1003,6 +1353,8 @@ function MaterialImportRow({
 		const prev = prevDropdownState.current;
 		const categoryRequiresProductionOrder =
 			resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+		const categoryRequiresEquipment =
+			categoryRequiresProductionOrder && isSparePartByEquipment;
 		const additionalRequiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
@@ -1010,33 +1362,35 @@ function MaterialImportRow({
 			additionalCostCategory === AdditionalCost.OtherMaterial;
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
-				resolvedCategoryValue &&
-				categoryProcessGroupValue &&
-				(!categoryRequiresProductionOrder || categoryProductionOrderId != null),
+			resolvedCategoryValue &&
+			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
+			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
+			(!categoryRequiresEquipment || categoryEquipmentId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
-				additionalCostCategory &&
-				(!additionalRequiresProductionOrder ||
-					additionalCostProductionOrderId != null) &&
-				(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
+			additionalCostCategory &&
+			(!additionalRequiresProductionOrder ||
+				additionalCostProductionOrderId != null) &&
+			(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
 		);
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
-				prev.category &&
-				prev.categoryProcessGroup &&
-				(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
-					prev.categoryProductionOrderId != null),
+			prev.category &&
+			(!categoryNeedsProcessGroup || prev.categoryProcessGroup) &&
+			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
+				(prev.categoryProductionOrderId != null &&
+					(!isSparePartByEquipment || prev.categoryEquipmentId != null))),
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
-				prev.additionalCostCategory &&
-				(prev.additionalCostCategory !== AdditionalCost.Material &&
-				prev.additionalCostCategory !== AdditionalCost.Maintain
-					? true
-					: prev.additionalCostProductionOrderId != null) &&
-				(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
-					prev.otherMaterialDetail != null),
+			prev.additionalCostCategory &&
+			(prev.additionalCostCategory !== AdditionalCost.Material &&
+			prev.additionalCostCategory !== AdditionalCost.Maintain
+				? true
+				: prev.additionalCostProductionOrderId != null) &&
+			(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
+				prev.otherMaterialDetail != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
@@ -1065,6 +1419,7 @@ function MaterialImportRow({
 			category: categoryValue,
 			categoryProcessGroup: categoryProcessGroupValue,
 			categoryProductionOrderId,
+			categoryEquipmentId,
 			additionalCostCategory,
 			additionalCostProductionOrderId,
 			otherMaterialDetail: otherMaterialDetailValue,
@@ -1078,11 +1433,14 @@ function MaterialImportRow({
 		resolvedCategoryValue,
 		categoryProcessGroupValue,
 		categoryProductionOrderId,
+		categoryEquipmentId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
 		contractLimitCategoryValue,
 		quantityExported,
+		isSparePartByEquipment,
+		categoryNeedsProcessGroup,
 		showCategoryDropdown,
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
@@ -1186,8 +1544,9 @@ function MaterialImportRow({
 		if (
 			showCategoryDropdown &&
 			resolvedCategoryValue &&
-			categoryProcessGroupValue &&
+			hasValidCategoryAllocations &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
+			hasValidCategoryEquipments &&
 			categoryQuantity != null
 		)
 			total += Number(categoryQuantity);
@@ -1240,425 +1599,647 @@ function MaterialImportRow({
 	const showReceivedBreakdown = activeReceivedKeys.length > 1;
 	const showExportedBreakdown = activeExportedKeys.length > 1;
 	const materialBadge = getMaterialBadge(materialTypeValue, itemTypeValue);
+	const isUnresolved = resolutionStatus === 'unresolved';
+	const unresolvedInputClassName =
+		'border-red-300 bg-slate-100 text-slate-500 focus-visible:ring-red-200';
 
 	// ── Render ───────────────────────────────────────────────────────────────
 	return (
-		<TableRow
-			className={cn(
-				'transition-colors',
-				materialTypeValue === MaterialType.Material
-					? 'bg-blue-50/40 hover:bg-blue-50/70'
-					: materialTypeValue === MaterialType.SparePart
-						? 'bg-amber-50/40 hover:bg-amber-50/70'
-						: 'hover:bg-slate-50/50',
-			)}
-		>
-			{/* STT */}
-			<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
-				{displayIndex ?? index + 1}
-			</TableCell>
-
-			{/* Mã vật tư */}
-			<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
-				<div className='flex flex-col gap-1'>
-					<Input
-						readOnly
-						value={
-							(form.watch(`${basename}.materialCode` as RowPath) as string) ||
-							''
-						}
-						className='border-slate-300 bg-slate-100 font-medium text-slate-500'
-					/>
-					<span className={materialBadge.className}>{materialBadge.label}</span>
-				</div>
-			</TableCell>
-
-			{/* Đơn vị tính */}
-			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
-				<Input
-					readOnly
-					value={
-						(form.watch(
-							`${basename}.unitOfMeasureName` as RowPath,
-						) as string) || ''
-					}
-					className='border-slate-300 bg-slate-100 text-slate-500'
-				/>
-			</TableCell>
-
-			{/* Số lượng lĩnh */}
-			<TableCell className='border-b border-slate-200 px-4 py-4'>
-				{(() => {
-					const subTotal = activeReceivedKeys.reduce(
-						(acc, key) => acc + (Number((receivedBreakdown ?? {})[key]) || 0),
-						0,
-					);
-					const isReceivedValid =
-						!showReceivedBreakdown || Math.abs(subTotal - receivedQty) < 0.01;
-					return (
+		<>
+			{isUnresolved ? (
+				<TableRow className='transition-colors hover:bg-slate-50/50'>
+					<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
+						{displayIndex ?? index + 1}
+					</TableCell>
+					<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
 						<div className='flex flex-col gap-2'>
-							<div className='flex items-end gap-2'>
-								{/* Total — always leftmost */}
-								<div
+							<div className='flex items-center gap-2'>
+								<Input
+									readOnly
+									value={
+										(form.watch(
+											`${basename}.materialCode` as RowPath,
+										) as string) || ''
+									}
 									className={cn(
-										'flex shrink-0 flex-col gap-0.5',
-										showReceivedBreakdown ? 'w-24' : 'w-full',
+										'font-medium text-slate-700',
+										unresolvedInputClassName,
 									)}
+								/>
+								<Button
+									type='button'
+									variant='outline'
+									className='h-9 shrink-0 border-red-300 text-red-700 hover:bg-red-50'
+									onClick={() => onCreateUnresolved(index)}
 								>
-									<label className='text-[10px] font-medium text-slate-500'>
-										Tổng
-									</label>
-									<Input
-										readOnly
-										value={receivedQty}
-										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-									/>
-								</div>
-								{/* Sub-inputs — only when >1 selected */}
-								{showReceivedBreakdown && (
-									<QuantityBreakdownInputs
-										selectedKeys={activeReceivedKeys}
-										allOptions={RECEIVED_TYPE_OPTIONS}
-										values={receivedBreakdown ?? {}}
-										onChange={handleReceivedBreakdownChange}
-										isValid={isReceivedValid}
-									/>
-								)}
+									+
+								</Button>
 							</div>
-							<FormMultiSelect
-								control={form.control}
-								name={`${basename}.receivedTypes` as RowPath}
-								options={RECEIVED_TYPE_OPTIONS}
-								placeholder='Chọn loại lĩnh'
-							/>
-							{showReceivedBreakdown && !isReceivedValid && (
-								<p className='text-[11px] font-medium text-red-500'>
-									Tổng các mục ({subTotal}) phải bằng số lượng lĩnh (
-									{receivedQty})
-								</p>
+							<span className='rounded bg-red-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-red-700'>
+								Chưa có trong danh mục
+							</span>
+							{unresolvedReason && (
+								<p className='text-xs text-red-600'>{unresolvedReason}</p>
 							)}
 						</div>
-					);
-				})()}
-			</TableCell>
-
-			{/* Số lượng xuất */}
-			<TableCell className='border-b border-slate-200 px-4 py-4'>
-				{(() => {
-					const subTotal = activeExportedKeys.reduce(
-						(acc, key) => acc + (Number((exportedBreakdown ?? {})[key]) || 0),
-						0,
-					);
-					const isExportedValid =
-						!showExportedBreakdown || Math.abs(subTotal - exportedQty) < 0.01;
-					return (
+					</TableCell>
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
+						<Input
+							readOnly
+							value={
+								(form.watch(
+									`${basename}.unitOfMeasureName` as RowPath,
+								) as string) || ''
+							}
+							className={unresolvedInputClassName}
+						/>
+					</TableCell>
+					<TableCell className='border-b border-slate-200 px-4 py-4'>
 						<div className='flex flex-col gap-2'>
-							<div className='flex items-end gap-2'>
-								{/* Total — always leftmost */}
-								<div
+							<div className='flex flex-col gap-0.5'>
+								<label className='text-[10px] font-medium text-slate-500'>
+									Tổng
+								</label>
+								<Input
+									readOnly
+									value={receivedQty}
 									className={cn(
-										'flex shrink-0 flex-col gap-0.5',
-										showExportedBreakdown ? 'w-24' : 'w-full',
+										'pointer-events-none cursor-not-allowed! text-center! text-slate-500!',
+										unresolvedInputClassName,
 									)}
-								>
-									<label className='text-[10px] font-medium text-slate-500'>
-										Tổng
-									</label>
-									<Input
-										readOnly
-										value={exportedQty}
-										className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-									/>
-								</div>
-								{/* Sub-inputs — only when >1 selected */}
-								{showExportedBreakdown && (
-									<QuantityBreakdownInputs
-										selectedKeys={activeExportedKeys}
-										allOptions={EXPORTED_TYPE_OPTIONS}
-										values={exportedBreakdown ?? {}}
-										onChange={handleExportedBreakdownChange}
-										isValid={isExportedValid}
-									/>
-								)}
-							</div>
-							<FormMultiSelect
-								control={form.control}
-								name={`${basename}.exportedTypes` as RowPath}
-								options={EXPORTED_TYPE_OPTIONS}
-								placeholder='Chọn loại xuất'
-							/>
-							{showExportedBreakdown && !isExportedValid && (
-								<p className='text-[11px] font-medium text-red-500'>
-									Tổng các mục ({subTotal}) phải bằng số lượng xuất (
-									{exportedQty})
-								</p>
-							)}
-						</div>
-					);
-				})()}
-			</TableCell>
-
-			{/* Vật tư tính vào doanh thu khoán */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showCategoryDropdown` as RowPath}
-						/>
-					</div>
-					{!showCategoryDropdown &&
-						!showAdditionalCostDropdown &&
-						!showContractLimitDropdown &&
-						!showAssetDropdown &&
-						form.formState.errors?.materials?.[index]?.showCategoryDropdown && (
-							<p className='text-xs text-red-600'>
-								{
-									form.formState.errors.materials[index]?.showCategoryDropdown
-										?.message
-								}
-							</p>
-						)}
-					{showCategoryDropdown && (
-						<>
-							{resolvedCategoryValue && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.categoryProcessGroup` as RowPath}
-										options={processGroupOptions}
-										placeholder='Chọn nhóm công đoạn'
-									/>
-								</div>
-							)}
-							{resolvedCategoryValue ===
-								MaterialsIncludedInContractRevenue.Maintain && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.categoryProductionOrderId` as RowPath}
-										options={categoryOrderOrEquipmentOptions}
-										placeholder='Chọn quyết định, lệnh sản xuất'
-									/>
-								</div>
-							)}
-							{resolvedCategoryValue &&
-								categoryProcessGroupValue &&
-								(!categoryNeedsProductionOrder ||
-									categoryProductionOrderId != null) && (
-									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.categoryQuantity` as RowPath}
-											placeholder='Nhập số lượng'
-										/>
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
-									</div>
-								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Bổ sung chi phí */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showAdditionalCostDropdown` as RowPath}
-						/>
-					</div>
-					{showAdditionalCostDropdown && (
-						<>
-							{!isSafetyAndWelfareMaterial && (
-								<div className='w-full'>
-									<FormComboBox
-										control={form.control}
-										name={`${basename}.additionalCostCategory` as RowPath}
-										options={additionalCostOptionsByType}
-										placeholder='Chọn danh mục'
-									/>
-								</div>
-							)}
-							{additionalCostCategory && (
-								<>
-									{additionalCostNeedsProductionOrder && (
-										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={
-													`${basename}.additionalCostProductionOrderId` as RowPath
-												}
-												options={additionalCostOrderOrEquipmentOptions}
-												placeholder='Chọn quyết định, lệnh sản xuất'
-											/>
-										</div>
-									)}
-									{additionalCostNeedsOtherMaterialDetail && (
-										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={`${basename}.otherMaterialDetail` as RowPath}
-												options={OTHER_MATERIAL_DETAIL_OPTIONS}
-												placeholder='Chọn loại vật tư'
-											/>
-										</div>
-									)}
-								</>
-							)}
-							{additionalCostCategory &&
-								(!additionalCostNeedsProductionOrder ||
-									additionalCostProductionOrderId != null) &&
-								(!additionalCostNeedsOtherMaterialDetail ||
-									otherMaterialDetailValue != null) && (
-									<div className='w-full'>
-										<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-											Số lượng vật tư
-										</label>
-										<FormNumber
-											control={form.control}
-											name={`${basename}.additionalCostQuantity` as RowPath}
-											placeholder='Nhập số lượng'
-										/>
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
-									</div>
-								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Vật tư theo hạn mức */}
-			<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showContractLimitDropdown` as RowPath}
-						/>
-					</div>
-					{showContractLimitDropdown && (
-						<>
-							<div className='w-full'>
-								<FormComboBox
-									control={form.control}
-									name={`${basename}.contractLimitCategory` as RowPath}
-									options={CONTRACT_LIMIT_OPTIONS}
-									placeholder='Chọn danh mục'
 								/>
 							</div>
-							{contractLimitCategoryValue && needsSecondComboBox && (
-								<>
-									<div className='w-full'>
-										<FormMultiSelect
-											control={form.control}
-											name={`${basename}.contractLimitSubCategories` as RowPath}
-											options={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
-											placeholder='Chọn loại (Lĩnh mới/Tái sử dụng)'
-										/>
-									</div>
-									{contractLimitSelectedKeys.length > 0 && (
-										<div className='w-full space-y-2'>
-											<div className='flex w-full items-end gap-2'>
-												<QuantityBreakdownInputs
-													selectedKeys={contractLimitSelectedKeys}
-													allOptions={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
-													values={contractLimitBreakdown ?? {}}
-													onChange={handleContractLimitBreakdownChange}
-													isValid={isContractLimitBreakdownValid}
-													equalWidth
-												/>
-											</div>
-											{!isContractLimitBreakdownValid && (
-												<p className='text-xs text-red-600'>
-													Tổng lĩnh mới + lĩnh tái sử dụng phải bằng số lượng
-													xuất ({contractLimitBreakdownTotal} / {exportedQty})
-												</p>
+						</div>
+					</TableCell>
+					<TableCell className='border-b border-slate-200 px-4 py-4'>
+						<div className='flex flex-col gap-2'>
+							<div className='flex flex-col gap-0.5'>
+								<label className='text-[10px] font-medium text-slate-500'>
+									Tổng
+								</label>
+								<Input
+									readOnly
+									value={exportedQty}
+									className={cn(
+										'pointer-events-none cursor-not-allowed! text-center! text-slate-500!',
+										unresolvedInputClassName,
+									)}
+								/>
+							</div>
+						</div>
+					</TableCell>
+					<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4 text-center'>
+						<span className='text-sm text-slate-400'>-</span>
+					</TableCell>
+					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4 text-center'>
+						<span className='text-sm text-slate-400'>-</span>
+					</TableCell>
+					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4 text-center'>
+						<span className='text-sm text-slate-400'>-</span>
+					</TableCell>
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4 text-center'>
+						<span className='text-sm text-slate-400'>-</span>
+					</TableCell>
+				</TableRow>
+			) : (
+				<TableRow
+					className={cn(
+						'transition-colors',
+						materialTypeValue === MaterialType.Material
+							? 'bg-blue-50/40 hover:bg-blue-50/70'
+							: materialTypeValue === MaterialType.SparePart
+								? 'bg-amber-50/40 hover:bg-amber-50/70'
+								: 'hover:bg-slate-50/50',
+					)}
+				>
+					{/* STT */}
+					<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
+						{displayIndex ?? index + 1}
+					</TableCell>
+
+					{/* Mã vật tư */}
+					<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
+						<div className='flex flex-col gap-1'>
+							<div className='flex items-center gap-2'>
+								<Input
+									readOnly
+									value={
+										(form.watch(
+											`${basename}.materialCode` as RowPath,
+										) as string) || ''
+									}
+									className='border-slate-300 bg-slate-100 font-medium text-slate-500'
+								/>
+							</div>
+							<span className={materialBadge.className}>
+								{materialBadge.label}
+							</span>
+						</div>
+					</TableCell>
+
+					{/* Đơn vị tính */}
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
+						<Input
+							readOnly
+							value={
+								(form.watch(
+									`${basename}.unitOfMeasureName` as RowPath,
+								) as string) || ''
+							}
+							className='border-slate-300 bg-slate-100 text-slate-500'
+						/>
+					</TableCell>
+
+					{/* Số lượng lĩnh */}
+					<TableCell className='border-b border-slate-200 px-4 py-4'>
+						{(() => {
+							const subTotal = activeReceivedKeys.reduce(
+								(acc, key) =>
+									acc + (Number((receivedBreakdown ?? {})[key]) || 0),
+								0,
+							);
+							const isReceivedValid =
+								!showReceivedBreakdown ||
+								Math.abs(subTotal - receivedQty) < 0.01;
+							return (
+								<div className='flex flex-col gap-2'>
+									<div className='flex items-end gap-2'>
+										{/* Total — always leftmost */}
+										<div
+											className={cn(
+												'flex shrink-0 flex-col gap-0.5',
+												showReceivedBreakdown ? 'w-24' : 'w-full',
 											)}
+										>
+											<label className='text-[10px] font-medium text-slate-500'>
+												Tổng
+											</label>
+											<Input
+												readOnly
+												value={receivedQty}
+												className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+											/>
+										</div>
+										{/* Sub-inputs — only when >1 selected */}
+										{showReceivedBreakdown && (
+											<QuantityBreakdownInputs
+												selectedKeys={activeReceivedKeys}
+												allOptions={RECEIVED_TYPE_OPTIONS}
+												values={receivedBreakdown ?? {}}
+												onChange={handleReceivedBreakdownChange}
+												isValid={isReceivedValid}
+											/>
+										)}
+									</div>
+									<FormMultiSelect
+										control={form.control}
+										name={`${basename}.receivedTypes` as RowPath}
+										options={RECEIVED_TYPE_OPTIONS}
+										placeholder='Chọn loại lĩnh'
+									/>
+									{showReceivedBreakdown && !isReceivedValid && (
+										<p className='text-[11px] font-medium text-red-500'>
+											Tổng các mục ({subTotal}) phải bằng số lượng lĩnh (
+											{receivedQty})
+										</p>
+									)}
+								</div>
+							);
+						})()}
+					</TableCell>
+
+					{/* Số lượng xuất */}
+					<TableCell className='border-b border-slate-200 px-4 py-4'>
+						{(() => {
+							const subTotal = activeExportedKeys.reduce(
+								(acc, key) =>
+									acc + (Number((exportedBreakdown ?? {})[key]) || 0),
+								0,
+							);
+							const isExportedValid =
+								!showExportedBreakdown ||
+								Math.abs(subTotal - exportedQty) < 0.01;
+							return (
+								<div className='flex flex-col gap-2'>
+									<div className='flex items-end gap-2'>
+										{/* Total — always leftmost */}
+										<div
+											className={cn(
+												'flex shrink-0 flex-col gap-0.5',
+												showExportedBreakdown ? 'w-24' : 'w-full',
+											)}
+										>
+											<label className='text-[10px] font-medium text-slate-500'>
+												Tổng
+											</label>
+											<Input
+												readOnly
+												value={exportedQty}
+												className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
+											/>
+										</div>
+										{/* Sub-inputs — only when >1 selected */}
+										{showExportedBreakdown && (
+											<QuantityBreakdownInputs
+												selectedKeys={activeExportedKeys}
+												allOptions={EXPORTED_TYPE_OPTIONS}
+												values={exportedBreakdown ?? {}}
+												onChange={handleExportedBreakdownChange}
+												isValid={isExportedValid}
+											/>
+										)}
+									</div>
+									<FormMultiSelect
+										control={form.control}
+										name={`${basename}.exportedTypes` as RowPath}
+										options={EXPORTED_TYPE_OPTIONS}
+										placeholder='Chọn loại xuất'
+									/>
+									{showExportedBreakdown && !isExportedValid && (
+										<p className='text-[11px] font-medium text-red-500'>
+											Tổng các mục ({subTotal}) phải bằng số lượng xuất (
+											{exportedQty})
+										</p>
+									)}
+								</div>
+							);
+						})()}
+					</TableCell>
+
+					{/* Vật tư tính vào doanh thu khoán */}
+					<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4'>
+						<div className='flex flex-col items-center gap-3'>
+							<div className='flex justify-center *:w-auto!'>
+								<FormCheckBox
+									control={form.control}
+									name={`${basename}.showCategoryDropdown` as RowPath}
+								/>
+							</div>
+							{!showCategoryDropdown &&
+								!showAdditionalCostDropdown &&
+								!showContractLimitDropdown &&
+								!showAssetDropdown &&
+								form.formState.errors?.materials?.[index]
+									?.showCategoryDropdown && (
+									<p className='text-xs text-red-600'>
+										{
+											form.formState.errors.materials[index]
+												?.showCategoryDropdown?.message
+										}
+									</p>
+								)}
+							{showCategoryDropdown && (
+								<>
+									{resolvedCategoryValue && categoryNeedsProcessGroup && (
+										<div className='w-full'>
+											<FormMultiSelect
+												control={form.control}
+												name={`${basename}.categoryProcessGroupIds` as RowPath}
+												options={processGroupOptions}
+												placeholder='Chọn nhóm công đoạn'
+											/>
 										</div>
 									)}
+									{resolvedCategoryValue && !categoryNeedsProcessGroup && (
+										<div className='w-full'>
+											<FormNumber
+												control={form.control}
+												name={`${basename}.categoryQuantity` as RowPath}
+												placeholder='Nhập số lượng'
+											/>
+										</div>
+									)}
+									{resolvedCategoryValue ===
+										MaterialsIncludedInContractRevenue.Maintain && (
+										<>
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={
+														`${basename}.categoryProductionOrderId` as RowPath
+													}
+													options={categoryProductionOrderOptions}
+													placeholder='Chọn quyết định, lệnh sản xuất'
+												/>
+											</div>
+											{categoryNeedsEquipment && (
+												<div className='w-full'>
+													<div className='space-y-2'>
+														<div className='flex w-full items-start gap-2'>
+															{categoryAllocationRows.map((allocation) => {
+																const processGroupId =
+																	allocation.processGroupId ?? '';
+																const processGroupLabel =
+																	processGroupOptions.find(
+																		(option) => option.value === processGroupId,
+																	)?.label ?? processGroupId;
+																const selectedEquipmentId =
+																	allocation.equipmentIds?.[0] ?? '';
+
+																return (
+																	<div
+																		key={`${processGroupId}-equipment`}
+																		className='min-w-0 flex-1'
+																	>
+																		<label
+																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																			title={processGroupLabel}
+																		>
+																			{processGroupLabel}
+																		</label>
+																		<FormComboBox
+																			value={selectedEquipmentId}
+																			onValueChange={(value) => {
+																				updateCategoryAllocation(
+																					processGroupId,
+																					(currentAllocation) => ({
+																						...currentAllocation,
+																						equipmentIds: value ? [value] : [],
+																					}),
+																				);
+																			}}
+																			options={categoryEquipmentOptions}
+																			placeholder='Chọn thiết bị'
+																		/>
+																	</div>
+																);
+															})}
+														</div>
+													</div>
+												</div>
+											)}
+											{categoryNeedsProcessGroup && (
+												<div className='w-full'>
+													<div className='space-y-2'>
+														<div className='flex w-full items-start gap-2'>
+															{categoryAllocationRows.map((allocation) => {
+																const processGroupId =
+																	allocation.processGroupId ?? '';
+																const processGroupLabel =
+																	processGroupOptions.find(
+																		(option) => option.value === processGroupId,
+																	)?.label ?? processGroupId;
+
+																return (
+																	<div
+																		key={`${processGroupId}-quantity`}
+																		className='min-w-0 flex-1'
+																	>
+																		<label
+																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
+																			title={processGroupLabel}
+																		>
+																			{processGroupLabel}
+																		</label>
+																		<FormNumberInput
+																			value={parseAllocationQuantity(
+																				allocation.quantity,
+																			)}
+																			onValueChange={(value) => {
+																				updateCategoryAllocation(
+																					processGroupId,
+																					(currentAllocation) => ({
+																						...currentAllocation,
+																						quantity: value ?? 0,
+																					}),
+																				);
+																			}}
+																			placeholder='Nhập số lượng'
+																		/>
+																	</div>
+																);
+															})}
+														</div>
+														{categoryAllocationRows.length === 0 && (
+															<p className='text-xs text-slate-500'>
+																Chọn nhóm công đoạn để nhập số lượng theo từng
+																nhóm.
+															</p>
+														)}
+													</div>
+												</div>
+											)}
+										</>
+									)}
+									{resolvedCategoryValue &&
+										hasValidCategoryAllocations &&
+										(!categoryNeedsProductionOrder ||
+											categoryProductionOrderId != null) &&
+										hasValidCategoryEquipments && (
+											<div className='w-full'>
+												<div
+													className={cn(
+														'mt-1 text-xs',
+														isValidTotal ? 'text-green-600' : 'text-red-600',
+													)}
+												>
+													Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+												</div>
+											</div>
+										)}
 								</>
 							)}
-							{contractLimitCategoryValue &&
-								(!needsSecondComboBox ||
-									contractLimitSelectedTypes.length > 0) && (
-									<div className='w-full'>
-										{!needsSecondComboBox && (
-											<>
+						</div>
+					</TableCell>
+
+					{/* Bổ sung chi phí */}
+					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+						<div className='flex flex-col items-center gap-3'>
+							<div className='flex justify-center *:w-auto!'>
+								<FormCheckBox
+									control={form.control}
+									name={`${basename}.showAdditionalCostDropdown` as RowPath}
+								/>
+							</div>
+							{showAdditionalCostDropdown && (
+								<>
+									{!isSafetyAndWelfareMaterial && (
+										<div className='w-full'>
+											<FormComboBox
+												control={form.control}
+												name={`${basename}.additionalCostCategory` as RowPath}
+												options={additionalCostOptionsByType}
+												placeholder='Chọn danh mục'
+											/>
+										</div>
+									)}
+									{additionalCostCategory && (
+										<>
+											{additionalCostNeedsProductionOrder && (
+												<div className='w-full'>
+													<FormComboBox
+														control={form.control}
+														name={
+															`${basename}.additionalCostProductionOrderId` as RowPath
+														}
+														options={additionalCostOrderOrEquipmentOptions}
+														placeholder='Chọn quyết định, lệnh sản xuất'
+													/>
+												</div>
+											)}
+											{additionalCostNeedsOtherMaterialDetail && (
+												<div className='w-full'>
+													<FormComboBox
+														control={form.control}
+														name={`${basename}.otherMaterialDetail` as RowPath}
+														options={OTHER_MATERIAL_DETAIL_OPTIONS}
+														placeholder='Chọn loại vật tư'
+													/>
+												</div>
+											)}
+										</>
+									)}
+									{additionalCostCategory &&
+										(!additionalCostNeedsProductionOrder ||
+											additionalCostProductionOrderId != null) &&
+										(!additionalCostNeedsOtherMaterialDetail ||
+											otherMaterialDetailValue != null) && (
+											<div className='w-full'>
 												<label className='mb-1.5 block text-xs font-medium text-slate-600'>
 													Số lượng vật tư
 												</label>
 												<FormNumber
 													control={form.control}
-													name={`${basename}.contractLimitQuantity` as RowPath}
+													name={`${basename}.additionalCostQuantity` as RowPath}
 													placeholder='Nhập số lượng'
 												/>
-											</>
+												<div
+													className={cn(
+														'mt-1 text-xs',
+														isValidTotal ? 'text-green-600' : 'text-red-600',
+													)}
+												>
+													Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+												</div>
+											</div>
 										)}
-										<div
-											className={cn(
-												'mt-1 text-xs',
-												isValidTotal ? 'text-green-600' : 'text-red-600',
-											)}
-										>
-											Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-										</div>
-									</div>
-								)}
-						</>
-					)}
-				</div>
-			</TableCell>
-
-			{/* Tài sản */}
-			<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
-				<div className='flex flex-col items-center gap-3'>
-					<div className='flex justify-center *:w-auto!'>
-						<FormCheckBox
-							control={form.control}
-							name={`${basename}.showAssetDropdown` as RowPath}
-						/>
-					</div>
-					{showAssetDropdown && (
-						<div className='w-full'>
-							<label className='mb-1.5 block text-xs font-medium text-slate-600'>
-								Số lượng
-							</label>
-							<FormNumber
-								control={form.control}
-								name={`${basename}.assetQuantity` as RowPath}
-								placeholder='Nhập số lượng'
-							/>
-							<div
-								className={cn(
-									'mt-1 text-xs',
-									isValidTotal ? 'text-green-600' : 'text-red-600',
-								)}
-							>
-								Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-							</div>
+								</>
+							)}
 						</div>
-					)}
-				</div>
-			</TableCell>
-		</TableRow>
+					</TableCell>
+
+					{/* Vật tư theo hạn mức */}
+					<TableCell className='w-[13%] min-w-44 border-b border-slate-200 px-4 py-4'>
+						<div className='flex flex-col items-center gap-3'>
+							<div className='flex justify-center *:w-auto!'>
+								<FormCheckBox
+									control={form.control}
+									name={`${basename}.showContractLimitDropdown` as RowPath}
+								/>
+							</div>
+							{showContractLimitDropdown && (
+								<>
+									<div className='w-full'>
+										<FormComboBox
+											control={form.control}
+											name={`${basename}.contractLimitCategory` as RowPath}
+											options={CONTRACT_LIMIT_OPTIONS}
+											placeholder='Chọn danh mục'
+										/>
+									</div>
+									{contractLimitCategoryValue && needsSecondComboBox && (
+										<>
+											<div className='w-full'>
+												<FormMultiSelect
+													control={form.control}
+													name={
+														`${basename}.contractLimitSubCategories` as RowPath
+													}
+													options={CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS}
+													placeholder='Chọn loại (Lĩnh mới/Tái sử dụng)'
+												/>
+											</div>
+											{contractLimitSelectedKeys.length > 0 && (
+												<div className='w-full space-y-2'>
+													<div className='flex w-full items-end gap-2'>
+														<QuantityBreakdownInputs
+															selectedKeys={contractLimitSelectedKeys}
+															allOptions={
+																CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS
+															}
+															values={contractLimitBreakdown ?? {}}
+															onChange={handleContractLimitBreakdownChange}
+															isValid={isContractLimitBreakdownValid}
+															equalWidth
+														/>
+													</div>
+													{!isContractLimitBreakdownValid && (
+														<p className='text-xs text-red-600'>
+															Tổng lĩnh mới + lĩnh tái sử dụng phải bằng số
+															lượng xuất ({contractLimitBreakdownTotal} /{' '}
+															{exportedQty})
+														</p>
+													)}
+												</div>
+											)}
+										</>
+									)}
+									{contractLimitCategoryValue &&
+										(!needsSecondComboBox ||
+											contractLimitSelectedTypes.length > 0) && (
+											<div className='w-full'>
+												{!needsSecondComboBox && (
+													<>
+														<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+															Số lượng vật tư
+														</label>
+														<FormNumber
+															control={form.control}
+															name={
+																`${basename}.contractLimitQuantity` as RowPath
+															}
+															placeholder='Nhập số lượng'
+														/>
+													</>
+												)}
+												<div
+													className={cn(
+														'mt-1 text-xs',
+														isValidTotal ? 'text-green-600' : 'text-red-600',
+													)}
+												>
+													Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+												</div>
+											</div>
+										)}
+								</>
+							)}
+						</div>
+					</TableCell>
+
+					{/* Tài sản */}
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
+						<div className='flex flex-col items-center gap-3'>
+							<div className='flex justify-center *:w-auto!'>
+								<FormCheckBox
+									control={form.control}
+									name={`${basename}.showAssetDropdown` as RowPath}
+								/>
+							</div>
+							{showAssetDropdown && (
+								<div className='w-full'>
+									<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+										Số lượng
+									</label>
+									<FormNumber
+										control={form.control}
+										name={`${basename}.assetQuantity` as RowPath}
+										placeholder='Nhập số lượng'
+									/>
+									<div
+										className={cn(
+											'mt-1 text-xs',
+											isValidTotal ? 'text-green-600' : 'text-red-600',
+										)}
+									>
+										Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
+									</div>
+								</div>
+							)}
+						</div>
+					</TableCell>
+				</TableRow>
+			)}
+		</>
 	);
 }

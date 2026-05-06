@@ -18,6 +18,7 @@ public class DeleteTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
     private readonly IWriteRepository<Domain.Entities.Pricing.PlannedMaterialCost> _plannedMaterialCostRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedMaterialCost>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "TunnelSupportAndDrillingMaterialUnitPrice";
 
     public async Task<bool> Handle(DeleteTunnelSupportAndDrillingMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
@@ -45,6 +46,7 @@ public class DeleteTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
             await unitOfWork.CommitAsync(cancellationToken);
 
             cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
         }
         catch
         {

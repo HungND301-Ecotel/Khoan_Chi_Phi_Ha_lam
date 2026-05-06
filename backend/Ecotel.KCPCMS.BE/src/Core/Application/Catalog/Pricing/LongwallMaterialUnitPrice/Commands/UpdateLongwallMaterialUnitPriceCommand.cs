@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
@@ -10,7 +11,6 @@ using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
-using System.Text.RegularExpressions;
 
 namespace Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
 
@@ -29,7 +29,8 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
-    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
+    private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
     private static readonly Regex InterpolationSeamFaceRegex =
         new(@"^M =\d+([,.]\d+)?m$", RegexOptions.Compiled);
 
@@ -87,6 +88,17 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
         {
             throw new BadRequestException("Phải chọn Công suất hoặc Độ kiên cố than đá.");
         }
+
+        var a = await _materialUnitPriceRepository.GetAllAsync(predicate: m =>
+            m.Id != request.UpdateModel.Id &&
+            m.StartMonth < request.UpdateModel.EndMonth &&
+            m.EndMonth > request.UpdateModel.StartMonth &&
+            m.LongwallParametersId == request.UpdateModel.LongwallParametersId &&
+            m.CuttingThicknessId == request.UpdateModel.CuttingThicknessId &&
+            m.SeamFaceId == resolvedSeamFaceId.Value &&
+            m.PowerId == request.UpdateModel.PowerId &&
+            m.HardnessId == request.UpdateModel.HardnessId,
+            disableTracking: true);
 
         if (await _materialUnitPriceRepository.AnyAsync(m =>
             m.Id != request.UpdateModel.Id &&
@@ -174,7 +186,8 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
 
-            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ProductUnitPriceCacheSignalKey);
+            cacheService.InvalidateGroup(LongwallMaterialUnitPriceCacheSignalKey);
         }
         catch
         {

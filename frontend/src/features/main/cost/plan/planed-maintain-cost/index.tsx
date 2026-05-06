@@ -42,10 +42,12 @@ export function PlanedMaintainCost({
 		useState<PlanedMaintainCostDetail>();
 	const [total, setTotal] = useState<number>(0);
 	const [loading, setLoading] = useState<boolean>(!!id);
+	const [plannedMaintainPrice, setPlannedMaintainPrice] = useState<number>(0);
 
 	useEffect(() => {
 		if (!id) {
 			setPlanedMaintainCost(undefined);
+			setPlannedMaintainPrice(0);
 			setTotal(0);
 			setLoading(false);
 			return;
@@ -60,10 +62,15 @@ export function PlanedMaintainCost({
 					const { totalPrice } = item;
 					total += totalPrice;
 				});
-				setTotal(total * (output?.productionMeters || 1));
+				const trimmingCoefficient =
+					plan?.fixedKeyType === ProcessGroupType.XL
+						? res.result.trimmingCoefficient || 1
+						: 1;
+				setTotal(total * (output?.productionMeters || 1) * trimmingCoefficient);
+				setPlannedMaintainPrice(total * trimmingCoefficient);
 			})
 			.finally(() => setLoading(false));
-	}, [id, reloadKey, output?.productionMeters]);
+	}, [id, reloadKey, output?.productionMeters, plan?.fixedKeyType]);
 
 	return (
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>
@@ -72,9 +79,15 @@ export function PlanedMaintainCost({
 					<ItemTitle>Doanh thu SCTX kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
 
+				<ItemContent className='me-2 w-24'>
+					<ItemTitle>
+						{loading ? <Spinner /> : formatNumber(plannedMaintainPrice)}
+					</ItemTitle>
+				</ItemContent>
+
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>
-						{loading ? <Spinner /> : formatNumber(Math.round(total ?? 0))}
+						{loading ? <Spinner /> : formatNumber(total ?? 0)}
 					</ItemTitle>
 				</ItemContent>
 
@@ -143,7 +156,7 @@ export function PlanedMaintainCost({
 				{id && isOpen && (
 					<DataTable
 						columns={getPlanedMaintainCostColumns(
-							plan?.processGroupType as ProcessGroupType | undefined,
+							plan?.fixedKeyType as ProcessGroupType | undefined,
 						)}
 						items={planedMaintainCost?.costs}
 						compact={true}

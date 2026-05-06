@@ -11,7 +11,7 @@ public class MaintainUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
     public double? OtherMaterialValue { get; set; }
-    public MaintainUnitPriceType Type { get; protected set; }
+    public MaintainUnitPriceType Type { get; protected set; } = MaintainUnitPriceType.TunnelExcavation;
 
     private double? CachedMaintainUnitPriceTotal { get; set; }
 
@@ -102,7 +102,7 @@ public class MaintainUnitPrice : AuditableEntity<Guid>, IAggregateRoot
             return CachedMaintainUnitPriceTotal.Value;
         }
 
-        double result = MaintainUnitPriceEquipments.Sum(m => m.GetMaterialCostPerMetres(StartMonth));
+        double result = MaintainUnitPriceEquipments.Sum(m => m.GetMaterialCostPerMetres(StartMonth, Type));
 
         if (OtherMaterialValue != null)
         {

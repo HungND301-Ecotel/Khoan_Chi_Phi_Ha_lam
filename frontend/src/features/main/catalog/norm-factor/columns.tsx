@@ -1,12 +1,22 @@
-import { ColumnDef } from '@tanstack/react-table';
-import { Badge } from '@/components/ui/badge';
 import { formatNumber } from '@/lib/utils';
+import { ColumnDef } from '@tanstack/react-table';
 
 type AffectAssignmentCode = {
 	id: string;
 	code: string;
 	name: string;
 };
+
+type NormFactorAssignmentCode = {
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	value: number;
+	targetHardnessId?: string;
+	targetHardnessName?: string;
+};
+
+export type NormFactorExpandItem = NormFactorAssignmentCode;
 
 export type NormFactor = {
 	id: string;
@@ -22,6 +32,7 @@ export type NormFactor = {
 	stoneClampRatioName: string;
 	steelMeshType: number;
 	affectAssignmentCodes: AffectAssignmentCode[];
+	assignmentCodes?: NormFactorAssignmentCode[];
 	value: number;
 	targetHardnessId: string;
 	targetHardnessName: string;
@@ -69,39 +80,26 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 		accessorKey: 'stoneClampRatioName',
 		header: 'Tỷ lệ đá kẹp (Ckẹp)',
 	},
-	{
-		accessorKey: 'affectAssignmentCodes',
-		header: 'Thành phần điều chỉnh định mức',
-		cell: ({ row }) => (
-			<div className='flex flex-wrap gap-1'>
-				{(row.original.affectAssignmentCodes ?? []).map((item) => (
-					<Badge
-						key={item.id}
-						variant='secondary'
-						className='whitespace-normal'
-					>
-						{item.code} - {item.name}
-					</Badge>
-				))}
-			</div>
-		),
-	},
-	{
-		accessorKey: 'value',
-		header: 'Hệ số điều chỉnh định mức',
-		cell: ({ row }) => (
-			<span className='whitespace-normal'>
-				{formatNumber(row.original.value)}
-			</span>
-		),
-	},
-	{
-		accessorKey: 'targetHardnessName',
-		header: 'Định mức tham chiếu',
-		cell: ({ row }) => (
-			<span className='whitespace-normal'>
-				{row.original.targetHardnessName || 'Định mức hiện tại'}
-			</span>
-		),
-	},
 ];
+
+export const CATALOG_NORM_FACTOR_EXPAND_COLUMNS: ColumnDef<NormFactorExpandItem>[] =
+	[
+		{
+			accessorKey: 'assignmentCode',
+			header: 'Mã giao khoán',
+		},
+		{
+			accessorKey: 'assignmentCodeName',
+			header: 'Tên giao khoán',
+		},
+		{
+			accessorKey: 'value',
+			header: 'Hệ số điều chỉnh định mức',
+			cell: ({ row }) => formatNumber(row.original.value),
+		},
+		{
+			accessorKey: 'targetHardnessName',
+			header: 'Định mức tham chiếu',
+			cell: ({ row }) => row.original.targetHardnessName || 'Định mức hiện tại',
+		},
+	];

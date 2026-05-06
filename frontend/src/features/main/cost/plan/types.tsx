@@ -1,3 +1,5 @@
+import { ProcessGroupType } from '@/constants/process-group';
+
 export type CostProduct = {
 	id: string;
 	productId: string;
@@ -5,9 +7,13 @@ export type CostProduct = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: number;
+	fixedKeyType: ProcessGroupType;
+	processGroupType?: number;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	totalProductionMeters: number;
 	plannedTotalCost: number;
 	startMonth: string;
@@ -21,10 +27,14 @@ export type CostProductDetail = {
 	productName: string;
 	processGroupId: string;
 	processGroupCode: string;
-	processGroupType: number;
+	fixedKeyType: ProcessGroupType;
+	processGroupType?: number;
 	processGroupName: string;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	outputs: CostProductDetailOutput[];
 };
 
@@ -44,6 +54,7 @@ export type CostProductDetailOutput = {
 	endMonth: string;
 	totalPrice: number;
 	adjTotalPrice?: number;
+	planAshContent?: number;
 };
 
 export type ProductCostExpandProps = {
@@ -56,4 +67,51 @@ export type ProductCostExpandProps = {
 	reloadKey?: number;
 };
 
+export function mapCostProduct(product: CostProduct): CostProduct {
+	return {
+		...product,
+		fixedKeyType:
+			product.fixedKeyType ??
+			(product.processGroupType as ProcessGroupType) ??
+			ProcessGroupType.None,
+	};
+}
+
+export function mapCostProductDetail(
+	detail: CostProductDetail,
+): CostProductDetail {
+	return {
+		...detail,
+		fixedKeyType:
+			detail.fixedKeyType ??
+			(detail.processGroupType as ProcessGroupType) ??
+			ProcessGroupType.None,
+	};
+}
+
 export type ProductCostFormProps = Omit<ProductCostExpandProps, 'isOpen'>;
+
+export type CostPlanAdjustmentSelection = {
+	adjustmentFactorDescriptionId: string;
+	adjustmentFactorId: string;
+	customValue: number | null;
+};
+
+export type CostPlanAdjustmentDetail = {
+	id: string;
+	adjustmentFactorDescriptionId?: string | null;
+	description: string;
+	adjustmentFactorId: string;
+	adjustmentFactorCode: string;
+	adjustmentFactorName: string;
+	maintenanceAdjustmentValue?: number | null;
+	electricityAdjustmentValue?: number | null;
+	customValue?: number | null;
+	effectiveValue: number;
+};
+
+export type CostPlanAdjustmentOption = {
+	value: string;
+	label: string;
+	sortValue?: number | null;
+};

@@ -42,7 +42,10 @@ export type TunnelingDetail = {
 export function MainPricingMaintenanceTunnelingPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
-	const query = useMemo(() => ({ maintainType: 1 }), []);
+	const query = useMemo(
+		() => ({ maintainType: 1, ignorePagination: true }),
+		[],
+	);
 
 	const handleDelete = async ({ data }: ActionDialogProps<Tunneling>) => {
 		try {
@@ -97,6 +100,7 @@ export function MainPricingMaintenanceTunnelingPage() {
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <TunnelingForm {...props} />}
+				onDuplicate={(props) => <TunnelingForm {...props} isDuplicate />}
 				onUpdate={(props) => <TunnelingForm {...props} />}
 				onExpand={(props) => <TunnelingExpand {...props} />}
 				onDelete={handleDelete}

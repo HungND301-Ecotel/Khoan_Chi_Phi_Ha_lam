@@ -18,7 +18,11 @@ import { useForm } from 'react-hook-form';
 
 const CLAMP_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
 
-export function ClampForm({ data, row }: ActionDialogProps<Clamp>) {
+export function ClampForm({
+	data,
+	row,
+	isDuplicate = false,
+}: ActionDialogProps<Clamp> & { isDuplicate?: boolean }) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
@@ -35,7 +39,7 @@ export function ClampForm({ data, row }: ActionDialogProps<Clamp>) {
 
 	const handleSubmit = async (values: ClampSchema) => {
 		try {
-			if (row?.id) {
+			if (row?.id && !isDuplicate) {
 				await api.put(API.CATALOG.PARAMETER.CLAMP.UPDATE, {
 					id: row?.id,
 					...values,
@@ -46,7 +50,7 @@ export function ClampForm({ data, row }: ActionDialogProps<Clamp>) {
 
 			setOpen(false);
 			popup.success(
-				`${breadcrumb} đã được ${row?.id ? 'Cập nhật' : 'Tạo mới'} thành công.`,
+				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
 			);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -65,7 +69,7 @@ export function ClampForm({ data, row }: ActionDialogProps<Clamp>) {
 				supports={CLAMP_SUPPORTS}
 			/>
 
-			<DataTableEditConfirm isEdit={!!row} />
+			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }

@@ -83,7 +83,7 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 			].filter(Boolean);
 
 			return (
-				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
+				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
 					{displayParts.map((part, index) => (
 						<span key={`${String(part)}-${index}`}>
 							{index > 0 ? ` | ${part}` : part}
@@ -107,6 +107,86 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 	{
 		accessorKey: 'totalPrice',
 		header: 'Đơn giá vật liệu (đ/tấn)',
-		cell: ({ row }) => formatNumber(Math.round(row.original.totalPrice)),
+		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
+
+export type ExpandLongwallMaterialDetail = {
+	technologyName?: string;
+	powerOrHardnessValue?: string;
+	longwallParametersValue?: string;
+	cuttingThicknessValue?: string;
+	seamFaceValue?: string;
+};
+
+export const LONGWALL_MATERIAL_DETAIL_CGH_COLUMNS: ColumnDef<ExpandLongwallMaterialDetail>[] =
+	[
+		{
+			accessorKey: 'technologyName',
+			header: 'Công nghệ khai thác',
+		},
+		{
+			accessorKey: 'powerOrHardnessValue',
+			header: 'Công suất',
+		},
+		{
+			accessorKey: 'longwallParametersValue',
+			header: 'Thông số lò chợ',
+		},
+		{
+			accessorKey: 'cuttingThicknessValue',
+			header: 'Chiều dày lớp khấu',
+		},
+		{
+			accessorKey: 'seamFaceValue',
+			header: 'Mặt vỉa (m)',
+		},
+	];
+
+export const LONGWALL_MATERIAL_DETAIL_NON_CGH_COLUMNS: ColumnDef<ExpandLongwallMaterialDetail>[] =
+	[
+		{
+			accessorKey: 'technologyName',
+			header: 'Công nghệ khai thác',
+		},
+		{
+			accessorKey: 'powerOrHardnessValue',
+			header: 'Độ kiên cố than đá (f)',
+		},
+		{
+			accessorKey: 'longwallParametersValue',
+			header: 'Thông số lò chợ',
+		},
+		{
+			accessorKey: 'cuttingThicknessValue',
+			header: 'Chiều dày lớp khấu',
+		},
+		{
+			accessorKey: 'seamFaceValue',
+			header: 'Mặt vỉa (m)',
+		},
+	];
+
+export type ExpandLongwallMaterialAssignmentCost = {
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	totalPrice: number;
+};
+
+export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallMaterialAssignmentCost>[] =
+	[
+		{
+			accessorKey: 'assignmentCode',
+			header: 'Mã giao khoán',
+		},
+		{
+			accessorKey: 'assignmentCodeName',
+			header: 'Tên giao khoán',
+		},
+		{
+			accessorKey: 'totalPrice',
+			header: 'Đơn giá vật liệu (đ/tấn)',
+			cell: ({ row }) => formatNumber(row.original.totalPrice),
+		},
+	];

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Pickaxe, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import { Department } from '@/features/main/catalog/department/columns';
 import { api } from '@/lib/api';
 import { API } from '@/constants/api-enpoint';
 import { ProcessGroupType } from '@/constants/process-group';
@@ -29,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { formatNumber, formatYAxisValue } from '@/lib/utils';
 
 const ALL_PROCESS_GROUP_VALUE = '__all_process_group__';
+const ALL_DEPARTMENT_VALUE = '__all_department__';
 
 type DashboardChartItem = {
 	name: string;
@@ -55,7 +57,9 @@ const generateMonthlyData = () => {
 
 export default function DashboardPage() {
 	const [groups, setGroups] = useState<ProcessGroup[]>([]);
+	const [departments, setDepartments] = useState<Department[]>([]);
 	const [selectedGroup, setSelectedGroup] = useState<string>('');
+	const [selectedDepartment, setSelectedDepartment] = useState<string>('');
 	const [selectedYear, setSelectedYear] = useState<string>(
 		new Date().getFullYear().toString(),
 	);
@@ -67,8 +71,25 @@ export default function DashboardPage() {
 	useEffect(() => {
 		api
 			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
-			.then((res) => setGroups(res.result.data))
+			.then((res) =>
+				setGroups(
+					(res.result.data ?? []).map((group) => ({
+						...group,
+						fixedKeyType: group.fixedKeyType,
+					})),
+				),
+			)
 			.catch((error) => console.error('Error fetching process groups:', error));
+	}, []);
+
+	// Fetch departments
+	useEffect(() => {
+		api
+			.pagging<Department>(API.CATALOG.DEPARTMENT.LIST, {
+				ignorePagination: true,
+			})
+			.then((res) => setDepartments(res.result.data ?? []))
+			.catch((error) => console.error('Error fetching departments:', error));
 	}, []);
 
 	// Fetch dashboard data when filters change
@@ -76,10 +97,18 @@ export default function DashboardPage() {
 		const fetchOverview = async () => {
 			setIsLoading(true);
 			try {
+				const query: Record<string, string> = { year: selectedYear };
+				if (selectedGroup) {
+					query.processGroupId = selectedGroup;
+				}
+				if (selectedDepartment) {
+					query.departmentId = selectedDepartment;
+				}
+
 				// call API with query params
 				const res = await api.get<DashboardCostSummary>(
 					API.DASHBOARD.COST_SUMMARY,
-					{ processGroupId: selectedGroup, year: selectedYear },
+					query,
 				);
 
 				const body = res.result;
@@ -127,7 +156,7 @@ export default function DashboardPage() {
 		if (selectedYear) {
 			fetchOverview();
 		}
-	}, [selectedGroup, selectedYear]);
+	}, [selectedGroup, selectedDepartment, selectedYear]);
 
 	// Generate year options (current year and 100 years back)
 	const currentYear = new Date().getFullYear();
@@ -141,7 +170,7 @@ export default function DashboardPage() {
 	);
 	const totalActual = data.reduce((sum, item) => sum + item.chiPhiThucHien, 0);
 	const selectedGroupData = groups.find((g) => g.id === selectedGroup);
-	const selectedGroupType = selectedGroupData?.type;
+	const selectedGroupType = selectedGroupData?.fixedKeyType;
 
 	const volumeCards =
 		selectedGroupType === ProcessGroupType.LC
@@ -178,6 +207,7 @@ export default function DashboardPage() {
 			? 'md:grid-cols-2 xl:grid-cols-5'
 			: 'md:grid-cols-2 xl:grid-cols-4';
 	const processGroupSelectValue = selectedGroup || ALL_PROCESS_GROUP_VALUE;
+	const departmentSelectValue = selectedDepartment || ALL_DEPARTMENT_VALUE;
 
 	return (
 		<div className='flex flex-col gap-6 p-4 font-sans md:p-8'>
@@ -214,6 +244,39 @@ export default function DashboardPage() {
 									{groups.map((group) => (
 										<SelectItem key={group.id} value={group.id}>
 											{group.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className='flex flex-col gap-2'>
+							<Label
+								htmlFor='department'
+								className='text-sm font-semibold text-gray-800'
+							>
+								Đơn vị
+							</Label>
+							<Select
+								value={departmentSelectValue}
+								onValueChange={(value) =>
+									setSelectedDepartment(
+										value === ALL_DEPARTMENT_VALUE ? '' : value,
+									)
+								}
+							>
+								<SelectTrigger
+									id='department'
+									className='h-10 w-full border-2 border-gray-300 bg-white font-medium shadow-sm transition-colors hover:border-blue-400 sm:w-56'
+								>
+									<SelectValue placeholder='Tất cả đơn vị' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={ALL_DEPARTMENT_VALUE}>
+										Tất cả đơn vị
+									</SelectItem>
+									{departments.map((department) => (
+										<SelectItem key={department.id} value={department.id}>
+											{department.code} - {department.name}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -275,7 +338,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-blue-600'>
-							{formatNumber(Math.round(totalPlanned))} VNĐ
+							{formatNumber(totalPlanned)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng doanh thu kế hoạch trong năm {selectedYear}
@@ -291,7 +354,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-cyan-600'>
-							{formatNumber(Math.round(totalAdjustment))} VNĐ
+							{formatNumber(totalAdjustment)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng doanh thu điều chỉnh trong năm {selectedYear}
@@ -305,7 +368,7 @@ export default function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold text-emerald-600'>
-							{formatNumber(Math.round(totalActual))} VNĐ
+							{formatNumber(totalActual)} VNĐ
 						</div>
 						<p className='text-muted-foreground mt-1 text-xs'>
 							Tổng chi phí trong năm {selectedYear}
@@ -416,7 +479,7 @@ export default function DashboardPage() {
 																Doanh thu:
 															</span>
 															<span className='font-bold text-blue-600 tabular-nums'>
-																{formatNumber(Math.round(plannedRevenue))} VNĐ
+																{formatNumber(plannedRevenue)} VNĐ
 															</span>
 														</div>
 														<div className='flex items-center justify-between gap-10'>
@@ -425,8 +488,7 @@ export default function DashboardPage() {
 																Doanh thu điều chỉnh:
 															</span>
 															<span className='font-bold text-cyan-600 tabular-nums'>
-																{formatNumber(Math.round(adjustmentRevenue))}{' '}
-																VNĐ
+																{formatNumber(adjustmentRevenue)} VNĐ
 															</span>
 														</div>
 														<div className='flex items-center justify-between gap-10'>
@@ -435,7 +497,7 @@ export default function DashboardPage() {
 																Chi phí:
 															</span>
 															<span className='font-bold text-emerald-600 tabular-nums'>
-																{formatNumber(Math.round(actualCost))} VNĐ
+																{formatNumber(actualCost)} VNĐ
 															</span>
 														</div>
 													</div>

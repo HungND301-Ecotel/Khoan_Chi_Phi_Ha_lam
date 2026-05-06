@@ -66,6 +66,7 @@ function MainCatalogAssetInternalPage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
 			onCreate={(props) => <AssetInternalForm {...props} />}
+			onDuplicate={(props) => <AssetInternalForm {...props} isDuplicate />}
 			onUpdate={(props) => <AssetInternalForm {...props} />}
 			onDelete={handleDelete}
 			onExport={handleExport}

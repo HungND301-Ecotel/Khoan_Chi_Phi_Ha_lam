@@ -24,7 +24,9 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
 
         var log = await _logRepository.GetFirstOrDefaultAsync(
             predicate: l => l.Id == updateModel.Id,
-            include: q => q.Include(l => l.AcceptanceReportItem),
+            include: q => q
+                .Include(l => l.AcceptanceReportItemCategoryAllocation)
+                .Include(l => l.AcceptanceReportItem),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         var acceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
@@ -52,15 +54,32 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
+            var requestedUsageTime = updateModel.UsageTime;
+            var isNewItemInCurrentPeriod = log.AcceptanceReportId == updateModel.AcceptanceReportId
+                && (log.IssuedQuantity > 0 || log.TotalAmount > 0 || log.PendingValueStartPeriod == 0);
+
+            if (!isNewItemInCurrentPeriod && Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
+            {
+                throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
+            }
+
             // Check: Log này có thuộc kỳ hiện tại không?
             if (log.AcceptanceReportId == updateModel.AcceptanceReportId)
             {
                 // Case 1: Log thuộc kỳ hiện tại → Update trực tiếp
+                if (isNewItemInCurrentPeriod)
+                {
+                    log.AcceptanceReportItem.UpdateUsageTime(requestedUsageTime);
+                    log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
+                }
+
+                RefreshLogOutputMetrics(log, outputByProcessGroup, updateModel.Note);
                 log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                 _logRepository.Update(log);
 
                 await RecalculateFutureLogs(
                     log.AcceptanceReportItemId,
+                    log.AcceptanceReportItemCategoryAllocationId,
                     log.PeriodStartMonth,
                     log.PendingValueEndPeriod,
                     cancellationToken);
@@ -84,17 +103,25 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                 var existingOverrideLog = await _logRepository.GetFirstOrDefaultAsync(
                     predicate: l =>
                         l.AcceptanceReportItemId == log.AcceptanceReportItemId &&
+                        l.AcceptanceReportItemCategoryAllocationId == log.AcceptanceReportItemCategoryAllocationId &&
                         l.AcceptanceReportId == updateModel.AcceptanceReportId,
                     disableTracking: false);
 
                 if (existingOverrideLog != null)
                 {
                     // Đã có log override → Update log override đó
-                    log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
+                    if (Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
+                    {
+                        throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
+                    }
+
+                    RefreshLogOutputMetrics(existingOverrideLog, outputByProcessGroup, updateModel.Note);
+                    existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(existingOverrideLog);
 
                     await RecalculateFutureLogs(
                         existingOverrideLog.AcceptanceReportItemId,
+                        existingOverrideLog.AcceptanceReportItemCategoryAllocationId,
                         existingOverrideLog.PeriodStartMonth,
                         existingOverrideLog.PendingValueEndPeriod,
                         cancellationToken);
@@ -119,6 +146,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                     var allPreviousLogs = await _logRepository.GetAllAsync(
                         predicate: l =>
                             l.AcceptanceReportItemId == log.AcceptanceReportItemId &&
+                            l.AcceptanceReportItemCategoryAllocationId == log.AcceptanceReportItemCategoryAllocationId &&
                             l.PeriodEndMonth < productionOutput.StartMonth,
                         disableTracking: true);
 
@@ -136,8 +164,9 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                     var plannedOutput = log.PlannedOutput;
                     var standardOutput = productionOutput.StandardProductionMeters;
 
-                    if (log.AcceptanceReportItem?.ProcessGroupId.HasValue == true
-                        && outputByProcessGroup.TryGetValue(log.AcceptanceReportItem.ProcessGroupId.Value, out var metrics))
+                    var processGroupId = ResolveProcessGroupId(log);
+                    if (processGroupId.HasValue
+                        && outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
                     {
                         actualOutput = metrics.ActualOutput;
                         plannedOutput = metrics.PlannedOutput;
@@ -152,12 +181,13 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         pendingValueStartPeriod: pendingValueStart,
                         issuedQuantity: 0,
                         unitPrice: 0,
-                        usageTime: log.UsageTime,
+                        usageTime: log.AcceptanceReportItem.UsageTime,
                         allocatedTime: totalAllocatedTime,
                         actualOutput: actualOutput,
                         plannedOutput: plannedOutput,
                         standardOutput: standardOutput,
                         allocationRatio: finalAllocationRatio,
+                        acceptanceReportItemCategoryAllocationId: log.AcceptanceReportItemCategoryAllocationId,
                         isFullAccounting: updateModel.IsFullAccounting,
                         note: updateModel.Note);
 
@@ -165,6 +195,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
 
                     await RecalculateFutureLogs(
                         newLog.AcceptanceReportItemId,
+                        newLog.AcceptanceReportItemCategoryAllocationId,
                         newLog.PeriodStartMonth,
                         newLog.PendingValueEndPeriod,
                         cancellationToken);
@@ -196,29 +227,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
 
         foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
         {
-            var plannedOutput = 0.0;
-
-            foreach (var product in processGroup.ProductionOutputProducts)
-            {
-                var productUnitPriceLink = productionOutput.ProductUnitPriceProductionOutputs
-                    .FirstOrDefault(x => x.ProductUnitPrice?.ProductId == product.ProductId);
-
-                if (productUnitPriceLink?.ProductUnitPrice?.Outputs == null)
-                {
-                    continue;
-                }
-
-                var matchingPlan = productUnitPriceLink.ProductUnitPrice.Outputs
-                    .FirstOrDefault(o => o.OutputType == OutputType.PlanOutput
-                        && o.StartMonth == productionOutput.StartMonth
-                        && o.EndMonth == productionOutput.EndMonth
-                        && Math.Abs(o.ProductionMeters - productUnitPriceLink.ProductionMeters) < 0.0001);
-
-                if (matchingPlan != null)
-                {
-                    plannedOutput += matchingPlan.ProductionMeters;
-                }
-            }
+            var plannedOutput = processGroup.PlanProductionMeters;
 
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
@@ -231,6 +240,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
 
     private async Task RecalculateFutureLogs(
         Guid acceptanceReportItemId,
+        Guid? acceptanceReportItemCategoryAllocationId,
         DateOnly fromPeriodStartMonth,
         decimal newPendingValueEnd,
         CancellationToken cancellationToken)
@@ -239,6 +249,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
         var futureLogs = await _logRepository.GetAllAsync(
             predicate: l =>
                 l.AcceptanceReportItemId == acceptanceReportItemId &&
+                l.AcceptanceReportItemCategoryAllocationId == acceptanceReportItemCategoryAllocationId &&
                 l.PeriodStartMonth > fromPeriodStartMonth,
             disableTracking: false);
 
@@ -257,5 +268,22 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
             _logRepository.Update(futureLog);
             currentPendingValue = futureLog.PendingValueEndPeriod;
         }
+    }
+
+    private static Guid? ResolveProcessGroupId(AcceptanceReportItemLog log)
+        => log.AcceptanceReportItemCategoryAllocation?.ProcessGroupId ?? log.AcceptanceReportItem?.ProcessGroupId;
+
+    private static void RefreshLogOutputMetrics(
+        AcceptanceReportItemLog log,
+        Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> outputByProcessGroup,
+        string note)
+    {
+        var processGroupId = ResolveProcessGroupId(log);
+        if (!processGroupId.HasValue || !outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
+        {
+            return;
+        }
+
+        log.UpdateOutputMetrics(metrics.ActualOutput, metrics.PlannedOutput, metrics.StandardOutput, note);
     }
 }

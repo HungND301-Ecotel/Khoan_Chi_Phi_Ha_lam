@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
 using ClosedXML.Excel;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using Mapster;
@@ -14,11 +16,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Catalog.Pricing.MaterialUnitPrice.Commands;
 
-public record ImportMaterialUnitPriceExcelCommand(IFormFile File) : IRequest<bool>;
+public record ImportMaterialUnitPriceExcelCommand(
+    IFormFile File,
+    TunnelExcavationTrimingUnitPriceType Type = TunnelExcavationTrimingUnitPriceType.TunnelExcavation) : IRequest<bool>;
 
-public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ImportMaterialUnitPriceExcelCommand, bool>
+public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportMaterialUnitPriceExcelCommand, bool>
 {
     private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "MaterialUnitPrice";
 
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _materialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
@@ -36,6 +42,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
             throw new BadRequestException("Vui lòng chọn file Excel.");
         }
 
+        var importErrors = new List<string>();
+
         var processes = await _processRepository.GetAllAsync(disableTracking: true);
         var passports = await _passportRepository.GetAllAsync(disableTracking: true);
         var hardnesses = await _hardnessRepository.GetAllAsync(disableTracking: true);
@@ -48,7 +56,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
         var assignmentLookup = BuildAssignmentLookup(assignments);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
+        ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
         {
@@ -63,8 +72,10 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
         if (duplicateCodes.Any())
         {
-            throw new BadRequestException($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
+            importErrors.Add($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
         }
+
+        ThrowIfImportErrors(importErrors);
 
         var processIdMap = processes
             .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
@@ -78,6 +89,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
             .ToDictionary(s => NormalizeLookupValue(s.Value), s => s.Id, StringComparer.OrdinalIgnoreCase);
 
         var dbEntities = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: m => m.Type == request.Type,
             include: a => a
                 .Include(a => a.Code!)
                 .Include(a => a.MaterialUnitPriceAssignmentCodes),
@@ -103,81 +115,95 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
         foreach (var row in importRows)
         {
             var code = row.Code.Trim();
-            if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
+            try
             {
-                throw new BadRequestException($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!passportIdMap.TryGetValue(NormalizeLookupValue(row.PassportName), out var passportId))
-            {
-                throw new BadRequestException($"Hộ chiếu '{row.PassportName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!hardnessIdMap.TryGetValue(NormalizeLookupValue(row.HardnessName), out var hardnessId))
-            {
-                throw new BadRequestException($"Độ kiên cố '{row.HardnessName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!insertItemIdMap.TryGetValue(NormalizeLookupValue(row.InsertItemName), out var insertItemId))
-            {
-                throw new BadRequestException($"Chèn '{row.InsertItemName}' không tồn tại cho mã '{code}'.");
-            }
-
-            if (!supportStepIdMap.TryGetValue(NormalizeLookupValue(row.SupportStepName), out var supportStepId))
-            {
-                throw new BadRequestException($"Bước chống '{row.SupportStepName}' không tồn tại cho mã '{code}'.");
-            }
-
-            var startMonth = ParseMonthYear(row.StartMonth);
-            var endMonth = ParseMonthYear(row.EndMonth);
-
-            var costDtos = row.AssignmentCosts
-                .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
                 {
-                    AssignmentCodeId = c.AssignmentCodeId,
-                    TotalPrice = c.TotalPrice
-                })
-                .ToList();
-            var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
-
-            if (dbCodeLookup.TryGetValue(code, out var existingEntity))
-            {
-                if (existingEntity.MaterialUnitPriceAssignmentCodes.Any())
-                {
-                    assignmentCostsToDelete.AddRange(existingEntity.MaterialUnitPriceAssignmentCodes);
+                    importErrors.Add($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
+                    continue;
                 }
 
-                existingEntity.Update(
-                    code,
-                    processId,
-                    passportId,
-                    hardnessId,
-                    insertItemId,
-                    supportStepId,
-                    existingEntity.TechnologyId,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                updateList.Add(existingEntity);
-                matchedCodes.Add(code);
+                if (!passportIdMap.TryGetValue(NormalizeLookupValue(row.PassportName), out var passportId))
+                {
+                    importErrors.Add($"Hộ chiếu '{row.PassportName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                if (!hardnessIdMap.TryGetValue(NormalizeLookupValue(row.HardnessName), out var hardnessId))
+                {
+                    importErrors.Add($"Độ kiên cố '{row.HardnessName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                if (!insertItemIdMap.TryGetValue(NormalizeLookupValue(row.InsertItemName), out var insertItemId))
+                {
+                    importErrors.Add($"Chèn '{row.InsertItemName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                if (!supportStepIdMap.TryGetValue(NormalizeLookupValue(row.SupportStepName), out var supportStepId))
+                {
+                    importErrors.Add($"Bước chống '{row.SupportStepName}' không tồn tại cho mã '{code}'.");
+                    continue;
+                }
+
+                var startMonth = ParseMonthYear(row.StartMonth);
+                var endMonth = ParseMonthYear(row.EndMonth);
+
+                var costDtos = row.AssignmentCosts
+                    .Select(c => new MaterialUnitPriceAssignmentCodeDto
+                    {
+                        AssignmentCodeId = c.AssignmentCodeId,
+                        TotalPrice = c.TotalPrice
+                    })
+                    .ToList();
+                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
+
+                if (dbCodeLookup.TryGetValue(code, out var existingEntity))
+                {
+                    if (existingEntity.MaterialUnitPriceAssignmentCodes.Any())
+                    {
+                        assignmentCostsToDelete.AddRange(existingEntity.MaterialUnitPriceAssignmentCodes);
+                    }
+
+                    existingEntity.Update(
+                        code,
+                        processId,
+                        passportId,
+                        hardnessId,
+                        insertItemId,
+                        supportStepId,
+                        existingEntity.TechnologyId,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs,
+                        request.Type);
+                    updateList.Add(existingEntity);
+                    matchedCodes.Add(code);
+                }
+                else
+                {
+                    var newEntity = TunnelExcavationMaterialUnitPrice.Create(
+                        code,
+                        processId,
+                        passportId,
+                        hardnessId,
+                        insertItemId,
+                        supportStepId,
+                        null,
+                        startMonth,
+                        endMonth,
+                        row.OtherMaterialValue,
+                        costs,
+                        request.Type);
+                    addList.Add(newEntity);
+                    matchedCodes.Add(code);
+                }
             }
-            else
+            catch (Exception ex) when (ex is BadRequestException or ConflictException)
             {
-                var newEntity = TunnelExcavationMaterialUnitPrice.Create(
-                    code,
-                    processId,
-                    passportId,
-                    hardnessId,
-                    insertItemId,
-                    supportStepId,
-                    null,
-                    startMonth,
-                    endMonth,
-                    row.OtherMaterialValue,
-                    costs);
-                addList.Add(newEntity);
-                matchedCodes.Add(code);
+                importErrors.Add($"Mã '{code}': {ex.Message}");
             }
         }
 
@@ -188,6 +214,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                 return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
             })
             .ToList();
+
+        ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -214,6 +242,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
+            cacheService.InvalidateGroup(CacheSignalKey);
+            cacheService.InvalidateGroup(ModuleCacheSignalKey);
             return true;
         }
         catch
@@ -225,7 +255,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
     private static List<ParsedMaterialUnitPriceRow> ParseFromCustomTemplate(
         Stream fileStream,
-        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup)
+        IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
+        ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheet(1);
@@ -332,8 +363,9 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
                     if (aggregates.ContainsKey(key))
                     {
-                        throw new BadRequestException(
+                        importErrors.Add(
                             $"Dữ liệu bị trùng mã định mức vật liệu '{passport.Value}' trong cùng bộ thông số (dòng {row}).");
+                        continue;
                     }
 
                     aggregates[key] = new ParsedMaterialUnitPriceRow(
@@ -368,7 +400,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
                 var assignmentKey = NormalizeLookupValue(assignmentText);
                 if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    continue;
                 }
             }
 
@@ -382,14 +415,16 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
                 if (!TryParseDouble(ttCell, out var totalPrice))
                 {
-                    throw new BadRequestException($"Giá trị TT không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
+                    importErrors.Add($"Giá trị TT không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
+                    continue;
                 }
 
                 if (!currentContext.PassportCodeByName.TryGetValue(passport.name, out var materialCode)
                     || string.IsNullOrWhiteSpace(materialCode))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Thiếu mã định mức vật liệu cho hộ chiếu '{passport.name}' trước khi nhập TT (dòng {row}, cột {passport.valueCol}).");
+                    continue;
                 }
 
                 var key = new MaterialRowKey(
@@ -404,8 +439,9 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
                 if (!aggregates.TryGetValue(key, out var aggregate))
                 {
-                    throw new BadRequestException(
+                    importErrors.Add(
                         $"Không tìm thấy dòng thông số cho mã định mức vật liệu '{materialCode}' trước dòng {row}.");
+                    continue;
                 }
 
                 if (isOtherMaterial)
@@ -416,10 +452,18 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
 
                 if (assignment == null)
                 {
-                    throw new BadRequestException($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    importErrors.Add($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    continue;
                 }
 
-                aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                try
+                {
+                    aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                }
+                catch (BadRequestException ex)
+                {
+                    importErrors.Add(ex.Message);
+                }
             }
         }
 
@@ -516,6 +560,21 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork) 
         }
 
         return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
+    }
+
+    private static void ThrowIfImportErrors(List<string> importErrors)
+    {
+        var errors = importErrors
+            .Where(error => !string.IsNullOrWhiteSpace(error))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
+        throw new ExcelImportException(errors);
     }
 
     private sealed record AssignmentLookupItem(Guid Id, string Display);

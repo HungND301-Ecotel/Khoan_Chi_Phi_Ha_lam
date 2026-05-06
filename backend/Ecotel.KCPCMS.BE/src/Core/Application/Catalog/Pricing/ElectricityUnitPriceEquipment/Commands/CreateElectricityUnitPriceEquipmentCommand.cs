@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+﻿using Application.Common.Caching;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.ElectricityUnitPriceEquipment;
@@ -12,8 +13,10 @@ namespace Application.Catalog.Pricing.ElectricityUnitPriceEquipment.Commands;
 public record CreateElectricityUnitPriceEquipmentCommand(IList<CreateElectricityUnitPriceEquipmentDto> CreateModel) : IRequest<bool>;
 
 public class CreateElectricityUnitPriceEquipmentCommandHandler(
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateElectricityUnitPriceEquipmentCommand, bool>
+    IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<CreateElectricityUnitPriceEquipmentCommand, bool>
 {
+    private const string CacheSignalKey = "ProductUnitPrice";
+    private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _electricityUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     public async Task<bool> Handle(CreateElectricityUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
@@ -31,6 +34,7 @@ public class CreateElectricityUnitPriceEquipmentCommandHandler(
             var existed = await _electricityUnitPriceEquipmentRepository.GetFirstOrDefaultAsync(
                 predicate: e =>
                     e.EquipmentId == model.EquipmentId &&
+                    e.ElectricityType == model.Type &&
                     e.StartMonth < model.EndMonth &&
                     e.EndMonth > model.StartMonth,
                 disableTracking: true);
@@ -61,16 +65,26 @@ public class CreateElectricityUnitPriceEquipmentCommandHandler(
                 throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
             }
 
-            resultEntities.Add(TunnelElectricityUnitPriceEquipment.Create(
-                equipmentId: equipment.Id,
-                monthlyElectricityCost: model.MonthlyElectricityCost,
-                averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
-                startMonth: model.StartMonth,
-                endMonth: model.EndMonth));
+            resultEntities.Add(model.Type == Domain.Common.Enums.ElectricityUnitPriceType.Trimming
+                ? TrimmingElectricityUnitPriceEquipment.Create(
+                    equipmentId: equipment.Id,
+                    monthlyElectricityCost: model.MonthlyElectricityCost,
+                    averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
+                    startMonth: model.StartMonth,
+                    endMonth: model.EndMonth)
+                : TunnelElectricityUnitPriceEquipment.Create(
+                    equipmentId: equipment.Id,
+                    monthlyElectricityCost: model.MonthlyElectricityCost,
+                    averageMonthlyTunnelProduction: model.AverageMonthlyTunnelProduction,
+                    startMonth: model.StartMonth,
+                    endMonth: model.EndMonth,
+                    electricityType: model.Type));
         }
 
         await _electricityUnitPriceEquipmentRepository.InsertAsync(resultEntities, cancellationToken);
         await unitOfWork.SaveChangesAsync();
+        cacheService.InvalidateGroup(CacheSignalKey);
+        cacheService.InvalidateGroup(ModuleCacheSignalKey);
         return true;
     }
 }

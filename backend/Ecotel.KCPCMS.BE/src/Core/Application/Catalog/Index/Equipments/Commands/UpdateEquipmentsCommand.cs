@@ -18,23 +18,14 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
     private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
-    private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Domain.Entities.Index.Part> _partRepository = unitOfWork.GetRepository<Domain.Entities.Index.Part>();
     private readonly IWriteRepository<EquipmentPart> _equipmentPartRepository = unitOfWork.GetRepository<EquipmentPart>();
-    private readonly IWriteRepository<EquipmentProcessGroup> _equipmentProcessGroupRepository = unitOfWork.GetRepository<EquipmentProcessGroup>();
     public async Task<bool> Handle(UpdateEquipmentsCommand request, CancellationToken cancellationToken)
     {
-        var processGroupId = request.UpdateModel.ProcessGroupId;
-        if (!processGroupId.HasValue || processGroupId.Value == Guid.Empty)
-        {
-            throw new BadRequestException("Nhóm công đoạn sản xuất không được để trống.");
-        }
-
         var partIds = (request.UpdateModel.PartIds ?? [])
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
-        await EnsureProcessGroupExist(processGroupId.Value);
         await EnsurePartsExist(partIds);
 
         if (request.UpdateModel.UnitOfMeasureId != null)
@@ -51,10 +42,7 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
             include: m => m.Include(c => c.Costs).Include(c => c.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        if (await codeService.IsEquipmentCodeExisted(
-                request.UpdateModel.Code,
-                processGroupId.Value,
-                existedEquipment.Id))
+        if (await codeService.IsEquipmentCodeExisted(request.UpdateModel.Code, existedEquipment.Id))
         {
             throw new ConflictException(CustomResponseMessage.EquipmentCodeAlreadyExists);
         }
@@ -63,14 +51,6 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
         try
         {
             _costRepository.Delete(existedEquipment.Costs.ToList());
-
-            var existedEquipmentProcessGroups = await _equipmentProcessGroupRepository.GetAllAsync(
-                predicate: x => x.EquipmentId == existedEquipment.Id,
-                disableTracking: false);
-            if (existedEquipmentProcessGroups.Any())
-            {
-                _equipmentProcessGroupRepository.Delete(existedEquipmentProcessGroups);
-            }
 
             var existedEquipmentParts = await _equipmentPartRepository.GetAllAsync(
                 predicate: x => x.EquipmentId == existedEquipment.Id,
@@ -104,9 +84,6 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
 
             _equipmentRepository.Update(existedEquipment);
 
-            var equipmentProcessGroup = EquipmentProcessGroup.Create(existedEquipment.Id, processGroupId.Value);
-            await _equipmentProcessGroupRepository.InsertAsync(equipmentProcessGroup, cancellationToken);
-
             if (partIds.Any())
             {
                 var equipmentParts = partIds
@@ -127,15 +104,6 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
         return true;
     }
 
-    private async Task EnsureProcessGroupExist(Guid processGroupId)
-    {
-        var exists = await _processGroupRepository.ExistsAsync(x => x.Id == processGroupId);
-        if (!exists)
-        {
-            throw new NotFoundException("Nhóm công đoạn sản xuất không tồn tại.");
-        }
-    }
-
     private async Task EnsurePartsExist(ICollection<Guid> partIds)
     {
         if (!partIds.Any())
@@ -145,7 +113,8 @@ public class UpdateEquipmentsCommandHandler(IUnitOfWork unitOfWork, ICodeService
 
         var existingPartIds = await _partRepository.GetAllAsync(
             selector: x => x.Id,
-            predicate: x => partIds.Contains(x.Id) && x.Type == PartType.Part,
+            predicate: x => partIds.Contains(x.Id) &&
+                            (x.Type == PartType.Part || x.Type == PartType.OtherPart),
             disableTracking: true);
 
         var existingIdSet = existingPartIds.ToHashSet();

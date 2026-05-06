@@ -6,7 +6,6 @@ export type Electricity = {
 	equipmentId: string;
 	equipmentCode: string;
 	equipmentName: string;
-	processGroupTypes: number[];
 	unitOfMeasureName: string;
 	equipmentElectricityCost: number;
 	monthlyElectricityCost: number;
@@ -78,7 +77,8 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 				{'Chi phí điện năng 1 thiết bị/1 mét lò đào (đ/m)'}
 			</span>
 		),
-		cell: ({ row }) => formatNumber(row.original.electricityCostPerMetres),
+		cell: ({ row }) =>
+			formatNumber(row.original.electricityCostPerMetres),
 	},
 	{
 		accessorKey: 'time',

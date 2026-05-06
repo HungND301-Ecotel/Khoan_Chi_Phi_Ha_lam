@@ -1,4 +1,5 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
+using Domain.Common.Enums;
 
 namespace Application.Dto.Catalog.MaterialUnitPrice
 {
@@ -19,6 +20,7 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
+        public TunnelExcavationTrimingUnitPriceType Type { get; set; }
     }
 
     public class TunnelSupportAndDrillingMaterialUnitPriceDto : IDto
@@ -49,6 +51,7 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double OtherMaterialValue { get; set; }
+        public TunnelExcavationTrimingUnitPriceType Type { get; set; } = TunnelExcavationTrimingUnitPriceType.TunnelExcavation;
         public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
@@ -83,6 +86,7 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double OtherMaterialValue { get; set; }
+        public TunnelExcavationTrimingUnitPriceType Type { get; set; } = TunnelExcavationTrimingUnitPriceType.TunnelExcavation;
         public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 
@@ -114,6 +118,7 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
         public double OtherMaterialValue { get; set; }
+        public TunnelExcavationTrimingUnitPriceType Type { get; set; }
         public IList<MaterialUnitPriceAssignmentCodeDto> Costs { get; set; } = [];
     }
 

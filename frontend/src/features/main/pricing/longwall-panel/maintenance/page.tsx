@@ -43,7 +43,10 @@ export type LongwallPanelDetail = {
 export function MainPricingMaintenanceLongwallPanelPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
-	const query = useMemo(() => ({ maintainType: 2 }), []);
+	const query = useMemo(
+		() => ({ maintainType: 2, ignorePagination: true }),
+		[],
+	);
 
 	const handleDelete = async ({ data }: ActionDialogProps<LongwallPanel>) => {
 		try {
@@ -100,6 +103,7 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
 				onCreate={(props) => <LongwallPanelForm {...props} />}
+				onDuplicate={(props) => <LongwallPanelForm {...props} isDuplicate />}
 				onUpdate={(props) => <LongwallPanelForm {...props} />}
 				onExpand={(props) => <LongwallPanelExpand {...props} />}
 				onDelete={handleDelete}

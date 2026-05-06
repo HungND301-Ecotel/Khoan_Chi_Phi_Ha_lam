@@ -21,12 +21,15 @@ public class GetAllLongwallParametersQueryHandler(IPaginationService paginationS
 
         var spec = new LongwallParametersByPaginationSpec(filter, request.Search);
 
-        return await paginationService.PaginatedListAsync(
+        var result = await paginationService.PaginatedListAsync(
             repository: longwallParametersRepository,
             spec: spec,
             pageNumber: filter.PageNumber,
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
+
+        result.Data = result.Data.OrderBy(d => d.Llc).ThenBy(d => d.Lkc).ThenBy(d => d.Mk).ToList();
+        return result;
     }
 }
