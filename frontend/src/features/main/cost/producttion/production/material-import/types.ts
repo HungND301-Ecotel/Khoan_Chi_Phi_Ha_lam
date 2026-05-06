@@ -12,6 +12,8 @@ export type AcceptanceReportItemDto = {
 	partId?: string | null;
 	partType?: number | null;
 	materialCode: string;
+	materialName?: string | null;
+	partName?: string | null;
 	unitOfMeasureName: string;
 	type: number;
 	itemType: number;
@@ -23,6 +25,7 @@ export type UnresolvedAcceptanceReportItemDto = {
 	rowNumber: number;
 	reportItemId: string | null;
 	materialCode: string;
+	materialName?: string | null;
 	unitOfMeasureName: string;
 	issuedQuantity: number;
 	shippedQuantity: number;

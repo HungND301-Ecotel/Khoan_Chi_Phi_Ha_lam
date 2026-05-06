@@ -71,6 +71,7 @@ type PartEquipmentMapping = {
 type MaterialLookupItem = {
 	id: string;
 	code: string;
+	name: string;
 	unitOfMeasureName: string;
 	materialType: number;
 };
@@ -78,6 +79,7 @@ type MaterialLookupItem = {
 type PartLookupItem = {
 	id: string;
 	code: string;
+	name: string;
 	unitOfMeasureName: string;
 	partType: number;
 };
@@ -209,6 +211,8 @@ function mapResolvedImportItem(item: {
 	partId?: string | null;
 	partType?: number | null;
 	materialCode: string;
+	materialName?: string | null;
+	partName?: string | null;
 	unitOfMeasureName: string;
 	type: number;
 	itemType: number;
@@ -236,6 +240,10 @@ function mapResolvedImportItem(item: {
 		resolutionStatus: ImportResolutionStatus.Resolved,
 		partType: item.partType ?? null,
 		materialCode: item.materialCode,
+		materialName:
+			item.type === MaterialType.Material
+				? (item.materialName ?? '')
+				: (item.partName ?? ''),
 		unitOfMeasureName: item.unitOfMeasureName,
 		type: item.type,
 		itemType: item.itemType,
@@ -476,6 +484,7 @@ export function MaterialImportDialog({
 				unresolvedReason: item.unresolvedReason,
 				sourceRowNumber: item.rowNumber,
 				materialCode: item.materialCode,
+				materialName: item.materialName ?? '',
 				unitOfMeasureName: item.unitOfMeasureName,
 				quantityReceived: item.issuedQuantity,
 				quantityExported: item.shippedQuantity,
@@ -551,6 +560,7 @@ export function MaterialImportDialog({
 					materialCode:
 						form.getValues(`materials.${unresolvedIndex}.materialCode`) ??
 						createdMaterial.code,
+					materialName: createdMaterial.name,
 					unitOfMeasureName: createdMaterial.unitOfMeasureName,
 					type: MaterialType.Material,
 					itemType: specificType,
@@ -621,6 +631,7 @@ export function MaterialImportDialog({
 					materialCode:
 						form.getValues(`materials.${unresolvedIndex}.materialCode`) ??
 						createdPart.code,
+					partName: createdPart.name,
 					unitOfMeasureName: createdPart.unitOfMeasureName,
 					type: MaterialType.SparePart,
 					itemType: specificType,

@@ -509,6 +509,9 @@ export function MaterialImportForm({
 								<TableCell className='sticky left-16 z-20 w-[8%] min-w-32 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 									Mã vật tư
 								</TableCell>
+								<TableCell className='w-[20%] min-w-60 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+									Tên vật tư
+								</TableCell>
 								<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 									Đơn vị tính
 								</TableCell>
@@ -550,7 +553,7 @@ export function MaterialImportForm({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={9}
+										colSpan={10}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -1643,6 +1646,16 @@ function MaterialImportRow({
 							)}
 						</div>
 					</TableCell>
+					<TableCell className='w-[20%] min-w-60 border-b border-slate-200 px-4 py-4'>
+						<Input
+							readOnly
+							value={
+								(form.watch(`${basename}.materialName` as RowPath) as string) ||
+								''
+							}
+							className={unresolvedInputClassName}
+						/>
+					</TableCell>
 					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 						<Input
 							readOnly
@@ -1735,6 +1748,18 @@ function MaterialImportRow({
 								{materialBadge.label}
 							</span>
 						</div>
+					</TableCell>
+
+					{/* Tên vật tư */}
+					<TableCell className='w-[20%] min-w-60 border-b border-slate-200 px-4 py-4'>
+						<Input
+							readOnly
+							value={
+								(form.watch(`${basename}.materialName` as RowPath) as string) ||
+								''
+							}
+							className='border-slate-300 bg-slate-100 text-slate-500'
+						/>
 					</TableCell>
 
 					{/* Đơn vị tính */}
