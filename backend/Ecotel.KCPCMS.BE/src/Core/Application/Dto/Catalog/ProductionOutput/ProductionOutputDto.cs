@@ -21,6 +21,7 @@ public class ProductionOutputProcessGroupDto
     public Guid ProcessGroupId { get; set; }
     public string ProcessGroupCode { get; set; } = string.Empty;
     public string ProcessGroupName { get; set; } = string.Empty;
+    public double PlanProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }
     public double ProductionMeters { get; set; }
     public IList<ProductionOutputProductDto> Products { get; set; } = new List<ProductionOutputProductDto>();
@@ -31,7 +32,6 @@ public class ProductionOutputProductDto
     public Guid ProductId { get; set; }
     public string ProductCode { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
-    public double PlannedOutput { get; set; }
     public double ProductionMeters { get; set; }
     public double ActualAshContent { get; set; }
 }

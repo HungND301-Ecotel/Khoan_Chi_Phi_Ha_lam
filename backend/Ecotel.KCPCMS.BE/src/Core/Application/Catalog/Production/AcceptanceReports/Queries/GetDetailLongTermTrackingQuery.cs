@@ -401,7 +401,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
 
         foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
         {
-            var plannedOutput = processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput);
+            var plannedOutput = processGroup.PlanProductionMeters;
 
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,

@@ -7,7 +7,6 @@ public class ProductionOutputProduct : AuditableEntity<Guid>
 {
     public Guid ProductionOutputProcessGroupId { get; protected set; }
     public Guid ProductId { get; protected set; }
-    public double PlannedOutput { get; protected set; }
     public double ProductionMeters { get; protected set; }
     public double ActualAshContent { get; protected set; }
 
@@ -17,22 +16,19 @@ public class ProductionOutputProduct : AuditableEntity<Guid>
 
     public static ProductionOutputProduct Create(
         Guid productId,
-        double plannedOutput,
         double productionMeters,
         double actualAshContent = 0)
     {
         return new ProductionOutputProduct
         {
             ProductId = productId,
-            PlannedOutput = plannedOutput,
             ProductionMeters = productionMeters,
             ActualAshContent = actualAshContent
         };
     }
 
-    public void Update(double plannedOutput, double productionMeters, double actualAshContent = 0)
+    public void Update(double productionMeters, double actualAshContent = 0)
     {
-        PlannedOutput = plannedOutput;
         ProductionMeters = productionMeters;
         ActualAshContent = actualAshContent;
     }

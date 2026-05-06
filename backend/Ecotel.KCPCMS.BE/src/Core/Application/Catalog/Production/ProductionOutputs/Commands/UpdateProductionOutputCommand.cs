@@ -167,6 +167,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
 
             var groupEntity = ProductionOutputProcessGroup.Create(
                 groupDto.ProcessGroupId,
+                groupDto.PlanProductionMeters,
                 groupDto.StandardProductionMeters);
 
             foreach (var productDto in groupDto.Products)
@@ -183,7 +184,6 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
-                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }
@@ -446,6 +446,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                 outputByProcessGroup.TryGetValue(log.AcceptanceReportItem.ProcessGroupId.Value, out var metrics))
             {
                 actualOutput = metrics.ActualOutput;
+                plannedOutput = metrics.PlannedOutput;
                 standardOutput = metrics.StandardOutput;
             }
 
@@ -463,7 +464,7 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
         {
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
-                processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput),
+                processGroup.PlanProductionMeters,
                 processGroup.StandardProductionMeters);
         }
 

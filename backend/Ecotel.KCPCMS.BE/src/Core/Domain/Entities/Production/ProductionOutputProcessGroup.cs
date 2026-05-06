@@ -7,6 +7,7 @@ public class ProductionOutputProcessGroup : AuditableEntity<Guid>
 {
     public Guid ProductionOutputId { get; protected set; }
     public Guid ProcessGroupId { get; protected set; }
+    public double PlanProductionMeters { get; protected set; }
     public double StandardProductionMeters { get; protected set; }
     public double ProductionMeters { get; protected set; }
 
@@ -17,17 +18,22 @@ public class ProductionOutputProcessGroup : AuditableEntity<Guid>
     private IList<ProductionOutputProduct> _productionOutputProducts = new List<ProductionOutputProduct>();
     public virtual IReadOnlyCollection<ProductionOutputProduct> ProductionOutputProducts => _productionOutputProducts.AsReadOnly();
 
-    public static ProductionOutputProcessGroup Create(Guid processGroupId, double standardProductionMeters)
+    public static ProductionOutputProcessGroup Create(
+        Guid processGroupId,
+        double planProductionMeters,
+        double standardProductionMeters)
     {
         return new ProductionOutputProcessGroup
         {
             ProcessGroupId = processGroupId,
+            PlanProductionMeters = planProductionMeters,
             StandardProductionMeters = standardProductionMeters
         };
     }
 
-    public void Update(double standardProductionMeters)
+    public void Update(double planProductionMeters, double standardProductionMeters)
     {
+        PlanProductionMeters = planProductionMeters;
         StandardProductionMeters = standardProductionMeters;
     }
 

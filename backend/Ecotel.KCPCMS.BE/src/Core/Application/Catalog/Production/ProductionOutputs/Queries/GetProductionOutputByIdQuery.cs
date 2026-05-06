@@ -49,6 +49,7 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     ProcessGroupId = g.ProcessGroupId,
                     ProcessGroupCode = g.ProcessGroup?.FixedKey?.Key ?? string.Empty,
                     ProcessGroupName = g.ProcessGroup?.Name ?? string.Empty,
+                    PlanProductionMeters = g.PlanProductionMeters,
                     StandardProductionMeters = g.StandardProductionMeters,
                     ProductionMeters = g.ProductionMeters,
                     Products = g.ProductionOutputProducts
@@ -57,7 +58,6 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             ProductId = p.ProductId,
                             ProductCode = p.Product?.Code?.Value ?? string.Empty,
                             ProductName = p.Product?.Name ?? string.Empty,
-                            PlannedOutput = p.PlannedOutput,
                             ProductionMeters = p.ProductionMeters,
                             ActualAshContent = p.ActualAshContent
                         }).ToList()

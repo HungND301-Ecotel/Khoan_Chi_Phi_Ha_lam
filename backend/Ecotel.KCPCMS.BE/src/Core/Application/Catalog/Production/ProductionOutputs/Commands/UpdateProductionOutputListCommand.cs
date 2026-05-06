@@ -200,6 +200,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
             var groupEntity = ProductionOutputProcessGroup.Create(
                 groupDto.ProcessGroupId,
+                groupDto.PlanProductionMeters,
                 groupDto.StandardProductionMeters);
 
             foreach (var productDto in groupDto.Products)
@@ -216,7 +217,6 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
-                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }
@@ -379,6 +379,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                 outputByProcessGroup.TryGetValue(log.AcceptanceReportItem.ProcessGroupId.Value, out var metrics))
             {
                 actualOutput = metrics.ActualOutput;
+                plannedOutput = metrics.PlannedOutput;
                 standardOutput = metrics.StandardOutput;
             }
 
@@ -396,7 +397,7 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
         {
             result[processGroup.ProcessGroupId] = (
                 processGroup.ProductionMeters,
-                processGroup.ProductionOutputProducts.Sum(x => x.PlannedOutput),
+                processGroup.PlanProductionMeters,
                 processGroup.StandardProductionMeters);
         }
 

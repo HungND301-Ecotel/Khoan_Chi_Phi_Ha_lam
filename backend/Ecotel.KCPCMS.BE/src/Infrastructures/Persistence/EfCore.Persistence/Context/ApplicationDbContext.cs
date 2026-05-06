@@ -1122,8 +1122,8 @@ public class ApplicationDbContext(
             .HasForeignKey(p => p.ProductionOutputProcessGroupId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<ProductionOutputProduct>()
-            .Property(p => p.PlannedOutput)
+        modelBuilder.Entity<ProductionOutputProcessGroup>()
+            .Property(g => g.PlanProductionMeters)
             .HasDefaultValue(0d);
 
         modelBuilder.Entity<ProductionOutputProduct>()

@@ -13,6 +13,7 @@ public class CreateProductionOutputDto
 public class CreateProductionOutputProcessGroupDto
 {
     public Guid ProcessGroupId { get; set; }
+    public double PlanProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }
     public IList<CreateProductionOutputProductDto> Products { get; set; } = new List<CreateProductionOutputProductDto>();
 }
@@ -20,7 +21,6 @@ public class CreateProductionOutputProcessGroupDto
 public class CreateProductionOutputProductDto
 {
     public Guid ProductId { get; set; }
-    public double PlannedOutput { get; set; }
     public double ProductionMeters { get; set; }
     public double ActualAshContent { get; set; }
 }

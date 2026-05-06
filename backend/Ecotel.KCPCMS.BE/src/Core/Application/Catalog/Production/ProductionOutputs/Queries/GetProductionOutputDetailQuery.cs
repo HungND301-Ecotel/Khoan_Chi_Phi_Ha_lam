@@ -727,8 +727,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var latestLog = oldLogs.First();
         var pendingStart = latestLog.PendingValueEndPeriod;
         var plannedOutput = productionOutput.ProductionOutputProcessGroups
-            .SelectMany(x => x.ProductionOutputProducts)
-            .Sum(x => x.PlannedOutput);
+            .Sum(x => x.PlanProductionMeters);
 
         decimal accountedThisPeriod = 0;
         if (latestLog.UsageTime > 0 && productionOutput.StandardProductionMeters > 0)

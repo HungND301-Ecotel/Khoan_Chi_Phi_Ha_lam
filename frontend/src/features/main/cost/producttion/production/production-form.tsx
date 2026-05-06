@@ -34,13 +34,13 @@ import {
 
 type ProductionOutputDetailProduct = {
 	productId: string;
-	plannedOutput: number;
 	productionMeters: number;
 	actualAshContent?: number;
 };
 
 type ProductionOutputDetailProcessGroup = {
 	processGroupId: string;
+	planProductionMeters: number;
 	standardProductionMeters: number;
 	products: ProductionOutputDetailProduct[];
 };
@@ -85,28 +85,24 @@ function isSameProductionRows(
 		const nextRow = next[index];
 		if (!nextRow || row.productId !== nextRow.productId) return false;
 
-		const samePlannedOutput =
-			row.plannedOutput === nextRow.plannedOutput ||
-			(Number.isNaN(row.plannedOutput) && Number.isNaN(nextRow.plannedOutput));
-
 		const sameMeters =
 			row.productionMeters === nextRow.productionMeters ||
 			(Number.isNaN(row.productionMeters) &&
 				Number.isNaN(nextRow.productionMeters));
 
-		return samePlannedOutput && sameMeters;
+		const sameAshContent =
+			(row.actualAshContent ?? 0) === (nextRow.actualAshContent ?? 0) ||
+			(Number.isNaN(row.actualAshContent ?? 0) &&
+				Number.isNaN(nextRow.actualAshContent ?? 0));
+
+		return sameMeters && sameAshContent;
 	});
 }
 
 function calculateTotals(groups: ProductionGroup[] = []) {
 	return {
 		plannedOutput: groups.reduce(
-			(sum, group) =>
-				sum +
-				(group.products || []).reduce(
-					(productSum, product) => productSum + (product.plannedOutput || 0),
-					0,
-				),
+			(sum, group) => sum + (group.planProductionMeters || 0),
 			0,
 		),
 		productionMeters: groups.reduce(
@@ -131,10 +127,10 @@ function buildProcessGroupPayload(
 ) {
 	return groups.map((group) => ({
 		processGroupId: group.processGroupId,
+		planProductionMeters: group.planProductionMeters,
 		standardProductionMeters: group.standardProductionMeters,
 		products: (group.products || []).map((product) => ({
 			productId: product.productId,
-			plannedOutput: product.plannedOutput,
 			productionMeters: product.productionMeters,
 			actualAshContent: akProcessGroupIds.has(group.processGroupId)
 				? (product.actualAshContent ?? 0)
@@ -201,13 +197,13 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					(group) => {
 						const mappedProducts = (group.products || []).map((product) => ({
 							productId: product.productId,
-							plannedOutput: product.plannedOutput ?? 0,
 							productionMeters: product.productionMeters,
 							actualAshContent: product.actualAshContent ?? 0,
 						}));
 
 						return {
 							processGroupId: group.processGroupId,
+							planProductionMeters: group.planProductionMeters ?? 0,
 							standardProductionMeters: group.standardProductionMeters,
 							productIds: mappedProducts.map((product) => product.productId),
 							products: mappedProducts,
@@ -296,7 +292,6 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 				);
 				return {
 					productId,
-					plannedOutput: existing?.plannedOutput ?? 0,
 					productionMeters: existing?.productionMeters ?? 0,
 					actualAshContent: existing?.actualAshContent ?? 0,
 				};
@@ -330,7 +325,6 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			);
 			return {
 				productId,
-				plannedOutput: existing?.plannedOutput ?? 0,
 				productionMeters: existing?.productionMeters ?? 0,
 				actualAshContent: existing?.actualAshContent ?? 0,
 			};
@@ -453,13 +447,6 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					);
 
 					const groupProducts = group.products || [];
-					const totalPlannedOutput = groupProducts.reduce(
-						(sum: number, product: ProductionGroupProduct) => {
-							if (Number.isNaN(product.plannedOutput)) return sum;
-							return sum + (product.plannedOutput || 0);
-						},
-						0,
-					);
 					const totalProductionMeters = groupProducts.reduce(
 						(sum: number, product: ProductionGroupProduct) => {
 							if (Number.isNaN(product.productionMeters)) return sum;
@@ -504,8 +491,12 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 								/>
 
 								<div className='flex-1 space-y-2'>
-									<Label>Sản lượng kế hoạch</Label>
-									<Input readOnly value={formatNumber(totalPlannedOutput)} />
+									<FormNumber
+										control={form.control}
+										name={`groups.${groupIndex}.planProductionMeters`}
+										label='Sản lượng kế hoạch'
+										placeholder='Nhập sản lượng kế hoạch'
+									/>
 								</div>
 
 								<div className='flex-1 space-y-2'>
@@ -553,15 +544,6 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 															readOnly
 															value={selectedProduct?.code || product.productId}
 															placeholder='Chọn sản phẩm'
-														/>
-													</div>
-
-													<div className='flex-1'>
-														<FormNumber
-															control={form.control}
-															name={`groups.${groupIndex}.products.${productIndex}.plannedOutput`}
-															label='Sản lượng kế hoạch'
-															placeholder='Nhập sản lượng kế hoạch'
 														/>
 													</div>
 

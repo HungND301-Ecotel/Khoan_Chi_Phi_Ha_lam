@@ -4,13 +4,6 @@ const productionGroupProductSchema = z.object({
 	productId: z.string().nonempty({
 		error: 'Sản phẩm không được để trống',
 	}),
-	plannedOutput: z.coerce
-		.number<number>({
-			error: 'Sản lượng kế hoạch phải là số.',
-		})
-		.min(0, {
-			error: 'Sản lượng kế hoạch không được âm.',
-		}),
 	productionMeters: z.coerce
 		.number<number>({
 			error: 'Sản lượng thực tế phải là số.',
@@ -33,6 +26,11 @@ const productionGroupSchema = z
 		processGroupId: z.string().nonempty({
 			error: 'Nhóm công đoạn sản xuất không được để trống',
 		}),
+		planProductionMeters: z.coerce
+			.number<number>({ error: 'Sản lượng kế hoạch phải là số' })
+			.min(0, {
+				error: 'Sản lượng kế hoạch không được âm',
+			}),
 		standardProductionMeters: z.coerce
 			.number<number>({ error: 'Sản lượng định mức phải là số' })
 			.gt(0, {
@@ -101,6 +99,7 @@ export const PRODUCTION_GROUP_DEFAULT: NonNullable<
 	ProductionFormSchema['groups']
 >[number] = {
 	processGroupId: '',
+	planProductionMeters: 0,
 	standardProductionMeters: 0,
 	productIds: [],
 	products: [],

@@ -38,7 +38,12 @@ function DepartmentProductionOutputsTable({
 			columns={MAIN_COST_PRODUCTION_COLUMNS}
 			items={departmentProductions}
 			getRowId={(item) => item.id}
-			onExpand={(props) => <ProductionExpand {...props} />}
+			onExpand={(props) => (
+				<ProductionExpand
+					{...(props as unknown as ActionDialogProps<Production>)}
+					onRefresh={onRefresh}
+				/>
+			)}
 			onUpdate={(props) => (
 				<ProductionForm
 					{...(props as unknown as ActionDialogProps<Production>)}

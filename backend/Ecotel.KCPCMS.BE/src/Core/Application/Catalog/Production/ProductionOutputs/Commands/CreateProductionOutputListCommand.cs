@@ -165,6 +165,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
             var groupEntity = ProductionOutputProcessGroup.Create(
                 groupDto.ProcessGroupId,
+                groupDto.PlanProductionMeters,
                 groupDto.StandardProductionMeters);
 
             foreach (var productDto in groupDto.Products)
@@ -181,7 +182,6 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
 
                 groupEntity.AddProduct(ProductionOutputProduct.Create(
                     productDto.ProductId,
-                    productDto.PlannedOutput,
                     productDto.ProductionMeters,
                     productDto.ActualAshContent));
             }
