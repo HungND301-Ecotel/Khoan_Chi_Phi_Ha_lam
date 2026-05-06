@@ -18,8 +18,14 @@ import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
-import { AdjustmentElectricityCostDetail } from './types';
-import { getAdjustmentElectricityCostColumns } from './columns';
+import {
+	AdjustmentElectricityCostDetail,
+	AdjustmentElectricityCostSummary,
+} from './types';
+import {
+	getAdjustmentElectricityCostColumns,
+	getAdjustmentElectricityCostSummaryColumns,
+} from './columns';
 
 export function AdjustmentElectricityCost({
 	id,
@@ -30,6 +36,9 @@ export function AdjustmentElectricityCost({
 }: AdjustmentCostExpandProps) {
 	const [adjustmentElectricityCost, setAdjustmentElectricityCost] =
 		useState<AdjustmentElectricityCostDetail>();
+	const [summary, setSummary] = useState<AdjustmentElectricityCostSummary[]>(
+		[],
+	);
 	const [adjustmentElectricityPrice, setAdjustmentElectricityPrice] =
 		useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
@@ -38,6 +47,7 @@ export function AdjustmentElectricityCost({
 	useEffect(() => {
 		if (!id) {
 			setAdjustmentElectricityCost(undefined);
+			setSummary([]);
 			setAdjustmentElectricityPrice(0);
 			setTotal(0);
 			setLoading(false);
@@ -50,6 +60,11 @@ export function AdjustmentElectricityCost({
 			)
 			.then((res) => {
 				setAdjustmentElectricityCost(res.result);
+				setSummary([
+					{
+						akRatePercent: res.result.akRatePercent || 0,
+					},
+				]);
 				let total = 0;
 				res.result.costs.forEach(({ totalPrice }) => {
 					total += totalPrice;
@@ -101,17 +116,28 @@ export function AdjustmentElectricityCost({
 			</Item>
 			{id && isOpen && (
 				<AccordionContent className='p-0 px-2 pt-2'>
-					<DataTable
-						columns={getAdjustmentElectricityCostColumns(
-							adjustment?.fixedKeyType,
-						)}
-						items={adjustmentElectricityCost?.costs}
-						compact={true}
-						hasActions={false}
-						hasPagination={false}
-						hasSort={false}
-						hasIndex={false}
-					/>
+					<div className='space-y-2'>
+						<DataTable
+							columns={getAdjustmentElectricityCostSummaryColumns()}
+							items={summary}
+							compact={true}
+							hasActions={false}
+							hasPagination={false}
+							hasSort={false}
+							hasIndex={false}
+						/>
+						<DataTable
+							columns={getAdjustmentElectricityCostColumns(
+								adjustment?.fixedKeyType,
+							)}
+							items={adjustmentElectricityCost?.costs}
+							compact={true}
+							hasActions={false}
+							hasPagination={false}
+							hasSort={false}
+							hasIndex={false}
+						/>
+					</div>
 				</AccordionContent>
 			)}
 		</AccordionItem>

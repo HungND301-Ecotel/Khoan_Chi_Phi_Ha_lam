@@ -4,6 +4,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
 using Application.Dto.Catalog.AdjustmentMaintainCost;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +18,13 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
     public async Task<AdjustmentMaintainCostDetailDto> Handle(GetAdjustmentMaintainCostByOutputIdQuery request, CancellationToken cancellationToken)
     {
         var plannedOutput = await _outputRepository.GetFirstOrDefaultAsync(
             predicate: o => o.Id == request.Id,
             include: o => o
-                .Include(o => o.ProductUnitPrice)
+                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(o => o.PlannedMaintainCost).ThenInclude(o => o.PlannedMaintainCostAdjustmentFactors).ThenInclude(o => o.MaintainUnitPrice).ThenInclude(m => m.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(m => m.Costs)
                 .Include(o => o.PlannedMaintainCost).ThenInclude(o => o.PlannedMaintainCostAdjustmentFactors).ThenInclude(o => o.MaintainUnitPrice).ThenInclude(muac => muac.MaintainUnitPriceEquipments).ThenInclude(m => m.Part).ThenInclude(p => p.Code)
                 .Include(o => o.PlannedMaintainCost).ThenInclude(m => m.PlannedMaintainCostAdjustmentFactors).ThenInclude(p => p.MaintainUnitPrice).ThenInclude(m => m.Equipment).ThenInclude(e => e.Code!)
@@ -31,19 +33,38 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
             disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
-        var adjustmentProductionMeters = await _productUnitPriceRepository.GetAll()
+        var adjustmentOutputInfo = await _productUnitPriceRepository.GetAll()
             .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment &&
-                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId &&
+                        p.DepartmentId == plannedOutput.ProductUnitPrice.DepartmentId)
             .SelectMany(p => p.ProductUnitPriceProductionOutputs)
             .Where(p => p.ProductionOutput!.StartMonth == plannedOutput.StartMonth &&
                         p.ProductionOutput.EndMonth == plannedOutput.EndMonth)
-            .Select(p => p.ProductionMeters)
+            .Select(p => new
+            {
+                p.ProductionMeters,
+                ActualAshContent = p.ProductionOutput!.ProductionOutputProcessGroups
+                    .SelectMany(g => g.ProductionOutputProducts)
+                    .Where(pp => pp.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                    .Select(pp => (double?)pp.ActualAshContent)
+                    .FirstOrDefault() ?? 0
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (adjustmentProductionMeters <= 0)
+        if (adjustmentOutputInfo == null || adjustmentOutputInfo.ProductionMeters <= 0)
         {
             throw new ConflictException(CustomResponseMessage.PleaseProvideTheActualOutputProductionMeters);
         }
+
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var hasAkConfigs = akConfigs.Any();
+        var akDiff = hasAkConfigs
+            ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
+            : 0;
+        var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
 
         var plannedMaintainCost = plannedOutput.PlannedMaintainCost
             ?? throw new NotFoundException(CustomResponseMessage.PlannedMaintainCostNotFound);
@@ -53,6 +74,8 @@ public class GetAdjustmentMaintainCostByOutputIdQueryHandler(IUnitOfWork unitOfW
             Id = plannedMaintainCost.Id,
             ProductUnitPriceId = plannedMaintainCost.ProductUnitPriceId,
             OutputId = plannedMaintainCost.OutputId,
+            AkRate = (double)akRate,
+            AkRatePercent = (double)akRate * 100,
             Costs = plannedMaintainCost.PlannedMaintainCostAdjustmentFactors.Select(p =>
             {
                 return new AdjustmentMaintainCostAdjDto

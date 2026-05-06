@@ -1,7 +1,23 @@
 import { ProcessGroupType } from '@/constants/process-group';
-import { AdjustmentElectricityCostDetailCost } from '@/features/main/cost/producttion/adjustment/adjustment-electricity-cost/types';
+import {
+	AdjustmentElectricityCostDetailCost,
+	AdjustmentElectricityCostSummary,
+} from '@/features/main/cost/producttion/adjustment/adjustment-electricity-cost/types';
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+
+export const getAdjustmentElectricityCostSummaryColumns =
+	(): ColumnDef<AdjustmentElectricityCostSummary>[] => {
+		return [
+			{
+				accessorKey: 'akRatePercent',
+				header: () => (
+					<span className='whitespace-normal'>Tỉ lệ điều chỉnh doanh thu</span>
+				),
+				cell: ({ row }) => `${formatNumber(row.original.akRatePercent)}%`,
+			},
+		];
+	};
 
 export const getAdjustmentElectricityCostColumns = (
 	fixedKeyType?: ProcessGroupType,

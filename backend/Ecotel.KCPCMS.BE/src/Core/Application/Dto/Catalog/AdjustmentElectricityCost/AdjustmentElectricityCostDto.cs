@@ -6,6 +6,8 @@ public class AdjustmentElectricityCostDetailDto
     public Guid Id { get; set; }
     public Guid ProductUnitPriceId { get; set; }
     public Guid OutputId { get; set; }
+    public double AkRate { get; set; }
+    public double AkRatePercent { get; set; }
     public IList<AdjustmentElectricityCostAdjDto> Costs { get; set; } = new List<AdjustmentElectricityCostAdjDto>();
 }
 

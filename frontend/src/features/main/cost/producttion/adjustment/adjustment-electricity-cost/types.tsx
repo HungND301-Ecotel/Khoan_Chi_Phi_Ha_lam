@@ -25,5 +25,11 @@ export type AdjustmentElectricityCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	akRate: number;
+	akRatePercent: number;
 	costs: AdjustmentElectricityCostDetailCost[];
+};
+
+export type AdjustmentElectricityCostSummary = {
+	akRatePercent: number;
 };
