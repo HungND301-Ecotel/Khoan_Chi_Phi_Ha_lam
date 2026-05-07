@@ -543,6 +543,8 @@ export const API = {
 			CREATE: '/v1/production/acceptancereport',
 			RAW_DETAIL: (id: string) => `/v1/production/acceptancereport/${id}`,
 			UPDATE: '/v1/production/acceptancereport',
+			SCTX_REVENUE_BY_EQUIPMENT:
+				'/v1/production/acceptancereport/sctx-revenue-by-equipment',
 			DOWNLOAD: (id: string) =>
 				`/v1/production/acceptancereport/${id}/download`,
 			EXPORT_PERIOD: (month: string, year: string) =>

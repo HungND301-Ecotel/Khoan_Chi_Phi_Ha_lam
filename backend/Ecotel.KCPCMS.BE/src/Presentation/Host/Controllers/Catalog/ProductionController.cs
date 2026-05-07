@@ -197,6 +197,18 @@ public class ProductionController : BaseNoAuthController
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
+    [HttpPost("AcceptanceReport/sctx-revenue-by-equipment")]
+    [OpenApiOperation("Get SCTX Revenue By Equipment", "Get monthly SCTX revenue for one equipment")]
+    public async Task<IActionResult> GetSctxRevenueByEquipment([FromBody] GetSctxEquipmentRevenueRequest request)
+    {
+        var result = await Mediator.Send(new GetSctxEquipmentRevenueByYearQuery(
+            request.FromYear,
+            request.ToYear,
+            request.EquipmentId));
+
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     #endregion
 }
 
