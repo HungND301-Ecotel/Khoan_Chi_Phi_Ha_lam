@@ -169,14 +169,17 @@ public class GetAdjustmentProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWor
                 var plannedMaterialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
                 var plannedMaintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
                 var plannedElectricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
+                var combinedPlannedCost = plannedMaterialCost + plannedMaintainCost + plannedElectricityCost;
                 var hasAkConfigs = akConfigs.Any();
                 var akDiff = hasAkConfigs
                     ? (decimal)(plannedOutput.PlanAshContent - po.ActualAshContent)
                     : 0;
                 var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
                 akRateValue = (double)akRate;
-                var adjustedMaterialCost = plannedMaterialCost + ((double)akDiff * plannedMaterialCost * (double)akRate);
-                adjTotalPrice = po.ProductionMeters * (adjustedMaterialCost + plannedMaintainCost + plannedElectricityCost);
+                var combinedAdjustmentAmount = hasAkConfigs
+                    ? (double)(akDiff * (decimal)combinedPlannedCost * akRate)
+                    : 0;
+                adjTotalPrice = po.ProductionMeters * (combinedPlannedCost + combinedAdjustmentAmount);
             }
 
             return new AdjustmentProductionOutputDto

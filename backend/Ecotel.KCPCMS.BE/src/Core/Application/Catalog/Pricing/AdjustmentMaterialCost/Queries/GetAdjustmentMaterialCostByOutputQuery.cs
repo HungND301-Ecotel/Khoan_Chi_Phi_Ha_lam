@@ -23,6 +23,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
+    private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
+    private readonly IWriteRepository<PlannedElectricityCostAdjustmentFactor> _plannedElectricityFactorRepository = unitOfWork.GetRepository<PlannedElectricityCostAdjustmentFactor>();
     private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
 
     public async Task<AdjustmentMaterialCostDetailDto> Handle(GetAdjustmentMaterialCostByOutputQuery request, CancellationToken cancellationToken)
@@ -196,6 +198,9 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             dependencies.LowValuePerishableSupplyUnitPrices);
         var baseCalculation = calculationResults.GetValueOrDefault(plannedMaterialCost.Id, new PlannedMaterialCostCalculationResult());
         var basePlannedMaterialPrice = baseCalculation.TotalPrice;
+        var plannedMaintainCost = await CalculateMaintainCost(plannedOutput.PlannedMaintainCost?.Id, cancellationToken);
+        var plannedElectricityCost = await CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCost?.Id, cancellationToken);
+        var combinedPlannedCost = basePlannedMaterialPrice + plannedMaintainCost + plannedElectricityCost;
 
         var akConfigs = await _akFactorConfigRepository.GetAll()
             .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
@@ -230,5 +235,124 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
             NormFactorValue = normFactorValue,
         };
         return result;
+    }
+
+    private async Task<double> CalculateMaintainCost(Guid? costId, CancellationToken cancellationToken)
+    {
+        if (!costId.HasValue)
+        {
+            return 0;
+        }
+
+        var factors = await _plannedMaintainFactorRepository.GetAll()
+            .Where(f => f.PlannedMaintainCostId == costId.Value)
+            .Select(f => new
+            {
+                TrimmingCoefficient = f.PlannedMaintainCost.TrimmingCoefficient,
+                f.Quantity,
+                f.K6AdjustmentFactorValue,
+                MaintainUnitPriceType = f.MaintainUnitPrice.Type,
+                OtherMaterialValue = f.MaintainUnitPrice.OtherMaterialValue,
+                MaintainStartMonth = f.MaintainUnitPrice.StartMonth,
+                Equipments = f.MaintainUnitPrice.MaintainUnitPriceEquipments.Select(m => new
+                {
+                    m.Quantity,
+                    m.ReplacementTimeStandard,
+                    m.AverageMonthlyTunnelProduction,
+                    PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
+                }).ToList(),
+                AdjustmentValues = f.PlannedMaintainCostAdjustmentFactorDescriptions
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.MaintenanceAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
+            })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        if (!factors.Any())
+        {
+            return 0;
+        }
+
+        var baseCost = factors.Sum(f =>
+        {
+            var equipmentCost = f.Equipments.Sum(m =>
+            {
+                var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
+                return MaintainCostCalculator.CalculateMaterialCostPerMetre(
+                    partCost,
+                    m.Quantity,
+                    m.ReplacementTimeStandard,
+                    m.AverageMonthlyTunnelProduction,
+                    f.MaintainUnitPriceType);
+            });
+            var adjustmentFactor = f.AdjustmentValues.Any()
+                ? f.AdjustmentValues.Aggregate(1.0, (acc, value) => acc * value)
+                : 1.0;
+
+            return (double)f.Quantity *
+                equipmentCost *
+                (1 + (f.OtherMaterialValue ?? 0) / 100.0) *
+                f.K6AdjustmentFactorValue *
+                adjustmentFactor;
+        });
+
+        var trimmingCoefficient = (double)factors.First().TrimmingCoefficient;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
+    }
+
+    private async Task<double> CalculatePlannedElectricityCost(Guid? costId, CancellationToken cancellationToken)
+    {
+        if (!costId.HasValue)
+        {
+            return 0;
+        }
+
+        var factors = await _plannedElectricityFactorRepository.GetAll()
+            .Include(f => f.ElectricityUnitPriceEquipment)
+            .Where(f => f.PlannedElectricityCostId == costId.Value)
+            .Select(f => new
+            {
+                TrimmingCoefficient = f.PlannedElectricityCost.TrimmingCoefficient,
+                f.Quantity,
+                CostPerMetre = f.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres(),
+                AdjustmentValues = f.PlannedElectricityCostAdjustmentFactorDescriptions
+                    .Select(d => d.CustomValue
+                        ?? (d.AdjustmentFactorDescription != null
+                            ? d.AdjustmentFactorDescription.ElectricityAdjustmentValue
+                            : null)
+                        ?? 1.0).ToList()
+            })
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        if (!factors.Any())
+        {
+            return 0;
+        }
+
+        var baseCost = factors.Sum(f =>
+        {
+            var adjustmentFactor = f.AdjustmentValues.Any()
+                ? f.AdjustmentValues.Aggregate(1.0, (acc, value) => acc * value)
+                : 1.0;
+
+            return (double)f.Quantity * f.CostPerMetre * adjustmentFactor;
+        });
+
+        var trimmingCoefficient = (double)factors.First().TrimmingCoefficient;
+        return baseCost * NormalizeTrimmingCoefficient(trimmingCoefficient);
+    }
+
+    private static double NormalizeTrimmingCoefficient(double trimmingCoefficient)
+    {
+        if (trimmingCoefficient <= 0)
+        {
+            return 1;
+        }
+
+        return trimmingCoefficient > 1 ? trimmingCoefficient / 100 : trimmingCoefficient;
     }
 }

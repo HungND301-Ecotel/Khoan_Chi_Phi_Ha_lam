@@ -22,7 +22,9 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import {
 	AdjustmentMaintainCostDetail,
+	AdjustmentMaintainCostSummary,
 	getAdjustmentMaintainCostColumns,
+	getAdjustmentMaintainCostSummaryColumns,
 } from './columns';
 
 export function AdjustmentMaintainCost({
@@ -34,6 +36,7 @@ export function AdjustmentMaintainCost({
 }: AdjustmentCostExpandProps) {
 	const [adjustmentMaintainCost, setAdjustmentMaintainCost] =
 		useState<AdjustmentMaintainCostDetail>();
+	const [summary, setSummary] = useState<AdjustmentMaintainCostSummary[]>([]);
 	const [adjustmentMaintainPrice, setAdjustmentMaintainPrice] =
 		useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
@@ -42,6 +45,7 @@ export function AdjustmentMaintainCost({
 	useEffect(() => {
 		if (!id) {
 			setAdjustmentMaintainCost(undefined);
+			setSummary([]);
 			setAdjustmentMaintainPrice(0);
 			setTotal(0);
 			setLoading(false);
@@ -54,6 +58,11 @@ export function AdjustmentMaintainCost({
 			)
 			.then((res) => {
 				setAdjustmentMaintainCost(res.result);
+				setSummary([
+					{
+						akRatePercent: res.result.akRatePercent || 0,
+					},
+				]);
 				let total = 0;
 				res.result.costs.forEach((item) => {
 					const { totalPrice } = item;
@@ -115,17 +124,28 @@ export function AdjustmentMaintainCost({
 			</Item>
 			<AccordionContent className='p-0 px-2 pt-2'>
 				{id && isOpen && (
-					<DataTable
-						columns={getAdjustmentMaintainCostColumns(
-							adjustment?.fixedKeyType as ProcessGroupType | undefined,
-						)}
-						items={adjustmentMaintainCost?.costs}
-						compact={true}
-						hasActions={false}
-						hasPagination={false}
-						hasSort={false}
-						hasIndex={false}
-					/>
+					<div className='space-y-2'>
+						<DataTable
+							columns={getAdjustmentMaintainCostSummaryColumns()}
+							items={summary}
+							compact={true}
+							hasActions={false}
+							hasPagination={false}
+							hasSort={false}
+							hasIndex={false}
+						/>
+						<DataTable
+							columns={getAdjustmentMaintainCostColumns(
+								adjustment?.fixedKeyType as ProcessGroupType | undefined,
+							)}
+							items={adjustmentMaintainCost?.costs}
+							compact={true}
+							hasActions={false}
+							hasPagination={false}
+							hasSort={false}
+							hasIndex={false}
+						/>
+					</div>
 				)}
 			</AccordionContent>
 		</AccordionItem>

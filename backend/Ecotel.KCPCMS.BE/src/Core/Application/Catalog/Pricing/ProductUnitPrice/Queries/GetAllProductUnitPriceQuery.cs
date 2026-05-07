@@ -508,13 +508,16 @@ public class GetAllUnitPriceQueryHandler(IUnitOfWork unitOfWork, ICacheService c
             var materialCost = CalculatePlannedMaterialCost(plannedOutput, plannedMaterialCosts);
             var maintainCost = CalculateMaintainCost(plannedOutput.PlannedMaintainCostId, plannedMaintainFactors);
             var electricityCost = CalculatePlannedElectricityCost(plannedOutput.PlannedElectricityCostId, plannedElectricityFactors);
+            var combinedPlannedCost = materialCost + maintainCost + electricityCost;
             var hasAkConfigs = akConfigs.Any();
             var akDiff = hasAkConfigs
                 ? (decimal)(plannedOutput.PlanAshContent - productionOutput.ActualAshContent)
                 : 0;
             var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
-            var adjustedMaterialCost = materialCost + ((double)akDiff * materialCost * (double)akRate);
-            return productionOutput.ProductionMeters * (adjustedMaterialCost + maintainCost + electricityCost);
+            var combinedAdjustmentAmount = hasAkConfigs
+                ? (double)(akDiff * (decimal)combinedPlannedCost * akRate)
+                : 0;
+            return productionOutput.ProductionMeters * (combinedPlannedCost + combinedAdjustmentAmount);
         });
     }
 

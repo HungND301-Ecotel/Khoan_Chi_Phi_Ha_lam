@@ -315,6 +315,8 @@ export function ElectricityAndMaintainanceReportPage() {
 												id: '',
 												productUnitPriceId: '',
 												outputId,
+												akRate: 0,
+												akRatePercent: 0,
 												costs: [],
 											} satisfies AdjustmentMaintainCostDetail,
 										})),

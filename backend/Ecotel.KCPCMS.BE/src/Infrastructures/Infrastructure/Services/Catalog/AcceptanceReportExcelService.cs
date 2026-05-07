@@ -100,10 +100,13 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 Guid? partId = null;
                 PartType? partType = null;
                 string unitOfMeasureName;
+                string? materialName = null;
+                string? partName = null;
 
                 if (material != null)
                 {
                     materialId = material.Id;
+                    materialName = material.Name;
                     unitOfMeasureName = material.UnitOfMeasure?.Name ?? "N/A";
                 }
                 else
@@ -117,6 +120,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                             RowNumber = rowNumber,
                             ReportItemId = reportItemId,
                             MaterialCode = materialCode,
+                            MaterialName = null,
                             IssuedQuantity = receivedValue,
                             ShippedQuantity = dispensedValue,
                             UnresolvedReason = $"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}."
@@ -128,6 +132,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     itemType = (int)part.Type;
                     partType = part.Type;
                     partId = part.Id;
+                    partName = part.Name;
                     unitOfMeasureName = part.UnitOfMeasure?.Name ?? "N/A";
                 }
 
@@ -140,6 +145,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     ItemType = (ItemType)itemType,
                     PartType = partType,
                     MaterialCode = materialCode,
+                    MaterialName = materialName,
+                    PartName = partName,
                     UnitOfMeasureName = unitOfMeasureName,
                     IssuedQuantity = receivedValue,
                     ShippedQuantity = dispensedValue

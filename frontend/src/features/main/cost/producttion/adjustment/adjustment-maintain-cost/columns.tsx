@@ -6,7 +6,13 @@ export type AdjustmentMaintainCostDetail = {
 	id: string;
 	productUnitPriceId: string;
 	outputId: string;
+	akRate: number;
+	akRatePercent: number;
 	costs: AdjustmentMaintainCostItem[];
+};
+
+export type AdjustmentMaintainCostSummary = {
+	akRatePercent: number;
 };
 
 export type AdjustmentMaintainCostItem = {
@@ -97,3 +103,16 @@ export const getAdjustmentMaintainCostColumns = (
 		},
 	];
 };
+
+export const getAdjustmentMaintainCostSummaryColumns =
+	(): ColumnDef<AdjustmentMaintainCostSummary>[] => {
+		return [
+			{
+				accessorKey: 'akRatePercent',
+				header: () => (
+					<span className='whitespace-normal'>Tỉ lệ điều chỉnh doanh thu</span>
+				),
+				cell: ({ row }) => `${formatNumber(row.original.akRatePercent)}%`,
+			},
+		];
+	};

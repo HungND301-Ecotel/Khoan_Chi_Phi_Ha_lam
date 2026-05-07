@@ -4,6 +4,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AdjustmentElectricityCost;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
 using Domain.Common.Enums;
+using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,31 +18,54 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<Output> _outputRepository = unitOfWork.GetRepository<Output>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
     public async Task<AdjustmentElectricityCostDetailDto> Handle(GetAdjustmentElectricityCostByOutputIdQuery request, CancellationToken cancellationToken)
     {
         var plannedOutput = await _outputRepository.GetFirstOrDefaultAsync(
             predicate: o => o.Id == request.Id,
             include: o => o
-                .Include(o => o.ProductUnitPrice)
+                .Include(o => o.ProductUnitPrice).ThenInclude(p => p.Product)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.ElectricityUnitPriceEquipment).ThenInclude(e => e.Equipment).ThenInclude(e => e.Costs)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.ElectricityUnitPriceEquipment).ThenInclude(e => e.Equipment).ThenInclude(e => e.Code)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.PlannedElectricityCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactorDescription).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!)
                 .Include(o => o.PlannedElectricityCost).ThenInclude(m => m.PlannedElectricityCostAdjustmentFactors).ThenInclude(p => p.PlannedElectricityCostAdjustmentFactorDescriptions).ThenInclude(p => p.AdjustmentFactor).ThenInclude(p => p.Code!), disableTracking: true
             ) ?? throw new NotFoundException(CustomResponseMessage.PlannedOutputNotFound);
 
-        var adjustmentProductionMeters = await _productUnitPriceRepository.GetAll()
+        var adjustmentOutputInfo = await _productUnitPriceRepository.GetAll()
             .Where(p => p.ScenarioType == ProductUnitPriceScenarioType.Adjustment &&
-                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                        p.ProductId == plannedOutput.ProductUnitPrice!.ProductId &&
+                        p.DepartmentId == plannedOutput.ProductUnitPrice.DepartmentId)
             .SelectMany(p => p.ProductUnitPriceProductionOutputs)
             .Where(p => p.ProductionOutput!.StartMonth == plannedOutput.StartMonth &&
                         p.ProductionOutput.EndMonth == plannedOutput.EndMonth)
-            .Select(p => p.ProductionMeters)
+            .Select(p => new
+            {
+                p.ProductionMeters,
+                ActualAshContent = p.ProductionOutput!.ProductionOutputProcessGroups
+                    .SelectMany(g => g.ProductionOutputProducts)
+                    .Where(pp => pp.ProductId == plannedOutput.ProductUnitPrice!.ProductId)
+                    .Select(pp => (double?)pp.ActualAshContent)
+                    .FirstOrDefault() ?? 0
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (adjustmentProductionMeters <= 0)
+        if (adjustmentOutputInfo == null || adjustmentOutputInfo.ProductionMeters <= 0)
         {
             throw new ConflictException(CustomResponseMessage.PleaseProvideTheActualOutputProductionMeters);
         }
+
+        var akConfigs = await _akFactorConfigRepository.GetAll()
+            .Where(x => x.ProcessGroupId == plannedOutput.ProductUnitPrice!.Product.ProcessGroupId)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var hasAkConfigs = akConfigs.Any();
+        var akDiff = hasAkConfigs
+            ? (decimal)(plannedOutput.PlanAshContent - adjustmentOutputInfo.ActualAshContent)
+            : 0;
+        var akRate = hasAkConfigs ? AkFactorConfig.ResolveRate(akConfigs, akDiff) : 0;
+        var adjustmentMultiplier = hasAkConfigs
+            ? 1 + (double)(akDiff * akRate)
+            : 1;
 
         var plannedElectricityCost = plannedOutput.PlannedElectricityCost
             ?? throw new NotFoundException(CustomResponseMessage.PlannedElectricityCostNotFound);
@@ -51,6 +75,8 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
             Id = plannedElectricityCost.Id,
             ProductUnitPriceId = plannedElectricityCost.ProductUnitPriceId,
             OutputId = plannedElectricityCost.OutputId,
+            AkRate = (double)akRate,
+            AkRatePercent = (double)akRate * 100,
             Costs = plannedElectricityCost.PlannedElectricityCostAdjustmentFactors.Select(p =>
             {
                 return new AdjustmentElectricityCostAdjDto
@@ -61,7 +87,7 @@ public class GetPlannedElectricityCostByIdQueryHandler(IUnitOfWork unitOfWork) :
                     Quantity = p.Quantity,
                     ElectricityUnitPriceEquipmentId = p.ElectricityUnitPriceId,
                     ElectricityUnitPrice = p.ElectricityUnitPriceEquipment.GetElectricityCostPerMetres(),
-                    TotalPrice = p.GetCurrentElectricityCost(),
+                    TotalPrice = p.GetCurrentElectricityCost() * adjustmentMultiplier,
                     AdjustmentFactorDescriptions = p.PlannedElectricityCostAdjustmentFactorDescriptions.Select(a => new ElectricityAjustmentFactorDescriptionDto
                     {
                         Id = a.Id,

@@ -20,6 +20,8 @@ public record AcceptanceReportItemDto
     public Guid? PartId { get; init; }
 
     public required string MaterialCode { get; init; }
+    public string? MaterialName { get; init; }
+    public string? PartName { get; init; }
     public required string UnitOfMeasureName { get; init; }
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
@@ -33,6 +35,7 @@ public record UnresolvedAcceptanceReportItemDto
     public int RowNumber { get; init; }
     public Guid? ReportItemId { get; init; }
     public required string MaterialCode { get; init; }
+    public string? MaterialName { get; init; }
     public string UnitOfMeasureName { get; init; } = string.Empty;
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
