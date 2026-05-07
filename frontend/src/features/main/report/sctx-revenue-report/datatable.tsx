@@ -10,12 +10,22 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
+import { getProcessGroupType, ProcessGroupType } from '@/constants/process-group';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useEffect, useMemo, useState } from 'react';
 
 type EquipmentLookup = {
+	id: string;
+	code: string;
+	name: string;
+	processGroupId?: string | null;
+	processGroupCode?: string | null;
+	processGroupName?: string | null;
+};
+
+type ProcessGroupLookup = {
 	id: string;
 	code: string;
 	name: string;
@@ -82,9 +92,12 @@ export function SctxRevenueReportDataTable() {
 	const [fromYear, setFromYear] = useState(String(new Date().getFullYear() - 1));
 	const [toYear, setToYear] = useState(String(new Date().getFullYear()));
 	const [equipments, setEquipments] = useState<EquipmentLookup[]>([]);
+	const [processGroups, setProcessGroups] = useState<ProcessGroupLookup[]>([]);
+	const [selectedProcessGroupId, setSelectedProcessGroupId] = useState('');
 	const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
 	const [yearData, setYearData] = useState<SctxRevenueByYearApi[]>([]);
 	const [isLoadingEquipments, setIsLoadingEquipments] = useState(false);
+	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isLoadingRows, setIsLoadingRows] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -137,7 +150,6 @@ export function SctxRevenueReportDataTable() {
 
 				setEquipments([]);
 				setSelectedEquipmentId('');
-				setRows([]);
 				setError(
 					err instanceof Error
 						? err.message
@@ -151,6 +163,52 @@ export function SctxRevenueReportDataTable() {
 		};
 
 		fetchEquipments();
+
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		const fetchProcessGroups = async () => {
+			setIsLoadingProcessGroups(true);
+
+			try {
+				const response = await api.pagging<ProcessGroupLookup>(
+					API.CATALOG.PROCESS.GROUP.LIST,
+					{ ignorePagination: true },
+				);
+
+				if (cancelled) {
+					return;
+				}
+
+				const items = (response.result.data ?? []).sort((a, b) =>
+					a.code.localeCompare(b.code, 'vi'),
+				);
+
+				setProcessGroups(items);
+			} catch (err) {
+				if (cancelled) {
+					return;
+				}
+
+				setProcessGroups([]);
+				setError(
+					err instanceof Error
+						? err.message
+						: 'Không thể tải danh sách nhóm công đoạn sản xuất',
+				);
+			} finally {
+				if (!cancelled) {
+					setIsLoadingProcessGroups(false);
+				}
+			}
+		};
+
+		fetchProcessGroups();
 
 		return () => {
 			cancelled = true;
@@ -172,13 +230,21 @@ export function SctxRevenueReportDataTable() {
 			try {
 				const response = await api.post<
 					SctxRevenueByEquipmentApiResponse,
-					{ fromYear: number; toYear: number; equipmentId: string }
+					{
+						fromYear: number;
+						toYear: number;
+						equipmentId: string;
+						processGroupId?: string;
+					}
 				>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT,
 					{
 						fromYear: Number(fromYear),
 						toYear: Number(toYear),
 						equipmentId: selectedEquipmentId,
+						...(selectedProcessGroupId
+							? { processGroupId: selectedProcessGroupId }
+							: {}),
 					},
 				);
 
@@ -210,7 +276,60 @@ export function SctxRevenueReportDataTable() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedEquipmentId, fromYear, toYear]);
+	}, [selectedEquipmentId, fromYear, toYear, selectedProcessGroupId]);
+
+	const processGroupOptions = useMemo(() => {
+		const options = processGroups
+			.map((group) => ({
+				value: group.id,
+				label: `${group.code} - ${group.name}`.trim(),
+				code: group.code,
+			}))
+			.sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+
+		return options;
+	}, [processGroups]);
+
+	useEffect(() => {
+		if (processGroupOptions.length === 0) {
+			setSelectedProcessGroupId('');
+			return;
+		}
+
+		if (
+			!processGroupOptions.some(
+				(option) => option.value === selectedProcessGroupId,
+			)
+		) {
+			setSelectedProcessGroupId(processGroupOptions[0]?.value ?? '');
+		}
+	}, [processGroupOptions, selectedProcessGroupId]);
+
+	const filteredEquipments = useMemo(() => {
+		const hasProcessGroup = equipments.some(
+			(item) => Boolean(item.processGroupId),
+		);
+		if (!hasProcessGroup) {
+			return equipments;
+		}
+
+		if (!selectedProcessGroupId) {
+			return [];
+		}
+
+		return equipments.filter(
+			(item) => item.processGroupId === selectedProcessGroupId,
+		);
+	}, [equipments, selectedProcessGroupId]);
+
+	useEffect(() => {
+		setSelectedEquipmentId((prev) => {
+			if (prev && filteredEquipments.some((item) => item.id === prev)) {
+				return prev;
+			}
+			return filteredEquipments[0]?.id ?? '';
+		});
+	}, [filteredEquipments]);
 
 	const yearRows = useMemo(() => {
 		const sorted = [...yearData].sort((a, b) => a.year - b.year);
@@ -246,6 +365,29 @@ export function SctxRevenueReportDataTable() {
 		[equipments, selectedEquipmentId],
 	);
 
+	const selectedProcessGroup = useMemo(
+		() => processGroups.find((item) => item.id === selectedProcessGroupId),
+		[processGroups, selectedProcessGroupId],
+	);
+
+	const quantityUnitLabel = useMemo(() => {
+		const code =
+			selectedProcessGroup?.code || selectedEquipment?.processGroupCode || '';
+		switch (getProcessGroupType(code)) {
+			case ProcessGroupType.DL:
+			case ProcessGroupType.XL:
+				return 'm';
+			case ProcessGroupType.LC:
+				return 't';
+			default:
+				return '';
+		}
+	}, [selectedProcessGroup?.code, selectedEquipment?.processGroupCode]);
+
+	const buildQuantityHeader = (label: string) =>
+		quantityUnitLabel ? `${label} (${quantityUnitLabel})` : label;
+
+	const displayProcessGroupName = selectedProcessGroup?.name || 'Không xác định';
 	const displayEquipmentName = selectedEquipment?.name || 'Không xác định';
 	const displayEquipmentCode = selectedEquipment?.code || 'thiet-bi';
 	const displayYearRange =
@@ -269,21 +411,25 @@ export function SctxRevenueReportDataTable() {
 				)?.totals;
 
 				const rows = group.rows.map((row) => ({
-					'Năm': group.year,
-					'Thời gian': `Tháng ${row.month}`,
-					'Đơn giá (đ/t)': row.unitPrice,
-					'Sản lượng ban đầu (t)': row.plannedQuantity,
-					'Sản lượng thực tế (t)': row.actualQuantity,
+								'Năm': group.year,
+								'Thời gian': `Tháng ${row.month}`,
+								'Đơn giá (đ/t)': row.unitPrice,
+								[buildQuantityHeader('Sản lượng ban đầu')]:
+									row.plannedQuantity,
+								[buildQuantityHeader('Sản lượng thực tế')]:
+									row.actualQuantity,
 					'Doanh thu SCTX ban đầu (đ)': row.baseRevenue,
 					'Doanh thu SCTX điều chỉnh (đ)': row.adjustedRevenue,
 				}));
 
 				rows.push({
-					'Năm': group.year,
-					'Thời gian': 'Tổng cộng',
-					'Đơn giá (đ/t)': 0,
-					'Sản lượng ban đầu (t)': totals?.plannedQuantity ?? 0,
-					'Sản lượng thực tế (t)': totals?.actualQuantity ?? 0,
+							'Năm': group.year,
+							'Thời gian': 'Tổng cộng',
+							'Đơn giá (đ/t)': 0,
+							[buildQuantityHeader('Sản lượng ban đầu')]:
+								totals?.plannedQuantity ?? 0,
+							[buildQuantityHeader('Sản lượng thực tế')]:
+								totals?.actualQuantity ?? 0,
 					'Doanh thu SCTX ban đầu (đ)': totals?.baseRevenue ?? 0,
 					'Doanh thu SCTX điều chỉnh (đ)': totals?.adjustedRevenue ?? 0,
 				});
@@ -358,7 +504,9 @@ export function SctxRevenueReportDataTable() {
 						<Select
 							value={selectedEquipmentId}
 							onValueChange={setSelectedEquipmentId}
-							disabled={isLoadingEquipments || equipments.length === 0}
+								disabled={
+									isLoadingEquipments || filteredEquipments.length === 0
+								}
 						>
 							<SelectTrigger className='w-[300px] bg-white'>
 								<SelectValue
@@ -369,8 +517,8 @@ export function SctxRevenueReportDataTable() {
 									}
 								/>
 							</SelectTrigger>
-							<SelectContent className='max-h-64'>
-								{equipments.map((item) => (
+								<SelectContent className='max-h-64'>
+									{filteredEquipments.map((item) => (
 									<SelectItem key={item.id} value={item.id}>
 										{item.code} - {item.name}
 									</SelectItem>
@@ -378,6 +526,31 @@ export function SctxRevenueReportDataTable() {
 							</SelectContent>
 						</Select>
 					</div>
+						<div className='space-y-1'>
+							<p className='text-sm font-medium'>Nhóm công đoạn sản xuất</p>
+							<Select
+								value={selectedProcessGroupId}
+								onValueChange={setSelectedProcessGroupId}
+								disabled={isLoadingProcessGroups}
+							>
+								<SelectTrigger className='w-[280px] bg-white'>
+									<SelectValue
+										placeholder={
+											isLoadingProcessGroups
+												? 'Đang tải nhóm công đoạn sản xuất...'
+												: 'Chọn nhóm công đoạn sản xuất'
+										}
+									/>
+								</SelectTrigger>
+								<SelectContent className='max-h-64'>
+									{processGroupOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 				</div>
 
 				<Button
@@ -429,7 +602,12 @@ export function SctxRevenueReportDataTable() {
 								</p>
 							</div>
 
-							<div className='mt-5 space-y-1 text-base md:text-lg'>
+							<div className='mt-5 space-y-2 text-base md:text-lg'>
+								<p>
+									<span className='font-bold'>Nhóm công đoạn sản xuất:</span>{' '}
+									{displayProcessGroupName}
+								</p>
+
 								<p>
 									<span className='font-bold'>Thiết bị:</span>{' '}
 									{displayEquipmentName}
@@ -456,8 +634,12 @@ export function SctxRevenueReportDataTable() {
 													<tr className='font-bold'>
 														<th className={borderCellClass}>Thời gian</th>
 														<th className={borderCellClass}>Đơn giá (đ/t)</th>
-														<th className={borderCellClass}>Sản lượng ban đầu (t)</th>
-														<th className={borderCellClass}>Sản lượng thực tế (t)</th>
+														<th className={borderCellClass}>
+															{buildQuantityHeader('Sản lượng ban đầu')}
+														</th>
+														<th className={borderCellClass}>
+															{buildQuantityHeader('Sản lượng thực tế')}
+														</th>
 														<th className={borderCellClass}>Doanh thu SCTX ban đầu (đ)</th>
 														<th className={borderCellClass}>
 															Doanh thu SCTX điều chỉnh (đ)
