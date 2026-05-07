@@ -7,6 +7,7 @@ import { LumpSumFinalSettlementPage } from './lump-sum-final-settlement/quarter-
 import { LumpSumFinalSettlementMonthPage } from './lump-sum-final-settlement/month-page';
 import { MainReportPage } from './page';
 import { ReportCategoryPlaceholderPage } from './placeholder-page';
+import { SctxRevenueReportPage } from './sctx-revenue-report/page';
 import { REPORT_CATEGORIES } from './types';
 
 const defaultCategoryId = REPORT_CATEGORIES[0]?.id || 'raw-acceptance-report';
@@ -32,6 +33,8 @@ const reportCategoryRoutes: RouteObject[] = REPORT_CATEGORIES.map(
 				<LumpSumFinalSettlementPage />
 			) : category.id === 'lump-sum-final-settlement-month' ? (
 				<LumpSumFinalSettlementMonthPage />
+			) : category.id === 'sctx-revenue-report' ? (
+				<SctxRevenueReportPage />
 			) : (
 				<ReportCategoryPlaceholderPage categoryLabel={category.label} />
 			),

@@ -7,8 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export function formatNumber(value: number) {
-	return value.toLocaleString('vi-VN');
+export function formatNumber(
+	value: number,
+	options?: Intl.NumberFormatOptions,
+) {
+	return value.toLocaleString('vi-VN', options);
 }
 
 export function formatDate(value: string) {

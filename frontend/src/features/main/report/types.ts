@@ -50,4 +50,9 @@ export const REPORT_CATEGORIES: ReportCategory[] = [
 		label: 'Bảng thanh toán',
 		group: 'reports',
 	},
+	{
+		id: 'sctx-revenue-report',
+		label: 'Báo cáo doanh thu SCTX',
+		group: 'reports',
+	},
 ];
