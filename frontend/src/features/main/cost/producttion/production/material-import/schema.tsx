@@ -110,19 +110,6 @@ export const materialFormSchema = z
 			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			if (!data.showCategoryDropdown || categoryValue !== 3) return true;
-			return data.categoryProductionOrderId != null;
-		},
-		{
-			message: 'Phải chọn quyết định, lệnh sản xuất',
-			path: ['categoryProductionOrderId'],
-		},
-	)
-	.refine(
-		(data) => {
-			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			const needsEquipment =
 				categoryValue === 3 && data.type === 2 && data.itemType === 1;
 			if (!data.showCategoryDropdown || !needsEquipment) return true;
@@ -194,22 +181,6 @@ export const materialFormSchema = z
 			if (isUnresolvedRow(data)) return true;
 			if (
 				!data.showAdditionalCostDropdown ||
-				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
-			) {
-				return true;
-			}
-			return data.additionalCostProductionOrderId != null;
-		},
-		{
-			message: 'Phải chọn quyết định, lệnh sản xuất',
-			path: ['additionalCostProductionOrderId'],
-		},
-	)
-	.refine(
-		(data) => {
-			if (isUnresolvedRow(data)) return true;
-			if (
-				!data.showAdditionalCostDropdown ||
 				data.additionalCostCategory !== 4
 			) {
 				return true;
@@ -270,7 +241,6 @@ export const materialFormSchema = z
 				categoryValue &&
 				(!requiresCategoryProcessGroup(data) ||
 					(data.categoryAllocations?.length ?? 0) > 0) &&
-				(categoryValue !== 3 || data.categoryProductionOrderId != null) &&
 				!(
 					categoryValue === 3 &&
 					data.type === 2 &&
@@ -283,9 +253,6 @@ export const materialFormSchema = z
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
-				((data.additionalCostCategory !== 2 &&
-					data.additionalCostCategory !== 3) ||
-					data.additionalCostProductionOrderId != null) &&
 				(data.additionalCostCategory !== 4 || data.otherMaterialDetail != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown &&

@@ -1,3 +1,4 @@
+import { ClientPagination } from '@/components/datatable/client-pagination';
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
@@ -14,7 +15,7 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { MaterialFormSchema } from './schema';
 import {
@@ -393,20 +394,18 @@ export function MaterialImportForm({
 	onCreateUnresolved,
 }: MaterialImportFormProps) {
 	const form = useFormContext<MaterialsForm>();
-	const { fields, remove } = useFieldArray({
-		control: form.control,
-		name: 'materials',
-	});
-	const watchedMaterials = useWatch({
+	const { fields } = useFieldArray({
 		control: form.control,
 		name: 'materials',
 	});
 	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
 		string[]
 	>([]);
+	const [pageIndex, setPageIndex] = useState(0);
+	const [pageSize, setPageSize] = useState(10);
 	const materialBadgeFilters = useMemo(() => {
 		const map = new Map<string, MaterialBadgeFilterOption>();
-		for (const item of watchedMaterials || []) {
+		for (const item of fields) {
 			if (item?.resolutionStatus === 'unresolved') {
 				continue;
 			}
@@ -416,7 +415,7 @@ export function MaterialImportForm({
 			}
 		}
 		return Array.from(map.values());
-	}, [watchedMaterials]);
+	}, [fields]);
 	const visibleMaterialIndexes = useMemo(() => {
 		if (selectedMaterialBadgeKeys.length === 0) {
 			return fields.map((_, index) => index);
@@ -425,14 +424,19 @@ export function MaterialImportForm({
 		return fields
 			.map((_, index) => index)
 			.filter((index) => {
-				const item = watchedMaterials?.[index];
+				const item = fields[index];
 				if (item?.resolutionStatus === 'unresolved') {
 					return true;
 				}
 				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
 				return selectedMaterialBadgeKeys.includes(key);
 			});
-	}, [fields, watchedMaterials, selectedMaterialBadgeKeys]);
+	}, [fields, selectedMaterialBadgeKeys]);
+	const paginatedMaterialIndexes = useMemo(() => {
+		const start = pageIndex * pageSize;
+		return visibleMaterialIndexes.slice(start, start + pageSize);
+	}, [pageIndex, pageSize, visibleMaterialIndexes]);
+	const pageCount = Math.ceil(visibleMaterialIndexes.length / pageSize);
 
 	useEffect(() => {
 		if (materialBadgeFilters.length === 0) {
@@ -451,6 +455,19 @@ export function MaterialImportForm({
 			return next;
 		});
 	}, [materialBadgeFilters]);
+
+	useEffect(() => {
+		if (pageCount === 0) {
+			if (pageIndex !== 0) {
+				setPageIndex(0);
+			}
+			return;
+		}
+
+		if (pageIndex > pageCount - 1) {
+			setPageIndex(pageCount - 1);
+		}
+	}, [pageCount, pageIndex]);
 
 	useEffect(() => {
 		if (Object.keys(form.formState.errors).length > 0) {
@@ -536,18 +553,17 @@ export function MaterialImportForm({
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{visibleMaterialIndexes.map((index, displayIndex) => (
+							{paginatedMaterialIndexes.map((index, displayIndex) => (
 								<MaterialImportRow
 									key={fields[index].id}
 									index={index}
-									displayIndex={displayIndex + 1}
+									displayIndex={pageIndex * pageSize + displayIndex + 1}
 									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									orderOrEquipmentOptionsByItemId={
 										orderOrEquipmentOptionsByItemId
 									}
 									onCreateUnresolved={onCreateUnresolved}
-									onRemove={() => remove(index)}
 								/>
 							))}
 							{visibleMaterialIndexes.length === 0 && (
@@ -564,6 +580,18 @@ export function MaterialImportForm({
 					</Table>
 				</div>
 			</div>
+			{visibleMaterialIndexes.length > 0 && (
+				<ClientPagination
+					totalItems={visibleMaterialIndexes.length}
+					pageIndex={pageIndex}
+					pageSize={pageSize}
+					onPageIndexChange={setPageIndex}
+					onPageSizeChange={(nextPageSize) => {
+						setPageSize(nextPageSize);
+						setPageIndex(0);
+					}}
+				/>
+			)}
 
 			<DialogFooter className='bg-muted sticky bottom-0 z-20 mt-auto w-full px-10 py-4'>
 				<Button
@@ -690,7 +718,7 @@ function QuantityBreakdownInputs({
 
 // ── MaterialImportRow ─────────────────────────────────────────────────────────
 
-function MaterialImportRow({
+const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
 	processGroupOptions,
@@ -704,67 +732,62 @@ function MaterialImportRow({
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	onCreateUnresolved: (index: number) => void;
-	onRemove: () => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
 	const basename = `materials.${index}` as const;
-
-	// ── Watch helpers (typed via RowPath) ────────────────────────────────────
-	const w = <K extends keyof MaterialRowValues>(key: K) =>
-		// useWatch requires a registered path; casting is the narrowest escape here
-		// because RHF's generic doesn't accept template-literal paths directly.
-		// eslint-disable-next-line react-hooks/rules-of-hooks
-		useWatch({
-			control: form.control,
-			name: `${basename}.${key}` as RowPath,
-		}) as MaterialRowValues[K];
-
-	const showCategoryDropdown = w('showCategoryDropdown');
-	const showAdditionalCostDropdown = w('showAdditionalCostDropdown');
-	const showContractLimitDropdown = w('showContractLimitDropdown');
-	const showAssetDropdown = w('showAssetDropdown');
-	const categoryValue = w('category');
-	const categoryProcessGroupValue = w('categoryProcessGroup');
-	const categoryProcessGroupIds = w('categoryProcessGroupIds') as
+	const row = useWatch({
+		control: form.control,
+		name: basename as RowPath,
+	}) as MaterialRowValues | undefined;
+	const showCategoryDropdown = row?.showCategoryDropdown ?? false;
+	const showAdditionalCostDropdown = row?.showAdditionalCostDropdown ?? false;
+	const showContractLimitDropdown = row?.showContractLimitDropdown ?? false;
+	const showAssetDropdown = row?.showAssetDropdown ?? false;
+	const categoryValue = row?.category;
+	const categoryProcessGroupValue = row?.categoryProcessGroup;
+	const categoryProcessGroupIds = row?.categoryProcessGroupIds as
 		| string[]
 		| undefined;
-	const categoryProductionOrderId = w('categoryProductionOrderId');
-	const categoryEquipmentId = w('categoryEquipmentId');
-	const categoryEquipmentIds = w('categoryEquipmentIds') as
+	const categoryProductionOrderId = row?.categoryProductionOrderId;
+	const categoryEquipmentId = row?.categoryEquipmentId;
+	const categoryEquipmentIds = row?.categoryEquipmentIds as
 		| string[]
 		| undefined;
-	const categoryAllocations = w('categoryAllocations') as
+	const categoryAllocations = row?.categoryAllocations as
 		| CategoryAllocation[]
 		| undefined;
-	const additionalCostCategory = w('additionalCostCategory');
-	const additionalCostProductionOrderId = w('additionalCostProductionOrderId');
-	const otherMaterialDetailValue = w('otherMaterialDetail');
-	const contractLimitCategoryValue = w('contractLimitCategory');
-	const quantityExported = w('quantityExported');
-	const quantityReceived = w('quantityReceived');
-	const categoryQuantity = w('categoryQuantity');
-	const additionalCostQuantity = w('additionalCostQuantity');
-	const contractLimitQuantity = w('contractLimitQuantity');
-	const contractLimitSubCategoriesValue = w('contractLimitSubCategories') as
+	const additionalCostCategory = row?.additionalCostCategory;
+	const additionalCostProductionOrderId = row?.additionalCostProductionOrderId;
+	const otherMaterialDetailValue = row?.otherMaterialDetail;
+	const contractLimitCategoryValue = row?.contractLimitCategory;
+	const quantityExported = row?.quantityExported;
+	const quantityReceived = row?.quantityReceived;
+	const categoryQuantity = row?.categoryQuantity;
+	const additionalCostQuantity = row?.additionalCostQuantity;
+	const contractLimitQuantity = row?.contractLimitQuantity;
+	const contractLimitSubCategoriesValue = row?.contractLimitSubCategories as
 		| string[]
 		| undefined;
-	const contractLimitBreakdown = w('contractLimitBreakdown') as
+	const contractLimitBreakdown = row?.contractLimitBreakdown as
 		| Record<string, number | string>
 		| undefined;
-	const assetQuantity = w('assetQuantity');
-	const materialTypeValue = w('type');
-	const itemTypeValue = w('itemType');
-	const materialOrPartId = w('materialOrPartId');
-	const resolutionStatus = w('resolutionStatus');
-	const unresolvedReason = w('unresolvedReason');
-	const receivedTypes = w('receivedTypes') as string[] | undefined;
-	const exportedTypes = w('exportedTypes') as string[] | undefined;
-	const receivedBreakdown = w('receivedBreakdown') as
+	const assetQuantity = row?.assetQuantity;
+	const materialTypeValue = row?.type;
+	const itemTypeValue = row?.itemType;
+	const materialOrPartId = row?.materialOrPartId;
+	const resolutionStatus = row?.resolutionStatus;
+	const unresolvedReason = row?.unresolvedReason;
+	const receivedTypes = row?.receivedTypes as string[] | undefined;
+	const exportedTypes = row?.exportedTypes as string[] | undefined;
+	const receivedBreakdown = row?.receivedBreakdown as
 		| Record<string, number | string>
 		| undefined;
-	const exportedBreakdown = w('exportedBreakdown') as
+	const exportedBreakdown = row?.exportedBreakdown as
 		| Record<string, number | string>
 		| undefined;
+	const materialCode = row?.materialCode;
+	const materialName = row?.materialName;
+	const unitOfMeasureName = row?.unitOfMeasureName;
 
 	// ── Derived values ───────────────────────────────────────────────────────
 	const defaultCategoryByType =
@@ -1619,11 +1642,7 @@ function MaterialImportRow({
 							<div className='flex items-center gap-2'>
 								<Input
 									readOnly
-									value={
-										(form.watch(
-											`${basename}.materialCode` as RowPath,
-										) as string) || ''
-									}
+									value={materialCode || ''}
 									className={cn(
 										'font-medium text-slate-700',
 										unresolvedInputClassName,
@@ -1649,21 +1668,14 @@ function MaterialImportRow({
 					<TableCell className='w-[20%] min-w-60 border-b border-slate-200 px-4 py-4'>
 						<Input
 							readOnly
-							value={
-								(form.watch(`${basename}.materialName` as RowPath) as string) ||
-								''
-							}
+							value={materialName || ''}
 							className={unresolvedInputClassName}
 						/>
 					</TableCell>
 					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 						<Input
 							readOnly
-							value={
-								(form.watch(
-									`${basename}.unitOfMeasureName` as RowPath,
-								) as string) || ''
-							}
+							value={unitOfMeasureName || ''}
 							className={unresolvedInputClassName}
 						/>
 					</TableCell>
@@ -1736,11 +1748,7 @@ function MaterialImportRow({
 							<div className='flex items-center gap-2'>
 								<Input
 									readOnly
-									value={
-										(form.watch(
-											`${basename}.materialCode` as RowPath,
-										) as string) || ''
-									}
+									value={materialCode || ''}
 									className='border-slate-300 bg-slate-100 font-medium text-slate-500'
 								/>
 							</div>
@@ -1754,10 +1762,7 @@ function MaterialImportRow({
 					<TableCell className='w-[20%] min-w-60 border-b border-slate-200 px-4 py-4'>
 						<Input
 							readOnly
-							value={
-								(form.watch(`${basename}.materialName` as RowPath) as string) ||
-								''
-							}
+							value={materialName || ''}
 							className='border-slate-300 bg-slate-100 text-slate-500'
 						/>
 					</TableCell>
@@ -1766,11 +1771,7 @@ function MaterialImportRow({
 					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
 						<Input
 							readOnly
-							value={
-								(form.watch(
-									`${basename}.unitOfMeasureName` as RowPath,
-								) as string) || ''
-							}
+							value={unitOfMeasureName || ''}
 							className='border-slate-300 bg-slate-100 text-slate-500'
 						/>
 					</TableCell>
@@ -2267,4 +2268,4 @@ function MaterialImportRow({
 			)}
 		</>
 	);
-}
+});

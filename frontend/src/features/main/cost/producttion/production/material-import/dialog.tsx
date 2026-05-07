@@ -86,9 +86,10 @@ type PartLookupItem = {
 
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+const NONE_PRODUCTION_ORDER_ID = '__none__';
 
 const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
-	value: toProductionOrderOptionValue(''),
+	value: toProductionOrderOptionValue(NONE_PRODUCTION_ORDER_ID),
 	label: '[Lệnh sản xuất] Không theo lệnh sản xuất',
 };
 
@@ -170,6 +171,7 @@ function getDefaultAdditionalCostByMaterialType(
 function normalizeProductionOrderId(value?: string | null): string | null {
 	if (!value) return null;
 	const trimmedValue = value.trim();
+	if (trimmedValue === NONE_PRODUCTION_ORDER_ID) return null;
 	return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
@@ -207,6 +209,7 @@ function normalizeCode(value?: string | null): string {
 
 function mapResolvedImportItem(item: {
 	reportItemId?: string | null;
+	rowNumber?: number | null;
 	materialId?: string | null;
 	partId?: string | null;
 	partType?: number | null;
@@ -238,6 +241,7 @@ function mapResolvedImportItem(item: {
 		acceptanceReportItemId: item.reportItemId || undefined,
 		materialOrPartId: item.partId ?? item.materialId ?? '',
 		resolutionStatus: ImportResolutionStatus.Resolved,
+		sourceRowNumber: item.rowNumber ?? null,
 		partType: item.partType ?? null,
 		materialCode: item.materialCode,
 		materialName:
@@ -467,31 +471,33 @@ export function MaterialImportDialog({
 
 			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
 
-			// Transform API response to form schema
-			const resolvedData: MaterialFormSchema[] =
-				response.result.acceptanceReports.map((item) =>
+			// Transform API response to form schema and preserve the original Excel row order.
+			const uploadRows: MaterialFormSchema[] = [
+				...response.result.acceptanceReports.map((item) =>
 					mapResolvedImportItem(item),
-				);
+				),
+				...(response.result.unresolvedAcceptanceReports || []).map((item) => ({
+					...MATERIAL_FORM_DEFAULT,
+					id: `unresolved:${item.rowNumber}:${item.materialCode}`,
+					acceptanceReportItemId: item.reportItemId || undefined,
+					materialOrPartId: undefined,
+					resolutionStatus: ImportResolutionStatus.Unresolved,
+					unresolvedReason: item.unresolvedReason,
+					sourceRowNumber: item.rowNumber,
+					materialCode: item.materialCode,
+					materialName: item.materialName ?? '',
+					unitOfMeasureName: item.unitOfMeasureName,
+					quantityReceived: item.issuedQuantity,
+					quantityExported: item.shippedQuantity,
+					quantity: item.issuedQuantity + item.shippedQuantity,
+				})),
+			].sort(
+				(a, b) =>
+					(a.sourceRowNumber ?? Number.MAX_SAFE_INTEGER) -
+					(b.sourceRowNumber ?? Number.MAX_SAFE_INTEGER),
+			);
 
-			const unresolvedData: MaterialFormSchema[] = (
-				response.result.unresolvedAcceptanceReports || []
-			).map((item) => ({
-				...MATERIAL_FORM_DEFAULT,
-				id: `unresolved:${item.rowNumber}:${item.materialCode}`,
-				acceptanceReportItemId: item.reportItemId || undefined,
-				materialOrPartId: undefined,
-				resolutionStatus: ImportResolutionStatus.Unresolved,
-				unresolvedReason: item.unresolvedReason,
-				sourceRowNumber: item.rowNumber,
-				materialCode: item.materialCode,
-				materialName: item.materialName ?? '',
-				unitOfMeasureName: item.unitOfMeasureName,
-				quantityReceived: item.issuedQuantity,
-				quantityExported: item.shippedQuantity,
-				quantity: item.issuedQuantity + item.shippedQuantity,
-			}));
-
-			form.setValue('materials', [...resolvedData, ...unresolvedData]);
+			form.setValue('materials', uploadRows);
 			setShowForm(true);
 		} catch (error) {
 			popup.error(error);

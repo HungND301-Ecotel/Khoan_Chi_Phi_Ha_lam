@@ -1,3 +1,4 @@
+import { ClientPagination } from '@/components/datatable/client-pagination';
 /* eslint-disable react-hooks/incompatible-library */
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
@@ -48,7 +49,7 @@ import {
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	FormProvider,
 	Resolver,
@@ -62,6 +63,8 @@ import { API } from '@/constants/api-enpoint';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FieldName = any;
+type RawAcceptanceReportRowValue =
+	RawAcceptanceReportFormSchema['items'][number];
 
 type ProcessGroupOption = {
 	value: string;
@@ -91,9 +94,10 @@ type MaintainEquipmentMapping = {
 
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+const NONE_PRODUCTION_ORDER_ID = '__none__';
 
 const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
-	value: toProductionOrderOptionValue(''),
+	value: toProductionOrderOptionValue(NONE_PRODUCTION_ORDER_ID),
 	label: '[Lệnh sản xuất] Không theo lệnh sản xuất',
 };
 
@@ -174,6 +178,7 @@ const DEFAULT_OTHER_MATERIAL_DETAIL_VALUE =
 function normalizeProductionOrderId(value?: string | null): string | null {
 	if (!value) return null;
 	const trimmed = value.trim();
+	if (trimmed === NONE_PRODUCTION_ORDER_ID) return null;
 	return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -611,23 +616,25 @@ export function RawAcceptanceReportForm({
 			productionId: id || '',
 		},
 	});
-	const watchedItems = useWatch({
+	const { fields: itemFields } = useFieldArray({
 		control: form.control,
 		name: 'items',
 	});
 	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
 		string[]
 	>([]);
+	const [pageIndex, setPageIndex] = useState(0);
+	const [pageSize, setPageSize] = useState(10);
 	const materialBadgeFilters = useMemo(() => {
 		const map = new Map<string, MaterialBadgeFilterOption>();
-		for (const item of watchedItems || []) {
+		for (const item of itemFields) {
 			const option = getMaterialBadgeFilterOption(item?.type, item?.itemType);
 			if (!map.has(option.key)) {
 				map.set(option.key, option);
 			}
 		}
 		return Array.from(map.values());
-	}, [watchedItems]);
+	}, [itemFields]);
 
 	useEffect(() => {
 		if (materialBadgeFilters.length === 0) {
@@ -646,6 +653,47 @@ export function RawAcceptanceReportForm({
 			return next;
 		});
 	}, [materialBadgeFilters]);
+
+	const visibleItemIndexes = useMemo(() => {
+		if (selectedMaterialBadgeKeys.length === 0) {
+			return itemFields.map((_, index) => index);
+		}
+
+		return itemFields
+			.map((_, index) => index)
+			.filter((index) => {
+				const item = itemFields[index];
+				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
+				return selectedMaterialBadgeKeys.includes(key);
+			});
+	}, [itemFields, selectedMaterialBadgeKeys]);
+	const paginatedItemIndexes = useMemo(() => {
+		const start = pageIndex * pageSize;
+		return visibleItemIndexes.slice(start, start + pageSize);
+	}, [pageIndex, pageSize, visibleItemIndexes]);
+	const pageCount = Math.ceil(visibleItemIndexes.length / pageSize);
+
+	useEffect(() => {
+		if (pageCount === 0) {
+			if (pageIndex !== 0) {
+				setPageIndex(0);
+			}
+			return;
+		}
+
+		if (pageIndex > pageCount - 1) {
+			setPageIndex(pageCount - 1);
+		}
+	}, [pageCount, pageIndex]);
+
+	useEffect(() => {
+		if (Object.keys(form.formState.errors).length > 0) {
+			console.log(
+				'Raw acceptance report validation errors:',
+				form.formState.errors,
+			);
+		}
+	}, [form.formState.errors]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -1229,7 +1277,9 @@ export function RawAcceptanceReportForm({
 	return (
 		<FormProvider {...form}>
 			<form
-				onSubmit={form.handleSubmit(handleSubmit)}
+				onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+					console.log('Raw acceptance report submit errors:', errors);
+				})}
 				className='flex h-full flex-col gap-6'
 			>
 				{loading ? (
@@ -1310,9 +1360,15 @@ export function RawAcceptanceReportForm({
 								</TableHeader>
 								<TableBody>
 									<RawAcceptanceReportRows
+										fields={
+											itemFields as (RawAcceptanceReportRowValue & {
+												id: string;
+											})[]
+										}
+										visibleItemIndexes={paginatedItemIndexes}
+										displayIndexOffset={pageIndex * pageSize}
 										processGroupOptions={processGroupOptions}
 										productionOrderOptions={productionOrderOptions}
-										selectedMaterialBadgeKeys={selectedMaterialBadgeKeys}
 										orderOrEquipmentOptionsByItemId={
 											orderOrEquipmentOptionsByItemId
 										}
@@ -1321,6 +1377,18 @@ export function RawAcceptanceReportForm({
 							</Table>
 						</div>
 					</div>
+				)}
+				{visibleItemIndexes.length > 0 && (
+					<ClientPagination
+						totalItems={visibleItemIndexes.length}
+						pageIndex={pageIndex}
+						pageSize={pageSize}
+						onPageIndexChange={setPageIndex}
+						onPageSizeChange={(nextPageSize) => {
+							setPageSize(nextPageSize);
+							setPageIndex(0);
+						}}
+					/>
 				)}
 
 				<DialogFooter className='bg-muted sticky bottom-0 z-20 mt-auto w-full px-10 py-4'>
@@ -1348,49 +1416,28 @@ export function RawAcceptanceReportForm({
 	);
 }
 
-function RawAcceptanceReportRows({
+const RawAcceptanceReportRows = memo(function RawAcceptanceReportRows({
+	fields,
+	visibleItemIndexes,
+	displayIndexOffset,
 	processGroupOptions,
 	productionOrderOptions,
-	selectedMaterialBadgeKeys,
 	orderOrEquipmentOptionsByItemId,
 }: {
+	fields: (RawAcceptanceReportRowValue & { id: string })[];
+	visibleItemIndexes: number[];
+	displayIndexOffset: number;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
-	selectedMaterialBadgeKeys: string[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 }) {
-	const form = useFormContext<{
-		items: RawAcceptanceReportFormSchema['items'];
-	}>();
-	const { fields } = useFieldArray({
-		control: form.control,
-		name: 'items',
-	});
-	const items = useWatch({
-		control: form.control,
-		name: 'items',
-	});
-	const visibleItemIndexes = useMemo(() => {
-		if (selectedMaterialBadgeKeys.length === 0) {
-			return fields.map((_, index) => index);
-		}
-
-		return fields
-			.map((_, index) => index)
-			.filter((index) => {
-				const item = items?.[index];
-				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
-				return selectedMaterialBadgeKeys.includes(key);
-			});
-	}, [fields, items, selectedMaterialBadgeKeys]);
-
 	return (
 		<>
 			{visibleItemIndexes.map((index, displayIndex) => (
 				<RawAcceptanceReportRow
 					key={fields[index].id}
 					index={index}
-					displayIndex={displayIndex + 1}
+					displayIndex={displayIndexOffset + displayIndex + 1}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
 					orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
@@ -1408,7 +1455,7 @@ function RawAcceptanceReportRows({
 			)}
 		</>
 	);
-}
+});
 
 function resetCellFields(
 	form: ReturnType<
@@ -1507,7 +1554,7 @@ function QuantityBreakdownInputs({
 	);
 }
 
-function RawAcceptanceReportRow({
+const RawAcceptanceReportRow = memo(function RawAcceptanceReportRow({
 	index,
 	displayIndex,
 	processGroupOptions,
@@ -1524,117 +1571,54 @@ function RawAcceptanceReportRow({
 		items: RawAcceptanceReportFormSchema['items'];
 	}>();
 	const basename = `items.${index}` as const;
-
-	const showCategoryDropdown = useWatch({
+	const row = useWatch({
 		control: form.control,
-		name: `${basename}.showCategoryDropdown` as FieldName,
-	});
-	const showAdditionalCostDropdown = useWatch({
-		control: form.control,
-		name: `${basename}.showAdditionalCostDropdown` as FieldName,
-	});
-	const showContractLimitDropdown = useWatch({
-		control: form.control,
-		name: `${basename}.showContractLimitDropdown` as FieldName,
-	});
-	const showAssetDropdown = useWatch({
-		control: form.control,
-		name: `${basename}.showAssetDropdown` as FieldName,
-	});
-	const categoryValue = useWatch({
-		control: form.control,
-		name: `${basename}.category` as FieldName,
-	});
-	const categoryProcessGroupValue = useWatch({
-		control: form.control,
-		name: `${basename}.categoryProcessGroup` as FieldName,
-	});
-	const categoryProcessGroupIds = useWatch({
-		control: form.control,
-		name: `${basename}.categoryProcessGroupIds` as FieldName,
-	}) as string[] | undefined;
-	const categoryProductionOrderId = useWatch({
-		control: form.control,
-		name: `${basename}.categoryProductionOrderId` as FieldName,
-	});
-	const categoryEquipmentId = useWatch({
-		control: form.control,
-		name: `${basename}.categoryEquipmentId` as FieldName,
-	});
-	const categoryQuantity = useWatch({
-		control: form.control,
-		name: `${basename}.categoryQuantity` as FieldName,
-	});
-	const categoryEquipmentIds = useWatch({
-		control: form.control,
-		name: `${basename}.categoryEquipmentIds` as FieldName,
-	}) as string[] | undefined;
-	const categoryAllocations = useWatch({
-		control: form.control,
-		name: `${basename}.categoryAllocations` as FieldName,
-	}) as
+		name: basename as FieldName,
+	}) as RawAcceptanceReportRowValue | undefined;
+	const showCategoryDropdown = row?.showCategoryDropdown ?? false;
+	const showAdditionalCostDropdown = row?.showAdditionalCostDropdown ?? false;
+	const showContractLimitDropdown = row?.showContractLimitDropdown ?? false;
+	const showAssetDropdown = row?.showAssetDropdown ?? false;
+	const categoryValue = row?.category;
+	const categoryProcessGroupValue = row?.categoryProcessGroup;
+	const categoryProcessGroupIds = row?.categoryProcessGroupIds as
+		| string[]
+		| undefined;
+	const categoryProductionOrderId = row?.categoryProductionOrderId;
+	const categoryEquipmentId = row?.categoryEquipmentId;
+	const categoryQuantity = row?.categoryQuantity;
+	const categoryEquipmentIds = row?.categoryEquipmentIds as
+		| string[]
+		| undefined;
+	const categoryAllocations = row?.categoryAllocations as
 		| {
 				processGroupId: string | null;
 				quantity: number | null;
 				equipmentIds: string[];
 		  }[]
 		| undefined;
-	const additionalCostCategoryValue = useWatch({
-		control: form.control,
-		name: `${basename}.additionalCostCategory` as FieldName,
-	});
-	const additionalCostProductionOrderId = useWatch({
-		control: form.control,
-		name: `${basename}.additionalCostProductionOrderId` as FieldName,
-	});
-	const otherMaterialDetailValue = useWatch({
-		control: form.control,
-		name: `${basename}.otherMaterialDetail` as FieldName,
-	});
-	const contractLimitCategoryValue = useWatch({
-		control: form.control,
-		name: `${basename}.contractLimitCategory` as FieldName,
-	});
-	const contractLimitSubCategoriesValue = useWatch({
-		control: form.control,
-		name: `${basename}.contractLimitSubCategories` as FieldName,
-	}) as string[] | undefined;
-	const contractLimitBreakdown = useWatch({
-		control: form.control,
-		name: `${basename}.contractLimitBreakdown` as FieldName,
-	}) as ContractLimitBreakdown | undefined;
-	const exportedQuantityWatch = useWatch({
-		control: form.control,
-		name: `${basename}.exportedQuantity` as FieldName,
-	});
-	const materialTypeValue = useWatch({
-		control: form.control,
-		name: `${basename}.type` as FieldName,
-	});
-	const materialOrPartId = useWatch({
-		control: form.control,
-		name: `${basename}.materialOrPartId` as FieldName,
-	}) as string | undefined;
-	const itemTypeValue = useWatch({
-		control: form.control,
-		name: `${basename}.itemType` as FieldName,
-	});
-	const receivedTypes = useWatch({
-		control: form.control,
-		name: `${basename}.receivedTypes` as FieldName,
-	}) as string[] | undefined;
-	const exportedTypes = useWatch({
-		control: form.control,
-		name: `${basename}.exportedTypes` as FieldName,
-	}) as string[] | undefined;
-	const receivedBreakdown = useWatch({
-		control: form.control,
-		name: `${basename}.receivedBreakdown` as FieldName,
-	}) as QuantityBreakdown | undefined;
-	const exportedBreakdown = useWatch({
-		control: form.control,
-		name: `${basename}.exportedBreakdown` as FieldName,
-	}) as QuantityBreakdown | undefined;
+	const additionalCostCategoryValue = row?.additionalCostCategory;
+	const additionalCostProductionOrderId = row?.additionalCostProductionOrderId;
+	const otherMaterialDetailValue = row?.otherMaterialDetail;
+	const contractLimitCategoryValue = row?.contractLimitCategory;
+	const contractLimitSubCategoriesValue = row?.contractLimitSubCategories as
+		| string[]
+		| undefined;
+	const contractLimitBreakdown = row?.contractLimitBreakdown as
+		| ContractLimitBreakdown
+		| undefined;
+	const exportedQuantityWatch = row?.exportedQuantity;
+	const materialTypeValue = row?.type;
+	const materialOrPartId = row?.materialOrPartId;
+	const itemTypeValue = row?.itemType;
+	const receivedTypes = row?.receivedTypes as string[] | undefined;
+	const exportedTypes = row?.exportedTypes as string[] | undefined;
+	const receivedBreakdown = row?.receivedBreakdown as
+		| QuantityBreakdown
+		| undefined;
+	const exportedBreakdown = row?.exportedBreakdown as
+		| QuantityBreakdown
+		| undefined;
 
 	const defaultCategoryByType =
 		getDefaultCategoryByMaterialType(materialTypeValue);
@@ -2569,22 +2553,14 @@ function RawAcceptanceReportRow({
 		basename,
 	]);
 
-	const materialCode = form.watch(`${basename}.materialCode` as FieldName);
-	const materialName = form.watch(`${basename}.materialName` as FieldName);
-	const unit = form.watch(`${basename}.unit` as FieldName);
-	const receivedQuantity = form.watch(
-		`${basename}.receivedQuantity` as FieldName,
-	);
-	const watchedExportedQuantity = form.watch(
-		`${basename}.exportedQuantity` as FieldName,
-	);
-	const additionalCostQuantity = form.watch(
-		`${basename}.additionalCostQuantity` as FieldName,
-	);
-	const contractLimitQuantity = form.watch(
-		`${basename}.contractLimitQuantity` as FieldName,
-	);
-	const assetQuantity = form.watch(`${basename}.assetQuantity` as FieldName);
+	const materialCode = row?.materialCode;
+	const materialName = row?.materialName;
+	const unit = row?.unit;
+	const receivedQuantity = row?.receivedQuantity;
+	const watchedExportedQuantity = row?.exportedQuantity;
+	const additionalCostQuantity = row?.additionalCostQuantity;
+	const contractLimitQuantity = row?.contractLimitQuantity;
+	const assetQuantity = row?.assetQuantity;
 
 	// Calculate total and validation status
 	const calculateTotal = () => {
@@ -3177,4 +3153,4 @@ function RawAcceptanceReportRow({
 			</TableCell>
 		</TableRow>
 	);
-}
+});

@@ -82,9 +82,12 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
             // Group update model items by Id
             var itemsToUpdate = new Dictionary<Guid, UpdateAcceptanceReportItemDto>();
-            foreach (var item in updateModel.Items)
+            var itemSortOrders = new Dictionary<Guid, int>();
+            for (var itemIndex = 0; itemIndex < updateModel.Items.Count; itemIndex++)
             {
+                var item = updateModel.Items[itemIndex];
                 itemsToUpdate[item.Id] = item;
+                itemSortOrders[item.Id] = itemIndex;
             }
 
             // Delete items that are not in the update model
@@ -125,6 +128,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     var categoryAllocations = MapCategoryAllocations(updateItem.CategoryAllocations);
 
                     existingItem.Update(
+                        itemSortOrders[existingItem.Id],
                         processGroupId,
                         existingItem.MaterialId,
                         existingItem.PartId,

@@ -106,16 +106,6 @@ export const rawAcceptanceReportItemSchema = z
 	)
 	.refine(
 		(data) => {
-			if (!data.showCategoryDropdown || data.category !== 3) return true;
-			return data.categoryProductionOrderId != null;
-		},
-		{
-			message: 'Phải chọn quyết định, lệnh sản xuất',
-			path: ['categoryProductionOrderId'],
-		},
-	)
-	.refine(
-		(data) => {
 			const needsEquipment =
 				data.showCategoryDropdown &&
 				data.category === 3 &&
@@ -181,22 +171,6 @@ export const rawAcceptanceReportItemSchema = z
 		(data) => {
 			if (
 				!data.showAdditionalCostDropdown ||
-				(data.additionalCostCategory !== 2 && data.additionalCostCategory !== 3)
-			) {
-				return true;
-			}
-
-			return data.additionalCostProductionOrderId != null;
-		},
-		{
-			message: 'Phải chọn quyết định, lệnh sản xuất',
-			path: ['additionalCostProductionOrderId'],
-		},
-	)
-	.refine(
-		(data) => {
-			if (
-				!data.showAdditionalCostDropdown ||
 				data.additionalCostCategory !== 4
 			) {
 				return true;
@@ -255,7 +229,6 @@ export const rawAcceptanceReportItemSchema = z
 				data.category &&
 				(!requiresCategoryProcessGroup(data) ||
 					(data.categoryAllocations?.length ?? 0) > 0) &&
-				(data.category !== 3 || data.categoryProductionOrderId != null) &&
 				!(
 					data.category === 3 &&
 					data.type === 2 &&
@@ -268,9 +241,6 @@ export const rawAcceptanceReportItemSchema = z
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
-				((data.additionalCostCategory !== 2 &&
-					data.additionalCostCategory !== 3) ||
-					data.additionalCostProductionOrderId != null) &&
 				(data.additionalCostCategory !== 4 || data.otherMaterialDetail != null);
 			const hasContractLimitActive =
 				data.showContractLimitDropdown &&

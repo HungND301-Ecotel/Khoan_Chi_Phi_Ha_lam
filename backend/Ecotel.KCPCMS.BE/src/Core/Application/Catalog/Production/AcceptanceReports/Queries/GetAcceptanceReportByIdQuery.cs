@@ -38,7 +38,10 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
 
         var productionOutput = acceptanceReport.ProductionOutput;
 
-        var items = acceptanceReport.AcceptanceReportItems.Select(item => new AcceptanceReportDetailItemDto
+        var items = acceptanceReport.AcceptanceReportItems
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.CreatedOn)
+            .Select(item => new AcceptanceReportDetailItemDto
         {
             Id = item.Id,
             AcceptanceReportId = item.AcceptanceReportId,

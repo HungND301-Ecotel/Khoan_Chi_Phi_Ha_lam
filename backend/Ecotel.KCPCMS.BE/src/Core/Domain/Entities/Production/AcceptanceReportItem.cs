@@ -8,6 +8,7 @@ namespace Domain.Entities.Production;
 public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
+    public int SortOrder { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
     public Guid? PartId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
@@ -278,6 +279,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     public static AcceptanceReportItem Create(
         Guid acceptanceReportId,
+        int sortOrder,
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
@@ -310,6 +312,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         var item = new AcceptanceReportItem
         {
             AcceptanceReportId = acceptanceReportId,
+            SortOrder = sortOrder,
             MaterialId = materialId,
             PartId = partId,
             UsageTime = usageTime,
@@ -353,6 +356,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     }
 
     public void Update(
+        int sortOrder,
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
@@ -382,6 +386,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ValidateCategoryAllocations(partId, processGroupId, categoryProductionReference, materialsIncludedInContractRevenue,
             materialsIncludedInContractRevenueQuantity, categoryAllocations);
 
+        SortOrder = sortOrder;
         MaterialId = materialId;
         PartId = partId;
         UsageTime = usageTime;

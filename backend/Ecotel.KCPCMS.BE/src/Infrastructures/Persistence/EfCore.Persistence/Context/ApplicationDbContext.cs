@@ -1166,6 +1166,12 @@ public class ApplicationDbContext(
 
         // AcceptanceReportItem table
         modelBuilder.Entity<AcceptanceReportItem>()
+            .Property(i => i.SortOrder)
+            .HasDefaultValue(0);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .HasIndex(i => new { i.AcceptanceReportId, i.SortOrder })
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<AcceptanceReportItem>()
             .HasOne(i => i.ProcessGroup)
             .WithMany()
             .HasForeignKey(i => i.ProcessGroupId)

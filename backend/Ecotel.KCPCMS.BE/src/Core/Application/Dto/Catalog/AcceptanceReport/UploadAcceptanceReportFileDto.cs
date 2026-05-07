@@ -15,6 +15,7 @@ public record AcceptanceReportItemDto
     /// Id của AcceptanceReportItem (nếu update), null nếu tạo mới
     /// </summary>
     public Guid? ReportItemId { get; init; }
+    public int RowNumber { get; init; }
 
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }

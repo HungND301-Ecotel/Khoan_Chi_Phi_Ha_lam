@@ -103,8 +103,9 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             var itemsToCreate = new List<AcceptanceReportItem>();
             var itemsToUpdate = new List<AcceptanceReportItem>();
 
-            foreach (var item in createModel.Items)
+            for (var itemIndex = 0; itemIndex < createModel.Items.Count; itemIndex++)
             {
+                var item = createModel.Items[itemIndex];
                 var categoryReference = ProductionReference.Create(item.CategoryProductionOrderId, item.CategoryEquipmentId);
                 var additionalCostReference = ProductionReference.Create(item.AdditionalCostProductionOrderId, item.AdditionalCostEquipmentId);
                 var processGroupId = item.Type == AcceptanceReportItemType.Part
@@ -153,6 +154,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         ?? throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
 
                     existingItem.Update(
+                        itemIndex,
                         processGroupId,
                         materialId,
                         partId,
@@ -180,6 +182,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 {
                     var reportItem = AcceptanceReportItem.Create(
                         acceptanceReport.Id,
+                        itemIndex,
                         processGroupId,
                         materialId,
                         partId,

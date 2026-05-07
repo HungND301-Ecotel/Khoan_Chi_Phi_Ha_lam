@@ -8,6 +8,7 @@ export type MaterialImportRow = {
 // API Response types
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
+	rowNumber: number;
 	materialId?: string | null;
 	partId?: string | null;
 	partType?: number | null;

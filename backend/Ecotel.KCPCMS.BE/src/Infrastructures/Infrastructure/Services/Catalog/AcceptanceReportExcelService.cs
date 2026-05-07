@@ -139,6 +139,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 acceptanceReports.Add(new AcceptanceReportItemDto
                 {
                     ReportItemId = reportItemId,
+                    RowNumber = rowNumber,
                     MaterialId = materialId,
                     PartId = partId,
                     Type = type,
