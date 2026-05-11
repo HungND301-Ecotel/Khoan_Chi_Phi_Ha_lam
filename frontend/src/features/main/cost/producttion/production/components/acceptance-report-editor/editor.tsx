@@ -21,6 +21,7 @@ import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
 	ADDITIONAL_COST_OPTIONS,
+	type AcceptanceReportEditorMode,
 	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
@@ -29,6 +30,8 @@ import {
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
 	OTHER_MATERIAL_DETAIL_OPTIONS,
+	type ProcessGroupOption,
+	type ProductionOrderOption,
 	QuotaBasedMaterial,
 	RECEIVED_TYPE_OPTIONS,
 } from './types';
@@ -54,17 +57,6 @@ type MaterialsExtendedForm = { materials: MaterialRowValues[] };
 
 type RowPath = Path<MaterialsExtendedForm>;
 
-type ProcessGroupOption = {
-	value: string;
-	label: string;
-	type: number;
-};
-
-type ProductionOrderOption = {
-	value: string;
-	label: string;
-};
-
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -80,13 +72,14 @@ function parseEquipmentOptionId(value: string): string {
 		: value;
 }
 
-type MaterialImportFormProps = {
+type AcceptanceReportEditorProps = {
+	mode: AcceptanceReportEditorMode;
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	unresolvedCount: number;
-	onCreateUnresolved: (index: number) => void;
+	onCreateUnresolved?: (index: number) => void;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -385,14 +378,15 @@ const DEFAULT_OTHER_MATERIAL_DETAIL_VALUE =
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 
-export function MaterialImportForm({
+export function AcceptanceReportEditor({
+	mode,
 	onCancel,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
 	unresolvedCount,
 	onCreateUnresolved,
-}: MaterialImportFormProps) {
+}: AcceptanceReportEditorProps) {
 	const form = useFormContext<MaterialsForm>();
 	const { fields } = useFieldArray({
 		control: form.control,
@@ -477,7 +471,7 @@ export function MaterialImportForm({
 
 	return (
 		<div className='flex h-full flex-col gap-6'>
-			{unresolvedCount > 0 && (
+			{mode === 'import' && unresolvedCount > 0 && (
 				<div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
 					Có {unresolvedCount} dòng chưa tồn tại trong danh mục. Vui lòng tạo
 					mới từng dòng trước khi lưu phiếu nghiệm thu.
@@ -558,6 +552,7 @@ export function MaterialImportForm({
 									key={fields[index].id}
 									index={index}
 									displayIndex={pageIndex * pageSize + displayIndex + 1}
+									mode={mode}
 									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									orderOrEquipmentOptionsByItemId={
@@ -606,7 +601,10 @@ export function MaterialImportForm({
 					type='submit'
 					variant='default'
 					className='h-8 w-24 shadow-none hover:shadow-none'
-					disabled={form.formState.isSubmitting || unresolvedCount > 0}
+					disabled={
+						form.formState.isSubmitting ||
+						(mode === 'import' && unresolvedCount > 0)
+					}
 				>
 					{form.formState.isSubmitting ? <Spinner /> : 'Lưu'}
 				</Button>
@@ -721,6 +719,7 @@ function QuantityBreakdownInputs({
 const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
+	mode,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
@@ -728,10 +727,11 @@ const MaterialImportRow = memo(function MaterialImportRow({
 }: {
 	index: number;
 	displayIndex?: number;
+	mode: AcceptanceReportEditorMode;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
-	onCreateUnresolved: (index: number) => void;
+	onCreateUnresolved?: (index: number) => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
 	const basename = `materials.${index}` as const;
@@ -1648,14 +1648,16 @@ const MaterialImportRow = memo(function MaterialImportRow({
 										unresolvedInputClassName,
 									)}
 								/>
-								<Button
-									type='button'
-									variant='outline'
-									className='h-9 shrink-0 border-red-300 text-red-700 hover:bg-red-50'
-									onClick={() => onCreateUnresolved(index)}
-								>
-									+
-								</Button>
+								{mode === 'import' && onCreateUnresolved && (
+									<Button
+										type='button'
+										variant='outline'
+										className='h-9 shrink-0 border-red-300 text-red-700 hover:bg-red-50'
+										onClick={() => onCreateUnresolved(index)}
+									>
+										+
+									</Button>
+								)}
 							</div>
 							<span className='rounded bg-red-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-red-700'>
 								Chưa có trong danh mục

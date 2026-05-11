@@ -15,7 +15,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { DialogProvider } from '@/data/dialog/dialog-provider';
 import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
-import { RawAcceptanceReportForm } from '@/features/main/cost/producttion/production/raw-acceptance-report/form';
+import {
+	AcceptanceReportEditForm,
+	MaterialImportDialog,
+} from '@/features/main/cost/producttion/production/components/acceptance-report-editor';
 import {
 	AcceptanceReportDetail,
 	AcceptanceReportItem,
@@ -28,7 +31,6 @@ import UploadIcon from '@mui/icons-material/FileUpload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
-import { MaterialImportDialog } from '../material-import/dialog';
 import { RawAcceptanceReportDataTable } from './datatable';
 import { exportMaterialTemplate } from '../material-import/export-template';
 
@@ -134,7 +136,6 @@ export function RawAcceptanceReport({
 							}
 						>
 							<MaterialImportDialog
-								trigger={undefined}
 								onSave={handleImport}
 								productionOutputId={output?.id}
 							/>
@@ -181,7 +182,7 @@ export function RawAcceptanceReport({
 								</Button>
 							}
 						>
-							<RawAcceptanceReportForm
+							<AcceptanceReportEditForm
 								id={id}
 								plan={plan}
 								output={output}
