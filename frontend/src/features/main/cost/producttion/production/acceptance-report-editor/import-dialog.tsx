@@ -8,10 +8,10 @@ import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { Resolver, useForm } from 'react-hook-form';
-import { UnresolvedCatalogCreateDialog } from '../../material-import/unresolved/unresolved-catalog-create-dialog';
-import type { UnresolvedCatalogCreateSelection } from '../../material-import/unresolved/unresolved-catalog-create-dialog';
-import { UnresolvedCreateDialog } from '../../material-import/unresolved/unresolved-create-dialog';
-import type { UnresolvedCreateSchema } from '../../material-import/unresolved/unresolved-create-schema';
+import { UnresolvedCatalogCreateDialog } from '../raw-acceptance-report/unresolved/unresolved-catalog-create-dialog';
+import type { UnresolvedCatalogCreateSelection } from '../raw-acceptance-report/unresolved/unresolved-catalog-create-dialog';
+import { UnresolvedCreateDialog } from '../raw-acceptance-report/unresolved/unresolved-create-dialog';
+import type { UnresolvedCreateSchema } from '../raw-acceptance-report/unresolved/unresolved-create-schema';
 import { AcceptanceReportEditor } from './editor';
 import {
 	acceptanceReportEditorFormSchema,

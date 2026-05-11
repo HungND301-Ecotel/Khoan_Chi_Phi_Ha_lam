@@ -18,7 +18,7 @@ import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import {
 	AcceptanceReportEditForm,
 	MaterialImportDialog,
-} from '@/features/main/cost/producttion/production/components/acceptance-report-editor';
+} from '@/features/main/cost/producttion/production/acceptance-report-editor';
 import {
 	AcceptanceReportDetail,
 	AcceptanceReportItem,
@@ -32,7 +32,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import { RawAcceptanceReportDataTable } from './datatable';
-import { exportMaterialTemplate } from '../material-import/export-template';
+import { exportMaterialTemplate } from './export-template';
 
 // Helper function to convert API response to RawAcceptanceReportItem
 const convertAcceptanceReportItemToRawItem = (
