@@ -204,7 +204,8 @@ public class ProductionController : BaseNoAuthController
         var result = await Mediator.Send(new GetSctxEquipmentRevenueByYearQuery(
             request.FromYear,
             request.ToYear,
-            request.EquipmentId));
+            request.EquipmentId,
+            request.DepartmentId));
 
         return Ok(result, MessageCommon.GetDataSuccess);
     }

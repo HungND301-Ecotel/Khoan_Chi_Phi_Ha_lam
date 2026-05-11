@@ -5,6 +5,7 @@ public class GetSctxEquipmentRevenueRequest
     public int FromYear { get; set; }
     public int ToYear { get; set; }
     public Guid EquipmentId { get; set; }
+    public Guid? DepartmentId { get; set; }
 }
 
 public class SctxEquipmentRevenueByMonthDto
