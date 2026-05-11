@@ -5,7 +5,17 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber, FormNumberInput } from '@/components/form/form-number';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from '@/components/ui/input-group';
 import { Input } from '@/components/ui/input';
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	Table,
@@ -15,12 +25,15 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
 	ADDITIONAL_COST_OPTIONS,
+	type AcceptanceReportEditorMode,
 	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
@@ -29,6 +42,8 @@ import {
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
 	OTHER_MATERIAL_DETAIL_OPTIONS,
+	type ProcessGroupOption,
+	type ProductionOrderOption,
 	QuotaBasedMaterial,
 	RECEIVED_TYPE_OPTIONS,
 } from './types';
@@ -54,17 +69,6 @@ type MaterialsExtendedForm = { materials: MaterialRowValues[] };
 
 type RowPath = Path<MaterialsExtendedForm>;
 
-type ProcessGroupOption = {
-	value: string;
-	label: string;
-	type: number;
-};
-
-type ProductionOrderOption = {
-	value: string;
-	label: string;
-};
-
 const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 const EQUIPMENT_OPTION_PREFIX = 'equipment:';
 
@@ -80,14 +84,45 @@ function parseEquipmentOptionId(value: string): string {
 		: value;
 }
 
-type MaterialImportFormProps = {
+type AcceptanceReportEditorProps = {
+	mode: AcceptanceReportEditorMode;
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	unresolvedCount: number;
-	onCreateUnresolved: (index: number) => void;
+	onCreateUnresolved?: (index: number) => void;
 };
+
+type EditFilterKey =
+	| 'category'
+	| 'additional-cost'
+	| 'contract-limit'
+	| 'asset';
+
+type EditFilterOption = {
+	key: EditFilterKey;
+	label: string;
+};
+
+const EDIT_FILTER_OPTIONS: EditFilterOption[] = [
+	{
+		key: 'category',
+		label: 'Vật tư tính vào doanh thu khoán',
+	},
+	{
+		key: 'additional-cost',
+		label: 'Bổ sung chi phí',
+	},
+	{
+		key: 'contract-limit',
+		label: 'Vật tư theo hạn mức',
+	},
+	{
+		key: 'asset',
+		label: 'Tài sản',
+	},
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -313,6 +348,12 @@ type MaterialBadgeFilterOption = {
 	className: string;
 };
 
+type ToolbarFilterOption = {
+	key: string;
+	label: string;
+	className?: string;
+};
+
 function getMaterialBadgeFilterKey(
 	type?: number | null,
 	itemType?: number | null,
@@ -382,25 +423,36 @@ const DEFAULT_CONTRACT_LIMIT_CATEGORY_VALUE =
 	CONTRACT_LIMIT_OPTIONS[0]?.value ?? null;
 const DEFAULT_OTHER_MATERIAL_DETAIL_VALUE =
 	OTHER_MATERIAL_DETAIL_OPTIONS[0]?.value ?? null;
+const TOOLBAR_BUTTON_CLASS_NAME =
+	'hover:bg-muted flex h-10 min-w-24 cursor-pointer bg-white shadow-[0px_3px_1px_-2px_rgba(0,0,0,0.2),0px_2px_2px_0px_rgba(0,0,0,0.14),0px_1px_5px_0px_rgba(0,0,0,0.12)]';
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 
-export function MaterialImportForm({
+export function AcceptanceReportEditor({
+	mode,
 	onCancel,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
 	unresolvedCount,
 	onCreateUnresolved,
-}: MaterialImportFormProps) {
+}: AcceptanceReportEditorProps) {
 	const form = useFormContext<MaterialsForm>();
 	const { fields } = useFieldArray({
 		control: form.control,
 		name: 'materials',
 	});
+	const watchedMaterials = useWatch({
+		control: form.control,
+		name: 'materials',
+	}) as MaterialRowValues[] | undefined;
 	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
 		string[]
 	>([]);
+	const [selectedEditFilterKeys, setSelectedEditFilterKeys] = useState<
+		EditFilterKey[]
+	>(EDIT_FILTER_OPTIONS.map((option) => option.key));
+	const [searchKeyword, setSearchKeyword] = useState('');
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
 	const materialBadgeFilters = useMemo(() => {
@@ -416,22 +468,99 @@ export function MaterialImportForm({
 		}
 		return Array.from(map.values());
 	}, [fields]);
+	const toolbarFilterOptions = useMemo<ToolbarFilterOption[]>(
+		() =>
+			mode === 'edit'
+				? EDIT_FILTER_OPTIONS.map((option) => ({
+						key: option.key,
+						label: option.label,
+					}))
+				: materialBadgeFilters.map((option) => ({
+						key: option.key,
+						label: option.label,
+						className: option.className,
+					})),
+		[materialBadgeFilters, mode],
+	);
+	const selectedToolbarFilterKeys =
+		mode === 'edit'
+			? selectedEditFilterKeys
+			: (selectedMaterialBadgeKeys as string[]);
 	const visibleMaterialIndexes = useMemo(() => {
-		if (selectedMaterialBadgeKeys.length === 0) {
-			return fields.map((_, index) => index);
+		const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
+
+		if (mode === 'edit') {
+			return fields
+				.map((_, index) => index)
+				.filter((index) => {
+					const item = watchedMaterials?.[index] ?? fields[index];
+					if (!item) return true;
+
+					const materialCode = item.materialCode?.toLowerCase() ?? '';
+					const materialName = item.materialName?.toLowerCase() ?? '';
+					const matchesSearch =
+						!normalizedSearchKeyword ||
+						materialCode.includes(normalizedSearchKeyword) ||
+						materialName.includes(normalizedSearchKeyword);
+
+					if (!matchesSearch) {
+						return false;
+					}
+
+					const matchesFilter =
+						selectedEditFilterKeys.length === 0 ||
+						(selectedEditFilterKeys.includes('category') &&
+							Boolean(item.showCategoryDropdown)) ||
+						(selectedEditFilterKeys.includes('additional-cost') &&
+							Boolean(item.showAdditionalCostDropdown)) ||
+						(selectedEditFilterKeys.includes('contract-limit') &&
+							Boolean(item.showContractLimitDropdown)) ||
+						(selectedEditFilterKeys.includes('asset') &&
+							Boolean(item.showAssetDropdown));
+
+					if (!matchesFilter) {
+						return false;
+					}
+					return true;
+				});
 		}
 
 		return fields
 			.map((_, index) => index)
 			.filter((index) => {
-				const item = fields[index];
+				const item = watchedMaterials?.[index] ?? fields[index];
+				if (!item) {
+					return true;
+				}
+
+				const materialCode = item.materialCode?.toLowerCase() ?? '';
+				const materialName = item.materialName?.toLowerCase() ?? '';
+				const matchesSearch =
+					!normalizedSearchKeyword ||
+					materialCode.includes(normalizedSearchKeyword) ||
+					materialName.includes(normalizedSearchKeyword);
+
+				if (!matchesSearch) {
+					return false;
+				}
+
 				if (item?.resolutionStatus === 'unresolved') {
+					return true;
+				}
+				if (selectedMaterialBadgeKeys.length === 0) {
 					return true;
 				}
 				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
 				return selectedMaterialBadgeKeys.includes(key);
 			});
-	}, [fields, selectedMaterialBadgeKeys]);
+	}, [
+		fields,
+		mode,
+		searchKeyword,
+		selectedEditFilterKeys,
+		selectedMaterialBadgeKeys,
+		watchedMaterials,
+	]);
 	const paginatedMaterialIndexes = useMemo(() => {
 		const start = pageIndex * pageSize;
 		return visibleMaterialIndexes.slice(start, start + pageSize);
@@ -439,6 +568,10 @@ export function MaterialImportForm({
 	const pageCount = Math.ceil(visibleMaterialIndexes.length / pageSize);
 
 	useEffect(() => {
+		if (mode === 'edit') {
+			return;
+		}
+
 		if (materialBadgeFilters.length === 0) {
 			setSelectedMaterialBadgeKeys([]);
 			return;
@@ -454,7 +587,7 @@ export function MaterialImportForm({
 			}
 			return next;
 		});
-	}, [materialBadgeFilters]);
+	}, [materialBadgeFilters, mode]);
 
 	useEffect(() => {
 		if (pageCount === 0) {
@@ -475,43 +608,120 @@ export function MaterialImportForm({
 		}
 	}, [form.formState.errors]);
 
+	const toggleToolbarFilter = (key: string, checked: boolean) => {
+		if (mode === 'edit') {
+			setSelectedEditFilterKeys((prev) => {
+				if (checked) {
+					return prev.includes(key as EditFilterKey)
+						? prev
+						: [...prev, key as EditFilterKey];
+				}
+				return prev.filter((item) => item !== key);
+			});
+		} else {
+			setSelectedMaterialBadgeKeys((prev) => {
+				if (checked) {
+					return prev.includes(key) ? prev : [...prev, key];
+				}
+				return prev.filter((item) => item !== key);
+			});
+		}
+		setPageIndex(0);
+	};
+
 	return (
 		<div className='flex h-full flex-col gap-6'>
-			{unresolvedCount > 0 && (
+			{mode === 'import' && unresolvedCount > 0 && (
 				<div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800'>
 					Có {unresolvedCount} dòng chưa tồn tại trong danh mục. Vui lòng tạo
 					mới từng dòng trước khi lưu phiếu nghiệm thu.
 				</div>
 			)}
-			{materialBadgeFilters.length > 0 && (
+			{(mode === 'edit' || toolbarFilterOptions.length > 0) && (
 				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
-					<div className='flex flex-wrap gap-3'>
-						{materialBadgeFilters.map((option) => {
-							const checked = selectedMaterialBadgeKeys.includes(option.key);
-							return (
-								<label
-									key={option.key}
-									className='inline-flex cursor-pointer items-center gap-2'
-								>
-									<input
-										type='checkbox'
-										className='h-4 w-4 rounded border-slate-300'
-										checked={checked}
-										onChange={(event) => {
-											setSelectedMaterialBadgeKeys((prev) => {
-												if (event.target.checked) {
-													return prev.includes(option.key)
-														? prev
-														: [...prev, option.key];
-												}
-												return prev.filter((key) => key !== option.key);
-											});
-										}}
-									/>
-									<span className={option.className}>{option.label}</span>
-								</label>
-							);
-						})}
+					<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+						<InputGroup className='max-w-full rounded-sm border-[#d4d5d7] shadow-none hover:border-black lg:max-w-md'>
+							<InputGroupInput
+								placeholder='Tìm theo mã vật tư hoặc tên vật tư'
+								value={searchKeyword}
+								onChange={(event) => {
+									setSearchKeyword(event.target.value);
+									setPageIndex(0);
+								}}
+								className='peer bg-white'
+							/>
+							<InputGroupAddon align='inline-end'>
+								<SearchIcon className='size-4' />
+							</InputGroupAddon>
+						</InputGroup>
+
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button variant='ghost' className={TOOLBAR_BUTTON_CLASS_NAME}>
+									<FilterListIcon fontSize='small' />
+									<span className='font-medium'>Lọc</span>
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent align='end' className='w-80 p-3'>
+								<div className='space-y-3'>
+									<div className='flex items-center justify-between gap-3'>
+										<p className='text-sm font-medium text-slate-900'>Bộ lọc</p>
+										{selectedToolbarFilterKeys.length > 0 && (
+											<Button
+												type='button'
+												variant='ghost'
+												size='sm'
+												className='h-auto px-2 py-1 text-xs'
+												onClick={() => {
+													if (mode === 'edit') {
+														setSelectedEditFilterKeys([]);
+													} else {
+														setSelectedMaterialBadgeKeys([]);
+													}
+													setPageIndex(0);
+												}}
+											>
+												Xoá lọc
+											</Button>
+										)}
+									</div>
+									<div className='space-y-2'>
+										{toolbarFilterOptions.map((option) => {
+											const checked = selectedToolbarFilterKeys.includes(
+												option.key,
+											);
+											return (
+												<label
+													key={option.key}
+													className='flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-slate-50'
+												>
+													<input
+														type='checkbox'
+														className='h-4 w-4 rounded border-slate-300'
+														checked={checked}
+														onChange={(event) =>
+															toggleToolbarFilter(
+																option.key,
+																event.target.checked,
+															)
+														}
+													/>
+													{option.className ? (
+														<span className={option.className}>
+															{option.label}
+														</span>
+													) : (
+														<span className='text-sm text-slate-700'>
+															{option.label}
+														</span>
+													)}
+												</label>
+											);
+										})}
+									</div>
+								</div>
+							</PopoverContent>
+						</Popover>
 					</div>
 				</div>
 			)}
@@ -558,6 +768,7 @@ export function MaterialImportForm({
 									key={fields[index].id}
 									index={index}
 									displayIndex={pageIndex * pageSize + displayIndex + 1}
+									mode={mode}
 									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									orderOrEquipmentOptionsByItemId={
@@ -606,7 +817,10 @@ export function MaterialImportForm({
 					type='submit'
 					variant='default'
 					className='h-8 w-24 shadow-none hover:shadow-none'
-					disabled={form.formState.isSubmitting || unresolvedCount > 0}
+					disabled={
+						form.formState.isSubmitting ||
+						(mode === 'import' && unresolvedCount > 0)
+					}
 				>
 					{form.formState.isSubmitting ? <Spinner /> : 'Lưu'}
 				</Button>
@@ -721,6 +935,7 @@ function QuantityBreakdownInputs({
 const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
+	mode,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
@@ -728,10 +943,11 @@ const MaterialImportRow = memo(function MaterialImportRow({
 }: {
 	index: number;
 	displayIndex?: number;
+	mode: AcceptanceReportEditorMode;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
-	onCreateUnresolved: (index: number) => void;
+	onCreateUnresolved?: (index: number) => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
 	const basename = `materials.${index}` as const;
@@ -1648,14 +1864,16 @@ const MaterialImportRow = memo(function MaterialImportRow({
 										unresolvedInputClassName,
 									)}
 								/>
-								<Button
-									type='button'
-									variant='outline'
-									className='h-9 shrink-0 border-red-300 text-red-700 hover:bg-red-50'
-									onClick={() => onCreateUnresolved(index)}
-								>
-									+
-								</Button>
+								{mode === 'import' && onCreateUnresolved && (
+									<Button
+										type='button'
+										variant='outline'
+										className='h-9 shrink-0 border-red-300 text-red-700 hover:bg-red-50'
+										onClick={() => onCreateUnresolved(index)}
+									>
+										+
+									</Button>
+								)}
 							</div>
 							<span className='rounded bg-red-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-red-700'>
 								Chưa có trong danh mục

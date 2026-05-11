@@ -29,6 +29,7 @@ const categoryAllocationSchema = z.object({
 export const materialFormSchema = z
 	.object({
 		id: z.string().optional(),
+		usageTime: z.number().optional(),
 		acceptanceReportItemId: z.string().optional(),
 		materialOrPartId: z.string().optional(),
 		resolutionStatus: z.enum(['resolved', 'unresolved']).optional(),
@@ -298,8 +299,13 @@ export type MaterialFormInput = z.input<typeof materialFormSchema>;
 
 export type MaterialFormSchema = z.output<typeof materialFormSchema>;
 
+export type AcceptanceReportEditorRowInput = MaterialFormInput;
+
+export type AcceptanceReportEditorRow = MaterialFormSchema;
+
 export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	id: undefined,
+	usageTime: undefined,
 	acceptanceReportItemId: undefined,
 	materialOrPartId: undefined,
 	resolutionStatus: 'resolved',
@@ -352,3 +358,9 @@ export const materialsFormSchema = z.object({
 export type MaterialsFormInput = z.input<typeof materialsFormSchema>;
 
 export type MaterialsFormSchema = z.output<typeof materialsFormSchema>;
+
+export const acceptanceReportEditorFormSchema = materialsFormSchema;
+
+export type AcceptanceReportEditorFormInput = MaterialsFormInput;
+
+export type AcceptanceReportEditorFormSchema = MaterialsFormSchema;

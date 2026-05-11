@@ -393,7 +393,14 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             var totalAllocationQuantity = item.CategoryAllocations.Sum(x => x.Quantity);
             if (totalAllocationQuantity <= 0)
             {
-                return [];
+                return
+                [
+                    (
+                        CategoryAllocationId: (Guid?)null,
+                        ProcessGroupId: item.ProcessGroupId,
+                        Quantity: residualQuantity
+                    )
+                ];
             }
 
             return item.CategoryAllocations

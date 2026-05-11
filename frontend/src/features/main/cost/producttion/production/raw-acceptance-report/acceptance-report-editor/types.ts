@@ -1,11 +1,27 @@
-// Raw data from Excel file
-export type MaterialImportRow = {
-	materialCode: string;
-	quantityReceived: number;
-	quantityExported: number;
+export type AcceptanceReportEditorMode = 'import' | 'edit';
+
+export type ProcessGroupOption = {
+	value: string;
+	label: string;
+	type?: number;
 };
 
-// API Response types
+export type ProductionOrderOption = {
+	value: string;
+	label: string;
+};
+
+export type ImportedItemMeta = {
+	materialOrPartId: string;
+	type: number;
+};
+
+export type Equipment = {
+	id: string;
+	code: string;
+	name: string;
+};
+
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
@@ -55,13 +71,6 @@ export type ProductionOrder = {
 	endMonth: string;
 };
 
-export type Equipment = {
-	id: string;
-	code: string;
-	name: string;
-};
-
-// Enums as const objects (for TypeScript erasableSyntaxOnly)
 export const MaterialsIncludedInContractRevenue = {
 	None: 1,
 	Material: 2,
@@ -98,7 +107,48 @@ export const OtherMaterialDetail = {
 	VatTuPhucVuCongTacAnToan: 3,
 } as const;
 
-// Create request types
+export const MaterialType = {
+	Material: 1,
+	SparePart: 2,
+} as const;
+
+export const ItemType = {
+	InContract: 1,
+	OutContract: 2,
+	SafetyAndWelfare: 3,
+	Resource: 4,
+	QuotaMaterials: 5,
+} as const;
+
+export const IssuedQuantityType = {
+	LinhVatTuTraPhieu: 1,
+	VayVhuaTraPhieu: 2,
+	TraPhieuThangTruoc: 3,
+	LinhKhac: 4,
+} as const;
+
+export const ShippedQuantityType = {
+	XuatChoSanXuat: 1,
+	XuatKhac: 2,
+	QuyetToanGiaoKhoan: 3,
+} as const;
+
+export type QuantityDetail = {
+	type: number;
+	quantity: number;
+};
+
+export type CategoryAllocation = {
+	processGroupId: string | null;
+	quantity: number | null;
+	equipmentIds: string[];
+};
+
+export type QuotaBasedMaterialQuantityDetail = {
+	type: number;
+	quantity: number;
+};
+
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
 	materialId?: string | null;
@@ -133,7 +183,6 @@ export type CreateAcceptanceReportRequest = {
 	items: CreateAcceptanceReportItem[];
 };
 
-// Dropdown options
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
 	{ value: MaterialsIncludedInContractRevenue.Maintain, label: 'SCTX' },
@@ -155,34 +204,6 @@ export const CONTRACT_LIMIT_OPTIONS = [
 	{ value: QuotaBasedMaterial.MineTimber, label: 'Gỗ lò' },
 ];
 
-// Material type for row highlighting
-export const MaterialType = {
-	Material: 1, // Vật liệu
-	SparePart: 2, // Phụ tùng (SCTX)
-} as const;
-
-export const ItemType = {
-	InContract: 1,
-	OutContract: 2,
-	SafetyAndWelfare: 3,
-	Resource: 4,
-	QuotaMaterials: 5,
-} as const;
-
-export const IssuedQuantityType = {
-	LinhVatTuTraPhieu: 1,
-	VayVhuaTraPhieu: 2,
-	TraPhieuThangTruoc: 3,
-	LinhKhac: 4,
-} as const;
-
-export const ShippedQuantityType = {
-	XuatChoSanXuat: 1,
-	XuatKhac: 2,
-	QuyetToanGiaoKhoan: 3,
-} as const;
-
-// Secondary options for contract limit (MineSupport / SupportAccessories only)
 export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [
 	{ value: QuotaBasedMaterialType.New, label: 'Lĩnh mới' },
 	{ value: QuotaBasedMaterialType.Reusable, label: 'Lĩnh tái sử dụng' },
@@ -222,18 +243,15 @@ export const SHIPPED_DETAIL_TYPE_BY_KEY = {
 	settlement: ShippedQuantityType.QuyetToanGiaoKhoan,
 } as const;
 
-export type QuantityDetail = {
-	type: number;
-	quantity: number;
+export const ISSUED_DETAIL_KEY_BY_TYPE: Record<number, string> = {
+	[IssuedQuantityType.LinhVatTuTraPhieu]: 'receipt_voucher',
+	[IssuedQuantityType.VayVhuaTraPhieu]: 'loan_no_voucher',
+	[IssuedQuantityType.TraPhieuThangTruoc]: 'prev_month_voucher',
+	[IssuedQuantityType.LinhKhac]: 'other_received',
 };
 
-export type CategoryAllocation = {
-	processGroupId: string | null;
-	quantity: number | null;
-	equipmentIds: string[];
-};
-
-export type QuotaBasedMaterialQuantityDetail = {
-	type: number;
-	quantity: number;
+export const SHIPPED_DETAIL_KEY_BY_TYPE: Record<number, string> = {
+	[ShippedQuantityType.XuatChoSanXuat]: 'production',
+	[ShippedQuantityType.XuatKhac]: 'other_export',
+	[ShippedQuantityType.QuyetToanGiaoKhoan]: 'settlement',
 };
