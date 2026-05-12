@@ -42,6 +42,7 @@ public record AcceptanceReportItemLogDto
 
     // Additional info
     public string? Note { get; init; }
+    public bool IsAnchorSeed { get; init; }
 }
 
 public record AcceptanceReportItemLogProcessGroupDto

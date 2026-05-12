@@ -37,6 +37,7 @@ public record DetailLongTermTrackingItemDto
     public double StandardOutput { get; init; }
     public bool IsNewItem { get; init; }
     public bool IsFullAccounting { get; init; }
+    public bool IsAnchorSeed { get; init; }
 }
 
 public record DetailLongTermTrackingProcessGroupDto

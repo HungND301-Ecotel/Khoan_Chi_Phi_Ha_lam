@@ -1,4 +1,5 @@
 import { ActionDialogProps, DataTable } from '@/components/datatable';
+import { Accordion } from '@/components/ui/accordion';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
@@ -10,6 +11,7 @@ import {
 } from '@/features/main/cost/producttion/production/columns';
 import { ProductionExpand } from '@/features/main/cost/producttion/production/production-expand';
 import { ProductionForm } from '@/features/main/cost/producttion/production/production-form';
+import { LongtermAnchorSeedSection } from '@/features/main/cost/producttion/production/longterm-anchor-seed';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -61,6 +63,39 @@ function DepartmentProductionOutputsTable({
 			selectAllPageRows={selectAllRows}
 			hasPagination={false}
 		/>
+	);
+}
+
+type DepartmentProductionExpandProps = {
+	row: DepartmentProductionGroup;
+	productions: Production[];
+	selectAllRows: boolean;
+	onSelectedRowsChange: (departmentId: string, rows: Production[]) => void;
+	onRefresh: () => void;
+};
+
+function DepartmentProductionExpand({
+	row,
+	productions,
+	selectAllRows,
+	onSelectedRowsChange,
+	onRefresh,
+}: DepartmentProductionExpandProps) {
+	return (
+		<div className='px-2'>
+			<Accordion type='multiple' className='flex flex-col gap-2'>
+				<LongtermAnchorSeedSection departmentId={row.id} />
+			</Accordion>
+			<div className='pt-2'>
+				<DepartmentProductionOutputsTable
+					departmentId={row.id}
+					productions={productions}
+					selectAllRows={selectAllRows}
+					onSelectedRowsChange={onSelectedRowsChange}
+					onRefresh={onRefresh}
+				/>
+			</div>
+		</div>
 	);
 }
 
@@ -234,8 +269,8 @@ export function MainCostProductionCostPage() {
 			}
 			hasPagination={false}
 			onExpand={({ row }) => (
-				<DepartmentProductionOutputsTable
-					departmentId={row?.id ?? ''}
+				<DepartmentProductionExpand
+					row={row as DepartmentProductionGroup}
 					productions={allProductions}
 					selectAllRows={selectedDepartmentIds.includes(row?.id ?? '')}
 					onSelectedRowsChange={handleOutputSelectionChange}

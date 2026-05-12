@@ -3,6 +3,7 @@ using System;
 using EfCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Migrators.PostgreSQL.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260511161248_addLongTermAnchorSeedItem")]
+    partial class addLongTermAnchorSeedItem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3499,53 +3502,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("LongTermAnchorSeedItem", "Production");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Production.LongTermAnchorSeedProcessGroupMetric", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("CreatedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("CreatedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long?>("DeletedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("LastModifiedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LastModifiedOn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LongTermAnchorSeedId")
-                        .HasColumnType("uuid");
-
-                    b.Property<double>("PlannedOutput")
-                        .HasColumnType("double precision");
-
-                    b.Property<Guid>("ProcessGroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<double>("StandardOutput")
-                        .HasColumnType("double precision");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProcessGroupId");
-
-                    b.HasIndex("LongTermAnchorSeedId", "ProcessGroupId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedOn\" IS NULL");
-
-                    b.ToTable("LongTermAnchorSeedProcessGroupMetric", "Production");
-                });
-
             modelBuilder.Entity("Domain.Entities.Production.LumpSumQuarterCustomCost", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4940,25 +4896,6 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("ProcessGroup");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Production.LongTermAnchorSeedProcessGroupMetric", b =>
-                {
-                    b.HasOne("Domain.Entities.Production.LongTermAnchorSeed", "LongTermAnchorSeed")
-                        .WithMany("ProcessGroupMetrics")
-                        .HasForeignKey("LongTermAnchorSeedId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
-                        .WithMany()
-                        .HasForeignKey("ProcessGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LongTermAnchorSeed");
-
-                    b.Navigation("ProcessGroup");
-                });
-
             modelBuilder.Entity("Domain.Entities.Production.LumpSumQuarterCustomCost", b =>
                 {
                     b.HasOne("Domain.Entities.Index.ProcessGroup", "ProcessGroup")
@@ -5451,8 +5388,6 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Production.LongTermAnchorSeed", b =>
                 {
                     b.Navigation("Items");
-
-                    b.Navigation("ProcessGroupMetrics");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutput", b =>

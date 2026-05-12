@@ -1,5 +1,7 @@
 ﻿using Application.Catalog.Production.AcceptanceReports.Commands;
 using Application.Catalog.Production.AcceptanceReports.Queries;
+using Application.Catalog.Production.LongTermAnchorSeeds.Commands;
+using Application.Catalog.Production.LongTermAnchorSeeds.Queries;
 using Application.Catalog.Production.ProductionOutputs.Commands;
 using Application.Catalog.Production.ProductionOutputs.Queries;
 using Application.Dto.Catalog.AcceptanceReport;
@@ -208,6 +210,44 @@ public class ProductionController : BaseNoAuthController
             request.DepartmentId));
 
         return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("Department/{departmentId:guid}/long-term-anchor-seed")]
+    [OpenApiOperation("Get Long-term Anchor Seed Detail", "Get department long-term anchor seed detail")]
+    public async Task<IActionResult> GetLongTermAnchorSeedDetail([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetLongTermAnchorSeedDetailQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("Department/long-term-anchor-seed")]
+    [OpenApiOperation("Update Long-term Anchor Seed", "Update department long-term anchor seed items")]
+    public async Task<IActionResult> UpdateLongTermAnchorSeed([FromBody] UpdateLongTermAnchorSeedRequestDto request)
+    {
+        var result = await Mediator.Send(new UpdateLongTermAnchorSeedCommand(request));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPost("Department/{departmentId:guid}/long-term-anchor-seed/upload-file")]
+    [OpenApiOperation("Upload Long-term Anchor Seed File", "Upload department long-term anchor seed excel file")]
+    [DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadLongTermAnchorSeedFile([FromForm] IFormFile file, [FromRoute] Guid departmentId)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(CustomResponseMessage.FileEmpty);
+        }
+
+        var result = await Mediator.Send(new UploadLongTermAnchorSeedFileCommand(file, departmentId));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpGet("Department/{departmentId:guid}/long-term-anchor-seed/export")]
+    [OpenApiOperation("Export Long-term Anchor Seed File", "Export department long-term anchor seed excel file")]
+    public async Task<IActionResult> ExportLongTermAnchorSeedFile([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new ExportLongTermAnchorSeedExcelQuery(departmentId));
+        return File(result.FileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.FileName);
     }
 
     #endregion

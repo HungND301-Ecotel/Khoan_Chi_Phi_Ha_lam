@@ -25,6 +25,7 @@ export type LongtermMaterialDetailItem = {
 	accountedValueThisPeriod: number; // GIÁ TRỊ DÀI KỲ HẠCH TOÁN KỲ NÀY (Đồng)
 	pendingValueEndPeriod: number; // GIÁ TRỊ CUỐI KỲ CHỜ HẠCH TOÁN KỲ SAU (Đồng)
 	isNewItem?: boolean;
+	isAnchorSeed?: boolean;
 	note?: string; // Ghi chú
 };
 

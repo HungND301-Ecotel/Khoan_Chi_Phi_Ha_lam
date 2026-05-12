@@ -560,6 +560,15 @@ export const API = {
 			UPDATE_LONG_TERM_TRACKING:
 				'/v1/production/acceptancereport/long-term-tracking/list',
 		},
+		LONG_TERM_ANCHOR_SEED: {
+			DETAIL: (departmentId: string) =>
+				`/v1/production/department/${departmentId}/long-term-anchor-seed`,
+			UPDATE: '/v1/production/department/long-term-anchor-seed',
+			UPLOAD_FILE: (departmentId: string) =>
+				`/v1/production/department/${departmentId}/long-term-anchor-seed/upload-file`,
+			EXPORT: (departmentId: string) =>
+				`/v1/production/department/${departmentId}/long-term-anchor-seed/export`,
+		},
 	},
 
 	AUTH: {

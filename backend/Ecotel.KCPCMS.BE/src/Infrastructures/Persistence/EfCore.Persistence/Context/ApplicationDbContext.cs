@@ -112,6 +112,9 @@ public class ApplicationDbContext(
     public DbSet<AcceptanceReportItemShippedDetail> AcceptanceReportItemShippedDetails => Set<AcceptanceReportItemShippedDetail>();
     public DbSet<AcceptanceReportItemIssuedDetail> AcceptanceReportItemIssuedDetails => Set<AcceptanceReportItemIssuedDetail>();
     public DbSet<AcceptanceReportItemLog> AcceptanceReportItemLogs => Set<AcceptanceReportItemLog>();
+    public DbSet<LongTermAnchorSeed> LongTermAnchorSeeds => Set<LongTermAnchorSeed>();
+    public DbSet<LongTermAnchorSeedItem> LongTermAnchorSeedItems => Set<LongTermAnchorSeedItem>();
+    public DbSet<LongTermAnchorSeedProcessGroupMetric> LongTermAnchorSeedProcessGroupMetrics => Set<LongTermAnchorSeedProcessGroupMetric>();
     public DbSet<LumpSumQuarterCustomCost> LumpSumQuarterCustomCosts => Set<LumpSumQuarterCustomCost>();
     #endregion
 
@@ -1097,6 +1100,9 @@ public class ApplicationDbContext(
         modelBuilder.Entity<AcceptanceReportItemIssuedDetail>().ToTable(nameof(AcceptanceReportItemIssuedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemShippedDetail>().ToTable(nameof(AcceptanceReportItemShippedDetail), "Production");
         modelBuilder.Entity<AcceptanceReportItemLog>().ToTable(nameof(AcceptanceReportItemLog), "Production");
+        modelBuilder.Entity<LongTermAnchorSeed>().ToTable(nameof(LongTermAnchorSeed), "Production");
+        modelBuilder.Entity<LongTermAnchorSeedItem>().ToTable(nameof(LongTermAnchorSeedItem), "Production");
+        modelBuilder.Entity<LongTermAnchorSeedProcessGroupMetric>().ToTable(nameof(LongTermAnchorSeedProcessGroupMetric), "Production");
         modelBuilder.Entity<LumpSumQuarterCustomCost>().ToTable(nameof(LumpSumQuarterCustomCost), "Production");
 
         modelBuilder.Entity<ProductionOutput>()
@@ -1109,6 +1115,55 @@ public class ApplicationDbContext(
             .WithMany(d => d.ProductionOutputs)
             .HasForeignKey(p => p.DepartmentId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LongTermAnchorSeed>()
+            .HasOne(s => s.Department)
+            .WithMany(d => d.LongTermAnchorSeeds)
+            .HasForeignKey(s => s.DepartmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeed>()
+            .HasMany(s => s.Items)
+            .WithOne(i => i.LongTermAnchorSeed)
+            .HasForeignKey(i => i.LongTermAnchorSeedId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeed>()
+            .HasMany(s => s.ProcessGroupMetrics)
+            .WithOne(m => m.LongTermAnchorSeed)
+            .HasForeignKey(m => m.LongTermAnchorSeedId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeed>()
+            .HasIndex(s => s.DepartmentId)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasOne(i => i.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(i => i.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasOne(i => i.Part)
+            .WithMany()
+            .HasForeignKey(i => i.PartId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasIndex(i => i.AnchorSeedRowId)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL AND \"AnchorSeedRowId\" IS NOT NULL");
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasIndex(i => new { i.LongTermAnchorSeedId, i.ProcessGroupId, i.PartId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+
+        modelBuilder.Entity<LongTermAnchorSeedProcessGroupMetric>()
+            .HasOne(m => m.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(m => m.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LongTermAnchorSeedProcessGroupMetric>()
+            .HasIndex(m => new { m.LongTermAnchorSeedId, m.ProcessGroupId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         modelBuilder.Entity<ProductionOutputProcessGroup>()
             .HasOne(g => g.ProcessGroup)

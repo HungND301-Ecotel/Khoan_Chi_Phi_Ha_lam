@@ -125,14 +125,22 @@ export function LongtermMaterialCostForm({
 
 	const handleSubmit = async (values: LongtermMaterialCostSchema) => {
 		try {
-			const body = values.items.map((item) => ({
-				id: item.id,
-				acceptanceReportId: acceptanceReportId,
-				usageTime: item.usageTime,
-				allocationRatio: item.allocationRate,
-				isFullAccounting: item.isFullAccounting,
-				note: item.note ?? '',
-			}));
+			const body = values.items
+				.map((item, index) => ({ item, source: detailItems[index] }))
+				.filter(({ source }) => !source?.isAnchorSeed)
+				.map(({ item }) => ({
+					id: item.id,
+					acceptanceReportId: acceptanceReportId,
+					usageTime: item.usageTime,
+					allocationRatio: item.allocationRate,
+					isFullAccounting: item.isFullAccounting,
+					note: item.note ?? '',
+				}));
+
+			if (!body.length) {
+				setOpen(false);
+				return;
+			}
 
 			await api.put(
 				API.PRODUCTION.ACCEPTANCE_REPORT.UPDATE_LONG_TERM_TRACKING,
@@ -166,6 +174,7 @@ export function LongtermMaterialCostForm({
 							`items.${index}.allocationRate`,
 						);
 						const isUsageTimeEditable = item?.isNewItem === true;
+						const isAnchorSeed = item?.isAnchorSeed === true;
 
 						const remainingPeriod =
 							watchedUsageTime - (item?.allocatedTime ?? 0);
@@ -266,7 +275,7 @@ export function LongtermMaterialCostForm({
 								</div>
 
 								<div className='min-w-44 flex-1 space-y-2'>
-									{isUsageTimeEditable ? (
+									{isUsageTimeEditable && !isAnchorSeed ? (
 										<FormNumber
 											control={form.control}
 											name={`items.${index}.usageTime`}
@@ -310,7 +319,7 @@ export function LongtermMaterialCostForm({
 										name={`items.${index}.allocationRate`}
 										label='Tỷ lệ phân bổ'
 										placeholder='Nhập tỷ lệ phân bổ'
-										disabled={isFullAccounting}
+										disabled={isFullAccounting || isAnchorSeed}
 									/>
 								</div>
 
@@ -323,6 +332,7 @@ export function LongtermMaterialCostForm({
 										<Switch
 											checked={isFullAccounting}
 											className='cursor-pointer data-[state=checked]:bg-blue-600'
+											disabled={isAnchorSeed}
 											onCheckedChange={(checked) =>
 												handleFullAccountingChange(index, checked)
 											}
@@ -347,12 +357,19 @@ export function LongtermMaterialCostForm({
 								</div>
 
 								<div className='min-w-60 flex-1 space-y-2'>
-									<FormInput
-										control={form.control}
-										name={`items.${index}.note`}
-										label='Ghi chú'
-										placeholder='Nhập ghi chú'
-									/>
+									{isAnchorSeed ? (
+										<>
+											<Label>Ghi chú</Label>
+											<Input readOnly value={form.watch(`items.${index}.note`) ?? ''} />
+										</>
+									) : (
+										<FormInput
+											control={form.control}
+											name={`items.${index}.note`}
+											label='Ghi chú'
+											placeholder='Nhập ghi chú'
+										/>
+									)}
 								</div>
 							</>
 						);

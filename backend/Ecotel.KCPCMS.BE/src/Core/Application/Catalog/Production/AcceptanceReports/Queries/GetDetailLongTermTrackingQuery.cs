@@ -1,6 +1,7 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
+using Application.Catalog.Production.LongTermAnchorSeeds;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Production;
@@ -16,6 +17,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
 {
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _logRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
+    private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
 
     public async Task<GetDetailLongTermTrackingResponseDto> Handle(GetDetailLongTermTrackingQuery request, CancellationToken cancellationToken)
     {
@@ -45,6 +47,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             ?? throw new NotFoundException("ProductionOutput not found");
 
         var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
+        var seedSnapshots = await BuildAnchorSeedSnapshots(acceptanceReport, cancellationToken);
 
         // TH1: Logs của kỳ hiện tại (item mới thêm)
         var th1Logs = await _logRepository.GetAllAsync(
@@ -281,6 +284,11 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 }
             }
 
+            var displayAllocatedTime = Math.Abs(remainingTime) < 0.0001
+                ? usageTime
+                : Math.Min(usageTime, totalAllocatedTime + allocationRatio);
+            var displayRemainingTime = Math.Max(0, usageTime - displayAllocatedTime);
+
             items.Add(new DetailLongTermTrackingItemDto
             {
                 Id = logIdToDisplay,
@@ -298,8 +306,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 OriginAmount = overrideLog?.OriginAmount ?? earliestLog.OriginAmount,
                 TotalValueToAccount = totalValueToAccount,
                 UsageTime = usageTime,
-                AllocatedTime = totalAllocatedTime,
-                RemainingTime = remainingTime,
+                AllocatedTime = displayAllocatedTime,
+                RemainingTime = displayRemainingTime,
                 ActualOutput = actualOutput,
                 PlannedOutput = plannedOutput,
                 StandardOutput = standardOutput,
@@ -310,6 +318,41 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 Note = overrideLog?.Note ?? latestLog.Note,
                 IsNewItem = false,
                 IsFullAccounting = overrideLog?.IsFullAccounting ?? false,
+            });
+        }
+
+        foreach (var snapshot in seedSnapshots)
+        {
+            items.Add(new DetailLongTermTrackingItemDto
+            {
+                Id = snapshot.SeedItemId,
+                AcceptanceReportItemId = Guid.Empty,
+                ProcessGroupId = snapshot.ProcessGroupId,
+                ProcessGroupCode = snapshot.ProcessGroupCode,
+                ProcessGroupName = snapshot.ProcessGroupName,
+                PartCode = snapshot.PartCode,
+                PartName = snapshot.PartName,
+                UnitOfMeasureName = snapshot.UnitOfMeasureName,
+                PendingValueStartPeriod = snapshot.PendingValueStartPeriod,
+                IssuedQuantity = snapshot.IssuedQuantity,
+                UnitPrice = snapshot.UnitPrice,
+                TotalAmount = snapshot.TotalAmount,
+                OriginAmount = snapshot.OriginAmount,
+                TotalValueToAccount = snapshot.TotalValueToAccount,
+                UsageTime = snapshot.UsageTime,
+                AllocatedTime = snapshot.AllocatedTime,
+                RemainingTime = snapshot.RemainingTime,
+                ActualOutput = snapshot.ActualOutput,
+                PlannedOutput = snapshot.PlannedOutput,
+                StandardOutput = snapshot.StandardOutput,
+                ValueByStandard = snapshot.ValueByStandard,
+                AllocationRatio = snapshot.AllocationRatio,
+                AccountedValueThisPeriod = snapshot.AccountedValueThisPeriod,
+                PendingValueEndPeriod = snapshot.PendingValueEndPeriod,
+                Note = snapshot.Note,
+                IsNewItem = false,
+                IsFullAccounting = false,
+                IsAnchorSeed = true
             });
         }
 
@@ -355,13 +398,15 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         {
             return (
                 log.AcceptanceReportItemCategoryAllocation.ProcessGroupId,
-                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.FixedKey?.Key,
+                log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Code?.Value
+                    ?? log.AcceptanceReportItemCategoryAllocation.ProcessGroup.FixedKey?.Key,
                 log.AcceptanceReportItemCategoryAllocation.ProcessGroup.Name);
         }
 
         return (
             log.AcceptanceReportItem?.ProcessGroupId,
-            log.AcceptanceReportItem?.ProcessGroup?.FixedKey?.Key,
+            log.AcceptanceReportItem?.ProcessGroup?.Code?.Value
+                ?? log.AcceptanceReportItem?.ProcessGroup?.FixedKey?.Key,
             log.AcceptanceReportItem?.ProcessGroup?.Name);
     }
 
@@ -410,6 +455,66 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         }
 
         return result;
+    }
+
+    private async Task<List<LongTermAnchorSeedTrackingHelper.TrackingSnapshot>> BuildAnchorSeedSnapshots(
+        AcceptanceReport acceptanceReport,
+        CancellationToken cancellationToken)
+    {
+        var departmentId = acceptanceReport.ProductionOutput?.DepartmentId;
+        if (!departmentId.HasValue)
+        {
+            return [];
+        }
+
+        var seed = await _seedRepository.GetFirstOrDefaultAsync(
+            predicate: s => s.DepartmentId == departmentId.Value,
+            include: q => q
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.UnitOfMeasure)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.ProcessGroup)
+                        .ThenInclude(pg => pg.Code)
+                .Include(s => s.ProcessGroupMetrics),
+            disableTracking: true);
+
+        if (seed == null || !seed.Items.Any())
+        {
+            return [];
+        }
+
+        var processGroupMetrics = seed.ProcessGroupMetrics
+            .GroupBy(x => x.ProcessGroupId)
+            .ToDictionary(
+                x => x.Key,
+                x => (
+                    PlannedOutput: x.First().PlannedOutput,
+                    StandardOutput: x.First().StandardOutput));
+
+        var reports = await _acceptanceReportRepository.GetAllAsync(
+            predicate: a => a.ProductionOutput.DepartmentId == departmentId.Value,
+            include: q => q
+                .Include(a => a.ProductionOutput)
+                    .ThenInclude(p => p.ProductionOutputProcessGroups)
+                        .ThenInclude(pg => pg.ProductionOutputProducts),
+            disableTracking: true);
+
+        var orderedReports = reports
+            .Where(a => a.ProductionOutput != null)
+            .OrderBy(a => a.ProductionOutput!.StartMonth)
+            .Select(a => new LongTermAnchorSeedTrackingHelper.ReportContext(
+                a.Id,
+                a.ProductionOutput!.StartMonth,
+                a.ProductionOutput.ProductionMeters,
+                a.ProductionOutput.StandardProductionMeters,
+                BuildOutputByProcessGroup(a.ProductionOutput)))
+            .ToList();
+
+        return LongTermAnchorSeedTrackingHelper.BuildSnapshots(seed.Items, processGroupMetrics, orderedReports, acceptanceReport.Id);
     }
 }
 

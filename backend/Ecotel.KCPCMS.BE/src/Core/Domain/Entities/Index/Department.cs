@@ -19,6 +19,9 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
     private IList<ProductionOutput> _productionOutputs = new List<ProductionOutput>();
     public virtual IReadOnlyCollection<ProductionOutput> ProductionOutputs => _productionOutputs.AsReadOnly();
 
+    private IList<LongTermAnchorSeed> _longTermAnchorSeeds = new List<LongTermAnchorSeed>();
+    public virtual IReadOnlyCollection<LongTermAnchorSeed> LongTermAnchorSeeds => _longTermAnchorSeeds.AsReadOnly();
+
     private IList<LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPrices = new List<LowValuePerishableSupplyUnitPrice>();
     public IReadOnlyList<LowValuePerishableSupplyUnitPrice> LowValuePerishableSupplyUnitPrices => _lowValuePerishableSupplyUnitPrices.ToList();
 
