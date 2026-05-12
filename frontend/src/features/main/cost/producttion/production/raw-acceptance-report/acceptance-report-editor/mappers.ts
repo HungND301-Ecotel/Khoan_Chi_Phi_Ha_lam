@@ -22,6 +22,7 @@ import {
 	type AcceptanceReportEditorMode,
 	type ImportedItemMeta,
 	type QuotaBasedMaterialQuantityDetail,
+	type UpdateAcceptanceReportRequest,
 	type UnresolvedAcceptanceReportItemDto,
 } from './types';
 import type {
@@ -431,7 +432,7 @@ export function buildAcceptanceReportRequest(
 	mode: AcceptanceReportEditorMode,
 	values: AcceptanceReportEditorFormSchema,
 	context: BuildRequestContext,
-): CreateAcceptanceReportRequest | { id: string; filePath: string; items: unknown[] } {
+): CreateAcceptanceReportRequest | UpdateAcceptanceReportRequest {
 	if (mode === 'import') {
 		return {
 			productionOutputId: context.productionOutputId ?? '',
@@ -495,6 +496,8 @@ export function buildAcceptanceReportRequest(
 				additionalCostProductionOrderId:
 					base.additionalSelection.productionOrderId,
 				additionalCostEquipmentId: base.additionalSelection.equipmentId,
+				issuedQuantity: parseQuantity(item.quantityReceived),
+				shippedQuantity: parseQuantity(item.quantityExported),
 				issuedDetails: base.issuedDetails,
 				shippedDetails: base.shippedDetails,
 				materialsIncludedInContractRevenue:

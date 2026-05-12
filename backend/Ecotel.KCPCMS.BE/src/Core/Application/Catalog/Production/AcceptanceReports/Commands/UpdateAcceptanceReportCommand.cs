@@ -116,6 +116,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 if (itemsToUpdate.TryGetValue(existingItem.Id, out var updateItem))
                 {
+                    ValidateQuantityTotals(updateItem);
+
                     var categoryReference = ProductionReference.Create(
                         updateItem.CategoryProductionOrderId,
                         updateItem.CategoryEquipmentId);
@@ -284,6 +286,21 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         }
 
         return result;
+    }
+
+    private static void ValidateQuantityTotals(UpdateAcceptanceReportItemDto updateItem)
+    {
+        var issuedDetailTotal = updateItem.IssuedDetails.Sum(x => x.Quantity);
+        if (Math.Abs(issuedDetailTotal - updateItem.IssuedQuantity) >= 0.01)
+        {
+            throw new BadRequestException("Tổng số lượng lĩnh chi tiết phải bằng số lượng lĩnh.");
+        }
+
+        var shippedDetailTotal = updateItem.ShippedDetails.Sum(x => x.Quantity);
+        if (Math.Abs(shippedDetailTotal - updateItem.ShippedQuantity) >= 0.01)
+        {
+            throw new BadRequestException("Tổng số lượng xuất chi tiết phải bằng số lượng xuất.");
+        }
     }
 
     private static IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? MapCategoryAllocations(

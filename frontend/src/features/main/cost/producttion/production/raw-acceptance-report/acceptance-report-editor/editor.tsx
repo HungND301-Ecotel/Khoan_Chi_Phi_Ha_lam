@@ -172,6 +172,47 @@ function splitAllocationQuantities(total: number, count: number): number[] {
 	return quantities;
 }
 
+function redistributeBreakdownQuantities(
+	keys: string[],
+	total: number,
+	currentValues?: Record<string, number | string>,
+): Record<string, number> {
+	if (keys.length === 0) return {};
+
+	const safeTotal = Number.isFinite(total) ? total : 0;
+	const currentTotal = keys.reduce(
+		(sum, key) => sum + (Number(currentValues?.[key]) || 0),
+		0,
+	);
+
+	const nextValues =
+		currentTotal > 0
+			? keys.map((key) =>
+					Number(
+						(((Number(currentValues?.[key]) || 0) / currentTotal) * safeTotal).toFixed(
+							2,
+						),
+					),
+				)
+			: splitAllocationQuantities(safeTotal, keys.length);
+
+	const allocatedTotal = nextValues.reduce((sum, value) => sum + value, 0);
+	const delta = Number((safeTotal - allocatedTotal).toFixed(2));
+	if (Math.abs(delta) >= 0.01) {
+		nextValues[nextValues.length - 1] = Number(
+			((nextValues[nextValues.length - 1] ?? 0) + delta).toFixed(2),
+		);
+	}
+
+	return keys.reduce(
+		(acc, key, index) => {
+			acc[key] = nextValues[index] ?? 0;
+			return acc;
+		},
+		{} as Record<string, number>,
+	);
+}
+
 function extractCategoryProcessGroupIds(
 	allocations: CategoryAllocation[] | undefined,
 ): string[] {
@@ -1827,6 +1868,38 @@ const MaterialImportRow = memo(function MaterialImportRow({
 
 	const handleExportedBreakdownChange = (key: string, val: number | string) =>
 		set('exportedBreakdown', { ...(exportedBreakdown ?? {}), [key]: val });
+	const handleReceivedQuantityChange = (value?: number) => {
+		const nextValue = value ?? 0;
+		set('quantityReceived', nextValue);
+		set('quantity', nextValue + exportedQty);
+
+		if (showReceivedBreakdown) {
+			set(
+				'receivedBreakdown',
+				redistributeBreakdownQuantities(
+					activeReceivedKeys,
+					nextValue,
+					receivedBreakdown,
+				),
+			);
+		}
+	};
+	const handleExportedQuantityChange = (value?: number) => {
+		const nextValue = value ?? 0;
+		set('quantityExported', nextValue);
+		set('quantity', receivedQty + nextValue);
+
+		if (showExportedBreakdown) {
+			set(
+				'exportedBreakdown',
+				redistributeBreakdownQuantities(
+					activeExportedKeys,
+					nextValue,
+					exportedBreakdown,
+				),
+			);
+		}
+	};
 	const handleContractLimitBreakdownChange = (
 		key: string,
 		val: number | string,
@@ -2009,21 +2082,21 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								<div className='flex flex-col gap-2'>
 									<div className='flex items-end gap-2'>
 										{/* Total — always leftmost */}
-										<div
-											className={cn(
-												'flex shrink-0 flex-col gap-0.5',
-												showReceivedBreakdown ? 'w-24' : 'w-full',
-											)}
-										>
-											<label className='text-[10px] font-medium text-slate-500'>
-												Tổng
-											</label>
-											<Input
-												readOnly
-												value={receivedQty}
-												className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-											/>
-										</div>
+									<div
+										className={cn(
+											'flex shrink-0 flex-col gap-0.5',
+											showReceivedBreakdown ? 'w-24' : 'w-full',
+										)}
+									>
+										<label className='text-[10px] font-medium text-slate-500'>
+											Tổng
+										</label>
+										<FormNumberInput
+											value={receivedQty}
+											onValueChange={handleReceivedQuantityChange}
+											className='border-slate-300 bg-white'
+										/>
+									</div>
 										{/* Sub-inputs — only when >1 selected */}
 										{showReceivedBreakdown && (
 											<QuantityBreakdownInputs
@@ -2067,21 +2140,21 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								<div className='flex flex-col gap-2'>
 									<div className='flex items-end gap-2'>
 										{/* Total — always leftmost */}
-										<div
-											className={cn(
-												'flex shrink-0 flex-col gap-0.5',
-												showExportedBreakdown ? 'w-24' : 'w-full',
-											)}
-										>
-											<label className='text-[10px] font-medium text-slate-500'>
-												Tổng
-											</label>
-											<Input
-												readOnly
-												value={exportedQty}
-												className='pointer-events-none cursor-not-allowed! border-slate-300 bg-slate-100 text-center! text-slate-500!'
-											/>
-										</div>
+									<div
+										className={cn(
+											'flex shrink-0 flex-col gap-0.5',
+											showExportedBreakdown ? 'w-24' : 'w-full',
+										)}
+									>
+										<label className='text-[10px] font-medium text-slate-500'>
+											Tổng
+										</label>
+										<FormNumberInput
+											value={exportedQty}
+											onValueChange={handleExportedQuantityChange}
+											className='border-slate-300 bg-white'
+										/>
+									</div>
 										{/* Sub-inputs — only when >1 selected */}
 										{showExportedBreakdown && (
 											<QuantityBreakdownInputs

@@ -183,6 +183,38 @@ export type CreateAcceptanceReportRequest = {
 	items: CreateAcceptanceReportItem[];
 };
 
+export type UpdateAcceptanceReportItem = {
+	id: string;
+	usageTime: number;
+	itemType: number;
+	categoryAllocations?: CategoryAllocation[] | null;
+	categoryProductionOrderId: string | null;
+	categoryEquipmentId: string | null;
+	additionalCostProductionOrderId: string | null;
+	additionalCostEquipmentId: string | null;
+	issuedQuantity: number;
+	shippedQuantity: number;
+	issuedDetails: QuantityDetail[];
+	shippedDetails: QuantityDetail[];
+	materialsIncludedInContractRevenue: number;
+	processGroupId: string | null;
+	materialsIncludedInContractRevenueQuantity: number;
+	additionalCost: number;
+	otherMaterialDetail: number;
+	additionalCostQuantity: number;
+	quotaBasedMaterial: number;
+	quotaBasedMaterialType: number;
+	quotaBasedMaterialQuantities?: QuotaBasedMaterialQuantityDetail[] | null;
+	asset: number;
+	assetMaterialQuantity: number;
+};
+
+export type UpdateAcceptanceReportRequest = {
+	id: string;
+	filePath: string;
+	items: UpdateAcceptanceReportItem[];
+};
+
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
 	{ value: MaterialsIncludedInContractRevenue.Maintain, label: 'SCTX' },
