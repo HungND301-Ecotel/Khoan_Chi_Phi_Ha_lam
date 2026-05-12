@@ -4,7 +4,9 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record UpdateAcceptanceReportItemDto
 {
-    public required Guid Id { get; init; }
+    public Guid? Id { get; init; }
+    public Guid? MaterialId { get; init; }
+    public Guid? PartId { get; init; }
     public required double UsageTime { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
@@ -12,6 +14,7 @@ public record UpdateAcceptanceReportItemDto
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }
 
+    public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
     public Guid? CategoryProductionOrderId { get; init; }
     public Guid? CategoryEquipmentId { get; init; }

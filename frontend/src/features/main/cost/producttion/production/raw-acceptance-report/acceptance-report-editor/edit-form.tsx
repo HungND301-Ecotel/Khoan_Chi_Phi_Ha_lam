@@ -18,6 +18,7 @@ import { acceptanceReportEditorFormSchema, type AcceptanceReportEditorFormInput 
 import type {
 	Equipment,
 	ImportedItemMeta,
+	MaterialLookupOption,
 	ProcessGroupOption,
 	ProductionOrderOption,
 } from './types';
@@ -42,6 +43,22 @@ type ProductionOutputScopeResponse = {
 	processGroups?: {
 		processGroupId: string;
 	}[];
+};
+
+type MaterialLookupItem = {
+	id: string;
+	code: string;
+	name: string;
+	unitOfMeasureName: string;
+	materialType: number;
+};
+
+type PartLookupItem = {
+	id: string;
+	code: string;
+	name: string;
+	unitOfMeasureName: string;
+	partType: number;
 };
 
 const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
@@ -72,6 +89,9 @@ export function AcceptanceReportEditForm({
 	>({});
 	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
+	const [materialLookupOptions, setMaterialLookupOptions] = useState<
+		MaterialLookupOption[]
+	>([]);
 
 	const form = useForm<AcceptanceReportEditorFormInput>({
 		resolver: zodResolver(
@@ -113,6 +133,67 @@ export function AcceptanceReportEditForm({
 		};
 
 		fetchProductionOrders();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchMaterialLookupOptions = async () => {
+			try {
+				const [materialsRes, partsRes] = await Promise.all([
+					api.pagging<MaterialLookupItem>(API.CATALOG.ASSET.LIST, {
+						ignorePagination: true,
+					}),
+					api.pagging<PartLookupItem>(API.CATALOG.PART.LIST, {
+						ignorePagination: true,
+					}),
+				]);
+
+				if (!isMounted) return;
+
+				const materialOptions: MaterialLookupOption[] = (
+					materialsRes.result.data ?? []
+				).map((item) => ({
+					value: `material:${item.id}`,
+					label: `${item.code} - ${item.name}`,
+					materialOrPartId: item.id,
+					type: MaterialType.Material,
+					itemType: item.materialType,
+					materialCode: item.code,
+					materialName: item.name,
+					unitOfMeasureName: item.unitOfMeasureName,
+				}));
+
+				const partOptions: MaterialLookupOption[] = (
+					partsRes.result.data ?? []
+				).map((item) => ({
+					value: `part:${item.id}`,
+					label: `${item.code} - ${item.name}`,
+					materialOrPartId: item.id,
+					type: MaterialType.SparePart,
+					itemType: item.partType,
+					materialCode: item.code,
+					materialName: item.name,
+					unitOfMeasureName: item.unitOfMeasureName,
+				}));
+
+				setMaterialLookupOptions(
+					[...materialOptions, ...partOptions].sort((a, b) =>
+						a.label.localeCompare(b.label),
+					),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setMaterialLookupOptions([]);
+				console.error('Failed to fetch material lookup options:', err);
+			}
+		};
+
+		fetchMaterialLookupOptions();
 
 		return () => {
 			isMounted = false;
@@ -292,6 +373,50 @@ export function AcceptanceReportEditForm({
 		}
 	};
 
+	const handleMaterialAdded = async (option: MaterialLookupOption) => {
+		const nextImportedItems = [
+			...importedItems.filter(
+				(item) => item.materialOrPartId !== option.materialOrPartId,
+			),
+			{
+				materialOrPartId: option.materialOrPartId,
+				type: option.type,
+			},
+		];
+		setImportedItems(nextImportedItems);
+
+		if (
+			option.type === MaterialType.SparePart &&
+			!equipmentOptionsByPartId[option.materialOrPartId]
+		) {
+			try {
+				const equipmentMappingsRes = await api.post<
+					MaintainEquipmentMapping[],
+					string[]
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [
+					option.materialOrPartId,
+				]);
+				const nextEquipmentOptionsByPartId = { ...equipmentOptionsByPartId };
+				for (const mapping of equipmentMappingsRes.result ?? []) {
+					nextEquipmentOptionsByPartId[mapping.partId] = (
+						mapping.equipments ?? []
+					)
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((equipment) => ({
+							value: toEquipmentOptionValue(equipment.id),
+							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+						}));
+				}
+				if (!nextEquipmentOptionsByPartId[option.materialOrPartId]) {
+					nextEquipmentOptionsByPartId[option.materialOrPartId] = [];
+				}
+				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);
+			} catch (err) {
+				console.error('Failed to fetch equipment options for added part:', err);
+			}
+		}
+	};
+
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			{loading ? (
@@ -305,6 +430,8 @@ export function AcceptanceReportEditForm({
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
 					orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
+					materialLookupOptions={materialLookupOptions}
+					onMaterialAdded={handleMaterialAdded}
 					unresolvedCount={0}
 				/>
 			)}

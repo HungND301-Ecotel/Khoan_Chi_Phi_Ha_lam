@@ -4,7 +4,14 @@ import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber, FormNumberInput } from '@/components/form/form-number';
 import { Button } from '@/components/ui/button';
-import { DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -25,6 +32,8 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,6 +48,7 @@ import {
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
 	EXPORTED_TYPE_OPTIONS,
 	ItemType,
+	type MaterialLookupOption,
 	MaterialType,
 	MaterialsIncludedInContractRevenue,
 	OTHER_MATERIAL_DETAIL_OPTIONS,
@@ -47,6 +57,7 @@ import {
 	QuotaBasedMaterial,
 	RECEIVED_TYPE_OPTIONS,
 } from './types';
+import { createManualEditorRow } from './mappers';
 
 // ── Form-level types ──────────────────────────────────────────────────────────
 
@@ -90,6 +101,8 @@ type AcceptanceReportEditorProps = {
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	materialLookupOptions?: MaterialLookupOption[];
+	onMaterialAdded?: (option: MaterialLookupOption) => Promise<void> | void;
 	unresolvedCount: number;
 	onCreateUnresolved?: (index: number) => void;
 };
@@ -189,9 +202,10 @@ function redistributeBreakdownQuantities(
 		currentTotal > 0
 			? keys.map((key) =>
 					Number(
-						(((Number(currentValues?.[key]) || 0) / currentTotal) * safeTotal).toFixed(
-							2,
-						),
+						(
+							((Number(currentValues?.[key]) || 0) / currentTotal) *
+							safeTotal
+						).toFixed(2),
 					),
 				)
 			: splitAllocationQuantities(safeTotal, keys.length);
@@ -464,6 +478,8 @@ const DEFAULT_CONTRACT_LIMIT_CATEGORY_VALUE =
 	CONTRACT_LIMIT_OPTIONS[0]?.value ?? null;
 const DEFAULT_OTHER_MATERIAL_DETAIL_VALUE =
 	OTHER_MATERIAL_DETAIL_OPTIONS[0]?.value ?? null;
+const DATATABLE_ACTION_SHADOW =
+	'hover:shadow-[0px_2px_4px_-1px_rgba(0,0,0,0.2),0px_4px_5px_0px_rgba(0,0,0,0.14),0px_1px_10px_0px_rgba(0,0,0,0.12)] shadow-[0px_3px_1px_-2px_rgba(0,0,0,0.2),0px_2px_2px_0px_rgba(0,0,0,0.14),0px_1px_5px_0px_rgba(0,0,0,0.12)]';
 const TOOLBAR_BUTTON_CLASS_NAME =
 	'hover:bg-muted flex h-10 min-w-24 cursor-pointer bg-white shadow-[0px_3px_1px_-2px_rgba(0,0,0,0.2),0px_2px_2px_0px_rgba(0,0,0,0.14),0px_1px_5px_0px_rgba(0,0,0,0.12)]';
 
@@ -475,11 +491,13 @@ export function AcceptanceReportEditor({
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	materialLookupOptions = [],
+	onMaterialAdded,
 	unresolvedCount,
 	onCreateUnresolved,
 }: AcceptanceReportEditorProps) {
 	const form = useFormContext<MaterialsForm>();
-	const { fields } = useFieldArray({
+	const { fields, append, remove } = useFieldArray({
 		control: form.control,
 		name: 'materials',
 	});
@@ -496,6 +514,11 @@ export function AcceptanceReportEditor({
 	const [searchKeyword, setSearchKeyword] = useState('');
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [selectedRowFieldIds, setSelectedRowFieldIds] = useState<string[]>([]);
+	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	const [selectedLookupValue, setSelectedLookupValue] = useState('');
+	const [newQuantityReceived, setNewQuantityReceived] = useState(0);
+	const [newQuantityExported, setNewQuantityExported] = useState(0);
 	const materialBadgeFilters = useMemo(() => {
 		const map = new Map<string, MaterialBadgeFilterOption>();
 		for (const item of fields) {
@@ -649,6 +672,13 @@ export function AcceptanceReportEditor({
 		}
 	}, [form.formState.errors]);
 
+	useEffect(() => {
+		const availableFieldIds = new Set(fields.map((field) => field.id));
+		setSelectedRowFieldIds((prev) =>
+			prev.filter((fieldId) => availableFieldIds.has(fieldId)),
+		);
+	}, [fields]);
+
 	const toggleToolbarFilter = (key: string, checked: boolean) => {
 		if (mode === 'edit') {
 			setSelectedEditFilterKeys((prev) => {
@@ -670,6 +700,78 @@ export function AcceptanceReportEditor({
 		setPageIndex(0);
 	};
 
+	const visibleSelectedCount = visibleMaterialIndexes.reduce((count, index) => {
+		const fieldId = fields[index]?.id;
+		return fieldId && selectedRowFieldIds.includes(fieldId) ? count + 1 : count;
+	}, 0);
+	const allVisibleSelected =
+		visibleMaterialIndexes.length > 0 &&
+		visibleSelectedCount === visibleMaterialIndexes.length;
+	const someVisibleSelected =
+		visibleSelectedCount > 0 &&
+		visibleSelectedCount < visibleMaterialIndexes.length;
+
+	const toggleAllVisibleRows = (checked: boolean) => {
+		if (checked) {
+			const visibleFieldIds = visibleMaterialIndexes
+				.map((index) => fields[index]?.id)
+				.filter((fieldId): fieldId is string => Boolean(fieldId));
+			setSelectedRowFieldIds((prev) =>
+				Array.from(new Set([...prev, ...visibleFieldIds])),
+			);
+			return;
+		}
+
+		const visibleFieldIdSet = new Set(
+			visibleMaterialIndexes
+				.map((index) => fields[index]?.id)
+				.filter((fieldId): fieldId is string => Boolean(fieldId)),
+		);
+		setSelectedRowFieldIds((prev) =>
+			prev.filter((fieldId) => !visibleFieldIdSet.has(fieldId)),
+		);
+	};
+
+	const handleCreateMaterial = async () => {
+		const selectedOption = materialLookupOptions.find(
+			(option) => option.value === selectedLookupValue,
+		);
+		if (!selectedOption) {
+			return;
+		}
+
+		append(
+			createManualEditorRow(
+				selectedOption,
+				Number(newQuantityReceived) || 0,
+				Number(newQuantityExported) || 0,
+			),
+		);
+		await onMaterialAdded?.(selectedOption);
+		setIsCreateDialogOpen(false);
+		setSelectedLookupValue('');
+		setNewQuantityReceived(0);
+		setNewQuantityExported(0);
+		setSearchKeyword('');
+		setPageIndex(Math.floor(fields.length / pageSize));
+	};
+
+	const handleDeleteSelectedRows = () => {
+		const selectedIndexes = fields
+			.map((field, index) =>
+				selectedRowFieldIds.includes(field.id) ? index : null,
+			)
+			.filter((index): index is number => index != null)
+			.sort((a, b) => b - a);
+
+		if (selectedIndexes.length === 0) {
+			return;
+		}
+
+		remove(selectedIndexes);
+		setSelectedRowFieldIds([]);
+	};
+
 	return (
 		<div className='flex h-full flex-col gap-6'>
 			{mode === 'import' && unresolvedCount > 0 && (
@@ -681,21 +783,47 @@ export function AcceptanceReportEditor({
 			{(mode === 'edit' || toolbarFilterOptions.length > 0) && (
 				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
 					<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-						<InputGroup className='max-w-full rounded-sm border-[#d4d5d7] shadow-none hover:border-black lg:max-w-md'>
-							<InputGroupInput
-								placeholder='Tìm theo mã vật tư hoặc tên vật tư'
-								value={searchKeyword}
-								onChange={(event) => {
-									setSearchKeyword(event.target.value);
-									setPageIndex(0);
-								}}
-								className='peer bg-white'
-							/>
-							<InputGroupAddon align='inline-end'>
-								<SearchIcon className='size-4' />
-							</InputGroupAddon>
-						</InputGroup>
-
+						<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
+							{mode === 'edit' && (
+								<div className='flex shrink-0 flex-wrap items-center gap-3'>
+									<Button
+										type='button'
+										variant='warning'
+										className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+										onClick={() => setIsCreateDialogOpen(true)}
+									>
+										<span className='font-medium'>Tạo mới</span>
+										<AddIcon fontSize='small' />
+									</Button>
+									<Button
+										type='button'
+										variant='destructive'
+										className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+										disabled={selectedRowFieldIds.length === 0}
+										onClick={handleDeleteSelectedRows}
+									>
+										<span className='font-medium'>
+											Xoá ({selectedRowFieldIds.length})
+										</span>
+										<DeleteIcon fontSize='small' />
+									</Button>
+								</div>
+							)}
+							<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
+								<InputGroupInput
+									placeholder='Tìm theo mã vật tư hoặc tên vật tư'
+									value={searchKeyword}
+									onChange={(event) => {
+										setSearchKeyword(event.target.value);
+										setPageIndex(0);
+									}}
+									className='peer bg-white'
+								/>
+								<InputGroupAddon align='inline-end'>
+									<SearchIcon className='size-4' />
+								</InputGroupAddon>
+							</InputGroup>
+						</div>
 						<Popover>
 							<PopoverTrigger asChild>
 								<Button variant='ghost' className={TOOLBAR_BUTTON_CLASS_NAME}>
@@ -771,6 +899,20 @@ export function AcceptanceReportEditor({
 					<Table className='w-full'>
 						<TableHeader className='bg-linear-to-r from-slate-50 to-slate-100'>
 							<TableRow className='bg-linear-to-r from-slate-50 to-slate-100'>
+								{mode === 'edit' && (
+									<TableCell className='w-12 min-w-12 border-b-2 border-slate-200 px-3 py-4 text-center'>
+										<Checkbox
+											checked={
+												allVisibleSelected ||
+												(someVisibleSelected ? 'indeterminate' : false)
+											}
+											onCheckedChange={(checked) =>
+												toggleAllVisibleRows(Boolean(checked))
+											}
+											className='[&_.lucide-check]:text-white'
+										/>
+									</TableCell>
+								)}
 								<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b-2 border-slate-200 bg-slate-100 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									STT
 								</TableCell>
@@ -807,6 +949,7 @@ export function AcceptanceReportEditor({
 							{paginatedMaterialIndexes.map((index, displayIndex) => (
 								<MaterialImportRow
 									key={fields[index].id}
+									fieldId={fields[index].id}
 									index={index}
 									displayIndex={pageIndex * pageSize + displayIndex + 1}
 									mode={mode}
@@ -815,13 +958,23 @@ export function AcceptanceReportEditor({
 									orderOrEquipmentOptionsByItemId={
 										orderOrEquipmentOptionsByItemId
 									}
+									selected={selectedRowFieldIds.includes(fields[index].id)}
+									onSelectedChange={(checked) => {
+										setSelectedRowFieldIds((prev) =>
+											checked
+												? prev.includes(fields[index].id)
+													? prev
+													: [...prev, fields[index].id]
+												: prev.filter((item) => item !== fields[index].id),
+										);
+									}}
 									onCreateUnresolved={onCreateUnresolved}
 								/>
 							))}
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={10}
+										colSpan={mode === 'edit' ? 11 : 10}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -866,6 +1019,68 @@ export function AcceptanceReportEditor({
 					{form.formState.isSubmitting ? <Spinner /> : 'Lưu'}
 				</Button>
 			</DialogFooter>
+			<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+				<DialogContent className='sm:max-w-xl'>
+					<DialogHeader>
+						<DialogTitle>Tạo mới vật tư</DialogTitle>
+					</DialogHeader>
+					<div className='grid gap-4'>
+						<div className='space-y-2'>
+							<label className='text-sm font-medium text-slate-700'>
+								Vật tư
+							</label>
+							<FormComboBox
+								value={selectedLookupValue}
+								onValueChange={setSelectedLookupValue}
+								options={materialLookupOptions}
+								placeholder='Chọn vật tư hoặc phụ tùng'
+							/>
+						</div>
+						<div className='grid gap-4 sm:grid-cols-2'>
+							<div className='space-y-2'>
+								<label className='text-sm font-medium text-slate-700'>
+									Số lượng lĩnh
+								</label>
+								<Input
+									type='number'
+									min={0}
+									step='any'
+									value={newQuantityReceived}
+									onChange={(event) =>
+										setNewQuantityReceived(Number(event.target.value) || 0)
+									}
+								/>
+							</div>
+							<div className='space-y-2'>
+								<label className='text-sm font-medium text-slate-700'>
+									Số lượng xuất
+								</label>
+								<Input
+									type='number'
+									min={0}
+									step='any'
+									value={newQuantityExported}
+									onChange={(event) =>
+										setNewQuantityExported(Number(event.target.value) || 0)
+									}
+								/>
+							</div>
+						</div>
+					</div>
+					<DialogFooter className='px-0 py-0'>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => setIsCreateDialogOpen(false)}
+						>
+							Huỷ
+						</Button>
+						<Button type='button' onClick={() => void handleCreateMaterial()}>
+							Tạo mới
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
@@ -974,20 +1189,26 @@ function QuantityBreakdownInputs({
 // ── MaterialImportRow ─────────────────────────────────────────────────────────
 
 const MaterialImportRow = memo(function MaterialImportRow({
+	fieldId,
 	index,
 	displayIndex,
 	mode,
 	processGroupOptions,
 	productionOrderOptions,
 	orderOrEquipmentOptionsByItemId,
+	selected,
+	onSelectedChange,
 	onCreateUnresolved,
 }: {
+	fieldId: string;
 	index: number;
 	displayIndex?: number;
 	mode: AcceptanceReportEditorMode;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	orderOrEquipmentOptionsByItemId: Record<string, ProductionOrderOption[]>;
+	selected: boolean;
+	onSelectedChange: (checked: boolean) => void;
 	onCreateUnresolved?: (index: number) => void;
 }) {
 	const form = useFormContext<MaterialsExtendedForm>();
@@ -1923,6 +2144,18 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		<>
 			{isUnresolved ? (
 				<TableRow className='transition-colors hover:bg-slate-50/50'>
+					{mode === 'edit' && (
+						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
+							<Checkbox
+								checked={selected}
+								onCheckedChange={(checked) =>
+									onSelectedChange(Boolean(checked))
+								}
+								aria-label={`Select row ${fieldId}`}
+								className='[&_.lucide-check]:text-white'
+							/>
+						</TableCell>
+					)}
 					<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
 						{displayIndex ?? index + 1}
 					</TableCell>
@@ -2028,6 +2261,18 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								: 'hover:bg-slate-50/50',
 					)}
 				>
+					{mode === 'edit' && (
+						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
+							<Checkbox
+								checked={selected}
+								onCheckedChange={(checked) =>
+									onSelectedChange(Boolean(checked))
+								}
+								aria-label={`Select row ${fieldId}`}
+								className='[&_.lucide-check]:text-white'
+							/>
+						</TableCell>
+					)}
 					{/* STT */}
 					<TableCell className='sticky left-0 z-20 w-[5%] min-w-16 border-b border-slate-200 bg-white px-4 py-4 text-center font-medium text-slate-700 shadow-xs hover:bg-slate-50'>
 						{displayIndex ?? index + 1}
@@ -2082,21 +2327,21 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								<div className='flex flex-col gap-2'>
 									<div className='flex items-end gap-2'>
 										{/* Total — always leftmost */}
-									<div
-										className={cn(
-											'flex shrink-0 flex-col gap-0.5',
-											showReceivedBreakdown ? 'w-24' : 'w-full',
-										)}
-									>
-										<label className='text-[10px] font-medium text-slate-500'>
-											Tổng
-										</label>
-										<FormNumberInput
-											value={receivedQty}
-											onValueChange={handleReceivedQuantityChange}
-											className='border-slate-300 bg-white'
-										/>
-									</div>
+										<div
+											className={cn(
+												'flex shrink-0 flex-col gap-0.5',
+												showReceivedBreakdown ? 'w-24' : 'w-full',
+											)}
+										>
+											<label className='text-[10px] font-medium text-slate-500'>
+												Tổng
+											</label>
+											<FormNumberInput
+												value={receivedQty}
+												onValueChange={handleReceivedQuantityChange}
+												className='border-slate-300 bg-white'
+											/>
+										</div>
 										{/* Sub-inputs — only when >1 selected */}
 										{showReceivedBreakdown && (
 											<QuantityBreakdownInputs
@@ -2140,21 +2385,21 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								<div className='flex flex-col gap-2'>
 									<div className='flex items-end gap-2'>
 										{/* Total — always leftmost */}
-									<div
-										className={cn(
-											'flex shrink-0 flex-col gap-0.5',
-											showExportedBreakdown ? 'w-24' : 'w-full',
-										)}
-									>
-										<label className='text-[10px] font-medium text-slate-500'>
-											Tổng
-										</label>
-										<FormNumberInput
-											value={exportedQty}
-											onValueChange={handleExportedQuantityChange}
-											className='border-slate-300 bg-white'
-										/>
-									</div>
+										<div
+											className={cn(
+												'flex shrink-0 flex-col gap-0.5',
+												showExportedBreakdown ? 'w-24' : 'w-full',
+											)}
+										>
+											<label className='text-[10px] font-medium text-slate-500'>
+												Tổng
+											</label>
+											<FormNumberInput
+												value={exportedQty}
+												onValueChange={handleExportedQuantityChange}
+												className='border-slate-300 bg-white'
+											/>
+										</div>
 										{/* Sub-inputs — only when >1 selected */}
 										{showExportedBreakdown && (
 											<QuantityBreakdownInputs

@@ -18,6 +18,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<UpdateAcceptanceReportResponseDto> Handle(UpdateAcceptanceReportCommand request, CancellationToken cancellationToken)
@@ -58,6 +59,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             .Select(x => x.ProcessGroupId)
             .ToHashSet();
         var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
+        var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
         var allParts = await _partRepository.GetAllAsync(
             include: q => q.Include(p => p.Costs),
             disableTracking: true);
@@ -80,14 +82,21 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             _acceptanceReportRepository.Update(acceptanceReport);
             await unitOfWork.SaveChangesAsync();
 
-            // Group update model items by Id
             var itemsToUpdate = new Dictionary<Guid, UpdateAcceptanceReportItemDto>();
+            var itemsToCreate = new List<(int SortOrder, UpdateAcceptanceReportItemDto Item)>();
             var itemSortOrders = new Dictionary<Guid, int>();
             for (var itemIndex = 0; itemIndex < updateModel.Items.Count; itemIndex++)
             {
                 var item = updateModel.Items[itemIndex];
-                itemsToUpdate[item.Id] = item;
-                itemSortOrders[item.Id] = itemIndex;
+                if (item.Id.HasValue && existingItems.Any(existingItem => existingItem.Id == item.Id.Value))
+                {
+                    itemsToUpdate[item.Id.Value] = item;
+                    itemSortOrders[item.Id.Value] = itemIndex;
+                }
+                else
+                {
+                    itemsToCreate.Add((itemIndex, item));
+                }
             }
 
             // Delete items that are not in the update model
@@ -176,16 +185,118 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 await unitOfWork.SaveChangesAsync();
             }
 
+            var createdItems = new List<AcceptanceReportItem>();
+            foreach (var (sortOrder, createItem) in itemsToCreate)
+            {
+                ValidateQuantityTotals(createItem);
+
+                var categoryReference = ProductionReference.Create(
+                    createItem.CategoryProductionOrderId,
+                    createItem.CategoryEquipmentId);
+                var additionalCostReference = ProductionReference.Create(
+                    createItem.AdditionalCostProductionOrderId,
+                    createItem.AdditionalCostEquipmentId);
+                var processGroupId = createItem.Type == AcceptanceReportItemType.Part
+                    ? createItem.ProcessGroupId
+                    : null;
+                var categoryAllocations = MapCategoryAllocations(createItem.CategoryAllocations);
+
+                Guid? materialId = null;
+                Guid? partId = null;
+
+                if (createItem.Type == AcceptanceReportItemType.Material)
+                {
+                    if (!createItem.MaterialId.HasValue)
+                    {
+                        throw new NotFoundException("MaterialId is required for material item");
+                    }
+
+                    var materialExists = allMaterials.Any(m => m.Id == createItem.MaterialId.Value);
+                    if (!materialExists)
+                    {
+                        throw new NotFoundException($"Material with Id '{createItem.MaterialId.Value}' not found");
+                    }
+
+                    materialId = createItem.MaterialId.Value;
+                }
+                else if (createItem.Type == AcceptanceReportItemType.Part)
+                {
+                    if (!createItem.PartId.HasValue)
+                    {
+                        throw new NotFoundException("PartId is required for SCTX item");
+                    }
+
+                    var partExists = allParts.Any(p => p.Id == createItem.PartId.Value);
+                    if (!partExists)
+                    {
+                        throw new NotFoundException($"Part with Id '{createItem.PartId.Value}' not found");
+                    }
+
+                    partId = createItem.PartId.Value;
+                }
+
+                if (createItem.Type == AcceptanceReportItemType.Part &&
+                    createItem.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                {
+                    var processGroupIdsToValidate = categoryAllocations != null && categoryAllocations.Any()
+                        ? categoryAllocations.Select(x => x.ProcessGroupId)
+                        : processGroupId.HasValue
+                            ? new[] { processGroupId.Value }
+                            : [];
+
+                    if (!processGroupIdsToValidate.Any() || processGroupIdsToValidate.Any(id => !processGroupIdsInPeriod.Contains(id)))
+                    {
+                        throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
+                    }
+                }
+
+                var reportItem = AcceptanceReportItem.Create(
+                    acceptanceReport.Id,
+                    sortOrder,
+                    processGroupId,
+                    materialId,
+                    partId,
+                    createItem.UsageTime,
+                    createItem.ItemType,
+                    categoryReference,
+                    additionalCostReference,
+                    createItem.MaterialsIncludedInContractRevenue,
+                    createItem.MaterialsIncludedInContractRevenueQuantity,
+                    createItem.AdditionalCost,
+                    createItem.OtherMaterialDetail,
+                    createItem.AdditionalCostQuantity,
+                    createItem.QuotaBasedMaterial,
+                    createItem.QuotaBasedMaterialType,
+                    createItem.Asset,
+                    createItem.AssetMaterialQuantity,
+                    createItem.IssuedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
+                    createItem.ShippedDetails.Select(x => (x.Type, x.Quantity)).ToList(),
+                    createItem.QuotaBasedMaterialQuantities?.Select(x => (x.Type, x.Quantity)).ToList(),
+                    categoryAllocations);
+
+                createdItems.Add(reportItem);
+            }
+
+            if (createdItems.Any())
+            {
+                await _acceptanceReportItemRepository.InsertAsync(createdItems, cancellationToken);
+                await unitOfWork.SaveChangesAsync();
+            }
+
             var updatedItemIds = existingItems
                 .Where(i => itemsToUpdate.ContainsKey(i.Id))
                 .Select(i => i.Id)
                 .Distinct()
                 .ToList();
+            var processedItemIds = updatedItemIds
+                .Concat(createdItems.Select(item => item.Id))
+                .Distinct()
+                .ToList();
 
-            if (updatedItemIds.Any())
+            if (processedItemIds.Any())
             {
                 var existingLogs = await _acceptanceReportItemLogRepository.GetAllAsync(
-                    predicate: p => updatedItemIds.Contains(p.AcceptanceReportItemId),
+                    predicate: p => processedItemIds.Contains(p.AcceptanceReportItemId),
                     disableTracking: false);
 
                 if (existingLogs.Any())
@@ -196,7 +307,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             }
 
             var logsToCreate = new List<AcceptanceReportItemLog>();
-            foreach (var existingItem in existingItems.Where(i => itemsToUpdate.ContainsKey(i.Id)))
+            foreach (var existingItem in existingItems.Where(i => itemsToUpdate.ContainsKey(i.Id)).Concat(createdItems))
             {
                 var residualQuantity = existingItem.IssuedQuantity - existingItem.ShippedQuantity;
                 if (!ShouldCreateLongTermTracking(existingItem, residualQuantity))
@@ -261,7 +372,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 Id = acceptanceReport.Id,
                 ProductionOutputId = acceptanceReport.ProductionOutputId,
                 FilePath = acceptanceReport.FilePath,
-                ItemCount = itemsToUpdate.Count
+                ItemCount = itemsToUpdate.Count + createdItems.Count
             };
         }
         catch

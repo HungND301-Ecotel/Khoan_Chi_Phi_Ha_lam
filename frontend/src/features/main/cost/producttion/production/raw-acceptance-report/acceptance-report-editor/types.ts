@@ -11,6 +11,17 @@ export type ProductionOrderOption = {
 	label: string;
 };
 
+export type MaterialLookupOption = {
+	value: string;
+	label: string;
+	materialOrPartId: string;
+	type: number;
+	itemType: number;
+	materialCode: string;
+	materialName: string;
+	unitOfMeasureName: string;
+};
+
 export type ImportedItemMeta = {
 	materialOrPartId: string;
 	type: number;
@@ -184,8 +195,11 @@ export type CreateAcceptanceReportRequest = {
 };
 
 export type UpdateAcceptanceReportItem = {
-	id: string;
+	id?: string;
+	materialId?: string | null;
+	partId?: string | null;
 	usageTime: number;
+	type: number;
 	itemType: number;
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;

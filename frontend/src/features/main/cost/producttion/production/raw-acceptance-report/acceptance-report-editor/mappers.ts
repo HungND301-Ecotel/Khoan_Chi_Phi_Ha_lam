@@ -21,6 +21,7 @@ import {
 	type AcceptanceReportItemDto,
 	type AcceptanceReportEditorMode,
 	type ImportedItemMeta,
+	type MaterialLookupOption,
 	type QuotaBasedMaterialQuantityDetail,
 	type UpdateAcceptanceReportRequest,
 	type UnresolvedAcceptanceReportItemDto,
@@ -248,6 +249,53 @@ export function mapRawAcceptanceItemToEditorRow(
 		assetCategory: showAssetDropdown ? Asset.True : null,
 		assetQuantity: showAssetDropdown ? (item.assetMaterialQuantity ?? 0) : null,
 		resolutionStatus: ImportResolutionStatus.Resolved,
+	};
+}
+
+export function createManualEditorRow(
+	item: MaterialLookupOption,
+	quantityReceived: number,
+	quantityExported: number,
+): AcceptanceReportEditorRow {
+	const isSafetyAndWelfareMaterial =
+		item.type === MaterialType.Material &&
+		item.itemType === ItemType.SafetyAndWelfare;
+	const isAssetMaterial =
+		item.type === MaterialType.Material && item.itemType === ItemType.Resource;
+	const isQuotaMaterial =
+		item.type === MaterialType.Material &&
+		item.itemType === ItemType.QuotaMaterials;
+	const defaultCategory = getDefaultCategoryByMaterialType(item.type);
+	const defaultAdditionalCost = isSafetyAndWelfareMaterial
+		? AdditionalCost.OtherMaterial
+		: getDefaultAdditionalCostByMaterialType(item.type);
+
+	return {
+		...MATERIAL_FORM_DEFAULT,
+		id: undefined,
+		acceptanceReportItemId: undefined,
+		materialOrPartId: item.materialOrPartId,
+		resolutionStatus: ImportResolutionStatus.Resolved,
+		materialCode: item.materialCode,
+		materialName: item.materialName,
+		unitOfMeasureName: item.unitOfMeasureName,
+		type: item.type,
+		itemType: item.itemType,
+		quantityReceived,
+		quantityExported,
+		receivedTypes: [RECEIVED_TYPE_OPTIONS[0].value],
+		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
+		quantity: quantityReceived + quantityExported,
+		category: defaultCategory,
+		categoryQuantity: quantityExported,
+		categoryProcessGroupIds: [],
+		categoryEquipmentIds: [],
+		categoryAllocations: [],
+		showCategoryDropdown: true,
+		additionalCostCategory: defaultAdditionalCost,
+		showAdditionalCostDropdown: isSafetyAndWelfareMaterial,
+		showAssetDropdown: isAssetMaterial,
+		showContractLimitDropdown: isQuotaMaterial,
 	};
 }
 
@@ -487,8 +535,17 @@ export function buildAcceptanceReportRequest(
 		items: values.materials.map((item) => {
 			const base = buildBasePayload(item);
 			return {
-				id: item.id || '',
+				id: item.id || undefined,
+				materialId:
+					item.type === MaterialType.Material
+						? item.materialOrPartId || null
+						: null,
+				partId:
+					item.type === MaterialType.SparePart
+						? item.materialOrPartId || null
+						: null,
 				usageTime: item.usageTime ?? 0,
+				type: item.type ?? MaterialType.Material,
 				itemType: item.itemType ?? 0,
 				categoryAllocations: base.categoryAllocations,
 				categoryProductionOrderId: base.categoryProductionOrderId,
