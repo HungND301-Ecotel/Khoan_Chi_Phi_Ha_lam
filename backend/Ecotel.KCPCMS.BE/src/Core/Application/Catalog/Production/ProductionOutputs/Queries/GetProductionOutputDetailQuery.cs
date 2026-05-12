@@ -1,6 +1,7 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
+using Application.Catalog.Production.LongTermAnchorSeeds;
 using Application.Dto.Catalog.ProductionOutput;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
@@ -21,6 +22,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository =
         unitOfWork.GetRepository<AcceptanceReport>();
+
+    private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository =
+        unitOfWork.GetRepository<LongTermAnchorSeed>();
 
     public async Task<ProductionOutputDetailResponseDto> Handle(
         GetProductionOutputDetailQuery request, CancellationToken cancellationToken)
@@ -73,8 +77,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         if (acceptanceReport != null)
         {
             var previousReports = await GetPreviousReportsAsync(productionOutput);
+            var anchorSeedSnapshots = await BuildAnchorSeedSnapshots(acceptanceReport, cancellationToken);
 
-            sectionA = BuildSectionA(acceptanceReport, previousReports, productionOutput);
+            sectionA = BuildSectionA(acceptanceReport, previousReports, productionOutput, anchorSeedSnapshots);
             sectionB = BuildSectionB(acceptanceReport, previousReports, productionOutput);
             sectionC = BuildSectionC(acceptanceReport, productionOutput);
             sectionD = BuildSectionD(acceptanceReport, productionOutput);
@@ -115,7 +120,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private List<MaterialGroupDto> BuildSectionA(
         AcceptanceReport report,
         List<AcceptanceReport> previousReports,
-        ProductionOutput productionOutput)
+        ProductionOutput productionOutput,
+        List<AnchorSeedSnapshotContext> anchorSeedSnapshots)
     {
         var groups = new Dictionary<string, MaterialGroupDto>();
 
@@ -241,6 +247,25 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
                 group.Materials.Add(BuildSctxTh2Detail(item, part, plannedPrice, actualPrice, oldLogs, productionOutput));
             }
+        }
+
+        foreach (var anchorSeedSnapshot in anchorSeedSnapshots)
+        {
+            var part = anchorSeedSnapshot.Part;
+            var snapshot = anchorSeedSnapshot.Snapshot;
+            var (groupKey, groupCode, groupName) = ResolveAnchorSeedTh2GroupKey("A3", part);
+            var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
+            {
+                GroupCode = groupCode,
+                GroupName = groupName,
+                MaterialType = MatTypeLabel.Sctx,
+                SectionAType = SecAType.SctxTh2,
+                Materials = new(),
+                SubGroups = new()
+            });
+
+            var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
+            group.Materials.Add(BuildAnchorSeedTh2Detail(snapshot, part, plannedPrice, actualPrice));
         }
 
         return groups.Values
@@ -578,6 +603,16 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         return ($"{prefix}_EQ_{code}", code, name);
     }
 
+    private static (string key, string code, string name) ResolveAnchorSeedTh2GroupKey(
+        string prefix,
+        Part part)
+    {
+        var equipment = part.EquipmentParts?.FirstOrDefault()?.Equipment;
+        var code = equipment?.Code?.Value ?? "VTK";
+        var name = equipment?.Name ?? "Vật tư khác";
+        return ($"{prefix}_EQ_{code}", code, name);
+    }
+
     private static Equipment? ResolveEquipmentForGrouping(
         AcceptanceReportItem item,
         bool useAdditionalCostReference)
@@ -794,6 +829,74 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         };
     }
 
+    private static MaterialDetailDto BuildAnchorSeedTh2Detail(
+        LongTermAnchorSeedTrackingHelper.TrackingSnapshot snapshot,
+        Part part,
+        decimal plannedPrice,
+        decimal actualPrice)
+    {
+        return new MaterialDetailDto
+        {
+            MaterialId = part.Id,
+            MaterialCode = part.Code?.Value ?? "",
+            MaterialName = part.Name,
+            UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            BeginningInventory = new BeginningInventoryDto
+            {
+                RemainingAtSite = new InventoryQuantityDto
+                {
+                    Quantity = 0,
+                    Amount = snapshot.PendingValueStartPeriod
+                },
+                PendingValue = snapshot.PendingValueStartPeriod,
+                Total = new TotalDto
+                {
+                    Quantity = 0,
+                    Amount = snapshot.PendingValueStartPeriod
+                }
+            },
+            IssuedInPeriod = new IssuedInPeriodDto
+            {
+                Received = new ReceivedSuppliesDto { Quantity = 0, PlannedAmount = 0, ActualAmount = 0 },
+                BorrowedNoVoucher = new QuantityAmountDto(),
+                ReturnPreviousMonthVoucher = new QuantityAmountDto(),
+                OtherReceipt = new QuantityAmountDto(),
+                Total = new TotalDto()
+            },
+            ExportedInPeriod = new ExportedInPeriodDto
+            {
+                ExportedToProduction = new ExportedToProductionDto(),
+                OtherExport = new QuantityAmountDto(),
+                ContractSettlement = new QuantityAmountDto(),
+                LongTermExpense = new LongTermExpenseDto
+                {
+                    Amount = snapshot.AccountedValueThisPeriod
+                },
+                Total = new TotalDto
+                {
+                    Quantity = 0,
+                    Amount = snapshot.AccountedValueThisPeriod
+                }
+            },
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = new InventoryQuantityDto
+                {
+                    Quantity = 0,
+                    Amount = snapshot.PendingValueEndPeriod
+                },
+                PendingValue = snapshot.PendingValueEndPeriod,
+                Total = new TotalDto
+                {
+                    Quantity = 0,
+                    Amount = snapshot.PendingValueEndPeriod
+                }
+            }
+        };
+    }
+
     private static MaterialDetailDto BuildQuotaBasedDetail(
         AcceptanceReportItem item, Material material, decimal plannedPrice, decimal actualPrice)
     {
@@ -860,6 +963,101 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             return new();
         }
+    }
+
+    private async Task<List<AnchorSeedSnapshotContext>> BuildAnchorSeedSnapshots(
+        AcceptanceReport acceptanceReport,
+        CancellationToken cancellationToken)
+    {
+        var departmentId = acceptanceReport.ProductionOutput?.DepartmentId;
+        if (!departmentId.HasValue)
+        {
+            return [];
+        }
+
+        var seed = await _seedRepository.GetFirstOrDefaultAsync(
+            predicate: s => s.DepartmentId == departmentId.Value,
+            include: q => q
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.UnitOfMeasure)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.Costs)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.EquipmentParts)
+                            .ThenInclude(ep => ep.Equipment)
+                                .ThenInclude(e => e.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.ProcessGroup)
+                        .ThenInclude(pg => pg.Code)
+                .Include(s => s.ProcessGroupMetrics),
+            disableTracking: true);
+
+        if (seed == null || !seed.Items.Any())
+        {
+            return [];
+        }
+
+        var processGroupMetrics = seed.ProcessGroupMetrics
+            .GroupBy(x => x.ProcessGroupId)
+            .ToDictionary(
+                x => x.Key,
+                x => (
+                    PlannedOutput: x.First().PlannedOutput,
+                    StandardOutput: x.First().StandardOutput));
+
+        var reports = await _acceptanceReportRepository.GetAllAsync(
+            predicate: a => a.ProductionOutput.DepartmentId == departmentId.Value,
+            include: q => q
+                .Include(a => a.ProductionOutput)
+                    .ThenInclude(p => p.ProductionOutputProcessGroups)
+                        .ThenInclude(pg => pg.ProductionOutputProducts),
+            disableTracking: true);
+
+        var orderedReports = reports
+            .Where(a => a.ProductionOutput != null)
+            .OrderBy(a => a.ProductionOutput!.StartMonth)
+            .Select(a => new LongTermAnchorSeedTrackingHelper.ReportContext(
+                a.Id,
+                a.ProductionOutput!.StartMonth,
+                a.ProductionOutput.ProductionMeters,
+                a.ProductionOutput.StandardProductionMeters,
+                BuildOutputByProcessGroup(a.ProductionOutput)))
+            .ToList();
+
+        var snapshots = LongTermAnchorSeedTrackingHelper.BuildSnapshots(
+            seed.Items,
+            processGroupMetrics,
+            orderedReports,
+            acceptanceReport.Id);
+
+        var itemById = seed.Items.ToDictionary(x => x.Id);
+
+        return snapshots
+            .Where(snapshot => itemById.ContainsKey(snapshot.SeedItemId))
+            .Select(snapshot => new AnchorSeedSnapshotContext(snapshot, itemById[snapshot.SeedItemId].Part))
+            .ToList();
+    }
+
+    private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(
+        ProductionOutput productionOutput)
+    {
+        var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
+
+        foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
+        {
+            result[processGroup.ProcessGroupId] = (
+                processGroup.ProductionMeters,
+                processGroup.PlanProductionMeters,
+                processGroup.StandardProductionMeters);
+        }
+
+        return result;
     }
 
     private static MaterialGroupDto GetOrAddGroup(
@@ -975,5 +1173,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         return ((decimal)cost.Amount, (decimal)cost.ActualAmount);
     }
+
+    private sealed record AnchorSeedSnapshotContext(
+        LongTermAnchorSeedTrackingHelper.TrackingSnapshot Snapshot,
+        Part Part);
 }
 

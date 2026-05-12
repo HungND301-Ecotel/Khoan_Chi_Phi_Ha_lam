@@ -47,7 +47,9 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Select(g => new ProductionOutputProcessGroupDto
                 {
                     ProcessGroupId = g.ProcessGroupId,
-                    ProcessGroupCode = g.ProcessGroup?.FixedKey?.Key ?? string.Empty,
+                    ProcessGroupCode = g.ProcessGroup?.Code?.Value
+                        ?? g.ProcessGroup?.FixedKey?.Key
+                        ?? string.Empty,
                     ProcessGroupName = g.ProcessGroup?.Name ?? string.Empty,
                     PlanProductionMeters = g.PlanProductionMeters,
                     StandardProductionMeters = g.StandardProductionMeters,
