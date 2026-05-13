@@ -95,14 +95,16 @@ public record MaterialGroupDto
     // ── Content ───────────────────────────────────────────────
     public List<MaterialDetailDto> Materials { get; set; } = new();
 
-    /// SubGroups — chỉ dùng cho SectionC MineSupport / SupportAccessories
-    /// SubGroupCode: "New" | "Reusable"
+    /// SubGroups:
+    /// - SectionC MineSupport / SupportAccessories: "New" | "Reusable"
+    /// - SectionA/SectionB SCTX có ProductionOrderId + Equipment: Equipment.Code
     public List<SubGroupDto> SubGroups { get; set; } = new();
 }
 
 public record SubGroupDto
 {
     public string SubGroupCode { get; set; } = "";
+    public string SubGroupName { get; set; } = "";
     public List<MaterialDetailDto> Materials { get; set; } = new();
 }
 

@@ -150,6 +150,7 @@ export type GroupCodeGroup = {
 	groupName: string;
 	items: UnifiedItem[];
 	showTotals?: boolean; // If true, group row shows totals like a type row (for "Lĩnh mới", "Lĩnh tái sử dụng")
+	childGroups?: GroupCodeGroup[];
 };
 
 export type TypeGroup = {

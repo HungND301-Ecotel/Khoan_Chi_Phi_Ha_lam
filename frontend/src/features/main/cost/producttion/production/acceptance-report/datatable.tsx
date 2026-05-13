@@ -61,38 +61,32 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		const sttMap = new Map<string, string>();
 		let categoryIndex = 0;
 		let typeIndex = 0;
-		let groupIndex = 0;
-		let subGroupIndex = 0;
+		let groupPath: number[] = [];
 
 		rows.forEach((row) => {
 			if (row.rowType === 'category') {
 				categoryIndex += 1;
 				typeIndex = 0;
-				groupIndex = 0;
+				groupPath = [];
 				sttMap.set(row.id, `${String.fromCharCode(64 + categoryIndex)}.`);
 				return;
 			}
 
 			if (row.rowType === 'type') {
 				typeIndex += 1;
-				groupIndex = 0;
-				subGroupIndex = 0;
+				groupPath = [];
 				sttMap.set(row.id, `${toRoman(typeIndex)}.`);
 				return;
 			}
 
 			if (row.rowType === 'group') {
-				if (row.level >= 3) {
-					subGroupIndex += 1;
-					sttMap.set(
-						row.id,
-						`${toRoman(typeIndex)}.${groupIndex}.${subGroupIndex}`,
-					);
-					return;
+				const depth = Math.max(1, row.level - 1);
+				groupPath = groupPath.slice(0, depth);
+				while (groupPath.length < depth) {
+					groupPath.push(0);
 				}
-				groupIndex += 1;
-				subGroupIndex = 0;
-				sttMap.set(row.id, `${toRoman(typeIndex)}.${groupIndex}`);
+				groupPath[depth - 1] += 1;
+				sttMap.set(row.id, `${toRoman(typeIndex)}.${groupPath.join('.')}`);
 				return;
 			}
 
@@ -124,7 +118,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 
 	// Get indentation padding based on level
 	const getIndentClass = (level: number): string => {
-		const indents = ['pl-2', 'pl-6', 'pl-12', 'pl-20', 'pl-28'];
+		const indents = ['pl-2', 'pl-6', 'pl-12', 'pl-20', 'pl-28', 'pl-36', 'pl-44'];
 		return indents[level] || 'pl-2';
 	};
 

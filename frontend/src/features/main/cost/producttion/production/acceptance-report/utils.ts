@@ -344,8 +344,19 @@ function normalizeForCompare(value?: string | null): string {
 		.replace(/[\u0300-\u036f]/g, '');
 }
 
+function getAllItemsFromGroup(group: GroupCodeGroup): UnifiedItem[] {
+	return [
+		...group.items,
+		...(group.childGroups?.flatMap((childGroup) => getAllItemsFromGroup(childGroup)) ??
+			[]),
+	];
+}
+
 function getAllItemsFromType(type: TypeGroup): UnifiedItem[] {
-	return [...type.groups.flatMap((group) => group.items), ...(type.flatItems ?? [])];
+	return [
+		...type.groups.flatMap((group) => getAllItemsFromGroup(group)),
+		...(type.flatItems ?? []),
+	];
 }
 
 function isContractedRevenueCategoryName(categoryName: string): boolean {
@@ -380,12 +391,10 @@ export function calculateCategoryTotals(
 	const allItems: UnifiedItem[] = [];
 
 	category.types.forEach((type) => {
-		// Collect items from groups
 		type.groups.forEach((group) => {
-			allItems.push(...group.items);
+			allItems.push(...getAllItemsFromGroup(group));
 		});
 
-		// Collect flat items if any
 		if (type.flatItems) {
 			allItems.push(...type.flatItems);
 		}
@@ -398,7 +407,7 @@ export function calculateCategoryTotals(
  * Calculate totals for a group (sum all items in the group)
  */
 export function calculateGroupTotals(group: GroupCodeGroup): FinancialFields {
-	return sumFinancialFields(group.items);
+	return sumFinancialFields(getAllItemsFromGroup(group));
 }
 
 /**
@@ -425,6 +434,39 @@ export function flattenHierarchicalData(
 	report: HierarchicalAcceptanceReport,
 ): HierarchicalRow[] {
 	const result: HierarchicalRow[] = [];
+
+	const appendGroupRows = (
+		group: GroupCodeGroup,
+		baseId: string,
+		level: number,
+	) => {
+		const groupData = group.showTotals ? calculateGroupTotals(group) : undefined;
+
+		result.push({
+			id: `${baseId}-group-${group.groupCode}`,
+			rowType: 'group',
+			label: group.groupName,
+			level,
+			data: groupData,
+		});
+
+		group.childGroups?.forEach((childGroup, childIndex) => {
+			appendGroupRows(childGroup, `${baseId}-child-${childIndex}`, level + 1);
+		});
+
+		group.items.forEach((item, itemIndex) => {
+			result.push({
+				id: `${baseId}-item-${itemIndex}`,
+				rowType: 'item',
+				label: '',
+				level: level + 1,
+				itemCode: getItemCode(item),
+				itemName: getItemName(item),
+				unit: item.unit,
+				data: item,
+			});
+		});
+	};
 
 	// Level 0: Categories
 	report.categories.forEach((category, catIndex) => {
@@ -520,30 +562,11 @@ export function flattenHierarchicalData(
 					});
 
 					sctxType.groups.forEach((group, groupIndex) => {
-						const groupData = group.showTotals
-							? calculateGroupTotals(group)
-							: undefined;
-
-						result.push({
-							id: `cat-${catIndex}-type-sctx-sub-${sctxIndex}-grp-${groupIndex}`,
-							rowType: 'group',
-							label: group.groupName,
-							level: 3,
-							data: groupData,
-						});
-
-						group.items.forEach((item, itemIndex) => {
-							result.push({
-								id: `cat-${catIndex}-type-sctx-sub-${sctxIndex}-grp-${groupIndex}-item-${itemIndex}`,
-								rowType: 'item',
-								label: '',
-								level: 4,
-								itemCode: getItemCode(item),
-								itemName: getItemName(item),
-								unit: item.unit,
-								data: item,
-							});
-						});
+						appendGroupRows(
+							group,
+							`cat-${catIndex}-type-sctx-sub-${sctxIndex}-grp-${groupIndex}`,
+							3,
+						);
 					});
 
 					sctxType.flatItems?.forEach((item, itemIndex) => {
@@ -578,32 +601,11 @@ export function flattenHierarchicalData(
 			// Level 2: Groups (if any)
 			if (type.groups.length > 0) {
 				type.groups.forEach((group, groupIndex) => {
-					// Group row - check if should show totals
-					const groupData = group.showTotals
-						? calculateGroupTotals(group)
-						: undefined;
-
-					result.push({
-						id: `cat-${catIndex}-type-${typeIndex}-grp-${groupIndex}`,
-						rowType: 'group',
-						label: group.groupName,
-						level: 2,
-						data: groupData, // Show totals if group.showTotals is true
-					});
-
-					// Level 3: Items
-					group.items.forEach((item, itemIndex) => {
-						result.push({
-							id: `cat-${catIndex}-type-${typeIndex}-grp-${groupIndex}-item-${itemIndex}`,
-							rowType: 'item',
-							label: '', // Item rows don't use label
-							level: 3,
-							itemCode: getItemCode(item),
-							itemName: getItemName(item),
-							unit: item.unit,
-							data: item,
-						});
-					});
+					appendGroupRows(
+						group,
+						`cat-${catIndex}-type-${typeIndex}-grp-${groupIndex}`,
+						2,
+					);
 				});
 			}
 

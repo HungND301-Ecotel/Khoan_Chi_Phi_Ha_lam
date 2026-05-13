@@ -309,11 +309,10 @@ function groupMaterials(
 	categoryType: number,
 	sectionKey: AcceptanceReportSectionKey,
 ): GroupCodeGroup[] {
-	const result: GroupCodeGroup[] = [];
 	const normalizedGroupCode = trimText(materialGroup.groupCode) || 'UNKNOWN';
 	const normalizedGroupName = normalizeGroupName(materialGroup, sectionKey);
+	const childGroups: GroupCodeGroup[] = [];
 
-	// Handle subGroups if they exist and have materials
 	if (materialGroup.subGroups && materialGroup.subGroups.length > 0) {
 		materialGroup.subGroups.forEach((subGroup) => {
 			if (subGroup.materials && subGroup.materials.length > 0) {
@@ -322,7 +321,7 @@ function groupMaterials(
 					SUB_GROUP_NAME_BY_CODE[subGroup.subGroupCode] ||
 					subGroup.subGroupCode;
 
-				result.push({
+				childGroups.push({
 					groupCode: subGroup.subGroupCode,
 					groupName: subGroupName,
 					items: subGroup.materials.map((m) =>
@@ -333,29 +332,34 @@ function groupMaterials(
 							categoryType,
 						),
 					),
-					showTotals: true, // SubGroups show totals like type rows
+					showTotals: sectionKey === 'sectionC',
 				});
 			}
 		});
 	}
 
-	// Handle top-level materials (materials not in subGroups)
-	if (materialGroup.materials && materialGroup.materials.length > 0) {
-		result.push({
-			groupCode: normalizedGroupCode,
-			groupName: normalizedGroupName,
-			items: materialGroup.materials.map((m) =>
-				transformMaterialDetail(
-					m,
-					normalizedGroupCode,
-					normalizedGroupName,
-					categoryType,
-				),
+	const topLevelItems =
+		materialGroup.materials?.map((m) =>
+			transformMaterialDetail(
+				m,
+				normalizedGroupCode,
+				normalizedGroupName,
+				categoryType,
 			),
-		});
+		) ?? [];
+
+	if (topLevelItems.length === 0 && childGroups.length === 0) {
+		return [];
 	}
 
-	return result;
+	return [
+		{
+			groupCode: normalizedGroupCode,
+			groupName: normalizedGroupName,
+			items: topLevelItems,
+			childGroups: childGroups.length > 0 ? childGroups : undefined,
+		},
+	];
 }
 
 /**
@@ -420,7 +424,7 @@ function createMaterialTypeGroups(
 		target.order = Math.min(target.order, order);
 
 		const hasOnlyOneTopLevelGroup =
-			grouped.length === 1 && (!matGroup.subGroups || matGroup.subGroups.length === 0);
+			grouped.length === 1 && !grouped[0]?.childGroups?.length;
 		const isRedundantQuotaGroup =
 			sectionKey === 'sectionC' &&
 			hasOnlyOneTopLevelGroup &&
