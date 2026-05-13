@@ -2,8 +2,8 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public class GetSctxEquipmentRevenueRequest
 {
-    public int FromYear { get; set; }
-    public int ToYear { get; set; }
+    public string? FromMonth { get; set; }
+    public string? ToMonth { get; set; }
     public Guid EquipmentId { get; set; }
     public Guid? DepartmentId { get; set; }
 }
@@ -11,11 +11,11 @@ public class GetSctxEquipmentRevenueRequest
 public class SctxEquipmentRevenueByMonthDto
 {
     public int Month { get; set; }
-    public decimal UnitPrice { get; set; }
+    public double UnitPrice { get; set; }
     public double PlannedOutput { get; set; }
     public double ActualOutput { get; set; }
-    public decimal InitialRevenue { get; set; }
-    public decimal AdjustedRevenue { get; set; }
+    public double InitialRevenue { get; set; }
+    public double AdjustedRevenue { get; set; }
 }
 
 public class SctxEquipmentRevenueResponseDto
