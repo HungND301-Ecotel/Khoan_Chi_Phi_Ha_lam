@@ -1,13 +1,16 @@
 import { ClientPagination } from '@/components/datatable/client-pagination';
+import { ActionDialog } from '@/components/datatable/actions';
+import { DataTableEditDialog } from '@/components/datatable/edit';
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber, FormNumberInput } from '@/components/form/form-number';
+import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-	Dialog,
-	DialogContent,
+	DialogClose,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
@@ -31,6 +34,8 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
+import { DialogProvider } from '@/data/dialog/dialog-provider';
+import { useDialog } from '@/data/dialog/dialog.hook';
 import { cn } from '@/lib/utils';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -483,6 +488,105 @@ const DATATABLE_ACTION_SHADOW =
 const TOOLBAR_BUTTON_CLASS_NAME =
 	'hover:bg-muted flex h-10 min-w-24 cursor-pointer bg-white shadow-[0px_3px_1px_-2px_rgba(0,0,0,0.2),0px_2px_2px_0px_rgba(0,0,0,0.14),0px_1px_5px_0px_rgba(0,0,0,0.12)]';
 
+type CreateMaterialDialogContentProps = {
+	selectedLookupValue: string;
+	onSelectedLookupValueChange: (value: string) => void;
+	materialLookupOptions: MaterialLookupOption[];
+	newQuantityReceived: number;
+	onNewQuantityReceivedChange: (value: number) => void;
+	newQuantityExported: number;
+	onNewQuantityExportedChange: (value: number) => void;
+	isCreatingMaterial: boolean;
+	onConfirm: () => Promise<boolean>;
+};
+
+function CreateMaterialDialogContent({
+	selectedLookupValue,
+	onSelectedLookupValueChange,
+	materialLookupOptions,
+	newQuantityReceived,
+	onNewQuantityReceivedChange,
+	newQuantityExported,
+	onNewQuantityExportedChange,
+	isCreatingMaterial,
+	onConfirm,
+}: CreateMaterialDialogContentProps) {
+	const { setOpen } = useDialog();
+
+	return (
+		<>
+			<div className='grid gap-6'>
+				<div className='space-y-2'>
+					<label className='text-sm font-medium text-slate-700'>Vật tư</label>
+					<FormComboBox
+						value={selectedLookupValue}
+						onValueChange={onSelectedLookupValueChange}
+						options={materialLookupOptions}
+						placeholder='Chọn vật tư hoặc phụ tùng'
+					/>
+				</div>
+				<div className='grid gap-4 sm:grid-cols-2'>
+					<div className='space-y-2'>
+						<label className='text-sm font-medium text-slate-700'>
+							Số lượng lĩnh
+						</label>
+						<Input
+							type='number'
+							min={0}
+							step='any'
+							value={newQuantityReceived}
+							className='h-11'
+							onChange={(event) =>
+								onNewQuantityReceivedChange(Number(event.target.value) || 0)
+							}
+						/>
+					</div>
+					<div className='space-y-2'>
+						<label className='text-sm font-medium text-slate-700'>
+							Số lượng xuất
+						</label>
+						<Input
+							type='number'
+							min={0}
+							step='any'
+							value={newQuantityExported}
+							className='h-11'
+							onChange={(event) =>
+								onNewQuantityExportedChange(Number(event.target.value) || 0)
+							}
+						/>
+					</div>
+				</div>
+			</div>
+			<DialogFooter className='bg-muted sticky bottom-0 mt-auto py-4'>
+				<Button
+					type='button'
+					variant='outline'
+					className='h-8 w-24 bg-[#dfe2ea] shadow-none hover:bg-[#dfe2ea] hover:shadow-sm'
+					onClick={() => setOpen(false)}
+					disabled={isCreatingMaterial}
+				>
+					Huỷ
+				</Button>
+				<Button
+					type='button'
+					variant='default'
+					className='h-8 w-24 shadow-none hover:shadow-none'
+					disabled={isCreatingMaterial}
+					onClick={async () => {
+						const created = await onConfirm();
+						if (created) {
+							setOpen(false);
+						}
+					}}
+				>
+					{isCreatingMaterial ? <Spinner /> : 'Xác nhận'}
+				</Button>
+			</DialogFooter>
+		</>
+	);
+}
+
 // ── Main form ─────────────────────────────────────────────────────────────────
 
 export function AcceptanceReportEditor({
@@ -515,10 +619,11 @@ export function AcceptanceReportEditor({
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
 	const [selectedRowFieldIds, setSelectedRowFieldIds] = useState<string[]>([]);
-	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [selectedLookupValue, setSelectedLookupValue] = useState('');
 	const [newQuantityReceived, setNewQuantityReceived] = useState(0);
 	const [newQuantityExported, setNewQuantityExported] = useState(0);
+	const [isCreatingMaterial, setIsCreatingMaterial] = useState(false);
+	const popup = usePopup();
 	const materialBadgeFilters = useMemo(() => {
 		const map = new Map<string, MaterialBadgeFilterOption>();
 		for (const item of fields) {
@@ -737,23 +842,33 @@ export function AcceptanceReportEditor({
 			(option) => option.value === selectedLookupValue,
 		);
 		if (!selectedOption) {
-			return;
+			popup.error('Vui lòng chọn vật tư hoặc phụ tùng cần tạo mới.');
+			return false;
 		}
 
-		append(
-			createManualEditorRow(
-				selectedOption,
-				Number(newQuantityReceived) || 0,
-				Number(newQuantityExported) || 0,
-			),
-		);
-		await onMaterialAdded?.(selectedOption);
-		setIsCreateDialogOpen(false);
-		setSelectedLookupValue('');
-		setNewQuantityReceived(0);
-		setNewQuantityExported(0);
-		setSearchKeyword('');
-		setPageIndex(Math.floor(fields.length / pageSize));
+		try {
+			setIsCreatingMaterial(true);
+			await onMaterialAdded?.(selectedOption);
+			append(
+				createManualEditorRow(
+					selectedOption,
+					Number(newQuantityReceived) || 0,
+					Number(newQuantityExported) || 0,
+				),
+			);
+			setSelectedLookupValue('');
+			setNewQuantityReceived(0);
+			setNewQuantityExported(0);
+			setSearchKeyword('');
+			setPageIndex(Math.floor(fields.length / pageSize));
+			popup.success('Đã tạo mới vật tư trong biên bản nghiệm thu.');
+			return true;
+		} catch (error) {
+			popup.error(error);
+			return false;
+		} finally {
+			setIsCreatingMaterial(false);
+		}
 	};
 
 	const handleDeleteSelectedRows = () => {
@@ -765,11 +880,17 @@ export function AcceptanceReportEditor({
 			.sort((a, b) => b - a);
 
 		if (selectedIndexes.length === 0) {
+			popup.error('Vui lòng chọn ít nhất một dòng để xoá.');
 			return;
 		}
 
-		remove(selectedIndexes);
-		setSelectedRowFieldIds([]);
+		try {
+			remove(selectedIndexes);
+			setSelectedRowFieldIds([]);
+			popup.success(`Đã xoá thành công ${selectedIndexes.length} dòng vật tư.`);
+		} catch (error) {
+			popup.error(error);
+		}
 	};
 
 	return (
@@ -786,27 +907,78 @@ export function AcceptanceReportEditor({
 						<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
 							{mode === 'edit' && (
 								<div className='flex shrink-0 flex-wrap items-center gap-3'>
-									<Button
-										type='button'
-										variant='warning'
-										className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-										onClick={() => setIsCreateDialogOpen(true)}
-									>
-										<span className='font-medium'>Tạo mới</span>
-										<AddIcon fontSize='small' />
-									</Button>
-									<Button
-										type='button'
-										variant='destructive'
-										className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-										disabled={selectedRowFieldIds.length === 0}
-										onClick={handleDeleteSelectedRows}
-									>
-										<span className='font-medium'>
-											Xoá ({selectedRowFieldIds.length})
-										</span>
-										<DeleteIcon fontSize='small' />
-									</Button>
+									<DialogProvider>
+										<DataTableEditDialog
+											type='Tạo mới'
+											crumb='vật tư'
+											trigger={
+												<Button
+													type='button'
+													variant='warning'
+													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+												>
+													<span className='font-medium'>Tạo mới</span>
+													<AddIcon fontSize='small' />
+												</Button>
+											}
+										>
+											<CreateMaterialDialogContent
+												selectedLookupValue={selectedLookupValue}
+												onSelectedLookupValueChange={setSelectedLookupValue}
+												materialLookupOptions={materialLookupOptions}
+												newQuantityReceived={newQuantityReceived}
+												onNewQuantityReceivedChange={setNewQuantityReceived}
+												newQuantityExported={newQuantityExported}
+												onNewQuantityExportedChange={setNewQuantityExported}
+												isCreatingMaterial={isCreatingMaterial}
+												onConfirm={handleCreateMaterial}
+											/>
+										</DataTableEditDialog>
+									</DialogProvider>
+									<DialogProvider>
+										<ActionDialog
+											className='min-h-auto sm:max-w-md'
+											trigger={
+												<Button
+													type='button'
+													variant='destructive'
+													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+													disabled={selectedRowFieldIds.length === 0}
+												>
+													<span className='font-medium'>
+														Xoá ({selectedRowFieldIds.length})
+													</span>
+													<DeleteIcon fontSize='small' />
+												</Button>
+											}
+										>
+											<DialogHeader>
+												<DialogTitle className='text-center uppercase'>
+													Xác nhận xóa
+												</DialogTitle>
+												<DialogDescription className='text-center'>
+													Bạn có chắc chắn muốn xóa {selectedRowFieldIds.length}{' '}
+													mục không?
+												</DialogDescription>
+											</DialogHeader>
+											<DialogFooter className='flex w-full items-center sm:justify-center'>
+												<DialogClose asChild>
+													<Button variant='secondary' className='w-24'>
+														Huỷ
+													</Button>
+												</DialogClose>
+												<DialogClose asChild>
+													<Button
+														variant='destructive'
+														onClick={handleDeleteSelectedRows}
+														className='w-24'
+													>
+														Xoá
+													</Button>
+												</DialogClose>
+											</DialogFooter>
+										</ActionDialog>
+									</DialogProvider>
 								</div>
 							)}
 							<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
@@ -1019,68 +1191,6 @@ export function AcceptanceReportEditor({
 					{form.formState.isSubmitting ? <Spinner /> : 'Lưu'}
 				</Button>
 			</DialogFooter>
-			<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-				<DialogContent className='sm:max-w-xl'>
-					<DialogHeader>
-						<DialogTitle>Tạo mới vật tư</DialogTitle>
-					</DialogHeader>
-					<div className='grid gap-4'>
-						<div className='space-y-2'>
-							<label className='text-sm font-medium text-slate-700'>
-								Vật tư
-							</label>
-							<FormComboBox
-								value={selectedLookupValue}
-								onValueChange={setSelectedLookupValue}
-								options={materialLookupOptions}
-								placeholder='Chọn vật tư hoặc phụ tùng'
-							/>
-						</div>
-						<div className='grid gap-4 sm:grid-cols-2'>
-							<div className='space-y-2'>
-								<label className='text-sm font-medium text-slate-700'>
-									Số lượng lĩnh
-								</label>
-								<Input
-									type='number'
-									min={0}
-									step='any'
-									value={newQuantityReceived}
-									onChange={(event) =>
-										setNewQuantityReceived(Number(event.target.value) || 0)
-									}
-								/>
-							</div>
-							<div className='space-y-2'>
-								<label className='text-sm font-medium text-slate-700'>
-									Số lượng xuất
-								</label>
-								<Input
-									type='number'
-									min={0}
-									step='any'
-									value={newQuantityExported}
-									onChange={(event) =>
-										setNewQuantityExported(Number(event.target.value) || 0)
-									}
-								/>
-							</div>
-						</div>
-					</div>
-					<DialogFooter className='px-0 py-0'>
-						<Button
-							type='button'
-							variant='outline'
-							onClick={() => setIsCreateDialogOpen(false)}
-						>
-							Huỷ
-						</Button>
-						<Button type='button' onClick={() => void handleCreateMaterial()}>
-							Tạo mới
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
 		</div>
 	);
 }
