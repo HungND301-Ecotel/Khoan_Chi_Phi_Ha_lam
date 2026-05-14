@@ -164,6 +164,15 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             });
 
             var (plannedPrice, actualPrice) = GetUnitPrices(part.Costs, productionOutput.StartMonth);
+            if (!item.IsLongTermTracking)
+            {
+                AddSctxDetailToGroup(
+                    group,
+                    item,
+                    BuildSctxImmediateExpenseDetail(item, part, plannedPrice, actualPrice));
+                continue;
+            }
+
             var th1Logs = item.AcceptanceReportItemLogs
                 .Where(l => l.AcceptanceReportId == report.Id)
                 .ToList();
@@ -190,6 +199,11 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         // ── Sub-section 3: SCTX TH2 (từ current report — logs kỳ trước còn tồn) ──
         foreach (var item in sectionItems.Where(IsSctxItem))
         {
+            if (!item.IsLongTermTracking)
+            {
+                continue;
+            }
+
             var part = GetSctxPart(item)!;
             var oldLogs = item.AcceptanceReportItemLogs
                 .Where(l => l.AcceptanceReportId != report.Id && l.RemainingTime > 0)
@@ -225,7 +239,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             var prevItems = prevReport.AcceptanceReportItems
                 .Where(i => i.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
-                         && IsSctxItem(i))
+                         && IsSctxItem(i)
+                         && i.IsLongTermTracking)
                 .ToList();
 
             foreach (var item in prevItems)
@@ -819,6 +834,58 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
                 Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
+            }
+        };
+    }
+
+    private static MaterialDetailDto BuildSctxImmediateExpenseDetail(
+        AcceptanceReportItem item,
+        Part part,
+        decimal plannedPrice,
+        decimal actualPrice)
+    {
+        if (item.ShippedQuantity >= item.IssuedQuantity)
+        {
+            return BuildSctxNoLogDetail(item, part, plannedPrice, actualPrice);
+        }
+
+        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
+        var exportedAmount = (decimal)item.IssuedQuantity * plannedPrice;
+        var hasProductionOrder = item.ProductionOrderId.HasValue;
+
+        return new MaterialDetailDto
+        {
+            MaterialId = part.Id,
+            MaterialCode = part.Code?.Value ?? "",
+            MaterialName = part.Name,
+            UnitOfMeasureName = part.UnitOfMeasure?.Name ?? "",
+            PlannedUnitPrice = plannedPrice,
+            ActualUnitPrice = actualPrice,
+            IssuedInPeriod = issued,
+            ExportedInPeriod = new ExportedInPeriodDto
+            {
+                ExportedToProduction = new ExportedToProductionDto
+                {
+                    Quantity = item.IssuedQuantity,
+                    Amount = exportedAmount
+                },
+                OtherExport = new QuantityAmountDto(),
+                ContractSettlement = new QuantityAmountDto(),
+                Total = new TotalDto
+                {
+                    Quantity = item.IssuedQuantity,
+                    Amount = exportedAmount
+                }
+            },
+            EndingInventory = new EndingInventoryDto
+            {
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = 0, Amount = 0 }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto { Quantity = 0, Amount = 0 }
+                    : null,
+                Total = new TotalDto { Quantity = 0, Amount = 0 }
             }
         };
     }

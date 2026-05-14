@@ -175,6 +175,7 @@ export type CreateAcceptanceReportItem = {
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
+	isLongTermTracking: boolean;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;
@@ -211,6 +212,7 @@ export type UpdateAcceptanceReportItem = {
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
+	isLongTermTracking: boolean;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
 	additionalCost: number;

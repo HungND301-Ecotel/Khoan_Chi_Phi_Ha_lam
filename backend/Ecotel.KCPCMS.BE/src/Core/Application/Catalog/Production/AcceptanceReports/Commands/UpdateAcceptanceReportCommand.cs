@@ -148,6 +148,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         categoryReference,
                         additionalCostReference,
                         updateItem.MaterialsIncludedInContractRevenue,
+                        updateItem.IsLongTermTracking,
                         updateItem.MaterialsIncludedInContractRevenueQuantity,
                         updateItem.AdditionalCost,
                         updateItem.OtherMaterialDetail,
@@ -261,6 +262,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     categoryReference,
                     additionalCostReference,
                     createItem.MaterialsIncludedInContractRevenue,
+                    createItem.IsLongTermTracking,
                     createItem.MaterialsIncludedInContractRevenueQuantity,
                     createItem.AdditionalCost,
                     createItem.OtherMaterialDetail,
@@ -464,6 +466,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private static bool ShouldCreateLongTermTracking(AcceptanceReportItem item, double residualQuantity)
         => item.PartId.HasValue
             && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+            && item.IsLongTermTracking
             && residualQuantity > 0;
 }
 

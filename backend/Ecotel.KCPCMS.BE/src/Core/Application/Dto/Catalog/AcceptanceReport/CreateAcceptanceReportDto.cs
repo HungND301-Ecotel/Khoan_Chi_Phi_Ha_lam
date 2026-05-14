@@ -30,6 +30,7 @@ public record CreateAcceptanceReportItemDto
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
+    public bool IsLongTermTracking { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public required double MaterialsIncludedInContractRevenueQuantity { get; init; }
     public List<AcceptanceReportCategoryAllocationDto>? CategoryAllocations { get; init; }

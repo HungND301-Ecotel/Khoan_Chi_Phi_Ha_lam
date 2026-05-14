@@ -61,6 +61,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                               ?? item.Part?.UnitOfMeasure?.Name,
             Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
+            IsLongTermTracking = item.IsLongTermTracking,
             ProcessGroupId = item.ProcessGroupId,
             ProcessGroupCode = item.ProcessGroup?.FixedKey?.Key,
             ProcessGroupName = item.ProcessGroup?.Name,

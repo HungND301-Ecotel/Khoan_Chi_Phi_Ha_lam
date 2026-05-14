@@ -1224,6 +1224,9 @@ public class ApplicationDbContext(
             .Property(i => i.SortOrder)
             .HasDefaultValue(0);
         modelBuilder.Entity<AcceptanceReportItem>()
+            .Property(i => i.IsLongTermTracking)
+            .HasDefaultValue(false);
+        modelBuilder.Entity<AcceptanceReportItem>()
             .HasIndex(i => new { i.AcceptanceReportId, i.SortOrder })
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<AcceptanceReportItem>()

@@ -1103,6 +1103,9 @@ export function AcceptanceReportEditor({
 								<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Số lượng xuất
 								</TableCell>
+								<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
+									Phân bổ
+								</TableCell>
 								<TableCell className='w-[18%] min-w-80 border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Vật tư tính vào doanh thu khoán
 								</TableCell>
@@ -1146,7 +1149,7 @@ export function AcceptanceReportEditor({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={mode === 'edit' ? 11 : 10}
+										colSpan={mode === 'edit' ? 12 : 11}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -1376,6 +1379,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const materialCode = row?.materialCode;
 	const materialName = row?.materialName;
 	const unitOfMeasureName = row?.unitOfMeasureName;
+	const isLongTermTracking = row?.isLongTermTracking ?? false;
 
 	// ── Derived values ───────────────────────────────────────────────────────
 	const defaultCategoryByType =
@@ -1429,6 +1433,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		contractLimitCategoryValue === QuotaBasedMaterial.MineSupport ||
 		contractLimitCategoryValue === QuotaBasedMaterial.SupportAccessories;
 	const categoryNeedsProductionOrder =
+		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+	const supportsRowLongTermTracking =
+		materialTypeValue === MaterialType.SparePart &&
+		showCategoryDropdown &&
 		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
 	const categoryNeedsEquipment =
 		categoryNeedsProductionOrder && isSparePartByEquipment;
@@ -1554,6 +1562,27 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		showAdditionalCostDropdown: false,
 		showAssetDropdown: false,
 	});
+	const hasInitializedLongTermTrackingRef = useRef(false);
+	const prevSupportsLongTermTrackingRef = useRef(false);
+
+	useEffect(() => {
+		const wasSupported = prevSupportsLongTermTrackingRef.current;
+
+		if (!supportsRowLongTermTracking) {
+			if (isLongTermTracking) {
+				set('isLongTermTracking', false);
+			}
+		} else if (
+			hasInitializedLongTermTrackingRef.current &&
+			!wasSupported &&
+			!isLongTermTracking
+		) {
+			set('isLongTermTracking', true);
+		}
+
+		prevSupportsLongTermTrackingRef.current = supportsRowLongTermTracking;
+		hasInitializedLongTermTrackingRef.current = true;
+	}, [supportsRowLongTermTracking, isLongTermTracking]);
 
 	useEffect(() => {
 		const prev = prevState.current;
@@ -2347,6 +2376,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 							</div>
 						</div>
 					</TableCell>
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4 text-center'>
+						<span className='text-sm text-slate-400'>-</span>
+					</TableCell>
 					<TableCell className='w-[18%] min-w-80 border-b border-slate-200 px-4 py-4 text-center'>
 						<span className='text-sm text-slate-400'>-</span>
 					</TableCell>
@@ -2536,6 +2568,20 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								</div>
 							);
 						})()}
+					</TableCell>
+
+					{/* Phân bổ */}
+					<TableCell className='w-[8%] min-w-28 border-b border-slate-200 px-4 py-4'>
+						<div className='flex justify-center'>
+							<Checkbox
+								checked={supportsRowLongTermTracking && isLongTermTracking}
+								disabled={!supportsRowLongTermTracking}
+								onCheckedChange={(checked) =>
+									set('isLongTermTracking', Boolean(checked))
+								}
+								className='[&_.lucide-check]:text-white'
+							/>
+						</div>
 					</TableCell>
 
 					{/* Vật tư tính vào doanh thu khoán */}

@@ -35,6 +35,7 @@ import {
 	buildCategoryAllocationsForPayload,
 	getDefaultAdditionalCostByMaterialType,
 	getDefaultCategoryByMaterialType,
+	supportsLongTermTracking,
 	mapIssuedDetailsToBreakdown,
 	mapShippedDetailsToBreakdown,
 	normalizeProductionOrderId,
@@ -81,6 +82,7 @@ export function mapResolvedImportItem(
 		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
 		quantity: item.issuedQuantity + item.shippedQuantity,
 		category: defaultCategory,
+		isLongTermTracking: false,
 		categoryProcessGroupIds: [],
 		categoryEquipmentIds: [],
 		categoryAllocations: [],
@@ -207,6 +209,15 @@ export function mapRawAcceptanceItemToEditorRow(
 			showCategoryDropdown
 				? item.materialsIncludedInContractRevenue || null
 				: null,
+		isLongTermTracking: supportsLongTermTracking(
+			item.type,
+			showCategoryDropdown,
+			showCategoryDropdown
+				? (item.materialsIncludedInContractRevenue || null)
+				: null,
+		)
+			? (item.isLongTermTracking ?? true)
+			: false,
 		categoryProcessGroup: item.processGroupId ?? null,
 		categoryProcessGroupIds: categoryAllocations.map(
 			(allocation: { processGroupId: string | null }) =>
@@ -287,6 +298,9 @@ export function createManualEditorRow(
 		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
 		quantity: quantityReceived + quantityExported,
 		category: defaultCategory,
+		isLongTermTracking:
+			item.type === MaterialType.SparePart &&
+			defaultCategory === MaterialsIncludedInContractRevenue.Maintain,
 		categoryQuantity: quantityExported,
 		categoryProcessGroupIds: [],
 		categoryEquipmentIds: [],
@@ -409,6 +423,13 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		item.showCategoryDropdown && resolvedCategory
 			? resolvedCategory
 			: MaterialsIncludedInContractRevenue.None;
+	const isLongTermTracking = supportsLongTermTracking(
+		item.type,
+		item.showCategoryDropdown,
+		materialsIncludedInContractRevenue,
+	)
+		? item.isLongTermTracking
+		: false;
 	const categoryAllocations = buildCategoryAllocationsForPayload(
 		item.categoryAllocations,
 		materialsIncludedInContractRevenue,
@@ -470,6 +491,7 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		categoryEquipmentId,
 		additionalSelection,
 		materialsIncludedInContractRevenue,
+		isLongTermTracking,
 		quotaPayload,
 		issuedDetails: buildIssuedDetails(item),
 		shippedDetails: buildShippedDetails(item),
@@ -509,6 +531,7 @@ export function buildAcceptanceReportRequest(
 					shippedDetails: base.shippedDetails,
 					materialsIncludedInContractRevenue:
 						base.materialsIncludedInContractRevenue,
+					isLongTermTracking: base.isLongTermTracking,
 					categoryAllocations: base.categoryAllocations,
 					processGroupId: base.processGroupId,
 					materialsIncludedInContractRevenueQuantity:
@@ -559,6 +582,7 @@ export function buildAcceptanceReportRequest(
 				shippedDetails: base.shippedDetails,
 				materialsIncludedInContractRevenue:
 					base.materialsIncludedInContractRevenue,
+				isLongTermTracking: base.isLongTermTracking,
 				processGroupId: base.processGroupId,
 				materialsIncludedInContractRevenueQuantity: item.categoryQuantity || 0,
 				additionalCost: base.additionalCost,

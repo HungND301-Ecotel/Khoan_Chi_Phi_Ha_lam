@@ -21,6 +21,7 @@ export type RawAcceptanceReportItem = {
 	shippedQuantity: number;
 	type: number;
 	materialsIncludedInContractRevenue: number;
+	isLongTermTracking?: boolean;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;
@@ -69,6 +70,7 @@ export type AcceptanceReportItem = {
 	shippedDetails?: QuantityDetail[];
 	type: number;
 	materialsIncludedInContractRevenue: number;
+	isLongTermTracking?: boolean;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;

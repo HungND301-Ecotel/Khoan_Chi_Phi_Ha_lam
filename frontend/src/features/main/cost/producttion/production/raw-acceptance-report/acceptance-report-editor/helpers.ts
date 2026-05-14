@@ -113,6 +113,18 @@ export function getDefaultAdditionalCostByMaterialType(
 	return null;
 }
 
+export function supportsLongTermTracking(
+	type?: number | null,
+	showCategoryDropdown?: boolean | null,
+	category?: number | null,
+): boolean {
+	return (
+		type === MaterialType.SparePart &&
+		Boolean(showCategoryDropdown) &&
+		category === MaterialsIncludedInContractRevenue.Maintain
+	);
+}
+
 export function buildCategoryAllocationsForPayload(
 	allocations: CategoryAllocation[] | undefined,
 	materialsIncludedInContractRevenue: number,

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
 	Dialog,
 	DialogContent,
@@ -171,6 +172,15 @@ export function RawAcceptanceReportDataTable({
 
 					<TableHead
 						className='p-0 hover:bg-[#f0f0f0]'
+						style={{ minWidth: '90px' }}
+					>
+						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-center gap-2 px-4 py-2 font-bold'>
+							Phân bổ
+						</div>
+					</TableHead>
+
+					<TableHead
+						className='p-0 hover:bg-[#f0f0f0]'
 						style={{ minWidth: '120px' }}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-center gap-2 px-4 py-2 font-bold'>
@@ -269,6 +279,16 @@ export function RawAcceptanceReportDataTable({
 						<TableCell style={{ minWidth: '90px' }}>
 							<div className='flex items-center justify-center px-4 py-2'>
 								{formatNumber(item.shippedQuantity || 0)}
+							</div>
+						</TableCell>
+
+						<TableCell style={{ minWidth: '90px' }}>
+							<div className='flex items-center justify-center px-4 py-2'>
+								<Checkbox
+									checked={Boolean(item.isLongTermTracking)}
+									disabled
+									className='[&_.lucide-check]:text-white'
+								/>
 							</div>
 						</TableCell>
 

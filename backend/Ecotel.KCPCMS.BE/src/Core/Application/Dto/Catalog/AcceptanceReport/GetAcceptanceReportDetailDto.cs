@@ -44,6 +44,7 @@ public record AcceptanceReportDetailItemDto
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
+    public required bool IsLongTermTracking { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public string? ProcessGroupCode { get; init; }
     public string? ProcessGroupName { get; init; }

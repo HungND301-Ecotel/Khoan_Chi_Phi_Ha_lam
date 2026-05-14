@@ -396,6 +396,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
     private static bool ShouldDisplayLongTermTracking(AcceptanceReportItem? item, AcceptanceReportItemLog log)
         => item?.Part != null
             && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
+            && item.IsLongTermTracking
             && log.TotalValueToAccount > 0;
 
     private static (decimal ValueByStandard, decimal AccountedValueThisPeriod, decimal PendingValueEndPeriod) CalculateCurrentPeriodValues(

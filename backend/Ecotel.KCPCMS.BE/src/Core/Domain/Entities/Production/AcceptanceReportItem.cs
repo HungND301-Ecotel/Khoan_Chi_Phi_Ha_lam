@@ -26,6 +26,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     //Vật tư tính vào doanh thu khoán
     public MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; protected set; }
+    public bool IsLongTermTracking { get; protected set; }
     public double MaterialsIncludedInContractRevenueQuantity { get; protected set; }
 
     //Bổ sung chi phí
@@ -249,6 +250,17 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         }
     }
 
+    private static bool NormalizeLongTermTracking(
+        Guid? partId,
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        bool isLongTermTracking)
+    {
+        var supportsLongTermTracking = partId.HasValue
+            && materialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain;
+
+        return supportsLongTermTracking && isLongTermTracking;
+    }
+
     private void SyncCategoryAllocations(
         IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations,
         Guid? fallbackProcessGroupId,
@@ -288,6 +300,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        bool isLongTermTracking,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
         OtherMaterialDetail otherMaterialDetail,
@@ -317,6 +330,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             PartId = partId,
             UsageTime = usageTime,
             MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue,
+            IsLongTermTracking = NormalizeLongTermTracking(
+                partId,
+                materialsIncludedInContractRevenue,
+                isLongTermTracking),
             MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity,
             AdditionalCost = additionalCost,
             OtherMaterialDetail = otherMaterialDetail,
@@ -365,6 +382,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProductionReference categoryProductionReference,
         ProductionReference additionalCostProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        bool isLongTermTracking,
         double materialsIncludedInContractRevenueQuantity,
         AdditionalCost additionalCost,
         OtherMaterialDetail otherMaterialDetail,
@@ -391,6 +409,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         PartId = partId;
         UsageTime = usageTime;
         MaterialsIncludedInContractRevenue = materialsIncludedInContractRevenue;
+        IsLongTermTracking = NormalizeLongTermTracking(
+            partId,
+            materialsIncludedInContractRevenue,
+            isLongTermTracking);
         MaterialsIncludedInContractRevenueQuantity = materialsIncludedInContractRevenueQuantity;
         AdditionalCost = additionalCost;
         OtherMaterialDetail = otherMaterialDetail;
