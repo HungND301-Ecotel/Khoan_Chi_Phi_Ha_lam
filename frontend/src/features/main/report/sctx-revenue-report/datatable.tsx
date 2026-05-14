@@ -25,11 +25,6 @@ type EquipmentLookup = {
 	processGroupName?: string | null;
 };
 
-type ProcessGroupLookup = {
-	id: string;
-	code: string;
-	name: string;
-};
 
 type SctxRevenueByMonthApi = {
 	month: number;
@@ -70,49 +65,100 @@ const yearOptions = Array.from({ length: 11 }, (_, index) => {
 	};
 });
 
+const monthOptions = Array.from({ length: 12 }, (_, index) => {
+	const value = String(index + 1).padStart(2, '0');
+	return {
+		value,
+		label: `Tháng ${value}`,
+	};
+});
+
 const buildRowsFromApi = (months: SctxRevenueByMonthApi[]): SctxRevenueRow[] => {
-	const monthMap = new Map(months.map((item) => [item.month, item]));
-
-	return Array.from({ length: 12 }, (_, index) => {
-		const month = index + 1;
-		const item = monthMap.get(month);
-
-		return {
-			month,
-			unitPrice: item?.unitPrice ?? 0,
-			plannedQuantity: item?.plannedOutput ?? 0,
-			actualQuantity: item?.actualOutput ?? 0,
-			baseRevenue: item?.initialRevenue ?? 0,
-			adjustedRevenue: item?.adjustedRevenue ?? 0,
-		};
-	});
+	const sorted = [...months].sort((a, b) => a.month - b.month);
+	return sorted.map((item) => ({
+		month: item.month,
+		unitPrice: item.unitPrice ?? 0,
+		plannedQuantity: item.plannedOutput ?? 0,
+		actualQuantity: item.actualOutput ?? 0,
+		baseRevenue: item.initialRevenue ?? 0,
+		adjustedRevenue: item.adjustedRevenue ?? 0,
+	}));
 };
 
+const toMonthIndex = (value: string) => {
+	const [yearPart, monthPart] = value.split('-');
+	if (!yearPart || !monthPart) {
+		return null;
+	}
+	return Number(yearPart) * 12 + (Number(monthPart) - 1);
+};
+
+const buildMonthValue = (year: string, month: string) =>
+	`${year}-${month}`;
+
+
 export function SctxRevenueReportDataTable() {
-	const [fromYear, setFromYear] = useState(String(new Date().getFullYear() - 1));
-	const [toYear, setToYear] = useState(String(new Date().getFullYear()));
+	const now = new Date();
+	const currentYear = now.getFullYear();
+	const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+	const [fromMonth, setFromMonth] = useState(
+		buildMonthValue(String(currentYear - 1), currentMonth),
+	);
+	const [toMonth, setToMonth] = useState(
+		buildMonthValue(String(currentYear), currentMonth),
+	);
 	const [equipments, setEquipments] = useState<EquipmentLookup[]>([]);
-	const [processGroups, setProcessGroups] = useState<ProcessGroupLookup[]>([]);
-	const [selectedProcessGroupId, setSelectedProcessGroupId] = useState('');
 	const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
 	const [yearData, setYearData] = useState<SctxRevenueByYearApi[]>([]);
 	const [isLoadingEquipments, setIsLoadingEquipments] = useState(false);
-	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
 	const [isLoadingRows, setIsLoadingRows] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const [fromYearPartRaw, fromMonthPartRaw] = fromMonth.split('-');
+	const [toYearPartRaw, toMonthPartRaw] = toMonth.split('-');
+	const fromYearPart = fromYearPartRaw ?? String(currentYear);
+	const fromMonthPart = fromMonthPartRaw ?? currentMonth;
+	const toYearPart = toYearPartRaw ?? String(currentYear);
+	const toMonthPart = toMonthPartRaw ?? currentMonth;
+
 	const handleFromYearChange = (value: string) => {
-		setFromYear(value);
-		if (Number(value) > Number(toYear)) {
-			setToYear(value);
+		const nextValue = buildMonthValue(value, fromMonthPart);
+		setFromMonth(nextValue);
+		const fromIndex = toMonthIndex(nextValue);
+		const toIndex = toMonthIndex(toMonth);
+		if (fromIndex !== null && toIndex !== null && fromIndex > toIndex) {
+			setToMonth(nextValue);
+		}
+	};
+
+	const handleFromMonthChange = (value: string) => {
+		const nextValue = buildMonthValue(fromYearPart, value);
+		setFromMonth(nextValue);
+		const fromIndex = toMonthIndex(nextValue);
+		const toIndex = toMonthIndex(toMonth);
+		if (fromIndex !== null && toIndex !== null && fromIndex > toIndex) {
+			setToMonth(nextValue);
 		}
 	};
 
 	const handleToYearChange = (value: string) => {
-		setToYear(value);
-		if (Number(value) < Number(fromYear)) {
-			setFromYear(value);
+		const nextValue = buildMonthValue(value, toMonthPart);
+		setToMonth(nextValue);
+		const fromIndex = toMonthIndex(fromMonth);
+		const toIndex = toMonthIndex(nextValue);
+		if (fromIndex !== null && toIndex !== null && toIndex < fromIndex) {
+			setFromMonth(nextValue);
+		}
+	};
+
+	const handleToMonthChange = (value: string) => {
+		const nextValue = buildMonthValue(toYearPart, value);
+		setToMonth(nextValue);
+		const fromIndex = toMonthIndex(fromMonth);
+		const toIndex = toMonthIndex(nextValue);
+		if (fromIndex !== null && toIndex !== null && toIndex < fromIndex) {
+			setFromMonth(nextValue);
 		}
 	};
 
@@ -169,51 +215,6 @@ export function SctxRevenueReportDataTable() {
 		};
 	}, []);
 
-	useEffect(() => {
-		let cancelled = false;
-
-		const fetchProcessGroups = async () => {
-			setIsLoadingProcessGroups(true);
-
-			try {
-				const response = await api.pagging<ProcessGroupLookup>(
-					API.CATALOG.PROCESS.GROUP.LIST,
-					{ ignorePagination: true },
-				);
-
-				if (cancelled) {
-					return;
-				}
-
-				const items = (response.result.data ?? []).sort((a, b) =>
-					a.code.localeCompare(b.code, 'vi'),
-				);
-
-				setProcessGroups(items);
-			} catch (err) {
-				if (cancelled) {
-					return;
-				}
-
-				setProcessGroups([]);
-				setError(
-					err instanceof Error
-						? err.message
-						: 'Không thể tải danh sách nhóm công đoạn sản xuất',
-				);
-			} finally {
-				if (!cancelled) {
-					setIsLoadingProcessGroups(false);
-				}
-			}
-		};
-
-		fetchProcessGroups();
-
-		return () => {
-			cancelled = true;
-		};
-	}, []);
 
 	useEffect(() => {
 		if (!selectedEquipmentId) {
@@ -231,20 +232,16 @@ export function SctxRevenueReportDataTable() {
 				const response = await api.post<
 					SctxRevenueByEquipmentApiResponse,
 					{
-						fromYear: number;
-						toYear: number;
+						fromMonth: string;
+						toMonth: string;
 						equipmentId: string;
-						processGroupId?: string;
 					}
 				>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT,
 					{
-						fromYear: Number(fromYear),
-						toYear: Number(toYear),
+						fromMonth,
+						toMonth,
 						equipmentId: selectedEquipmentId,
-						...(selectedProcessGroupId
-							? { processGroupId: selectedProcessGroupId }
-							: {}),
 					},
 				);
 
@@ -276,60 +273,7 @@ export function SctxRevenueReportDataTable() {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedEquipmentId, fromYear, toYear, selectedProcessGroupId]);
-
-	const processGroupOptions = useMemo(() => {
-		const options = processGroups
-			.map((group) => ({
-				value: group.id,
-				label: `${group.code} - ${group.name}`.trim(),
-				code: group.code,
-			}))
-			.sort((a, b) => a.label.localeCompare(b.label, 'vi'));
-
-		return options;
-	}, [processGroups]);
-
-	useEffect(() => {
-		if (processGroupOptions.length === 0) {
-			setSelectedProcessGroupId('');
-			return;
-		}
-
-		if (
-			!processGroupOptions.some(
-				(option) => option.value === selectedProcessGroupId,
-			)
-		) {
-			setSelectedProcessGroupId(processGroupOptions[0]?.value ?? '');
-		}
-	}, [processGroupOptions, selectedProcessGroupId]);
-
-	const filteredEquipments = useMemo(() => {
-		const hasProcessGroup = equipments.some(
-			(item) => Boolean(item.processGroupId),
-		);
-		if (!hasProcessGroup) {
-			return equipments;
-		}
-
-		if (!selectedProcessGroupId) {
-			return [];
-		}
-
-		return equipments.filter(
-			(item) => item.processGroupId === selectedProcessGroupId,
-		);
-	}, [equipments, selectedProcessGroupId]);
-
-	useEffect(() => {
-		setSelectedEquipmentId((prev) => {
-			if (prev && filteredEquipments.some((item) => item.id === prev)) {
-				return prev;
-			}
-			return filteredEquipments[0]?.id ?? '';
-		});
-	}, [filteredEquipments]);
+	}, [selectedEquipmentId, fromMonth, toMonth]);
 
 	const yearRows = useMemo(() => {
 		const sorted = [...yearData].sort((a, b) => a.year - b.year);
@@ -365,14 +309,9 @@ export function SctxRevenueReportDataTable() {
 		[equipments, selectedEquipmentId],
 	);
 
-	const selectedProcessGroup = useMemo(
-		() => processGroups.find((item) => item.id === selectedProcessGroupId),
-		[processGroups, selectedProcessGroupId],
-	);
 
 	const quantityUnitLabel = useMemo(() => {
-		const code =
-			selectedProcessGroup?.code || selectedEquipment?.processGroupCode || '';
+		const code = selectedEquipment?.processGroupCode || '';
 		switch (getProcessGroupType(code)) {
 			case ProcessGroupType.DL:
 			case ProcessGroupType.XL:
@@ -382,18 +321,17 @@ export function SctxRevenueReportDataTable() {
 			default:
 				return '';
 		}
-	}, [selectedProcessGroup?.code, selectedEquipment?.processGroupCode]);
+	}, [selectedEquipment?.processGroupCode]);
 
 	const buildQuantityHeader = (label: string) =>
 		quantityUnitLabel ? `${label} (${quantityUnitLabel})` : label;
 
-	const displayProcessGroupName = selectedProcessGroup?.name || 'Không xác định';
 	const displayEquipmentName = selectedEquipment?.name || 'Không xác định';
 	const displayEquipmentCode = selectedEquipment?.code || 'thiet-bi';
-	const displayYearRange =
-		fromYear === toYear
-			? `Năm ${fromYear}`
-			: `Giai đoạn ${fromYear} - ${toYear}`;
+	const displayPeriodRange =
+		fromMonth === toMonth
+			? `Tháng ${fromMonthPart}/${fromYearPart}`
+			: `Giai đoạn ${fromMonthPart}/${fromYearPart} - ${toMonthPart}/${toYearPart}`;
 
 	const handleExport = async () => {
 		if (isExporting) {
@@ -457,7 +395,7 @@ export function SctxRevenueReportDataTable() {
 			);
 			XLSX.writeFile(
 				workbook,
-				`bao-cao-doanh-thu-sctx-${normalizedCode}-${fromYear}-${toYear}.xlsx`,
+				`bao-cao-doanh-thu-sctx-${normalizedCode}-${fromMonth}-${toMonth}.xlsx`,
 			);
 		} finally {
 			setIsExporting(false);
@@ -469,34 +407,62 @@ export function SctxRevenueReportDataTable() {
 			<div className='flex flex-wrap items-end justify-between gap-3'>
 				<div className='flex flex-wrap items-end gap-2'>
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Từ năm</p>
-						<Select value={fromYear} onValueChange={handleFromYearChange}>
-							<SelectTrigger className='w-[120px] bg-white'>
-								<SelectValue placeholder='Chọn năm' />
-							</SelectTrigger>
-							<SelectContent className='max-h-64'>
-								{yearOptions.map((item) => (
-									<SelectItem key={item.value} value={item.value}>
-										{item.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<p className='text-sm font-medium'>Từ tháng</p>
+						<div className='flex gap-2'>
+							<Select value={fromMonthPart} onValueChange={handleFromMonthChange}>
+								<SelectTrigger className='w-[120px] bg-white'>
+									<SelectValue placeholder='Chọn tháng' />
+								</SelectTrigger>
+								<SelectContent className='max-h-64'>
+									{monthOptions.map((item) => (
+										<SelectItem key={item.value} value={item.value}>
+											{item.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select value={fromYearPart} onValueChange={handleFromYearChange}>
+								<SelectTrigger className='w-[120px] bg-white'>
+									<SelectValue placeholder='Chọn năm' />
+								</SelectTrigger>
+								<SelectContent className='max-h-64'>
+									{yearOptions.map((item) => (
+										<SelectItem key={item.value} value={item.value}>
+											{item.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 					</div>
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Đến năm</p>
-						<Select value={toYear} onValueChange={handleToYearChange}>
-							<SelectTrigger className='w-[120px] bg-white'>
-								<SelectValue placeholder='Chọn năm' />
-							</SelectTrigger>
-							<SelectContent className='max-h-64'>
-								{yearOptions.map((item) => (
-									<SelectItem key={item.value} value={item.value}>
-										{item.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<p className='text-sm font-medium'>Đến tháng</p>
+						<div className='flex gap-2'>
+							<Select value={toMonthPart} onValueChange={handleToMonthChange}>
+								<SelectTrigger className='w-[120px] bg-white'>
+									<SelectValue placeholder='Chọn tháng' />
+								</SelectTrigger>
+								<SelectContent className='max-h-64'>
+									{monthOptions.map((item) => (
+										<SelectItem key={item.value} value={item.value}>
+											{item.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select value={toYearPart} onValueChange={handleToYearChange}>
+								<SelectTrigger className='w-[120px] bg-white'>
+									<SelectValue placeholder='Chọn năm' />
+								</SelectTrigger>
+								<SelectContent className='max-h-64'>
+									{yearOptions.map((item) => (
+										<SelectItem key={item.value} value={item.value}>
+											{item.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 					</div>
 
 					<div className='space-y-1'>
@@ -504,9 +470,7 @@ export function SctxRevenueReportDataTable() {
 						<Select
 							value={selectedEquipmentId}
 							onValueChange={setSelectedEquipmentId}
-								disabled={
-									isLoadingEquipments || filteredEquipments.length === 0
-								}
+							disabled={isLoadingEquipments || equipments.length === 0}
 						>
 							<SelectTrigger className='w-[300px] bg-white'>
 								<SelectValue
@@ -517,8 +481,8 @@ export function SctxRevenueReportDataTable() {
 									}
 								/>
 							</SelectTrigger>
-								<SelectContent className='max-h-64'>
-									{filteredEquipments.map((item) => (
+							<SelectContent className='max-h-64'>
+								{equipments.map((item) => (
 									<SelectItem key={item.id} value={item.id}>
 										{item.code} - {item.name}
 									</SelectItem>
@@ -526,31 +490,6 @@ export function SctxRevenueReportDataTable() {
 							</SelectContent>
 						</Select>
 					</div>
-						<div className='space-y-1'>
-							<p className='text-sm font-medium'>Nhóm công đoạn sản xuất</p>
-							<Select
-								value={selectedProcessGroupId}
-								onValueChange={setSelectedProcessGroupId}
-								disabled={isLoadingProcessGroups}
-							>
-								<SelectTrigger className='w-[280px] bg-white'>
-									<SelectValue
-										placeholder={
-											isLoadingProcessGroups
-												? 'Đang tải nhóm công đoạn sản xuất...'
-												: 'Chọn nhóm công đoạn sản xuất'
-										}
-									/>
-								</SelectTrigger>
-								<SelectContent className='max-h-64'>
-									{processGroupOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
 				</div>
 
 				<Button
@@ -598,16 +537,11 @@ export function SctxRevenueReportDataTable() {
 									Bảng theo dõi doanh thu SCTX thiết bị
 								</p>
 								<p className='mt-2 text-base font-bold md:text-xl'>
-									{displayYearRange}
+									{displayPeriodRange}
 								</p>
 							</div>
 
 							<div className='mt-5 space-y-2 text-base md:text-lg'>
-								<p>
-									<span className='font-bold'>Nhóm công đoạn sản xuất:</span>{' '}
-									{displayProcessGroupName}
-								</p>
-
 								<p>
 									<span className='font-bold'>Thiết bị:</span>{' '}
 									{displayEquipmentName}
@@ -651,29 +585,19 @@ export function SctxRevenueReportDataTable() {
 														<tr key={`${group.year}-${row.month}`}>
 															<td className={borderCellClass}>Tháng {row.month}</td>
 															<td className={`${borderCellClass} text-right`}>
-																{formatNumber(row.unitPrice, {
-																	maximumFractionDigits: 0,
-																})}
+																{formatNumber(row.unitPrice)}
 															</td>
 															<td className={`${borderCellClass} text-right`}>
-																{formatNumber(row.plannedQuantity, {
-																	maximumFractionDigits: 0,
-																})}
+																{formatNumber(row.plannedQuantity)}
 															</td>
 															<td className={`${borderCellClass} text-right`}>
-																{formatNumber(row.actualQuantity, {
-																	maximumFractionDigits: 0,
-																})}
+																{formatNumber(row.actualQuantity)}
 															</td>
 															<td className={`${borderCellClass} text-right`}>
-																{formatNumber(row.baseRevenue, {
-																	maximumFractionDigits: 0,
-																})}
+																{formatNumber(row.baseRevenue)}
 															</td>
 															<td className={`${borderCellClass} text-right`}>
-																{formatNumber(row.adjustedRevenue, {
-																	maximumFractionDigits: 0,
-																})}
+																{formatNumber(row.adjustedRevenue)}
 															</td>
 														</tr>
 													))}
@@ -681,24 +605,16 @@ export function SctxRevenueReportDataTable() {
 														<td className={borderCellClass}>Tổng cộng</td>
 														<td className={borderCellClass}></td>
 														<td className={`${borderCellClass} text-right`}>
-															{formatNumber(totals?.plannedQuantity ?? 0, {
-																maximumFractionDigits: 0,
-															})}
+															{formatNumber(totals?.plannedQuantity ?? 0)}
 														</td>
 														<td className={`${borderCellClass} text-right`}>
-															{formatNumber(totals?.actualQuantity ?? 0, {
-																maximumFractionDigits: 0,
-															})}
+															{formatNumber(totals?.actualQuantity ?? 0)}
 														</td>
 														<td className={`${borderCellClass} text-right`}>
-															{formatNumber(totals?.baseRevenue ?? 0, {
-																maximumFractionDigits: 0,
-															})}
+															{formatNumber(totals?.baseRevenue ?? 0)}
 														</td>
 														<td className={`${borderCellClass} text-right`}>
-															{formatNumber(totals?.adjustedRevenue ?? 0, {
-																maximumFractionDigits: 0,
-															})}
+															{formatNumber(totals?.adjustedRevenue ?? 0)}
 														</td>
 													</tr>
 												</tbody>

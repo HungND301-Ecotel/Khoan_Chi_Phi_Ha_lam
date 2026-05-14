@@ -4,52 +4,48 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Pricing;
-using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Application.Catalog.Production.AcceptanceReports.Queries;
 
 public record GetSctxEquipmentRevenueByYearQuery(
-    int FromYear,
-    int ToYear,
     Guid EquipmentId,
-    Guid? DepartmentId = null) : IRequest<SctxEquipmentRevenueResponseDto>;
+    Guid? DepartmentId = null,
+    string? FromMonth = null,
+    string? ToMonth = null) : IRequest<SctxEquipmentRevenueResponseDto>;
 
 public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<GetSctxEquipmentRevenueByYearQuery, SctxEquipmentRevenueResponseDto>
 {
-    private readonly IWriteRepository<AcceptanceReportItemLog> _logRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<PlannedMaintainCostAdjustmentFactor> _plannedMaintainFactorRepository = unitOfWork.GetRepository<PlannedMaintainCostAdjustmentFactor>();
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
 
     public async Task<SctxEquipmentRevenueResponseDto> Handle(GetSctxEquipmentRevenueByYearQuery request, CancellationToken cancellationToken)
     {
-        if (request.FromYear is < 2000 or > 3000
-            || request.ToYear is < 2000 or > 3000
-            || request.FromYear > request.ToYear)
+        var hasFromMonth = !string.IsNullOrWhiteSpace(request.FromMonth);
+        var hasToMonth = !string.IsNullOrWhiteSpace(request.ToMonth);
+
+        if (hasFromMonth != hasToMonth)
         {
-            throw new BadRequestException("Year không hợp lệ.");
+            throw new BadRequestException("Tháng bắt đầu và tháng kết thúc phải được cung cấp cùng nhau.");
         }
 
-        var logs = await _logRepository.GetAll()
-            .Where(x => x.PeriodStartMonth.Year >= request.FromYear
-                && x.PeriodStartMonth.Year <= request.ToYear
-                && x.AcceptanceReportItem.EquipmentId == request.EquipmentId
-                && (!request.DepartmentId.HasValue || x.AcceptanceReport.ProductionOutput.DepartmentId == request.DepartmentId)
-                && (x.AcceptanceReportItem.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
-                    || x.AcceptanceReportItem.AdditionalCost == AdditionalCost.Maintain))
-            .Select(x => new LogRow(
-                x.PeriodStartMonth.Year,
-                x.PeriodStartMonth.Month,
-                x.UnitPrice))
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        if (!hasFromMonth)
+        {
+            throw new BadRequestException("Vui lòng cung cấp FromMonth và ToMonth.");
+        }
 
-        var startMonth = new DateOnly(request.FromYear, 1, 1);
-        var endMonth = new DateOnly(request.ToYear, 12, 1);
+        var startMonth = ParseMonth(request.FromMonth!);
+        var endMonth = ParseMonth(request.ToMonth!);
 
-        var plannedUsageRaw = await _plannedMaintainFactorRepository.GetAll()
+        if (startMonth > endMonth)
+        {
+            throw new BadRequestException("Khoảng tháng không hợp lệ.");
+        }
+
+        var plannedFactors = await _plannedMaintainFactorRepository.GetAll()
             .Where(x => x.MaintainUnitPrice != null
                 && x.MaintainUnitPrice.EquipmentId == request.EquipmentId
                 && x.PlannedMaintainCost != null
@@ -58,6 +54,18 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                 && x.PlannedMaintainCost.ProductUnitPrice != null
                 && x.PlannedMaintainCost.ProductUnitPrice.ScenarioType == ProductUnitPriceScenarioType.Plan
                 && (!request.DepartmentId.HasValue || x.PlannedMaintainCost.ProductUnitPrice.DepartmentId == request.DepartmentId))
+            .Include(x => x.MaintainUnitPrice)
+                .ThenInclude(m => m.MaintainUnitPriceEquipments)
+                .ThenInclude(m => m.Part)
+                .ThenInclude(p => p.Costs)
+            .Include(x => x.PlannedMaintainCost)
+                .ThenInclude(m => m.Output)
+            .Include(x => x.PlannedMaintainCost)
+                .ThenInclude(m => m.ProductUnitPrice)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var plannedUsageRaw = plannedFactors
             .Select(x => new PlannedUsageRow(
                 x.PlannedMaintainCost!.OutputId,
                 x.PlannedMaintainCost.ProductUnitPrice!.ProductId,
@@ -65,8 +73,16 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                 x.PlannedMaintainCost.Output.StartMonth,
                 x.PlannedMaintainCost.Output.EndMonth,
                 x.PlannedMaintainCost.Output.ProductionMeters))
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+            .ToList();
+
+        var plannedUnitPrices = plannedFactors
+            .Select(x => new PlannedUnitPriceRow(
+                x.PlannedMaintainCost!.Output.StartMonth,
+                x.PlannedMaintainCost.Output.EndMonth,
+                x.MaintainUnitPrice!.GetMaintainTotalPrice()
+                    * (double)x.Quantity
+                    * x.K6AdjustmentFactorValue))
+            .ToList();
 
         var plannedUsages = plannedUsageRaw
             .GroupBy(x => x.OutputId)
@@ -101,8 +117,8 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                 .ToListAsync(cancellationToken)
             : new List<ActualOutputRow>();
 
-        var years = Enumerable.Range(request.FromYear, request.ToYear - request.FromYear + 1)
-            .Select(year => BuildYearResult(year, logs, plannedUsages, actualOutputs))
+        var years = Enumerable.Range(startMonth.Year, endMonth.Year - startMonth.Year + 1)
+            .Select(year => BuildYearResult(year, plannedUsages, actualOutputs, plannedUnitPrices, startMonth, endMonth))
             .ToList();
 
         return new SctxEquipmentRevenueResponseDto
@@ -114,61 +130,18 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
     private static SctxEquipmentRevenueByYearDto BuildYearResult(
         int year,
-        List<LogRow> logs,
         List<PlannedUsageRow> plannedUsages,
-        List<ActualOutputRow> actualOutputs)
+        List<ActualOutputRow> actualOutputs,
+        List<PlannedUnitPriceRow> plannedUnitPrices,
+        DateOnly startMonth,
+        DateOnly endMonth)
     {
-        var yearLogs = logs.Where(x => x.Year == year).ToList();
+        var startMonthNumber = year == startMonth.Year ? startMonth.Month : 1;
+        var endMonthNumber = year == endMonth.Year ? endMonth.Month : 12;
 
-        var monthMap = yearLogs
-            .GroupBy(x => x.Month)
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    var monthDate = new DateOnly(year, g.Key, 1);
-                    var monthlyProductKeys = plannedUsages
-                        .Where(x => x.StartMonth <= monthDate && x.EndMonth >= monthDate)
-                        .Select(x => new ProductDepartmentKey(x.ProductId, x.DepartmentId))
-                        .Distinct()
-                        .ToList();
-
-                    var plannedOutput = plannedUsages
-                        .Where(x => x.StartMonth <= monthDate && x.EndMonth >= monthDate)
-                        .Sum(x => x.PlannedOutput);
-
-                    var actualOutput = monthlyProductKeys.Sum(key => actualOutputs
-                        .Where(x => x.ProductId == key.ProductId
-                            && x.DepartmentId == key.DepartmentId
-                            && x.StartMonth <= monthDate
-                            && x.EndMonth >= monthDate)
-                        .Sum(x => x.ActualOutput));
-
-                    var unitPrice = 0m;
-                    unitPrice = g.Select(i => i.UnitPrice).DefaultIfEmpty(0).Average();
-
-                    var initialRevenue = unitPrice * (decimal)plannedOutput;
-                    var adjustedRevenue = unitPrice * (decimal)actualOutput;
-
-                    return new SctxEquipmentRevenueByMonthDto
-                    {
-                        Month = g.Key,
-                        UnitPrice = unitPrice,
-                        PlannedOutput = plannedOutput,
-                        ActualOutput = actualOutput,
-                        InitialRevenue = initialRevenue,
-                        AdjustedRevenue = adjustedRevenue
-                    };
-                });
-
-        var months = Enumerable.Range(1, 12)
+        var months = Enumerable.Range(startMonthNumber, endMonthNumber - startMonthNumber + 1)
             .Select(m =>
             {
-                if (monthMap.TryGetValue(m, out var row))
-                {
-                    return row;
-                }
-
                 var monthDate = new DateOnly(year, m, 1);
                 var monthlyProductKeys = plannedUsages
                     .Where(x => x.StartMonth <= monthDate && x.EndMonth >= monthDate)
@@ -187,14 +160,21 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
                         && x.EndMonth >= monthDate)
                     .Sum(x => x.ActualOutput));
 
+                var unitPrice = plannedUnitPrices
+                    .Where(x => x.StartMonth <= monthDate && x.EndMonth >= monthDate)
+                    .Sum(x => x.UnitPrice);
+
+                var initialRevenue = unitPrice * plannedOutput;
+                var adjustedRevenue = unitPrice * actualOutput;
+
                 return new SctxEquipmentRevenueByMonthDto
                 {
                     Month = m,
-                    UnitPrice = 0,
+                    UnitPrice = unitPrice,
                     PlannedOutput = plannedOutput,
                     ActualOutput = actualOutput,
-                    InitialRevenue = 0,
-                    AdjustedRevenue = 0
+                    InitialRevenue = initialRevenue,
+                    AdjustedRevenue = adjustedRevenue
                 };
             })
             .ToList();
@@ -206,11 +186,6 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
         };
     }
 
-    private sealed record LogRow(
-        int Year,
-        int Month,
-        decimal UnitPrice);
-
     private sealed record PlannedUsageRow(
         Guid OutputId,
         Guid ProductId,
@@ -218,6 +193,11 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
         DateOnly StartMonth,
         DateOnly EndMonth,
         double PlannedOutput);
+
+    private sealed record PlannedUnitPriceRow(
+        DateOnly StartMonth,
+        DateOnly EndMonth,
+        double UnitPrice);
 
     private sealed record ActualOutputRow(
         Guid ProductId,
@@ -227,4 +207,14 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
         double ActualOutput);
 
     private sealed record ProductDepartmentKey(Guid ProductId, Guid? DepartmentId);
+
+    private static DateOnly ParseMonth(string value)
+    {
+        if (DateOnly.TryParseExact(value, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
+            return new DateOnly(parsed.Year, parsed.Month, 1);
+        }
+
+        throw new BadRequestException("Định dạng tháng không hợp lệ. Dùng yyyy-MM.");
+    }
 }
