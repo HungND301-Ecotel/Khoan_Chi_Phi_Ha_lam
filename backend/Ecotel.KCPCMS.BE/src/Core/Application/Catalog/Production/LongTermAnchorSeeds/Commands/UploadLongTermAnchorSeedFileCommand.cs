@@ -9,7 +9,6 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
-using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Production.LongTermAnchorSeeds.Commands;
 
@@ -19,7 +18,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     : IRequestHandler<UploadLongTermAnchorSeedFileCommand, bool>
 {
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
-    private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
@@ -45,8 +44,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             throw new BadRequestException("File mốc gốc không có dữ liệu");
         }
 
-        var partCodes = rows
-            .Select(x => ExtractCode(x.PartCode))
+        var materialCodes = rows
+            .Select(x => ExtractCode(x.MaterialCode, x.PartCode))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct()
             .ToList();
@@ -56,8 +55,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             .Distinct()
             .ToList();
 
-        var parts = await _partRepository.GetAllAsync(
-            predicate: x => x.Code != null && partCodes.Contains(x.Code.Value),
+        var materials = await _materialRepository.GetAllAsync(
+            predicate: x => x.Code != null && materialCodes.Contains(x.Code.Value),
             include: q => q.Include(x => x.Code),
             disableTracking: true);
         var processGroups = await _processGroupRepository.GetAllAsync(
@@ -65,10 +64,10 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             include: q => q.Include(x => x.Code),
             disableTracking: true);
 
-        var missingPartCodes = partCodes.Except(parts.Select(x => x.Code?.Value ?? string.Empty)).ToList();
-        if (missingPartCodes.Count > 0)
+        var missingMaterialCodes = materialCodes.Except(materials.Select(x => x.Code?.Value ?? string.Empty)).ToList();
+        if (missingMaterialCodes.Count > 0)
         {
-            throw new BadRequestException($"Không tìm thấy phụ tùng với mã: {string.Join(", ", missingPartCodes)}.");
+            throw new BadRequestException($"Không tìm thấy vật tư với mã: {string.Join(", ", missingMaterialCodes)}.");
         }
 
         var missingProcessGroupCodes = processGroupCodes.Except(processGroups.Select(x => x.Code?.Value ?? string.Empty)).ToList();
@@ -104,7 +103,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             var seedItemsByCompositeKey = (await _seedItemRepository.GetAllAsync(
                 predicate: i => i.LongTermAnchorSeedId == seed.Id,
                 disableTracking: false))
-                .ToDictionary(x => (x.PartId, x.ProcessGroupId));
+                .ToDictionary(x => (x.MaterialId, x.ProcessGroupId));
 
             foreach (var (row, index) in rows.Select((row, index) => (row, index)))
             {
@@ -124,44 +123,44 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     if (existingItem != null)
                     {
                         _seedItemRepository.Delete(existingItem);
-                        seedItemsByCompositeKey.Remove((existingItem.PartId, existingItem.ProcessGroupId));
+                        seedItemsByCompositeKey.Remove((existingItem.MaterialId, existingItem.ProcessGroupId));
                     }
 
                     continue;
                 }
 
-                var partCode = ExtractCode(row.PartCode);
+                var materialCode = ExtractCode(row.MaterialCode, row.PartCode);
                 var processGroupCode = ExtractCode(row.ProcessGroupCode);
-                if (string.IsNullOrWhiteSpace(partCode) || string.IsNullOrWhiteSpace(processGroupCode))
+                if (string.IsNullOrWhiteSpace(materialCode) || string.IsNullOrWhiteSpace(processGroupCode))
                 {
-                    throw new BadRequestException("Mã phụ tùng và mã nhóm công đoạn không được để trống");
+                    throw new BadRequestException("Mã vật tư và mã nhóm công đoạn không được để trống");
                 }
 
-                var part = parts.FirstOrDefault(x => x.Code?.Value == partCode)
-                    ?? throw new BadRequestException($"Không tìm thấy phụ tùng với mã '{partCode}'.");
+                var material = materials.FirstOrDefault(x => x.Code?.Value == materialCode)
+                    ?? throw new BadRequestException($"Không tìm thấy vật tư với mã '{materialCode}'.");
                 var processGroup = processGroups.FirstOrDefault(x => x.Code?.Value == processGroupCode)
                     ?? throw new BadRequestException($"Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
 
-                ValidateBusinessRule(row, partCode, processGroupCode);
+                ValidateBusinessRule(row, materialCode, processGroupCode);
 
                 if (existingItem != null)
                 {
-                    if (existingItem.PartId != part.Id || existingItem.ProcessGroupId != processGroup.Id)
+                    if (existingItem.MaterialId != material.Id || existingItem.ProcessGroupId != processGroup.Id)
                     {
-                        throw new BadRequestException($"Dòng '{row.Id}' không khớp phụ tùng/nhóm công đoạn hiện tại.");
+                        throw new BadRequestException($"Dòng '{row.Id}' không khớp vật tư/nhóm công đoạn hiện tại.");
                     }
                 }
                 else
                 {
-                    seedItemsByCompositeKey.TryGetValue((part.Id, processGroup.Id), out existingItem);
+                    seedItemsByCompositeKey.TryGetValue((material.Id, processGroup.Id), out existingItem);
                 }
 
                 if (existingItem == null)
                 {
-                    var newItem = LongTermAnchorSeedItem.Create(
+                    var newItem = LongTermAnchorSeedItem.CreateForMaterial(
                         seed.Id,
                         processGroup.Id,
-                        part.Id,
+                        material.Id,
                         index,
                         row.IssuedQuantity ?? 0,
                         row.UnitPrice ?? 0,
@@ -173,13 +172,13 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         null);
 
                     await _seedItemRepository.InsertAsync(newItem, cancellationToken);
-                    seedItemsByCompositeKey[(part.Id, processGroup.Id)] = newItem;
+                    seedItemsByCompositeKey[(material.Id, processGroup.Id)] = newItem;
                     continue;
                 }
 
-                existingItem.Update(
+                existingItem.UpdateForMaterial(
                     processGroup.Id,
-                    part.Id,
+                    material.Id,
                     index,
                     row.IssuedQuantity ?? 0,
                     row.UnitPrice ?? 0,
@@ -254,8 +253,9 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         }
     }
 
-    private static string ExtractCode(string? value)
+    private static string ExtractCode(string? primaryValue, string? fallbackValue = null)
     {
+        var value = !string.IsNullOrWhiteSpace(primaryValue) ? primaryValue : fallbackValue;
         if (string.IsNullOrWhiteSpace(value))
         {
             return string.Empty;
@@ -267,6 +267,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private static bool IsDeleteRow(LongTermAnchorSeedExcelRowDto row)
     {
         return row.Id.HasValue
+            && string.IsNullOrWhiteSpace(row.MaterialCode)
             && string.IsNullOrWhiteSpace(row.PartCode)
             && string.IsNullOrWhiteSpace(row.ProcessGroupCode)
             && !row.IssuedQuantity.HasValue
@@ -278,7 +279,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             && string.IsNullOrWhiteSpace(row.Note);
     }
 
-    private static void ValidateBusinessRule(LongTermAnchorSeedExcelRowDto row, string partCode, string processGroupCode)
+    private static void ValidateBusinessRule(LongTermAnchorSeedExcelRowDto row, string materialCode, string processGroupCode)
     {
         var hasPending = row.PendingValueStartPeriod.HasValue && row.PendingValueStartPeriod.Value > 0;
         var hasIssuedQuantity = row.IssuedQuantity.HasValue && row.IssuedQuantity.Value > 0;
@@ -287,19 +288,19 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         if (hasPending && (hasIssuedQuantity || hasUnitPrice))
         {
             throw new BadRequestException(
-                $"Dòng phụ tùng '{partCode}' và nhóm công đoạn '{processGroupCode}' không được nhập đồng thời giá trị đầu kỳ với số lượng hoặc đơn giá.");
+                $"Dòng vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được nhập đồng thời giá trị đầu kỳ với số lượng hoặc đơn giá.");
         }
 
         if (!hasPending && hasIssuedQuantity != hasUnitPrice)
         {
             throw new BadRequestException(
-                $"Dòng phụ tùng '{partCode}' và nhóm công đoạn '{processGroupCode}' phải nhập đồng thời số lượng và đơn giá.");
+                $"Dòng vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' phải nhập đồng thời số lượng và đơn giá.");
         }
 
         if (!hasPending && !hasIssuedQuantity && !hasUnitPrice)
         {
             throw new BadRequestException(
-                $"Dòng phụ tùng '{partCode}' và nhóm công đoạn '{processGroupCode}' phải nhập giá trị đầu kỳ hoặc đồng thời số lượng và đơn giá.");
+                $"Dòng vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' phải nhập giá trị đầu kỳ hoặc đồng thời số lượng và đơn giá.");
         }
     }
 }

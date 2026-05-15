@@ -29,6 +29,12 @@ const convertAcceptanceReportItemToRawItem = (
 	item: AcceptanceReportItem,
 ): RawAcceptanceReportItem => item;
 
+const getTrackedMaterialCode = (item: RawAcceptanceReportItem) =>
+	item.materialCode || item.trackedMaterialCode || item.partCode || '';
+
+const getTrackedMaterialName = (item: RawAcceptanceReportItem) =>
+	item.materialName || item.trackedMaterialName || item.partName || '';
+
 const isSameMonthAndYear = (
 	dateValue: string | undefined,
 	targetYear: string,
@@ -119,8 +125,8 @@ export function RawAcceptanceReportTable({
 
 		return items.filter((item) => {
 			const keywords = [
-				item.materialCode,
-				item.materialName,
+				getTrackedMaterialCode(item),
+				getTrackedMaterialName(item),
 				item.partCode,
 				item.partName,
 				item.unitOfMeasureName,

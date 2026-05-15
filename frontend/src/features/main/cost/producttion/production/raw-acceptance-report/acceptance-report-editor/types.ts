@@ -27,7 +27,7 @@ export type ImportedItemMeta = {
 	type: number;
 };
 
-export type Equipment = {
+export type AssignmentCodeOption = {
 	id: string;
 	code: string;
 	name: string;
@@ -36,11 +36,15 @@ export type Equipment = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	partType?: number | null;
 	materialCode: string;
 	materialName?: string | null;
+	trackedMaterialCode?: string | null;
+	trackedMaterialName?: string | null;
+	partCode?: string | null;
 	partName?: string | null;
 	unitOfMeasureName: string;
 	type: number;
@@ -152,6 +156,7 @@ export type QuantityDetail = {
 export type CategoryAllocation = {
 	processGroupId: string | null;
 	quantity: number | null;
+	assignmentCodeIds: string[];
 	equipmentIds: string[];
 };
 
@@ -162,6 +167,7 @@ export type QuotaBasedMaterialQuantityDetail = {
 
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	usageTime: number;
@@ -169,9 +175,11 @@ export type CreateAcceptanceReportItem = {
 	itemType: number;
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
-	categoryEquipmentId: string | null;
+	categoryAssignmentCodeId?: string | null;
+	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId: string | null;
-	additionalCostEquipmentId: string | null;
+	additionalCostAssignmentCodeId?: string | null;
+	additionalCostEquipmentId?: string | null;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
@@ -197,6 +205,7 @@ export type CreateAcceptanceReportRequest = {
 
 export type UpdateAcceptanceReportItem = {
 	id?: string;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	usageTime: number;
@@ -204,9 +213,11 @@ export type UpdateAcceptanceReportItem = {
 	itemType: number;
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
-	categoryEquipmentId: string | null;
+	categoryAssignmentCodeId?: string | null;
+	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId: string | null;
-	additionalCostEquipmentId: string | null;
+	additionalCostAssignmentCodeId?: string | null;
+	additionalCostEquipmentId?: string | null;
 	issuedQuantity: number;
 	shippedQuantity: number;
 	issuedDetails: QuantityDetail[];

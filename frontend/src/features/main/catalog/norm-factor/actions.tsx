@@ -399,7 +399,7 @@ export function NormFactorForm({
 						return (
 							<FormRow key={rowItem.assignmentCodeId}>
 								<div className='flex flex-1 flex-col gap-2'>
-									<Label>Mã giao khoán</Label>
+									<Label>Nhóm vật tư, tài sản</Label>
 									<Input
 										readOnly
 										value={

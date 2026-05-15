@@ -87,6 +87,18 @@ export function RawAcceptanceReportDataTable({
 }: RawAcceptanceReportDataTableProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 
+	const getTrackedMaterialCode = (item: RawAcceptanceReportItem) =>
+		item.materialCode ||
+		item.trackedMaterialCode ||
+		item.partCode ||
+		'-';
+
+	const getTrackedMaterialName = (item: RawAcceptanceReportItem) =>
+		item.materialName ||
+		item.trackedMaterialName ||
+		item.partName ||
+		'-';
+
 	if (!items || items.length === 0) {
 		return (
 			<div className='border-border flex h-96 items-center justify-center rounded-t-md border bg-white shadow'>
@@ -238,9 +250,7 @@ export function RawAcceptanceReportDataTable({
 							}}
 						>
 							<div className='flex items-baseline justify-center px-4 py-2'>
-								{item.type === 1
-									? item.materialCode || '-'
-									: item.partCode || '-'}
+								{getTrackedMaterialCode(item)}
 							</div>
 						</TableCell>
 
@@ -251,9 +261,7 @@ export function RawAcceptanceReportDataTable({
 							}}
 						>
 							<div className='flex items-baseline justify-baseline px-4 py-2'>
-								{item.type === 1
-									? item.materialName || '-'
-									: item.partName || '-'}
+								{getTrackedMaterialName(item)}
 							</div>
 						</TableCell>
 

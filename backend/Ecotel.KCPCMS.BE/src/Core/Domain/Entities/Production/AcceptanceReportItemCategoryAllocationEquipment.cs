@@ -7,18 +7,24 @@ public class AcceptanceReportItemCategoryAllocationEquipment : AuditableEntity<G
 {
     public Guid AcceptanceReportItemCategoryAllocationId { get; protected set; }
     public Guid EquipmentId { get; protected set; }
+    public Guid AssignmentCodeId => EquipmentId;
 
     public virtual AcceptanceReportItemCategoryAllocation AcceptanceReportItemCategoryAllocation { get; protected set; }
-    public virtual Equipment Equipment { get; protected set; }
+    public virtual AssignmentCode Equipment { get; protected set; }
 
     public static AcceptanceReportItemCategoryAllocationEquipment Create(
         Guid acceptanceReportItemCategoryAllocationId,
-        Guid equipmentId)
+        Guid assignmentCodeId)
     {
         return new AcceptanceReportItemCategoryAllocationEquipment
         {
             AcceptanceReportItemCategoryAllocationId = acceptanceReportItemCategoryAllocationId,
-            EquipmentId = equipmentId,
+            EquipmentId = assignmentCodeId,
         };
     }
+
+    public static AcceptanceReportItemCategoryAllocationEquipment CreateForAssignmentCode(
+        Guid acceptanceReportItemCategoryAllocationId,
+        Guid assignmentCodeId)
+        => Create(acceptanceReportItemCategoryAllocationId, assignmentCodeId);
 }

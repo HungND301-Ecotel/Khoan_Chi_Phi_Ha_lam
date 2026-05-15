@@ -17,7 +17,6 @@ public class UploadAcceptanceReportFileCommandHandler(
     : IRequestHandler<UploadAcceptanceReportFileCommand, UploadAcceptanceReportResponseDto>
 {
     private readonly IWriteRepository<Material> materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<Part> partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<UploadAcceptanceReportResponseDto> Handle(UploadAcceptanceReportFileCommand request, CancellationToken cancellationToken)
     {
@@ -25,17 +24,11 @@ public class UploadAcceptanceReportFileCommandHandler(
             include: p => p.Include(p => p.UnitOfMeasure).Include(p => p.Code),
             disableTracking: true);
 
-        var parts = await partRepository.GetAllAsync(
-            include: p => p.Include(p => p.Code)
-                           .Include(p => p.UnitOfMeasure),
-            disableTracking: true);
-
         using var fileStream = request.File.OpenReadStream();
         return await excelService.ProcessExcelFileAsync(
             request.ProductionOutputId,
             fileStream,
             request.File.FileName,
-            materials ?? new List<Material>(),
-            parts ?? new List<Part>());
+            materials ?? new List<Material>());
     }
 }

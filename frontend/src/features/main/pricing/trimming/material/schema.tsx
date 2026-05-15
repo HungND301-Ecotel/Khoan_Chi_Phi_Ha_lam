@@ -29,7 +29,7 @@ export const materialFormSchema = z.object({
 		z.object({
 			assignmentCodeId: z
 				.string()
-				.nonempty({ error: 'ID mã giao khoán không được để trống' }),
+				.nonempty({ error: 'ID Nhóm vật tư, tài sản không được để trống' }),
 			totalPrice: z
 				.number({ message: 'Đơn giá không được để trống' })
 				.min(0, { message: 'Đơn giá phải lớn hơn hoặc bằng 0' }),

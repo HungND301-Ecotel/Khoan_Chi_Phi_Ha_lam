@@ -60,7 +60,7 @@ function MainCatalogAssetInternalPage() {
 			query={{ ignorePagination: true, materialType: 1 }}
 			columns={CATALOG_ASSET_INTERNAL_COLUMNS}
 			filters={[
-				{ key: 'assignmentCode', label: 'Mã giao khoán' },
+				{ key: 'assignmentCode', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'code', label: 'Mã vật tư, tài sản' },
 				{ key: 'name', label: 'Tên vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },

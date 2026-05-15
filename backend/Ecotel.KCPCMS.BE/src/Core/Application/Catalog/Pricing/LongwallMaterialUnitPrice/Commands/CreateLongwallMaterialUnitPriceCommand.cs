@@ -107,7 +107,7 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
         var checkExisted = assignemntCodeIds.All(id => assignmentCodeTask.Any(ac => ac == id));
         if (!checkExisted)
         {
-            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
+            throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
         // --- Referenced entity existence checks ---

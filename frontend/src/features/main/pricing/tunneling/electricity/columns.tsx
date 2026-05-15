@@ -20,13 +20,13 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 	{
 		accessorKey: 'equipmentCode',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>{'Mã thiết bị'}</span>
+			<span className='leading-tight whitespace-normal'>{'Nhóm vật tư, tài sản'}</span>
 		),
 	},
 	{
 		accessorKey: 'equipmentName',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>{'Tên thiết bị'}</span>
+			<span className='leading-tight whitespace-normal'>{'Tên nhóm vật tư, tài sản'}</span>
 		),
 	},
 	{

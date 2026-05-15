@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const longTermAnchorSeedItemSchema = z.object({
 	id: z.string(),
-	partId: z.string(),
+	materialId: z.string(),
+	partId: z.string().optional(),
 	processGroupId: z.string(),
 	issuedQuantity: z.number().min(0, 'Số lượng phải >= 0'),
 	unitPrice: z.number().min(0, 'Đơn giá phải >= 0'),

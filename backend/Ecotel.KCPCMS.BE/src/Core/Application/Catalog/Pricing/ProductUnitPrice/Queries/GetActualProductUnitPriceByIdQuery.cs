@@ -155,7 +155,7 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     m.Quantity,
                     m.ReplacementTimeStandard,
                     m.AverageMonthlyTunnelProduction,
-                    PartCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
+                    MaterialCosts = m.Part.Costs.Select(c => new { c.StartMonth, c.EndMonth, c.Amount }).ToList()
                 }).ToList(),
                 AdjustmentValues = f.PlannedMaintainCostAdjustmentFactorDescriptions
                     .Select(d => d.CustomValue
@@ -178,9 +178,9 @@ public class GetActualProductUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork, I
                     OtherMaterialValue = f.OtherMaterialValue,
                     EquipmentCost = f.Equipments.Sum(m =>
                     {
-                        var partCost = m.PartCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
+                        var materialCost = m.MaterialCosts.FirstOrDefault(c => c.StartMonth <= f.MaintainStartMonth && c.EndMonth >= f.MaintainStartMonth)?.Amount ?? 0;
                         return MaintainCostCalculator.CalculateMaterialCostPerMetre(
-                            partCost,
+                            materialCost,
                             m.Quantity,
                             m.ReplacementTimeStandard,
                             m.AverageMonthlyTunnelProduction,

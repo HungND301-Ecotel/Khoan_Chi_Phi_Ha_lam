@@ -335,8 +335,8 @@ export function PlanMaintainCostForm({
 			<FormMultiSelect
 				control={form.control}
 				name='maintainUnitPriceIds'
-				label='Mã thiết bị'
-				placeholder='Chọn mã thiết bị'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={filteredTunnelings.map((item) => ({
 					label: `${item.equipmentCode} - ${item.equipmentName}`,
 					value: item.id,
@@ -359,12 +359,12 @@ export function PlanMaintainCostForm({
 						return (
 							<>
 								<div className='min-w-32 flex-1 space-y-2'>
-									<Label>Mã thiết bị</Label>
+									<Label>Nhóm vật tư, tài sản</Label>
 									<Input readOnly value={currentTunneling?.equipmentCode} />
 								</div>
 
 								<div className='min-w-32 flex-1 space-y-2'>
-									<Label>Tên thiết bị</Label>
+									<Label>Tên nhóm vật tư, tài sản</Label>
 									<Input readOnly value={currentTunneling?.equipmentName} />
 								</div>
 

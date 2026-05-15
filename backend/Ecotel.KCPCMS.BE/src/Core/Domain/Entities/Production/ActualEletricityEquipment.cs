@@ -13,7 +13,7 @@ public class ActualEletricityEquipment : AuditableEntity<Guid>
     public double ActualElectricityConsumption { get; protected set; }
 
     public ActualElectricityCost? ActualElectricityCost { get; protected set; }
-    public Equipment? Equipment { get; protected set; }
+    public AssignmentCode? Equipment { get; protected set; }
 
     public static ActualEletricityEquipment Create(Guid actualElectricityCostId, Guid equipmentId, double actualElectricityConsumption)
     {

@@ -15,7 +15,7 @@ public record UpdateMaintainUnitPriceEquipmentCommand(UpdateMaintainUnitPriceDto
 public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<UpdateMaintainUnitPriceEquipmentCommand, bool>
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.MaintainUnitPrice> _maintainUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.MaintainUnitPrice>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _equipmentRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
@@ -50,10 +50,13 @@ public class UpdateMaintainUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWo
 
         var equipmentDetail = await _equipmentRepository.GetFirstOrDefaultAsync(
             predicate: e => e.Id == request.UpdateModel.EquipmentId,
-            include: e => e.Include(e => e.EquipmentParts).ThenInclude(ep => ep.Part).ThenInclude(p => p.Costs),
+            include: e => e
+                .Include(ac => ac.AssignmentCodeMaterials)
+                    .ThenInclude(acm => acm.Material)
+                        .ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
 
-        if (equipmentDetail?.EquipmentParts == null || !equipmentDetail.EquipmentParts.Any())
+        if (equipmentDetail?.AssignmentCodeMaterials == null || !equipmentDetail.AssignmentCodeMaterials.Any())
         {
             throw new ConflictException(CustomResponseMessage.EquipmentPartsInvalid);
         }

@@ -10,8 +10,6 @@ using Application.Catalog.Index.CuttingThickness.Commands;
 using Application.Catalog.Index.CuttingThickness.Queries;
 using Application.Catalog.Index.Department.Commands;
 using Application.Catalog.Index.Department.Queries;
-using Application.Catalog.Index.Equipments.Commands;
-using Application.Catalog.Index.Equipments.Queries;
 using Application.Catalog.Index.FixedKeys.Commands;
 using Application.Catalog.Index.FixedKeys.Queries;
 using Application.Catalog.Index.LongwallParameters.Commands;
@@ -20,8 +18,6 @@ using Application.Catalog.Index.Material.Commands;
 using Application.Catalog.Index.Material.Queries;
 using Application.Catalog.Index.Metrics.Commands;
 using Application.Catalog.Index.Metrics.Queries;
-using Application.Catalog.Index.Part.Commands.Part;
-using Application.Catalog.Index.Part.Queries.Part;
 using Application.Catalog.Index.Passport.Commands;
 using Application.Catalog.Index.Passport.Queries;
 using Application.Catalog.Index.ProcessGroups.Commands;
@@ -46,13 +42,11 @@ using Application.Dto.Catalog.AkFactorConfig;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.Department;
-using Application.Dto.Catalog.Equipment;
 using Application.Dto.Catalog.FixedKey;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
 using Application.Dto.Catalog.Metric;
 using Application.Dto.Catalog.NormFactor;
-using Application.Dto.Catalog.Part;
 using Application.Dto.Catalog.Passport;
 using Application.Dto.Catalog.ProcessGroup;
 using Application.Dto.Catalog.Product;
@@ -347,253 +341,6 @@ public class CatalogController : BaseNoAuthController
     }
     #endregion
 
-    #region Equiqment
-
-    [HttpGet("Equipment")]
-    [OpenApiOperation("Get All Equipment", "")]
-    public async Task<IActionResult> GetAllEquipment([FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
-    {
-        var result = await Mediator.Send(new GetAllEquipmentQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpGet("Equipment/export")]
-    [OpenApiOperation("Export Equipment", "")]
-    public async Task<IActionResult> ExportEquipment()
-    {
-        var fileByte = await Mediator.Send(new ExportExcelEquipmentQuery());
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Thiet_bi.xlsx");
-        return result;
-    }
-
-    [HttpPost("Equipment/import")]
-    [OpenApiOperation("Import Equipment", "")]
-    public async Task<IActionResult> ImportEquipment([FromForm] ImportDto importModel)
-    {
-        var result = await Mediator.Send(new ImportEquipmentExcelCommand(importModel.FormFile));
-        return Ok(result, MessageCommon.ImportSuccess);
-    }
-
-    [HttpGet("Equipment/{id:guid}")]
-    [OpenApiOperation("Get Equipment by Id", "")]
-    public async Task<IActionResult> GetEquipmentById([FromRoute] Guid id)
-    {
-        var result = await Mediator.Send(new GetEquipmentByIdQuery(id));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpGet("Equipment/{id:guid}/Parts")]
-    [OpenApiOperation("Get Equipment Parts by equipmentId", "")]
-    public async Task<IActionResult> GetEquipmentPartsById([FromRoute] Guid id)
-    {
-        var result = await Mediator.Send(new GetAllPartByEquipmentIdQuery(id));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpPost("Equipment")]
-    [OpenApiOperation("Create New Equipment", "")]
-    public async Task<IActionResult> CreateEquipment([FromBody] CreateEquipmentDto createModel)
-    {
-        var result = await Mediator.Send(new CreateEquipmentCommand(createModel));
-        return Ok(result, MessageCommon.CreateSuccess);
-    }
-
-    [HttpPut("Equipment")]
-    [OpenApiOperation("Update Equipment", "")]
-    public async Task<IActionResult> UpdateEquipment([FromBody] UpdateEquipmentDto updateModel)
-    {
-        var result = await Mediator.Send(new UpdateEquipmentsCommand(updateModel));
-        return Ok(result, MessageCommon.UpdateSuccess);
-    }
-
-    [HttpDelete("Equipment/{deleteId:guid}")]
-    [OpenApiOperation("Delete Equipment", "")]
-    public async Task<IActionResult> DeleteEquipment([FromRoute] Guid deleteId)
-    {
-        var result = await Mediator.Send(new DeleteEquipmentCommand(deleteId));
-        return Ok(result, MessageCommon.DeleteSuccess);
-    }
-
-    [HttpDelete("Equipment")]
-    [OpenApiOperation("Delete Many Equipment", "")]
-    public async Task<IActionResult> DeleteEquipmentList([FromBody] IList<Guid> deleteIds)
-    {
-        var result = await Mediator.Send(new DeleteEquipmentListCommand(deleteIds));
-        return Ok(result, MessageCommon.DeleteSuccess);
-    }
-    #endregion
-
-    #region Part
-
-    [HttpGet("Part")]
-    [OpenApiOperation("Get All Part", "")]
-    public async Task<IActionResult> GetAllPart([FromQuery] DateTime? date, [FromQuery] PartType? partType, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
-    {
-        var result = await Mediator.Send(new GetAllPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow, partType));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpGet("Part/export")]
-    [OpenApiOperation("Export Part", "")]
-    public async Task<IActionResult> ExportPart([FromQuery] PartType? partType)
-    {
-        byte[] fileByte;
-        string fileName;
-        if (partType == PartType.OtherPart)
-        {
-            fileByte = await Mediator.Send(new ExportExcelOtherPartQuery());
-            fileName = "Phu_tung_khac.xlsx";
-        }
-        else
-        {
-            fileByte = await Mediator.Send(new ExportExcelPartQuery());
-            fileName = "Phu_tung.xlsx";
-        }
-
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-        return result;
-    }
-
-    [HttpPost("Part/import")]
-    [OpenApiOperation("Import Part", "")]
-    public async Task<IActionResult> ImportPart([FromForm] ImportDto importModel, [FromForm] PartType? partType)
-    {
-        bool result;
-        if (partType == PartType.OtherPart)
-        {
-            result = await Mediator.Send(new ImportOtherPartExcelCommand(importModel.FormFile));
-        }
-        else
-        {
-            result = await Mediator.Send(new ImportPartExcelCommand(importModel.FormFile));
-        }
-
-        return Ok(result, MessageCommon.ImportSuccess);
-    }
-
-    [HttpGet("Part/{id:guid}")]
-    [OpenApiOperation("Get Part by Id", "")]
-    public async Task<IActionResult> GetPartById([FromRoute] Guid id)
-    {
-        var result = await Mediator.Send(new GetPartByIdQuery(id));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpGet("Part/{id:guid}/Equipments")]
-    [OpenApiOperation("Get Equipments by PartId", "")]
-    public async Task<IActionResult> GetEquipmentsByPartId([FromRoute] Guid id, [FromQuery] DateTime? date)
-    {
-        var result = await Mediator.Send(new GetEquipmentsByPartIdQuery(id, date ?? DateTime.UtcNow));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpPost("Part")]
-    [OpenApiOperation("Create New Part", "")]
-    public async Task<IActionResult> CreatePart([FromBody] CreatePartDto createModel)
-    {
-        var result = await Mediator.Send(new CreatePartCommand(createModel));
-        return Ok(result, MessageCommon.CreateSuccess);
-    }
-
-    [HttpPut("Part")]
-    [OpenApiOperation("Update Part", "")]
-    public async Task<IActionResult> UpdatePart([FromBody] UpdatePartDto updateModel)
-    {
-        var result = await Mediator.Send(new UpdatePartCommand(updateModel));
-        return Ok(result, MessageCommon.UpdateSuccess);
-    }
-
-    [HttpDelete("Part/{deleteId:guid}")]
-    [OpenApiOperation("Delete Part", "")]
-    public async Task<IActionResult> DeletePart([FromRoute] Guid deleteId)
-    {
-        var result = await Mediator.Send(new DeletePartCommand(deleteId));
-        return Ok(result, MessageCommon.DeleteSuccess);
-    }
-
-    [HttpDelete("Part")]
-    [OpenApiOperation("Delete Many Part", "")]
-    public async Task<IActionResult> DeletePartList([FromBody] IList<Guid> deleteIds)
-    {
-        var result = await Mediator.Send(new DeletePartListCommand(deleteIds));
-        return Ok(result, MessageCommon.DeleteSuccess);
-    }
-    #endregion
-
-    #region OtherPart
-    [HttpGet("OtherPart")]
-    [OpenApiOperation("Get All OtherPart", "")]
-    public async Task<IActionResult> GetAllOtherPart([FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
-    {
-        var result = await Mediator.Send(new GetAllPartQuery(pageIndex, pageSize, search, ignorePagination, date ?? DateTime.UtcNow, PartType.OtherPart));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-
-    [HttpGet("OtherPart/export")]
-    [OpenApiOperation("Export OtherPart", "")]
-    public async Task<IActionResult> ExportOtherPart()
-    {
-        var fileByte = await Mediator.Send(new ExportExcelOtherPartQuery());
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Phu_tung_khac.xlsx");
-        return result;
-    }
-
-    [HttpPost("OtherPart/import")]
-    [OpenApiOperation("Import OtherPart", "")]
-    public async Task<IActionResult> ImportOtherPart([FromForm] ImportDto importModel)
-    {
-        var result = await Mediator.Send(new ImportOtherPartExcelCommand(importModel.FormFile));
-        return Ok(result, MessageCommon.ImportSuccess);
-    }
-
-    [HttpGet("OtherPart/{id:guid}")]
-    [OpenApiOperation("Get OtherPart by Id", "")]
-    public async Task<IActionResult> GetOtherPartById([FromRoute] Guid id)
-    {
-        var result = await Mediator.Send(new GetPartByIdQuery(id));
-        return Ok(result, MessageCommon.GetDataSuccess);
-    }
-
-    [HttpPost("OtherPart")]
-    [OpenApiOperation("Create New OtherPart", "")]
-    public async Task<IActionResult> CreateOtherPart([FromBody] CreateOtherPartDto createModel)
-    {
-        var result = await Mediator.Send(new CreatePartCommand(new CreatePartDto
-        {
-            Code = createModel.Code,
-            Name = createModel.Name,
-            UnitOfMeasureId = createModel.UnitOfMeasureId,
-            PartType = PartType.OtherPart,
-            Costs = createModel.Costs
-        }));
-        return Ok(result, MessageCommon.CreateSuccess);
-    }
-
-    [HttpPut("OtherPart")]
-    [OpenApiOperation("Update OtherPart", "")]
-    public async Task<IActionResult> UpdateOtherPart([FromBody] UpdateOtherPartDto updateModel)
-    {
-        var result = await Mediator.Send(new UpdatePartCommand(new UpdatePartDto
-        {
-            Id = updateModel.Id,
-            Code = updateModel.Code,
-            Name = updateModel.Name,
-            UnitOfMeasureId = updateModel.UnitOfMeasureId,
-            PartType = PartType.OtherPart,
-            Costs = updateModel.Costs
-        }));
-        return Ok(result, MessageCommon.UpdateSuccess);
-    }
-
-    [HttpDelete("OtherPart")]
-    [OpenApiOperation("Delete Many OtherPart", "")]
-    public async Task<IActionResult> DeleteOtherPartList([FromBody] IList<Guid> deleteIds)
-    {
-        var result = await Mediator.Send(new DeletePartListCommand(deleteIds));
-        return Ok(result, MessageCommon.DeleteSuccess);
-    }
-    #endregion
 
     #region ProcessGroup
 

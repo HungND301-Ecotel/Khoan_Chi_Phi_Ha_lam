@@ -31,12 +31,12 @@ export const getAdjustmentElectricityCostColumns = (
 
 	return [
 		{
-			accessorKey: 'equipmentCode',
-			header: 'Mã thiết bị',
+			accessorKey: 'assignmentCode',
+			header: 'Nhóm vật tư, tài sản',
 		},
 		{
-			accessorKey: 'equipmentName',
-			header: 'Tên thiết bị',
+			accessorKey: 'assignmentCodeName',
+			header: 'Tên nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'electricityUnitPrice',

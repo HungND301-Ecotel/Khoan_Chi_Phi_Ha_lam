@@ -2,6 +2,7 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Equipment;
 using Application.Dto.Catalog.MaintainUnitPriceEquipment;
+using Domain.Entities.Index;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,7 @@ public class GetEquipmentsByMaintainUnitPriceEquipmentIdsQueryHandler(IUnitOfWor
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment> _maintainUnitPriceEquipmentRepository =
         unitOfWork.GetRepository<Domain.Entities.Pricing.MaintainUnitPriceEquipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<IList<MaintainUnitPriceEquipmentEquipmentsDto>> Handle(
         GetEquipmentsByMaintainUnitPriceEquipmentIdsQuery request,
@@ -40,17 +42,20 @@ public class GetEquipmentsByMaintainUnitPriceEquipmentIdsQueryHandler(IUnitOfWor
             predicate: x => normalizedIds.Contains(x.Id),
             include: q => q
                 .Include(x => x.Part)
-                    .ThenInclude(p => p.EquipmentParts)
-                        .ThenInclude(ep => ep.Equipment)
-                            .ThenInclude(e => e.Code)
-                .Include(x => x.Part)
-                    .ThenInclude(p => p.EquipmentParts)
-                        .ThenInclude(ep => ep.Equipment)
-                            .ThenInclude(e => e.UnitOfMeasure)
-                .Include(x => x.Part)
-                    .ThenInclude(p => p.EquipmentParts)
-                        .ThenInclude(ep => ep.Equipment)
-                            .ThenInclude(e => e.Costs),
+                    .ThenInclude(p => p.AssignmentCodeMaterials),
+            disableTracking: true);
+
+        var assignmentCodeIds = maintainItems
+            .SelectMany(x => x.Part?.AssignmentCodeMaterials.Select(acm => acm.AssignmentCodeId) ?? [])
+            .Distinct()
+            .ToList();
+
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
+            predicate: x => assignmentCodeIds.Contains(x.Id),
+            include: q => q
+                .Include(x => x.Code)
+                .Include(x => x.UnitOfMeasure)
+                .Include(x => x.Costs),
             disableTracking: true);
 
         var checkDate = request.Date.HasValue
@@ -61,9 +66,8 @@ public class GetEquipmentsByMaintainUnitPriceEquipmentIdsQueryHandler(IUnitOfWor
         {
             var maintainItem = maintainItems.FirstOrDefault(x => x.Id == id);
 
-            var equipments = maintainItem?.Part?.EquipmentParts
-                .Where(ep => ep.Equipment != null)
-                .Select(ep => ep.Equipment!)
+            var equipments = assignmentCodes
+                .Where(ac => maintainItem?.Part?.AssignmentCodeMaterials.Any(link => link.AssignmentCodeId == ac.Id) == true)
                 .GroupBy(e => e.Id)
                 .Select(group =>
                 {

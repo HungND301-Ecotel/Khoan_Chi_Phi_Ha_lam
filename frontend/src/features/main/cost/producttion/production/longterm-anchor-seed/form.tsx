@@ -61,6 +61,7 @@ export function LongtermAnchorSeedForm({
 					})),
 					items: response.result.items.map((item) => ({
 						id: item.id,
+						materialId: item.materialId || item.partId,
 						partId: item.partId,
 						processGroupId: item.processGroupId,
 						issuedQuantity: item.issuedQuantity,
@@ -167,13 +168,19 @@ export function LongtermAnchorSeedForm({
 								</div>
 
 								<div className='min-w-40 flex-1 space-y-2'>
-									<Label>Mã phụ tùng</Label>
-									<Input readOnly value={item?.partCode ?? ''} />
+									<Label>Mã vật tư</Label>
+									<Input
+										readOnly
+										value={item?.materialCode || item?.partCode || ''}
+									/>
 								</div>
 
 								<div className='min-w-56 flex-1 space-y-2'>
-									<Label>Tên phụ tùng</Label>
-									<Input readOnly value={item?.partName ?? ''} />
+									<Label>Tên vật tư</Label>
+									<Input
+										readOnly
+										value={item?.materialName || item?.partName || ''}
+									/>
 								</div>
 
 								<div className='min-w-24 flex-1 space-y-2'>

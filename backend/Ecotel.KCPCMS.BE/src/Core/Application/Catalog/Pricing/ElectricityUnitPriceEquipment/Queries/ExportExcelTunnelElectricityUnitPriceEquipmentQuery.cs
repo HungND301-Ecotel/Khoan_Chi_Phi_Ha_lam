@@ -17,7 +17,7 @@ public class ExportExcelTunnelElectricityUnitPriceEquipmentQueryHandler(IExcelSe
     : IRequestHandler<ExportExcelTunnelElectricityUnitPriceEquipmentQuery, byte[]>
 {
     private readonly IWriteRepository<TunnelElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<TunnelElectricityUnitPriceEquipment>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<byte[]> Handle(ExportExcelTunnelElectricityUnitPriceEquipmentQuery request, CancellationToken cancellationToken)
     {
@@ -33,7 +33,7 @@ public class ExportExcelTunnelElectricityUnitPriceEquipmentQueryHandler(IExcelSe
                     .ThenInclude(eq => eq!.UnitOfMeasure),
             disableTracking: true);
 
-        var equipments = await _equipmentRepository.GetAllAsync(
+        var equipments = await _assignmentCodeRepository.GetAllAsync(
             include: e => e.Include(e => e.Code),
             selector: e => e.Code != null ? e.Code.Value : "",
             disableTracking: true);

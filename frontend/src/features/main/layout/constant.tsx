@@ -37,53 +37,24 @@ export const NAVIGATIONS: Navigation[] = [
 			{ type: 'link', name: 'Đơn vị tính', href: '/catalogs/units' },
 			{ type: 'link', name: 'Đơn vị', href: '/catalogs/departments' },
 			{ type: 'link', name: 'Công đoạn sản xuất', href: '/catalogs/processes' },
-			{ type: 'link', name: 'Mã giao khoán', href: '/catalogs/contract-codes' },
+			{
+				type: 'link',
+				name: 'Nhóm vật tư, tài sản',
+				href: '/catalogs/contract-codes',
+			},
 			{
 				type: 'sub-menu',
 				name: 'Vật tư, tài sản',
 				items: [
 					{
 						type: 'link',
-						name: 'Vật tư, tài sản trong khoán',
+						name: 'Vật tư, tài sản',
 						href: '/catalogs/assets/internal',
 					},
 					{
 						type: 'link',
-						name: 'Vật tư, tài sản ngoài khoán',
+						name: 'Vật tư, tài sản khác',
 						href: '/catalogs/assets/external',
-					},
-					{
-						type: 'link',
-						name: 'Vật tư theo hạn mức',
-						href: '/catalogs/assets/quota-materials',
-					},
-					{
-						type: 'link',
-						name: 'Tài sản',
-						href: '/catalogs/assets/resource',
-					},
-					{
-						type: 'link',
-						name: 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
-						href: '/catalogs/assets/safety-and-welfare',
-					},
-				],
-			},
-			{ type: 'link', name: 'Thiết bị', href: '/catalogs/equipments' },
-			// { type: 'link', name: 'Phụ tùng', href: '/catalogs/spare-parts' },
-			{
-				type: 'sub-menu',
-				name: 'Phụ tùng',
-				items: [
-					{
-						type: 'link',
-						name: 'Phụ tùng theo thiết bị',
-						href: '/catalogs/spare-parts/main',
-					},
-					{
-						type: 'link',
-						name: 'Phụ tùng khác',
-						href: '/catalogs/spare-parts/other',
 					},
 				],
 			},

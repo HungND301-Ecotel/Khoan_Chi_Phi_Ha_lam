@@ -16,19 +16,19 @@ export type MaterialGroup = {
 	items: MaterialItem[];
 };
 
-// SCTX (Spare Parts) Types
-export type SCTXItem = {
+// SCTX / Maintain Types
+export type MaintainItem = {
 	id: string;
-	equipmentCode: string;
-	partCode: string;
-	partName: string;
+	assignmentCode: string;
+	materialCode: string;
+	materialName: string;
 	unitOfMeasure: string;
 	quantity: number;
 };
 
-export type SCTXGroup = {
-	equipmentCode: string;
-	items: SCTXItem[];
+export type MaintainGroup = {
+	assignmentCode: string;
+	items: MaintainItem[];
 };
 
 // Other Material (Vật tư khác) Type
@@ -42,6 +42,7 @@ export type OtherMaterial = {
 
 // API Response Types
 export type AdditionalCostItem = {
+	materialId?: string;
 	code: string;
 	name: string;
 	unitOfMeasureName: string;
@@ -66,11 +67,12 @@ export type MaterialCost = {
 	quantity: number;
 };
 
-// SCTX Cost - for display without grouping
-export type SCTXCost = {
+// Maintain Cost - for display without grouping
+export type MaintainCost = {
 	id: string;
-	partCode: string;
-	partName: string;
+	materialId?: string;
+	materialCode: string;
+	materialName: string;
 	unitOfMeasure: string;
 	quantity: number;
 };
@@ -79,7 +81,7 @@ export type SCTXCost = {
 export type AdditionalCostDetail = {
 	id: string;
 	materials: MaterialGroup[];
-	sctx: SCTXGroup[];
+	maintain: MaintainGroup[];
 	otherMaterials: OtherMaterial[];
 };
 
@@ -105,17 +107,17 @@ export function flattenMaterialData(
 	return flat;
 }
 
-// Helper function to flatten SCTX data
-export function flattenSCTXData(sctxGroups: SCTXGroup[]): SCTXCost[] {
-	const flat: SCTXCost[] = [];
+// Helper function to flatten maintain data
+export function flattenMaintainData(maintainGroups: MaintainGroup[]): MaintainCost[] {
+	const flat: MaintainCost[] = [];
 
-	sctxGroups.forEach((group) => {
+	maintainGroups.forEach((group) => {
 		// Add item rows
 		group.items.forEach((item) => {
 			flat.push({
 				id: item.id,
-				partCode: item.partCode,
-				partName: item.partName,
+				materialCode: item.materialCode,
+				materialName: item.materialName,
 				unitOfMeasure: item.unitOfMeasure,
 				quantity: item.quantity,
 			});
@@ -160,19 +162,19 @@ export const MATERIAL_COLUMNS: ColumnDef<MaterialCost>[] = [
 	},
 ];
 
-// SCTX Columns (Phụ tùng công cụ)
-export const SCTX_COLUMNS: ColumnDef<SCTXCost>[] = [
+// Maintain Columns (SCTX)
+export const MAINTAIN_COLUMNS: ColumnDef<MaintainCost>[] = [
 	{
-		accessorKey: 'partCode',
-		header: () => <span className='whitespace-normal'>{'Mã phụ tùng'}</span>,
-		cell: ({ row }) => row.original.partCode ?? '',
+		accessorKey: 'materialCode',
+		header: () => <span className='whitespace-normal'>{'Mã vật tư'}</span>,
+		cell: ({ row }) => row.original.materialCode ?? '',
 		size: 120,
 	},
 	{
-		accessorKey: 'partName',
-		header: () => <span className='whitespace-normal'>{'Tên phụ tùng'}</span>,
+		accessorKey: 'materialName',
+		header: () => <span className='whitespace-normal'>{'Tên vật tư'}</span>,
 		cell: ({ row }) => (
-			<span className='whitespace-normal'>{row.original.partName ?? ''}</span>
+			<span className='whitespace-normal'>{row.original.materialName ?? ''}</span>
 		),
 		size: 200,
 	},
@@ -275,44 +277,44 @@ export const MOCK_ADDITIONAL_COST_DATA: AdditionalCostDetail = {
 			],
 		},
 	],
-	sctx: [
+	maintain: [
 		{
-			equipmentCode: 'TB-001',
+			assignmentCode: 'TB-001',
 			items: [
 				{
 					id: 'sctx-001',
-					equipmentCode: 'TB-001',
-					partCode: 'PT-001',
-					partName: 'Dao cắt',
+					assignmentCode: 'TB-001',
+					materialCode: 'PT-001',
+					materialName: 'Dao cắt',
 					unitOfMeasure: 'cái',
 					quantity: 10,
 				},
 				{
 					id: 'sctx-002',
-					equipmentCode: 'TB-001',
-					partCode: 'PT-002',
-					partName: 'Mặt bích',
+					assignmentCode: 'TB-001',
+					materialCode: 'PT-002',
+					materialName: 'Mặt bích',
 					unitOfMeasure: 'cái',
 					quantity: 5,
 				},
 			],
 		},
 		{
-			equipmentCode: 'TB-002',
+			assignmentCode: 'TB-002',
 			items: [
 				{
 					id: 'sctx-003',
-					equipmentCode: 'TB-002',
-					partCode: 'PT-003',
-					partName: 'Lò xo nén',
+					assignmentCode: 'TB-002',
+					materialCode: 'PT-003',
+					materialName: 'Lò xo nén',
 					unitOfMeasure: 'cái',
 					quantity: 10,
 				},
 				{
 					id: 'sctx-004',
-					equipmentCode: 'TB-002',
-					partCode: 'PT-004',
-					partName: 'Vòng đệm',
+					assignmentCode: 'TB-002',
+					materialCode: 'PT-004',
+					materialName: 'Vòng đệm',
 					unitOfMeasure: 'cái',
 					quantity: 10,
 				},

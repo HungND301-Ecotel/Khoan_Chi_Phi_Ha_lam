@@ -16,8 +16,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         Guid outputId,
         Stream fileStream,
         string fileName,
-        IEnumerable<Material> materialsInDb,
-        IEnumerable<Part> partsInDb)
+        IEnumerable<Material> materialsInDb)
     {
         if (!fileName.EndsWith(".xlsx") && !fileName.EndsWith(".xls"))
         {
@@ -25,16 +24,9 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         }
 
         var materials = materialsInDb.ToList();
-        var parts = partsInDb
-            .Where(p => p.Code?.Value != null)
-            .ToList();
         var materialByNormalizedCode = materials
             .Where(m => m.Code?.Value != null)
             .GroupBy(m => NormalizeCode(m.Code!.Value))
-            .ToDictionary(g => g.Key, g => g.First());
-        var partByNormalizedCode = parts
-            .Where(p => p.Code?.Value != null)
-            .GroupBy(p => NormalizeCode(p.Code!.Value))
             .ToDictionary(g => g.Key, g => g.First());
 
         try
@@ -94,52 +86,36 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
 
                 materialByNormalizedCode.TryGetValue(normalizedMaterialCode, out var material);
 
-                var type = AcceptanceReportItemType.Material;
-                var itemType = (int)(material?.MaterialType ?? MaterialType.MaterialOutContract);
-                Guid? materialId = null;
-                Guid? partId = null;
-                PartType? partType = null;
-                string unitOfMeasureName;
-                string? materialName = null;
-                string? partName = null;
-
-                if (material != null)
+                if (material == null)
                 {
-                    materialId = material.Id;
-                    materialName = material.Name;
-                    unitOfMeasureName = material.UnitOfMeasure?.Name ?? "N/A";
-                }
-                else
-                {
-                    partByNormalizedCode.TryGetValue(normalizedMaterialCode, out var part);
-
-                    if (part == null)
+                    unresolvedAcceptanceReports.Add(new UnresolvedAcceptanceReportItemDto
                     {
-                        unresolvedAcceptanceReports.Add(new UnresolvedAcceptanceReportItemDto
-                        {
-                            RowNumber = rowNumber,
-                            ReportItemId = reportItemId,
-                            MaterialCode = materialCode,
-                            MaterialName = null,
-                            IssuedQuantity = receivedValue,
-                            ShippedQuantity = dispensedValue,
-                            UnresolvedReason = $"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}."
-                        });
-                        continue;
-                    }
-
-                    type = AcceptanceReportItemType.Part;
-                    itemType = (int)part.Type;
-                    partType = part.Type;
-                    partId = part.Id;
-                    partName = part.Name;
-                    unitOfMeasureName = part.UnitOfMeasure?.Name ?? "N/A";
+                        RowNumber = rowNumber,
+                        ReportItemId = reportItemId,
+                        MaterialCode = materialCode,
+                        MaterialName = null,
+                        IssuedQuantity = receivedValue,
+                        ShippedQuantity = dispensedValue,
+                        UnresolvedReason = $"Không tìm thấy vật tư: '{materialCode}' ở dòng {rowNumber}."
+                    });
+                    continue;
                 }
+
+                var type = material.MaterialType == MaterialType.MaterialOutContract
+                    ? AcceptanceReportItemType.Material
+                    : AcceptanceReportItemType.Part;
+                var itemType = (int)material.MaterialType;
+                Guid? materialId = type == AcceptanceReportItemType.Material ? material.Id : null;
+                Guid? partId = type == AcceptanceReportItemType.Part ? material.Id : null;
+                PartType? partType = type == AcceptanceReportItemType.Part ? PartType.Part : null;
+                var unitOfMeasureName = material.UnitOfMeasure?.Name ?? "N/A";
+                var materialName = material.Name;
 
                 acceptanceReports.Add(new AcceptanceReportItemDto
                 {
                     ReportItemId = reportItemId,
                     RowNumber = rowNumber,
+                    TrackedMaterialId = materialId ?? partId,
                     MaterialId = materialId,
                     PartId = partId,
                     Type = type,
@@ -147,7 +123,10 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     PartType = partType,
                     MaterialCode = materialCode,
                     MaterialName = materialName,
-                    PartName = partName,
+                    TrackedMaterialCode = materialCode,
+                    TrackedMaterialName = materialName,
+                    PartCode = partId.HasValue ? materialCode : null,
+                    PartName = partId.HasValue ? materialName : null,
                     UnitOfMeasureName = unitOfMeasureName,
                     IssuedQuantity = receivedValue,
                     ShippedQuantity = dispensedValue

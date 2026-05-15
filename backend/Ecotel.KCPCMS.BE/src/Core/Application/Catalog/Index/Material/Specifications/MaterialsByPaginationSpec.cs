@@ -17,6 +17,7 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
         Query
             .Include(m => m.UnitOfMeasure)
             .Include(m => m.AssignmentCode).ThenInclude(a => a.Code)
+            .Include(m => m.AssignmentCodeMaterials).ThenInclude(am => am.AssignmentCode).ThenInclude(a => a.Code)
             .Include(m => m.Costs)
             .Include(m => m.Code)
             .Where(m =>
@@ -33,9 +34,21 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
             Name = m.Name,
             UnitOfMeasureId = m.UnitOfMeasureId,
             UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
-            AssignmentCodeId = m.AssignmentCode != null ? m.AssignmentCode.Id : DefaultIdType.Empty,
-            AssignmentCode = m.AssignmentCode != null && m.AssignmentCode.Code != null ? m.AssignmentCode.Code.Value : string.Empty,
-            IsSlideAssignmentCode = m.AssignmentCode != null ? m.AssignmentCode.IsSlideAssignmentCode : false,
+            AssignmentCodeId = m.AssignmentCodeMaterials
+                    .Select(am => am.AssignmentCodeId)
+                    .FirstOrDefault(),
+            AssignmentCodeIds = m.AssignmentCodeMaterials
+                    .Select(am => am.AssignmentCodeId)
+                    .Distinct()
+                    .ToList(),
+            AssignmentCode = m.AssignmentCodeMaterials
+                    .Where(am => am.AssignmentCode != null && am.AssignmentCode.Code != null)
+                    .Select(am => am.AssignmentCode!.Code!.Value)
+                    .FirstOrDefault() ?? (m.AssignmentCode != null && m.AssignmentCode.Code != null ? m.AssignmentCode.Code.Value : string.Empty),
+            IsSlideAssignmentCode = m.AssignmentCodeMaterials
+                    .Where(am => am.AssignmentCode != null)
+                    .Select(am => am.AssignmentCode!.IsSlideAssignmentCode)
+                    .FirstOrDefault() || (m.AssignmentCode != null && m.AssignmentCode.IsSlideAssignmentCode),
             CostAmount = m.Costs
                     .Where(c => c.CostType == CostType.Material &&
                                 c.StartMonth <= checkDate &&

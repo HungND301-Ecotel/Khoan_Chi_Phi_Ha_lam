@@ -79,7 +79,7 @@ public class ExportExcelMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : 
             (hardnessCol, "Độ kiên cố than đá"),
             (insertItemCol, "Chèn"),
             (supportStepCol, "Bước chống"),
-            (assignmentCol, "Mã giao khoán")
+            (assignmentCol, "Nhóm vật tư, tài sản")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();

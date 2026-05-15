@@ -13,10 +13,10 @@ export const tunnelingFormSchema = z.object({
 		})
 		.nonempty('Không được để trống'),
 	equipmentIds: z
-		.array(z.string().nonempty({ error: 'Mã thiết bị không được để trống' }))
-		.nonempty({ error: 'Mã thiết bị không được để trống' }),
+		.array(z.string().nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }))
+		.nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }),
 	selectedPartIds: z.array(
-		z.string().nonempty({ error: 'Mã phụ tùng không được để trống' }),
+		z.string().nonempty({ error: 'Mã vật tư không được để trống' }),
 	),
 	costs: z
 		.array(
@@ -42,7 +42,7 @@ export const tunnelingFormSchema = z.object({
 					}),
 				equipmentId: z
 					.string()
-					.nonempty({ error: 'Mã thiết bị không được để trống' }),
+					.nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }),
 			}),
 		)
 		.nonempty({ error: 'Mục đầu vào không được để trống' }),

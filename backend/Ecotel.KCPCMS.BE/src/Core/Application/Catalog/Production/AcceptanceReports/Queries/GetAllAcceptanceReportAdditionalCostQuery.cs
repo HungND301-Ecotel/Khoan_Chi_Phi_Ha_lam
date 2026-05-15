@@ -47,25 +47,13 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
 
         foreach (var item in itemsWithAdditionalCost)
         {
-            // Determine code and name based on type (Material vs Part)
-            string? code;
-            string? name;
-
-            if (item.MaterialId.HasValue)
-            {
-                // Material type
-                code = item.Material?.Code?.Value;
-                name = item.Material?.Name;
-            }
-            else
-            {
-                // Part type
-                code = item?.Part?.Code?.Value;
-                name = item?.Part?.Name;
-            }
+            var materialId = item.TrackedMaterialId;
+            var code = ResolveTrackedMaterialCode(item);
+            var name = ResolveTrackedMaterialName(item);
 
             var costItem = new AdditionalCostItemDto
             {
+                MaterialId = materialId,
                 Code = code,
                 Name = name,
                 UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
@@ -94,5 +82,15 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
             AdditionalCosts = additionalCostsGroup
         };
     }
+
+    private static string? ResolveTrackedMaterialCode(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Code?.Value ?? item.Material?.Code?.Value
+            : item.Material?.Code?.Value ?? item.Part?.Code?.Value;
+
+    private static string? ResolveTrackedMaterialName(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Name ?? item.Material?.Name
+            : item.Material?.Name ?? item.Part?.Name;
 }
 

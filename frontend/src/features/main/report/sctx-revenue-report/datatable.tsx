@@ -10,13 +10,16 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
-import { getProcessGroupType, ProcessGroupType } from '@/constants/process-group';
+import {
+	getProcessGroupType,
+	ProcessGroupType,
+} from '@/constants/process-group';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useEffect, useMemo, useState } from 'react';
 
-type EquipmentLookup = {
+type AssignmentCodeLookup = {
 	id: string;
 	code: string;
 	name: string;
@@ -24,7 +27,6 @@ type EquipmentLookup = {
 	processGroupCode?: string | null;
 	processGroupName?: string | null;
 };
-
 
 type SctxRevenueByMonthApi = {
 	month: number;
@@ -40,8 +42,9 @@ type SctxRevenueByYearApi = {
 	months: SctxRevenueByMonthApi[];
 };
 
-type SctxRevenueByEquipmentApiResponse = {
-	equipmentId: string;
+type SctxRevenueByAssignmentCodeApiResponse = {
+	assignmentCodeId: string;
+	equipmentId?: string;
 	years: SctxRevenueByYearApi[];
 };
 
@@ -73,7 +76,9 @@ const monthOptions = Array.from({ length: 12 }, (_, index) => {
 	};
 });
 
-const buildRowsFromApi = (months: SctxRevenueByMonthApi[]): SctxRevenueRow[] => {
+const buildRowsFromApi = (
+	months: SctxRevenueByMonthApi[],
+): SctxRevenueRow[] => {
 	const sorted = [...months].sort((a, b) => a.month - b.month);
 	return sorted.map((item) => ({
 		month: item.month,
@@ -93,9 +98,7 @@ const toMonthIndex = (value: string) => {
 	return Number(yearPart) * 12 + (Number(monthPart) - 1);
 };
 
-const buildMonthValue = (year: string, month: string) =>
-	`${year}-${month}`;
-
+const buildMonthValue = (year: string, month: string) => `${year}-${month}`;
 
 export function SctxRevenueReportDataTable() {
 	const now = new Date();
@@ -107,10 +110,13 @@ export function SctxRevenueReportDataTable() {
 	const [toMonth, setToMonth] = useState(
 		buildMonthValue(String(currentYear), currentMonth),
 	);
-	const [equipments, setEquipments] = useState<EquipmentLookup[]>([]);
-	const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
+	const [assignmentCodes, setAssignmentCodes] = useState<
+		AssignmentCodeLookup[]
+	>([]);
+	const [selectedAssignmentCodeId, setSelectedAssignmentCodeId] = useState('');
 	const [yearData, setYearData] = useState<SctxRevenueByYearApi[]>([]);
-	const [isLoadingEquipments, setIsLoadingEquipments] = useState(false);
+	const [isLoadingAssignmentCodes, setIsLoadingAssignmentCodes] =
+		useState(false);
 	const [isLoadingRows, setIsLoadingRows] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -165,12 +171,12 @@ export function SctxRevenueReportDataTable() {
 	useEffect(() => {
 		let cancelled = false;
 
-		const fetchEquipments = async () => {
-			setIsLoadingEquipments(true);
+		const fetchAssignmentCodes = async () => {
+			setIsLoadingAssignmentCodes(true);
 
 			try {
-				const response = await api.pagging<EquipmentLookup>(
-					API.CATALOG.EQUIPMENT.LIST,
+				const response = await api.pagging<AssignmentCodeLookup>(
+					API.CATALOG.CONTRACT_CODE.LIST,
 					{ ignorePagination: true },
 				);
 
@@ -182,8 +188,8 @@ export function SctxRevenueReportDataTable() {
 					a.code.localeCompare(b.code, 'vi'),
 				);
 
-				setEquipments(options);
-				setSelectedEquipmentId((prev) => {
+				setAssignmentCodes(options);
+				setSelectedAssignmentCodeId((prev) => {
 					if (prev && options.some((item) => item.id === prev)) {
 						return prev;
 					}
@@ -194,56 +200,52 @@ export function SctxRevenueReportDataTable() {
 					return;
 				}
 
-				setEquipments([]);
-				setSelectedEquipmentId('');
+				setAssignmentCodes([]);
+				setSelectedAssignmentCodeId('');
 				setError(
 					err instanceof Error
 						? err.message
-						: 'Không thể tải danh sách thiết bị',
+						: 'Không thể tải danh sách Nhóm vật tư, tài sản',
 				);
 			} finally {
 				if (!cancelled) {
-					setIsLoadingEquipments(false);
+					setIsLoadingAssignmentCodes(false);
 				}
 			}
 		};
 
-		fetchEquipments();
+		fetchAssignmentCodes();
 
 		return () => {
 			cancelled = true;
 		};
 	}, []);
 
-
 	useEffect(() => {
-		if (!selectedEquipmentId) {
+		if (!selectedAssignmentCodeId) {
 			setYearData([]);
 			return;
 		}
 
 		let cancelled = false;
 
-		const fetchRevenueByEquipment = async () => {
+		const fetchRevenueByAssignmentCode = async () => {
 			setIsLoadingRows(true);
 			setError(null);
 
 			try {
 				const response = await api.post<
-					SctxRevenueByEquipmentApiResponse,
+					SctxRevenueByAssignmentCodeApiResponse,
 					{
 						fromMonth: string;
 						toMonth: string;
-						equipmentId: string;
+						assignmentCodeId: string;
 					}
-				>(
-					API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT,
-					{
-						fromMonth,
-						toMonth,
-						equipmentId: selectedEquipmentId,
-					},
-				);
+				>(API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT, {
+					fromMonth,
+					toMonth,
+					assignmentCodeId: selectedAssignmentCodeId,
+				});
 
 				if (cancelled) {
 					return;
@@ -268,12 +270,12 @@ export function SctxRevenueReportDataTable() {
 			}
 		};
 
-		fetchRevenueByEquipment();
+		fetchRevenueByAssignmentCode();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedEquipmentId, fromMonth, toMonth]);
+	}, [selectedAssignmentCodeId, fromMonth, toMonth]);
 
 	const yearRows = useMemo(() => {
 		const sorted = [...yearData].sort((a, b) => a.year - b.year);
@@ -304,14 +306,13 @@ export function SctxRevenueReportDataTable() {
 		}));
 	}, [yearRows]);
 
-	const selectedEquipment = useMemo(
-		() => equipments.find((item) => item.id === selectedEquipmentId),
-		[equipments, selectedEquipmentId],
+	const selectedAssignmentCode = useMemo(
+		() => assignmentCodes.find((item) => item.id === selectedAssignmentCodeId),
+		[assignmentCodes, selectedAssignmentCodeId],
 	);
 
-
 	const quantityUnitLabel = useMemo(() => {
-		const code = selectedEquipment?.processGroupCode || '';
+		const code = selectedAssignmentCode?.processGroupCode || '';
 		switch (getProcessGroupType(code)) {
 			case ProcessGroupType.DL:
 			case ProcessGroupType.XL:
@@ -321,13 +322,15 @@ export function SctxRevenueReportDataTable() {
 			default:
 				return '';
 		}
-	}, [selectedEquipment?.processGroupCode]);
+	}, [selectedAssignmentCode?.processGroupCode]);
 
 	const buildQuantityHeader = (label: string) =>
 		quantityUnitLabel ? `${label} (${quantityUnitLabel})` : label;
 
-	const displayEquipmentName = selectedEquipment?.name || 'Không xác định';
-	const displayEquipmentCode = selectedEquipment?.code || 'thiet-bi';
+	const displayAssignmentCodeName =
+		selectedAssignmentCode?.name || 'Không xác định';
+	const displayAssignmentCodeCode =
+		selectedAssignmentCode?.code || 'ma-giao-khoan';
 	const displayPeriodRange =
 		fromMonth === toMonth
 			? `Tháng ${fromMonthPart}/${fromYearPart}`
@@ -349,25 +352,23 @@ export function SctxRevenueReportDataTable() {
 				)?.totals;
 
 				const rows = group.rows.map((row) => ({
-								'Năm': group.year,
-								'Thời gian': `Tháng ${row.month}`,
-								'Đơn giá (đ/t)': row.unitPrice,
-								[buildQuantityHeader('Sản lượng ban đầu')]:
-									row.plannedQuantity,
-								[buildQuantityHeader('Sản lượng thực tế')]:
-									row.actualQuantity,
+					Năm: group.year,
+					'Thời gian': `Tháng ${row.month}`,
+					'Đơn giá (đ/t)': row.unitPrice,
+					[buildQuantityHeader('Sản lượng ban đầu')]: row.plannedQuantity,
+					[buildQuantityHeader('Sản lượng thực tế')]: row.actualQuantity,
 					'Doanh thu SCTX ban đầu (đ)': row.baseRevenue,
 					'Doanh thu SCTX điều chỉnh (đ)': row.adjustedRevenue,
 				}));
 
 				rows.push({
-							'Năm': group.year,
-							'Thời gian': 'Tổng cộng',
-							'Đơn giá (đ/t)': 0,
-							[buildQuantityHeader('Sản lượng ban đầu')]:
-								totals?.plannedQuantity ?? 0,
-							[buildQuantityHeader('Sản lượng thực tế')]:
-								totals?.actualQuantity ?? 0,
+					Năm: group.year,
+					'Thời gian': 'Tổng cộng',
+					'Đơn giá (đ/t)': 0,
+					[buildQuantityHeader('Sản lượng ban đầu')]:
+						totals?.plannedQuantity ?? 0,
+					[buildQuantityHeader('Sản lượng thực tế')]:
+						totals?.actualQuantity ?? 0,
 					'Doanh thu SCTX ban đầu (đ)': totals?.baseRevenue ?? 0,
 					'Doanh thu SCTX điều chỉnh (đ)': totals?.adjustedRevenue ?? 0,
 				});
@@ -389,10 +390,7 @@ export function SctxRevenueReportDataTable() {
 			const workbook = XLSX.utils.book_new();
 			XLSX.utils.book_append_sheet(workbook, worksheet, 'Doanh thu SCTX');
 
-			const normalizedCode = displayEquipmentCode.replace(
-				/\s+/g,
-				'-',
-			);
+			const normalizedCode = displayAssignmentCodeCode.replace(/\s+/g, '-');
 			XLSX.writeFile(
 				workbook,
 				`bao-cao-doanh-thu-sctx-${normalizedCode}-${fromMonth}-${toMonth}.xlsx`,
@@ -409,8 +407,11 @@ export function SctxRevenueReportDataTable() {
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Từ tháng</p>
 						<div className='flex gap-2'>
-							<Select value={fromMonthPart} onValueChange={handleFromMonthChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+							<Select
+								value={fromMonthPart}
+								onValueChange={handleFromMonthChange}
+							>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn tháng' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -422,7 +423,7 @@ export function SctxRevenueReportDataTable() {
 								</SelectContent>
 							</Select>
 							<Select value={fromYearPart} onValueChange={handleFromYearChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn năm' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -439,7 +440,7 @@ export function SctxRevenueReportDataTable() {
 						<p className='text-sm font-medium'>Đến tháng</p>
 						<div className='flex gap-2'>
 							<Select value={toMonthPart} onValueChange={handleToMonthChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn tháng' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -451,7 +452,7 @@ export function SctxRevenueReportDataTable() {
 								</SelectContent>
 							</Select>
 							<Select value={toYearPart} onValueChange={handleToYearChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn năm' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -466,23 +467,25 @@ export function SctxRevenueReportDataTable() {
 					</div>
 
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Thiết bị</p>
+						<p className='text-sm font-medium'>Nhóm vật tư, tài sản</p>
 						<Select
-							value={selectedEquipmentId}
-							onValueChange={setSelectedEquipmentId}
-							disabled={isLoadingEquipments || equipments.length === 0}
+							value={selectedAssignmentCodeId}
+							onValueChange={setSelectedAssignmentCodeId}
+							disabled={
+								isLoadingAssignmentCodes || assignmentCodes.length === 0
+							}
 						>
-							<SelectTrigger className='w-[300px] bg-white'>
+							<SelectTrigger className='w-75 bg-white'>
 								<SelectValue
 									placeholder={
-										isLoadingEquipments
-											? 'Đang tải thiết bị...'
-											: 'Chọn thiết bị'
+										isLoadingAssignmentCodes
+											? 'Đang tải Nhóm vật tư, tài sản...'
+											: 'Chọn Nhóm vật tư, tài sản'
 									}
 								/>
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
-								{equipments.map((item) => (
+								{assignmentCodes.map((item) => (
 									<SelectItem key={item.id} value={item.id}>
 										{item.code} - {item.name}
 									</SelectItem>
@@ -496,11 +499,7 @@ export function SctxRevenueReportDataTable() {
 					variant='outline'
 					size='sm'
 					onClick={handleExport}
-					disabled={
-						isExporting ||
-						isLoadingRows ||
-						yearRows.length === 0
-					}
+					disabled={isExporting || isLoadingRows || yearRows.length === 0}
 					className='h-10 gap-1.5'
 				>
 					{isExporting ? (
@@ -515,11 +514,9 @@ export function SctxRevenueReportDataTable() {
 			</div>
 
 			<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
-				{error ? (
-					<p className='mb-3 text-sm text-red-600'>{error}</p>
-				) : null}
+				{error ? <p className='mb-3 text-sm text-red-600'>{error}</p> : null}
 				<div className='mx-auto w-full overflow-x-auto'>
-					<div className='mx-auto max-h-[70vh] min-h-[210mm] min-w-[1320px] overflow-y-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
+					<div className='mx-auto max-h-[70vh] min-h-[210mm] min-w-330 overflow-y-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 						<div className='font-["Times_New_Roman",Times,serif]'>
 							<div className='flex items-start justify-between gap-8'>
 								<div className='space-y-1 text-left font-bold'>
@@ -534,7 +531,7 @@ export function SctxRevenueReportDataTable() {
 
 							<div className='mt-4 text-center'>
 								<p className='text-lg font-bold uppercase md:text-2xl'>
-									Bảng theo dõi doanh thu SCTX thiết bị
+									Bảng theo dõi doanh thu SCTX Nhóm vật tư, tài sản
 								</p>
 								<p className='mt-2 text-base font-bold md:text-xl'>
 									{displayPeriodRange}
@@ -543,8 +540,8 @@ export function SctxRevenueReportDataTable() {
 
 							<div className='mt-5 space-y-2 text-base md:text-lg'>
 								<p>
-									<span className='font-bold'>Thiết bị:</span>{' '}
-									{displayEquipmentName}
+									<span className='font-bold'>Nhóm vật tư, tài sản:</span>{' '}
+									{displayAssignmentCodeName}
 								</p>
 							</div>
 
@@ -563,7 +560,7 @@ export function SctxRevenueReportDataTable() {
 											<p className='mb-2 text-base font-bold md:text-lg'>
 												Năm {group.year}
 											</p>
-											<table className='w-full min-w-[1200px] table-fixed border-collapse text-center text-sm md:text-base'>
+											<table className='w-full min-w-300 table-fixed border-collapse text-center text-sm md:text-base'>
 												<thead>
 													<tr className='font-bold'>
 														<th className={borderCellClass}>Thời gian</th>
@@ -574,7 +571,9 @@ export function SctxRevenueReportDataTable() {
 														<th className={borderCellClass}>
 															{buildQuantityHeader('Sản lượng thực tế')}
 														</th>
-														<th className={borderCellClass}>Doanh thu SCTX ban đầu (đ)</th>
+														<th className={borderCellClass}>
+															Doanh thu SCTX ban đầu (đ)
+														</th>
 														<th className={borderCellClass}>
 															Doanh thu SCTX điều chỉnh (đ)
 														</th>
@@ -583,7 +582,9 @@ export function SctxRevenueReportDataTable() {
 												<tbody>
 													{group.rows.map((row) => (
 														<tr key={`${group.year}-${row.month}`}>
-															<td className={borderCellClass}>Tháng {row.month}</td>
+															<td className={borderCellClass}>
+																Tháng {row.month}
+															</td>
 															<td className={`${borderCellClass} text-right`}>
 																{formatNumber(row.unitPrice)}
 															</td>

@@ -16,7 +16,7 @@ public record UpdateLongwallElectricityUnitPriceEquipmentCommand(UpdateLongwallE
 public class UpdateLongwallElectricityUnitPriceEquipmentCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<UpdateLongwallElectricityUnitPriceEquipmentCommand, bool>
 {
     private readonly IWriteRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment> _electricityUnitPriceEquipmentRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.EletricityUnitPrice.ElectricityUnitPriceEquipment>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _equipmentRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
     private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";

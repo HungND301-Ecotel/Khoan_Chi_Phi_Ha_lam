@@ -32,10 +32,12 @@ public class GetMaintainUnitPriceEquipmentByIdQueryHandler(IUnitOfWork unitOfWor
                 PartName = x.Part?.Name ?? "",
                 PartCode = x.Part?.Code?.Value ?? "",
                 PartId = x.PartId,
-                PartType = x.Part?.Type ?? Domain.Common.Enums.PartType.Part,
+                PartType = x.Part?.MaterialType == Domain.Common.Enums.MaterialType.MaterialOutContract
+                    ? Domain.Common.Enums.PartType.OtherPart
+                    : Domain.Common.Enums.PartType.Part,
                 EquipmentId = maintainUnitPrice.EquipmentId,
                 Quantity = x.Quantity,
-                PartCost = x.Part?.GetPartCost(maintainUnitPrice.StartMonth) ?? 0,
+                PartCost = x.Part?.GetMaterialCost(maintainUnitPrice.StartMonth) ?? 0,
                 UnitOfMeasureId = x.Part?.UnitOfMeasureId,
                 UnitOfMeasureName = x.Part?.UnitOfMeasure?.Name ?? "",
                 ReplacementTimeStandard = x.ReplacementTimeStandard,

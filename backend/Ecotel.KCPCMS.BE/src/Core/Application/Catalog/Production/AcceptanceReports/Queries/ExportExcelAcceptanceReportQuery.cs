@@ -57,9 +57,7 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
         var excelData = items.Select(item => new AcceptanceReportExcelTemplateDto
         {
             Id = item.Id,
-            MaterialCode = item.Material?.Code?.Value
-                ?? item.Part?.Code?.Value
-                ?? "",
+            MaterialCode = ResolveTrackedMaterialCode(item),
             IssuedQuantity = item.IssuedQuantity,
             ShippedQuantity = item.ShippedQuantity
         }).ToList();
@@ -84,6 +82,11 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
             hiddenProperties,
             null);
     }
+
+    private static string ResolveTrackedMaterialCode(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Code?.Value ?? item.Material?.Code?.Value ?? string.Empty
+            : item.Material?.Code?.Value ?? item.Part?.Code?.Value ?? string.Empty;
 }
 
 

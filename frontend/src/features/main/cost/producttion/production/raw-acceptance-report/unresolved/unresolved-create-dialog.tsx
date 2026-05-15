@@ -28,20 +28,17 @@ type UnresolvedCreateDialogProps = {
 
 const ENTITY_GROUP_OPTIONS = [
 	{ value: 'material', label: 'Vật tư' },
-	{ value: 'part', label: 'Phụ tùng' },
+	{ value: 'part', label: 'Vật tư SCTX' },
 ] as const;
 
 const MATERIAL_TYPE_OPTIONS = [
-	{ value: 1, label: 'Vật tư, tài sản trong khoán' },
-	{ value: 2, label: 'Vật tư, tài sản ngoài khoán' },
-	{ value: 3, label: 'Vật tư theo chế độ người lao động' },
-	{ value: 4, label: 'Tài sản' },
-	{ value: 5, label: 'Vật tư theo hạn mức' },
+	{ value: 1, label: 'Vật tư, tài sản' },
+	{ value: 2, label: 'Vật tư, tài sản khác' },
 ] as const;
 
 const PART_TYPE_OPTIONS = [
-	{ value: 1, label: 'Phụ tùng theo thiết bị' },
-	{ value: 2, label: 'Phụ tùng khác' },
+	{ value: 1, label: 'Vật tư theo nhóm vật tư, tài sản' },
+	{ value: 2, label: 'Vật tư khác' },
 ] as const;
 
 export function UnresolvedCreateDialog({

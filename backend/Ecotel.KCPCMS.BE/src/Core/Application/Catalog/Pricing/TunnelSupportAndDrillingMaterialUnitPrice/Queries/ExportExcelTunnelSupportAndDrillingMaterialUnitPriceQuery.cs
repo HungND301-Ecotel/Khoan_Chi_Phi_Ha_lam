@@ -71,7 +71,7 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
             (processCol, "Công đoạn sản xuất"),
             (hardnessCol, "Độ kiên cố than đá"),
             (technologyCol, "Công nghệ"),
-            (assignmentCol, "Mã giao khoán")
+            (assignmentCol, "Nhóm vật tư, tài sản")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();

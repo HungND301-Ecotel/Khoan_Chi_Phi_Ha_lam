@@ -2,7 +2,7 @@ import z from 'zod';
 
 const assignmentCodeConfigSchema = z.object({
 	assignmentCodeId: z.string().nonempty({
-		error: 'Mã giao khoán không được để trống',
+		error: 'Nhóm vật tư, tài sản không được để trống',
 	}),
 	value: z.coerce
 		.number<number>({
@@ -25,10 +25,10 @@ export const normFactorSchema = z
 		isMechanizedLongwall: z.boolean(),
 		steelMeshType: z.coerce.number<number>(),
 		assignmentCodeIds: z.array(z.string()).min(1, {
-			message: 'Mã giao khoán không được để trống',
+			message: 'Nhóm vật tư, tài sản không được để trống',
 		}),
 		assignmentCodeConfigs: z.array(assignmentCodeConfigSchema).min(1, {
-			message: 'Cấu hình mã giao khoán không được để trống',
+			message: 'Cấu hình Nhóm vật tư, tài sản không được để trống',
 		}),
 	})
 	.superRefine((data, ctx) => {
@@ -64,7 +64,7 @@ export const normFactorSchema = z
 			if (!hasConfig) {
 				ctx.addIssue({
 					code: 'custom',
-					message: 'Thiếu cấu hình cho mã giao khoán đã chọn.',
+					message: 'Thiếu cấu hình cho Nhóm vật tư, tài sản đã chọn.',
 					path: ['assignmentCodeConfigs'],
 				});
 				break;

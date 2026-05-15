@@ -48,7 +48,7 @@ public class UpdateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(IUnit
 
         if (!checkExisted)
         {
-            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
+            throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(

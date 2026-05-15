@@ -12,15 +12,15 @@ import {
 } from './types';
 
 export const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
-export const EQUIPMENT_OPTION_PREFIX = 'equipment:';
+export const ASSIGNMENT_CODE_OPTION_PREFIX = 'assignment-code:';
 export const NONE_PRODUCTION_ORDER_ID = '__none__';
 
 export function toProductionOrderOptionValue(id: string): string {
 	return `${PRODUCTION_ORDER_OPTION_PREFIX}${id}`;
 }
 
-export function toEquipmentOptionValue(id: string): string {
-	return `${EQUIPMENT_OPTION_PREFIX}${id}`;
+export function toAssignmentCodeOptionValue(id: string): string {
+	return `${ASSIGNMENT_CODE_OPTION_PREFIX}${id}`;
 }
 
 export function parseProductionOrderOptionId(value: string): string {
@@ -29,9 +29,9 @@ export function parseProductionOrderOptionId(value: string): string {
 		: value;
 }
 
-export function parseEquipmentOptionId(value: string): string {
-	return value.startsWith(EQUIPMENT_OPTION_PREFIX)
-		? value.slice(EQUIPMENT_OPTION_PREFIX.length)
+export function parseAssignmentCodeOptionId(value: string): string {
+	return value.startsWith(ASSIGNMENT_CODE_OPTION_PREFIX)
+		? value.slice(ASSIGNMENT_CODE_OPTION_PREFIX.length)
 		: value;
 }
 
@@ -44,12 +44,12 @@ export function normalizeProductionOrderId(value?: string | null): string | null
 
 export function resolveSelectionIds(value?: string | null): {
 	productionOrderId: string | null;
-	equipmentId: string | null;
+	assignmentCodeId: string | null;
 } {
 	if (!value) {
 		return {
 			productionOrderId: null,
-			equipmentId: null,
+			assignmentCodeId: null,
 		};
 	}
 
@@ -59,21 +59,24 @@ export function resolveSelectionIds(value?: string | null): {
 		);
 		return {
 			productionOrderId: parsedId,
-			equipmentId: null,
+			assignmentCodeId: null,
 		};
 	}
 
-	if (value.startsWith(EQUIPMENT_OPTION_PREFIX)) {
-		const equipmentId = value.slice(EQUIPMENT_OPTION_PREFIX.length).trim();
+	if (value.startsWith(ASSIGNMENT_CODE_OPTION_PREFIX)) {
+		const assignmentCodeId = value
+			.slice(ASSIGNMENT_CODE_OPTION_PREFIX.length)
+			.trim();
 		return {
 			productionOrderId: null,
-			equipmentId: equipmentId.length > 0 ? equipmentId : null,
+			assignmentCodeId:
+				assignmentCodeId.length > 0 ? assignmentCodeId : null,
 		};
 	}
 
 	return {
 		productionOrderId: normalizeProductionOrderId(value),
-		equipmentId: null,
+		assignmentCodeId: null,
 	};
 }
 
@@ -141,7 +144,12 @@ export function buildCategoryAllocationsForPayload(
 		.map((allocation) => ({
 			processGroupId: allocation.processGroupId,
 			quantity: parseQuantity(allocation.quantity),
-			equipmentIds: Array.from(new Set(allocation.equipmentIds ?? [])),
+			assignmentCodeIds: Array.from(
+				new Set(allocation.assignmentCodeIds ?? allocation.equipmentIds ?? []),
+			),
+			equipmentIds: Array.from(
+				new Set(allocation.assignmentCodeIds ?? allocation.equipmentIds ?? []),
+			),
 		}));
 
 	return normalized.length > 0 ? normalized : null;

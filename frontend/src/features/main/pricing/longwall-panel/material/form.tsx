@@ -758,7 +758,7 @@ export function LongwallMaterialForm({
 					{mismatchedCodes.length > 0 && (
 						<div className='bg-destructive/10 border-destructive/30 rounded-md border p-3'>
 							<p className='text-destructive text-xs font-medium'>
-								2 định mức có mã giao khoán không khớp nhau:
+								2 định mức có Nhóm vật tư, tài sản không khớp nhau:
 							</p>
 							<ul className='text-destructive mt-1 list-disc pl-4 text-xs'>
 								{mismatchedCodes.map((code) => (
@@ -771,8 +771,8 @@ export function LongwallMaterialForm({
 			)}
 
 			<MultiSelect
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				values={selectedCodes}
 				onValuesChange={setSelectedCodes}
 				options={contracts.map((item) => ({
@@ -834,7 +834,7 @@ function ContractCostRow({
 	return (
 		<FormRow>
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Mã giao khoán</Label>
+				<Label>Nhóm vật tư, tài sản</Label>
 				<Input
 					readOnly
 					value={contract ? `${contract.code} - ${contract.name}` : ''}

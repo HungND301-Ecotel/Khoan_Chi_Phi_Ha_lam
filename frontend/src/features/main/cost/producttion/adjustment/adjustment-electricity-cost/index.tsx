@@ -20,12 +20,29 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import {
 	AdjustmentElectricityCostDetail,
+	AdjustmentElectricityCostDetailCost,
 	AdjustmentElectricityCostSummary,
 } from './types';
 import {
 	getAdjustmentElectricityCostColumns,
 	getAdjustmentElectricityCostSummaryColumns,
 } from './columns';
+
+const normalizeElectricityCostItem = (
+	item: AdjustmentElectricityCostDetailCost,
+): AdjustmentElectricityCostDetailCost => ({
+	...item,
+	assignmentCodeId: item.assignmentCodeId || item.equipmentId || '',
+	assignmentCode: item.assignmentCode || item.equipmentCode || '',
+	assignmentCodeName: item.assignmentCodeName || item.equipmentName || '',
+});
+
+const normalizeElectricityCostDetail = (
+	detail: AdjustmentElectricityCostDetail,
+): AdjustmentElectricityCostDetail => ({
+	...detail,
+	costs: detail.costs.map(normalizeElectricityCostItem),
+});
 
 export function AdjustmentElectricityCost({
 	id,
@@ -59,14 +76,15 @@ export function AdjustmentElectricityCost({
 				API.COST.ADJUSTMENT_ELECTRICITY.DETAIL(id),
 			)
 			.then((res) => {
-				setAdjustmentElectricityCost(res.result);
+				const normalizedResult = normalizeElectricityCostDetail(res.result);
+				setAdjustmentElectricityCost(normalizedResult);
 				setSummary([
 					{
-						akRatePercent: res.result.akRatePercent || 0,
+						akRatePercent: normalizedResult.akRatePercent || 0,
 					},
 				]);
 				let total = 0;
-				res.result.costs.forEach(({ totalPrice }) => {
+				normalizedResult.costs.forEach(({ totalPrice }) => {
 					total += totalPrice;
 				});
 				setAdjustmentElectricityPrice(total);
