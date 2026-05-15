@@ -6,6 +6,16 @@ import { cn, formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 import { Material } from './type';
 
+const getMaterialDetail = (material: Material) =>
+	[
+		material.hardnessName,
+		material.passportName,
+		material.insertItemName,
+		material.supportStepName,
+	]
+		.filter(Boolean)
+		.join(' | ');
+
 export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 	{
 		accessorKey: 'code',
@@ -16,21 +26,20 @@ export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 		header: 'Công đoạn sản xuất',
 	},
 	{
+		accessorFn: getMaterialDetail,
 		id: 'materialDetail',
 		header: 'Thông số',
 		cell: ({ row }) => {
-			const { passportName, hardnessName, insertItemName, supportStepName } =
-				row.original;
-
 			return (
 				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
-					<span>{hardnessName}</span>
-					<span>|</span>
-					<span>{passportName}</span>
-					<span>|</span>
-					<span>{insertItemName}</span>
-					<span>|</span>
-					<span>{supportStepName}</span>
+					{String(row.getValue('materialDetail'))
+						.split(' | ')
+						.map((item, index, items) => (
+							<div key={`${item}-${index}`} className='contents'>
+								<span>{item}</span>
+								{index < items.length - 1 && <span>|</span>}
+							</div>
+						))}
 				</div>
 			);
 		},

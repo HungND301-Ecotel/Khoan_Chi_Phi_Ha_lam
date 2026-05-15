@@ -136,6 +136,7 @@ export function MainPricingMaterialPage() {
 					filters={[
 						{ key: 'code', label: 'Mã định mức vật liệu' },
 						{ key: 'processName', label: 'Công đoạn sản xuất' },
+						{ key: 'materialDetail', label: 'Thông số' },
 					]}
 					onCreate={(props) => <MaterialForm {...props} />}
 					onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}
@@ -155,6 +156,8 @@ export function MainPricingMaterialPage() {
 						{ key: 'code', label: 'Mã đơn giá' },
 						{ key: 'processName', label: 'Công đoạn sản xuất' },
 						{ key: 'technologyName', label: 'Công nghệ' },
+						{ key: 'passportName', label: 'Hộ chiếu' },
+						{ key: 'hardnessName', label: 'Độ kiên cố than đá' },
 					]}
 					onCreate={(props) => <SupportAndDrillingForm {...props} />}
 					onDuplicate={(props) => (

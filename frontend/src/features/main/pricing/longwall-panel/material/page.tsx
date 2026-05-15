@@ -103,7 +103,8 @@ export function LongwallPanelMaterialPage() {
 			columns={LONGWALL_MATERIAL_COLUMNS}
 			filters={[
 				{ key: 'code', label: 'Mã định mức vật liệu' },
-				{ key: 'technologyName', label: 'Công nghệ khai thác' },
+				{ key: 'processName', label: 'Công đoạn sản xuất' },
+				{ key: 'materialDetail', label: 'Thông số' },
 			]}
 			onCreate={(props) => <LongwallMaterialForm {...props} />}
 			onDuplicate={(props) => <LongwallMaterialForm {...props} isDuplicate />}

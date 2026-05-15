@@ -16,6 +16,7 @@ export type CuttingThickness = {
 export type LongwallMaterial = {
 	id: string;
 	code: string;
+	materialDetail?: string;
 	longwallParametersId: string;
 	cuttingThicknessId: string;
 	seamFaceId: string;
@@ -44,6 +45,25 @@ export type LongwallMaterial = {
 	otherMaterialValue?: number;
 };
 
+const getLongwallMaterialDetail = (material: LongwallMaterial) => {
+	const longwallParameterText = material.longwallParameters
+		? `Llc ${material.longwallParameters.llc}; Lkc ${material.longwallParameters.lkc}; Mk ${material.longwallParameters.mk}`
+		: '-';
+	const cuttingThicknessText = material.cuttingThickness?.value ?? '-';
+	const hardnessOrPowerText =
+		material.powerName?.trim() || material.hardnessName?.trim() || '';
+
+	return [
+		material.technologyName?.trim(),
+		hardnessOrPowerText,
+		material.seamFaceName?.trim(),
+		longwallParameterText,
+		cuttingThicknessText,
+	]
+		.filter(Boolean)
+		.join(' | ');
+};
+
 export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 	{
 		accessorKey: 'code',
@@ -54,44 +74,21 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 		header: 'Công đoạn sản xuất',
 	},
 	{
+		accessorFn: getLongwallMaterialDetail,
 		id: 'materialDetail',
 		header: 'Thông số',
-		cell: ({ row }) => {
-			const {
-				seamFaceName,
-				longwallParameters,
-				cuttingThickness,
-				technologyName,
-				hardnessName,
-				powerName,
-			} = row.original;
-
-			const longwallParameterText = longwallParameters
-				? `Llc ${longwallParameters.llc}; Lkc ${longwallParameters.lkc}; Mk ${longwallParameters.mk}`
-				: '-';
-			const cuttingThicknessText = cuttingThickness
-				? cuttingThickness.value
-				: '-';
-			const hardnessOrPowerText =
-				powerName?.trim() || hardnessName?.trim() || '';
-			const displayParts = [
-				technologyName?.trim(),
-				hardnessOrPowerText,
-				seamFaceName?.trim(),
-				longwallParameterText,
-				cuttingThicknessText,
-			].filter(Boolean);
-
-			return (
-				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
-					{displayParts.map((part, index) => (
-						<span key={`${String(part)}-${index}`}>
-							{index > 0 ? ` | ${part}` : part}
-						</span>
+		cell: ({ row }) => (
+			<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
+				{String(row.getValue('materialDetail'))
+					.split(' | ')
+					.map((item, index, items) => (
+						<div key={`${item}-${index}`} className='contents'>
+							<span>{item}</span>
+							{index < items.length - 1 && <span>|</span>}
+						</div>
 					))}
-				</div>
-			);
-		},
+			</div>
+		),
 	},
 	{
 		accessorKey: 'startMonth',

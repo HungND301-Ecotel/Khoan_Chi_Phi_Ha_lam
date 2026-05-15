@@ -1,6 +1,7 @@
 export type Material = {
 	id: string;
 	code: string;
+	materialDetail?: string;
 	processId: string;
 	passportId: string;
 	hardnessId: string;

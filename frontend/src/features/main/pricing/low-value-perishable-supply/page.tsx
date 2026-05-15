@@ -74,7 +74,9 @@ export function LowValuePerishableSupplyPage({
 			columns={LOW_VALUE_PERISHABLE_SUPPLY_COLUMNS}
 			filters={[
 				{ key: 'departmentCode', label: 'Mã đơn vị' },
+				{ key: 'departmentName', label: 'Tên đơn vị' },
 				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn' },
+				{ key: 'processGroupName', label: 'Tên nhóm công đoạn' },
 			]}
 			onCreate={(props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} />

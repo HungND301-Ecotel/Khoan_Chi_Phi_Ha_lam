@@ -74,6 +74,7 @@ export function MainPricingTrimmingMaterialPage() {
 			filters={[
 				{ key: 'code', label: 'Mã định mức vật liệu' },
 				{ key: 'processName', label: 'Công đoạn sản xuất' },
+				{ key: 'materialDetail', label: 'Thông số' },
 			]}
 			onCreate={(props) => <MaterialForm {...props} />}
 			onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}

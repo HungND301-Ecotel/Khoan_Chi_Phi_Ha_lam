@@ -6,6 +6,7 @@ import { ColumnDef } from '@tanstack/react-table';
 export type Slide = {
 	id: string;
 	code: string;
+	materialDetail?: string;
 	processGroupId: string;
 	processGroupName: string;
 	passportId: string;
@@ -17,6 +18,9 @@ export type Slide = {
 	totalPrice: number;
 };
 
+const getSlideMaterialDetail = (slide: Slide) =>
+	[slide.hardnessName, slide.passportName].filter(Boolean).join(' | ');
+
 export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 	{
 		accessorKey: 'code',
@@ -27,19 +31,21 @@ export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 		header: 'Nhóm công đoạn sản xuất',
 	},
 	{
+		accessorFn: getSlideMaterialDetail,
 		id: 'materialDetail',
 		header: 'Thông số',
-		cell: ({ row }) => {
-			const { passportName, hardnessName } = row.original;
-
-			return (
-				<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
-					<span>{hardnessName}</span>
-					<span>|</span>
-					<span>{passportName}</span>
-				</div>
-			);
-		},
+		cell: ({ row }) => (
+			<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
+				{String(row.getValue('materialDetail'))
+					.split(' | ')
+					.map((item, index, items) => (
+						<div key={`${item}-${index}`} className='contents'>
+							<span>{item}</span>
+							{index < items.length - 1 && <span>|</span>}
+						</div>
+					))}
+			</div>
+		),
 	},
 	{
 		accessorKey: 'startMonth',

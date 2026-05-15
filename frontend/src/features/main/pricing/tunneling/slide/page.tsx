@@ -71,6 +71,7 @@ export function MainPricingSlidePage() {
 			filters={[
 				{ key: 'code', label: 'Mã định mức máng trượt' },
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },
+				{ key: 'materialDetail', label: 'Thông số' },
 			]}
 			onCreate={(props) => <SlideForm {...props} />}
 			onDuplicate={(props) => <SlideForm {...props} isDuplicate />}
