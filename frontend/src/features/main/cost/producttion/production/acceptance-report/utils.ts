@@ -375,6 +375,19 @@ function isSectionASctxSubtypeName(typeName: string): boolean {
 	);
 }
 
+function getSectionASctxSubtypeCode(typeName: string): string {
+	const normalized = normalizeForCompare(typeName);
+
+	if (
+		normalized ===
+		'chi phi sua chua thuong xuyen (cac loai vat tu sctx theo ke hoach vat tu)'
+	) {
+		return 'CPSCTX-TKHVT';
+	}
+
+	return '';
+}
+
 /**
  * Calculate totals for a type group (sum all items under the type)
  */
@@ -422,6 +435,8 @@ export function createGroupRow(
 		id: `group-${groupCode}`,
 		rowType: 'group',
 		label: groupName,
+		code: groupCode,
+		name: groupName,
 		level,
 		data: undefined, // Groups don't show financial data
 	};
@@ -446,6 +461,8 @@ export function flattenHierarchicalData(
 			id: `${baseId}-group-${group.groupCode}`,
 			rowType: 'group',
 			label: group.groupName,
+			code: group.displayCode ?? group.groupCode,
+			name: group.groupName,
 			level,
 			data: groupData,
 		});
@@ -460,6 +477,8 @@ export function flattenHierarchicalData(
 				rowType: 'item',
 				label: '',
 				level: level + 1,
+				code: getItemCode(item),
+				name: getItemName(item),
 				itemCode: getItemCode(item),
 				itemName: getItemName(item),
 				unit: item.unit,
@@ -479,6 +498,8 @@ export function flattenHierarchicalData(
 			id: `cat-${catIndex}`,
 			rowType: 'category',
 			label: category.categoryName,
+			code: '',
+			name: category.categoryName,
 			level: 0,
 			data: categoryTotals,
 		});
@@ -494,6 +515,8 @@ export function flattenHierarchicalData(
 							rowType: 'item',
 							label: '',
 							level: 1,
+							code: getItemCode(item),
+							name: getItemName(item),
 							itemCode: getItemCode(item),
 							itemName: getItemName(item),
 							unit: item.unit,
@@ -509,6 +532,8 @@ export function flattenHierarchicalData(
 						rowType: 'item',
 						label: '',
 						level: 1,
+						code: getItemCode(item),
+						name: getItemName(item),
 						itemCode: getItemCode(item),
 						itemName: getItemName(item),
 						unit: item.unit,
@@ -546,6 +571,8 @@ export function flattenHierarchicalData(
 					id: `cat-${catIndex}-type-sctx-parent`,
 					rowType: 'type',
 					label: 'Chi phí Sửa chữa thường xuyên',
+					code: '',
+					name: 'Chi phí Sửa chữa thường xuyên',
 					level: 1,
 					data: sctxParentTotals,
 				});
@@ -557,6 +584,8 @@ export function flattenHierarchicalData(
 						id: `cat-${catIndex}-type-sctx-sub-${sctxIndex}`,
 						rowType: 'group',
 						label: sctxType.typeName,
+						code: getSectionASctxSubtypeCode(sctxType.typeName),
+						name: sctxType.typeName,
 						level: 2,
 						data: subtypeTotals,
 					});
@@ -575,6 +604,8 @@ export function flattenHierarchicalData(
 							rowType: 'item',
 							label: '',
 							level: 3,
+							code: getItemCode(item),
+							name: getItemName(item),
 							itemCode: getItemCode(item),
 							itemName: getItemName(item),
 							unit: item.unit,
@@ -594,6 +625,8 @@ export function flattenHierarchicalData(
 				id: `cat-${catIndex}-type-${typeIndex}`,
 				rowType: 'type',
 				label: type.typeName,
+				code: '',
+				name: type.typeName,
 				level: 1,
 				data: typeTotals,
 			});
@@ -617,6 +650,8 @@ export function flattenHierarchicalData(
 						rowType: 'item',
 						label: '',
 						level: 2, // One level less since no group
+						code: getItemCode(item),
+						name: getItemName(item),
 						itemCode: getItemCode(item),
 						itemName: getItemName(item),
 						unit: item.unit,

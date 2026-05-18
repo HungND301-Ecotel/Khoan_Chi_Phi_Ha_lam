@@ -6,9 +6,14 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn, formatNumber } from '@/lib/utils';
 import { HierarchicalRow } from './types';
-import { useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import {
 	Dialog,
 	DialogContent,
@@ -24,162 +29,195 @@ type DataTableProps = {
 	className?: string;
 };
 
-export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
-	const [isExpanded, setIsExpanded] = useState(false);
+type OverflowTooltipTextProps = {
+	text?: string;
+	className?: string;
+	tooltipClassName?: string;
+};
 
-	const toRoman = (value: number): string => {
-		const romanMap = [
-			{ value: 1000, numeral: 'M' },
-			{ value: 900, numeral: 'CM' },
-			{ value: 500, numeral: 'D' },
-			{ value: 400, numeral: 'CD' },
-			{ value: 100, numeral: 'C' },
-			{ value: 90, numeral: 'XC' },
-			{ value: 50, numeral: 'L' },
-			{ value: 40, numeral: 'XL' },
-			{ value: 10, numeral: 'X' },
-			{ value: 9, numeral: 'IX' },
-			{ value: 5, numeral: 'V' },
-			{ value: 4, numeral: 'IV' },
-			{ value: 1, numeral: 'I' },
-		];
+const quantityFields = [
+	'openingBalanceTotalQty',
+	'openingBalanceOnSiteQty',
+	'openingBalancePendingQty',
+	'openingBalanceContractQty',
+	'receiptTotalQty',
+	'receiptWithReceiptQty',
+	'receiptBorrowedQty',
+	'receiptReturnPrevMonthQty',
+	'receiptHandoverQty',
+	'issueTotalQty',
+	'issueForProductionQty',
+	'issueLongtermQty',
+	'issueOtherQty',
+	'issueContractQty',
+	'closingBalanceTotalQty',
+	'closingBalanceOnSiteQty',
+	'closingBalancePendingQty',
+	'closingBalanceContractQty',
+] as const;
 
-		let remaining = value;
-		let result = '';
+const amountFields = [
+	'openingBalanceTotalAmount',
+	'openingBalanceOnSiteAmount',
+	'openingBalancePendingAmount',
+	'openingBalanceContractAmount',
+	'receiptTotalAmountKH',
+	'receiptWithReceiptAmountKH',
+	'receiptWithReceiptAmountTT',
+	'receiptBorrowedAmount',
+	'receiptReturnPrevMonthAmount',
+	'receiptHandoverAmount',
+	'issueTotalAmount',
+	'issueForProductionAmount',
+	'issueLongtermAmount',
+	'issueOtherAmount',
+	'issueContractAmount',
+	'closingBalanceTotalAmount',
+	'closingBalanceOnSiteAmount',
+	'closingBalancePendingAmount',
+	'closingBalanceContractAmount',
+] as const;
 
-		romanMap.forEach(({ value: romanValue, numeral }) => {
-			while (remaining >= romanValue) {
-				result += numeral;
-				remaining -= romanValue;
-			}
-		});
+const totalRowVisibleFields = [...quantityFields, ...amountFields];
 
-		return result;
-	};
+function OverflowTooltipText({
+	text,
+	className,
+	tooltipClassName,
+}: OverflowTooltipTextProps) {
+	if (!text) return null;
 
-	const buildSttByRowId = (rows: HierarchicalRow[]) => {
-		const sttMap = new Map<string, string>();
-		let categoryIndex = 0;
-		let typeIndex = 0;
-		let groupPath: number[] = [];
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className={cn('min-w-0 truncate', className)}>{text}</div>
+			</TooltipTrigger>
+			<TooltipContent
+				side='top'
+				align='start'
+				className={cn(
+					'max-w-96 break-words whitespace-pre-wrap',
+					tooltipClassName,
+				)}
+			>
+				{text}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
 
-		rows.forEach((row) => {
-			if (row.rowType === 'category') {
-				categoryIndex += 1;
-				typeIndex = 0;
-				groupPath = [];
-				sttMap.set(row.id, `${String.fromCharCode(64 + categoryIndex)}.`);
-				return;
-			}
+const toRoman = (value: number): string => {
+	const romanMap = [
+		{ value: 1000, numeral: 'M' },
+		{ value: 900, numeral: 'CM' },
+		{ value: 500, numeral: 'D' },
+		{ value: 400, numeral: 'CD' },
+		{ value: 100, numeral: 'C' },
+		{ value: 90, numeral: 'XC' },
+		{ value: 50, numeral: 'L' },
+		{ value: 40, numeral: 'XL' },
+		{ value: 10, numeral: 'X' },
+		{ value: 9, numeral: 'IX' },
+		{ value: 5, numeral: 'V' },
+		{ value: 4, numeral: 'IV' },
+		{ value: 1, numeral: 'I' },
+	];
 
-			if (row.rowType === 'type') {
-				typeIndex += 1;
-				groupPath = [];
-				sttMap.set(row.id, `${toRoman(typeIndex)}.`);
-				return;
-			}
+	let remaining = value;
+	let result = '';
 
-			if (row.rowType === 'group') {
-				const depth = Math.max(1, row.level - 1);
-				groupPath = groupPath.slice(0, depth);
-				while (groupPath.length < depth) {
-					groupPath.push(0);
-				}
-				groupPath[depth - 1] += 1;
-				sttMap.set(row.id, `${toRoman(typeIndex)}.${groupPath.join('.')}`);
-				return;
-			}
-
-			sttMap.set(row.id, '');
-		});
-
-		return sttMap;
-	};
-
-	const sttByRowId = buildSttByRowId(data);
-
-	// Get row styling based on row type
-	const getRowClassName = (row: HierarchicalRow): string => {
-		switch (row.rowType) {
-			case 'category':
-				return 'bg-primary/10 font-bold text-base';
-			case 'type':
-				return 'bg-muted font-semibold';
-			case 'group':
-				return row.level <= 2
-					? 'bg-muted/40 font-medium text-foreground'
-					: 'text-muted-foreground';
-			case 'item':
-				return '';
-			default:
-				return '';
+	romanMap.forEach(({ value: romanValue, numeral }) => {
+		while (remaining >= romanValue) {
+			result += numeral;
+			remaining -= romanValue;
 		}
-	};
+	});
 
-	// Get indentation padding based on level
-	const getIndentClass = (level: number): string => {
-		const indents = ['pl-2', 'pl-6', 'pl-12', 'pl-20', 'pl-28', 'pl-36', 'pl-44'];
-		return indents[level] || 'pl-2';
-	};
+	return result;
+};
 
-	// Render danh mục column
-	const renderCategoryColumn = (row: HierarchicalRow) => {
-		if (row.rowType === 'item') {
-			const itemLabel = row.itemCode
-				? `${row.itemCode} - ${row.itemName || ''}`
-				: row.itemName || '';
-			return <span className={getIndentClass(row.level)}>{itemLabel}</span>;
+const buildSttByRowId = (rows: HierarchicalRow[]) => {
+	const sttMap = new Map<string, string>();
+	let categoryIndex = 0;
+	let typeIndex = 0;
+	let groupPath: number[] = [];
+
+	rows.forEach((row) => {
+		if (row.rowType === 'category') {
+			categoryIndex += 1;
+			typeIndex = 0;
+			groupPath = [];
+			sttMap.set(row.id, `${String.fromCharCode(64 + categoryIndex)}.`);
+			return;
 		}
-		return <span className={getIndentClass(row.level)}>{row.label}</span>;
-	};
 
-	// Amount-like fields rendered on totals rows (category/type/group)
-	const quantityFields = [
-		'openingBalanceTotalQty',
-		'openingBalanceOnSiteQty',
-		'openingBalancePendingQty',
-		'openingBalanceContractQty',
-		'receiptTotalQty',
-		'receiptWithReceiptQty',
-		'receiptBorrowedQty',
-		'receiptReturnPrevMonthQty',
-		'receiptHandoverQty',
-		'issueTotalQty',
-		'issueForProductionQty',
-		'issueLongtermQty',
-		'issueOtherQty',
-		'issueContractQty',
-		'closingBalanceTotalQty',
-		'closingBalanceOnSiteQty',
-		'closingBalancePendingQty',
-		'closingBalanceContractQty',
-	] as const;
+		if (row.rowType === 'type') {
+			typeIndex += 1;
+			groupPath = [];
+			sttMap.set(row.id, `${toRoman(typeIndex)}.`);
+			return;
+		}
 
-	const amountFields = [
-		'openingBalanceTotalAmount',
-		'openingBalanceOnSiteAmount',
-		'openingBalancePendingAmount',
-		'openingBalanceContractAmount',
-		'receiptTotalAmountKH',
-		'receiptWithReceiptAmountKH',
-		'receiptWithReceiptAmountTT',
-		'receiptBorrowedAmount',
-		'receiptReturnPrevMonthAmount',
-		'receiptHandoverAmount',
-		'issueTotalAmount',
-		'issueForProductionAmount',
-		'issueLongtermAmount',
-		'issueOtherAmount',
-		'issueContractAmount',
-		'closingBalanceTotalAmount',
-		'closingBalanceOnSiteAmount',
-		'closingBalancePendingAmount',
-		'closingBalanceContractAmount',
-	] as const;
+		if (row.rowType === 'group') {
+			const depth = Math.max(1, row.level - 1);
+			groupPath = groupPath.slice(0, depth);
+			while (groupPath.length < depth) {
+				groupPath.push(0);
+			}
+			groupPath[depth - 1] += 1;
+			sttMap.set(row.id, `${toRoman(typeIndex)}.${groupPath.join('.')}`);
+			return;
+		}
 
-	const totalRowVisibleFields = [...quantityFields, ...amountFields];
+		sttMap.set(row.id, '');
+	});
 
-	// Render numeric cell
+	return sttMap;
+};
+
+const getRowClassName = (row: HierarchicalRow): string => {
+	switch (row.rowType) {
+		case 'category':
+			return 'bg-primary/10 font-bold text-base';
+		case 'type':
+			return 'bg-muted font-semibold';
+		case 'group':
+			return row.level <= 2
+				? 'bg-muted/40 font-medium text-foreground'
+				: 'text-muted-foreground';
+		case 'item':
+			return '';
+		default:
+			return '';
+	}
+};
+
+const getRowCode = (row: HierarchicalRow) => row.code ?? row.itemCode ?? '';
+const getRowName = (row: HierarchicalRow) => row.name ?? row.itemName ?? row.label;
+
+const AcceptanceReportTableContent = memo(function AcceptanceReportTableContent({
+	data,
+}: {
+	data: HierarchicalRow[];
+}) {
+	const sttByRowId = useMemo(() => buildSttByRowId(data), [data]);
+
+	const renderCodeColumn = (row: HierarchicalRow) => (
+		<OverflowTooltipText
+			text={getRowCode(row)}
+			className='w-24 max-w-24'
+			tooltipClassName='max-w-80'
+		/>
+	);
+
+	const renderNameColumn = (row: HierarchicalRow) => (
+		<OverflowTooltipText text={getRowName(row)} className='w-56 max-w-56' />
+	);
+
+	const renderMergedHeaderColumn = (row: HierarchicalRow) => (
+		<OverflowTooltipText text={getRowName(row)} className='w-80 max-w-80' />
+	);
+
 	const renderFinancialCell = (
 		row: HierarchicalRow,
 		field: keyof NonNullable<HierarchicalRow['data']>,
@@ -202,8 +240,9 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				!totalRowVisibleFields.includes(
 					field as (typeof totalRowVisibleFields)[number],
 				)
-			)
+			) {
 				return null;
+			}
 		}
 
 		const value = row.data[field] as number;
@@ -212,7 +251,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 		return formatNumber(value);
 	};
 
-	const renderTableContent = () => (
+	return (
 		<Table className='text-xs'>
 			<TableHeader>
 				<TableRow>
@@ -222,10 +261,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					>
 						STT
 					</TableHead>
-					<TableHead
-						rowSpan={3}
-						className='min-w-55 border-r text-center font-bold'
-					>
+					<TableHead colSpan={2} className='border-r text-center font-bold'>
 						DANH MỤC VẬT TƯ, HÀNG HÓA
 					</TableHead>
 					<TableHead
@@ -243,7 +279,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center font-bold'>
 						ĐƠN GIÁ
 					</TableHead>
-
 					<TableHead colSpan={8} className='border-r text-center font-bold'>
 						TỒN ĐẦU KỲ
 					</TableHead>
@@ -259,13 +294,18 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				</TableRow>
 
 				<TableRow>
+					<TableHead rowSpan={2} className='min-w-24 border-r text-center'>
+						Mã vật tư
+					</TableHead>
+					<TableHead rowSpan={2} className='min-w-56 border-r text-center'>
+						Tên vật tư
+					</TableHead>
 					<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
 						Kế hoạch
 					</TableHead>
 					<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
 						Thực tế
 					</TableHead>
-
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tổng cộng
 					</TableHead>
@@ -278,7 +318,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center'>
 						Quyết định, giao khoán công trình
 					</TableHead>
-
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tổng cộng
 					</TableHead>
@@ -294,7 +333,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center'>
 						Lĩnh khác
 					</TableHead>
-
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tổng cộng
 					</TableHead>
@@ -310,7 +348,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead colSpan={2} className='border-r text-center'>
 						Quyết định, giao khoán công trình
 					</TableHead>
-
 					<TableHead colSpan={2} className='border-r text-center'>
 						Tổng cộng
 					</TableHead>
@@ -342,7 +379,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền
 					</TableHead>
-
 					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền KH
@@ -366,7 +402,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền
 					</TableHead>
-
 					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền
@@ -387,7 +422,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền
 					</TableHead>
-
 					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
 					<TableHead className='min-w-30 border-r text-center'>
 						Thành tiền
@@ -409,7 +443,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 				{data.length === 0 ? (
 					<TableRow>
 						<TableCell
-							colSpan={43}
+							colSpan={44}
 							className='text-muted-foreground py-8 text-center'
 						>
 							Không có dữ liệu
@@ -422,9 +456,20 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 								{sttByRowId.get(row.id)}
 							</TableCell>
 
-							<TableCell className='border-r'>
-								{renderCategoryColumn(row)}
-							</TableCell>
+							{row.rowType === 'category' || row.rowType === 'type' ? (
+								<TableCell colSpan={2} className='border-r'>
+									{renderMergedHeaderColumn(row)}
+								</TableCell>
+							) : (
+								<>
+									<TableCell className='border-r'>
+										{renderCodeColumn(row)}
+									</TableCell>
+									<TableCell className='border-r'>
+										{renderNameColumn(row)}
+									</TableCell>
+								</>
+							)}
 
 							<TableCell className='border-r text-center'>
 								{row.rowType === 'item' && row.unit}
@@ -437,7 +482,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'priceTT')}
 							</TableCell>
-
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'openingBalanceTotalQty')}
 							</TableCell>
@@ -462,7 +506,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'openingBalanceContractAmount')}
 							</TableCell>
-
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'receiptTotalQty')}
 							</TableCell>
@@ -496,7 +539,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'receiptHandoverAmount')}
 							</TableCell>
-
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'issueTotalQty')}
 							</TableCell>
@@ -527,7 +569,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'issueContractAmount')}
 							</TableCell>
-
 							<TableCell className='border-r text-right'>
 								{renderFinancialCell(row, 'closingBalanceTotalQty')}
 							</TableCell>
@@ -558,13 +599,31 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 			</TableBody>
 		</Table>
 	);
+});
+
+export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
+	const [isExpanded, setIsExpanded] = useState(false);
+	const [shouldRenderExpandedTable, setShouldRenderExpandedTable] =
+		useState(false);
+
+	useEffect(() => {
+		if (!isExpanded) {
+			setShouldRenderExpandedTable(false);
+			return;
+		}
+
+		const frameId = window.requestAnimationFrame(() => {
+			setShouldRenderExpandedTable(true);
+		});
+
+		return () => window.cancelAnimationFrame(frameId);
+	}, [isExpanded]);
 
 	return (
 		<>
 			<div
 				className={cn('relative overflow-auto rounded-md border', className)}
 			>
-				{/* Expand button */}
 				<Button
 					variant='ghost'
 					size='sm'
@@ -574,10 +633,9 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<DynamicIcon name='maximize' className='size-4' />
 				</Button>
 
-				{renderTableContent()}
+				<AcceptanceReportTableContent data={data} />
 			</div>
 
-			{/* Fullscreen Dialog */}
 			<Dialog open={isExpanded} onOpenChange={setIsExpanded}>
 				<DialogContent
 					showCloseButton={false}
@@ -586,7 +644,6 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 					<DialogTitle hidden />
 					<DialogDescription hidden />
 
-					{/* Header */}
 					<div className='flex shrink-0 items-center gap-4 border-b bg-white px-6 py-4'>
 						<h3 className='flex-1 text-lg font-semibold'>
 							Bảng nghiệm thu vật tư và kết chuyển chi phí
@@ -602,10 +659,15 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 						/>
 					</div>
 
-					{/* Content */}
 					<div className='flex-1 overflow-auto bg-gray-50 p-6'>
 						<div className='inline-block min-w-full overflow-hidden rounded-md border shadow'>
-							{renderTableContent()}
+							{shouldRenderExpandedTable ? (
+								<AcceptanceReportTableContent data={data} />
+							) : (
+								<div className='flex min-h-40 items-center justify-center bg-white text-sm text-muted-foreground'>
+									Đang tải bảng...
+								</div>
+							)}
 						</div>
 					</div>
 				</DialogContent>
