@@ -72,7 +72,11 @@ export function PlanedElectricityCost({
 
 	return (
 		<AccordionItem value={'planed-electricity-cost'} className='border-none'>
-			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
+			<Item
+				variant={'outline'}
+				size='sm'
+				className='w-full flex-1 rounded-sm border-[#b8b8b8] bg-[#f3f4f6] py-2.5 shadow-none'
+			>
 				<ItemContent>
 					<ItemTitle>Doanh thu điện năng kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
@@ -88,7 +92,7 @@ export function PlanedElectricityCost({
 						{loading ? <Spinner /> : formatNumber(total ?? 0)}
 					</ItemTitle>
 				</ItemContent>
-				<ItemActions>
+				<ItemActions className='gap-1'>
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
@@ -150,7 +154,7 @@ export function PlanedElectricityCost({
 			</Item>
 
 			{id && isOpen && (
-				<AccordionContent className='p-0 px-2 pt-2'>
+				<AccordionContent className='p-0 px-1.5 pt-1.5'>
 					<DataTable
 						columns={getPlanedElectricityCostColumns(
 							plan?.fixedKeyType as ProcessGroupType | undefined,

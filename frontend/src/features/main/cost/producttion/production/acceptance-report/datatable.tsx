@@ -96,7 +96,7 @@ function OverflowTooltipText({
 				side='top'
 				align='start'
 				className={cn(
-					'max-w-96 break-words whitespace-pre-wrap',
+					'max-w-96 wrap-break-word whitespace-pre-wrap',
 					tooltipClassName,
 				)}
 			>
@@ -193,413 +193,412 @@ const getRowClassName = (row: HierarchicalRow): string => {
 };
 
 const getRowCode = (row: HierarchicalRow) => row.code ?? row.itemCode ?? '';
-const getRowName = (row: HierarchicalRow) => row.name ?? row.itemName ?? row.label;
+const getRowName = (row: HierarchicalRow) =>
+	row.name ?? row.itemName ?? row.label;
 
-const AcceptanceReportTableContent = memo(function AcceptanceReportTableContent({
-	data,
-}: {
-	data: HierarchicalRow[];
-}) {
-	const sttByRowId = useMemo(() => buildSttByRowId(data), [data]);
+const AcceptanceReportTableContent = memo(
+	function AcceptanceReportTableContent({ data }: { data: HierarchicalRow[] }) {
+		const sttByRowId = useMemo(() => buildSttByRowId(data), [data]);
 
-	const renderCodeColumn = (row: HierarchicalRow) => (
-		<OverflowTooltipText
-			text={getRowCode(row)}
-			className='w-24 max-w-24'
-			tooltipClassName='max-w-80'
-		/>
-	);
+		const renderCodeColumn = (row: HierarchicalRow) => (
+			<OverflowTooltipText
+				text={getRowCode(row)}
+				className='w-24 max-w-24'
+				tooltipClassName='max-w-80'
+			/>
+		);
 
-	const renderNameColumn = (row: HierarchicalRow) => (
-		<OverflowTooltipText text={getRowName(row)} className='w-56 max-w-56' />
-	);
+		const renderNameColumn = (row: HierarchicalRow) => (
+			<OverflowTooltipText text={getRowName(row)} className='w-56 max-w-56' />
+		);
 
-	const renderMergedHeaderColumn = (row: HierarchicalRow) => (
-		<OverflowTooltipText text={getRowName(row)} className='w-80 max-w-80' />
-	);
+		const renderMergedHeaderColumn = (row: HierarchicalRow) => (
+			<OverflowTooltipText text={getRowName(row)} className='w-80 max-w-80' />
+		);
 
-	const renderFinancialCell = (
-		row: HierarchicalRow,
-		field: keyof NonNullable<HierarchicalRow['data']>,
-	) => {
-		if (!row.data) return null;
-
-		if (
-			row.rowType === 'category' ||
-			row.rowType === 'type' ||
-			row.rowType === 'group'
-		) {
-			if (
-				row.rowType === 'category' &&
-				quantityFields.includes(field as (typeof quantityFields)[number])
-			) {
-				return null;
-			}
+		const renderFinancialCell = (
+			row: HierarchicalRow,
+			field: keyof NonNullable<HierarchicalRow['data']>,
+		) => {
+			if (!row.data) return null;
 
 			if (
-				!totalRowVisibleFields.includes(
-					field as (typeof totalRowVisibleFields)[number],
-				)
+				row.rowType === 'category' ||
+				row.rowType === 'type' ||
+				row.rowType === 'group'
 			) {
-				return null;
+				if (
+					row.rowType === 'category' &&
+					quantityFields.includes(field as (typeof quantityFields)[number])
+				) {
+					return null;
+				}
+
+				if (
+					!totalRowVisibleFields.includes(
+						field as (typeof totalRowVisibleFields)[number],
+					)
+				) {
+					return null;
+				}
 			}
-		}
 
-		const value = row.data[field] as number;
-		if (!value || value === 0) return null;
+			const value = row.data[field] as number;
+			if (!value || value === 0) return null;
 
-		return formatNumber(value);
-	};
+			return formatNumber(value);
+		};
 
-	return (
-		<Table className='text-xs'>
-			<TableHeader>
-				<TableRow>
-					<TableHead
-						rowSpan={3}
-						className='min-w-14 border-r text-center font-bold'
-					>
-						STT
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center font-bold'>
-						DANH MỤC VẬT TƯ, HÀNG HÓA
-					</TableHead>
-					<TableHead
-						rowSpan={3}
-						className='min-w-15 border-r text-center font-bold'
-					>
-						ĐVT
-					</TableHead>
-					<TableHead
-						rowSpan={3}
-						className='min-w-22.5 border-r text-center font-bold'
-					>
-						CÁCH TÍNH
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center font-bold'>
-						ĐƠN GIÁ
-					</TableHead>
-					<TableHead colSpan={8} className='border-r text-center font-bold'>
-						TỒN ĐẦU KỲ
-					</TableHead>
-					<TableHead colSpan={11} className='border-r text-center font-bold'>
-						LĨNH TRONG KỲ
-					</TableHead>
-					<TableHead colSpan={10} className='border-r text-center font-bold'>
-						XUẤT TRONG KỲ
-					</TableHead>
-					<TableHead colSpan={8} className='text-center font-bold'>
-						TỒN CUỐI KỲ
-					</TableHead>
-				</TableRow>
-
-				<TableRow>
-					<TableHead rowSpan={2} className='min-w-24 border-r text-center'>
-						Mã vật tư
-					</TableHead>
-					<TableHead rowSpan={2} className='min-w-56 border-r text-center'>
-						Tên vật tư
-					</TableHead>
-					<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
-						Kế hoạch
-					</TableHead>
-					<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
-						Thực tế
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tổng cộng
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tồn tại khai trường
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Chi phí chờ hạch toán
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Quyết định, giao khoán công trình
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tổng cộng
-					</TableHead>
-					<TableHead colSpan={3} className='border-r text-center'>
-						Lĩnh vật tư (Trả phiếu)
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Vay chưa trả phiếu
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Trả phiếu tháng trước
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Lĩnh khác
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tổng cộng
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Xuất cho sản xuất
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Chi phí vật tư dài kỳ hạch toán
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Xuất khác
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Quyết định, giao khoán công trình
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tổng cộng
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Tồn tại khai trường
-					</TableHead>
-					<TableHead colSpan={2} className='border-r text-center'>
-						Chi phí chờ hạch toán
-					</TableHead>
-					<TableHead colSpan={2} className='text-center'>
-						Quyết định, giao khoán công trình
-					</TableHead>
-				</TableRow>
-
-				<TableRow>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền KH
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền KH
-					</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền TT
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 border-r text-center'>
-						Thành tiền
-					</TableHead>
-					<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
-					<TableHead className='min-w-30 text-center'>Thành tiền</TableHead>
-				</TableRow>
-			</TableHeader>
-
-			<TableBody>
-				{data.length === 0 ? (
+		return (
+			<Table className='text-xs'>
+				<TableHeader>
 					<TableRow>
-						<TableCell
-							colSpan={44}
-							className='text-muted-foreground py-8 text-center'
+						<TableHead
+							rowSpan={3}
+							className='min-w-14 border-r text-center font-bold'
 						>
-							Không có dữ liệu
-						</TableCell>
+							STT
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center font-bold'>
+							DANH MỤC VẬT TƯ, HÀNG HÓA
+						</TableHead>
+						<TableHead
+							rowSpan={3}
+							className='min-w-15 border-r text-center font-bold'
+						>
+							ĐVT
+						</TableHead>
+						<TableHead
+							rowSpan={3}
+							className='min-w-22.5 border-r text-center font-bold'
+						>
+							CÁCH TÍNH
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center font-bold'>
+							ĐƠN GIÁ
+						</TableHead>
+						<TableHead colSpan={8} className='border-r text-center font-bold'>
+							TỒN ĐẦU KỲ
+						</TableHead>
+						<TableHead colSpan={11} className='border-r text-center font-bold'>
+							LĨNH TRONG KỲ
+						</TableHead>
+						<TableHead colSpan={10} className='border-r text-center font-bold'>
+							XUẤT TRONG KỲ
+						</TableHead>
+						<TableHead colSpan={8} className='text-center font-bold'>
+							TỒN CUỐI KỲ
+						</TableHead>
 					</TableRow>
-				) : (
-					data.map((row) => (
-						<TableRow key={row.id} className={getRowClassName(row)}>
-							<TableCell className='border-r text-center'>
-								{sttByRowId.get(row.id)}
-							</TableCell>
 
-							{row.rowType === 'category' || row.rowType === 'type' ? (
-								<TableCell colSpan={2} className='border-r'>
-									{renderMergedHeaderColumn(row)}
-								</TableCell>
-							) : (
-								<>
-									<TableCell className='border-r'>
-										{renderCodeColumn(row)}
-									</TableCell>
-									<TableCell className='border-r'>
-										{renderNameColumn(row)}
-									</TableCell>
-								</>
-							)}
+					<TableRow>
+						<TableHead rowSpan={2} className='min-w-24 border-r text-center'>
+							Mã vật tư
+						</TableHead>
+						<TableHead rowSpan={2} className='min-w-56 border-r text-center'>
+							Tên vật tư
+						</TableHead>
+						<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
+							Kế hoạch
+						</TableHead>
+						<TableHead rowSpan={2} className='min-w-25 border-r text-center'>
+							Thực tế
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tổng cộng
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tồn tại khai trường
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Chi phí chờ hạch toán
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Quyết định, giao khoán công trình
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tổng cộng
+						</TableHead>
+						<TableHead colSpan={3} className='border-r text-center'>
+							Lĩnh vật tư (Trả phiếu)
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Vay chưa trả phiếu
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Trả phiếu tháng trước
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Lĩnh khác
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tổng cộng
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Xuất cho sản xuất
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Chi phí vật tư dài kỳ hạch toán
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Xuất khác
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Quyết định, giao khoán công trình
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tổng cộng
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Tồn tại khai trường
+						</TableHead>
+						<TableHead colSpan={2} className='border-r text-center'>
+							Chi phí chờ hạch toán
+						</TableHead>
+						<TableHead colSpan={2} className='text-center'>
+							Quyết định, giao khoán công trình
+						</TableHead>
+					</TableRow>
 
-							<TableCell className='border-r text-center'>
-								{row.rowType === 'item' && row.unit}
-							</TableCell>
+					<TableRow>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền KH
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền KH
+						</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền TT
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 border-r text-center'>
+							Thành tiền
+						</TableHead>
+						<TableHead className='min-w-20 border-r text-center'>SL</TableHead>
+						<TableHead className='min-w-30 text-center'>Thành tiền</TableHead>
+					</TableRow>
+				</TableHeader>
 
-							<TableCell className='border-r text-center' />
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'priceKH')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'priceTT')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceTotalQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceTotalAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceOnSiteQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceOnSiteAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalancePendingQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalancePendingAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceContractQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'openingBalanceContractAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptTotalQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptTotalAmountKH')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptWithReceiptQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptWithReceiptAmountKH')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptWithReceiptAmountTT')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptBorrowedQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptBorrowedAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptReturnPrevMonthQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptReturnPrevMonthAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptHandoverQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'receiptHandoverAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueTotalQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueTotalAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueForProductionQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueForProductionAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueLongtermQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueLongtermAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueOtherQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueOtherAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueContractQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'issueContractAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalanceTotalQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalanceTotalAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalanceOnSiteQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalanceOnSiteAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalancePendingQty')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalancePendingAmount')}
-							</TableCell>
-							<TableCell className='border-r text-right'>
-								{renderFinancialCell(row, 'closingBalanceContractQty')}
-							</TableCell>
-							<TableCell className='text-right'>
-								{renderFinancialCell(row, 'closingBalanceContractAmount')}
+				<TableBody>
+					{data.length === 0 ? (
+						<TableRow>
+							<TableCell
+								colSpan={44}
+								className='text-muted-foreground py-8 text-center'
+							>
+								Không có dữ liệu
 							</TableCell>
 						</TableRow>
-					))
-				)}
-			</TableBody>
-		</Table>
-	);
-});
+					) : (
+						data.map((row) => (
+							<TableRow key={row.id} className={getRowClassName(row)}>
+								<TableCell className='border-r text-center'>
+									{sttByRowId.get(row.id)}
+								</TableCell>
+
+								{row.rowType === 'category' || row.rowType === 'type' ? (
+									<TableCell colSpan={2} className='border-r'>
+										{renderMergedHeaderColumn(row)}
+									</TableCell>
+								) : (
+									<>
+										<TableCell className='border-r'>
+											{renderCodeColumn(row)}
+										</TableCell>
+										<TableCell className='border-r'>
+											{renderNameColumn(row)}
+										</TableCell>
+									</>
+								)}
+
+								<TableCell className='border-r text-center'>
+									{row.rowType === 'item' && row.unit}
+								</TableCell>
+
+								<TableCell className='border-r text-center' />
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'priceKH')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'priceTT')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceTotalQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceTotalAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceOnSiteQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceOnSiteAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalancePendingQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalancePendingAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceContractQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'openingBalanceContractAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptTotalQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptTotalAmountKH')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptWithReceiptQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptWithReceiptAmountKH')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptWithReceiptAmountTT')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptBorrowedQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptBorrowedAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptReturnPrevMonthQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptReturnPrevMonthAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptHandoverQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'receiptHandoverAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueTotalQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueTotalAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueForProductionQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueForProductionAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueLongtermQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueLongtermAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueOtherQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueOtherAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueContractQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'issueContractAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalanceTotalQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalanceTotalAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalanceOnSiteQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalanceOnSiteAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalancePendingQty')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalancePendingAmount')}
+								</TableCell>
+								<TableCell className='border-r text-right'>
+									{renderFinancialCell(row, 'closingBalanceContractQty')}
+								</TableCell>
+								<TableCell className='text-right'>
+									{renderFinancialCell(row, 'closingBalanceContractAmount')}
+								</TableCell>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
+		);
+	},
+);
 
 export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -664,7 +663,7 @@ export function AcceptanceReportDataTable({ data, className }: DataTableProps) {
 							{shouldRenderExpandedTable ? (
 								<AcceptanceReportTableContent data={data} />
 							) : (
-								<div className='flex min-h-40 items-center justify-center bg-white text-sm text-muted-foreground'>
+								<div className='text-muted-foreground flex min-h-40 items-center justify-center bg-white text-sm'>
 									Đang tải bảng...
 								</div>
 							)}

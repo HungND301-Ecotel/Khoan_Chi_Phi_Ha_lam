@@ -74,7 +74,11 @@ export function PlanedMaintainCost({
 
 	return (
 		<AccordionItem value={'planed-maintain-cost'} className='border-none'>
-			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
+			<Item
+				variant={'outline'}
+				size='sm'
+				className='w-full flex-1 rounded-sm border-[#b8b8b8] bg-[#f3f4f6] py-2.5 shadow-none'
+			>
 				<ItemContent>
 					<ItemTitle>Doanh thu SCTX kế hoạch ban đầu</ItemTitle>
 				</ItemContent>
@@ -91,7 +95,7 @@ export function PlanedMaintainCost({
 					</ItemTitle>
 				</ItemContent>
 
-				<ItemActions>
+				<ItemActions className='gap-1'>
 					<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
@@ -152,7 +156,7 @@ export function PlanedMaintainCost({
 				</ItemActions>
 			</Item>
 
-			<AccordionContent className='p-0 px-2 pt-2'>
+			<AccordionContent className='p-0 px-1.5 pt-1.5'>
 				{id && isOpen && (
 					<DataTable
 						columns={getPlanedMaintainCostColumns(

@@ -445,7 +445,11 @@ export const API = {
 		PRODUCT: {
 			LIST: '/v1/pricing/productunitprice',
 			CREATE: '/v1/pricing/productunitprice',
+			CREATE_PLANNED_BY_DEPARTMENT:
+				'/v1/pricing/productunitprice/planned-by-department',
 			UPDATE: '/v1/pricing/productunitprice',
+			UPDATE_PLANNED_BY_DEPARTMENT:
+				'/v1/pricing/productunitprice/planned-by-department',
 			DELETES: '/v1/pricing/productunitprice',
 			EXPORT: '/v1/pricing/productunitprice/export',
 			EXPORT_ADJUSTMENT_ELECTRICITY_MAINTAIN_REPORT:
@@ -453,6 +457,8 @@ export const API = {
 			DELETE: (id: string) => `/v1/pricing/productunitprice/${id}`,
 			DETAIL_PLANNED: (id: string) =>
 				`/v1/pricing/productunitprice/planned/${id}`,
+			DETAIL_PLANNED_BY_DEPARTMENT: (departmentId: string) =>
+				`/v1/pricing/productunitprice/planned/department/${departmentId}`,
 			DETAIL_ACTUAL: (id: string) =>
 				`/v1/pricing/productunitprice/actual/${id}`,
 			DETAIL_ADJUSTMENT: (id: string) =>

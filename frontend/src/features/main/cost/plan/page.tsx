@@ -22,7 +22,11 @@ import {
 } from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
-import { CostProduct, mapCostProduct } from '@/features/main/cost/plan/types';
+import {
+	CostProduct,
+	type DepartmentPlannedDetail,
+	mapDepartmentPlannedDetail,
+} from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -54,6 +58,7 @@ type DepartmentPlanProductsTableProps = {
 	items: CostProduct[];
 	selectAllRows: boolean;
 	onSelectedRowsChange: (monthId: string, rows: CostProduct[]) => void;
+	reloadKey: number;
 };
 
 function DepartmentPlanProductsTable({
@@ -61,6 +66,7 @@ function DepartmentPlanProductsTable({
 	items,
 	selectAllRows,
 	onSelectedRowsChange,
+	reloadKey,
 }: DepartmentPlanProductsTableProps) {
 	const handleSelectedRowsChange = useCallback(
 		(rows: unknown[]) => {
@@ -79,8 +85,19 @@ function DepartmentPlanProductsTable({
 				{ key: 'productName', label: 'Tên sản phẩm' },
 				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn sản xuất' },
 			]}
-			onExpand={(props) => <PlanExpand {...props} />}
-			onUpdate={(props) => <PlanForm {...props} />}
+			onExpand={(props) => (
+				<PlanExpand
+					{...props}
+					monthId={monthId}
+					data={{
+						...props.data,
+						refresh: async () => {
+							await props.data.refresh();
+						},
+					}}
+					key={`${monthId}-${reloadKey}-${props.row?.id ?? ''}`}
+				/>
+			)}
 			onDelete={async () => undefined}
 			showCreateAction={false}
 			showFilterAction={false}
@@ -103,30 +120,40 @@ type DepartmentPlanMonthsTableProps = {
 	) => void;
 };
 
-function groupByMonth(products: CostProduct[]): DepartmentPlanMonthGroup[] {
-	const groups = new Map<string, DepartmentPlanMonthGroup>();
-
-	products.forEach((item) => {
-		if (!item.startMonth) return;
-
-		const existed = groups.get(item.startMonth);
-		if (existed) {
-			existed.productUnitPriceIds.push(item.id);
-			existed.products.push(item);
-			return;
-		}
-
-		groups.set(item.startMonth, {
-			id: item.startMonth,
-			time: item.startMonth,
-			productUnitPriceIds: [item.id],
-			products: [item],
-		});
-	});
-
-	return Array.from(groups.values()).sort((a, b) =>
-		a.time.localeCompare(b.time),
-	);
+function mapDepartmentDetailToMonthGroups(
+	detail: DepartmentPlannedDetail,
+): DepartmentPlanMonthGroup[] {
+	return detail.months
+		.map((month) => ({
+			id: month.month,
+			time: month.month,
+			productUnitPriceIds: month.items
+				.map((item) => item.productUnitPriceId)
+				.filter((id): id is string => !!id),
+			products: month.items.map((item) => ({
+				id:
+					item.productUnitPriceId ??
+					item.outputId ??
+					`${month.month}-${item.productId}`,
+				productId: item.productId,
+				productCode: item.productCode,
+				productName: item.productName,
+				processGroupId: item.processGroupId,
+				processGroupCode: item.processGroupCode,
+				fixedKeyType: item.fixedKeyType!,
+				processGroupType: item.processGroupType,
+				unitOfMeasureId: item.unitOfMeasureId,
+				unitOfMeasureName: item.unitOfMeasureName,
+				departmentId: detail.departmentId,
+				departmentCode: detail.departmentCode,
+				departmentName: detail.departmentName,
+				totalProductionMeters: item.productionMeters,
+				plannedTotalCost: item.plannedTotalCost,
+				startMonth: month.month,
+				endMonth: month.month,
+			})),
+		}))
+		.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 function DepartmentPlanMonthsTable({
@@ -135,21 +162,11 @@ function DepartmentPlanMonthsTable({
 	selectAllRows,
 	onSelectedProductIdsChange,
 }: DepartmentPlanMonthsTableProps) {
-	const [products, setProducts] = useState<CostProduct[]>([]);
+	const [monthGroups, setMonthGroups] = useState<DepartmentPlanMonthGroup[]>([]);
 	const [selectedProductIdsByMonth, setSelectedProductIdsByMonth] = useState<
 		Record<string, string[]>
 	>({});
 	const [openedMonthIds, setOpenedMonthIds] = useState<string[]>([]);
-
-	const query = useMemo(
-		() => ({
-			ignorePagination: true,
-			scenarioType: 1,
-			departmentId,
-		}),
-		[departmentId],
-	);
-	const monthGroups = useMemo(() => groupByMonth(products), [products]);
 	const handleMonthProductSelectionChange = useCallback(
 		(monthId: string, rows: CostProduct[]) => {
 			const nextIds = rows.map((item) => item.id);
@@ -168,21 +185,21 @@ function DepartmentPlanMonthsTable({
 	useEffect(() => {
 		let mounted = true;
 
-		const loadProducts = async () => {
-			const response = await api.pagging<CostProduct>(
-				API.COST.PRODUCT.LIST,
-				query,
+		const loadDepartmentDetail = async () => {
+			const response = await api.get<DepartmentPlannedDetail>(
+				API.COST.PRODUCT.DETAIL_PLANNED_BY_DEPARTMENT(departmentId),
 			);
 			if (!mounted) return;
-			setProducts((response.result.data ?? []).map(mapCostProduct));
+			const mappedDetail = mapDepartmentPlannedDetail(response.result);
+			setMonthGroups(mapDepartmentDetailToMonthGroups(mappedDetail));
 		};
 
-		loadProducts();
+		loadDepartmentDetail();
 
 		return () => {
 			mounted = false;
 		};
-	}, [query, reloadKey]);
+	}, [departmentId, reloadKey]);
 
 	useEffect(() => {
 		setSelectedProductIdsByMonth((prev) => {
@@ -256,6 +273,7 @@ function DepartmentPlanMonthsTable({
 								items={group.products}
 								selectAllRows={selectAllRows}
 								onSelectedRowsChange={handleMonthProductSelectionChange}
+								reloadKey={reloadKey}
 							/>
 						</div>
 					</AccordionContent>
@@ -415,7 +433,13 @@ export function MainCostPlanPage() {
 			]}
 			onCreate={(props) => (
 				<PlanForm
-					{...(props as unknown as ActionDialogProps<CostProduct>)}
+					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
+					onSuccess={() => setReloadKey((prev) => prev + 1)}
+				/>
+			)}
+			onUpdate={(props) => (
+				<PlanForm
+					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
 					onSuccess={() => setReloadKey((prev) => prev + 1)}
 				/>
 			)}
