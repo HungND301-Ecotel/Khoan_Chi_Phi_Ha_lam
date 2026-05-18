@@ -18,7 +18,7 @@ import {
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Equipment } from '@/features/main/catalog/equipment/columns';
+import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Electricity } from '@/features/main/pricing/trimming/electricity/columns';
 import {
 	ELECTRICITY_FORM_DEFAULT,
@@ -40,7 +40,7 @@ export function ElectricityForm({
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 
-	const [equipments, setEquipments] = useState<Equipment[]>([]);
+	const [equipments, setEquipments] = useState<ContractCode[]>([]);
 
 	const form = useForm<ElectricityFormSchema>({
 		resolver: zodResolver(electricityFormSchema),
@@ -52,7 +52,7 @@ export function ElectricityForm({
 
 	useEffect(() => {
 		const promises = Promise.all([
-			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
 				...(row?.startMonth && { date: row.startMonth }),
 				ignorePagination: true,
 			}),
@@ -196,8 +196,8 @@ export function ElectricityForm({
 			<FormMultiSelect
 				control={form.control}
 				name='equipmentIds'
-				label='Mã thiết bị'
-				placeholder='Chọn mã thiết bị'
+				label='Mã giao khoán'
+				placeholder='Chọn mã giao khoán'
 				options={equipments.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
@@ -217,7 +217,7 @@ function ElectricityCost({
 	values,
 }: {
 	form: UseFormReturn<ElectricityFormSchema>;
-	values: Equipment[];
+	values: ContractCode[];
 }) {
 	const watchedEquipmentIds = form.watch('equipmentIds');
 	const watchedCosts = form.watch('costs');
@@ -258,7 +258,7 @@ function ElectricityCostRow({
 	costIndex,
 }: {
 	form: UseFormReturn<ElectricityFormSchema>;
-	equipment: Equipment | undefined;
+	equipment: ContractCode | undefined;
 	costIndex: number;
 }) {
 	const watchedAverageMonthlyTunnelProduction = form.watch(
@@ -281,7 +281,7 @@ function ElectricityCostRow({
 	return (
 		<FormRow>
 			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Mã thiết bị</Label>
+				<Label>Mã giao khoán</Label>
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -299,7 +299,7 @@ function ElectricityCostRow({
 			</div>
 
 			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Tên thiết bị thiết bị</Label>
+				<Label>Tên giao khoán</Label>
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -341,7 +341,7 @@ function ElectricityCostRow({
 						<TooltipTrigger asChild>
 							<Input
 								readOnly
-								value={equipment?.unitOfMeasureName}
+								value={equipment?.unitOfMeasureName ?? ''}
 								className='read-only:bg-transparent'
 							/>
 						</TooltipTrigger>

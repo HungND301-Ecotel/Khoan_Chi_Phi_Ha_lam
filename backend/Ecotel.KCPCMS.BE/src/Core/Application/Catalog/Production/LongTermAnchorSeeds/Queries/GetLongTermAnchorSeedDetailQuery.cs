@@ -85,8 +85,11 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Select(item => new LongTermAnchorSeedItemDto
                 {
                     Id = item.Id,
+                    MaterialId = item.PartId,
                     PartId = item.PartId,
                     ProcessGroupId = item.ProcessGroupId,
+                    MaterialCode = item.Part.Code?.Value ?? string.Empty,
+                    MaterialName = item.Part.Name,
                     PartCode = item.Part.Code?.Value ?? string.Empty,
                     PartName = item.Part.Name,
                     UnitOfMeasureName = item.Part.UnitOfMeasure?.Name ?? string.Empty,

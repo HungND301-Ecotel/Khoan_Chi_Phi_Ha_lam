@@ -4,8 +4,8 @@ export type LongtermMaterialDetailItem = {
 	processGroupId?: string;
 	processGroupCode?: string;
 	processGroupName?: string;
-	partCode: string; // Mã phụ tùng
-	partName: string; // Tên phụ tùng
+	partCode: string; // Mã vật tư
+	partName: string; // Tên vật tư
 	unitOfMeasureName: string; // ĐVT
 	pendingValueStartPeriod: number; // GIÁ TRỊ CHỜ HẠCH TOÁN ĐẦU KỲ (Đồng)
 	issuedQuantity: number; // SỐ LƯỢNG (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)

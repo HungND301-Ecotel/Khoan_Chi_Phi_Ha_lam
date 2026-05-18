@@ -1,7 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import { FormArray } from '@/components/form/form-array';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
+import { FormMonthYear } from '@/components/form/form-month-year';
+import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { MultiSelect, MultiSelectOption } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
@@ -20,13 +23,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
-
 type Material = {
 	id: string;
 	code: string;
 	name: string;
-	assignmentCodeId?: string | null;
+	materialType: number;
 };
 
 type ContractCodeDetail = {
@@ -34,6 +35,11 @@ type ContractCodeDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureId?: string | null;
+	costs?: Array<{
+		startMonth: string;
+		endMonth: string;
+		amount: number;
+	}>;
 	materials?: Material[];
 };
 
@@ -51,7 +57,10 @@ export function ContractCodeForm({
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [materials, setMaterials] = useState<Material[]>([]);
-	const [selectedMaterials, setSelectedMaterials] = useState<
+	const [selectedMainMaterials, setSelectedMainMaterials] = useState<
+		MultiSelectOption[]
+	>([]);
+	const [selectedOtherMaterials, setSelectedOtherMaterials] = useState<
 		MultiSelectOption[]
 	>([]);
 
@@ -64,6 +73,7 @@ export function ContractCodeForm({
 					name: row.name,
 					unitOfMeasureId: row.unitOfMeasureId,
 					materialIds: [],
+					costs: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
 				}
 			: CONTRACT_CODE_SCHEMA_DEFAULT,
 	});
@@ -71,7 +81,9 @@ export function ContractCodeForm({
 	useEffect(() => {
 		const promises = Promise.all([
 			api.pagging<Unit>(API.CATALOG.UNIT.LIST),
-			api.pagging<Material>(API.CATALOG.ASSET.LIST),
+			api.pagging<Material>(API.CATALOG.ASSET.LIST, {
+				ignorePagination: true,
+			}),
 		]);
 
 		promises.then(([unitsRes, materialsRes]) => {
@@ -89,14 +101,39 @@ export function ContractCodeForm({
 								label: `${material.code} - ${material.name}`,
 							}))
 							.sort((a, b) => a.label.localeCompare(b.label));
+						const selectedMain = (detail.materials ?? [])
+							.filter((material) => material.materialType !== 2)
+							.map<MultiSelectOption>((material) => ({
+								value: material.id,
+								label: `${material.code} - ${material.name}`,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
+						const selectedOther = (detail.materials ?? [])
+							.filter((material) => material.materialType === 2)
+							.map<MultiSelectOption>((material) => ({
+								value: material.id,
+								label: `${material.code} - ${material.name}`,
+							}))
+							.sort((a, b) => a.label.localeCompare(b.label));
 
 						form.reset({
 							code: isDuplicate ? '' : detail.code,
 							name: detail.name,
 							unitOfMeasureId: detail.unitOfMeasureId ?? null,
 							materialIds: selected.map((item) => item.value),
+							costs:
+								detail.costs?.length
+									? detail.costs.map((cost) => ({
+											startMonth: cost.startMonth.substring(0, 10),
+											endMonth: cost.endMonth.substring(0, 10),
+											amount: cost.amount,
+										}))
+									: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
 						});
-						setSelectedMaterials(selected);
+						setSelectedMainMaterials(
+							selectedMain.length > 0 ? selectedMain : selected,
+						);
+						setSelectedOtherMaterials(selectedOther);
 					});
 			}
 		});
@@ -105,26 +142,19 @@ export function ContractCodeForm({
 	useEffect(() => {
 		form.setValue(
 			'materialIds',
-			selectedMaterials.map((item) => item.value),
+			[
+				...selectedMainMaterials.map((item) => item.value),
+				...selectedOtherMaterials.map((item) => item.value),
+			],
 		);
-	}, [form, selectedMaterials]);
+	}, [form, selectedMainMaterials, selectedOtherMaterials]);
 
-	const materialOptions = useMemo(() => {
-		const currentAssignmentCodeId = row?.id?.toLowerCase() ?? '';
-
-		return Object.values(
+	const buildMaterialOptions = (targetType: number) =>
+		Object.values(
 			(materials ?? []).reduce<Record<string, MultiSelectOption>>(
 				(acc, material) => {
-					const assignmentCodeId = (
-						material.assignmentCodeId ?? EMPTY_GUID
-					).toLowerCase();
-					const canSelect =
-						assignmentCodeId === EMPTY_GUID ||
-						(currentAssignmentCodeId !== '' &&
-							assignmentCodeId === currentAssignmentCodeId);
-
 					if (
-						!canSelect ||
+						material.materialType !== targetType ||
 						!material.id ||
 						!material.code ||
 						acc[material.id]
@@ -141,7 +171,8 @@ export function ContractCodeForm({
 				{},
 			),
 		).sort((a, b) => a.label.localeCompare(b.label));
-	}, [materials, row?.id]);
+	const materialOptions = useMemo(() => buildMaterialOptions(1), [materials]);
+	const otherMaterialOptions = useMemo(() => buildMaterialOptions(2), [materials]);
 
 	const handleSubmit = async (values: ContractCodeSchema) => {
 		try {
@@ -193,12 +224,52 @@ export function ContractCodeForm({
 			/>
 
 			<MultiSelect
-				label='Danh sách vật tư, tài sản'
-				placeholder='Chọn vật tư'
-				values={selectedMaterials}
-				onValuesChange={setSelectedMaterials}
+				label='Vật tư theo nhóm'
+				placeholder='Chọn vật tư theo nhóm'
+				values={selectedMainMaterials}
+				onValuesChange={setSelectedMainMaterials}
 				options={materialOptions}
 			/>
+
+			<MultiSelect
+				label='Vật tư khác'
+				placeholder='Chọn vật tư khác'
+				values={selectedOtherMaterials}
+				onValuesChange={setSelectedOtherMaterials}
+				options={otherMaterialOptions}
+			/>
+
+			<FormArray
+				control={form.control}
+				name='costs'
+				label='Đơn giá điện năng (đ/kWh)'
+				canEmpty
+			>
+				{(index) => (
+					<div className='flex w-full gap-4'>
+						<FormMonthYear
+							control={form.control}
+							name={`costs.${index}.startMonth`}
+							label='Thời gian bắt đầu'
+							className='flex-1'
+						/>
+						<FormMonthYear
+							control={form.control}
+							name={`costs.${index}.endMonth`}
+							label='Thời gian kết thúc'
+							className='flex-1'
+						/>
+						<div className='flex-1'>
+							<FormNumber
+								control={form.control}
+								name={`costs.${index}.amount`}
+								label='Đơn giá điện năng (đ/kWh)'
+								placeholder='Nhập đơn giá điện năng (đ/kWh)'
+							/>
+						</div>
+					</div>
+				)}
+			</FormArray>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

@@ -190,6 +190,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             foreach (var (sortOrder, createItem) in itemsToCreate)
             {
                 ValidateQuantityTotals(createItem);
+                var trackedMaterialId = createItem.TrackedMaterialId ?? createItem.MaterialId ?? createItem.PartId;
 
                 var categoryReference = ProductionReference.Create(
                     createItem.CategoryProductionOrderId,
@@ -207,33 +208,35 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                 if (createItem.Type == AcceptanceReportItemType.Material)
                 {
-                    if (!createItem.MaterialId.HasValue)
+                    var materialInputId = createItem.MaterialId ?? trackedMaterialId;
+                    if (!materialInputId.HasValue)
                     {
                         throw new NotFoundException("MaterialId is required for material item");
                     }
 
-                    var materialExists = allMaterials.Any(m => m.Id == createItem.MaterialId.Value);
+                    var materialExists = allMaterials.Any(m => m.Id == materialInputId.Value);
                     if (!materialExists)
                     {
-                        throw new NotFoundException($"Material with Id '{createItem.MaterialId.Value}' not found");
+                        throw new NotFoundException($"Material with Id '{materialInputId.Value}' not found");
                     }
 
-                    materialId = createItem.MaterialId.Value;
+                    materialId = materialInputId.Value;
                 }
                 else if (createItem.Type == AcceptanceReportItemType.Part)
                 {
-                    if (!createItem.PartId.HasValue)
+                    var partInputId = createItem.PartId ?? trackedMaterialId;
+                    if (!partInputId.HasValue)
                     {
                         throw new NotFoundException("PartId is required for SCTX item");
                     }
 
-                    var partExists = allParts.Any(p => p.Id == createItem.PartId.Value);
+                    var partExists = allParts.Any(p => p.Id == partInputId.Value);
                     if (!partExists)
                     {
-                        throw new NotFoundException($"Part with Id '{createItem.PartId.Value}' not found");
+                        throw new NotFoundException($"Part with Id '{partInputId.Value}' not found");
                     }
 
-                    partId = createItem.PartId.Value;
+                    partId = partInputId.Value;
                 }
 
                 if (createItem.Type == AcceptanceReportItemType.Part &&

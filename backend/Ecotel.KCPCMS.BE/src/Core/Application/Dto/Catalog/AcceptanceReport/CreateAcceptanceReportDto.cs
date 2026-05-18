@@ -13,6 +13,7 @@ public record CreateAcceptanceReportItemDto
 {
     public Guid? AcceptanceReportItemId { get; init; }
 
+    public Guid? TrackedMaterialId { get; init; }
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }
     public required double UsageTime { get; init; }

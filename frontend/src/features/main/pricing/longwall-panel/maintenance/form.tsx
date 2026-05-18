@@ -14,8 +14,8 @@ import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Equipment } from '@/features/main/catalog/equipment/columns';
-import { Part } from '@/features/main/catalog/part/main/columns';
+import { Asset } from '@/features/main/catalog/asset/types';
+import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { LongwallPanel } from '@/features/main/pricing/longwall-panel/maintenance/columns';
 import { LongwallPanelDetail } from '@/features/main/pricing/longwall-panel/maintenance/page';
 import {
@@ -29,6 +29,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
+
+type LinkedMaterial = Asset & {
+	materialType?: number;
+	assignmentCodeIds?: string[];
+};
 
 const LONGWALL_TON_CONVERSION_FACTOR = 1000;
 
@@ -56,8 +61,8 @@ export function LongwallPanelForm({
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 
-	const [equipments, setEquipments] = useState<Equipment[]>([]);
-	const [parts, setParts] = useState<Part[]>([]);
+	const [equipments, setEquipments] = useState<ContractCode[]>([]);
+	const [parts, setParts] = useState<LinkedMaterial[]>([]);
 
 	const form = useForm<LongwallPanelFormSchema>({
 		resolver: zodResolver(longwallPanelFormSchema),
@@ -76,13 +81,13 @@ export function LongwallPanelForm({
 
 	useEffect(() => {
 		const promises = Promise.all([
-			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
 				ignorePagination: true,
 				...(row?.startMonth && { date: row.startMonth }),
 			}),
-			api.pagging<Part>(API.CATALOG.PART.LIST, {
+			api.pagging<LinkedMaterial>(API.CATALOG.ASSET.LIST, {
 				ignorePagination: true,
-				partType: 1,
+				materialType: 1,
 				...(row?.startMonth && { date: row.startMonth }),
 			}),
 		]);
@@ -146,13 +151,13 @@ export function LongwallPanelForm({
 		if (!watchedStartMonth || (row && !isDuplicate)) return;
 
 		const promises = Promise.all([
-			api.pagging<Equipment>(API.CATALOG.EQUIPMENT.LIST, {
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
 				ignorePagination: true,
 				date: watchedStartMonth,
 			}),
-			api.pagging<Part>(API.CATALOG.PART.LIST, {
+			api.pagging<LinkedMaterial>(API.CATALOG.ASSET.LIST, {
 				ignorePagination: true,
-				partType: 1,
+				materialType: 1,
 				date: watchedStartMonth,
 			}),
 		]);
@@ -309,8 +314,8 @@ export function LongwallPanelForm({
 			<FormMultiSelect
 				control={form.control}
 				name='equipmentIds'
-				label='Mã thiết bị'
-				placeholder='Chọn mã thiết bị'
+				label='Mã giao khoán'
+				placeholder='Chọn mã giao khoán'
 				options={equipments.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
@@ -321,8 +326,8 @@ export function LongwallPanelForm({
 			<FormMultiSelect
 				control={form.control}
 				name='selectedPartIds'
-				label='Phụ tùng'
-				placeholder='Chọn phụ tùng'
+				label='Vật tư theo nhóm'
+				placeholder='Chọn vật tư theo nhóm'
 				options={selectedPartOptions}
 				disabled={watchedEquipmentIds.length === 0}
 			/>
@@ -339,7 +344,7 @@ export function LongwallPanelForm({
 }
 function syncCostsWithCurrentPartLinks(
 	costs: LongwallPanelFormSchema['costs'],
-	parts: Part[],
+	parts: LinkedMaterial[],
 	equipmentIds: string[],
 	selectedPartIds: string[],
 ): LongwallPanelFormSchema['costs'] {
@@ -348,7 +353,7 @@ function syncCostsWithCurrentPartLinks(
 	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
 	const partOrder = new Map(linkedParts.map((part, index) => [part.id, index]));
 	const partEquipmentMap = new Map(
-		linkedParts.map((part) => [part.id, new Set(part.equipmentIds ?? [])]),
+		linkedParts.map((part) => [part.id, new Set(part.assignmentCodeIds ?? [])]),
 	);
 
 	const filteredCosts = costs.filter((cost) => {
@@ -363,7 +368,7 @@ function syncCostsWithCurrentPartLinks(
 	);
 
 	const newCosts = linkedParts.flatMap((part) =>
-		(part.equipmentIds ?? [])
+		(part.assignmentCodeIds ?? [])
 			.filter((equipmentId) => equipmentOrder.has(equipmentId))
 			.filter(
 				(equipmentId) => !existingCostKeys.has(`${equipmentId}-${part.id}`),
@@ -390,16 +395,16 @@ function syncCostsWithCurrentPartLinks(
 	});
 }
 
-function getLinkedParts(parts: Part[], equipmentIds: string[]) {
+function getLinkedParts(parts: LinkedMaterial[], equipmentIds: string[]) {
 	const equipmentIdSet = new Set(equipmentIds);
 	return parts.filter((part) =>
-		(part.equipmentIds ?? []).some((equipmentId) =>
+		(part.assignmentCodeIds ?? []).some((equipmentId) =>
 			equipmentIdSet.has(equipmentId),
 		),
 	);
 }
 
-function getPartOptions(parts: Part[], equipmentIds: string[]) {
+function getPartOptions(parts: LinkedMaterial[], equipmentIds: string[]) {
 	return getLinkedParts(parts, equipmentIds)
 		.map((part) => ({
 			label: `${part.code} - ${part.name}`,
@@ -412,8 +417,8 @@ function GroupedLongwallPanelCosts({
 	equipments,
 	parts,
 }: {
-	equipments: Equipment[];
-	parts: Part[];
+	equipments: ContractCode[];
+	parts: LinkedMaterial[];
 }) {
 	const { control, setValue } = useFormContext<LongwallPanelFormSchema>();
 	const costs = useWatch({ control, name: 'costs' }) || [];
@@ -485,7 +490,7 @@ function PricingLongwallPanelCosts({
 	parts,
 }: {
 	index: number;
-	parts: Part[];
+	parts: LinkedMaterial[];
 }) {
 	const { control, getValues, setValue } =
 		useFormContext<LongwallPanelFormSchema>();
@@ -542,7 +547,7 @@ function PricingLongwallPanelCosts({
 	return (
 		<>
 			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Mã phụ tùng</Label>
+				<Label>Mã vật tư</Label>
 				<Input
 					readOnly
 					value={part?.code}
@@ -551,7 +556,7 @@ function PricingLongwallPanelCosts({
 			</div>
 
 			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Tên phụ tùng</Label>
+				<Label>Tên vật tư</Label>
 				<Input
 					readOnly
 					value={part?.name}
@@ -637,8 +642,8 @@ function PricingLongwallPanelCosts({
 
 function groupCostsByEquipment(
 	costs: LongwallPanelFormSchema['costs'],
-	equipments: Equipment[],
-	parts: Part[],
+	equipments: ContractCode[],
+	parts: LinkedMaterial[],
 	otherMaterialValues?: Record<string, number | undefined>,
 ): Array<{
 	equipmentId: string;
@@ -737,7 +742,7 @@ function PricingEquipmentOtherPartCosts({
 	parts,
 }: {
 	equipmentId: string;
-	parts: Part[];
+	parts: LinkedMaterial[];
 }) {
 	const { control, setValue, getValues } =
 		useFormContext<LongwallPanelFormSchema>();
@@ -814,12 +819,12 @@ function PricingEquipmentOtherPartCosts({
 	return (
 		<FormRow>
 			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Mã phụ tùng</Label>
+				<Label>Mã vật tư</Label>
 				<Input readOnly value={'VTK'} className='read-only:bg-transparent' />
 			</div>
 
 			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Tên phụ tùng</Label>
+				<Label>Tên vật tư</Label>
 				<Input
 					readOnly
 					value='Vật tư khác'

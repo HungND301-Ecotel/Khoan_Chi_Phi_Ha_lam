@@ -3,6 +3,7 @@ export type RawAcceptanceReportItem = {
 	acceptanceReportId: string;
 	materialId: string | null;
 	partId?: string | null;
+	trackedMaterialId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
@@ -14,6 +15,8 @@ export type RawAcceptanceReportItem = {
 	materialName: string | null;
 	partCode: string | null;
 	partName: string | null;
+	trackedMaterialCode?: string | null;
+	trackedMaterialName?: string | null;
 	unitOfMeasureName: string | null;
 	planCost: number;
 	actualCost: number;
@@ -49,6 +52,7 @@ export type AcceptanceReportItem = {
 	acceptanceReportId: string;
 	materialId: string | null;
 	partId?: string | null;
+	trackedMaterialId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
@@ -61,6 +65,8 @@ export type AcceptanceReportItem = {
 	materialName: string | null;
 	partCode: string | null;
 	partName: string | null;
+	trackedMaterialCode?: string | null;
+	trackedMaterialName?: string | null;
 	unitOfMeasureName: string | null;
 	planCost: number;
 	actualCost: number;

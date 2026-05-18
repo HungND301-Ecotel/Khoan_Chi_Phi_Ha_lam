@@ -47,6 +47,7 @@ public class ApplicationDbContext(
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     public DbSet<AssignmentCode> AssignmentCodes => Set<AssignmentCode>();
+    public DbSet<AssignmentCodeMaterial> AssignmentCodeMaterials => Set<AssignmentCodeMaterial>();
     public DbSet<Cost> Costs => Set<Cost>();
     public DbSet<Equipment> Equipments => Set<Equipment>();
     public DbSet<EquipmentPart> EquipmentParts => Set<EquipmentPart>();
@@ -134,6 +135,7 @@ public class ApplicationDbContext(
         #region Index
         //add to Index Schema
         modelBuilder.Entity<AssignmentCode>().ToTable(nameof(AssignmentCode), "Index");
+        modelBuilder.Entity<AssignmentCodeMaterial>().ToTable(nameof(AssignmentCodeMaterial), "Index");
         modelBuilder.Entity<Cost>().ToTable(nameof(Cost), "Index");
         modelBuilder.Entity<Equipment>().ToTable(nameof(Equipment), "Index");
         modelBuilder.Entity<EquipmentPart>().ToTable(nameof(EquipmentPart), "Index");
@@ -215,6 +217,16 @@ public class ApplicationDbContext(
             .HasForeignKey<AssignmentCode>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssignmentCode>()
+            .HasMany(s => s.Costs)
+            .WithOne(h => h.AssignmentCode)
+            .HasForeignKey(s => s.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssignmentCode>()
+            .HasMany(s => s.AssignmentCodeMaterials)
+            .WithOne(h => h.AssignmentCode)
+            .HasForeignKey(s => s.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssignmentCode>()
             .HasMany(s => s.MaterialUnitPriceAssignmentCodes)
             .WithOne(h => h.AssignmentCode)
             .HasForeignKey(s => s.AssignmentCodeId)
@@ -246,6 +258,16 @@ public class ApplicationDbContext(
             .WithOne(h => h.Material)
             .HasForeignKey(s => s.MaterialId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Material>()
+            .HasMany(s => s.AssignmentCodeMaterials)
+            .WithOne(h => h.Material)
+            .HasForeignKey(s => s.MaterialId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AssignmentCodeMaterial>()
+            .HasIndex(e => new { e.AssignmentCodeId, e.MaterialId })
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         // ProductionOrder table
         modelBuilder.Entity<ProductionOrder>()
@@ -275,7 +297,7 @@ public class ApplicationDbContext(
             .WithOne(h => h.Equipment)
             .HasForeignKey(s => s.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Equipment>()
+        modelBuilder.Entity<AssignmentCode>()
             .HasMany(l => l.ActualEletricityEquipment)
             .WithOne(l => l.Equipment)
             .HasForeignKey(l => l.EquipmentId)
@@ -325,6 +347,7 @@ public class ApplicationDbContext(
                 @"
                     (
                         (CASE WHEN ""MaterialId""  IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN ""AssignmentCodeId"" IS NOT NULL THEN 1 ELSE 0 END) +
                         (CASE WHEN ""EquipmentId"" IS NOT NULL THEN 1 ELSE 0 END) +
                         (CASE WHEN ""PartId"" IS NOT NULL THEN 1 ELSE 0 END)
                     ) = 1

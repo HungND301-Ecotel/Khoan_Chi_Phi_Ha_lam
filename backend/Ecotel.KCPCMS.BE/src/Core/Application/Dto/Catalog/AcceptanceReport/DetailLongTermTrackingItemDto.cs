@@ -9,6 +9,8 @@ public record DetailLongTermTrackingItemDto
     public string? ProcessGroupName { get; init; }
     public string? PartCode { get; init; }
     public string? PartName { get; init; }
+    public string? MaterialCode { get; init; }
+    public string? MaterialName { get; init; }
     public string? UnitOfMeasureName { get; init; }
 
     // Financial values

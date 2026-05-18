@@ -137,7 +137,7 @@ export function UnresolvedCatalogCreateDialog({
 				<PartForm
 					data={embeddedData as ActionDialogProps<Part>['data']}
 					defaultCode={defaultCode}
-					successLabel='Phụ tùng theo thiết bị'
+					successLabel='Vật tư theo mã giao khoán'
 					onCreated={onCreated}
 				/>
 			);
@@ -147,7 +147,7 @@ export function UnresolvedCatalogCreateDialog({
 			<OtherPartForm
 				data={embeddedData as ActionDialogProps<OtherPart>['data']}
 				defaultCode={defaultCode}
-				successLabel='Phụ tùng khác'
+				successLabel='Vật tư khác'
 				onCreated={onCreated}
 			/>
 		);

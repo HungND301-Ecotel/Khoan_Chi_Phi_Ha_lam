@@ -326,8 +326,8 @@ export function PlanElectricityCostForm({
 			<FormMultiSelect
 				control={form.control}
 				name='electricityUnitPriceIds'
-				label='Mã thiết bị'
-				placeholder='Chọn mã thiết bị'
+				label='Mã giao khoán'
+				placeholder='Chọn mã giao khoán'
 				options={electricities.map((item) => ({
 					label: `${item.equipmentCode} - ${item.equipmentName}`,
 					value: item.id,
@@ -351,12 +351,12 @@ export function PlanElectricityCostForm({
 						return (
 							<>
 								<div className='min-w-32 flex-1 space-y-2'>
-									<Label>Mã thiết bị</Label>
+									<Label>Mã giao khoán</Label>
 									<Input readOnly value={currentElectricity?.equipmentCode} />
 								</div>
 
 								<div className='min-w-32 flex-1 space-y-2'>
-									<Label>Tên thiết bị</Label>
+									<Label>Tên giao khoán</Label>
 									<Input readOnly value={currentElectricity?.equipmentName} />
 								</div>
 

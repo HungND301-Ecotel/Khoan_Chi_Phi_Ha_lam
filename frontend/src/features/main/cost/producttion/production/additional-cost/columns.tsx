@@ -160,17 +160,17 @@ export const MATERIAL_COLUMNS: ColumnDef<MaterialCost>[] = [
 	},
 ];
 
-// SCTX Columns (Phụ tùng công cụ)
+// SCTX Columns (Vật tư công cụ)
 export const SCTX_COLUMNS: ColumnDef<SCTXCost>[] = [
 	{
 		accessorKey: 'partCode',
-		header: () => <span className='whitespace-normal'>{'Mã phụ tùng'}</span>,
+		header: () => <span className='whitespace-normal'>{'Mã vật tư'}</span>,
 		cell: ({ row }) => row.original.partCode ?? '',
 		size: 120,
 	},
 	{
 		accessorKey: 'partName',
-		header: () => <span className='whitespace-normal'>{'Tên phụ tùng'}</span>,
+		header: () => <span className='whitespace-normal'>{'Tên vật tư'}</span>,
 		cell: ({ row }) => (
 			<span className='whitespace-normal'>{row.original.partName ?? ''}</span>
 		),

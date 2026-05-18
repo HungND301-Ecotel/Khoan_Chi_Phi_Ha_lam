@@ -15,8 +15,8 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
     : IRequestHandler<ExportExcelTunnelMaintainUnitPriceEquipmentQuery, byte[]>
 {
     private readonly IWriteRepository<MaintainUnitPrice> _repository = unitOfWork.GetRepository<MaintainUnitPrice>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
 
     public async Task<byte[]> Handle(ExportExcelTunnelMaintainUnitPriceEquipmentQuery request, CancellationToken cancellationToken)
     {
@@ -33,7 +33,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
                     .ThenInclude(p => p!.UnitOfMeasure),
             disableTracking: true);
 
-        var equipments = await _equipmentRepository.GetAllAsync(
+        var equipments = await _assignmentCodeRepository.GetAllAsync(
             include: e => e
                 .Include(e => e.Code),
             disableTracking: true);
@@ -51,8 +51,14 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
             .ToList();
 
         // Get all parts from database with Equipment relationships
-        var allParts = await _partRepository.GetAllAsync(
-            include: p => p.Include(p => p.Code).Include(p => p.UnitOfMeasure).Include(p => p.EquipmentParts).ThenInclude(ep => ep.Equipment).ThenInclude(e => e!.Code),
+        var allParts = await _materialRepository.GetAllAsync(
+            predicate: p => p.MaterialType == MaterialType.MaterialInContract,
+            include: p => p
+                .Include(p => p.Code)
+                .Include(p => p.UnitOfMeasure)
+                .Include(p => p.AssignmentCodeMaterials)
+                    .ThenInclude(acm => acm.AssignmentCode)
+                        .ThenInclude(ac => ac!.Code),
             disableTracking: true);
 
         return ExportTransposedFormat(list.ToList(), equipmentCodes, allParts.ToList(), equipmentIds);
@@ -61,7 +67,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
     private byte[] ExportTransposedFormat(
         List<MaintainUnitPrice> maintainUnitPrices,
         List<string> equipmentCodes,
-        List<Part> allParts,
+        List<Material> allParts,
         HashSet<Guid> equipmentIds)
     {
         using var workbook = new XLWorkbook();
@@ -79,9 +85,9 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
 
         // Group parts by equipment from database relationship
         var partsByEquipment = allParts
-            .SelectMany(p => p.EquipmentParts
-                .Where(e => equipmentIds.Contains(e.EquipmentId) && e.Equipment != null && e.Equipment.Code != null)
-                .Select(e => new { Part = p, EquipmentId = e.EquipmentId, EquipmentCode = e.Equipment!.Code!.Value }))
+            .SelectMany(p => p.AssignmentCodeMaterials
+                .Where(e => equipmentIds.Contains(e.AssignmentCodeId) && e.AssignmentCode != null && e.AssignmentCode.Code != null)
+                .Select(e => new { Part = p, EquipmentId = e.AssignmentCodeId, EquipmentCode = e.AssignmentCode!.Code!.Value }))
             .GroupBy(p => new { p.EquipmentId, p.EquipmentCode })
             .OrderBy(g => g.Key.EquipmentCode)
             .ToList();
@@ -140,7 +146,7 @@ public class ExportExcelTunnelMaintainUnitPriceEquipmentQueryHandler(IUnitOfWork
 
         // Column B: Equipment Code
         var equipmentLabelCell = worksheet.Cell(currentRow, 2);
-        equipmentLabelCell.Value = "Mã thiết bị";
+        equipmentLabelCell.Value = "Mã giao khoán";
         equipmentLabelCell.Style.Font.Bold = true;
         equipmentLabelCell.Style.Fill.BackgroundColor = XLColor.LightGray;
         equipmentLabelCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;

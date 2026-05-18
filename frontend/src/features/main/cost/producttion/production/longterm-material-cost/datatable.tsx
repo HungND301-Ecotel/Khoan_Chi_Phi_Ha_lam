@@ -111,7 +111,7 @@ export function FixedColumnDataTable({
 						}}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-between gap-2 px-4 py-2 font-bold'>
-							Mã phụ tùng
+							Mã vật tư
 						</div>
 					</TableHead>
 					<TableHead
@@ -124,7 +124,7 @@ export function FixedColumnDataTable({
 						}}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-between gap-2 px-4 py-2 font-bold'>
-							Tên phụ tùng
+							Tên vật tư
 						</div>
 					</TableHead>
 					<TableHead

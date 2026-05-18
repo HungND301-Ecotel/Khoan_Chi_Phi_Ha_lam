@@ -3,7 +3,9 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Extensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -16,7 +18,9 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 {
     private readonly IWriteRepository<AssignmentCode> _assignemntcodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
+    private readonly IWriteRepository<AssignmentCodeMaterial> _assignmentCodeMaterialRepository = unitOfWork.GetRepository<AssignmentCodeMaterial>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
+    private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
     public async Task<bool> Handle(UpdateAssignmentCodeCommand request, CancellationToken cancellationToken)
     {
         if (request.UpdateModel.UnitOfMeasureId != null)
@@ -31,7 +35,7 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 
         var existAssignmentCode = await _assignemntcodeRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.UpdateModel.Id,
-            include: t => t.Include(t => t.Code),
+            include: t => t.Include(t => t.Code).Include(t => t.Costs),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, existAssignmentCode.CodeId))
@@ -45,16 +49,32 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         try
         {
             existAssignmentCode.Update(request.UpdateModel.Name, request.UpdateModel.Code, request.UpdateModel.UnitOfMeasureId);
+            _costRepository.Delete(existAssignmentCode.Costs.ToList());
 
-            var currentLinkedMaterials = await _materialRepository.GetAllAsync(
-                predicate: m => m.AssigmentCodeId == existAssignmentCode.Id,
-                include: m => m.Include(x => x.Code),
+            var costList = request.UpdateModel.Costs
+                .Select(cost => Cost.CreateAssignmentCodeCost(
+                    startMonth: cost.StartMonth,
+                    endMonth: cost.EndMonth,
+                    costType: CostType.Electricity,
+                    amount: cost.Amount,
+                    assignmentCodeId: existAssignmentCode.Id))
+                .ToList();
+
+            if (costList.HasOverlap())
+            {
+                throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
+            }
+
+            existAssignmentCode.ClearCost();
+            existAssignmentCode.AddCost(costList);
+
+            var currentLinks = await _assignmentCodeMaterialRepository.GetAllAsync(
+                predicate: m => m.AssignmentCodeId == existAssignmentCode.Id,
                 disableTracking: false);
 
             var selectedMaterials = materialIds.Any()
                 ? await _materialRepository.GetAllAsync(
                     predicate: m => materialIds.Contains(m.Id),
-                    include: m => m.Include(x => x.Code),
                     disableTracking: false)
                 : new List<Domain.Entities.Index.Material>();
 
@@ -67,17 +87,24 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                 .Select(m => m.Id)
                 .ToHashSet();
 
-            foreach (var material in currentLinkedMaterials.Where(m => !selectedMaterialIdSet.Contains(m.Id)))
+            var currentMaterialIdSet = currentLinks.Select(link => link.MaterialId).ToHashSet();
+
+            var linksToDelete = currentLinks
+                .Where(link => !selectedMaterialIdSet.Contains(link.MaterialId))
+                .ToList();
+            if (linksToDelete.Any())
             {
-                material.Update(
-                    material.Code?.Value ?? string.Empty,
-                    material.Name,
-                    material.UnitOfMeasureId,
-                    null,
-                    material.MaterialType);
+                _assignmentCodeMaterialRepository.Delete(linksToDelete);
             }
 
-            foreach (var material in selectedMaterials)
+            foreach (var material in selectedMaterials.Where(m => !currentMaterialIdSet.Contains(m.Id)))
+            {
+                await _assignmentCodeMaterialRepository.InsertAsync(
+                    AssignmentCodeMaterial.Create(existAssignmentCode.Id, material.Id),
+                    cancellationToken);
+            }
+
+            foreach (var material in selectedMaterials.Where(m => m.AssigmentCodeId == null))
             {
                 material.Update(
                     material.Code?.Value ?? string.Empty,

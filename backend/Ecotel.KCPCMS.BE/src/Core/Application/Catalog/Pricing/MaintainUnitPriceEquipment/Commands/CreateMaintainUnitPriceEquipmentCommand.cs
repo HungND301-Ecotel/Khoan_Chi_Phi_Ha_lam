@@ -19,7 +19,7 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
     private const string CacheSignalKey = "ProductUnitPrice";
     private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _maintainUnitPricRepository = unitOfWork.GetRepository<MaintainUnitPrice>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _equipmentRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(CreateMaintainUnitPriceEquipmentCommand request, CancellationToken cancellationToken)
     {
@@ -50,7 +50,10 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
         var equipmentIds = request.CreateModel.Select(c => c.EquipmentId);
         var equipmentDetails = await _equipmentRepository.GetAllAsync(
             predicate: e => equipmentIds.Contains(e.Id),
-            include: e => e.Include(e => e.EquipmentParts).ThenInclude(ep => ep.Part).Include(e => e.Costs),
+            include: e => e
+                .Include(ac => ac.AssignmentCodeMaterials)
+                    .ThenInclude(acm => acm.Material)
+                        .ThenInclude(m => m.Costs),
             disableTracking: true);
 
         if (equipmentDetails.Count != equipmentIds.Count())
@@ -68,7 +71,7 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
                 throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
             }
 
-            var partIds = equipment.EquipmentParts.Select(p => p.PartId).ToHashSet();
+            var partIds = equipment.AssignmentCodeMaterials.Select(p => p.MaterialId).ToHashSet();
             var inputPartIds = model.Costs.Select(c => c.PartId).ToHashSet();
 
             if (!partIds.IsSupersetOf(inputPartIds))
@@ -87,10 +90,12 @@ public class CreateMaintainUnitPriceEquipmentCommandHandler(
 
             foreach (var cost in model.Costs)
             {
-                var part = equipment.EquipmentParts.Select(c => c.Part).FirstOrDefault(c => c.Id == cost.PartId);
+                var part = equipment.AssignmentCodeMaterials
+                    .Select(c => c.Material)
+                    .FirstOrDefault(c => c != null && c.Id == cost.PartId);
                 maintainUnitPrice.AddMaintainUnitPriceEquipment(Domain.Entities.Pricing.MaintainUnitPriceEquipment.Create(
                     null,
-                    part.Id,
+                    part!.Id,
                     cost?.Quantity ?? 0,
                     cost?.AverageMonthlyTunnelProduction ?? 0,
                     cost?.ReplacementTimeStandard ?? 0

@@ -36,11 +36,14 @@ export type Equipment = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	partType?: number | null;
 	materialCode: string;
 	materialName?: string | null;
+	trackedMaterialCode?: string | null;
+	trackedMaterialName?: string | null;
 	partName?: string | null;
 	unitOfMeasureName: string;
 	type: number;
@@ -162,6 +165,7 @@ export type QuotaBasedMaterialQuantityDetail = {
 
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	usageTime: number;
@@ -197,6 +201,7 @@ export type CreateAcceptanceReportRequest = {
 
 export type UpdateAcceptanceReportItem = {
 	id?: string;
+	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
 	usageTime: number;

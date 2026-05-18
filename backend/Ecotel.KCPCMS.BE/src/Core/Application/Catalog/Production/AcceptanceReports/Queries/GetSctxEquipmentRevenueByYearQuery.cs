@@ -11,7 +11,7 @@ using System.Globalization;
 namespace Application.Catalog.Production.AcceptanceReports.Queries;
 
 public record GetSctxEquipmentRevenueByYearQuery(
-    Guid EquipmentId,
+    Guid AssignmentCodeId,
     Guid? DepartmentId = null,
     string? FromMonth = null,
     string? ToMonth = null) : IRequest<SctxEquipmentRevenueResponseDto>;
@@ -47,7 +47,7 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
         var plannedFactors = await _plannedMaintainFactorRepository.GetAll()
             .Where(x => x.MaintainUnitPrice != null
-                && x.MaintainUnitPrice.EquipmentId == request.EquipmentId
+                && x.MaintainUnitPrice.EquipmentId == request.AssignmentCodeId
                 && x.PlannedMaintainCost != null
                 && x.PlannedMaintainCost.Output.StartMonth <= endMonth
                 && x.PlannedMaintainCost.Output.EndMonth >= startMonth
@@ -123,7 +123,8 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
         return new SctxEquipmentRevenueResponseDto
         {
-            EquipmentId = request.EquipmentId,
+            AssignmentCodeId = request.AssignmentCodeId,
+            EquipmentId = request.AssignmentCodeId,
             Years = years
         };
     }

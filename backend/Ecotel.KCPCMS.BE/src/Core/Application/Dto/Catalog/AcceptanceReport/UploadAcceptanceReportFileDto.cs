@@ -17,11 +17,14 @@ public record AcceptanceReportItemDto
     public Guid? ReportItemId { get; init; }
     public int RowNumber { get; init; }
 
+    public Guid? TrackedMaterialId { get; init; }
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }
 
     public required string MaterialCode { get; init; }
     public string? MaterialName { get; init; }
+    public string? TrackedMaterialCode { get; init; }
+    public string? TrackedMaterialName { get; init; }
     public string? PartName { get; init; }
     public required string UnitOfMeasureName { get; init; }
     public required AcceptanceReportItemType Type { get; init; }

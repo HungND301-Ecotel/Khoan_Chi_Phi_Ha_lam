@@ -16,6 +16,7 @@ public record ImportAssignmentCodeExcelCommand(IFormFile File) : IRequest<bool>;
 public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService, IUnitOfWork unitOfWork) : IRequestHandler<ImportAssignmentCodeExcelCommand, bool>
 {
     private readonly IWriteRepository<AssignmentCodeEntity> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCodeEntity>();
+    private readonly IWriteRepository<AssignmentCodeMaterial> _assignmentCodeMaterialRepository = unitOfWork.GetRepository<AssignmentCodeMaterial>();
     private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
@@ -109,7 +110,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         var dbAssignmentCodes = await _assignmentCodeRepository.GetAllAsync(
             include: a => a
                 .Include(a => a.Code!)
-                .Include(a => a.Materials).ThenInclude(m => m.Code),
+                .Include(a => a.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Code),
             disableTracking: false);
 
         var dbByCode = dbAssignmentCodes
@@ -140,7 +141,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                     || !string.Equals(existedEntity.Code?.Value, item.AssignmentCodeDisplay, StringComparison.OrdinalIgnoreCase);
 
                 var selectedMaterialIdSet = item.MaterialIds.ToHashSet();
-                var existingMaterialIdSet = existedEntity.Materials.Select(m => m.Id).ToHashSet();
+                var existingMaterialIdSet = existedEntity.AssignmentCodeMaterials.Select(m => m.MaterialId).ToHashSet();
                 var isMaterialChanged = !selectedMaterialIdSet.SetEquals(existingMaterialIdSet);
 
                 if (isInfoChanged)
@@ -150,25 +151,33 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
 
                 if (isMaterialChanged)
                 {
-                    foreach (var material in existedEntity.Materials.Where(m => !selectedMaterialIdSet.Contains(m.Id)))
+                    var linksToDelete = existedEntity.AssignmentCodeMaterials
+                        .Where(m => !selectedMaterialIdSet.Contains(m.MaterialId))
+                        .ToList();
+                    if (linksToDelete.Any())
+                    {
+                        _assignmentCodeMaterialRepository.Delete(linksToDelete);
+                    }
+
+                    var existingLinkedMaterialIds = existedEntity.AssignmentCodeMaterials
+                        .Select(link => link.MaterialId)
+                        .ToHashSet();
+
+                    foreach (var materialId in selectedMaterialIdSet.Where(id => !existingLinkedMaterialIds.Contains(id)))
+                    {
+                        await _assignmentCodeMaterialRepository.InsertAsync(
+                            AssignmentCodeMaterial.Create(existedEntity.Id, materialId),
+                            cancellationToken);
+                    }
+
+                    foreach (var material in materials.Where(m => selectedMaterialIdSet.Contains(m.Id) && m.AssigmentCodeId == null))
                     {
                         material.Update(
                             material.Code?.Value ?? string.Empty,
                             material.Name,
                             material.UnitOfMeasureId,
-                            null,
-                            material.MaterialType);
-                    }
-
-                    foreach (var materialId in selectedMaterialIdSet)
-                    {
-                        var selectedMaterial = materials.First(m => m.Id == materialId);
-                        selectedMaterial.Update(
-                            selectedMaterial.Code?.Value ?? string.Empty,
-                            selectedMaterial.Name,
-                            selectedMaterial.UnitOfMeasureId,
                             existedEntity.Id,
-                            selectedMaterial.MaterialType);
+                            material.MaterialType);
                     }
                 }
 
@@ -207,15 +216,21 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                     var assignmentCode = pair.Key;
                     var materialIds = pair.Value.Distinct().ToList();
 
-                    foreach (var materialId in materialIds)
+                    if (materialIds.Any())
                     {
-                        var selectedMaterial = materials.First(m => m.Id == materialId);
-                        selectedMaterial.Update(
-                            selectedMaterial.Code?.Value ?? string.Empty,
-                            selectedMaterial.Name,
-                            selectedMaterial.UnitOfMeasureId,
+                        await _assignmentCodeMaterialRepository.InsertAsync(
+                            materialIds.Select(materialId => AssignmentCodeMaterial.Create(assignmentCode.Id, materialId)).ToList(),
+                            cancellationToken);
+                    }
+
+                    foreach (var material in materials.Where(m => materialIds.Contains(m.Id) && m.AssigmentCodeId == null))
+                    {
+                        material.Update(
+                            material.Code?.Value ?? string.Empty,
+                            material.Name,
+                            material.UnitOfMeasureId,
                             assignmentCode.Id,
-                            selectedMaterial.MaterialType);
+                            material.MaterialType);
                     }
                 }
             }

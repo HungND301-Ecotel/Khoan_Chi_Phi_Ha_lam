@@ -62,9 +62,10 @@ export function mapResolvedImportItem(
 
 	return {
 		...MATERIAL_FORM_DEFAULT,
-		id: item.partId ?? item.materialId ?? '',
+		id: item.trackedMaterialId ?? item.partId ?? item.materialId ?? '',
 		acceptanceReportItemId: item.reportItemId || undefined,
-		materialOrPartId: item.partId ?? item.materialId ?? '',
+		materialOrPartId:
+			item.trackedMaterialId ?? item.partId ?? item.materialId ?? '',
 		resolutionStatus: ImportResolutionStatus.Resolved,
 		sourceRowNumber: item.rowNumber ?? null,
 		partType: item.partType ?? null,
@@ -72,7 +73,7 @@ export function mapResolvedImportItem(
 		materialName:
 			item.type === MaterialType.Material
 				? (item.materialName ?? '')
-				: (item.partName ?? ''),
+				: (item.trackedMaterialName ?? item.partName ?? ''),
 		unitOfMeasureName: item.unitOfMeasureName,
 		type: item.type,
 		itemType: item.itemType,
@@ -185,12 +186,12 @@ export function mapRawAcceptanceItemToEditorRow(
 		partType: item.partType ?? null,
 		materialCode:
 			item.type === MaterialType.Material
-				? (item.materialCode ?? '')
-				: (item.partCode ?? ''),
+				? (item.materialCode ?? item.trackedMaterialCode ?? '')
+				: (item.trackedMaterialCode ?? item.partCode ?? ''),
 		materialName:
 			item.type === MaterialType.Material
-				? (item.materialName ?? '')
-				: (item.partName ?? ''),
+				? (item.materialName ?? item.trackedMaterialName ?? '')
+				: (item.trackedMaterialName ?? item.partName ?? ''),
 		unitOfMeasureName: item.unitOfMeasureName ?? '',
 		type: item.type,
 		itemType: item.itemType,
@@ -511,6 +512,7 @@ export function buildAcceptanceReportRequest(
 				const base = buildBasePayload(item);
 				return {
 					acceptanceReportItemId: item.acceptanceReportItemId || null,
+					trackedMaterialId: item.materialOrPartId || null,
 					materialId:
 						item.type === MaterialType.Material
 							? item.materialOrPartId || null
@@ -559,6 +561,7 @@ export function buildAcceptanceReportRequest(
 			const base = buildBasePayload(item);
 			return {
 				id: item.id || undefined,
+				trackedMaterialId: item.materialOrPartId || null,
 				materialId:
 					item.type === MaterialType.Material
 						? item.materialOrPartId || null

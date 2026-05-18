@@ -28,7 +28,7 @@ type UnresolvedCreateDialogProps = {
 
 const ENTITY_GROUP_OPTIONS = [
 	{ value: 'material', label: 'Vật tư' },
-	{ value: 'part', label: 'Phụ tùng' },
+	{ value: 'part', label: 'Vật tư SCTX' },
 ] as const;
 
 const MATERIAL_TYPE_OPTIONS = [
@@ -40,8 +40,8 @@ const MATERIAL_TYPE_OPTIONS = [
 ] as const;
 
 const PART_TYPE_OPTIONS = [
-	{ value: 1, label: 'Phụ tùng theo thiết bị' },
-	{ value: 2, label: 'Phụ tùng khác' },
+	{ value: 1, label: 'Vật tư theo mã giao khoán' },
+	{ value: 2, label: 'Vật tư khác' },
 ] as const;
 
 export function UnresolvedCreateDialog({

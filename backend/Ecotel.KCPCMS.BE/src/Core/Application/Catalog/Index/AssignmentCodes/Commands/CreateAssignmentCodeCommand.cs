@@ -3,9 +3,10 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using Domain.Entities.Index;
+using Domain.Extensions;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.AssignmentCodes.Commands;
@@ -16,6 +17,7 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
 {
     private readonly IWriteRepository<AssignmentCode> _assignemntcodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
+    private readonly IWriteRepository<AssignmentCodeMaterial> _assignmentCodeMaterialRepository = unitOfWork.GetRepository<AssignmentCodeMaterial>();
     public async Task<bool> Handle(CreateAssignmentCodeCommand request, CancellationToken cancellationToken)
     {
         if (await codeService.IsCodeExisted(request.CreateModel.Code))
@@ -29,6 +31,21 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         try
         {
             var newAssignmentCode = AssignmentCode.Create(request.CreateModel.Name, request.CreateModel.Code, request.CreateModel.UnitOfMeasureId);
+            var costList = request.CreateModel.Costs
+                .Select(cost => Cost.CreateAssignmentCodeCost(
+                    startMonth: cost.StartMonth,
+                    endMonth: cost.EndMonth,
+                    costType: CostType.Electricity,
+                    amount: cost.Amount,
+                    assignmentCodeId: newAssignmentCode.Id))
+                .ToList();
+
+            if (costList.HasOverlap())
+            {
+                throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
+            }
+
+            newAssignmentCode.AddCost(costList);
             await _assignemntcodeRepository.InsertAsync(newAssignmentCode, cancellationToken);
             await unitOfWork.SaveChangesAsync();
 
@@ -36,7 +53,6 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
             {
                 var materials = await _materialRepository.GetAllAsync(
                     predicate: m => materialIds.Contains(m.Id),
-                    include: m => m.Include(x => x.Code),
                     disableTracking: false);
 
                 if (materials.Count != materialIds.Count)
@@ -44,7 +60,11 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                     throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
                 }
 
-                foreach (var material in materials)
+                await _assignmentCodeMaterialRepository.InsertAsync(
+                    materials.Select(material => AssignmentCodeMaterial.Create(newAssignmentCode.Id, material.Id)).ToList(),
+                    cancellationToken);
+
+                foreach (var material in materials.Where(m => m.AssigmentCodeId == null))
                 {
                     material.Update(
                         material.Code?.Value ?? string.Empty,

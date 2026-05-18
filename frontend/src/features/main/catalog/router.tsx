@@ -6,15 +6,12 @@ import MainCatalogAssetResourcePage from '@/features/main/catalog/asset/resource
 import MainCatalogAssetSafetyAndWelfarePage from '@/features/main/catalog/asset/safety-and-welfare/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
 import { MainCatalogDepartmentPage } from '@/features/main/catalog/department/page';
-import MainCatalogEquipmentPage from '@/features/main/catalog/equipment/page';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
 import { MainCatalogParameterRouter } from '@/features/main/catalog/parameter/router';
-import { MainCatalogPartPage } from '@/features/main/catalog/part/main/page';
 import { MainCatalogProcessRouter } from '@/features/main/catalog/process/router';
 import { MainCatalogProductPage } from '@/features/main/catalog/product/page';
 import MainCatalogUnitPage from '@/features/main/catalog/unit/page';
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
-import { MainCatalogOtherPartPage } from './part/other/page';
 import { MainCatalogParameterProductionOrderPage } from './production-order/page';
 import { MainCatalogNormFactorPage } from './norm-factor/page';
 import { MainCatalogRevenueCostAdjustmentConfigPage } from './revenue-cost-adjustment-config/page';
@@ -96,35 +93,6 @@ const MainCatalogRouter: RouteObject = {
 						breadcrumb: 'Vật tư theo hạn mức',
 						title: 'Vật tư theo hạn mức',
 					},
-				},
-			],
-		},
-		{
-			path: 'equipments',
-			element: <MainCatalogEquipmentPage />,
-			handle: { breadcrumb: 'Thiết bị', title: 'Thiết bị' },
-		},
-		{
-			path: 'spare-parts',
-			element: <Outlet />,
-			handle: { breadcrumb: 'Phụ tùng' },
-			children: [
-				{
-					index: true,
-					element: <Navigate replace to='main' />,
-				},
-				{
-					path: 'main',
-					element: <MainCatalogPartPage />,
-					handle: {
-						breadcrumb: 'Phụ tùng theo thiết bị',
-						title: 'Phụ tùng theo thiết bị',
-					},
-				},
-				{
-					path: 'other',
-					element: <MainCatalogOtherPartPage />,
-					handle: { breadcrumb: 'Phụ tùng khác', title: 'Phụ tùng khác' },
 				},
 			],
 		},

@@ -7,6 +7,7 @@ export type ContractCode = {
 	name: string;
 	unitOfMeasureId?: string | null;
 	unitOfMeasureName?: string | null;
+	currentPrice?: number | null;
 };
 
 export type ContractCodeMaterialDetail = {
@@ -14,6 +15,7 @@ export type ContractCodeMaterialDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureName?: string | null;
+	materialType?: number | null;
 	costAmount?: number | null;
 	actualAmount?: number | null;
 };
@@ -30,6 +32,11 @@ export const CATALOG_CONTRACT_CODE_COLUMNS: ColumnDef<ContractCode>[] = [
 	{
 		accessorKey: 'unitOfMeasureName',
 		header: 'Đơn vị tính',
+	},
+	{
+		accessorKey: 'currentPrice',
+		header: 'Đơn giá điện năng (đ/kWh)',
+		cell: ({ row }) => formatNumber(Number(row.original.currentPrice ?? 0)),
 	},
 ];
 

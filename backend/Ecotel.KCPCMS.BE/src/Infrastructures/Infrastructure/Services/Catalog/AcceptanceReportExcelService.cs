@@ -123,7 +123,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                             MaterialName = null,
                             IssuedQuantity = receivedValue,
                             ShippedQuantity = dispensedValue,
-                            UnresolvedReason = $"Không tìm thấy vật tư/phụ tùng: '{materialCode}' ở dòng {rowNumber}."
+                            UnresolvedReason = $"Không tìm thấy vật tư: '{materialCode}' ở dòng {rowNumber}."
                         });
                         continue;
                     }
@@ -140,6 +140,7 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 {
                     ReportItemId = reportItemId,
                     RowNumber = rowNumber,
+                    TrackedMaterialId = materialId ?? partId,
                     MaterialId = materialId,
                     PartId = partId,
                     Type = type,
@@ -147,6 +148,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     PartType = partType,
                     MaterialCode = materialCode,
                     MaterialName = materialName,
+                    TrackedMaterialCode = materialCode,
+                    TrackedMaterialName = materialName ?? partName,
                     PartName = partName,
                     UnitOfMeasureName = unitOfMeasureName,
                     IssuedQuantity = receivedValue,

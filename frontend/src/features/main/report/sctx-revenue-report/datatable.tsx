@@ -16,7 +16,7 @@ import { formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useEffect, useMemo, useState } from 'react';
 
-type EquipmentLookup = {
+type AssignmentCodeLookup = {
 	id: string;
 	code: string;
 	name: string;
@@ -40,8 +40,9 @@ type SctxRevenueByYearApi = {
 	months: SctxRevenueByMonthApi[];
 };
 
-type SctxRevenueByEquipmentApiResponse = {
-	equipmentId: string;
+type SctxRevenueByAssignmentCodeApiResponse = {
+	assignmentCodeId: string;
+	equipmentId?: string;
 	years: SctxRevenueByYearApi[];
 };
 
@@ -107,10 +108,10 @@ export function SctxRevenueReportDataTable() {
 	const [toMonth, setToMonth] = useState(
 		buildMonthValue(String(currentYear), currentMonth),
 	);
-	const [equipments, setEquipments] = useState<EquipmentLookup[]>([]);
-	const [selectedEquipmentId, setSelectedEquipmentId] = useState('');
+	const [assignmentCodes, setAssignmentCodes] = useState<AssignmentCodeLookup[]>([]);
+	const [selectedAssignmentCodeId, setSelectedAssignmentCodeId] = useState('');
 	const [yearData, setYearData] = useState<SctxRevenueByYearApi[]>([]);
-	const [isLoadingEquipments, setIsLoadingEquipments] = useState(false);
+	const [isLoadingAssignmentCodes, setIsLoadingAssignmentCodes] = useState(false);
 	const [isLoadingRows, setIsLoadingRows] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -165,12 +166,12 @@ export function SctxRevenueReportDataTable() {
 	useEffect(() => {
 		let cancelled = false;
 
-		const fetchEquipments = async () => {
-			setIsLoadingEquipments(true);
+		const fetchAssignmentCodes = async () => {
+			setIsLoadingAssignmentCodes(true);
 
 			try {
-				const response = await api.pagging<EquipmentLookup>(
-					API.CATALOG.EQUIPMENT.LIST,
+				const response = await api.pagging<AssignmentCodeLookup>(
+					API.CATALOG.CONTRACT_CODE.LIST,
 					{ ignorePagination: true },
 				);
 
@@ -182,8 +183,8 @@ export function SctxRevenueReportDataTable() {
 					a.code.localeCompare(b.code, 'vi'),
 				);
 
-				setEquipments(options);
-				setSelectedEquipmentId((prev) => {
+				setAssignmentCodes(options);
+				setSelectedAssignmentCodeId((prev) => {
 					if (prev && options.some((item) => item.id === prev)) {
 						return prev;
 					}
@@ -194,21 +195,21 @@ export function SctxRevenueReportDataTable() {
 					return;
 				}
 
-				setEquipments([]);
-				setSelectedEquipmentId('');
+				setAssignmentCodes([]);
+				setSelectedAssignmentCodeId('');
 				setError(
 					err instanceof Error
 						? err.message
-						: 'Không thể tải danh sách thiết bị',
+						: 'Không thể tải danh sách mã giao khoán',
 				);
 			} finally {
 				if (!cancelled) {
-					setIsLoadingEquipments(false);
+					setIsLoadingAssignmentCodes(false);
 				}
 			}
 		};
 
-		fetchEquipments();
+		fetchAssignmentCodes();
 
 		return () => {
 			cancelled = true;
@@ -217,31 +218,31 @@ export function SctxRevenueReportDataTable() {
 
 
 	useEffect(() => {
-		if (!selectedEquipmentId) {
+		if (!selectedAssignmentCodeId) {
 			setYearData([]);
 			return;
 		}
 
 		let cancelled = false;
 
-		const fetchRevenueByEquipment = async () => {
+		const fetchRevenueByAssignmentCode = async () => {
 			setIsLoadingRows(true);
 			setError(null);
 
 			try {
 				const response = await api.post<
-					SctxRevenueByEquipmentApiResponse,
+					SctxRevenueByAssignmentCodeApiResponse,
 					{
 						fromMonth: string;
 						toMonth: string;
-						equipmentId: string;
+						assignmentCodeId: string;
 					}
 				>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.SCTX_REVENUE_BY_EQUIPMENT,
 					{
 						fromMonth,
 						toMonth,
-						equipmentId: selectedEquipmentId,
+						assignmentCodeId: selectedAssignmentCodeId,
 					},
 				);
 
@@ -268,12 +269,12 @@ export function SctxRevenueReportDataTable() {
 			}
 		};
 
-		fetchRevenueByEquipment();
+		fetchRevenueByAssignmentCode();
 
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedEquipmentId, fromMonth, toMonth]);
+	}, [selectedAssignmentCodeId, fromMonth, toMonth]);
 
 	const yearRows = useMemo(() => {
 		const sorted = [...yearData].sort((a, b) => a.year - b.year);
@@ -304,14 +305,15 @@ export function SctxRevenueReportDataTable() {
 		}));
 	}, [yearRows]);
 
-	const selectedEquipment = useMemo(
-		() => equipments.find((item) => item.id === selectedEquipmentId),
-		[equipments, selectedEquipmentId],
+	const selectedAssignmentCode = useMemo(
+		() =>
+			assignmentCodes.find((item) => item.id === selectedAssignmentCodeId),
+		[assignmentCodes, selectedAssignmentCodeId],
 	);
 
 
 	const quantityUnitLabel = useMemo(() => {
-		const code = selectedEquipment?.processGroupCode || '';
+		const code = selectedAssignmentCode?.processGroupCode || '';
 		switch (getProcessGroupType(code)) {
 			case ProcessGroupType.DL:
 			case ProcessGroupType.XL:
@@ -321,13 +323,15 @@ export function SctxRevenueReportDataTable() {
 			default:
 				return '';
 		}
-	}, [selectedEquipment?.processGroupCode]);
+	}, [selectedAssignmentCode?.processGroupCode]);
 
 	const buildQuantityHeader = (label: string) =>
 		quantityUnitLabel ? `${label} (${quantityUnitLabel})` : label;
 
-	const displayEquipmentName = selectedEquipment?.name || 'Không xác định';
-	const displayEquipmentCode = selectedEquipment?.code || 'thiet-bi';
+	const displayAssignmentCodeName =
+		selectedAssignmentCode?.name || 'Không xác định';
+	const displayAssignmentCodeCode =
+		selectedAssignmentCode?.code || 'ma-giao-khoan';
 	const displayPeriodRange =
 		fromMonth === toMonth
 			? `Tháng ${fromMonthPart}/${fromYearPart}`
@@ -389,7 +393,7 @@ export function SctxRevenueReportDataTable() {
 			const workbook = XLSX.utils.book_new();
 			XLSX.utils.book_append_sheet(workbook, worksheet, 'Doanh thu SCTX');
 
-			const normalizedCode = displayEquipmentCode.replace(
+			const normalizedCode = displayAssignmentCodeCode.replace(
 				/\s+/g,
 				'-',
 			);
@@ -466,23 +470,25 @@ export function SctxRevenueReportDataTable() {
 					</div>
 
 					<div className='space-y-1'>
-						<p className='text-sm font-medium'>Thiết bị</p>
+						<p className='text-sm font-medium'>Mã giao khoán</p>
 						<Select
-							value={selectedEquipmentId}
-							onValueChange={setSelectedEquipmentId}
-							disabled={isLoadingEquipments || equipments.length === 0}
+							value={selectedAssignmentCodeId}
+							onValueChange={setSelectedAssignmentCodeId}
+							disabled={
+								isLoadingAssignmentCodes || assignmentCodes.length === 0
+							}
 						>
 							<SelectTrigger className='w-[300px] bg-white'>
 								<SelectValue
 									placeholder={
-										isLoadingEquipments
-											? 'Đang tải thiết bị...'
-											: 'Chọn thiết bị'
+										isLoadingAssignmentCodes
+											? 'Đang tải mã giao khoán...'
+											: 'Chọn mã giao khoán'
 									}
 								/>
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
-								{equipments.map((item) => (
+								{assignmentCodes.map((item) => (
 									<SelectItem key={item.id} value={item.id}>
 										{item.code} - {item.name}
 									</SelectItem>
@@ -534,7 +540,7 @@ export function SctxRevenueReportDataTable() {
 
 							<div className='mt-4 text-center'>
 								<p className='text-lg font-bold uppercase md:text-2xl'>
-									Bảng theo dõi doanh thu SCTX thiết bị
+									Bảng theo dõi doanh thu SCTX mã giao khoán
 								</p>
 								<p className='mt-2 text-base font-bold md:text-xl'>
 									{displayPeriodRange}
@@ -543,8 +549,8 @@ export function SctxRevenueReportDataTable() {
 
 							<div className='mt-5 space-y-2 text-base md:text-lg'>
 								<p>
-									<span className='font-bold'>Thiết bị:</span>{' '}
-									{displayEquipmentName}
+									<span className='font-bold'>Mã giao khoán:</span>{' '}
+									{displayAssignmentCodeName}
 								</p>
 							</div>
 

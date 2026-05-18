@@ -50,11 +50,11 @@ export const getPlanedMaintainCostColumns = (
 	return [
 		{
 			accessorKey: 'equipmentCode',
-			header: 'Mã thiết bị',
+			header: 'Mã giao khoán',
 		},
 		{
 			accessorKey: 'equipmentName',
-			header: 'Tên thiết bị',
+			header: 'Tên giao khoán',
 		},
 		{
 			accessorKey: 'maintainUnitPrice',

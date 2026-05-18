@@ -80,6 +80,7 @@ public class CostService(IUnitOfWork unitOfWork) : ICostService
         {
             bool conflict = await _costRepository.AnyAsync(c =>
                 c.CostType == cost.CostType
+                && c.AssignmentCodeId == cost.AssignmentCodeId
                 && c.PartId == cost.PartId
                 && c.MaterialId == cost.MaterialId
                 && c.EquipmentId == cost.EquipmentId

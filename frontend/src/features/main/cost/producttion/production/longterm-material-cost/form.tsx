@@ -215,12 +215,12 @@ export function LongtermMaterialCostForm({
 						return (
 							<>
 								<div className='min-w-40 flex-1 space-y-2'>
-									<Label>Mã phụ tùng</Label>
+									<Label>Mã vật tư</Label>
 									<Input readOnly value={item?.partCode ?? ''} />
 								</div>
 
 								<div className='min-w-48 flex-1 space-y-2'>
-									<Label>Tên phụ tùng</Label>
+									<Label>Tên vật tư</Label>
 									<Input readOnly value={item?.partName ?? ''} />
 								</div>
 

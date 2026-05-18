@@ -277,7 +277,7 @@ export function MaterialImportDialog({
 					fetchedEquipmentOptionsByPartId[mapping.partId] =
 						sortedEquipments.map((equipment) => ({
 							value: toEquipmentOptionValue(equipment.id),
-							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 			}
@@ -403,7 +403,7 @@ export function MaterialImportDialog({
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
 							value: toEquipmentOptionValue(equipment.id),
-							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);

@@ -141,6 +141,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value ?? string.Empty,
                 PartName = part.Name,
+                MaterialCode = part.Code?.Value ?? string.Empty,
+                MaterialName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
                 PendingValueStartPeriod = log.PendingValueStartPeriod,
                 IssuedQuantity = log.IssuedQuantity,
@@ -298,6 +300,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value ?? string.Empty,
                 PartName = part.Name,
+                MaterialCode = part.Code?.Value ?? string.Empty,
+                MaterialName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
                 PendingValueStartPeriod = pendingValueStart,
                 IssuedQuantity = 0,
@@ -332,6 +336,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ProcessGroupName = snapshot.ProcessGroupName,
                 PartCode = snapshot.PartCode,
                 PartName = snapshot.PartName,
+                MaterialCode = snapshot.PartCode,
+                MaterialName = snapshot.PartName,
                 UnitOfMeasureName = snapshot.UnitOfMeasureName,
                 PendingValueStartPeriod = snapshot.PendingValueStartPeriod,
                 IssuedQuantity = snapshot.IssuedQuantity,
@@ -358,7 +364,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
 
         var sortedItems = items
             .OrderByDescending(i => i.IsNewItem)
-            .ThenBy(i => i.PartCode)
+            .ThenBy(i => i.MaterialCode ?? i.PartCode)
             .ToList();
 
         var groupedByProcessGroup = sortedItems

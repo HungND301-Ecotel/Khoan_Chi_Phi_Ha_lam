@@ -8,6 +8,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
+using Application.Dto.Catalog.Cost;
+
 namespace Application.Catalog.Index.AssignmentCodes.Queries;
 public record GetAssignmentCodeDetailByIdQuery(DefaultIdType Id) : IRequest<AssignmentCodeDto>;
 
@@ -23,10 +25,11 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             predicate: t => t.Id == request.Id,
             include: t => t
                 .Include(c => c.UnitOfMeasure)
+                .Include(c => c.Costs)
                 .Include(c => c.Code)
-                .Include(c => c.Materials).ThenInclude(m => m.Code)
-                .Include(c => c.Materials).ThenInclude(m => m.UnitOfMeasure)
-                .Include(c => c.Materials).ThenInclude(m => m.Costs),
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Code)
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.UnitOfMeasure)
+                .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
 
@@ -37,13 +40,31 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             Name = detail.Name,
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
-            Materials = detail.Materials
+            CurrentPrice = detail.Costs
+                .Where(c => c.CostType == CostType.Electricity && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
+                .Select(c => c.Amount)
+                .FirstOrDefault(),
+            Costs = detail.Costs
+                .Where(c => c.CostType == CostType.Electricity)
+                .Select(c => new ElectricityCostDto
+                {
+                    StartMonth = c.StartMonth,
+                    EndMonth = c.EndMonth,
+                    Amount = c.Amount,
+                })
+                .OrderBy(c => c.StartMonth)
+                .ThenBy(c => c.EndMonth)
+                .ToList(),
+            Materials = detail.AssignmentCodeMaterials
+                .Where(link => link.Material != null)
+                .Select(link => link.Material!)
                 .Select(m => new AssignmentCodeMaterialDto
                 {
                     Id = m.Id,
                     Code = m.Code?.Value ?? string.Empty,
                     Name = m.Name,
                     UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
+                    MaterialType = m.MaterialType,
                     CostAmount = m.Costs
                         .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
                         .Select(c => c.Amount)

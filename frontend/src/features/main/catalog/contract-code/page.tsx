@@ -61,6 +61,7 @@ function MainCatalogContractCodePage() {
 				{ key: 'name', label: 'Tên giao khoán' },
 				{ key: 'code', label: 'Mã giao khoán' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
+				{ key: 'currentPrice', label: 'Đơn giá điện năng' },
 			]}
 			onCreate={(props) => <ContractCodeForm {...props} />}
 			onDuplicate={(props) => <ContractCodeForm {...props} isDuplicate />}

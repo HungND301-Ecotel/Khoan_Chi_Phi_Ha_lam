@@ -365,7 +365,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
 		return {
-			label: 'Phụ tùng theo thiết bị',
+			label: 'Vật tư theo mã giao khoán',
 			className:
 				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
 		};
@@ -373,7 +373,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
 		return {
-			label: 'Phụ tùng khác',
+			label: 'Vật tư khác',
 			className:
 				'rounded bg-orange-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-orange-700',
 		};
@@ -389,7 +389,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.SparePart) {
 		return {
-			label: 'Phụ tùng',
+			label: 'Vật tư',
 			className:
 				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
 		};

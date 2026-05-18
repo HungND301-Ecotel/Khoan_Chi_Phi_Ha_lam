@@ -44,7 +44,7 @@ const UNGROUPED_PROCESS_GROUP = '__ungrouped';
 
 type EquipmentReportRow = {
 	key: string;
-	equipmentName: string;
+	assignmentCodeName: string;
 	unitOfMeasureName: string;
 	quantity: number;
 	kValues: number[];
@@ -353,12 +353,12 @@ export function ElectricityAndMaintainanceReportPage() {
 										const electricityFactors =
 											extractElectricityFactors(electricityCost);
 
-										return {
-											key: `${outputId}-${equipmentId}`,
-											equipmentName:
-												maintainCost?.equipmentName ||
-												electricityCost?.equipmentName ||
-												'',
+								return {
+									key: `${outputId}-${equipmentId}`,
+									assignmentCodeName:
+										maintainCost?.equipmentName ||
+										electricityCost?.equipmentName ||
+										'',
 											unitOfMeasureName: 'Cái',
 											quantity:
 												maintainCost?.quantity ??
@@ -766,7 +766,7 @@ function ReportGroupRows({
 								</TableCell>
 							)}
 							<TableCell className='border border-black px-1 py-1'>
-								{row.equipmentName}
+								{row.assignmentCodeName}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-center'>
 								{row.unitOfMeasureName}

@@ -106,6 +106,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             for (var itemIndex = 0; itemIndex < createModel.Items.Count; itemIndex++)
             {
                 var item = createModel.Items[itemIndex];
+                var trackedMaterialId = item.TrackedMaterialId ?? item.MaterialId ?? item.PartId;
                 var categoryReference = ProductionReference.Create(item.CategoryProductionOrderId, item.CategoryEquipmentId);
                 var additionalCostReference = ProductionReference.Create(item.AdditionalCostProductionOrderId, item.AdditionalCostEquipmentId);
                 var processGroupId = item.Type == AcceptanceReportItemType.Part
@@ -119,30 +120,32 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                 if (item.Type == AcceptanceReportItemType.Material)
                 {
-                    if (!item.MaterialId.HasValue)
+                    var materialInputId = item.MaterialId ?? trackedMaterialId;
+                    if (!materialInputId.HasValue)
                     {
                         throw new NotFoundException("MaterialId is required for material item");
                     }
 
-                    var material = allMaterials.FirstOrDefault(m => m.Id == item.MaterialId.Value);
+                    var material = allMaterials.FirstOrDefault(m => m.Id == materialInputId.Value);
                     if (material == null)
                     {
-                        throw new NotFoundException($"Material with Id '{item.MaterialId.Value}' not found");
+                        throw new NotFoundException($"Material with Id '{materialInputId.Value}' not found");
                     }
 
-                    materialId = item.MaterialId.Value;
+                    materialId = materialInputId.Value;
                 }
                 else if (item.Type == AcceptanceReportItemType.Part)
                 {
-                    if (!item.PartId.HasValue)
+                    var partInputId = item.PartId ?? trackedMaterialId;
+                    if (!partInputId.HasValue)
                     {
                         throw new NotFoundException("PartId is required for SCTX item");
                     }
 
-                    part = allParts.FirstOrDefault(p => p.Id == item.PartId.Value);
+                    part = allParts.FirstOrDefault(p => p.Id == partInputId.Value);
                     if (part == null)
                     {
-                        throw new NotFoundException($"Part with Id '{item.PartId.Value}' not found");
+                        throw new NotFoundException($"Part with Id '{partInputId.Value}' not found");
                     }
 
                     partId = part.Id;

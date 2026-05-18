@@ -167,7 +167,7 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
 
             rows.Add(new ReportRow(
                 Key: $"{outputId}-{equipmentId}",
-                EquipmentName: maintain?.EquipmentName ?? electricity?.EquipmentName ?? string.Empty,
+                AssignmentCodeName: maintain?.EquipmentName ?? electricity?.EquipmentName ?? string.Empty,
                 UnitOfMeasureName: "Cái",
                 Quantity: (double)(maintain?.Quantity ?? electricity?.Quantity ?? 0),
                 KValues: kValues,
@@ -323,7 +323,7 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
                         worksheet.Cell(excelRow, 4).Value = block.ProductionMeters;
                     }
 
-                    worksheet.Cell(excelRow, 5).Value = item.EquipmentName;
+                    worksheet.Cell(excelRow, 5).Value = item.AssignmentCodeName;
                     worksheet.Cell(excelRow, 6).Value = item.UnitOfMeasureName;
                     worksheet.Cell(excelRow, 7).Value = item.Quantity;
 
@@ -409,7 +409,7 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
         worksheet.Range(topRow, 2, bottomRow, 2).Merge().Value = "Tên sản phẩm";
         worksheet.Range(topRow, 3, bottomRow, 3).Merge().Value = "Đơn vị tính";
         worksheet.Range(topRow, 4, bottomRow, 4).Merge().Value = "Sản lượng";
-        worksheet.Range(topRow, 5, bottomRow, 5).Merge().Value = "Tên chủng loại";
+        worksheet.Range(topRow, 5, bottomRow, 5).Merge().Value = "Tên mã giao khoán";
         worksheet.Range(topRow, 6, bottomRow, 6).Merge().Value = "ĐVT";
         worksheet.Range(topRow, 7, bottomRow, 7).Merge().Value = "Số lượng";
         worksheet.Range(topRow, 8, bottomRow, 8).Merge().Value = "K1";
@@ -475,7 +475,7 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
 
     private sealed record ReportRow(
         string Key,
-        string EquipmentName,
+        string AssignmentCodeName,
         string UnitOfMeasureName,
         double Quantity,
         double[] KValues,

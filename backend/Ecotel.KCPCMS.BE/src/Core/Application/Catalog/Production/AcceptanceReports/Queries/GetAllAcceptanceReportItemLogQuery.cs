@@ -136,6 +136,8 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value,
                 PartName = part.Name,
+                MaterialCode = part.Code?.Value,
+                MaterialName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name,
                 PendingValueStartPeriod = log.PendingValueStartPeriod,
                 IssuedQuantity = log.IssuedQuantity,
@@ -286,6 +288,8 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
                 PartCode = part.Code?.Value,
                 PartName = part.Name,
+                MaterialCode = part.Code?.Value,
+                MaterialName = part.Name,
                 UnitOfMeasureName = part.UnitOfMeasure?.Name,
                 PendingValueStartPeriod = pendingValueStart,
                 IssuedQuantity = 0,
@@ -320,6 +324,8 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 ProcessGroupName = snapshot.ProcessGroupName,
                 PartCode = snapshot.PartCode,
                 PartName = snapshot.PartName,
+                MaterialCode = snapshot.PartCode,
+                MaterialName = snapshot.PartName,
                 UnitOfMeasureName = snapshot.UnitOfMeasureName,
                 PendingValueStartPeriod = snapshot.PendingValueStartPeriod,
                 IssuedQuantity = snapshot.IssuedQuantity,
@@ -346,7 +352,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
 
         var sortedItems = logDtos
             .OrderByDescending(l => l.IsNewItem)
-            .ThenBy(l => l.PartCode)
+            .ThenBy(l => l.MaterialCode ?? l.PartCode)
             .ToList();
 
         var groupedByProcessGroup = sortedItems

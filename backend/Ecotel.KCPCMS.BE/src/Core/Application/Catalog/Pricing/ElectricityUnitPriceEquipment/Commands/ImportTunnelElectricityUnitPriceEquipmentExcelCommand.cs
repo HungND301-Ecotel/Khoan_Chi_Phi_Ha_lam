@@ -23,7 +23,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
     private const string CacheSignalKey = "ProductUnitPrice";
     private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<TunnelElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<TunnelElectricityUnitPriceEquipment>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(ImportTunnelElectricityUnitPriceEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
@@ -40,11 +40,11 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
         await CollectReferenceErrors(dtos, importErrors, request.Type);
 
         // Map data to Entity Model
-        var equipments = await _equipmentRepository.GetAllAsync(
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
             include: e => e
                 .Include(e => e.Code),
             disableTracking: true);
-        var equipmentCodeGroups = equipments
+        var equipmentCodeGroups = assignmentCodes
             .Where(e => e.Code != null
                 && !string.IsNullOrWhiteSpace(e.Code!.Value))
             .GroupBy(e => e.Code!.Value.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -52,7 +52,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
         foreach (var duplicateGroup in equipmentCodeGroups.Where(g => g.Count() > 1))
         {
-            importErrors.Add($"Mã thiết bị '{duplicateGroup.Key}' đang bị trùng trong danh mục thiết bị.");
+            importErrors.Add($"Mã giao khoán '{duplicateGroup.Key}' đang bị trùng trong danh mục mã giao khoán.");
         }
 
         ThrowIfImportErrors(importErrors);
@@ -74,7 +74,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
                 var equipmentCode = item.dto.EquipmentCode?.Trim();
                 if (string.IsNullOrWhiteSpace(equipmentCode) || !equipmentIdMap.TryGetValue(equipmentCode, out var equipmentId))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{equipmentCode}' không tồn tại.");
                     continue;
                 }
 
@@ -176,7 +176,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
     private async Task CollectReferenceErrors(List<TunnelElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors, ElectricityUnitPriceType type)
     {
-        var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
+        var dbEquipmentCodes = (await _assignmentCodeRepository.GetAllAsync(
                 include: e => e
                     .Include(e => e.Code),
                 disableTracking: true))
@@ -189,7 +189,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
             var equipmentCode = item.dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{equipmentCode}' không tồn tại.");
             }
         }
     }

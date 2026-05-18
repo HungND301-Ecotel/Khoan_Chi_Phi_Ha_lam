@@ -68,7 +68,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         var missingPartCodes = partCodes.Except(parts.Select(x => x.Code?.Value ?? string.Empty)).ToList();
         if (missingPartCodes.Count > 0)
         {
-            throw new BadRequestException($"Không tìm thấy phụ tùng với mã: {string.Join(", ", missingPartCodes)}.");
+            throw new BadRequestException($"Không tìm thấy vật tư với mã: {string.Join(", ", missingPartCodes)}.");
         }
 
         var missingProcessGroupCodes = processGroupCodes.Except(processGroups.Select(x => x.Code?.Value ?? string.Empty)).ToList();

@@ -16,7 +16,7 @@ public class MaintainUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     private double? CachedMaintainUnitPriceTotal { get; set; }
 
     // Navigation properties
-    public virtual Equipment? Equipment { get; protected set; }
+    public virtual AssignmentCode? Equipment { get; protected set; }
 
     private IList<MaintainUnitPriceEquipment> _maintainUnitPriceEquipments = new List<MaintainUnitPriceEquipment>();
     public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
