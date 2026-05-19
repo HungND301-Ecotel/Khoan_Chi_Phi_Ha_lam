@@ -132,8 +132,12 @@ export type RowType = 'category' | 'type' | 'group' | 'item';
 export type HierarchicalRow = {
 	id: string;
 	rowType: RowType;
-	label: string; // Display text in first column
+	label: string; // Legacy display text for hierarchical label
 	level: number; // Indentation level (0-3)
+
+	// Display metadata used by the table
+	code?: string;
+	name?: string;
 
 	// Item data (only for 'item' rows)
 	itemCode?: string; // Mã vật tư / Mã phụ tùng / Mã tài sản
@@ -148,6 +152,8 @@ export type HierarchicalRow = {
 export type GroupCodeGroup = {
 	groupCode: string;
 	groupName: string;
+	displayCode?: string;
+	isProductionOrder?: boolean;
 	items: UnifiedItem[];
 	showTotals?: boolean; // If true, group row shows totals like a type row (for "Lĩnh mới", "Lĩnh tái sử dụng")
 	childGroups?: GroupCodeGroup[];

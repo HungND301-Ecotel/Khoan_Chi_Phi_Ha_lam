@@ -47,6 +47,11 @@ const SUB_GROUP_NAME_BY_CODE: Record<string, string> = {
 	Reusable: 'Lĩnh tái sử dụng',
 };
 
+const SUB_GROUP_DISPLAY_CODE_BY_CODE: Record<string, string> = {
+	New: 'LinhMoi',
+	Reusable: 'LinhTaiSuDung',
+};
+
 function trimText(value?: string | null): string {
 	return (value ?? '').trim();
 }
@@ -57,6 +62,20 @@ function normalizeForCompare(value?: string | null): string {
 		.replace(/đ/g, 'd')
 		.normalize('NFD')
 		.replace(/[\u0300-\u036f]/g, '');
+}
+
+function resolveDisplayGroupCode(materialGroup: MaterialGroupDto): string {
+	const normalizedGroupCode = trimText(materialGroup.groupCode) || 'UNKNOWN';
+
+	if (normalizedGroupCode.toUpperCase() === 'VTK') {
+		return 'VTK';
+	}
+
+	if (trimText(materialGroup.productionOrderId).length > 0) {
+		return 'Lenh';
+	}
+
+	return normalizedGroupCode;
 }
 
 function getOtherMaterialDetailLabel(
@@ -311,6 +330,8 @@ function groupMaterials(
 ): GroupCodeGroup[] {
 	const normalizedGroupCode = trimText(materialGroup.groupCode) || 'UNKNOWN';
 	const normalizedGroupName = normalizeGroupName(materialGroup, sectionKey);
+	const isProductionOrder =
+		trimText(materialGroup.productionOrderId).length > 0;
 	const childGroups: GroupCodeGroup[] = [];
 
 	if (materialGroup.subGroups && materialGroup.subGroups.length > 0) {
@@ -324,6 +345,9 @@ function groupMaterials(
 				childGroups.push({
 					groupCode: subGroup.subGroupCode,
 					groupName: subGroupName,
+					displayCode:
+						SUB_GROUP_DISPLAY_CODE_BY_CODE[subGroup.subGroupCode] ||
+						subGroup.subGroupCode,
 					items: subGroup.materials.map((m) =>
 						transformMaterialDetail(
 							m,
@@ -356,6 +380,8 @@ function groupMaterials(
 		{
 			groupCode: normalizedGroupCode,
 			groupName: normalizedGroupName,
+			displayCode: resolveDisplayGroupCode(materialGroup),
+			isProductionOrder,
 			items: topLevelItems,
 			childGroups: childGroups.length > 0 ? childGroups : undefined,
 		},
@@ -428,12 +454,27 @@ function createMaterialTypeGroups(
 		const isRedundantQuotaGroup =
 			sectionKey === 'sectionC' &&
 			hasOnlyOneTopLevelGroup &&
-			normalizeForCompare(grouped[0]?.groupName) === normalizeForCompare(matType);
+			normalizeForCompare(grouped[0]?.groupName) ===
+				normalizeForCompare(matType);
+		const redundantQuotaGroupWithChildren =
+			sectionKey === 'sectionC' &&
+			grouped.length === 1 &&
+			Boolean(grouped[0]?.childGroups?.length) &&
+			normalizeForCompare(grouped[0]?.groupName) ===
+				normalizeForCompare(matType);
 
 		if (shouldUseFlatItems(matGroup, sectionKey) || isRedundantQuotaGroup) {
 			grouped.forEach((group) => {
 				target.flatItems.push(...group.items);
 			});
+			return;
+		}
+
+		if (redundantQuotaGroupWithChildren) {
+			grouped[0].childGroups?.forEach((childGroup) => {
+				target.groups.push(childGroup);
+			});
+			target.flatItems.push(...grouped[0].items);
 			return;
 		}
 
@@ -568,6 +609,8 @@ export function applyProductionOrderNames(
 					return {
 						...group,
 						groupName: `${productionOrderName}`,
+						displayCode: 'Lenh',
+						isProductionOrder: true,
 					};
 				}),
 			})),

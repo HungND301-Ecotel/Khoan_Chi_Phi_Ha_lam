@@ -83,7 +83,6 @@ export const MAIN_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 				Doanh thu <br /> kế hoạch <br /> ban đầu (đ)
 			</span>
 		),
-		cell: ({ row }) =>
-			formatNumber(row.original.plannedTotalCost),
+		cell: ({ row }) => formatNumber(row.original.plannedTotalCost),
 	},
 ];

@@ -973,6 +973,14 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("ProductUnitPrice/Planned/Department/{departmentId:guid}")]
+    [OpenApiOperation("Get Planned ProductUnitPrice By Department", "")]
+    public async Task<IActionResult> GetPlannedProductUnitPriceByDepartment([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetPlannedProductUnitPriceByDepartmentQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpGet("ProductUnitPrice/Actual/{id:guid}")]
     [OpenApiOperation("Get ProductActualUnitPrice By Id", "")]
     public async Task<IActionResult> GetActualProductUnitPriceById([FromRoute] Guid id)
@@ -989,11 +997,27 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("ProductUnitPrice/Adjustment/Department/{departmentId:guid}")]
+    [OpenApiOperation("Get Adjustment ProductUnitPrice By Department", "")]
+    public async Task<IActionResult> GetAdjustmentProductUnitPriceByDepartment([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetAdjustmentProductUnitPriceByDepartmentQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpPut("ProductUnitPrice")]
     [OpenApiOperation("Update ProductUnitPrice", "")]
     public async Task<IActionResult> UpdateProductUnitPrice([FromBody] UpdateProductUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpPut("ProductUnitPrice/Planned-By-Department")]
+    [OpenApiOperation("Update Planned ProductUnitPrice By Department", "")]
+    public async Task<IActionResult> UpdatePlannedProductUnitPriceByDepartment([FromBody] UpdatePlannedProductUnitPriceByDepartmentDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdatePlannedProductUnitPriceByDepartmentCommand(updateModel));
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
@@ -1010,6 +1034,14 @@ public class PricingController : BaseNoAuthController
     public async Task<IActionResult> CreateProductUnitPrice([FromBody] CreateProductUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateProductUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPost("ProductUnitPrice/Planned-By-Department")]
+    [OpenApiOperation("Create Planned ProductUnitPrice By Department", "")]
+    public async Task<IActionResult> CreatePlannedProductUnitPriceByDepartment([FromBody] CreatePlannedProductUnitPriceByDepartmentDto createModel)
+    {
+        var result = await Mediator.Send(new CreatePlannedProductUnitPriceByDepartmentCommand(createModel));
         return Ok(result, MessageCommon.CreateSuccess);
     }
 

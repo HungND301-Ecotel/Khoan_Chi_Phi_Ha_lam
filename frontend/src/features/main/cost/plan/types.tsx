@@ -57,6 +57,36 @@ export type CostProductDetailOutput = {
 	planAshContent?: number;
 };
 
+export type DepartmentPlannedItem = {
+	productUnitPriceId?: string;
+	outputId?: string;
+	productId: string;
+	productCode: string;
+	productName: string;
+	processGroupId: string;
+	processGroupCode: string;
+	processGroupName: string;
+	fixedKeyType?: ProcessGroupType;
+	processGroupType?: number;
+	unitOfMeasureId: string;
+	unitOfMeasureName: string;
+	productionMeters: number;
+	plannedTotalCost: number;
+	planAshContent?: number;
+};
+
+export type DepartmentPlannedMonth = {
+	month: string;
+	items: DepartmentPlannedItem[];
+};
+
+export type DepartmentPlannedDetail = {
+	departmentId: string;
+	departmentCode: string;
+	departmentName: string;
+	months: DepartmentPlannedMonth[];
+};
+
 export type ProductCostExpandProps = {
 	id?: string;
 	output?: CostProductDetailOutput;
@@ -86,6 +116,24 @@ export function mapCostProductDetail(
 			detail.fixedKeyType ??
 			(detail.processGroupType as ProcessGroupType) ??
 			ProcessGroupType.None,
+	};
+}
+
+export function mapDepartmentPlannedDetail(
+	detail: DepartmentPlannedDetail,
+): DepartmentPlannedDetail {
+	return {
+		...detail,
+		months: detail.months.map((month) => ({
+			...month,
+			items: month.items.map((item) => ({
+				...item,
+				fixedKeyType:
+					item.fixedKeyType ??
+					(item.processGroupType as ProcessGroupType) ??
+					ProcessGroupType.None,
+			})),
+		})),
 	};
 }
 
