@@ -3,6 +3,9 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export type ProductionAdjustment = {
 	id: string;
+	productUnitPriceId?: string;
+	plannedOutputId?: string;
+	productionOutputId?: string;
 	productId: string;
 	productCode: string;
 	productName: string;
@@ -22,6 +25,10 @@ export type ProductionAdjustment = {
 	adjustmentTotalCost: number;
 	startMonth: string;
 	endMonth: string;
+	standardProductionMeters?: number;
+	actualAshContent?: number;
+	akRate?: number;
+	akRatePercent?: number;
 };
 
 export type DepartmentAdjustmentGroup = {

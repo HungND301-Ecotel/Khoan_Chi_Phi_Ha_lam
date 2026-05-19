@@ -21,6 +21,11 @@ import {
 	MAIN_COST_ADJUSTMENT_COLUMNS,
 	ProductionAdjustment,
 } from '@/features/main/cost/producttion/adjustment/columns';
+import {
+	type DepartmentAdjustmentDetail,
+	type DepartmentAdjustmentMonth,
+	mapDepartmentAdjustmentDetail,
+} from '@/features/main/cost/producttion/adjustment/type';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -78,7 +83,7 @@ function DepartmentAdjustmentProductsTable({
 				{ key: 'productName', label: 'Tên sản phẩm' },
 				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn sản xuất' },
 			]}
-			onExpand={(props) => <AdjustmentExpand {...props} />}
+			onExpand={(props) => <AdjustmentExpand {...props} monthId={monthId} />}
 			showCreateAction={false}
 			showFilterAction={false}
 			showDeleteAction={false}
@@ -103,32 +108,45 @@ type DepartmentAdjustmentMonthsTableProps = {
 	) => void;
 };
 
-function groupByMonth(
-	products: ProductionAdjustment[],
+function mapDepartmentDetailToMonthGroups(
+	detail: DepartmentAdjustmentDetail,
 ): DepartmentAdjustmentMonthGroup[] {
-	const groups = new Map<string, DepartmentAdjustmentMonthGroup>();
-
-	products.forEach((item) => {
-		if (!item.startMonth) return;
-
-		const existed = groups.get(item.startMonth);
-		if (existed) {
-			existed.productUnitPriceIds.push(item.id);
-			existed.products.push(item);
-			return;
-		}
-
-		groups.set(item.startMonth, {
-			id: item.startMonth,
-			time: item.startMonth,
-			productUnitPriceIds: [item.id],
-			products: [item],
-		});
-	});
-
-	return Array.from(groups.values()).sort((a, b) =>
-		a.time.localeCompare(b.time),
-	);
+	return detail.months
+		.map((month: DepartmentAdjustmentMonth) => ({
+			id: month.month,
+			time: month.month,
+			productUnitPriceIds: month.items.map((item) => item.productUnitPriceId),
+			products: month.items.map((item) => ({
+				id: item.productUnitPriceId,
+				productUnitPriceId: item.productUnitPriceId,
+				plannedOutputId: item.plannedOutputId,
+				productionOutputId: item.productionOutputId,
+				productId: item.productId,
+				productCode: item.productCode,
+				productName: item.productName,
+				processGroupId: item.processGroupId,
+				processGroupCode: item.processGroupCode,
+				processGroupName: item.processGroupName,
+				fixedKeyType: item.fixedKeyType,
+				processGroupType: item.processGroupType,
+				unitOfMeasureId: item.unitOfMeasureId,
+				unitOfMeasureName: item.unitOfMeasureName,
+				departmentId: detail.departmentId,
+				departmentCode: detail.departmentCode,
+				departmentName: detail.departmentName,
+				totalProductionMeters: item.productionMeters,
+				plannedTotalCost: 0,
+				actualTotalCost: 0,
+				adjustmentTotalCost: item.adjustmentTotalCost,
+				startMonth: month.month,
+				endMonth: month.month,
+				standardProductionMeters: item.standardProductionMeters,
+				actualAshContent: item.actualAshContent,
+				akRate: item.akRate,
+				akRatePercent: item.akRatePercent,
+			})),
+		}))
+		.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 function DepartmentAdjustmentMonthsTable({
@@ -137,21 +155,13 @@ function DepartmentAdjustmentMonthsTable({
 	selectAllRows,
 	onSelectedProductIdsChange,
 }: DepartmentAdjustmentMonthsTableProps) {
-	const [products, setProducts] = useState<ProductionAdjustment[]>([]);
+	const [monthGroups, setMonthGroups] = useState<
+		DepartmentAdjustmentMonthGroup[]
+	>([]);
 	const [selectedProductIdsByMonth, setSelectedProductIdsByMonth] = useState<
 		Record<string, string[]>
 	>({});
 	const [openedMonthIds, setOpenedMonthIds] = useState<string[]>([]);
-
-	const query = useMemo(
-		() => ({
-			ignorePagination: true,
-			scenarioType: 2,
-			departmentId,
-		}),
-		[departmentId],
-	);
-	const monthGroups = useMemo(() => groupByMonth(products), [products]);
 	const handleMonthProductSelectionChange = useCallback(
 		(monthId: string, rows: ProductionAdjustment[]) => {
 			const nextIds = rows.map((item) => item.id);
@@ -170,21 +180,21 @@ function DepartmentAdjustmentMonthsTable({
 	useEffect(() => {
 		let mounted = true;
 
-		const loadProducts = async () => {
-			const response = await api.pagging<ProductionAdjustment>(
-				API.COST.PRODUCT.LIST,
-				query,
+		const loadDepartmentDetail = async () => {
+			const response = await api.get<DepartmentAdjustmentDetail>(
+				API.COST.PRODUCT.DETAIL_ADJUSTMENT_BY_DEPARTMENT(departmentId),
 			);
 			if (!mounted) return;
-			setProducts(response.result.data ?? []);
+			const mappedDetail = mapDepartmentAdjustmentDetail(response.result);
+			setMonthGroups(mapDepartmentDetailToMonthGroups(mappedDetail));
 		};
 
-		loadProducts();
+		loadDepartmentDetail();
 
 		return () => {
 			mounted = false;
 		};
-	}, [query, reloadKey]);
+	}, [departmentId, reloadKey]);
 
 	useEffect(() => {
 		setSelectedProductIdsByMonth((prev) => {

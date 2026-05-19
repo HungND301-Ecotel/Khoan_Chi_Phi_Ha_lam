@@ -997,6 +997,14 @@ public class PricingController : BaseNoAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("ProductUnitPrice/Adjustment/Department/{departmentId:guid}")]
+    [OpenApiOperation("Get Adjustment ProductUnitPrice By Department", "")]
+    public async Task<IActionResult> GetAdjustmentProductUnitPriceByDepartment([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetAdjustmentProductUnitPriceByDepartmentQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpPut("ProductUnitPrice")]
     [OpenApiOperation("Update ProductUnitPrice", "")]
     public async Task<IActionResult> UpdateProductUnitPrice([FromBody] UpdateProductUnitPriceDto updateModel)

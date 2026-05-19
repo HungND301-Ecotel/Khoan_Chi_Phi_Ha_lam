@@ -463,6 +463,8 @@ export const API = {
 				`/v1/pricing/productunitprice/actual/${id}`,
 			DETAIL_ADJUSTMENT: (id: string) =>
 				`/v1/pricing/productunitprice/adjustment/${id}`,
+			DETAIL_ADJUSTMENT_BY_DEPARTMENT: (departmentId: string) =>
+				`/v1/pricing/productunitprice/adjustment/department/${departmentId}`,
 			UPDATE_ADJUSTMENT: '/v1/pricing/productunitprice/adjustment',
 		},
 		PLANNED_MATERIAL: {

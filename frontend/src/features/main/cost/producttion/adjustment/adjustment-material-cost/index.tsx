@@ -195,7 +195,11 @@ export function AdjustmentMaterialCost({
 
 	return (
 		<AccordionItem value={'adjustment-material-cost'} className='border-none'>
-			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
+			<Item
+				variant={'outline'}
+				size='sm'
+				className='w-full flex-1 rounded-sm border-[#b8b8b8] bg-[#f3f4f6] py-2.5 shadow-none'
+			>
 				<ItemContent>
 					<ItemTitle>Doanh thu vật liệu điều chỉnh</ItemTitle>
 				</ItemContent>
@@ -207,7 +211,7 @@ export function AdjustmentMaterialCost({
 				<ItemContent className='me-7.5 w-24'>
 					<ItemTitle>{loading ? <Spinner /> : formatNumber(total)}</ItemTitle>
 				</ItemContent>
-				<ItemActions>
+				<ItemActions className='gap-1'>
 					<div className='size-5' />
 					<AccordionTrigger
 						disabled={!id}
@@ -223,7 +227,7 @@ export function AdjustmentMaterialCost({
 					<div className='size-5' />{' '}
 				</ItemActions>
 			</Item>
-			<AccordionContent className='p-0 px-2 pt-2'>
+			<AccordionContent className='p-0 px-1 pt-1.5'>
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable

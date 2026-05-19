@@ -89,7 +89,11 @@ export function AdjustmentMaintainCost({
 
 	return (
 		<AccordionItem value={'adjustment-maintain-cost'} className='border-none'>
-			<Item variant={'outline'} className='w-full flex-1 rounded-sm py-3'>
+			<Item
+				variant={'outline'}
+				size='sm'
+				className='w-full flex-1 rounded-sm border-[#b8b8b8] bg-[#f3f4f6] py-2.5 shadow-none'
+			>
 				<ItemContent>
 					<ItemTitle>Doanh thu SCTX điều chỉnh</ItemTitle>
 				</ItemContent>
@@ -106,7 +110,7 @@ export function AdjustmentMaintainCost({
 					</ItemTitle>
 				</ItemContent>
 
-				<ItemActions>
+				<ItemActions className='gap-1'>
 					<div className='size-5' />
 					<AccordionTrigger
 						disabled={!id}
@@ -122,7 +126,7 @@ export function AdjustmentMaintainCost({
 					<div className='size-5' />{' '}
 				</ItemActions>
 			</Item>
-			<AccordionContent className='p-0 px-2 pt-2'>
+			<AccordionContent className='p-0 px-1 pt-1.5'>
 				{id && isOpen && (
 					<div className='space-y-2'>
 						<DataTable
