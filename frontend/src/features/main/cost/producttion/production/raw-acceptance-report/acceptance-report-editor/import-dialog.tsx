@@ -47,9 +47,11 @@ type MaterialImportDialogProps = {
 	productionOutputId?: string;
 };
 
-type MaterialAssignmentCodeMapping = {
-	partId: string;
-	equipments: AssignmentCodeOption[];
+type TrackedMaterialAssignmentCodeMapping = {
+	trackedMaterialId?: string;
+	assignmentCodes?: AssignmentCodeOption[];
+	partId?: string;
+	equipments?: AssignmentCodeOption[];
 };
 
 type MaterialLookupItem = {
@@ -251,7 +253,7 @@ export function MaterialImportDialog({
 
 			setImportedItems(extractImportedItems(uploadRows));
 
-			const partIds = Array.from(
+			const trackedMaterialIds = Array.from(
 				new Set(
 					uploadRows
 						.filter((item) => item.type === MaterialType.SparePart)
@@ -264,27 +266,31 @@ export function MaterialImportDialog({
 				ProductionOrderOption[]
 			> = {};
 
-			if (partIds.length > 0) {
+			if (trackedMaterialIds.length > 0) {
 				const equipmentMappingsRes = await api.post<
-					MaterialAssignmentCodeMapping[],
+					TrackedMaterialAssignmentCodeMapping[],
 					string[]
-				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, trackedMaterialIds);
 
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					const sortedEquipments = [...(mapping.equipments ?? [])].sort(
+					const sortedAssignmentCodes = [
+						...(mapping.assignmentCodes ?? mapping.equipments ?? []),
+					].sort(
 						(a, b) => a.code.localeCompare(b.code),
 					);
-					fetchedAssignmentCodeOptionsByMaterialId[mapping.partId] =
-						sortedEquipments.map((equipment) => ({
+					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+					if (!trackedMaterialId) continue;
+					fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] =
+						sortedAssignmentCodes.map((equipment) => ({
 							value: toAssignmentCodeOptionValue(equipment.id),
 							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 			}
 
-			for (const partId of partIds) {
-				if (!fetchedAssignmentCodeOptionsByMaterialId[partId]) {
-					fetchedAssignmentCodeOptionsByMaterialId[partId] = [];
+			for (const trackedMaterialId of trackedMaterialIds) {
+				if (!fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId]) {
+					fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = [];
 				}
 			}
 
@@ -392,7 +398,7 @@ export function MaterialImportDialog({
 
 			if (specificType === 1) {
 				const equipmentMappingsRes = await api.post<
-					MaterialAssignmentCodeMapping[],
+					TrackedMaterialAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [createdPart.id]);
 
@@ -400,8 +406,10 @@ export function MaterialImportDialog({
 					...assignmentCodeOptionsByMaterialId,
 				};
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					nextAssignmentCodeOptionsByMaterialId[mapping.partId] = (
-						mapping.equipments ?? []
+					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+					if (!trackedMaterialId) continue;
+					nextAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
+						mapping.assignmentCodes ?? mapping.equipments ?? []
 					)
 						.slice()
 						.sort((a, b) => a.code.localeCompare(b.code))

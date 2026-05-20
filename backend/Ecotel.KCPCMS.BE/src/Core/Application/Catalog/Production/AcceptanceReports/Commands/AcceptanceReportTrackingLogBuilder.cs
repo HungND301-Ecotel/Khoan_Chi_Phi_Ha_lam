@@ -39,7 +39,7 @@ internal static class AcceptanceReportTrackingLogBuilder
                 continue;
             }
 
-            var part = allParts.FirstOrDefault(p => p.Id == item.PartId!.Value);
+            var part = ResolveTrackedMaterial(item, allParts);
             if (part == null)
             {
                 continue;
@@ -134,4 +134,9 @@ internal static class AcceptanceReportTrackingLogBuilder
             && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
             && item.IsLongTermTracking
             && residualQuantity > 0;
+
+    private static Part? ResolveTrackedMaterial(AcceptanceReportItem item, IList<Part> allParts)
+        => item.TrackedMaterialId.HasValue
+            ? allParts.FirstOrDefault(p => p.Id == item.TrackedMaterialId.Value)
+            : null;
 }

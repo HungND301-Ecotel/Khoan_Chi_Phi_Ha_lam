@@ -158,7 +158,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 if (existingItem == null)
                 {
-                    var newItem = LongTermAnchorSeedItem.Create(
+                    var newItem = LongTermAnchorSeedItem.CreateForMaterial(
                         seed.Id,
                         processGroup.Id,
                         part.Id,
@@ -177,7 +177,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     continue;
                 }
 
-                existingItem.Update(
+                existingItem.UpdateForMaterial(
                     processGroup.Id,
                     part.Id,
                     index,

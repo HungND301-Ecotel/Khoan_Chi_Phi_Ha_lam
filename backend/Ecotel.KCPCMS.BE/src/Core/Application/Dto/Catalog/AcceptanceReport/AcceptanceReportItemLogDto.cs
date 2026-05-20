@@ -2,6 +2,9 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record AcceptanceReportItemLogDto
 {
+    private string? _trackedMaterialCode;
+    private string? _trackedMaterialName;
+
     public Guid Id { get; init; }
     public Guid AcceptanceReportItemId { get; init; }
     public Guid? MaterialId { get; init; }
@@ -9,12 +12,36 @@ public record AcceptanceReportItemLogDto
     public Guid? ProcessGroupId { get; init; }
     public string? ProcessGroupCode { get; init; }
     public string? ProcessGroupName { get; init; }
-    public string? PartCode { get; init; }
-    public string? PartName { get; init; }
-    public string? MaterialCode { get; init; }
-    public string? MaterialName { get; init; }
-    public string? TrackedMaterialCode { get; init; }
-    public string? TrackedMaterialName { get; init; }
+    public string? PartCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? PartName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
+    public string? MaterialCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? MaterialName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
+    public string? TrackedMaterialCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? TrackedMaterialName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
     public string? UnitOfMeasureName { get; init; }
 
     // Financial values

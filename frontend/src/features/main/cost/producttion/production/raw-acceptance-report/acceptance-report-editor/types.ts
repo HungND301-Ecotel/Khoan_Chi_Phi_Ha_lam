@@ -33,8 +33,6 @@ export type AssignmentCodeOption = {
 	name: string;
 };
 
-export type Equipment = AssignmentCodeOption;
-
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
@@ -46,6 +44,7 @@ export type AcceptanceReportItemDto = {
 	materialName?: string | null;
 	trackedMaterialCode?: string | null;
 	trackedMaterialName?: string | null;
+	partCode?: string | null;
 	partName?: string | null;
 	unitOfMeasureName: string;
 	type: number;
@@ -157,7 +156,7 @@ export type QuantityDetail = {
 export type CategoryAllocation = {
 	processGroupId: string | null;
 	quantity: number | null;
-	assignmentCodeIds?: string[];
+	assignmentCodeIds: string[];
 	equipmentIds: string[];
 };
 
@@ -177,10 +176,10 @@ export type CreateAcceptanceReportItem = {
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
 	categoryAssignmentCodeId?: string | null;
-	categoryEquipmentId: string | null;
+	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId: string | null;
 	additionalCostAssignmentCodeId?: string | null;
-	additionalCostEquipmentId: string | null;
+	additionalCostEquipmentId?: string | null;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
 	materialsIncludedInContractRevenue: number;
@@ -215,10 +214,10 @@ export type UpdateAcceptanceReportItem = {
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
 	categoryAssignmentCodeId?: string | null;
-	categoryEquipmentId: string | null;
+	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId: string | null;
 	additionalCostAssignmentCodeId?: string | null;
-	additionalCostEquipmentId: string | null;
+	additionalCostEquipmentId?: string | null;
 	issuedQuantity: number;
 	shippedQuantity: number;
 	issuedDetails: QuantityDetail[];

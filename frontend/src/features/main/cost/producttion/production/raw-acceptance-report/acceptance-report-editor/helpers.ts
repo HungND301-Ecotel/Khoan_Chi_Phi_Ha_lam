@@ -80,12 +80,6 @@ export function resolveSelectionIds(value?: string | null): {
 	};
 }
 
-export const EQUIPMENT_OPTION_PREFIX = ASSIGNMENT_CODE_OPTION_PREFIX;
-
-export const toEquipmentOptionValue = toAssignmentCodeOptionValue;
-
-export const parseEquipmentOptionId = parseAssignmentCodeOptionId;
-
 export function parseQuantity(
 	value: number | string | null | undefined,
 ): number {
@@ -151,13 +145,11 @@ export function buildCategoryAllocationsForPayload(
 			processGroupId: allocation.processGroupId,
 			quantity: parseQuantity(allocation.quantity),
 			assignmentCodeIds: Array.from(
-				new Set(
-					allocation.assignmentCodeIds ??
-						allocation.equipmentIds ??
-						[],
-				),
+				new Set(allocation.assignmentCodeIds ?? allocation.equipmentIds ?? []),
 			),
-			equipmentIds: Array.from(new Set(allocation.equipmentIds ?? [])),
+			equipmentIds: Array.from(
+				new Set(allocation.assignmentCodeIds ?? allocation.equipmentIds ?? []),
+			),
 		}));
 
 	return normalized.length > 0 ? normalized : null;

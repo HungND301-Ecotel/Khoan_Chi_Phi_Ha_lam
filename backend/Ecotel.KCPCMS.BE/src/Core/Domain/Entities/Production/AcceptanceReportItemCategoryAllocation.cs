@@ -18,6 +18,7 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
     public virtual IReadOnlyCollection<AcceptanceReportItemCategoryAllocationEquipment> Equipments =>
         _equipments.AsReadOnly();
     public IEnumerable<Guid> AssignmentCodeIds => _equipments.Select(x => x.AssignmentCodeId);
+    public Guid? FirstAssignmentCodeId => _equipments.FirstOrDefault()?.AssignmentCodeId;
 
     private IList<AcceptanceReportItemLog> _acceptanceReportItemLogs = new List<AcceptanceReportItemLog>();
     public virtual IReadOnlyCollection<AcceptanceReportItemLog> AcceptanceReportItemLogs =>
@@ -72,7 +73,7 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
 
         foreach (var assignmentCodeId in assignmentCodeIds.Where(id => id != Guid.Empty).Distinct())
         {
-            _equipments.Add(AcceptanceReportItemCategoryAllocationEquipment.Create(Id, assignmentCodeId));
+            _equipments.Add(AcceptanceReportItemCategoryAllocationEquipment.CreateForAssignmentCode(Id, assignmentCodeId));
         }
     }
 }

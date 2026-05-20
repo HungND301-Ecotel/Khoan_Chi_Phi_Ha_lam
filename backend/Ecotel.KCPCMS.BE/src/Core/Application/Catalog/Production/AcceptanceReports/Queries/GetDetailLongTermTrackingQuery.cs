@@ -102,7 +102,6 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         foreach (var log in th1Logs)
         {
             var item = log.AcceptanceReportItem;
-            var part = item?.Part;
             if (!ShouldDisplayLongTermTracking(item, log))
             {
                 continue;
@@ -141,13 +140,13 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ProcessGroupId = processGroupInfo.ProcessGroupId,
                 ProcessGroupCode = processGroupInfo.ProcessGroupCode,
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
-                PartCode = part.Code?.Value ?? string.Empty,
-                PartName = part.Name,
-                MaterialCode = part.Code?.Value ?? string.Empty,
-                MaterialName = part.Name,
-                TrackedMaterialCode = part.Code?.Value ?? string.Empty,
-                TrackedMaterialName = part.Name,
-                UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
+                PartCode = ResolvePartCode(item) ?? string.Empty,
+                PartName = ResolvePartName(item),
+                MaterialCode = ResolveTrackedMaterialCode(item) ?? string.Empty,
+                MaterialName = ResolveTrackedMaterialName(item),
+                TrackedMaterialCode = ResolveTrackedMaterialCode(item) ?? string.Empty,
+                TrackedMaterialName = ResolveTrackedMaterialName(item),
+                UnitOfMeasureName = ResolveTrackedUnitOfMeasureName(item) ?? string.Empty,
                 PendingValueStartPeriod = log.PendingValueStartPeriod,
                 IssuedQuantity = log.IssuedQuantity,
                 UnitPrice = log.UnitPrice,
@@ -202,7 +201,6 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             var totalAllocatedTime = group.Sum(l => l.AllocationRatio);
 
             var item = latestLog.AcceptanceReportItem;
-            var part = item?.Part;
             if (!ShouldDisplayLongTermTracking(item, overrideLog ?? latestLog))
             {
                 continue;
@@ -304,13 +302,13 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ProcessGroupId = processGroupInfo.ProcessGroupId,
                 ProcessGroupCode = processGroupInfo.ProcessGroupCode,
                 ProcessGroupName = processGroupInfo.ProcessGroupName,
-                PartCode = part.Code?.Value ?? string.Empty,
-                PartName = part.Name,
-                MaterialCode = part.Code?.Value ?? string.Empty,
-                MaterialName = part.Name,
-                TrackedMaterialCode = part.Code?.Value ?? string.Empty,
-                TrackedMaterialName = part.Name,
-                UnitOfMeasureName = part.UnitOfMeasure?.Name ?? string.Empty,
+                PartCode = ResolvePartCode(item) ?? string.Empty,
+                PartName = ResolvePartName(item),
+                MaterialCode = ResolveTrackedMaterialCode(item) ?? string.Empty,
+                MaterialName = ResolveTrackedMaterialName(item),
+                TrackedMaterialCode = ResolveTrackedMaterialCode(item) ?? string.Empty,
+                TrackedMaterialName = ResolveTrackedMaterialName(item),
+                UnitOfMeasureName = ResolveTrackedUnitOfMeasureName(item) ?? string.Empty,
                 PendingValueStartPeriod = pendingValueStart,
                 IssuedQuantity = 0,
                 UnitPrice = 0,
@@ -340,7 +338,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 Id = snapshot.SeedItemId,
                 AcceptanceReportItemId = Guid.Empty,
                 MaterialId = snapshot.MaterialId,
-                TrackedMaterialId = snapshot.MaterialId,
+                TrackedMaterialId = snapshot.TrackedMaterialId,
                 ProcessGroupId = snapshot.ProcessGroupId,
                 ProcessGroupCode = snapshot.ProcessGroupCode,
                 ProcessGroupName = snapshot.ProcessGroupName,
@@ -348,8 +346,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 PartName = snapshot.PartName,
                 MaterialCode = snapshot.MaterialCode,
                 MaterialName = snapshot.MaterialName,
-                TrackedMaterialCode = snapshot.MaterialCode,
-                TrackedMaterialName = snapshot.MaterialName,
+                TrackedMaterialCode = snapshot.TrackedMaterialCode,
+                TrackedMaterialName = snapshot.TrackedMaterialName,
                 UnitOfMeasureName = snapshot.UnitOfMeasureName,
                 PendingValueStartPeriod = snapshot.PendingValueStartPeriod,
                 IssuedQuantity = snapshot.IssuedQuantity,
@@ -429,10 +427,25 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
     }
 
     private static bool ShouldDisplayLongTermTracking(AcceptanceReportItem? item, AcceptanceReportItemLog log)
-        => item?.Part != null
+        => item?.IsTrackedSctxItem == true
             && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
             && item.IsLongTermTracking
             && log.TotalValueToAccount > 0;
+
+    private static string? ResolveTrackedMaterialCode(AcceptanceReportItem? item)
+        => item?.Part?.Code?.Value ?? item?.Material?.Code?.Value;
+
+    private static string? ResolveTrackedMaterialName(AcceptanceReportItem? item)
+        => item?.Part?.Name ?? item?.Material?.Name;
+
+    private static string? ResolvePartCode(AcceptanceReportItem? item)
+        => item?.Part?.Code?.Value ?? item?.Material?.Code?.Value;
+
+    private static string? ResolvePartName(AcceptanceReportItem? item)
+        => item?.Part?.Name ?? item?.Material?.Name;
+
+    private static string? ResolveTrackedUnitOfMeasureName(AcceptanceReportItem? item)
+        => item?.Part?.UnitOfMeasure?.Name ?? item?.Material?.UnitOfMeasure?.Name;
 
     private static (decimal ValueByStandard, decimal AccountedValueThisPeriod, decimal PendingValueEndPeriod) CalculateCurrentPeriodValues(
         decimal totalValueToAccount,

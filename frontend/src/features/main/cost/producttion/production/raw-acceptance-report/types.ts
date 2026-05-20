@@ -2,8 +2,8 @@ export type RawAcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
-	partId?: string | null;
 	trackedMaterialId?: string | null;
+	partId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
@@ -15,10 +15,10 @@ export type RawAcceptanceReportItem = {
 	additionalCostEquipmentId?: string | null;
 	materialCode: string | null;
 	materialName: string | null;
-	partCode: string | null;
-	partName: string | null;
 	trackedMaterialCode?: string | null;
 	trackedMaterialName?: string | null;
+	partCode?: string | null;
+	partName?: string | null;
 	unitOfMeasureName: string | null;
 	planCost: number;
 	actualCost: number;
@@ -53,8 +53,8 @@ export type AcceptanceReportItem = {
 	id: string;
 	acceptanceReportId: string;
 	materialId: string | null;
-	partId?: string | null;
 	trackedMaterialId?: string | null;
+	partId?: string | null;
 	partType?: number | null;
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
@@ -67,10 +67,10 @@ export type AcceptanceReportItem = {
 	itemType?: number;
 	materialCode: string | null;
 	materialName: string | null;
-	partCode: string | null;
-	partName: string | null;
 	trackedMaterialCode?: string | null;
 	trackedMaterialName?: string | null;
+	partCode?: string | null;
+	partName?: string | null;
 	unitOfMeasureName: string | null;
 	planCost: number;
 	actualCost: number;
@@ -180,7 +180,7 @@ export type QuotaBasedMaterialQuantityDetail = {
 export type CategoryAllocation = {
 	processGroupId: string | null;
 	quantity: number | null;
-	assignmentCodeIds?: string[];
+	assignmentCodeIds: string[];
 	equipmentIds: string[];
 };
 

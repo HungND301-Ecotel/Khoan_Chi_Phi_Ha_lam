@@ -117,21 +117,22 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
                     item.Type,
                     item.TrackedMaterialId,
-                    item.MaterialId,
-                    item.PartId,
+                    null,
+                    null,
                     allMaterials,
                     allParts);
+                var trackedMaterialId = materialId ?? partId;
 
                 if (item.AcceptanceReportItemId.HasValue)
                 {
                     var existingItem = existingItemsByIds.FirstOrDefault(x => x.Id == item.AcceptanceReportItemId.Value)
                         ?? throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
 
-                    existingItem.Update(
+                    existingItem.UpdateForTrackedMaterial(
                         itemIndex,
                         processGroupId,
-                        materialId,
-                        partId,
+                        trackedMaterialId,
+                        item.Type,
                         item.UsageTime,
                         item.ItemType,
                         categoryReference,
@@ -155,12 +156,12 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
                 else
                 {
-                    var reportItem = AcceptanceReportItem.Create(
+                    var reportItem = AcceptanceReportItem.CreateForTrackedMaterial(
                         acceptanceReport.Id,
                         itemIndex,
                         processGroupId,
-                        materialId,
-                        partId,
+                        trackedMaterialId,
+                        item.Type,
                         item.UsageTime,
                         item.ItemType,
                         categoryReference,

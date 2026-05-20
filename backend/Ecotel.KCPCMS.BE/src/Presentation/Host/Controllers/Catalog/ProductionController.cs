@@ -199,7 +199,7 @@ public class ProductionController : BaseNoAuthController
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
-    [HttpPost("AcceptanceReport/sctx-revenue-by-equipment")]
+    [HttpPost("AcceptanceReport/sctx-revenue-by-assignment-code")]
     [OpenApiOperation("Get SCTX Revenue By AssignmentCode", "Get monthly SCTX revenue for one assignment code")]
     public async Task<IActionResult> GetSctxRevenueByEquipment([FromBody] GetSctxEquipmentRevenueRequest request)
     {

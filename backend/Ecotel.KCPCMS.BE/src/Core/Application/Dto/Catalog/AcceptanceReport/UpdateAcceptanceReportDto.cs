@@ -4,10 +4,26 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record UpdateAcceptanceReportItemDto
 {
+    private Guid? _trackedMaterialId;
+    private Guid? _categoryAssignmentCodeId;
+    private Guid? _additionalCostAssignmentCodeId;
+
     public Guid? Id { get; init; }
-    public Guid? TrackedMaterialId { get; init; }
-    public Guid? MaterialId { get; init; }
-    public Guid? PartId { get; init; }
+    public Guid? TrackedMaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? MaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? PartId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
     public required double UsageTime { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }
@@ -18,11 +34,27 @@ public record UpdateAcceptanceReportItemDto
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
     public Guid? CategoryProductionOrderId { get; init; }
-    public Guid? CategoryAssignmentCodeId { get; init; }
-    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? CategoryAssignmentCodeId
+    {
+        get => _categoryAssignmentCodeId;
+        init => _categoryAssignmentCodeId = value;
+    }
+    public Guid? CategoryEquipmentId
+    {
+        get => _categoryAssignmentCodeId;
+        init => _categoryAssignmentCodeId = value;
+    }
     public Guid? AdditionalCostProductionOrderId { get; init; }
-    public Guid? AdditionalCostAssignmentCodeId { get; init; }
-    public Guid? AdditionalCostEquipmentId { get; init; }
+    public Guid? AdditionalCostAssignmentCodeId
+    {
+        get => _additionalCostAssignmentCodeId;
+        init => _additionalCostAssignmentCodeId = value;
+    }
+    public Guid? AdditionalCostEquipmentId
+    {
+        get => _additionalCostAssignmentCodeId;
+        init => _additionalCostAssignmentCodeId = value;
+    }
 
     // Vật tư tính vào doanh thu khoán
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }

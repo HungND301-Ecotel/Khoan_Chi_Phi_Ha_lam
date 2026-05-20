@@ -6,13 +6,13 @@ public record LongTermAnchorSeedItemDto
 {
     public Guid Id { get; init; }
     public Guid MaterialId { get; init; }
-    public Guid PartId { get; init; }
+    public Guid? PartId => MaterialId;
     public Guid TrackedMaterialId { get; init; }
     public Guid ProcessGroupId { get; init; }
     public string MaterialCode { get; init; } = string.Empty;
     public string MaterialName { get; init; } = string.Empty;
-    public string PartCode { get; init; } = string.Empty;
-    public string PartName { get; init; } = string.Empty;
+    public string? PartCode => TrackedMaterialCode;
+    public string? PartName => TrackedMaterialName;
     public string TrackedMaterialCode { get; init; } = string.Empty;
     public string TrackedMaterialName { get; init; } = string.Empty;
     public string UnitOfMeasureName { get; init; } = string.Empty;
@@ -92,7 +92,7 @@ public record LongTermAnchorSeedExcelRowDto
     public string MaterialCode { get; init; } = string.Empty;
 
     [Display(Name = "Mã vật tư")]
-    public string PartCode { get; init; } = string.Empty;
+    public string? PartCode => MaterialCode;
 
     [Display(Name = "Mã nhóm công đoạn")]
     public string ProcessGroupCode { get; init; } = string.Empty;

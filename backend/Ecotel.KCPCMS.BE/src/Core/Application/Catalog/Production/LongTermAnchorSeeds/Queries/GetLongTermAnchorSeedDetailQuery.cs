@@ -86,13 +86,10 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                 {
                     Id = item.Id,
                     MaterialId = item.MaterialId,
-                    PartId = item.PartId,
                     TrackedMaterialId = item.MaterialId,
                     ProcessGroupId = item.ProcessGroupId,
                     MaterialCode = GetMaterialCode(item.Material),
                     MaterialName = GetMaterialName(item.Material),
-                    PartCode = GetMaterialCode(item.Part),
-                    PartName = GetMaterialName(item.Part),
                     TrackedMaterialCode = GetMaterialCode(item.Material),
                     TrackedMaterialName = GetMaterialName(item.Material),
                     UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? string.Empty,
@@ -119,4 +116,5 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
 
     private static string GetMaterialName(Part part)
         => part.Name;
+
 }

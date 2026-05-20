@@ -141,12 +141,20 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         ? updateItem.ProcessGroupId
                         : null;
                     var categoryAllocations = AcceptanceReportCommandItemHelper.MapCategoryAllocations(updateItem.CategoryAllocations);
+                    var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
+                        existingItem.IsTrackedSctxItem ? AcceptanceReportItemType.Part : AcceptanceReportItemType.Material,
+                        updateItem.TrackedMaterialId,
+                        null,
+                        null,
+                        allMaterials,
+                        allParts);
+                    var trackedMaterialId = materialId ?? partId;
 
-                    existingItem.Update(
+                    existingItem.UpdateForTrackedMaterial(
                         itemSortOrders[existingItem.Id],
                         processGroupId,
-                        existingItem.MaterialId,
-                        existingItem.PartId,
+                        trackedMaterialId,
+                        existingItem.IsTrackedSctxItem ? AcceptanceReportItemType.Part : AcceptanceReportItemType.Material,
                         updateItem.UsageTime,
                         updateItem.ItemType,
                         categoryReference,
@@ -212,8 +220,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
                     createItem.Type,
                     createItem.TrackedMaterialId,
-                    createItem.MaterialId,
-                    createItem.PartId,
+                    null,
+                    null,
                     allMaterials,
                     allParts);
 
@@ -222,12 +230,13 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     AcceptanceReportCommandItemHelper.ValidateProcessGroupIds(processGroupId, categoryAllocations, processGroupIdsInPeriod);
                 }
 
-                var reportItem = AcceptanceReportItem.Create(
+                var trackedMaterialId = materialId ?? partId;
+                var reportItem = AcceptanceReportItem.CreateForTrackedMaterial(
                     acceptanceReport.Id,
                     sortOrder,
                     processGroupId,
-                    materialId,
-                    partId,
+                    trackedMaterialId,
+                    createItem.Type,
                     createItem.UsageTime,
                     createItem.ItemType,
                     categoryReference,

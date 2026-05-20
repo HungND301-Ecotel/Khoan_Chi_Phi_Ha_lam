@@ -22,4 +22,9 @@ public class AcceptanceReportItemCategoryAllocationEquipment : AuditableEntity<G
             EquipmentId = assignmentCodeId,
         };
     }
+
+    public static AcceptanceReportItemCategoryAllocationEquipment CreateForAssignmentCode(
+        Guid acceptanceReportItemCategoryAllocationId,
+        Guid assignmentCodeId)
+        => Create(acceptanceReportItemCategoryAllocationId, assignmentCodeId);
 }

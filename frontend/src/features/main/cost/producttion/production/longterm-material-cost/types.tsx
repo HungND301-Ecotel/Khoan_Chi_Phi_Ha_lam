@@ -2,13 +2,16 @@ export type LongtermMaterialDetailItem = {
 	id: string;
 	acceptanceReportItemId: string;
 	materialId?: string;
+	trackedMaterialId?: string;
 	processGroupId?: string;
 	processGroupCode?: string;
 	processGroupName?: string;
 	materialCode?: string;
 	materialName?: string;
-	partCode: string; // Mã vật tư
-	partName: string; // Tên vật tư
+	trackedMaterialCode?: string; // Mã vật tư
+	trackedMaterialName?: string; // Tên vật tư
+	partCode?: string; // Alias compatibility
+	partName?: string; // Alias compatibility
 	unitOfMeasureName: string; // ĐVT
 	pendingValueStartPeriod: number; // GIÁ TRỊ CHỜ HẠCH TOÁN ĐẦU KỲ (Đồng)
 	issuedQuantity: number; // SỐ LƯỢNG (trong GIÁ TRỊ PHÁT SINH TRONG KỲ)

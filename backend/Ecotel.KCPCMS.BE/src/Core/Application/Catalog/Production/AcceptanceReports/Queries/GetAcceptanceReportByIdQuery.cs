@@ -47,20 +47,18 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             AcceptanceReportId = item.AcceptanceReportId,
             CategoryProductionOrderId = item.ProductionOrderId,
             CategoryAssignmentCodeId = item.CategoryAssignmentCodeId,
-            CategoryEquipmentId = item.CategoryAssignmentCodeId,
             AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
             AdditionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId,
-            AdditionalCostEquipmentId = item.AdditionalCostAssignmentCodeId,
             MaterialId = item.TrackedMaterialId,
             PartId = item.PartId,
             TrackedMaterialId = item.TrackedMaterialId,
             UsageTime = item.UsageTime,
-            MaterialCode = item.Material?.Code?.Value ?? item.Part?.Code?.Value,
-            MaterialName = item.Material?.Name ?? item.Part?.Name,
-            PartCode = item.Part?.Code?.Value,
-            PartName = item.Part?.Name,
-            TrackedMaterialCode = item.Material?.Code?.Value ?? item.Part?.Code?.Value,
-            TrackedMaterialName = item.Material?.Name ?? item.Part?.Name,
+            MaterialCode = ResolveTrackedMaterialCode(item),
+            MaterialName = ResolveTrackedMaterialName(item),
+            PartCode = ResolvePartCode(item),
+            PartName = ResolvePartName(item),
+            TrackedMaterialCode = ResolveTrackedMaterialCode(item),
+            TrackedMaterialName = ResolveTrackedMaterialName(item),
             PartType = item.Part?.Type,
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
@@ -79,7 +77,6 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     ProcessGroupName = allocation.ProcessGroup?.Name,
                     Quantity = allocation.Quantity,
                     AssignmentCodeIds = allocation.AssignmentCodeIds.ToList(),
-                    EquipmentIds = allocation.AssignmentCodeIds.ToList(),
                 })
                 .ToList(),
             AdditionalCost = item.AdditionalCost,
@@ -175,4 +172,20 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
 
         return 0;
     }
+
+    private static string? ResolveTrackedMaterialCode(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Code?.Value ?? item.Material?.Code?.Value
+            : item.Material?.Code?.Value ?? item.Part?.Code?.Value;
+
+    private static string? ResolveTrackedMaterialName(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Name ?? item.Material?.Name
+            : item.Material?.Name ?? item.Part?.Name;
+
+    private static string? ResolvePartCode(AcceptanceReportItem item)
+        => item.Part?.Code?.Value ?? item.Material?.Code?.Value;
+
+    private static string? ResolvePartName(AcceptanceReportItem item)
+        => item.Part?.Name ?? item.Material?.Name;
 }

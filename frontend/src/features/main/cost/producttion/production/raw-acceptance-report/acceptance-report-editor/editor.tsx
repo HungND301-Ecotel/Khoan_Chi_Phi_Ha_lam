@@ -318,7 +318,8 @@ function getCategoryAllocationSignature(
 			quantity: parseAllocationQuantity(allocation.quantity),
 			assignmentCodeIds:
 				allocation.assignmentCodeIds ?? allocation.equipmentIds ?? [],
-			equipmentIds: allocation.equipmentIds ?? [],
+			equipmentIds:
+				allocation.assignmentCodeIds ?? allocation.equipmentIds ?? [],
 		})),
 	);
 }
@@ -1352,13 +1353,15 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		| undefined;
 	const categoryProductionOrderId = row?.categoryProductionOrderId;
 	const categoryAssignmentCodeId = row?.categoryAssignmentCodeId;
-	const categoryEquipmentId = row?.categoryEquipmentId;
+	const categoryEquipmentId =
+		row?.categoryAssignmentCodeId ?? row?.categoryEquipmentId;
 	const categoryAssignmentCodeIds = row?.categoryAssignmentCodeIds as
 		| string[]
 		| undefined;
-	const categoryEquipmentIds = row?.categoryEquipmentIds as
-		| string[]
-		| undefined;
+	const categoryEquipmentIds =
+		(row?.categoryAssignmentCodeIds ?? row?.categoryEquipmentIds) as
+			| string[]
+			| undefined;
 	const categoryAllocations = row?.categoryAllocations as
 		| CategoryAllocation[]
 		| undefined;

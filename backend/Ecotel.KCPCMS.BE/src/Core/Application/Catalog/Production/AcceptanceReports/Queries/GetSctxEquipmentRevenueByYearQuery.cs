@@ -24,6 +24,7 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
     public async Task<SctxEquipmentRevenueResponseDto> Handle(GetSctxEquipmentRevenueByYearQuery request, CancellationToken cancellationToken)
     {
+        var assignmentCodeId = request.AssignmentCodeId;
         var hasFromMonth = !string.IsNullOrWhiteSpace(request.FromMonth);
         var hasToMonth = !string.IsNullOrWhiteSpace(request.ToMonth);
 
@@ -47,7 +48,7 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
         var plannedFactors = await _plannedMaintainFactorRepository.GetAll()
             .Where(x => x.MaintainUnitPrice != null
-                && x.MaintainUnitPrice.EquipmentId == request.AssignmentCodeId
+                && x.MaintainUnitPrice.EquipmentId == assignmentCodeId
                 && x.PlannedMaintainCost != null
                 && x.PlannedMaintainCost.Output.StartMonth <= endMonth
                 && x.PlannedMaintainCost.Output.EndMonth >= startMonth
@@ -123,8 +124,7 @@ public class GetSctxEquipmentRevenueByYearQueryHandler(IUnitOfWork unitOfWork)
 
         return new SctxEquipmentRevenueResponseDto
         {
-            AssignmentCodeId = request.AssignmentCodeId,
-            EquipmentId = request.AssignmentCodeId,
+            AssignmentCodeId = assignmentCodeId,
             Years = years
         };
     }

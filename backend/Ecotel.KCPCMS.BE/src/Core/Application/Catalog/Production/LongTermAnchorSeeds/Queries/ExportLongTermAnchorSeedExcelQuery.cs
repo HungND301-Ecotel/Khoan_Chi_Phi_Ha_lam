@@ -59,12 +59,11 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         var rows = seed?.Items
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.ProcessGroup.Code != null ? x.ProcessGroup.Code.Value : string.Empty)
-            .ThenBy(x => GetMaterialCode(x.Part))
+            .ThenBy(x => GetTrackedMaterialCode(x))
             .Select(x => new LongTermAnchorSeedExcelRowDto
             {
                 Id = x.Id,
-                MaterialCode = BuildCodeName(GetMaterialCode(x.Part), GetMaterialName(x.Part)),
-                PartCode = BuildCodeName(GetMaterialCode(x.Part), GetMaterialName(x.Part)),
+                MaterialCode = BuildCodeName(GetTrackedMaterialCode(x), GetTrackedMaterialName(x)),
                 ProcessGroupCode = BuildCodeName(x.ProcessGroup.Code?.Value, x.ProcessGroup.Name),
                 IssuedQuantity = x.IssuedQuantity,
                 UnitPrice = x.UnitPrice,
@@ -138,4 +137,11 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
 
     private static string GetMaterialName(PartEntity part)
         => part.Name;
+
+    private static string GetTrackedMaterialCode(LongTermAnchorSeedItem item)
+        => item.Material?.Code?.Value ?? item.Part?.Code?.Value ?? string.Empty;
+
+    private static string GetTrackedMaterialName(LongTermAnchorSeedItem item)
+        => item.Material?.Name ?? item.Part?.Name ?? string.Empty;
+
 }

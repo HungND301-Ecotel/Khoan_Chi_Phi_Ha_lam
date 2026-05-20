@@ -10,6 +10,7 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public Guid ProcessGroupId { get; protected set; }
     public Guid PartId { get; protected set; }
     public Guid MaterialId => PartId;
+    public Guid TrackedMaterialId => MaterialId;
     public int SortOrder { get; protected set; }
     public double IssuedQuantity { get; protected set; }
     public decimal UnitPrice { get; protected set; }
@@ -62,6 +63,33 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
         };
     }
 
+    public static LongTermAnchorSeedItem CreateForMaterial(
+        Guid longTermAnchorSeedId,
+        Guid processGroupId,
+        Guid materialId,
+        int sortOrder,
+        double issuedQuantity,
+        decimal unitPrice,
+        decimal pendingValueStartPeriod,
+        double usageTime,
+        double allocatedTime,
+        double allocationRatio,
+        string? note,
+        Guid? anchorSeedRowId = null)
+        => Create(
+            longTermAnchorSeedId,
+            processGroupId,
+            materialId,
+            sortOrder,
+            issuedQuantity,
+            unitPrice,
+            pendingValueStartPeriod,
+            usageTime,
+            allocatedTime,
+            allocationRatio,
+            note,
+            anchorSeedRowId);
+
     public void Update(
         Guid processGroupId,
         Guid partId,
@@ -92,6 +120,29 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
             AnchorSeedRowId = Guid.NewGuid();
         }
     }
+
+    public void UpdateForMaterial(
+        Guid processGroupId,
+        Guid materialId,
+        int sortOrder,
+        double issuedQuantity,
+        decimal unitPrice,
+        decimal pendingValueStartPeriod,
+        double usageTime,
+        double allocatedTime,
+        double allocationRatio,
+        string? note)
+        => Update(
+            processGroupId,
+            materialId,
+            sortOrder,
+            issuedQuantity,
+            unitPrice,
+            pendingValueStartPeriod,
+            usageTime,
+            allocatedTime,
+            allocationRatio,
+            note);
 
     private static void Validate(
         double issuedQuantity,

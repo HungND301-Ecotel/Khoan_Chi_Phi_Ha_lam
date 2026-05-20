@@ -9,29 +9,69 @@ public record AcceptanceReportCategoryAllocationDetailDto
     public string? ProcessGroupName { get; init; }
     public required double Quantity { get; init; }
     public List<Guid> AssignmentCodeIds { get; init; } = new();
-    public List<Guid> EquipmentIds { get; init; } = new();
+    public List<Guid> EquipmentIds => AssignmentCodeIds;
 }
 
 public record AcceptanceReportDetailItemDto
 {
+    private Guid? _trackedMaterialId;
+    private string? _trackedMaterialCode;
+    private string? _trackedMaterialName;
+
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
     public required Guid? CategoryProductionOrderId { get; init; }
     public Guid? CategoryAssignmentCodeId { get; init; }
-    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? CategoryEquipmentId => CategoryAssignmentCodeId;
     public Guid? AdditionalCostProductionOrderId { get; init; }
     public Guid? AdditionalCostAssignmentCodeId { get; init; }
-    public Guid? AdditionalCostEquipmentId { get; init; }
-    public Guid? MaterialId { get; init; }
-    public Guid? PartId { get; init; }
-    public Guid? TrackedMaterialId { get; init; }
+    public Guid? AdditionalCostEquipmentId => AdditionalCostAssignmentCodeId;
+    public Guid? MaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? PartId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? TrackedMaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
     public double UsageTime { get; init; }
-    public string? MaterialCode { get; init; }
-    public string? MaterialName { get; init; }
-    public string? PartCode { get; init; }
-    public string? PartName { get; init; }
-    public string? TrackedMaterialCode { get; init; }
-    public string? TrackedMaterialName { get; init; }
+    public string? MaterialCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? MaterialName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
+    public string? PartCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? PartName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
+    public string? TrackedMaterialCode
+    {
+        get => _trackedMaterialCode;
+        init => _trackedMaterialCode = value;
+    }
+    public string? TrackedMaterialName
+    {
+        get => _trackedMaterialName;
+        init => _trackedMaterialName = value;
+    }
     public PartType? PartType { get; init; }
     public string? UnitOfMeasureName { get; init; }
 

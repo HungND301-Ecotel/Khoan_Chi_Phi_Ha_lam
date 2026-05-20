@@ -1,10 +1,13 @@
 export type LongTermAnchorSeedItem = {
 	id: string;
 	materialId: string;
+	trackedMaterialId?: string;
 	partId?: string;
 	processGroupId: string;
 	materialCode: string;
 	materialName: string;
+	trackedMaterialCode?: string;
+	trackedMaterialName?: string;
 	partCode?: string;
 	partName?: string;
 	unitOfMeasureName: string;

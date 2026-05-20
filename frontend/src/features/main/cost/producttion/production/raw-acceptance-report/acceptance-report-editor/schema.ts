@@ -23,7 +23,7 @@ function parseSchemaNumber(value: number | string | null | undefined): number {
 const categoryAllocationSchema = z.object({
 	processGroupId: z.string().nullable(),
 	quantity: z.number().nullable().default(null),
-	assignmentCodeIds: z.array(z.string()).optional(),
+	assignmentCodeIds: z.array(z.string()).default([]),
 	equipmentIds: z.array(z.string()).default([]),
 });
 
@@ -116,9 +116,9 @@ export const materialFormSchema = z
 			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const needsEquipment =
+			const needsAssignmentCode =
 				categoryValue === 3 && data.type === 2 && data.itemType === 1;
-			if (!data.showCategoryDropdown || !needsEquipment) return true;
+			if (!data.showCategoryDropdown || !needsAssignmentCode) return true;
 			const allocations = data.categoryAllocations ?? [];
 			const selectedAssignmentCodeIds =
 				data.categoryAssignmentCodeIds ?? data.categoryEquipmentIds ?? [];

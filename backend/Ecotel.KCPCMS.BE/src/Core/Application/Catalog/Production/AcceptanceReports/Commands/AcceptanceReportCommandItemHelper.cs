@@ -26,34 +26,34 @@ internal static class AcceptanceReportCommandItemHelper
     {
         if (IsMaterialItem(itemType))
         {
-            var materialInputId = materialId ?? trackedMaterialId;
-            if (!materialInputId.HasValue)
+            var trackedMaterialInputId = trackedMaterialId ?? materialId;
+            if (!trackedMaterialInputId.HasValue)
             {
-                throw new NotFoundException("MaterialId is required for material item");
+                throw new NotFoundException("TrackedMaterialId is required for material item");
             }
 
-            if (allMaterials.All(m => m.Id != materialInputId.Value))
+            if (allMaterials.All(m => m.Id != trackedMaterialInputId.Value))
             {
-                throw new NotFoundException($"Material with Id '{materialInputId.Value}' not found");
+                throw new NotFoundException($"Material with Id '{trackedMaterialInputId.Value}' not found");
             }
 
-            return (materialInputId.Value, null);
+            return (trackedMaterialInputId.Value, null);
         }
 
         if (IsTrackedSctxItem(itemType))
         {
-            var partInputId = partId ?? trackedMaterialId;
-            if (!partInputId.HasValue)
+            var trackedMaterialInputId = trackedMaterialId ?? partId;
+            if (!trackedMaterialInputId.HasValue)
             {
-                throw new NotFoundException("PartId is required for SCTX item");
+                throw new NotFoundException("TrackedMaterialId is required for SCTX item");
             }
 
-            if (allParts.All(p => p.Id != partInputId.Value))
+            if (allParts.All(p => p.Id != trackedMaterialInputId.Value))
             {
-                throw new NotFoundException($"Part with Id '{partInputId.Value}' not found");
+                throw new NotFoundException($"Part with Id '{trackedMaterialInputId.Value}' not found");
             }
 
-            return (null, partInputId.Value);
+            return (null, trackedMaterialInputId.Value);
         }
 
         return (null, null);

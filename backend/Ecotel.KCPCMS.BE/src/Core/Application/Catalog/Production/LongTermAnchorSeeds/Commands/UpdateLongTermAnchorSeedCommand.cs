@@ -80,7 +80,7 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                     throw new BadRequestException("Vật tư không hợp lệ");
                 }
 
-                entity.Update(
+                entity.UpdateForMaterial(
                     item.ProcessGroupId,
                     trackedMaterialId.Value,
                     index,

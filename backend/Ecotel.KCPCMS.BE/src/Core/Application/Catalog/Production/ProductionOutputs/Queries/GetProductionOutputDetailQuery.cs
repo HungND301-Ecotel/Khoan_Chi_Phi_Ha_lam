@@ -130,7 +130,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .ToList();
 
         // ── Sub-section 1: Vật liệu ──────────────────────────────────────────
-        foreach (var item in sectionItems.Where(i => i.MaterialId.HasValue && i.Material != null))
+        foreach (var item in sectionItems.Where(i => i.IsMaterialItem && i.Material != null))
         {
             var groupKey = $"A1_{item.Material!.AssignmentCode?.Code?.Value ?? "VTK"}";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
@@ -331,7 +331,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         // ── Vật liệu ─────────────────────────────────────────────────────────
         foreach (var item in sectionItems
             .Where(i => i.AdditionalCost == AdditionalCost.Material
-                     && i.MaterialId.HasValue && i.Material != null))
+                     && i.IsMaterialItem && i.Material != null))
         {
             string groupCode, groupName, groupKey;
             Guid? productionOrderId = null;
@@ -465,7 +465,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         // ── OtherMaterial ─────────────────────────────────────────────────────
         foreach (var item in sectionItems
             .Where(i => i.AdditionalCost == AdditionalCost.SafeAndWelfare
-                     && i.MaterialId.HasValue && i.Material != null))
+                     && i.IsMaterialItem && i.Material != null))
         {
             var groupKey = $"BO_{item.OtherMaterialDetail}";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
@@ -501,7 +501,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         var sectionItems = report.AcceptanceReportItems
             .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None
-                     && i.MaterialId.HasValue && i.Material != null)
+                     && i.IsMaterialItem && i.Material != null)
             .ToList();
 
         foreach (var item in sectionItems)
@@ -567,7 +567,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReport report, ProductionOutput productionOutput)
     {
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.Asset != Asset.None && i.MaterialId.HasValue && i.Material != null)
+            .Where(i => i.Asset != Asset.None && i.IsMaterialItem && i.Material != null)
             .ToList();
 
         if (sectionItems.Any())
@@ -1298,10 +1298,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .Sum(d => d.Quantity);
 
     private static bool IsSctxItem(AcceptanceReportItem item)
-        => GetSctxMaterial(item) != null;
+        => item.IsTrackedSctxItem && GetSctxMaterial(item) != null;
 
     private static SctxMaterialContext? GetSctxMaterial(AcceptanceReportItem item)
-        => item.Part == null ? null : BuildSctxMaterial(item.Part);
+        => !item.IsTrackedSctxItem || item.Part == null ? null : BuildSctxMaterial(item.Part);
 
     private static SctxMaterialContext BuildSctxMaterial(Part part)
         => new(

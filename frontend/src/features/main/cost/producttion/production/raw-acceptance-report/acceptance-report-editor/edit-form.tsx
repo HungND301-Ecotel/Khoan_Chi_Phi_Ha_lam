@@ -34,9 +34,11 @@ import {
 	mapAcceptanceReportDetailToEditorForm,
 } from './mappers';
 
-type MaintainAssignmentCodeMapping = {
-	partId: string;
-	equipments: AssignmentCodeOption[];
+type TrackedMaterialAssignmentCodeMapping = {
+	trackedMaterialId?: string;
+	assignmentCodes?: AssignmentCodeOption[];
+	partId?: string;
+	equipments?: AssignmentCodeOption[];
 };
 
 type ProductionOutputScopeResponse = {
@@ -297,12 +299,14 @@ export function AcceptanceReportEditForm({
 				const nextImportedItems = extractImportedItems(nextFormValues.materials);
 				setImportedItems(nextImportedItems);
 
-				const partIds = Array.from(
+				const trackedMaterialIds = Array.from(
 					new Set(
 						response.result.items
 							.filter((item) => item.type === MaterialType.SparePart)
-							.map((item) => item.partId)
-							.filter((partId): partId is string => Boolean(partId)),
+							.map((item) => item.trackedMaterialId ?? item.partId)
+							.filter((trackedMaterialId): trackedMaterialId is string =>
+								Boolean(trackedMaterialId),
+							),
 					),
 				);
 				const fetchedAssignmentCodeOptionsByMaterialId: Record<
@@ -310,15 +314,17 @@ export function AcceptanceReportEditForm({
 					ProductionOrderOption[]
 				> = {};
 
-				if (partIds.length > 0) {
+				if (trackedMaterialIds.length > 0) {
 					const equipmentMappingsRes = await api.post<
-						MaintainAssignmentCodeMapping[],
+						TrackedMaterialAssignmentCodeMapping[],
 						string[]
-					>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
+					>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, trackedMaterialIds);
 
 					for (const mapping of equipmentMappingsRes.result ?? []) {
-						fetchedAssignmentCodeOptionsByMaterialId[mapping.partId] = (
-							mapping.equipments ?? []
+						const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+						if (!trackedMaterialId) continue;
+						fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
+							mapping.assignmentCodes ?? mapping.equipments ?? []
 						)
 							.sort((a, b) => a.code.localeCompare(b.code))
 							.map((equipment) => ({
@@ -328,9 +334,9 @@ export function AcceptanceReportEditForm({
 					}
 				}
 
-				for (const partId of partIds) {
-					if (!fetchedAssignmentCodeOptionsByMaterialId[partId]) {
-						fetchedAssignmentCodeOptionsByMaterialId[partId] = [];
+				for (const trackedMaterialId of trackedMaterialIds) {
+					if (!fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId]) {
+						fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = [];
 					}
 				}
 
@@ -393,7 +399,7 @@ export function AcceptanceReportEditForm({
 		) {
 			try {
 				const equipmentMappingsRes = await api.post<
-					MaintainAssignmentCodeMapping[],
+					TrackedMaterialAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [
 					option.materialOrPartId,
@@ -402,8 +408,10 @@ export function AcceptanceReportEditForm({
 					...assignmentCodeOptionsByMaterialId,
 				};
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					nextAssignmentCodeOptionsByMaterialId[mapping.partId] = (
-						mapping.equipments ?? []
+					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+					if (!trackedMaterialId) continue;
+					nextAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
+						mapping.assignmentCodes ?? mapping.equipments ?? []
 					)
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({

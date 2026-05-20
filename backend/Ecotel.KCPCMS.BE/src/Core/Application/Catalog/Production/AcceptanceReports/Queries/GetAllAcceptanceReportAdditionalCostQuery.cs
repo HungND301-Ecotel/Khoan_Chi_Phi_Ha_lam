@@ -48,8 +48,8 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
         foreach (var item in itemsWithAdditionalCost)
         {
             var materialId = item.TrackedMaterialId;
-            var code = item.Material?.Code?.Value ?? item.Part?.Code?.Value;
-            var name = item.Material?.Name ?? item.Part?.Name;
+            var code = ResolveTrackedMaterialCode(item);
+            var name = ResolveTrackedMaterialName(item);
 
             var costItem = new AdditionalCostItemDto
             {
@@ -82,5 +82,15 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
             AdditionalCosts = additionalCostsGroup
         };
     }
+
+    private static string? ResolveTrackedMaterialCode(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Code?.Value ?? item.Material?.Code?.Value
+            : item.Material?.Code?.Value ?? item.Part?.Code?.Value;
+
+    private static string? ResolveTrackedMaterialName(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Name ?? item.Material?.Name
+            : item.Material?.Name ?? item.Part?.Name;
 }
 
