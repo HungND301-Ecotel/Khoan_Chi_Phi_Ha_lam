@@ -7,6 +7,7 @@ using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Extensions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Index.AssignmentCodes.Commands;
@@ -53,6 +54,7 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
             {
                 var materials = await _materialRepository.GetAllAsync(
                     predicate: m => materialIds.Contains(m.Id),
+                    include: q => q.Include(m => m.Code),
                     disableTracking: false);
 
                 if (materials.Count != materialIds.Count)

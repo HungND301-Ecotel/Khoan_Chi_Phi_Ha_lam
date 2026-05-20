@@ -65,7 +65,6 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                 throw new ConflictException(CustomResponseMessage.CostTimeOverlap);
             }
 
-            existAssignmentCode.ClearCost();
             existAssignmentCode.AddCost(costList);
 
             var currentLinks = await _assignmentCodeMaterialRepository.GetAllAsync(
@@ -75,6 +74,7 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
             var selectedMaterials = materialIds.Any()
                 ? await _materialRepository.GetAllAsync(
                     predicate: m => materialIds.Contains(m.Id),
+                    include: q => q.Include(m => m.Code),
                     disableTracking: false)
                 : new List<Domain.Entities.Index.Material>();
 

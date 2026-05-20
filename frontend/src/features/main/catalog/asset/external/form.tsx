@@ -123,8 +123,12 @@ export function AssetExternalForm({
 				!Number.isNaN(cost.amount);
 			const wasAutoFilled =
 				lastSyncedPlan !== undefined && cost.actualAmount === lastSyncedPlan;
+			const shouldSyncActualAmount =
+				hasPlanAmount &&
+				(isActualAmountEmpty ||
+					(wasAutoFilled && cost.actualAmount !== cost.amount));
 
-			if ((isActualAmountEmpty || wasAutoFilled) && hasPlanAmount) {
+			if (shouldSyncActualAmount) {
 				form.setValue(`costs.${index}.actualAmount`, cost.amount, {
 					shouldDirty: true,
 				});
