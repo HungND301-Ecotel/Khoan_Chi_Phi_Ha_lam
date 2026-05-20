@@ -69,6 +69,12 @@ interface ExcelStructuredTableProps {
 	startIndex?: number;
 }
 
+const getMaterialCode = (item: LongtermMaterialDetailItem) =>
+	item.materialCode || item.partCode || '';
+
+const getMaterialName = (item: LongtermMaterialDetailItem) =>
+	item.materialName || item.partName || '';
+
 const borderCellClass =
 	'border border-black px-0.5 py-1 align-middle leading-tight whitespace-normal break-words';
 
@@ -172,10 +178,10 @@ const ExcelStructuredTable = ({
 							STT
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
-							MÃ PHỤ TÙNG
+							MÃ VẬT TƯ
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
-							TÊN PHỤ TÙNG
+							TÊN VẬT TƯ
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
 							ĐVT
@@ -267,15 +273,15 @@ const ExcelStructuredTable = ({
 					) : (
 						items.map((item, index) => (
 							<tr
-								key={item.id || `${item.partCode}-${index}`}
+								key={item.id || `${getMaterialCode(item)}-${index}`}
 								className='bg-white'
 							>
 								<td className={borderCellClass}>{startIndex + index}</td>
 								<td className={cn(borderCellClass, 'text-left')}>
-									{item.partCode}
+									{getMaterialCode(item)}
 								</td>
 								<td className={cn(borderCellClass, 'text-left')}>
-									{item.partName}
+									{getMaterialName(item)}
 								</td>
 								<td className={borderCellClass}>{item.unitOfMeasureName}</td>
 								<td className={cn(borderCellClass, 'text-right')}>
@@ -464,8 +470,8 @@ export function LongtermMaterialCostDataTable({
 
 		return processGroupFilteredItems.filter((item) => {
 			const keywords = [
-				item.partCode,
-				item.partName,
+				getMaterialCode(item),
+				getMaterialName(item),
 				item.unitOfMeasureName,
 				item.processGroupCode,
 				item.processGroupName,

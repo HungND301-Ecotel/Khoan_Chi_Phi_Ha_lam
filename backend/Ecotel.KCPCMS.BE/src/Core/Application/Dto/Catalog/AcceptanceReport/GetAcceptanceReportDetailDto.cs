@@ -8,6 +8,7 @@ public record AcceptanceReportCategoryAllocationDetailDto
     public string? ProcessGroupCode { get; init; }
     public string? ProcessGroupName { get; init; }
     public required double Quantity { get; init; }
+    public List<Guid> AssignmentCodeIds { get; init; } = new();
     public List<Guid> EquipmentIds { get; init; } = new();
 }
 
@@ -16,8 +17,10 @@ public record AcceptanceReportDetailItemDto
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
     public required Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryAssignmentCodeId { get; init; }
     public Guid? CategoryEquipmentId { get; init; }
     public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostAssignmentCodeId { get; init; }
     public Guid? AdditionalCostEquipmentId { get; init; }
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }

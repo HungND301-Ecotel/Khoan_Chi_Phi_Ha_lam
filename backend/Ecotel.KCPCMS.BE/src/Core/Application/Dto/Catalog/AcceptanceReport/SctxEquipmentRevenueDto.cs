@@ -22,7 +22,7 @@ public class SctxEquipmentRevenueByMonthDto
 public class SctxEquipmentRevenueResponseDto
 {
     public Guid AssignmentCodeId { get; set; }
-    public Guid EquipmentId { get; set; }
+    public Guid? EquipmentId { get; set; }
     public IList<SctxEquipmentRevenueByYearDto> Years { get; set; } = new List<SctxEquipmentRevenueByYearDto>();
 }
 

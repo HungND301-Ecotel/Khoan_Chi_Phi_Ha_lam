@@ -4,6 +4,8 @@ public record AcceptanceReportItemLogDto
 {
     public Guid Id { get; init; }
     public Guid AcceptanceReportItemId { get; init; }
+    public Guid? MaterialId { get; init; }
+    public Guid? TrackedMaterialId { get; init; }
     public Guid? ProcessGroupId { get; init; }
     public string? ProcessGroupCode { get; init; }
     public string? ProcessGroupName { get; init; }
@@ -11,6 +13,8 @@ public record AcceptanceReportItemLogDto
     public string? PartName { get; init; }
     public string? MaterialCode { get; init; }
     public string? MaterialName { get; init; }
+    public string? TrackedMaterialCode { get; init; }
+    public string? TrackedMaterialName { get; init; }
     public string? UnitOfMeasureName { get; init; }
 
     // Financial values

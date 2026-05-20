@@ -41,6 +41,12 @@ export function LongtermMaterialCostForm({
 	const [acceptanceReportId, setAcceptanceReportId] = useState<string>('');
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
 
+	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
+		item?.materialCode || item?.partCode || '';
+
+	const getMaterialName = (item?: LongtermMaterialDetailItem) =>
+		item?.materialName || item?.partName || '';
+
 	const form = useForm<LongtermMaterialCostSchema>({
 		resolver: zodResolver(longtermMaterialCostSchema),
 		mode: 'onSubmit',
@@ -216,12 +222,12 @@ export function LongtermMaterialCostForm({
 							<>
 								<div className='min-w-40 flex-1 space-y-2'>
 									<Label>Mã vật tư</Label>
-									<Input readOnly value={item?.partCode ?? ''} />
+									<Input readOnly value={getMaterialCode(item)} />
 								</div>
 
 								<div className='min-w-48 flex-1 space-y-2'>
 									<Label>Tên vật tư</Label>
-									<Input readOnly value={item?.partName ?? ''} />
+									<Input readOnly value={getMaterialName(item)} />
 								</div>
 
 								<div className='min-w-24 flex-1 space-y-2'>

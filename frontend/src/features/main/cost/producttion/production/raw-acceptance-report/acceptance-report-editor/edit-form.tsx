@@ -16,7 +16,7 @@ import { Resolver, useForm } from 'react-hook-form';
 import { AcceptanceReportEditor } from './editor';
 import { acceptanceReportEditorFormSchema, type AcceptanceReportEditorFormInput } from './schema';
 import type {
-	Equipment,
+	AssignmentCodeOption,
 	ImportedItemMeta,
 	MaterialLookupOption,
 	ProcessGroupOption,
@@ -25,7 +25,7 @@ import type {
 import { MaterialType } from './types';
 import {
 	NONE_PRODUCTION_ORDER_ID,
-	toEquipmentOptionValue,
+	toAssignmentCodeOptionValue,
 	toProductionOrderOptionValue,
 } from './helpers';
 import {
@@ -34,9 +34,9 @@ import {
 	mapAcceptanceReportDetailToEditorForm,
 } from './mappers';
 
-type MaintainEquipmentMapping = {
+type MaintainAssignmentCodeMapping = {
 	partId: string;
-	equipments: Equipment[];
+	equipments: AssignmentCodeOption[];
 };
 
 type ProductionOutputScopeResponse = {
@@ -84,10 +84,10 @@ export function AcceptanceReportEditForm({
 		ProductionOrderOption[]
 	>([]);
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
-	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
+	const [assignmentCodeOptionsByMaterialId, setAssignmentCodeOptionsByMaterialId] = useState<
 		Record<string, ProductionOrderOption[]>
 	>({});
-	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
+	const [orderOrAssignmentCodeOptionsByItemId, setOrderOrAssignmentCodeOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 	const [materialLookupOptions, setMaterialLookupOptions] = useState<
 		MaterialLookupOption[]
@@ -205,17 +205,17 @@ export function AcceptanceReportEditForm({
 
 		for (const item of importedItems) {
 			const isPartItem = item.type === MaterialType.SparePart;
-			const equipmentOptions = isPartItem
-				? (equipmentOptionsByPartId[item.materialOrPartId] ?? [])
+			const assignmentCodeOptions = isPartItem
+				? (assignmentCodeOptionsByMaterialId[item.materialOrPartId] ?? [])
 				: [];
 			nextOptionsByItemId[item.materialOrPartId] = [
 				...productionOrderOptions,
-				...equipmentOptions,
+				...assignmentCodeOptions,
 			];
 		}
 
-		setOrderOrEquipmentOptionsByItemId(nextOptionsByItemId);
-	}, [equipmentOptionsByPartId, importedItems, productionOrderOptions]);
+		setOrderOrAssignmentCodeOptionsByItemId(nextOptionsByItemId);
+	}, [assignmentCodeOptionsByMaterialId, importedItems, productionOrderOptions]);
 
 	useEffect(() => {
 		if (!id) {
@@ -305,36 +305,38 @@ export function AcceptanceReportEditForm({
 							.filter((partId): partId is string => Boolean(partId)),
 					),
 				);
-				const fetchedEquipmentOptionsByPartId: Record<
+				const fetchedAssignmentCodeOptionsByMaterialId: Record<
 					string,
 					ProductionOrderOption[]
 				> = {};
 
 				if (partIds.length > 0) {
 					const equipmentMappingsRes = await api.post<
-						MaintainEquipmentMapping[],
+						MaintainAssignmentCodeMapping[],
 						string[]
 					>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
 
 					for (const mapping of equipmentMappingsRes.result ?? []) {
-						fetchedEquipmentOptionsByPartId[mapping.partId] = (
+						fetchedAssignmentCodeOptionsByMaterialId[mapping.partId] = (
 							mapping.equipments ?? []
 						)
 							.sort((a, b) => a.code.localeCompare(b.code))
 							.map((equipment) => ({
-								value: toEquipmentOptionValue(equipment.id),
+								value: toAssignmentCodeOptionValue(equipment.id),
 								label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 							}));
 					}
 				}
 
 				for (const partId of partIds) {
-					if (!fetchedEquipmentOptionsByPartId[partId]) {
-						fetchedEquipmentOptionsByPartId[partId] = [];
+					if (!fetchedAssignmentCodeOptionsByMaterialId[partId]) {
+						fetchedAssignmentCodeOptionsByMaterialId[partId] = [];
 					}
 				}
 
-				setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+				setAssignmentCodeOptionsByMaterialId(
+					fetchedAssignmentCodeOptionsByMaterialId,
+				);
 				form.reset(nextFormValues);
 			} catch (err) {
 				console.error('Failed to fetch acceptance report:', err);
@@ -387,32 +389,39 @@ export function AcceptanceReportEditForm({
 
 		if (
 			option.type === MaterialType.SparePart &&
-			!equipmentOptionsByPartId[option.materialOrPartId]
+			!assignmentCodeOptionsByMaterialId[option.materialOrPartId]
 		) {
 			try {
 				const equipmentMappingsRes = await api.post<
-					MaintainEquipmentMapping[],
+					MaintainAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [
 					option.materialOrPartId,
 				]);
-				const nextEquipmentOptionsByPartId = { ...equipmentOptionsByPartId };
+				const nextAssignmentCodeOptionsByMaterialId = {
+					...assignmentCodeOptionsByMaterialId,
+				};
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					nextEquipmentOptionsByPartId[mapping.partId] = (
+					nextAssignmentCodeOptionsByMaterialId[mapping.partId] = (
 						mapping.equipments ?? []
 					)
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
-							value: toEquipmentOptionValue(equipment.id),
+							value: toAssignmentCodeOptionValue(equipment.id),
 							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
-				if (!nextEquipmentOptionsByPartId[option.materialOrPartId]) {
-					nextEquipmentOptionsByPartId[option.materialOrPartId] = [];
+				if (!nextAssignmentCodeOptionsByMaterialId[option.materialOrPartId]) {
+					nextAssignmentCodeOptionsByMaterialId[option.materialOrPartId] = [];
 				}
-				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);
+				setAssignmentCodeOptionsByMaterialId(
+					nextAssignmentCodeOptionsByMaterialId,
+				);
 			} catch (err) {
-				console.error('Failed to fetch equipment options for added part:', err);
+				console.error(
+					'Failed to fetch assignment code options for added material:',
+					err,
+				);
 			}
 		}
 	};
@@ -429,7 +438,9 @@ export function AcceptanceReportEditForm({
 					onCancel={() => setOpen(false)}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
-					orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
+					orderOrAssignmentCodeOptionsByItemId={
+						orderOrAssignmentCodeOptionsByItemId
+					}
 					materialLookupOptions={materialLookupOptions}
 					onMaterialAdded={handleMaterialAdded}
 					unresolvedCount={0}

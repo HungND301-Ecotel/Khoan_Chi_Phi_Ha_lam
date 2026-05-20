@@ -47,25 +47,13 @@ public class GetAllAcceptanceReportAdditionalCostQueryHandler(IUnitOfWork unitOf
 
         foreach (var item in itemsWithAdditionalCost)
         {
-            // Determine code and name based on type (Material vs Part)
-            string? code;
-            string? name;
-
-            if (item.MaterialId.HasValue)
-            {
-                // Material type
-                code = item.Material?.Code?.Value;
-                name = item.Material?.Name;
-            }
-            else
-            {
-                // Part type
-                code = item?.Part?.Code?.Value;
-                name = item?.Part?.Name;
-            }
+            var materialId = item.TrackedMaterialId;
+            var code = item.Material?.Code?.Value ?? item.Part?.Code?.Value;
+            var name = item.Material?.Name ?? item.Part?.Name;
 
             var costItem = new AdditionalCostItemDto
             {
+                MaterialId = materialId,
                 Code = code,
                 Name = name,
                 UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name

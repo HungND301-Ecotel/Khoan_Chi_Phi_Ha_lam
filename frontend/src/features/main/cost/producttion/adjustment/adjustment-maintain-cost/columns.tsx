@@ -18,9 +18,12 @@ export type AdjustmentMaintainCostSummary = {
 export type AdjustmentMaintainCostItem = {
 	maintainUnitPriceId: string;
 	maintainUnitPrice: number;
-	equipmentId: string;
-	equipmentCode: string;
-	equipmentName: string;
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	equipmentId?: string;
+	equipmentCode?: string;
+	equipmentName?: string;
 	quantity: number;
 	totalPrice: number;
 	k6AdjustmentFactorValue: number;
@@ -54,11 +57,11 @@ export const getAdjustmentMaintainCostColumns = (
 
 	return [
 		{
-			accessorKey: 'equipmentCode',
+			accessorKey: 'assignmentCode',
 			header: 'Mã giao khoán',
 		},
 		{
-			accessorKey: 'equipmentName',
+			accessorKey: 'assignmentCodeName',
 			header: 'Tên giao khoán',
 		},
 		{

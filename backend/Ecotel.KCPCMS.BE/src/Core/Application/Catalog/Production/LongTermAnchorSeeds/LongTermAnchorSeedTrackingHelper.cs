@@ -16,8 +16,11 @@ internal static class LongTermAnchorSeedTrackingHelper
     internal record TrackingSnapshot(
         Guid SeedItemId,
         Guid? AnchorSeedRowId,
+        Guid MaterialId,
         Guid PartId,
         Guid ProcessGroupId,
+        string MaterialCode,
+        string MaterialName,
         string PartCode,
         string PartName,
         string UnitOfMeasureName,
@@ -139,11 +142,14 @@ internal static class LongTermAnchorSeedTrackingHelper
                 currentSnapshot = new TrackingSnapshot(
                     seedItem.Id,
                     seedItem.AnchorSeedRowId,
+                    seedItem.MaterialId,
                     seedItem.PartId,
                     seedItem.ProcessGroupId,
+                    seedItem.Material.Code?.Value ?? string.Empty,
+                    seedItem.Material.Name,
                     seedItem.Part.Code?.Value ?? string.Empty,
                     seedItem.Part.Name,
-                    seedItem.Part.UnitOfMeasure?.Name ?? string.Empty,
+                    seedItem.Material.UnitOfMeasure?.Name ?? string.Empty,
                     seedItem.ProcessGroup.Code?.Value ?? string.Empty,
                     seedItem.ProcessGroup.Name,
                     currentPendingStart,
@@ -176,7 +182,7 @@ internal static class LongTermAnchorSeedTrackingHelper
 
         return snapshots
             .OrderBy(x => x.ProcessGroupCode)
-            .ThenBy(x => x.PartCode)
+            .ThenBy(x => x.MaterialCode)
             .ToList();
     }
 

@@ -31,11 +31,11 @@ export const getAdjustmentElectricityCostColumns = (
 
 	return [
 		{
-			accessorKey: 'equipmentCode',
+			accessorKey: 'assignmentCode',
 			header: 'Mã giao khoán',
 		},
 		{
-			accessorKey: 'equipmentName',
+			accessorKey: 'assignmentCodeName',
 			header: 'Tên giao khoán',
 		},
 		{

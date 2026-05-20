@@ -74,15 +74,15 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                     throw new BadRequestException("Dòng mốc gốc không thuộc đơn vị hiện tại");
                 }
 
-                var materialId = item.MaterialId ?? item.PartId;
-                if (!materialId.HasValue || materialId.Value == Guid.Empty)
+                var trackedMaterialId = item.TrackedMaterialId ?? item.MaterialId ?? item.PartId;
+                if (!trackedMaterialId.HasValue || trackedMaterialId.Value == Guid.Empty)
                 {
                     throw new BadRequestException("Vật tư không hợp lệ");
                 }
 
                 entity.Update(
                     item.ProcessGroupId,
-                    materialId.Value,
+                    trackedMaterialId.Value,
                     index,
                     item.IssuedQuantity,
                     item.UnitPrice,

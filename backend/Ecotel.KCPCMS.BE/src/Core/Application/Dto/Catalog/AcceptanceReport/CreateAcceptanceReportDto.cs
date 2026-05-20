@@ -6,6 +6,7 @@ public record AcceptanceReportCategoryAllocationDto
 {
     public required Guid ProcessGroupId { get; init; }
     public required double Quantity { get; init; }
+    public List<Guid> AssignmentCodeIds { get; init; } = new();
     public List<Guid> EquipmentIds { get; init; } = new();
 }
 
@@ -22,8 +23,10 @@ public record CreateAcceptanceReportItemDto
     public required ItemType ItemType { get; init; }
 
     public Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryAssignmentCodeId { get; init; }
     public Guid? CategoryEquipmentId { get; init; }
     public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostAssignmentCodeId { get; init; }
     public Guid? AdditionalCostEquipmentId { get; init; }
 
     public required List<IssuedDetailDto> IssuedDetails { get; init; }

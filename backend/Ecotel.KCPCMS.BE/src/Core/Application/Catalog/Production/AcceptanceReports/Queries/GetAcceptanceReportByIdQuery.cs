@@ -46,15 +46,17 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = item.Id,
             AcceptanceReportId = item.AcceptanceReportId,
             CategoryProductionOrderId = item.ProductionOrderId,
-            CategoryEquipmentId = item.EquipmentId,
+            CategoryAssignmentCodeId = item.CategoryAssignmentCodeId,
+            CategoryEquipmentId = item.CategoryAssignmentCodeId,
             AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
-            AdditionalCostEquipmentId = item.AdditionalCostEquipmentId,
-            MaterialId = item.MaterialId,
+            AdditionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId,
+            AdditionalCostEquipmentId = item.AdditionalCostAssignmentCodeId,
+            MaterialId = item.TrackedMaterialId,
             PartId = item.PartId,
-            TrackedMaterialId = item.MaterialId ?? item.PartId,
+            TrackedMaterialId = item.TrackedMaterialId,
             UsageTime = item.UsageTime,
-            MaterialCode = item.Material?.Code?.Value,
-            MaterialName = item.Material?.Name,
+            MaterialCode = item.Material?.Code?.Value ?? item.Part?.Code?.Value,
+            MaterialName = item.Material?.Name ?? item.Part?.Name,
             PartCode = item.Part?.Code?.Value,
             PartName = item.Part?.Name,
             TrackedMaterialCode = item.Material?.Code?.Value ?? item.Part?.Code?.Value,
@@ -62,7 +64,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             PartType = item.Part?.Type,
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
-            Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
+            Type = item.IsMaterialItem ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             IsLongTermTracking = item.IsLongTermTracking,
             ProcessGroupId = item.ProcessGroupId,
@@ -76,9 +78,8 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     ProcessGroupCode = allocation.ProcessGroup?.FixedKey?.Key,
                     ProcessGroupName = allocation.ProcessGroup?.Name,
                     Quantity = allocation.Quantity,
-                    EquipmentIds = allocation.Equipments
-                        .Select(equipment => equipment.EquipmentId)
-                        .ToList(),
+                    AssignmentCodeIds = allocation.AssignmentCodeIds.ToList(),
+                    EquipmentIds = allocation.AssignmentCodeIds.ToList(),
                 })
                 .ToList(),
             AdditionalCost = item.AdditionalCost,
@@ -122,7 +123,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return 0;
         }
 
-        if (item.MaterialId.HasValue && item.Material?.Costs != null)
+        if (item.IsMaterialItem && item.Material?.Costs != null)
         {
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
@@ -132,7 +133,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return matchingCost != null ? (decimal)matchingCost.Amount : 0;
         }
 
-        if (item.PartId.HasValue && item.Part?.Costs != null)
+        if (item.IsTrackedSctxItem && item.Part?.Costs != null)
         {
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
@@ -152,7 +153,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return 0;
         }
 
-        if (item.MaterialId.HasValue && item.Material?.Costs != null)
+        if (item.IsMaterialItem && item.Material?.Costs != null)
         {
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
@@ -162,7 +163,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return matchingCost != null ? (decimal)matchingCost.ActualAmount : 0;
         }
 
-        if (item.PartId.HasValue && item.Part?.Costs != null)
+        if (item.IsTrackedSctxItem && item.Part?.Costs != null)
         {
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&

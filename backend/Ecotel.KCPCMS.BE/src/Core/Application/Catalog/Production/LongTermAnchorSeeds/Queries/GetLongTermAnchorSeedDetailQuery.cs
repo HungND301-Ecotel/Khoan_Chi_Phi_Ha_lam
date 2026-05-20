@@ -81,18 +81,21 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
             Items = seed?.Items
                 .OrderBy(x => x.SortOrder)
                 .ThenBy(x => x.ProcessGroup.Code != null ? x.ProcessGroup.Code.Value : string.Empty)
-                .ThenBy(x => x.Part.Code != null ? x.Part.Code.Value : string.Empty)
+                .ThenBy(x => GetMaterialCode(x.Material))
                 .Select(item => new LongTermAnchorSeedItemDto
                 {
                     Id = item.Id,
-                    MaterialId = item.PartId,
+                    MaterialId = item.MaterialId,
                     PartId = item.PartId,
+                    TrackedMaterialId = item.MaterialId,
                     ProcessGroupId = item.ProcessGroupId,
-                    MaterialCode = item.Part.Code?.Value ?? string.Empty,
-                    MaterialName = item.Part.Name,
-                    PartCode = item.Part.Code?.Value ?? string.Empty,
-                    PartName = item.Part.Name,
-                    UnitOfMeasureName = item.Part.UnitOfMeasure?.Name ?? string.Empty,
+                    MaterialCode = GetMaterialCode(item.Material),
+                    MaterialName = GetMaterialName(item.Material),
+                    PartCode = GetMaterialCode(item.Part),
+                    PartName = GetMaterialName(item.Part),
+                    TrackedMaterialCode = GetMaterialCode(item.Material),
+                    TrackedMaterialName = GetMaterialName(item.Material),
+                    UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? string.Empty,
                     ProcessGroupCode = item.ProcessGroup.Code?.Value ?? string.Empty,
                     ProcessGroupName = item.ProcessGroup.Name,
                     IssuedQuantity = item.IssuedQuantity,
@@ -110,4 +113,10 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                 .ToList() ?? []
         };
     }
+
+    private static string GetMaterialCode(Part part)
+        => part.Code?.Value ?? string.Empty;
+
+    private static string GetMaterialName(Part part)
+        => part.Name;
 }

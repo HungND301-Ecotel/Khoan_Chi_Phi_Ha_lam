@@ -18,8 +18,10 @@ public record UpdateAcceptanceReportItemDto
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
     public Guid? CategoryProductionOrderId { get; init; }
+    public Guid? CategoryAssignmentCodeId { get; init; }
     public Guid? CategoryEquipmentId { get; init; }
     public Guid? AdditionalCostProductionOrderId { get; init; }
+    public Guid? AdditionalCostAssignmentCodeId { get; init; }
     public Guid? AdditionalCostEquipmentId { get; init; }
 
     // Vật tư tính vào doanh thu khoán

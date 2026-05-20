@@ -8,8 +8,10 @@ export type RawAcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryAssignmentCodeId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
+	additionalCostAssignmentCodeId?: string | null;
 	additionalCostEquipmentId?: string | null;
 	materialCode: string | null;
 	materialName: string | null;
@@ -57,8 +59,10 @@ export type AcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryAssignmentCodeId?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
+	additionalCostAssignmentCodeId?: string | null;
 	additionalCostEquipmentId?: string | null;
 	itemType?: number;
 	materialCode: string | null;
@@ -176,6 +180,7 @@ export type QuotaBasedMaterialQuantityDetail = {
 export type CategoryAllocation = {
 	processGroupId: string | null;
 	quantity: number | null;
+	assignmentCodeIds?: string[];
 	equipmentIds: string[];
 };
 

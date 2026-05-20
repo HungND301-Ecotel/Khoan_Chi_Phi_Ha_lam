@@ -27,11 +27,13 @@ export type ImportedItemMeta = {
 	type: number;
 };
 
-export type Equipment = {
+export type AssignmentCodeOption = {
 	id: string;
 	code: string;
 	name: string;
 };
+
+export type Equipment = AssignmentCodeOption;
 
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
@@ -155,6 +157,7 @@ export type QuantityDetail = {
 export type CategoryAllocation = {
 	processGroupId: string | null;
 	quantity: number | null;
+	assignmentCodeIds?: string[];
 	equipmentIds: string[];
 };
 
@@ -173,8 +176,10 @@ export type CreateAcceptanceReportItem = {
 	itemType: number;
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
+	categoryAssignmentCodeId?: string | null;
 	categoryEquipmentId: string | null;
 	additionalCostProductionOrderId: string | null;
+	additionalCostAssignmentCodeId?: string | null;
 	additionalCostEquipmentId: string | null;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
@@ -209,8 +214,10 @@ export type UpdateAcceptanceReportItem = {
 	itemType: number;
 	categoryAllocations?: CategoryAllocation[] | null;
 	categoryProductionOrderId: string | null;
+	categoryAssignmentCodeId?: string | null;
 	categoryEquipmentId: string | null;
 	additionalCostProductionOrderId: string | null;
+	additionalCostAssignmentCodeId?: string | null;
 	additionalCostEquipmentId: string | null;
 	issuedQuantity: number;
 	shippedQuantity: number;

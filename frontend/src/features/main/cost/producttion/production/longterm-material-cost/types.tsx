@@ -1,9 +1,12 @@
 export type LongtermMaterialDetailItem = {
 	id: string;
 	acceptanceReportItemId: string;
+	materialId?: string;
 	processGroupId?: string;
 	processGroupCode?: string;
 	processGroupName?: string;
+	materialCode?: string;
+	materialName?: string;
 	partCode: string; // Mã vật tư
 	partName: string; // Tên vật tư
 	unitOfMeasureName: string; // ĐVT

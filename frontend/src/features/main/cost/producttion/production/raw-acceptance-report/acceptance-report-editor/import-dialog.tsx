@@ -19,7 +19,7 @@ import {
 	type AcceptanceReportEditorRow,
 } from './schema';
 import {
-	type Equipment,
+	type AssignmentCodeOption,
 	type ImportedItemMeta,
 	type ProcessGroupOption,
 	type ProductionOrder,
@@ -32,7 +32,7 @@ import {
 import {
 	NONE_PRODUCTION_ORDER_ID,
 	normalizeCode,
-	toEquipmentOptionValue,
+	toAssignmentCodeOptionValue,
 	toProductionOrderOptionValue,
 } from './helpers';
 import {
@@ -47,9 +47,9 @@ type MaterialImportDialogProps = {
 	productionOutputId?: string;
 };
 
-type PartEquipmentMapping = {
+type MaterialAssignmentCodeMapping = {
 	partId: string;
-	equipments: Equipment[];
+	equipments: AssignmentCodeOption[];
 };
 
 type MaterialLookupItem = {
@@ -93,10 +93,10 @@ export function MaterialImportDialog({
 		ProductionOrderOption[]
 	>([]);
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
-	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
+	const [assignmentCodeOptionsByMaterialId, setAssignmentCodeOptionsByMaterialId] = useState<
 		Record<string, ProductionOrderOption[]>
 	>({});
-	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
+	const [orderOrAssignmentCodeOptionsByItemId, setOrderOrAssignmentCodeOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 	const [unresolvedCreateIndex, setUnresolvedCreateIndex] = useState<
 		number | null
@@ -158,17 +158,17 @@ export function MaterialImportDialog({
 
 		for (const item of importedItems) {
 			const isPartItem = item.type === MaterialType.SparePart;
-			const equipmentOptions = isPartItem
-				? (equipmentOptionsByPartId[item.materialOrPartId] ?? [])
+			const assignmentCodeOptions = isPartItem
+				? (assignmentCodeOptionsByMaterialId[item.materialOrPartId] ?? [])
 				: [];
 			nextOptionsByItemId[item.materialOrPartId] = [
 				...productionOrderOptions,
-				...equipmentOptions,
+				...assignmentCodeOptions,
 			];
 		}
 
-		setOrderOrEquipmentOptionsByItemId(nextOptionsByItemId);
-	}, [equipmentOptionsByPartId, importedItems, productionOrderOptions]);
+		setOrderOrAssignmentCodeOptionsByItemId(nextOptionsByItemId);
+	}, [assignmentCodeOptionsByMaterialId, importedItems, productionOrderOptions]);
 
 	useEffect(() => {
 		if (!productionOutputId) {
@@ -259,14 +259,14 @@ export function MaterialImportDialog({
 						.filter((id): id is string => Boolean(id)),
 				),
 			);
-			const fetchedEquipmentOptionsByPartId: Record<
+			const fetchedAssignmentCodeOptionsByMaterialId: Record<
 				string,
 				ProductionOrderOption[]
 			> = {};
 
 			if (partIds.length > 0) {
 				const equipmentMappingsRes = await api.post<
-					PartEquipmentMapping[],
+					MaterialAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
 
@@ -274,21 +274,23 @@ export function MaterialImportDialog({
 					const sortedEquipments = [...(mapping.equipments ?? [])].sort(
 						(a, b) => a.code.localeCompare(b.code),
 					);
-					fetchedEquipmentOptionsByPartId[mapping.partId] =
+					fetchedAssignmentCodeOptionsByMaterialId[mapping.partId] =
 						sortedEquipments.map((equipment) => ({
-							value: toEquipmentOptionValue(equipment.id),
+							value: toAssignmentCodeOptionValue(equipment.id),
 							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 			}
 
 			for (const partId of partIds) {
-				if (!fetchedEquipmentOptionsByPartId[partId]) {
-					fetchedEquipmentOptionsByPartId[partId] = [];
+				if (!fetchedAssignmentCodeOptionsByMaterialId[partId]) {
+					fetchedAssignmentCodeOptionsByMaterialId[partId] = [];
 				}
 			}
 
-			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+			setAssignmentCodeOptionsByMaterialId(
+				fetchedAssignmentCodeOptionsByMaterialId,
+			);
 			form.setValue('materials', uploadRows);
 			setShowForm(true);
 		} catch (error) {
@@ -297,8 +299,8 @@ export function MaterialImportDialog({
 			form.setValue('materials', []);
 			setFilePath('');
 			setImportedItems([]);
-			setEquipmentOptionsByPartId({});
-			setOrderOrEquipmentOptionsByItemId({});
+			setAssignmentCodeOptionsByMaterialId({});
+			setOrderOrAssignmentCodeOptionsByItemId({});
 		} finally {
 			setIsLoading(false);
 		}
@@ -390,23 +392,27 @@ export function MaterialImportDialog({
 
 			if (specificType === 1) {
 				const equipmentMappingsRes = await api.post<
-					PartEquipmentMapping[],
+					MaterialAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [createdPart.id]);
 
-				const nextEquipmentOptionsByPartId = { ...equipmentOptionsByPartId };
+				const nextAssignmentCodeOptionsByMaterialId = {
+					...assignmentCodeOptionsByMaterialId,
+				};
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					nextEquipmentOptionsByPartId[mapping.partId] = (
+					nextAssignmentCodeOptionsByMaterialId[mapping.partId] = (
 						mapping.equipments ?? []
 					)
 						.slice()
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
-							value: toEquipmentOptionValue(equipment.id),
+							value: toAssignmentCodeOptionValue(equipment.id),
 							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
-				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);
+				setAssignmentCodeOptionsByMaterialId(
+					nextAssignmentCodeOptionsByMaterialId,
+				);
 			}
 
 			const nextImportedItems = [
@@ -486,8 +492,8 @@ export function MaterialImportDialog({
 			form.reset();
 			setFilePath('');
 			setImportedItems([]);
-			setEquipmentOptionsByPartId({});
-			setOrderOrEquipmentOptionsByItemId({});
+			setAssignmentCodeOptionsByMaterialId({});
+			setOrderOrAssignmentCodeOptionsByItemId({});
 			setOpen(false);
 			popup.success('Dữ liệu được lưu thành công');
 		} catch (error) {
@@ -514,7 +520,9 @@ export function MaterialImportDialog({
 						onCancel={() => setShowForm(false)}
 						processGroupOptions={processGroupOptions}
 						productionOrderOptions={productionOrderOptions}
-						orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
+						orderOrAssignmentCodeOptionsByItemId={
+							orderOrAssignmentCodeOptionsByItemId
+						}
 						unresolvedCount={unresolvedCount}
 						onCreateUnresolved={setUnresolvedCreateIndex}
 					/>

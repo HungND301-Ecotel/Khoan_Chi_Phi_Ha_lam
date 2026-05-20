@@ -17,6 +17,7 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
         new List<AcceptanceReportItemCategoryAllocationEquipment>();
     public virtual IReadOnlyCollection<AcceptanceReportItemCategoryAllocationEquipment> Equipments =>
         _equipments.AsReadOnly();
+    public IEnumerable<Guid> AssignmentCodeIds => _equipments.Select(x => x.AssignmentCodeId);
 
     private IList<AcceptanceReportItemLog> _acceptanceReportItemLogs = new List<AcceptanceReportItemLog>();
     public virtual IReadOnlyCollection<AcceptanceReportItemLog> AcceptanceReportItemLogs =>
@@ -26,7 +27,7 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
         Guid acceptanceReportItemId,
         Guid processGroupId,
         double quantity,
-        IList<Guid>? equipmentIds)
+        IList<Guid>? assignmentCodeIds)
     {
         if (processGroupId == Guid.Empty)
         {
@@ -45,11 +46,11 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
             Quantity = quantity,
         };
 
-        allocation.SyncEquipmentIds(equipmentIds);
+        allocation.SyncAssignmentCodeIds(assignmentCodeIds);
         return allocation;
     }
 
-    public void Update(double quantity, IList<Guid>? equipmentIds)
+    public void Update(double quantity, IList<Guid>? assignmentCodeIds)
     {
         if (quantity < 0)
         {
@@ -57,21 +58,21 @@ public class AcceptanceReportItemCategoryAllocation : AuditableEntity<Guid>
         }
 
         Quantity = quantity;
-        SyncEquipmentIds(equipmentIds);
+        SyncAssignmentCodeIds(assignmentCodeIds);
     }
 
-    private void SyncEquipmentIds(IList<Guid>? equipmentIds)
+    private void SyncAssignmentCodeIds(IList<Guid>? assignmentCodeIds)
     {
         _equipments.Clear();
 
-        if (equipmentIds == null)
+        if (assignmentCodeIds == null)
         {
             return;
         }
 
-        foreach (var equipmentId in equipmentIds.Where(id => id != Guid.Empty).Distinct())
+        foreach (var assignmentCodeId in assignmentCodeIds.Where(id => id != Guid.Empty).Distinct())
         {
-            _equipments.Add(AcceptanceReportItemCategoryAllocationEquipment.Create(Id, equipmentId));
+            _equipments.Add(AcceptanceReportItemCategoryAllocationEquipment.Create(Id, assignmentCodeId));
         }
     }
 }

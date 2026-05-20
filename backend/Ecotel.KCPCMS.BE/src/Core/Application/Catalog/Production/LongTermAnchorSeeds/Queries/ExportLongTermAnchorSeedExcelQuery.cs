@@ -59,11 +59,12 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         var rows = seed?.Items
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.ProcessGroup.Code != null ? x.ProcessGroup.Code.Value : string.Empty)
-            .ThenBy(x => x.Part.Code != null ? x.Part.Code.Value : string.Empty)
+            .ThenBy(x => GetMaterialCode(x.Part))
             .Select(x => new LongTermAnchorSeedExcelRowDto
             {
                 Id = x.Id,
-                PartCode = BuildCodeName(x.Part.Code?.Value, x.Part.Name),
+                MaterialCode = BuildCodeName(GetMaterialCode(x.Part), GetMaterialName(x.Part)),
+                PartCode = BuildCodeName(GetMaterialCode(x.Part), GetMaterialName(x.Part)),
                 ProcessGroupCode = BuildCodeName(x.ProcessGroup.Code?.Value, x.ProcessGroup.Name),
                 IssuedQuantity = x.IssuedQuantity,
                 UnitPrice = x.UnitPrice,
@@ -89,9 +90,18 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
             {
+                nameof(LongTermAnchorSeedExcelRowDto.MaterialCode),
+                parts
+                    .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList()
+            },
+            {
                 nameof(LongTermAnchorSeedExcelRowDto.PartCode),
                 parts
-                    .Select(x => BuildCodeName(x.Code?.Value, x.Name))
+                    .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()
                     .OrderBy(x => x)
@@ -122,4 +132,10 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
 
         return string.IsNullOrWhiteSpace(name) ? code : $"{code} - {name}";
     }
+
+    private static string GetMaterialCode(PartEntity part)
+        => part.Code?.Value ?? string.Empty;
+
+    private static string GetMaterialName(PartEntity part)
+        => part.Name;
 }

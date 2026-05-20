@@ -56,7 +56,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
         var productionOutput = acceptanceReport.ProductionOutput
             ?? throw new NotFoundException("ProductionOutput not found");
 
-        var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
+        var outputByProcessGroup = AcceptanceReportItemLogCommandHelper.BuildOutputByProcessGroup(productionOutput);
 
         var logIds = updateModels.Select(m => m.Id).ToList();
 
@@ -86,13 +86,14 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                 }
 
                 var requestedUsageTime = updateModel.UsageTime;
-                var isNewItemInCurrentPeriod = log.AcceptanceReportId == currentAcceptanceReportId
-                    && (log.IssuedQuantity > 0 || log.TotalAmount > 0 || log.PendingValueStartPeriod == 0);
+                var isNewItemInCurrentPeriod = AcceptanceReportItemLogCommandHelper.IsNewItemInCurrentPeriod(
+                    log,
+                    currentAcceptanceReportId);
 
-                if (!isNewItemInCurrentPeriod && Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
-                {
-                    throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
-                }
+                AcceptanceReportItemLogCommandHelper.EnsureUsageTimeCanBeUpdated(
+                    log,
+                    currentAcceptanceReportId,
+                    requestedUsageTime);
 
                 // Check: Log này có thuộc kỳ hiện tại không?
                 if (log.AcceptanceReportId == currentAcceptanceReportId)
@@ -104,7 +105,7 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                         log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
                     }
 
-                    RefreshLogOutputMetrics(log, outputByProcessGroup, updateModel.Note);
+                    AcceptanceReportItemLogCommandHelper.RefreshLogOutputMetrics(log, outputByProcessGroup, updateModel.Note);
                     log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(log);
 
@@ -138,12 +139,12 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                     if (existingOverrideLog != null)
                     {
                         // Đã có log override → Update log override đó
-                        if (Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
-                        {
-                            throw new BadRequestException("Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
-                        }
+                        AcceptanceReportItemLogCommandHelper.EnsureUsageTimeCanBeUpdated(
+                            log,
+                            currentAcceptanceReportId,
+                            requestedUsageTime);
 
-                        RefreshLogOutputMetrics(existingOverrideLog, outputByProcessGroup, updateModel.Note);
+                        AcceptanceReportItemLogCommandHelper.RefreshLogOutputMetrics(existingOverrideLog, outputByProcessGroup, updateModel.Note);
                         existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                         _logRepository.Update(existingOverrideLog);
 
@@ -175,45 +176,20 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
                             disableTracking: true);
 
                         var totalAllocatedTime = allPreviousLogs.Sum(l => l.AllocationRatio);
-                        var pendingValueStart = log.PendingValueEndPeriod;
-                        var usageTime = log.UsageTime;
-                        var remainingTime = usageTime - totalAllocatedTime;
+                        var finalAllocationRatio = AcceptanceReportItemLogCommandHelper.ResolveFinalAllocationRatio(
+                            log,
+                            updateModel.AllocationRatio,
+                            totalAllocatedTime);
 
-                        // Nếu RemainingTime = 0, set AllocationRatio = 1 (nếu user không override)
-                        var finalAllocationRatio = Math.Abs(remainingTime) < 0.0001 && updateModel.AllocationRatio == 0
-                            ? 1.0
-                            : updateModel.AllocationRatio;
-
-                        var actualOutput = productionOutput.ProductionMeters;
-                        var plannedOutput = log.PlannedOutput;
-                        var standardOutput = productionOutput.StandardProductionMeters;
-
-                        var processGroupId = ResolveProcessGroupId(log);
-                        if (processGroupId.HasValue
-                            && outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
-                        {
-                            actualOutput = metrics.ActualOutput;
-                            plannedOutput = metrics.PlannedOutput;
-                            standardOutput = metrics.StandardOutput;
-                        }
-
-                        var newLog = AcceptanceReportItemLog.Create(
-                            acceptanceReportItemId: log.AcceptanceReportItemId,
-                            acceptanceReportId: currentAcceptanceReportId,
-                            periodStartMonth: productionOutput.StartMonth,
-                            periodEndMonth: productionOutput.EndMonth,
-                            pendingValueStartPeriod: pendingValueStart,
-                            issuedQuantity: 0,
-                            unitPrice: 0,
-                            usageTime: log.AcceptanceReportItem.UsageTime,
-                            allocatedTime: totalAllocatedTime,
-                            actualOutput: actualOutput,
-                            plannedOutput: plannedOutput,
-                            standardOutput: standardOutput,
-                            allocationRatio: finalAllocationRatio,
-                            acceptanceReportItemCategoryAllocationId: log.AcceptanceReportItemCategoryAllocationId,
-                            isFullAccounting: updateModel.IsFullAccounting,
-                            note: updateModel.Note);
+                        var newLog = AcceptanceReportItemLogCommandHelper.CreateOverrideLog(
+                            log,
+                            currentAcceptanceReportId,
+                            productionOutput,
+                            outputByProcessGroup,
+                            finalAllocationRatio,
+                            updateModel.IsFullAccounting,
+                            updateModel.Note,
+                            totalAllocatedTime);
 
                         await _logRepository.InsertAsync(newLog);
 
@@ -239,23 +215,6 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
             await unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
-    }
-
-    private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(ProductionOutput productionOutput)
-    {
-        var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
-
-        foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
-        {
-            var plannedOutput = processGroup.PlanProductionMeters;
-
-            result[processGroup.ProcessGroupId] = (
-                processGroup.ProductionMeters,
-                plannedOutput,
-                processGroup.StandardProductionMeters);
-        }
-
-        return result;
     }
 
     private async Task RecalculateFutureLogs(
@@ -290,20 +249,4 @@ public class UpdateAcceptanceReportItemLogListCommandHandler(IUnitOfWork unitOfW
         }
     }
 
-    private static Guid? ResolveProcessGroupId(AcceptanceReportItemLog log)
-        => log.AcceptanceReportItemCategoryAllocation?.ProcessGroupId ?? log.AcceptanceReportItem?.ProcessGroupId;
-
-    private static void RefreshLogOutputMetrics(
-        AcceptanceReportItemLog log,
-        Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> outputByProcessGroup,
-        string note)
-    {
-        var processGroupId = ResolveProcessGroupId(log);
-        if (!processGroupId.HasValue || !outputByProcessGroup.TryGetValue(processGroupId.Value, out var metrics))
-        {
-            return;
-        }
-
-        log.UpdateOutputMetrics(metrics.ActualOutput, metrics.PlannedOutput, metrics.StandardOutput, note);
-    }
 }

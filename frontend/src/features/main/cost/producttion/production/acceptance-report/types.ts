@@ -93,9 +93,13 @@ export type MaterialItem = {
 // SCTX item type
 export type SCTXItem = {
 	id: string;
+	assignmentCode: string; // Mã giao khoán
+	assignmentName?: string; // Tên giao khoán
 	equipmentCode: string; // Mã thiết bị (deprecated - use groupCode)
 	groupCode: string; // New hierarchical group code
 	groupName: string; // New hierarchical group name
+	materialCode: string; // Mã vật tư
+	materialName: string; // Tên vật tư
 	sparePartCode: string; // Mã phụ tùng
 	sparePartName: string; // Tên phụ tùng
 	unit: string; // ĐVT
@@ -184,6 +188,8 @@ export type MaterialGroup = {
 };
 
 export type SCTXGroup = {
+	assignmentCode: string; // Mã giao khoán
+	assignmentName: string; // Tên giao khoán
 	equipmentCode: string; // Mã thiết bị
 	equipmentName: string;
 	items: SCTXItem[];

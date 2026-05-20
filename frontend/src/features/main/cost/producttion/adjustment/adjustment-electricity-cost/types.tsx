@@ -13,9 +13,12 @@ export type AdjustmentElectricityCostDetailDescription = {
 export type AdjustmentElectricityCostDetailCost = {
 	electricityUnitPriceEquipmentId: string;
 	electricityUnitPrice: number;
-	equipmentId: string;
-	equipmentCode: string;
-	equipmentName: string;
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	equipmentId?: string;
+	equipmentCode?: string;
+	equipmentName?: string;
 	quantity: number;
 	totalPrice: number;
 	adjustmentFactorDescriptions: AdjustmentElectricityCostDetailDescription[];

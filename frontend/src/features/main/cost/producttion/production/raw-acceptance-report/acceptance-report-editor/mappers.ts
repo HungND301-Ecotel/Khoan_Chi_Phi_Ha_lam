@@ -85,6 +85,7 @@ export function mapResolvedImportItem(
 		category: defaultCategory,
 		isLongTermTracking: false,
 		categoryProcessGroupIds: [],
+		categoryAssignmentCodeIds: [],
 		categoryEquipmentIds: [],
 		categoryAllocations: [],
 		additionalCostCategory: defaultAdditionalCost,
@@ -165,17 +166,18 @@ export function mapRawAcceptanceItemToEditorRow(
 					0,
 				)
 			: item.quotaBasedMaterialQuantity || 0;
-	const categoryAllocations = (item.categoryAllocations ?? []).map(
-		(allocation: {
-			processGroupId: string | null;
-			quantity: number | null;
-			equipmentIds: string[];
-		}) => ({
-			processGroupId: allocation.processGroupId ?? null,
-			quantity: allocation.quantity ?? 0,
-			equipmentIds: allocation.equipmentIds ?? [],
-		}),
-	);
+		const categoryAllocations = (item.categoryAllocations ?? []).map(
+			(allocation: {
+				processGroupId: string | null;
+				quantity: number | null;
+				equipmentIds: string[];
+			}) => ({
+				processGroupId: allocation.processGroupId ?? null,
+				quantity: allocation.quantity ?? 0,
+				assignmentCodeIds: allocation.equipmentIds ?? [],
+				equipmentIds: allocation.equipmentIds ?? [],
+			}),
+		);
 
 	return {
 		...MATERIAL_FORM_DEFAULT,
@@ -225,7 +227,12 @@ export function mapRawAcceptanceItemToEditorRow(
 				allocation.processGroupId ?? '',
 		).filter(Boolean),
 		categoryProductionOrderId: item.categoryProductionOrderId ?? null,
+		categoryAssignmentCodeId: item.categoryEquipmentId ?? null,
 		categoryEquipmentId: item.categoryEquipmentId ?? null,
+		categoryAssignmentCodeIds: categoryAllocations.map(
+			(allocation: { assignmentCodeIds?: string[]; equipmentIds: string[] }) =>
+				allocation.assignmentCodeIds?.[0] ?? allocation.equipmentIds?.[0] ?? '',
+		).filter(Boolean),
 		categoryEquipmentIds: categoryAllocations.map(
 			(allocation: { equipmentIds: string[] }) =>
 				allocation.equipmentIds?.[0] ?? '',
@@ -304,6 +311,7 @@ export function createManualEditorRow(
 			defaultCategory === MaterialsIncludedInContractRevenue.Maintain,
 		categoryQuantity: quantityExported,
 		categoryProcessGroupIds: [],
+		categoryAssignmentCodeIds: [],
 		categoryEquipmentIds: [],
 		categoryAllocations: [],
 		showCategoryDropdown: true,
@@ -467,7 +475,8 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 	const categoryEquipmentId =
 		item.showCategoryDropdown &&
 		resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-			? (firstCategoryAllocation?.equipmentIds?.[0] ??
+			? (firstCategoryAllocation?.assignmentCodeIds?.[0] ??
+				firstCategoryAllocation?.equipmentIds?.[0] ??
 				item.categoryEquipmentId ??
 				null)
 			: null;
@@ -478,7 +487,7 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 			? resolveSelectionIds(item.additionalCostProductionOrderId)
 			: {
 					productionOrderId: null,
-					equipmentId: null,
+					assignmentCodeId: null,
 				};
 	const quotaPayload = buildQuotaBasedMaterialPayload(item);
 
@@ -525,10 +534,14 @@ export function buildAcceptanceReportRequest(
 					type: item.type || MaterialType.Material,
 					itemType: item.itemType || ItemType.InContract,
 					categoryProductionOrderId: base.categoryProductionOrderId,
+					categoryAssignmentCodeId: base.categoryEquipmentId,
 					categoryEquipmentId: base.categoryEquipmentId,
 					additionalCostProductionOrderId:
 						base.additionalSelection.productionOrderId,
-					additionalCostEquipmentId: base.additionalSelection.equipmentId,
+					additionalCostAssignmentCodeId:
+						base.additionalSelection.assignmentCodeId,
+					additionalCostEquipmentId:
+						base.additionalSelection.assignmentCodeId,
 					issuedDetails: base.issuedDetails,
 					shippedDetails: base.shippedDetails,
 					materialsIncludedInContractRevenue:
@@ -575,10 +588,14 @@ export function buildAcceptanceReportRequest(
 				itemType: item.itemType ?? 0,
 				categoryAllocations: base.categoryAllocations,
 				categoryProductionOrderId: base.categoryProductionOrderId,
+				categoryAssignmentCodeId: base.categoryEquipmentId,
 				categoryEquipmentId: base.categoryEquipmentId,
 				additionalCostProductionOrderId:
 					base.additionalSelection.productionOrderId,
-				additionalCostEquipmentId: base.additionalSelection.equipmentId,
+				additionalCostAssignmentCodeId:
+					base.additionalSelection.assignmentCodeId,
+				additionalCostEquipmentId:
+					base.additionalSelection.assignmentCodeId,
 				issuedQuantity: parseQuantity(item.quantityReceived),
 				shippedQuantity: parseQuantity(item.quantityExported),
 				issuedDetails: base.issuedDetails,
