@@ -52,8 +52,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Part).ThenInclude(p => p.Code)
                 .Include(a => a.AcceptanceReportItems)
-                    .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
-                    .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
+                    .ThenInclude(i => i.Part).ThenInclude(p => p.AssignmentCodeMaterials)
+                    .ThenInclude(link => link.AssignmentCode).ThenInclude(ac => ac.Code)
                 .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
                 .Include(a => a.AcceptanceReportItems)
@@ -697,7 +697,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         subGroup.Materials.Add(detail);
     }
 
-    private static Equipment? ResolveAssignmentCodeForGrouping(
+    private static AssignmentCode? ResolveAssignmentCodeForGrouping(
         AcceptanceReportItem item,
         bool useAdditionalCostReference)
     {
@@ -705,17 +705,16 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         if (!useAdditionalCostReference)
         {
-            return item.Equipment ?? material?.EquipmentParts?.FirstOrDefault()?.Equipment;
+            return item.Equipment ?? material?.AssignmentCodes?.FirstOrDefault();
         }
 
         if (item.AdditionalCostAssignmentCodeId.HasValue)
         {
-            return material?.EquipmentParts?
-                .FirstOrDefault(ep => ep.EquipmentId == item.AdditionalCostAssignmentCodeId.Value)?
-                .Equipment;
+            return material?.AssignmentCodes?
+                .FirstOrDefault(ac => ac.Id == item.AdditionalCostAssignmentCodeId.Value);
         }
 
-        return material?.EquipmentParts?.FirstOrDefault()?.Equipment;
+        return material?.AssignmentCodes?.FirstOrDefault();
     }
 
     // =========================================================================
@@ -1081,8 +1080,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(i => i.Equipment).ThenInclude(e => e.Code)
                     .Include(a => a.AcceptanceReportItems)
-                        .ThenInclude(i => i.Part).ThenInclude(p => p.EquipmentParts)
-                            .ThenInclude(ep => ep.Equipment).ThenInclude(e => e.Code)
+                        .ThenInclude(i => i.Part).ThenInclude(p => p.AssignmentCodeMaterials)
+                            .ThenInclude(link => link.AssignmentCode).ThenInclude(ac => ac.Code)
                     .Include(a => a.AcceptanceReportItems)
                         .ThenInclude(i => i.Part).ThenInclude(p => p.UnitOfMeasure)
                     .Include(a => a.AcceptanceReportItems)
@@ -1127,9 +1126,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                         .ThenInclude(p => p.Costs)
                 .Include(s => s.Items)
                     .ThenInclude(i => i.Part)
-                        .ThenInclude(p => p.EquipmentParts)
-                            .ThenInclude(ep => ep.Equipment)
-                                .ThenInclude(e => e.Code)
+                        .ThenInclude(p => p.AssignmentCodeMaterials)
+                            .ThenInclude(link => link.AssignmentCode)
+                                .ThenInclude(ac => ac.Code)
                 .Include(s => s.Items)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
@@ -1303,17 +1302,17 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private static SctxMaterialContext? GetSctxMaterial(AcceptanceReportItem item)
         => !item.IsTrackedSctxItem || item.Part == null ? null : BuildSctxMaterial(item.Part);
 
-    private static SctxMaterialContext BuildSctxMaterial(Part part)
+    private static SctxMaterialContext BuildSctxMaterial(Material part)
         => new(
             part.Id,
             part.Code?.Value ?? string.Empty,
             part.Name,
             part.UnitOfMeasure?.Name ?? string.Empty,
             part.Costs,
-            part.Type,
-            part.EquipmentParts,
-            part.EquipmentParts
-                .Select(link => link.Equipment)
+            part.MaterialType == MaterialType.MaterialOutContract ? PartType.OtherPart : PartType.Part,
+            part.AssignmentCodeMaterials,
+            part.AssignmentCodeMaterials
+                .Select(link => link.AssignmentCode)
                 .Where(assignmentCode => assignmentCode != null)
                 .ToList()!);
 
@@ -1335,8 +1334,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         string UnitOfMeasureName,
         IReadOnlyCollection<Cost> Costs,
         PartType LegacyPartType,
-        IReadOnlyCollection<EquipmentPart> EquipmentParts,
-        IReadOnlyCollection<Equipment> AssignmentCodes);
+        IReadOnlyCollection<AssignmentCodeMaterial> AssignmentCodeMaterials,
+        IReadOnlyCollection<AssignmentCode> AssignmentCodes);
 
     private sealed record AnchorSeedSnapshotContext(
         LongTermAnchorSeedTrackingHelper.TrackingSnapshot Snapshot,

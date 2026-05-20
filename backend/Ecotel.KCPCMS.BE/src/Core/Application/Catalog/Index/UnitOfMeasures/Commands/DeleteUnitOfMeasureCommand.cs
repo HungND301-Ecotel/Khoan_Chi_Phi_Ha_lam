@@ -17,10 +17,8 @@ public class DeleteUnitOfMeasureCommandHandler(IUnitOfWork unitOfWork) : IReques
         var existUnitOfMeasure = await _unitOfMeasureRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.DeleteId,
             include: query => query
-                .Include(u => u.Equipments)
                 .Include(u => u.AssignmentCodes)
-                .Include(u => u.Materials)
-                .Include(u => u.Parts),
+                .Include(u => u.Materials),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         await unitOfWork.BeginTransactionAsync();

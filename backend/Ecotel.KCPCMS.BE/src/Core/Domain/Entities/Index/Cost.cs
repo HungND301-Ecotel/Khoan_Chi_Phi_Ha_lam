@@ -18,9 +18,9 @@ public class Cost : AuditableEntity<Guid>
 
     // Navigation properties
     public virtual AssignmentCode? AssignmentCode { get; protected set; }
-    public virtual Part? Part { get; protected set; }
     public virtual Material? Material { get; protected set; }
-    public virtual Equipment? Equipment { get; protected set; }
+    public Material? Part => Material;
+    public AssignmentCode? Equipment => AssignmentCode;
 
     //constructor
     public static Cost Create(DateOnly startMonth, DateOnly endMonth, CostType costType, double amount, Guid costTypeId, double actualAmount = 0)

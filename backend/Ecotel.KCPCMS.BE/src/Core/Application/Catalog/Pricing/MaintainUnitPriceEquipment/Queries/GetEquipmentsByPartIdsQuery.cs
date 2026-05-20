@@ -16,7 +16,7 @@ public record GetEquipmentsByPartIdsQuery(
 public class GetEquipmentsByPartIdsQueryHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<GetEquipmentsByPartIdsQuery, IList<PartEquipmentsDto>>
 {
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
 
     public async Task<IList<PartEquipmentsDto>> Handle(
         GetEquipmentsByPartIdsQuery request,
@@ -37,17 +37,17 @@ public class GetEquipmentsByPartIdsQueryHandler(IUnitOfWork unitOfWork)
             return [];
         }
 
-        var parts = await _partRepository.GetAllAsync(
+        var parts = await _materialRepository.GetAllAsync(
             predicate: x => normalizedIds.Contains(x.Id),
             include: q => q
-                .Include(x => x.EquipmentParts)
-                    .ThenInclude(ep => ep.Equipment)
+                .Include(x => x.AssignmentCodeMaterials)
+                    .ThenInclude(link => link.AssignmentCode)
                         .ThenInclude(e => e.Code)
-                .Include(x => x.EquipmentParts)
-                    .ThenInclude(ep => ep.Equipment)
+                .Include(x => x.AssignmentCodeMaterials)
+                    .ThenInclude(link => link.AssignmentCode)
                         .ThenInclude(e => e.UnitOfMeasure)
-                .Include(x => x.EquipmentParts)
-                    .ThenInclude(ep => ep.Equipment)
+                .Include(x => x.AssignmentCodeMaterials)
+                    .ThenInclude(link => link.AssignmentCode)
                         .ThenInclude(e => e.Costs),
             disableTracking: true);
 
@@ -60,11 +60,11 @@ public class GetEquipmentsByPartIdsQueryHandler(IUnitOfWork unitOfWork)
             var part = parts.FirstOrDefault(x => x.Id == partId);
 
             var equipments = new List<EquipmentDto>();
-            if (part?.Type == PartType.Part)
+            if (part?.MaterialType == MaterialType.MaterialInContract)
             {
-                equipments = (part.EquipmentParts ?? [])
-                    .Where(ep => ep.Equipment != null)
-                    .Select(ep => ep.Equipment!)
+                equipments = (part.AssignmentCodeMaterials ?? [])
+                    .Where(link => link.AssignmentCode != null)
+                    .Select(link => link.AssignmentCode!)
                     .GroupBy(e => e.Id)
                     .Select(group =>
                     {

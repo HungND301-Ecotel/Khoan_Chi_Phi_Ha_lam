@@ -19,7 +19,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<UpdateAcceptanceReportResponseDto> Handle(UpdateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -59,9 +58,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             .Select(x => x.ProcessGroupId)
             .ToHashSet();
         var outputByProcessGroup = AcceptanceReportTrackingLogBuilder.BuildOutputByProcessGroup(productionOutput);
-        var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
-        var allParts = await _partRepository.GetAllAsync(
-            include: q => q.Include(p => p.Costs),
+        var allMaterials = await _materialRepository.GetAllAsync(
+            include: q => q.Include(m => m.Costs),
             disableTracking: true);
 
         // Get existing items for comparison (include QuotaBasedMaterialQuantities for EF tracking)
@@ -146,8 +144,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.TrackedMaterialId,
                         null,
                         null,
-                        allMaterials,
-                        allParts);
+                        allMaterials);
                     var trackedMaterialId = materialId ?? partId;
 
                     existingItem.UpdateForTrackedMaterial(
@@ -222,8 +219,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     createItem.TrackedMaterialId,
                     null,
                     null,
-                    allMaterials,
-                    allParts);
+                    allMaterials);
 
                 if (AcceptanceReportCommandItemHelper.RequiresProcessGroupValidation(createItem.Type, createItem.MaterialsIncludedInContractRevenue))
                 {
@@ -291,7 +287,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             var logsToCreate = AcceptanceReportTrackingLogBuilder.BuildTrackingLogs(
                 acceptanceReport.Id,
                 existingItems.Where(i => itemsToUpdate.ContainsKey(i.Id)).Concat(createdItems),
-                allParts,
+                allMaterials,
                 productionOutput,
                 outputByProcessGroup);
 

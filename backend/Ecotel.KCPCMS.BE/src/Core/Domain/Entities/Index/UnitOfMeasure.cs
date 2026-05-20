@@ -12,14 +12,8 @@ namespace Domain.Entities.Index
         private IList<AssignmentCode> _assignmentCodes = new List<AssignmentCode>();
         public virtual IReadOnlyCollection<AssignmentCode> AssignmentCodes => _assignmentCodes.AsReadOnly();
 
-        private IList<Equipment> _equipments = new List<Equipment>();
-        public virtual IReadOnlyCollection<Equipment> Equipments => _equipments.AsReadOnly();
-
         private IList<Material> _materials = new List<Material>();
         public virtual IReadOnlyCollection<Material> Materials => _materials.AsReadOnly();
-
-        private IList<Part> _parts = new List<Part>();
-        public virtual IReadOnlyCollection<Part> Parts => _parts.AsReadOnly();
 
         private IList<ProductUnitPrice> _productUnitPrices = new List<ProductUnitPrice>();
         public virtual IReadOnlyCollection<ProductUnitPrice> ProductUnitPrices => _productUnitPrices.AsReadOnly();

@@ -111,10 +111,10 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
         };
     }
 
-    private static string GetMaterialCode(Part part)
-        => part.Code?.Value ?? string.Empty;
+    private static string GetMaterialCode(Material material)
+        => material.Code?.Value ?? string.Empty;
 
-    private static string GetMaterialName(Part part)
-        => part.Name;
+    private static string GetMaterialName(Material material)
+        => material.Name;
 
 }

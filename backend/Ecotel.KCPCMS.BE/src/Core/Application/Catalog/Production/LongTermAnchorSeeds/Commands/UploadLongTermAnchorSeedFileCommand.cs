@@ -9,7 +9,6 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
-using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Production.LongTermAnchorSeeds.Commands;
 
@@ -19,7 +18,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     : IRequestHandler<UploadLongTermAnchorSeedFileCommand, bool>
 {
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
-    private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
@@ -56,7 +55,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             .Distinct()
             .ToList();
 
-        var parts = await _partRepository.GetAllAsync(
+        var materials = await _materialRepository.GetAllAsync(
             predicate: x => x.Code != null && materialCodes.Contains(x.Code.Value),
             include: q => q.Include(x => x.Code),
             disableTracking: true);
@@ -65,7 +64,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             include: q => q.Include(x => x.Code),
             disableTracking: true);
 
-        var missingMaterialCodes = materialCodes.Except(parts.Select(x => x.Code?.Value ?? string.Empty)).ToList();
+        var missingMaterialCodes = materialCodes.Except(materials.Select(x => x.Code?.Value ?? string.Empty)).ToList();
         if (missingMaterialCodes.Count > 0)
         {
             throw new BadRequestException($"Không tìm thấy vật tư với mã: {string.Join(", ", missingMaterialCodes)}.");
@@ -137,7 +136,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     throw new BadRequestException("Mã vật tư và mã nhóm công đoạn không được để trống");
                 }
 
-                var part = parts.FirstOrDefault(x => x.Code?.Value == materialCode)
+                var material = materials.FirstOrDefault(x => x.Code?.Value == materialCode)
                     ?? throw new BadRequestException($"Không tìm thấy vật tư với mã '{materialCode}'.");
                 var processGroup = processGroups.FirstOrDefault(x => x.Code?.Value == processGroupCode)
                     ?? throw new BadRequestException($"Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
@@ -146,14 +145,14 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 if (existingItem != null)
                 {
-                    if (existingItem.MaterialId != part.Id || existingItem.ProcessGroupId != processGroup.Id)
+                    if (existingItem.MaterialId != material.Id || existingItem.ProcessGroupId != processGroup.Id)
                     {
                         throw new BadRequestException($"Dòng '{row.Id}' không khớp vật tư/nhóm công đoạn hiện tại.");
                     }
                 }
                 else
                 {
-                    seedItemsByCompositeKey.TryGetValue((part.Id, processGroup.Id), out existingItem);
+                    seedItemsByCompositeKey.TryGetValue((material.Id, processGroup.Id), out existingItem);
                 }
 
                 if (existingItem == null)
@@ -161,7 +160,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     var newItem = LongTermAnchorSeedItem.CreateForMaterial(
                         seed.Id,
                         processGroup.Id,
-                        part.Id,
+                        material.Id,
                         index,
                         row.IssuedQuantity ?? 0,
                         row.UnitPrice ?? 0,
@@ -173,13 +172,13 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         null);
 
                     await _seedItemRepository.InsertAsync(newItem, cancellationToken);
-                    seedItemsByCompositeKey[(part.Id, processGroup.Id)] = newItem;
+                    seedItemsByCompositeKey[(material.Id, processGroup.Id)] = newItem;
                     continue;
                 }
 
                 existingItem.UpdateForMaterial(
                     processGroup.Id,
-                    part.Id,
+                    material.Id,
                     index,
                     row.IssuedQuantity ?? 0,
                     row.UnitPrice ?? 0,

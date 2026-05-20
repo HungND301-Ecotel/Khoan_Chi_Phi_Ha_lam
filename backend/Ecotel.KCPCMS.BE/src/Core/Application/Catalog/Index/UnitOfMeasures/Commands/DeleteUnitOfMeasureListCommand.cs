@@ -32,10 +32,8 @@ public class DeleteUnitOfMeasureListCommandHandler(IUnitOfWork unitOfWork) : IRe
         var unitOfMeasuresToDelete = await _unitOfMeasureRepository.GetAllAsync(
             predicate: x => distinctIds.Contains(x.Id),
             include: query => query
-                .Include(u => u.Equipments)
                 .Include(u => u.AssignmentCodes)
-                .Include(u => u.Materials)
-                .Include(u => u.Parts),
+                .Include(u => u.Materials),
             disableTracking: true);
 
         if (unitOfMeasuresToDelete == null || !unitOfMeasuresToDelete.Any())

@@ -9,7 +9,7 @@ namespace Infrastructure.Services.Catalog;
 public class CodeService(IUnitOfWork unitOfWork) : ICodeService
 {
     private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
     private readonly IWriteRepository<AdjustmentFactor> _adjustmentFactorRepository = unitOfWork.GetRepository<AdjustmentFactor>();
 
@@ -43,7 +43,7 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
     public async Task<bool> IsEquipmentCodeExisted(string code)
     {
         var normalizedCode = code.ToUpper();
-        return await _equipmentRepository.GetAll()
+        return await _assignmentCodeRepository.GetAll()
             .Where(e => e.Code != null
                         && e.Code.Value == normalizedCode)
             .AnyAsync();
@@ -52,7 +52,7 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
     public async Task<bool> IsEquipmentCodeExisted(string code, Guid curEquipmentId)
     {
         var normalizedCode = code.ToUpper();
-        return await _equipmentRepository.GetAll()
+        return await _assignmentCodeRepository.GetAll()
             .Where(e => e.Id != curEquipmentId
                         && e.Code != null
                         && e.Code.Value == normalizedCode)
@@ -61,12 +61,12 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
 
     public async Task<bool> IsPartCodeExisted(string code)
     {
-        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Part != null);
+        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Material != null);
     }
 
     public async Task<bool> IsPartCodeExisted(string code, DefaultIdType curId)
     {
-        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId && c.Part != null);
+        return await _codeRepository.AnyAsync(c => c.Value == code.ToUpper() && c.Id != curId && c.Material != null);
     }
 
     public async Task<bool> IsProductCodeExisted(string code, DefaultIdType processGroupId)

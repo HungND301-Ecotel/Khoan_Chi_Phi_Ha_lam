@@ -20,7 +20,6 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<CreateAcceptanceReportResponseDto> Handle(CreateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -48,9 +47,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             throw new BadRequestException(CustomResponseMessage.UpdateIdsEmpty);
         }
 
-        var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
-        var allParts = await _partRepository.GetAllAsync(
-            include: q => q.Include(p => p.Costs),
+        var allMaterials = await _materialRepository.GetAllAsync(
+            include: q => q.Include(m => m.Costs),
             disableTracking: true);
 
         var existingAcceptanceReport = await _acceptanceReportRepository.GetFirstOrDefaultAsync(
@@ -119,8 +117,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     item.TrackedMaterialId,
                     null,
                     null,
-                    allMaterials,
-                    allParts);
+                    allMaterials);
                 var trackedMaterialId = materialId ?? partId;
 
                 if (item.AcceptanceReportItemId.HasValue)
@@ -240,7 +237,7 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             var logsToCreate = AcceptanceReportTrackingLogBuilder.BuildTrackingLogs(
                 acceptanceReport.Id,
                 allProcessedItems,
-                allParts,
+                allMaterials,
                 productionOutput,
                 outputByProcessGroup);
 

@@ -10,7 +10,7 @@ public class AcceptanceReportItemCategoryAllocationEquipment : AuditableEntity<G
     public Guid AssignmentCodeId => EquipmentId;
 
     public virtual AcceptanceReportItemCategoryAllocation AcceptanceReportItemCategoryAllocation { get; protected set; }
-    public virtual Equipment Equipment { get; protected set; }
+    public virtual AssignmentCode Equipment { get; protected set; }
 
     public static AcceptanceReportItemCategoryAllocationEquipment Create(
         Guid acceptanceReportItemCategoryAllocationId,

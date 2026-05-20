@@ -51,8 +51,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual Part? Part { get; protected set; }
-    public virtual Equipment? Equipment { get; protected set; }
+    public virtual Material? Part { get; protected set; }
+    public virtual AssignmentCode? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
 

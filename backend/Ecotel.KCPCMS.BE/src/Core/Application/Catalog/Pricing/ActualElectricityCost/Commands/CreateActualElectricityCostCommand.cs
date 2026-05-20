@@ -19,8 +19,8 @@ public class CreateActualElectricityCostCommandHandler(IUnitOfWork unitOfWork)
         unitOfWork.GetRepository<Domain.Entities.Pricing.ActualElectricityCost>();
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository =
         unitOfWork.GetRepository<AcceptanceReport>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository =
-        unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository =
+        unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(CreateActualElectricityCostCommand request, CancellationToken cancellationToken)
     {
@@ -43,11 +43,11 @@ public class CreateActualElectricityCostCommandHandler(IUnitOfWork unitOfWork)
             throw new BadRequestException(CustomResponseMessage.InvalidParams);
         }
 
-        var equipmentIds = request.CreateModel.Equipments.Select(x => x.EquipmentId).Distinct().ToList();
-        int equipmentCount = await _equipmentRepository.CountAsync(x => equipmentIds.Contains(x.Id));
-        if (equipmentCount != equipmentIds.Count)
+        var assignmentCodeIds = request.CreateModel.Equipments.Select(x => x.EquipmentId).Distinct().ToList();
+        int assignmentCodeCount = await _assignmentCodeRepository.CountAsync(x => assignmentCodeIds.Contains(x.Id));
+        if (assignmentCodeCount != assignmentCodeIds.Count)
         {
-            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
+            throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
         var equipments = request.CreateModel.Equipments

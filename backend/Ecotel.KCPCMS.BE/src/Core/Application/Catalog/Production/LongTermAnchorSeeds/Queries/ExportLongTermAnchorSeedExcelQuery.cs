@@ -8,7 +8,6 @@ using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
-using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Production.LongTermAnchorSeeds.Queries;
 
@@ -21,7 +20,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
 {
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
-    private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
 
     public async Task<ExportLongTermAnchorSeedExcelResponse> Handle(ExportLongTermAnchorSeedExcelQuery request, CancellationToken cancellationToken)
@@ -77,7 +76,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
             })
             .ToList() ?? [];
 
-        var parts = await _partRepository.GetAllAsync(
+        var materials = await _materialRepository.GetAllAsync(
             predicate: x => x.Code != null,
             include: q => q.Include(x => x.Code),
             disableTracking: true);
@@ -90,7 +89,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         {
             {
                 nameof(LongTermAnchorSeedExcelRowDto.MaterialCode),
-                parts
+                materials
                     .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()
@@ -99,7 +98,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
             },
             {
                 nameof(LongTermAnchorSeedExcelRowDto.PartCode),
-                parts
+                materials
                     .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()
@@ -132,11 +131,11 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         return string.IsNullOrWhiteSpace(name) ? code : $"{code} - {name}";
     }
 
-    private static string GetMaterialCode(PartEntity part)
-        => part.Code?.Value ?? string.Empty;
+    private static string GetMaterialCode(Material material)
+        => material.Code?.Value ?? string.Empty;
 
-    private static string GetMaterialName(PartEntity part)
-        => part.Name;
+    private static string GetMaterialName(Material material)
+        => material.Name;
 
     private static string GetTrackedMaterialCode(LongTermAnchorSeedItem item)
         => item.Material?.Code?.Value ?? item.Part?.Code?.Value ?? string.Empty;

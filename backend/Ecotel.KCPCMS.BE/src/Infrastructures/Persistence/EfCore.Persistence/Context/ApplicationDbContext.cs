@@ -49,11 +49,7 @@ public class ApplicationDbContext(
     public DbSet<AssignmentCode> AssignmentCodes => Set<AssignmentCode>();
     public DbSet<AssignmentCodeMaterial> AssignmentCodeMaterials => Set<AssignmentCodeMaterial>();
     public DbSet<Cost> Costs => Set<Cost>();
-    public DbSet<Equipment> Equipments => Set<Equipment>();
-    public DbSet<EquipmentPart> EquipmentParts => Set<EquipmentPart>();
-    public DbSet<PartProcessGroup> PartProcessGroups => Set<PartProcessGroup>();
     public DbSet<Material> Materials => Set<Material>();
-    public DbSet<Part> Parts => Set<Part>();
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<FixedKey> FixedKeys => Set<FixedKey>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
@@ -137,11 +133,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<AssignmentCode>().ToTable(nameof(AssignmentCode), "Index");
         modelBuilder.Entity<AssignmentCodeMaterial>().ToTable(nameof(AssignmentCodeMaterial), "Index");
         modelBuilder.Entity<Cost>().ToTable(nameof(Cost), "Index");
-        modelBuilder.Entity<Equipment>().ToTable(nameof(Equipment), "Index");
-        modelBuilder.Entity<EquipmentPart>().ToTable(nameof(EquipmentPart), "Index");
-        modelBuilder.Entity<PartProcessGroup>().ToTable(nameof(PartProcessGroup), "Index");
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
-        modelBuilder.Entity<Part>().ToTable(nameof(Part), "Index");
         modelBuilder.Entity<Department>().ToTable(nameof(Department), "Index");
         modelBuilder.Entity<FixedKey>().ToTable(nameof(FixedKey), "Index");
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
@@ -276,69 +268,11 @@ public class ApplicationDbContext(
             .HasForeignKey<ProductionOrder>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Equipment table
-        modelBuilder.Entity<Equipment>()
-            .HasOne(s => s.UnitOfMeasure)
-            .WithMany(h => h.Equipments)
-            .HasForeignKey(s => s.UnitOfMeasureId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Equipment>()
-            .HasOne(s => s.Code)
-            .WithOne(h => h.Equipment)
-            .HasForeignKey<Equipment>(s => s.CodeId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Equipment>()
-            .HasMany(s => s.Costs)
-            .WithOne(h => h.Equipment)
-            .HasForeignKey(s => s.EquipmentId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Equipment>()
-            .HasMany(s => s.EquipmentParts)
-            .WithOne(h => h.Equipment)
-            .HasForeignKey(s => s.EquipmentId)
-            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssignmentCode>()
             .HasMany(l => l.ActualEletricityEquipment)
             .WithOne(l => l.Equipment)
             .HasForeignKey(l => l.EquipmentId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        //Part table
-        modelBuilder.Entity<Part>()
-            .HasOne(s => s.UnitOfMeasure)
-            .WithMany(h => h.Parts)
-            .HasForeignKey(s => s.UnitOfMeasureId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Part>()
-            .HasOne(s => s.Code)
-            .WithOne(h => h.Part)
-            .HasForeignKey<Part>(s => s.CodeId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Part>()
-            .HasMany(s => s.Costs)
-            .WithOne(h => h.Part)
-            .HasForeignKey(s => s.PartId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Part>()
-            .HasMany(s => s.EquipmentParts)
-            .WithOne(h => h.Part)
-            .HasForeignKey(s => s.PartId)
-            .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<Part>()
-            .HasMany(s => s.PartProcessGroups)
-            .WithOne(h => h.Part)
-            .HasForeignKey(s => s.PartId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<EquipmentPart>()
-            .HasIndex(e => new { e.EquipmentId, e.PartId })
-            .IsUnique()
-            .HasFilter("\"DeletedOn\" IS NULL");
-
-        modelBuilder.Entity<PartProcessGroup>()
-            .HasIndex(e => new { e.PartId, e.ProcessGroupId })
-            .IsUnique()
-            .HasFilter("\"DeletedOn\" IS NULL");
 
         //Cost table
         modelBuilder.Entity<Cost>()
@@ -511,10 +445,6 @@ public class ApplicationDbContext(
         // Process Group table
         modelBuilder.Entity<ProcessGroup>()
             .HasMany(s => s.ProductionProcesses)
-            .WithOne(h => h.ProcessGroup)
-            .HasForeignKey(s => s.ProcessGroupId);
-        modelBuilder.Entity<ProcessGroup>()
-            .HasMany(s => s.PartProcessGroups)
             .WithOne(h => h.ProcessGroup)
             .HasForeignKey(s => s.ProcessGroupId);
         modelBuilder.Entity<ProcessGroup>()

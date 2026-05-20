@@ -59,7 +59,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             PartName = ResolvePartName(item),
             TrackedMaterialCode = ResolveTrackedMaterialCode(item),
             TrackedMaterialName = ResolveTrackedMaterialName(item),
-            PartType = item.Part?.Type,
+            PartType = item.Part?.MaterialType == MaterialType.MaterialOutContract ? PartType.OtherPart : PartType.Part,
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
             Type = item.IsMaterialItem ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,

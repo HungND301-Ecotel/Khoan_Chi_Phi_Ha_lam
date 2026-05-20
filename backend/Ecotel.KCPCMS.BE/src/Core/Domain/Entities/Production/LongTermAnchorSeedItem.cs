@@ -22,8 +22,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
 
     public virtual LongTermAnchorSeed LongTermAnchorSeed { get; protected set; } = default!;
     public virtual ProcessGroup ProcessGroup { get; protected set; } = default!;
-    public virtual Part Part { get; protected set; } = default!;
-    public Part Material => Part;
+    public virtual Material Part { get; protected set; } = default!;
+    public Material Material => Part;
 
     public decimal TotalAmount => (decimal)IssuedQuantity * UnitPrice;
     public decimal OriginAmount => TotalAmount > 0 ? TotalAmount : PendingValueStartPeriod;

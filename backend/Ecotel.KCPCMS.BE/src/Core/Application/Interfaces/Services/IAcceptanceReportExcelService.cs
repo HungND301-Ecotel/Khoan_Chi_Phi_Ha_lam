@@ -10,8 +10,7 @@ public interface IAcceptanceReportExcelService : ITransientService
         Guid Id,
         Stream fileStream,
         string fileName,
-        IEnumerable<Material> materialsInDb,
-        IEnumerable<Part> partsInDb);
+        IEnumerable<Material> materialsInDb);
 
 }
 

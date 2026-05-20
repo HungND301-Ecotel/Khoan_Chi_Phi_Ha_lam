@@ -21,8 +21,7 @@ internal static class AcceptanceReportCommandItemHelper
         Guid? trackedMaterialId,
         Guid? materialId,
         Guid? partId,
-        IList<Material> allMaterials,
-        IList<Part> allParts)
+        IList<Material> allMaterials)
     {
         if (IsMaterialItem(itemType))
         {
@@ -48,9 +47,9 @@ internal static class AcceptanceReportCommandItemHelper
                 throw new NotFoundException("TrackedMaterialId is required for SCTX item");
             }
 
-            if (allParts.All(p => p.Id != trackedMaterialInputId.Value))
+            if (allMaterials.All(m => m.Id != trackedMaterialInputId.Value))
             {
-                throw new NotFoundException($"Part with Id '{trackedMaterialInputId.Value}' not found");
+                throw new NotFoundException($"Tracked material with Id '{trackedMaterialInputId.Value}' not found");
             }
 
             return (null, trackedMaterialInputId.Value);

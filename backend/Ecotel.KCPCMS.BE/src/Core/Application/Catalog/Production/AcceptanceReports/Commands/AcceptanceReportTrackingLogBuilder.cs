@@ -25,7 +25,7 @@ internal static class AcceptanceReportTrackingLogBuilder
     internal static List<AcceptanceReportItemLog> BuildTrackingLogs(
         Guid acceptanceReportId,
         IEnumerable<AcceptanceReportItem> items,
-        IList<Part> allParts,
+        IList<Material> allMaterials,
         ProductionOutput productionOutput,
         IReadOnlyDictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> outputByProcessGroup)
     {
@@ -39,13 +39,13 @@ internal static class AcceptanceReportTrackingLogBuilder
                 continue;
             }
 
-            var part = ResolveTrackedMaterial(item, allParts);
-            if (part == null)
+            var material = ResolveTrackedMaterial(item, allMaterials);
+            if (material == null)
             {
                 continue;
             }
 
-            var cost = part.Costs?.FirstOrDefault(c =>
+            var cost = material.Costs?.FirstOrDefault(c =>
                 c.StartMonth <= productionOutput.StartMonth &&
                 c.EndMonth >= productionOutput.EndMonth);
 
@@ -135,8 +135,8 @@ internal static class AcceptanceReportTrackingLogBuilder
             && item.IsLongTermTracking
             && residualQuantity > 0;
 
-    private static Part? ResolveTrackedMaterial(AcceptanceReportItem item, IList<Part> allParts)
+    private static Material? ResolveTrackedMaterial(AcceptanceReportItem item, IList<Material> allMaterials)
         => item.TrackedMaterialId.HasValue
-            ? allParts.FirstOrDefault(p => p.Id == item.TrackedMaterialId.Value)
+            ? allMaterials.FirstOrDefault(p => p.Id == item.TrackedMaterialId.Value)
             : null;
 }
