@@ -68,12 +68,12 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         {
             if (!string.IsNullOrWhiteSpace(row.UnitName) && !unitIdMap.ContainsKey(row.UnitName))
             {
-                importErrors.Add($"Mã giao khoán '{row.AssignmentCodeDisplay}' có đơn vị tính '{row.UnitName}' không tồn tại ở dòng {row.RowNumber}.");
+                importErrors.Add($"Nhóm vật tư, tài sản '{row.AssignmentCodeDisplay}' có đơn vị tính '{row.UnitName}' không tồn tại ở dòng {row.RowNumber}.");
             }
 
             if (!string.IsNullOrWhiteSpace(row.MaterialCode) && !materialByCodeMap.ContainsKey(row.MaterialCode))
             {
-                importErrors.Add($"Mã giao khoán '{row.AssignmentCodeDisplay}' có mã vật tư, tài sản '{row.MaterialCode}' không tồn tại ở dòng {row.RowNumber}.");
+                importErrors.Add($"Nhóm vật tư, tài sản '{row.AssignmentCodeDisplay}' có mã vật tư, tài sản '{row.MaterialCode}' không tồn tại ở dòng {row.RowNumber}.");
             }
         }
 
@@ -273,7 +273,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             {
                 if (string.IsNullOrWhiteSpace(nameInput))
                 {
-                    errors.Add($"Mã giao khoán '{codeInput}' thiếu tên giao khoán ở dòng {rowNumber}.");
+                    errors.Add($"Nhóm vật tư, tài sản '{codeInput}' thiếu tên nhóm vật tư, tài sản ở dòng {rowNumber}.");
                     continue;
                 }
 
@@ -285,7 +285,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             {
                 if (string.IsNullOrWhiteSpace(currentCode))
                 {
-                    errors.Add($"Thiếu mã giao khoán ở dòng {rowNumber}.");
+                    errors.Add($"Thiếu nhóm vật tư, tài sản ở dòng {rowNumber}.");
                     continue;
                 }
 
@@ -302,7 +302,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
 
             if (string.IsNullOrWhiteSpace(currentName))
             {
-                errors.Add($"Mã giao khoán '{currentCode}' thiếu tên giao khoán ở dòng {rowNumber}.");
+                errors.Add($"Nhóm vật tư, tài sản '{currentCode}' thiếu tên nhóm vật tư, tài sản ở dòng {rowNumber}.");
                 continue;
             }
 

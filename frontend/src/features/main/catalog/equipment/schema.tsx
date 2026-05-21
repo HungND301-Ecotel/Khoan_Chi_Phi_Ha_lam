@@ -2,10 +2,10 @@ import z from 'zod';
 
 export const equipmentSchema = z.object({
 	code: z.string().min(1, {
-		error: 'Mã giao khoán không được để trống',
+		error: 'Nhóm vật tư, tài sản không được để trống',
 	}),
 	name: z.string().min(1, {
-		error: 'Tên giao khoán không được để trống',
+		error: 'Tên nhóm vật tư, tài sản không được để trống',
 	}),
 	unitOfMeasureId: z
 		.string()

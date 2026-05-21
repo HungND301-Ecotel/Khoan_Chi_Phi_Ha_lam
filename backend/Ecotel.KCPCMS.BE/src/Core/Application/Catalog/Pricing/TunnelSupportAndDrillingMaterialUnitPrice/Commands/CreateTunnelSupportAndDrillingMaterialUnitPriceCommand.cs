@@ -49,7 +49,7 @@ public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
 
         if (!checkExisted)
         {
-            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
+            throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
         bool processTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProcessId);

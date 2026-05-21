@@ -283,7 +283,7 @@ export function MaterialImportDialog({
 					fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] =
 						sortedAssignmentCodes.map((equipment) => ({
 							value: toAssignmentCodeOptionValue(equipment.id),
-							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
+							label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 			}
@@ -415,7 +415,7 @@ export function MaterialImportDialog({
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
 							value: toAssignmentCodeOptionValue(equipment.id),
-							label: `[Mã giao khoán] ${equipment.code} - ${equipment.name}`,
+							label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 				setAssignmentCodeOptionsByMaterialId(

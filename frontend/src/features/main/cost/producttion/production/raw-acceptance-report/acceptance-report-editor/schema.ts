@@ -134,7 +134,7 @@ export const materialFormSchema = z
 			);
 		},
 		{
-			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 mã giao khoán',
+			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 Nhóm vật tư, tài sản',
 			path: ['categoryAssignmentCodeIds'],
 		},
 	)
@@ -253,7 +253,7 @@ export const materialFormSchema = z
 				(!requiresCategoryProcessGroup(data) ||
 					(data.categoryAllocations?.length ?? 0) > 0) &&
 				!(
-				categoryValue === 3 &&
+					categoryValue === 3 &&
 					data.type === 2 &&
 					data.itemType === 1 &&
 					(data.categoryAllocations?.some(

@@ -80,7 +80,7 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
 
         return excelService.ExportToExcel(
             data: dtoList,
-            sheetName: "Mã giao khoán",
+            sheetName: "Nhóm vật tư, tài sản",
             hiddenProperties: listHiddenProperty,
             dropdownData: dropdownConfigs);
     }

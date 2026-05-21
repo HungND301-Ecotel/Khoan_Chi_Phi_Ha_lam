@@ -23,11 +23,11 @@ export type ContractCodeMaterialDetail = {
 export const CATALOG_CONTRACT_CODE_COLUMNS: ColumnDef<ContractCode>[] = [
 	{
 		accessorKey: 'code',
-		header: 'Mã giao khoán',
+		header: 'Nhóm vật tư, tài sản',
 	},
 	{
 		accessorKey: 'name',
-		header: 'Tên giao khoán',
+		header: 'Tên nhóm vật tư, tài sản',
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

@@ -315,7 +315,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             var equipmentCode = dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Mã giao khoán '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
             }
         }
     }

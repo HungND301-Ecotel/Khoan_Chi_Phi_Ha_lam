@@ -237,7 +237,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
 
             if (aggregate.AssignmentCodes.Any(x => x.AssignmentCodeId == row.AssignmentCodeId))
             {
-                throw new BadRequestException($"Mã giao khoán bị trùng trong cùng một NormFactor ở dòng {row.RowNumber}.");
+                throw new BadRequestException($"Nhóm vật tư, tài sản bị trùng trong cùng một NormFactor ở dòng {row.RowNumber}.");
             }
 
             aggregate.AssignmentCodes.Add(new NormFactorAssignmentCodeUpsertDto
@@ -341,7 +341,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         var code = ExtractCode(rawValue ?? string.Empty);
         if (string.IsNullOrWhiteSpace(code) || !assignmentCodeByCode.TryGetValue(code, out var assignmentCode))
         {
-            throw new BadRequestException($"Giá trị mã giao khoán '{rawValue}' không tồn tại ở dòng {rowNumber}.");
+            throw new BadRequestException($"Giá trị nhóm vật tư, tài sản '{rawValue}' không tồn tại ở dòng {rowNumber}.");
         }
 
         return assignmentCode.Id;

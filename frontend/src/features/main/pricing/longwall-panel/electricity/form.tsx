@@ -230,8 +230,8 @@ export function ElectricityForm({
 			<FormMultiSelect
 				control={form.control}
 				name='equipmentIds'
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				options={equipments.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
@@ -330,7 +330,7 @@ function ElectricityCostRow({
 	return (
 		<FormRow>
 			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Mã giao khoán</Label>
+				<Label>Nhóm vật tư, tài sản</Label>
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -348,7 +348,7 @@ function ElectricityCostRow({
 			</div>
 
 			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Tên giao khoán</Label>
+				<Label>Tên nhóm vật tư, tài sản</Label>
 				<TooltipProvider>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -520,9 +520,7 @@ function ElectricityCostRow({
 							/>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>
-								{formatNumber(electricityCostPerTon)}
-							</p>
+							<p>{formatNumber(electricityCostPerTon)}</p>
 						</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>

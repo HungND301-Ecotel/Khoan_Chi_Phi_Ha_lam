@@ -16,11 +16,11 @@ export const getPlanedElectricityCostColumns = (
 	return [
 		{
 			accessorKey: 'equipmentCode',
-			header: 'Mã giao khoán',
+			header: 'Nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'equipmentName',
-			header: 'Tên giao khoán',
+			header: 'Tên nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'electricityUnitPrice',

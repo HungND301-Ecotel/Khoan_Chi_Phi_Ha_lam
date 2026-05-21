@@ -100,7 +100,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 				url={API.PRICING.MAINTENANCE.TRIMMING_LIST}
 				query={query}
 				getRowId={(row) => row.id}
-				filters={[{ key: 'equipmentCode', label: 'Mã giao khoán' }]}
+				filters={[{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' }]}
 				onCreate={(props) => <TunnelingForm {...props} />}
 				onDuplicate={(props) => <TunnelingForm {...props} isDuplicate />}
 				onUpdate={(props) => <TunnelingForm {...props} />}

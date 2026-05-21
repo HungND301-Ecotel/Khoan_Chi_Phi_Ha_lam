@@ -1,9 +1,6 @@
 import { MainCatalogAdjustmentRouter } from '@/features/main/catalog/adjustment/router';
 import MainCatalogAssetExternalPage from '@/features/main/catalog/asset/external/page';
 import MainCatalogAssetInternalPage from '@/features/main/catalog/asset/internal/page';
-import MainCatalogAssetQuotaMaterialsPage from '@/features/main/catalog/asset/quota-materials/page';
-import MainCatalogAssetResourcePage from '@/features/main/catalog/asset/resource/page';
-import MainCatalogAssetSafetyAndWelfarePage from '@/features/main/catalog/asset/safety-and-welfare/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
 import { MainCatalogDepartmentPage } from '@/features/main/catalog/department/page';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
@@ -41,7 +38,10 @@ const MainCatalogRouter: RouteObject = {
 		{
 			path: 'contract-codes',
 			element: <MainCatalogContractCodePage />,
-			handle: { breadcrumb: 'Mã giao khoán', title: 'Mã giao khoán' },
+			handle: {
+				breadcrumb: 'Nhóm vật tư, tài sản',
+				title: 'Nhóm vật tư, tài sản',
+			},
 		},
 		{
 			path: 'assets',
@@ -56,43 +56,29 @@ const MainCatalogRouter: RouteObject = {
 					path: 'internal',
 					element: <MainCatalogAssetInternalPage />,
 					handle: {
-						breadcrumb: 'Vật tư, tài sản trong khoán',
-						title: 'Vật tư, tài sản trong khoán',
+						breadcrumb: 'Vật tư, tài sản',
+						title: 'Vật tư, tài sản',
 					},
 				},
 				{
 					path: 'external',
 					element: <MainCatalogAssetExternalPage />,
 					handle: {
-						breadcrumb: 'Vật tư, tài sản ngoài khoán',
-						title: 'Vật tư, tài sản ngoài khoán',
+						breadcrumb: 'Vật tư, tài sản khác',
+						title: 'Vật tư, tài sản khác',
 					},
 				},
 				{
 					path: 'safety-and-welfare',
-					element: <MainCatalogAssetSafetyAndWelfarePage />,
-					handle: {
-						breadcrumb:
-							'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
-						title:
-							'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
-					},
+					element: <Navigate replace to='../internal' />,
 				},
 				{
 					path: 'resource',
-					element: <MainCatalogAssetResourcePage />,
-					handle: {
-						breadcrumb: 'Tài sản',
-						title: 'Tài sản',
-					},
+					element: <Navigate replace to='../internal' />,
 				},
 				{
 					path: 'quota-materials',
-					element: <MainCatalogAssetQuotaMaterialsPage />,
-					handle: {
-						breadcrumb: 'Vật tư theo hạn mức',
-						title: 'Vật tư theo hạn mức',
-					},
+					element: <Navigate replace to='../internal' />,
 				},
 			],
 		},

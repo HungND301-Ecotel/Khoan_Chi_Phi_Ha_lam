@@ -301,8 +301,8 @@ export function TunnelingForm({
 			<FormMultiSelect
 				control={form.control}
 				name='equipmentIds'
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				options={equipments.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
@@ -340,10 +340,7 @@ function syncCostsWithCurrentPartLinks(
 	const equipmentOrder = new Map(equipmentIds.map((id, index) => [id, index]));
 	const partOrder = new Map(linkedParts.map((part, index) => [part.id, index]));
 	const partEquipmentMap = new Map(
-		linkedParts.map((part) => [
-			part.id,
-			new Set(part.assignmentCodeIds ?? []),
-		]),
+		linkedParts.map((part) => [part.id, new Set(part.assignmentCodeIds ?? [])]),
 	);
 
 	const filteredCosts = costs.filter((cost) => {

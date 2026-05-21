@@ -15,7 +15,7 @@ export type Trimming = {
 export const MAIN_PRICING_TRIMMING_COLUMNS: ColumnDef<Trimming>[] = [
 	{
 		accessorKey: 'equipmentCode',
-		header: 'Mã giao khoán',
+		header: 'Nhóm vật tư, tài sản',
 		cell: ({ row }) =>
 			`${row.original.equipmentCode} - ${row.original.equipmentName}`,
 	},

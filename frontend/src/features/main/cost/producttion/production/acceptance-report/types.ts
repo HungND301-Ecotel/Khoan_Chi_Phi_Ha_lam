@@ -82,7 +82,7 @@ export type FinancialFields = {
 // Base item type for materials
 export type MaterialItem = {
 	id: string;
-	assignmentCode: string; // Mã giao khoán (deprecated - use groupCode)
+	assignmentCode: string; // Nhóm vật tư, tài sản (deprecated - use groupCode)
 	groupCode: string; // New hierarchical group code
 	groupName: string; // New hierarchical group name
 	materialCode: string; // Mã vật tư
@@ -93,8 +93,8 @@ export type MaterialItem = {
 // SCTX item type
 export type SCTXItem = {
 	id: string;
-	assignmentCode: string; // Mã giao khoán
-	assignmentName?: string; // Tên giao khoán
+	assignmentCode: string; // Nhóm vật tư, tài sản
+	assignmentName?: string; // Tên nhóm vật tư, tài sản
 	equipmentCode: string; // Mã thiết bị (deprecated - use groupCode)
 	groupCode: string; // New hierarchical group code
 	groupName: string; // New hierarchical group name
@@ -182,14 +182,14 @@ export type HierarchicalAcceptanceReport = {
 
 // Legacy group types (keep for backward compatibility during migration)
 export type MaterialGroup = {
-	assignmentCode: string; // Mã giao khoán (or "VTK" for other materials)
+	assignmentCode: string; // Nhóm vật tư, tài sản (or "VTK" for other materials)
 	assignmentName: string;
 	items: MaterialItem[];
 };
 
 export type SCTXGroup = {
-	assignmentCode: string; // Mã giao khoán
-	assignmentName: string; // Tên giao khoán
+	assignmentCode: string; // Nhóm vật tư, tài sản
+	assignmentName: string; // Tên nhóm vật tư, tài sản
 	equipmentCode: string; // Mã thiết bị
 	equipmentName: string;
 	items: SCTXItem[];
@@ -210,14 +210,14 @@ export type AssetGroup = {
 // Category 1: Vật tư tính vào doanh thu khoán
 export type ContractedRevenueCategory = {
 	id: string;
-	materialGroups: MaterialGroup[]; // Vật liệu (grouped by mã giao khoán)
+	materialGroups: MaterialGroup[]; // Vật liệu (grouped by Nhóm vật tư, tài sản)
 	sctxGroups: SCTXGroup[]; // SCTX (grouped by thiết bị, with default classification rows)
 };
 
 // Category 2: Bổ sung chi phí
 export type AdditionalCostCategory = {
 	id: string;
-	materialGroups: MaterialGroup[]; // Vật liệu (grouped by mã giao khoán)
+	materialGroups: MaterialGroup[]; // Vật liệu (grouped by Nhóm vật tư, tài sản)
 	sctxGroups: SCTXGroup[]; // SCTX (grouped by thiết bị)
 	otherMaterials: MaterialItem[]; // Vật tư khác (no grouping)
 };

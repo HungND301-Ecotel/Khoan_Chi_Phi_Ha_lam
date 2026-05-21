@@ -400,7 +400,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                 var assignmentKey = NormalizeLookupValue(assignmentText);
                 if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
                 {
-                    importErrors.Add($"Mã giao khoán '{assignmentText}' không tồn tại ở dòng {row}.");
+                    importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không tồn tại ở dòng {row}.");
                     continue;
                 }
             }
@@ -452,7 +452,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
 
                 if (assignment == null)
                 {
-                    importErrors.Add($"Mã giao khoán '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không hợp lệ ở dòng {row}.");
                     continue;
                 }
 
@@ -631,7 +631,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
             if (_assignmentCostMap.ContainsKey(assignmentCodeId))
             {
                 throw new BadRequestException(
-                    $"Mã giao khoán '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
+                    $"Nhóm vật tư, tài sản '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
             }
 
             _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, amount);

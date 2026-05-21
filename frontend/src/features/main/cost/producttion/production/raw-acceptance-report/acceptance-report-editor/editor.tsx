@@ -294,11 +294,9 @@ function syncCategoryAllocations(
 		const previousAllocation =
 			previousAllocationByProcessGroupId.get(processGroupId);
 		const assignmentCodeIds = needsAssignmentCode
-			? (
-					previousAllocation?.assignmentCodeIds?.filter(Boolean).slice(0, 1) ??
-					previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ??
-					[]
-				)
+			? (previousAllocation?.assignmentCodeIds?.filter(Boolean).slice(0, 1) ??
+				previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ??
+				[])
 			: [];
 
 		return createCategoryAllocation(
@@ -336,8 +334,7 @@ function getMaterialBadge(
 		itemType === ItemType.SafetyAndWelfare
 	) {
 		return {
-			label:
-				'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+			label: 'Vật tư, tài sản',
 			className:
 				'rounded bg-emerald-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-emerald-700',
 		};
@@ -345,7 +342,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.Resource) {
 		return {
-			label: 'Tài sản',
+			label: 'Vật tư, tài sản',
 			className:
 				'rounded bg-violet-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-violet-700',
 		};
@@ -353,7 +350,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
 		return {
-			label: 'Vật tư theo hạn mức',
+			label: 'Vật tư, tài sản',
 			className:
 				'rounded bg-cyan-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-cyan-700',
 		};
@@ -361,7 +358,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.InContract) {
 		return {
-			label: 'Vật tư, tài sản trong khoán',
+			label: 'Vật tư, tài sản',
 			className:
 				'rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700',
 		};
@@ -369,7 +366,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
 		return {
-			label: 'Vật tư, tài sản ngoài khoán',
+			label: 'Vật tư, tài sản khác',
 			className:
 				'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
 		};
@@ -377,7 +374,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
 		return {
-			label: 'Vật tư theo mã giao khoán',
+			label: 'Vật tư theo nhóm vật tư, tài sản',
 			className:
 				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
 		};
@@ -1358,10 +1355,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const categoryAssignmentCodeIds = row?.categoryAssignmentCodeIds as
 		| string[]
 		| undefined;
-	const categoryEquipmentIds =
-		(row?.categoryAssignmentCodeIds ?? row?.categoryEquipmentIds) as
-			| string[]
-			| undefined;
+	const categoryEquipmentIds = (row?.categoryAssignmentCodeIds ??
+		row?.categoryEquipmentIds) as string[] | undefined;
 	const categoryAllocations = row?.categoryAllocations as
 		| CategoryAllocation[]
 		| undefined;
@@ -1421,8 +1416,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const assignmentCodeOptions = orderOrAssignmentCodeOptions.filter((option) =>
 		option.value.startsWith(ASSIGNMENT_CODE_OPTION_PREFIX),
 	);
-	const productionOrderOnlyOptions = orderOrAssignmentCodeOptions.filter((option) =>
-		option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
+	const productionOrderOnlyOptions = orderOrAssignmentCodeOptions.filter(
+		(option) => option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
 	);
 	const categoryAssignmentCodeOptions = assignmentCodeOptions.map((option) => ({
 		value: parseAssignmentCodeOptionId(option.value),
@@ -1434,8 +1429,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			label: option.label,
 		}),
 	);
-	const additionalCostOrderOrAssignmentCodeOptions =
-		isSparePartByAssignmentCode
+	const additionalCostOrderOrAssignmentCodeOptions = isSparePartByAssignmentCode
 		? productionOrderOnlyOptions
 		: orderOrAssignmentCodeOptions;
 
@@ -1928,8 +1922,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			set('categoryAssignmentCodeId', normalizedAssignmentCodeIds[0] ?? null);
 		}
 		if (
-			(categoryEquipmentId ?? null) !==
-			(normalizedAssignmentCodeIds[0] ?? null)
+			(categoryEquipmentId ?? null) !== (normalizedAssignmentCodeIds[0] ?? null)
 		) {
 			set('categoryEquipmentId', normalizedAssignmentCodeIds[0] ?? null);
 		}
@@ -1979,7 +1972,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		if (resolvedCategoryValue !== MaterialsIncludedInContractRevenue.Maintain) {
 			if (categoryProductionOrderId != null)
 				set('categoryProductionOrderId', null);
-			if (categoryAssignmentCodeId != null) set('categoryAssignmentCodeId', null);
+			if (categoryAssignmentCodeId != null)
+				set('categoryAssignmentCodeId', null);
 			if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 			return;
 		}
@@ -2738,14 +2732,15 @@ const MaterialImportRow = memo(function MaterialImportRow({
 																					processGroupId,
 																					(currentAllocation) => ({
 																						...currentAllocation,
-																						assignmentCodeIds:
-																							value ? [value] : [],
+																						assignmentCodeIds: value
+																							? [value]
+																							: [],
 																						equipmentIds: value ? [value] : [],
 																					}),
 																				);
 																			}}
 																			options={categoryAssignmentCodeOptions}
-																			placeholder='Chọn mã giao khoán'
+																			placeholder='Chọn Nhóm vật tư, tài sản'
 																		/>
 																	</div>
 																);

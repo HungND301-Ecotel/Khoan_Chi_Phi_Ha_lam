@@ -3,9 +3,6 @@ import { DataTableEditDialog } from '@/components/datatable/edit';
 import { DialogContext } from '@/data/dialog/dialog-context';
 import { AssetExternalForm } from '@/features/main/catalog/asset/external/form';
 import { AssetInternalForm } from '@/features/main/catalog/asset/internal/form';
-import { AssetQuotaMaterialsForm } from '@/features/main/catalog/asset/quota-materials/form';
-import { AssetResourceForm } from '@/features/main/catalog/asset/resource/form';
-import { AssetSafetyAndWelfareForm } from '@/features/main/catalog/asset/safety-and-welfare/form';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { Part } from '@/features/main/catalog/part/main/columns';
 import { PartForm } from '@/features/main/catalog/part/main/actions';
@@ -43,15 +40,9 @@ function getSelectionLabel(
 	if (selection.entityGroup === 'material') {
 		switch (selection.specificType) {
 			case 1:
-				return 'vật tư, tài sản trong khoán';
+				return 'vật tư, tài sản';
 			case 2:
-				return 'vật tư, tài sản ngoài khoán';
-			case 3:
-				return 'vật tư theo chế độ người lao động';
-			case 4:
-				return 'tài sản';
-			case 5:
-				return 'vật tư theo hạn mức';
+				return 'vật tư, tài sản khác';
 			default:
 				return 'vật tư';
 		}
@@ -89,7 +80,7 @@ export function UnresolvedCatalogCreateDialog({
 						<AssetInternalForm
 							data={embeddedData as ActionDialogProps<Asset>['data']}
 							defaultCode={defaultCode}
-							successLabel='Vật tư, tài sản trong khoán'
+							successLabel='Vật tư, tài sản'
 							onCreated={onCreated}
 						/>
 					);
@@ -98,34 +89,7 @@ export function UnresolvedCatalogCreateDialog({
 						<AssetExternalForm
 							data={embeddedData as ActionDialogProps<Asset>['data']}
 							defaultCode={defaultCode}
-							successLabel='Vật tư, tài sản ngoài khoán'
-							onCreated={onCreated}
-						/>
-					);
-				case 3:
-					return (
-						<AssetSafetyAndWelfareForm
-							data={embeddedData as ActionDialogProps<Asset>['data']}
-							defaultCode={defaultCode}
-							successLabel='Vật tư theo chế độ người lao động'
-							onCreated={onCreated}
-						/>
-					);
-				case 4:
-					return (
-						<AssetResourceForm
-							data={embeddedData as ActionDialogProps<Asset>['data']}
-							defaultCode={defaultCode}
-							successLabel='Tài sản'
-							onCreated={onCreated}
-						/>
-					);
-				case 5:
-					return (
-						<AssetQuotaMaterialsForm
-							data={embeddedData as ActionDialogProps<Asset>['data']}
-							defaultCode={defaultCode}
-							successLabel='Vật tư theo hạn mức'
+							successLabel='Vật tư, tài sản khác'
 							onCreated={onCreated}
 						/>
 					);
@@ -137,7 +101,7 @@ export function UnresolvedCatalogCreateDialog({
 				<PartForm
 					data={embeddedData as ActionDialogProps<Part>['data']}
 					defaultCode={defaultCode}
-					successLabel='Vật tư theo mã giao khoán'
+					successLabel='Vật tư theo nhóm vật tư, tài sản'
 					onCreated={onCreated}
 				/>
 			);

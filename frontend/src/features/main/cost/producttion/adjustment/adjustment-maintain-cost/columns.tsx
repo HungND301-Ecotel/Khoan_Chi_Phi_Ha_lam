@@ -58,11 +58,11 @@ export const getAdjustmentMaintainCostColumns = (
 	return [
 		{
 			accessorKey: 'assignmentCode',
-			header: 'Mã giao khoán',
+			header: 'Nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'assignmentCodeName',
-			header: 'Tên giao khoán',
+			header: 'Tên nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'maintainUnitPrice',

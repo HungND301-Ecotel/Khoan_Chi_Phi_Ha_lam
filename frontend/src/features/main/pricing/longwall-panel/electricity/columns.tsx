@@ -30,13 +30,13 @@ export const LONGWALL_ELECTRICITY_COLUMNS: ColumnDef<LongwallElectricity>[] = [
 	{
 		accessorKey: 'equipmentCode',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>{'Mã giao khoán'}</span>
+			<span className='leading-tight whitespace-normal'>{'Nhóm vật tư, tài sản'}</span>
 		),
 	},
 	{
 		accessorKey: 'equipmentName',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>{'Tên giao khoán'}</span>
+			<span className='leading-tight whitespace-normal'>{'Tên nhóm vật tư, tài sản'}</span>
 		),
 	},
 	{

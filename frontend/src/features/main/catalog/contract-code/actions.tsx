@@ -201,15 +201,15 @@ export function ContractCodeForm({
 			<FormInput
 				control={form.control}
 				name='code'
-				label='Mã giao khoán'
-				placeholder='Nhập mã giao khoán, ví dụ: VLN'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Nhập nhóm vật tư, tài sản, ví dụ: VLN'
 			/>
 
 			<FormInput
 				control={form.control}
 				name='name'
-				label='Tên mã giao khoán'
-				placeholder='Nhập tên giao khoán, ví dụ: Vật liệu nổ'
+				label='Tên nhóm vật tư, tài sản'
+				placeholder='Nhập tên nhóm vật tư, tài sản, ví dụ: Vật liệu nổ'
 			/>
 
 			<FormComboBox

@@ -39,9 +39,9 @@ namespace Application.Dto.Catalog.AssignmentCode
     public class AssignmentCodeExcelDto
     {
         public Guid Id { get; set; }
-        [Display(Name = "Mã giao khoán")]
+        [Display(Name = "Nhóm vật tư, tài sản")]
         public string Code { get; set; }
-        [Display(Name = "Tên giao khoán")]
+        [Display(Name = "Tên nhóm vật tư, tài sản")]
         public string Name { get; set; }
         [Display(Name = "Mã vật tư, tài sản")]
         public string MaterialCode { get; set; } = string.Empty;

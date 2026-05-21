@@ -314,8 +314,8 @@ export function LongwallPanelForm({
 			<FormMultiSelect
 				control={form.control}
 				name='equipmentIds'
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				options={equipments.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,

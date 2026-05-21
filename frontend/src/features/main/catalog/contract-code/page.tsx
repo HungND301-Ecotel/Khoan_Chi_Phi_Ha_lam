@@ -19,7 +19,9 @@ function MainCatalogContractCodePage() {
 			const rows = selected.rows.map((row) => row.original.id);
 			await api.delete(API.CATALOG.CONTRACT_CODE.DELETES, rows);
 
-			popup.success(`Đã xoá thành công ${rows.length} mã giao khoán.`);
+			popup.success(
+				`Đã xoá thành công ${rows.length} nhóm vật tư, tài sản.`,
+			);
 			await data.refresh();
 			data.table.toggleAllRowsSelected(false);
 		} catch (error) {
@@ -58,8 +60,8 @@ function MainCatalogContractCodePage() {
 			url={`${API.CATALOG.CONTRACT_CODE.LIST}`}
 			columns={CATALOG_CONTRACT_CODE_COLUMNS}
 			filters={[
-				{ key: 'name', label: 'Tên giao khoán' },
-				{ key: 'code', label: 'Mã giao khoán' },
+				{ key: 'name', label: 'Tên nhóm vật tư, tài sản' },
+				{ key: 'code', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 				{ key: 'currentPrice', label: 'Đơn giá điện năng' },
 			]}

@@ -13,8 +13,8 @@ export const longwallPanelFormSchema = z.object({
 		})
 		.nonempty('Không được để trống'),
 	equipmentIds: z
-		.array(z.string().nonempty({ error: 'Mã giao khoán không được để trống' }))
-		.nonempty({ error: 'Mã giao khoán không được để trống' }),
+		.array(z.string().nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }))
+		.nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }),
 	selectedPartIds: z.array(
 		z.string().nonempty({ error: 'Mã vật tư không được để trống' }),
 	),
@@ -42,7 +42,7 @@ export const longwallPanelFormSchema = z.object({
 					}),
 				equipmentId: z
 					.string()
-					.nonempty({ error: 'Mã giao khoán không được để trống' }),
+					.nonempty({ error: 'Nhóm vật tư, tài sản không được để trống' }),
 			}),
 		)
 		.nonempty({ error: 'Mục đầu vào không được để trống' }),

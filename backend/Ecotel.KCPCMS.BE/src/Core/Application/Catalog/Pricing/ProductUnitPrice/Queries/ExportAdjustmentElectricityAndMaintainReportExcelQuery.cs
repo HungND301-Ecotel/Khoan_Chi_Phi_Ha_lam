@@ -409,7 +409,7 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
         worksheet.Range(topRow, 2, bottomRow, 2).Merge().Value = "Tên sản phẩm";
         worksheet.Range(topRow, 3, bottomRow, 3).Merge().Value = "Đơn vị tính";
         worksheet.Range(topRow, 4, bottomRow, 4).Merge().Value = "Sản lượng";
-        worksheet.Range(topRow, 5, bottomRow, 5).Merge().Value = "Tên mã giao khoán";
+        worksheet.Range(topRow, 5, bottomRow, 5).Merge().Value = "Tên Nhóm vật tư, tài sản";
         worksheet.Range(topRow, 6, bottomRow, 6).Merge().Value = "ĐVT";
         worksheet.Range(topRow, 7, bottomRow, 7).Merge().Value = "Số lượng";
         worksheet.Range(topRow, 8, bottomRow, 8).Merge().Value = "K1";

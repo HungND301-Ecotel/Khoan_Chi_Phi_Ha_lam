@@ -52,7 +52,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
 
         foreach (var duplicateGroup in equipmentCodeGroups.Where(g => g.Count() > 1))
         {
-            importErrors.Add($"Mã giao khoán '{duplicateGroup.Key}' đang bị trùng trong danh mục mã giao khoán.");
+            importErrors.Add($"Nhóm vật tư, tài sản '{duplicateGroup.Key}' đang bị trùng trong danh mục nhóm vật tư, tài sản.");
         }
 
         ThrowIfImportErrors(importErrors);
@@ -74,7 +74,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
                 var equipmentCode = item.dto.EquipmentCode?.Trim();
                 if (string.IsNullOrWhiteSpace(equipmentCode) || !equipmentIdMap.TryGetValue(equipmentCode, out var equipmentId))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{equipmentCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
                     continue;
                 }
 
@@ -189,7 +189,7 @@ public class ImportTunnelElectricityUnitPriceEquipmentExcelCommandHandler(IExcel
             var equipmentCode = item.dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
             }
         }
     }

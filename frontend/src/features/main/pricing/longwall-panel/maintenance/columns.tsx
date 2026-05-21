@@ -14,7 +14,7 @@ export type LongwallPanel = {
 export const MAIN_PRICING_LONGWALL_PANEL_COLUMNS: ColumnDef<LongwallPanel>[] = [
 	{
 		accessorKey: 'equipmentCode',
-		header: 'Mã giao khoán',
+		header: 'Nhóm vật tư, tài sản',
 		cell: ({ row }) =>
 			`${row.original.equipmentCode} - ${row.original.equipmentName}`,
 	},

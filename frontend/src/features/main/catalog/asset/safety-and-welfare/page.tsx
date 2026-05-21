@@ -62,7 +62,7 @@ function MainCatalogAssetSafetyAndWelfarePage() {
 			query={{ ignorePagination: true, materialType: 3 }}
 			columns={CATALOG_ASSET_SAFETY_AND_WELFARE_COLUMNS}
 			filters={[
-				{ key: 'assignmentCode', label: 'Mã giao khoán' },
+				{ key: 'assignmentCode', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'code', label: 'Mã vật tư, tài sản' },
 				{ key: 'name', label: 'Tên vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },

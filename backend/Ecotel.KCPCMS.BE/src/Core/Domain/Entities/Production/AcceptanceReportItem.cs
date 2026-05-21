@@ -92,7 +92,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
         if ((categoryReference.AssignmentCodeId != null || additionalReference.AssignmentCodeId != null) && partId == null)
         {
-            throw new ArgumentException("Phải chỉ rõ vật tư gắn với mã giao khoán");
+            throw new ArgumentException("Phải chỉ rõ vật tư gắn với Nhóm vật tư, tài sản");
         }
 
         bool requiresMaintain =

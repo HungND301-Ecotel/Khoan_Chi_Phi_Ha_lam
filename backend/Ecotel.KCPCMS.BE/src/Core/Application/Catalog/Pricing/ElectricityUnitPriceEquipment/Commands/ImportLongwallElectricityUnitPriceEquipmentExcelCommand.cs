@@ -49,7 +49,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             {
                 if (!equipmentIdMap.TryGetValue(item.dto.EquipmentCode, out var equipmentId))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{item.dto.EquipmentCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{item.dto.EquipmentCode}' không tồn tại.");
                     continue;
                 }
 
@@ -175,7 +175,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             var equipmentCode = item.dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Dòng {item.rowNumber}: mã giao khoán '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
             }
         }
     }

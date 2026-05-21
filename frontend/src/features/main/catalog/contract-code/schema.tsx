@@ -2,10 +2,10 @@ import z from 'zod';
 
 export const contractCodeSchema = z.object({
 	code: z.string().nonempty({
-		message: 'Mã giao khoán không được để trống',
+		message: 'Nhóm vật tư, tài sản không được để trống',
 	}),
 	name: z.string().nonempty({
-		message: 'Tên giao khoán không được để trống',
+		message: 'Tên nhóm vật tư, tài sản không được để trống',
 	}),
 	unitOfMeasureId: z
 		.string()

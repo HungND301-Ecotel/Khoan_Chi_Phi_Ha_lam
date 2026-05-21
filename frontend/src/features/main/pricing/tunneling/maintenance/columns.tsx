@@ -15,7 +15,7 @@ export type Tunneling = {
 export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	{
 		accessorKey: 'equipmentCode',
-		header: 'Mã giao khoán',
+		header: 'Nhóm vật tư, tài sản',
 		cell: ({ row }) =>
 			`${row.original.equipmentCode} - ${row.original.equipmentName}`,
 	},

@@ -136,7 +136,7 @@ export const MAIN_PRICING_SLIDE_EXPAND_COLUMNS: ColumnDef<FlatSlideCost>[] = [
 	{
 		accessorKey: 'assignmentCode',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>Mã giao khoán</span>
+			<span className='leading-tight whitespace-normal'>Nhóm vật tư, tài sản</span>
 		),
 		cell: ({ row }) => (
 			<span className='font-semibold'>

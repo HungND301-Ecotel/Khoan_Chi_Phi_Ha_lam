@@ -64,8 +64,8 @@ export function MainPricingTrimmingElectricityPage() {
 			columns={MAIN_PRICING_ELECTRICITY_COLUMNS}
 			url={API.PRICING.ELECTRICITY.TRIMMING.LIST}
 			filters={[
-				{ key: 'equipmentCode', label: 'Mã giao khoán' },
-				{ key: 'equipmentName', label: 'Tên giao khoán' },
+				{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' },
+				{ key: 'equipmentName', label: 'Tên nhóm vật tư, tài sản' },
 			]}
 			onCreate={(props) => <ElectricityForm {...props} />}
 			onDuplicate={(props) => <ElectricityForm {...props} isDuplicate />}

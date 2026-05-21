@@ -146,7 +146,7 @@ public class ExportExcelTrimmingMaintainUnitPriceEquipmentQueryHandler(IUnitOfWo
 
         // Column B: Equipment Code
         var equipmentLabelCell = worksheet.Cell(currentRow, 2);
-        equipmentLabelCell.Value = "Mã giao khoán";
+        equipmentLabelCell.Value = "Nhóm vật tư, tài sản";
         equipmentLabelCell.Style.Font.Bold = true;
         equipmentLabelCell.Style.Fill.BackgroundColor = XLColor.LightGray;
         equipmentLabelCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
