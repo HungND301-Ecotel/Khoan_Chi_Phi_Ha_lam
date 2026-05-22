@@ -241,7 +241,7 @@ export function ContractCodeForm({
 			<FormArray
 				control={form.control}
 				name='costs'
-				label='Đơn giá (đ)'
+				label='Đơn giá điện năng (đ/kWh)'
 				canEmpty
 			>
 				{(index) => (
@@ -262,8 +262,8 @@ export function ContractCodeForm({
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá (đ)'
-								placeholder='Đơn giá (đ)'
+								label='Đơn giá điện năng (đ/kWh)'
+								placeholder='Đơn giá điện năng (đ/kWh)'
 							/>
 						</div>
 					</div>
