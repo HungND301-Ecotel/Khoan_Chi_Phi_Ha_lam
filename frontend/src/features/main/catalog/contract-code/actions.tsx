@@ -121,14 +121,13 @@ export function ContractCodeForm({
 							name: detail.name,
 							unitOfMeasureId: detail.unitOfMeasureId ?? null,
 							materialIds: selected.map((item) => item.value),
-							costs:
-								detail.costs?.length
-									? detail.costs.map((cost) => ({
-											startMonth: cost.startMonth.substring(0, 10),
-											endMonth: cost.endMonth.substring(0, 10),
-											amount: cost.amount,
-										}))
-									: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
+							costs: detail.costs?.length
+								? detail.costs.map((cost) => ({
+										startMonth: cost.startMonth.substring(0, 10),
+										endMonth: cost.endMonth.substring(0, 10),
+										amount: cost.amount,
+									}))
+								: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
 						});
 						setSelectedMainMaterials(
 							selectedMain.length > 0 ? selectedMain : selected,
@@ -140,13 +139,10 @@ export function ContractCodeForm({
 	}, [form, row, isDuplicate]);
 
 	useEffect(() => {
-		form.setValue(
-			'materialIds',
-			[
-				...selectedMainMaterials.map((item) => item.value),
-				...selectedOtherMaterials.map((item) => item.value),
-			],
-		);
+		form.setValue('materialIds', [
+			...selectedMainMaterials.map((item) => item.value),
+			...selectedOtherMaterials.map((item) => item.value),
+		]);
 	}, [form, selectedMainMaterials, selectedOtherMaterials]);
 
 	const buildMaterialOptions = (targetType: number) =>
@@ -172,7 +168,10 @@ export function ContractCodeForm({
 			),
 		).sort((a, b) => a.label.localeCompare(b.label));
 	const materialOptions = useMemo(() => buildMaterialOptions(1), [materials]);
-	const otherMaterialOptions = useMemo(() => buildMaterialOptions(2), [materials]);
+	const otherMaterialOptions = useMemo(
+		() => buildMaterialOptions(2),
+		[materials],
+	);
 
 	const handleSubmit = async (values: ContractCodeSchema) => {
 		try {
@@ -242,7 +241,7 @@ export function ContractCodeForm({
 			<FormArray
 				control={form.control}
 				name='costs'
-				label='Đơn giá điện năng (đ/kWh)'
+				label='Đơn giá (đ)'
 				canEmpty
 			>
 				{(index) => (
@@ -263,8 +262,8 @@ export function ContractCodeForm({
 							<FormNumber
 								control={form.control}
 								name={`costs.${index}.amount`}
-								label='Đơn giá điện năng (đ/kWh)'
-								placeholder='Nhập đơn giá điện năng (đ/kWh)'
+								label='Đơn giá (đ)'
+								placeholder='Đơn giá (đ)'
 							/>
 						</div>
 					</div>

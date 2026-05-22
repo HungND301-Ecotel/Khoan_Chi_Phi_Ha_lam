@@ -411,7 +411,7 @@ export function SctxRevenueReportDataTable() {
 								value={fromMonthPart}
 								onValueChange={handleFromMonthChange}
 							>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn tháng' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -423,7 +423,7 @@ export function SctxRevenueReportDataTable() {
 								</SelectContent>
 							</Select>
 							<Select value={fromYearPart} onValueChange={handleFromYearChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn năm' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -440,7 +440,7 @@ export function SctxRevenueReportDataTable() {
 						<p className='text-sm font-medium'>Đến tháng</p>
 						<div className='flex gap-2'>
 							<Select value={toMonthPart} onValueChange={handleToMonthChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn tháng' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -452,7 +452,7 @@ export function SctxRevenueReportDataTable() {
 								</SelectContent>
 							</Select>
 							<Select value={toYearPart} onValueChange={handleToYearChange}>
-								<SelectTrigger className='w-[120px] bg-white'>
+								<SelectTrigger className='w-30 bg-white'>
 									<SelectValue placeholder='Chọn năm' />
 								</SelectTrigger>
 								<SelectContent className='max-h-64'>
@@ -475,7 +475,7 @@ export function SctxRevenueReportDataTable() {
 								isLoadingAssignmentCodes || assignmentCodes.length === 0
 							}
 						>
-							<SelectTrigger className='w-[300px] bg-white'>
+							<SelectTrigger className='w-75 bg-white'>
 								<SelectValue
 									placeholder={
 										isLoadingAssignmentCodes
@@ -516,7 +516,7 @@ export function SctxRevenueReportDataTable() {
 			<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>
 				{error ? <p className='mb-3 text-sm text-red-600'>{error}</p> : null}
 				<div className='mx-auto w-full overflow-x-auto'>
-					<div className='mx-auto max-h-[70vh] min-h-[210mm] min-w-[1320px] overflow-y-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
+					<div className='mx-auto max-h-[70vh] min-h-[210mm] min-w-330 overflow-y-auto bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.14)] md:p-5'>
 						<div className='font-["Times_New_Roman",Times,serif]'>
 							<div className='flex items-start justify-between gap-8'>
 								<div className='space-y-1 text-left font-bold'>
@@ -560,7 +560,7 @@ export function SctxRevenueReportDataTable() {
 											<p className='mb-2 text-base font-bold md:text-lg'>
 												Năm {group.year}
 											</p>
-											<table className='w-full min-w-[1200px] table-fixed border-collapse text-center text-sm md:text-base'>
+											<table className='w-full min-w-300 table-fixed border-collapse text-center text-sm md:text-base'>
 												<thead>
 													<tr className='font-bold'>
 														<th className={borderCellClass}>Thời gian</th>
