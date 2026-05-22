@@ -58,13 +58,6 @@ Mặc định theo compose này:
 
 ```powershell
 cd backend\Ecotel.KCPCMS.BE
-dotnet restore .\Ecotel.KCPCMS.BE.sln
-
-$env:ASPNETCORE_ENVIRONMENT="Development"
-$env:DatabaseSettings__ConnectionString="Host=localhost;Port=15432;Database=<db_name>;Username=<db_user>;Password=<db_password>"
-$env:AppSettings__ClientRootAddress="http://localhost:5173/"
-$env:CorsSettings__AllowedOrigins="http://localhost:5173;https://localhost:5173;http://localhost:8175;https://localhost:8175"
-$env:SwaggerSettings__BaseUrl="https://localhost:8175"
 
 dotnet run --project .\src\Presentation\Host\Host.csproj
 ```
