@@ -22,6 +22,7 @@ integration, and E2E suites are not yet present as tracked projects.
 | Story | Contract | Unit | Integration | E2E | Platform | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `docs/stories/docs-backfill-current-state.md` | `docs/ARCHITECTURE.md`, `docs/product/*.md`, `docs/stories/*`, and `docs/README.md` reflect the current React + ASP.NET Core + PostgreSQL system | no | yes | no | yes | implemented | Source inspection plus successful `npm run build` and `dotnet build .\Ecotel.KCPCMS.BE.sln` on 2026-05-22 |
+| `docs/stories/fix-process-group-normalization.md` | Pricing forms and dashboard normalize `catalog/processgroup` payloads so process-group options still render, and the low-value perishable supply form shows the full catalog list when the backend returns `type` instead of `fixedKeyType` | no | yes | manual | yes | implemented | Source inspection and successful `npm run build` on 2026-05-25 |
 
 ## Evidence Rules
 

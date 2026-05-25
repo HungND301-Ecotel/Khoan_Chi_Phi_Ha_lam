@@ -13,7 +13,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Pickaxe, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import {
+	normalizeProcessGroup,
+	ProcessGroup,
+} from '@/features/main/catalog/process/group/columns';
 import { Department } from '@/features/main/catalog/department/columns';
 import { api } from '@/lib/api';
 import { API } from '@/constants/api-enpoint';
@@ -72,12 +75,7 @@ export default function DashboardPage() {
 		api
 			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
 			.then((res) =>
-				setGroups(
-					(res.result.data ?? []).map((group) => ({
-						...group,
-						fixedKeyType: group.fixedKeyType,
-					})),
-				),
+				setGroups((res.result.data ?? []).map(normalizeProcessGroup)),
 			)
 			.catch((error) => console.error('Error fetching process groups:', error));
 	}, []);
