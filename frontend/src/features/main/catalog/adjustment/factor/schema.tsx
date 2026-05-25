@@ -2,7 +2,7 @@ import z from 'zod';
 
 export const factorSchema = z.object({
 	fixedKeyId: z.string().nonempty({
-		error: 'Khóa cấu hình không được để trống.',
+		error: 'Hệ số điều chỉnh không được để trống.',
 	}),
 	name: z.string().nonempty({
 		error: 'Tên hệ số điều chỉnh không được để trống.',

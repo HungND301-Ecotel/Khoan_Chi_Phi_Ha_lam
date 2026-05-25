@@ -84,8 +84,8 @@ export function ProcessGroupForm({
 			<FormComboBox
 				control={form.control}
 				name='fixedKeyId'
-				label='Khóa cấu hình'
-				placeholder='Chọn khóa cấu hình'
+				label='Mã nhóm công đoạn sản xuất'
+				placeholder='Chọn mã nhóm công đoạn sản xuất'
 				options={fixedKeys.map((fixedKey) => ({
 					value: fixedKey.id,
 					label: `${fixedKey.key} - ${fixedKey.name}`,

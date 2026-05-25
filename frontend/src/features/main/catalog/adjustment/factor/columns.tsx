@@ -23,7 +23,7 @@ export const CATALOG_ADJUSTMENT_FACTOR_COLUMNS: ColumnDef<Factor>[] = [
 	},
 	{
 		accessorKey: 'fixedKeyKey',
-		header: 'Khóa cấu hình',
+		header: 'Hệ số điều chỉnh',
 		cell: ({ row }) => row.original.fixedKeyKey ?? row.original.code,
 	},
 	{

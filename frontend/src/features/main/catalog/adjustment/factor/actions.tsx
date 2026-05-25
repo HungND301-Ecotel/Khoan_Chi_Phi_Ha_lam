@@ -91,8 +91,8 @@ export function FactorForm({
 			<FormComboBox
 				control={form.control}
 				name='fixedKeyId'
-				label='Khóa cấu hình'
-				placeholder='Chọn khóa cấu hình'
+				label='Hệ số điều chỉnh'
+				placeholder='Chọn hệ số điều chỉnh'
 				options={fixedKeys.map((fixedKey) => ({
 					label: `${fixedKey.key} - ${fixedKey.name}`,
 					value: fixedKey.id,
