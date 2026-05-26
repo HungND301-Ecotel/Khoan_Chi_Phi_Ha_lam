@@ -277,7 +277,7 @@ export function RawAcceptanceReportTable({
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Tháng</p>
 						<Select value={month} onValueChange={setMonth}>
-							<SelectTrigger className='w-[150px] bg-white'>
+							<SelectTrigger className='w-37.5 bg-white'>
 								<SelectValue placeholder='Chọn tháng' />
 							</SelectTrigger>
 							<SelectContent>
@@ -293,7 +293,7 @@ export function RawAcceptanceReportTable({
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Năm</p>
 						<Select value={year} onValueChange={setYear}>
-							<SelectTrigger className='w-[120px] bg-white'>
+							<SelectTrigger className='w-30 bg-white'>
 								<SelectValue placeholder='Chọn năm' />
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
@@ -321,7 +321,7 @@ export function RawAcceptanceReportTable({
 										setCurrentPage(1);
 									}}
 									placeholder='Tìm theo mã, tên vật tư, nhóm công đoạn...'
-									className='h-10 w-[340px] bg-white pl-8 text-base'
+									className='h-10 w-85 bg-white pl-8 text-base'
 								/>
 							</div>
 						</div>

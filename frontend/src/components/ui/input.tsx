@@ -62,7 +62,7 @@ function Input({
 			<TooltipContent
 				side='top'
 				sideOffset={6}
-				className='max-w-96 px-3 py-2 text-sm break-words shadow-lg'
+				className='max-w-96 px-3 py-2 text-sm wrap-break-word shadow-lg'
 			>
 				{inputTitle}
 			</TooltipContent>

@@ -206,3 +206,42 @@ harness.db
 harness.db-wal
 harness.db-shm
 scripts/bin/harness-cli
+
+# --- Project-specific rules from new gitignore ---
+coverage/
+tests
+!standalone/**/scripts/
+!standalone/**/scripts/**
+
+# bv (beads viewer) local config and caches
+.bv/
+.beads
+.khuym
+.spike
+history
+.spikes
+
+# Keep selected docs while ignoring other docs content
+!docs/
+docs/*
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/ARCHITECTURE.md
+!docs/examples/
+docs/examples/*
+!docs/examples/golden-path.md
+!docs/evaluation/
+docs/evaluation/*
+!docs/evaluation/khuym-plugin-eval.md
+!docs/evaluation/khuym-swarming-hardening.md
+!docs/legal/
+!docs/legal/privacy.md
+!docs/legal/terms.md
+
+# Plugin Eval run outputs are local measurement artifacts. Keep the plugin-level
+# benchmark config above, but do not package per-skill benchmark state.
+plugins/khuym/.plugin-eval/*
+!plugins/khuym/.plugin-eval/benchmark.json
+plugins/khuym/skills/**/.plugin-eval/
+.codex
+.codex/

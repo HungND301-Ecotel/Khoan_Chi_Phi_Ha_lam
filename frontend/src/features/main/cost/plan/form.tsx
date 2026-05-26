@@ -50,7 +50,10 @@ type MonthSectionProps = {
 	products: Product[];
 	units: Unit[];
 	akProcessGroupIds: Set<string>;
-	isEdit: boolean;
+	shouldPreserveInvalidSelection: (
+		item: DepartmentPlanFormSchema['months'][number]['items'][number],
+		month?: string,
+	) => boolean;
 	onSyncProductUnit: (
 		productId: string,
 		unitOfMeasureId: string,
@@ -81,6 +84,10 @@ const getInvalidSelectedProduct = (
 	return isProductAvailableForMonth(product, month) ? null : product;
 };
 
+const getPersistedItemKey = (
+	item: DepartmentPlanFormSchema['months'][number]['items'][number],
+) => item.outputId || item.productUnitPriceId || '';
+
 function MonthSection({
 	form,
 	monthIndex,
@@ -89,7 +96,7 @@ function MonthSection({
 	products,
 	units,
 	akProcessGroupIds,
-	isEdit,
+	shouldPreserveInvalidSelection,
 	onSyncProductUnit,
 }: MonthSectionProps) {
 	const monthPath = `months.${monthIndex}` as const;
@@ -193,7 +200,9 @@ function MonthSection({
 				{itemFields.map((field, itemIndex) => {
 					const currentItem = watchedMonth?.items?.[itemIndex];
 					const product = getProduct(currentItem?.productId);
-					const invalidSelectedProduct = isEdit
+					const invalidSelectedProduct =
+						currentItem &&
+						shouldPreserveInvalidSelection(currentItem, watchedMonth?.month)
 						? getInvalidSelectedProduct(
 								products,
 								currentItem?.productId,
@@ -366,6 +375,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
 		new Set(),
 	);
+	const [legacyProductIds, setLegacyProductIds] = useState<Map<string, string>>(
+		new Map(),
+	);
 	const isEdit = !!row;
 
 	const form = useForm<DepartmentPlanFormSchema>({
@@ -394,6 +406,11 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 		return watchedMonths.flatMap((month, monthIndex) =>
 			month.items.flatMap((item, itemIndex) => {
+				const legacyProductId = legacyProductIds.get(getPersistedItemKey(item));
+				if (!legacyProductId || legacyProductId !== item.productId) {
+					return [];
+				}
+
 				const product = getInvalidSelectedProduct(
 					products,
 					item.productId,
@@ -411,7 +428,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				];
 			}),
 		);
-	}, [isEdit, products, watchedMonths]);
+	}, [isEdit, legacyProductIds, products, watchedMonths]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -466,6 +483,17 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						})),
 					})),
 				});
+				setLegacyProductIds(
+					new Map(
+						mappedDetail.months.flatMap((month) =>
+							month.items.flatMap((item) => {
+								const itemKey = item.outputId || item.productUnitPriceId;
+								if (!itemKey) return [];
+								return [[itemKey, item.productId] as const];
+							}),
+						),
+					),
+				);
 			},
 		);
 	}, [form, row]);
@@ -473,6 +501,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	useEffect(() => {
 		if (!row) {
 			form.reset(DEPARTMENT_PLAN_FORM_DEFAULT);
+			setLegacyProductIds(new Map());
 		}
 	}, [form, row]);
 
@@ -534,6 +563,45 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 			});
 		});
 	}, [form, watchedMonths]);
+
+	const shouldPreserveInvalidSelection = (
+		item: DepartmentPlanFormSchema['months'][number]['items'][number],
+		month?: string,
+	) => {
+		if (!isEdit || !month) return false;
+		const itemKey = getPersistedItemKey(item);
+		if (!itemKey) return false;
+
+		const legacyProductId = legacyProductIds.get(itemKey);
+		return !!legacyProductId && legacyProductId === item.productId;
+	};
+
+	useEffect(() => {
+		watchedMonths.forEach((month, monthIndex) => {
+			month.items.forEach((item, itemIndex) => {
+				if (!getInvalidSelectedProduct(products, item.productId, month.month)) {
+					return;
+				}
+
+				if (shouldPreserveInvalidSelection(item, month.month)) {
+					return;
+				}
+
+				form.setValue(`months.${monthIndex}.items.${itemIndex}.productId`, '', {
+					shouldDirty: true,
+					shouldValidate: true,
+				});
+				form.setValue(
+					`months.${monthIndex}.items.${itemIndex}.unitOfMeasureId`,
+					'',
+					{
+						shouldDirty: true,
+						shouldValidate: true,
+					},
+				);
+			});
+		});
+	}, [form, products, watchedMonths, isEdit, legacyProductIds]);
 
 	const handleSubmit = async (values: DepartmentPlanFormSchema) => {
 		try {
@@ -626,7 +694,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						products={products}
 						units={units}
 						akProcessGroupIds={akProcessGroupIds}
-						isEdit={isEdit}
+						shouldPreserveInvalidSelection={shouldPreserveInvalidSelection}
 						onSyncProductUnit={syncProductUnit}
 					/>
 				))}

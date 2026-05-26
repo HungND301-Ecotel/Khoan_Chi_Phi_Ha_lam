@@ -35,7 +35,7 @@ export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 		id: 'materialDetail',
 		header: 'Thông số',
 		cell: ({ row }) => (
-			<div className='flex min-w-[360px] flex-wrap items-center gap-x-2 text-sm'>
+			<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
 				{String(row.getValue('materialDetail'))
 					.split(' | ')
 					.map((item, index, items) => (
@@ -136,7 +136,9 @@ export const MAIN_PRICING_SLIDE_EXPAND_COLUMNS: ColumnDef<FlatSlideCost>[] = [
 	{
 		accessorKey: 'assignmentCode',
 		header: () => (
-			<span className='leading-tight whitespace-normal'>Nhóm vật tư, tài sản</span>
+			<span className='leading-tight whitespace-normal'>
+				Nhóm vật tư, tài sản
+			</span>
 		),
 		cell: ({ row }) => (
 			<span className='font-semibold'>
