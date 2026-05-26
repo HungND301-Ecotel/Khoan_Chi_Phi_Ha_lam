@@ -340,7 +340,6 @@ export function MaterialImportDialog({
 				API.CATALOG.ASSET.LIST,
 				{
 					ignorePagination: true,
-					materialType: specificType,
 					search: values.code,
 				},
 			);

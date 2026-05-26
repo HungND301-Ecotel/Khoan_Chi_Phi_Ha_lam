@@ -139,6 +139,15 @@ public enum MaterialType
     MaterialOutContract = 2,
 }
 
+public enum AssignmentCodeMaterialRole
+{
+    [Display(Name = "Vật tư, tài sản")]
+    Material = 1,
+
+    [Display(Name = "Vật tư, tài sản khác")]
+    OtherMaterial = 2,
+}
+
 public enum MaterialUnitPriceType
 {
     TunnelExcavation = 1,  // Đào lò

@@ -11,10 +11,8 @@ namespace Application.Dto.Catalog.Material
         public Guid Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
-        public Guid AssignmentCodeId { get; set; } = Guid.Empty;
         public IList<Guid> AssignmentCodeIds { get; set; } = new List<Guid>();
         public bool IsSlideAssignmentCode { get; set; } = false;
-        public string AssignmentCode { get; set; } = "";
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
         public MaterialType MaterialType { get; set; }
@@ -45,8 +43,7 @@ namespace Application.Dto.Catalog.Material
         public Guid Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
-        public Guid? AssigmentCodeId { get; set; } = Guid.Empty;
-        public string AssigmentCode { get; set; } = "";
+        public IList<Guid> AssignmentCodeIds { get; set; } = new List<Guid>();
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; } = "";
         public MaterialType MaterialType { get; set; }

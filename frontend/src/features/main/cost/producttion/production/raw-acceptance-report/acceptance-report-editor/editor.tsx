@@ -366,7 +366,7 @@ function getMaterialBadge(
 
 	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
 		return {
-			label: 'Vật tư, tài sản khác',
+			label: 'Vật tư, tài sản',
 			className:
 				'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
 		};

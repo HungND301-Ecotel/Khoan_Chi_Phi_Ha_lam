@@ -15,6 +15,7 @@ import {
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Asset } from '@/features/main/catalog/asset/types';
+import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
@@ -99,6 +100,7 @@ export function PlanMaterialCostForm({
 	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [materials, setMaterials] = useState<UnifiedMaterial[]>([]);
 	const [assets, setAssets] = useState<Asset[]>([]);
+	const [contracts, setContracts] = useState<ContractCode[]>([]);
 	const [slideDetailList, setSlideDetailList] = useState<SlideDetailListItem[]>(
 		[],
 	);
@@ -157,6 +159,9 @@ export function PlanMaterialCostForm({
 			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 			api.pagging<Asset>(API.CATALOG.ASSET.LIST, { ignorePagination: true }),
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
+				ignorePagination: true,
+			}),
 			api.pagging<SlideDetailListItem>(API.PRICING.SLIDE.DETAIL_LIST, {
 				ignorePagination: true,
 			}),
@@ -169,6 +174,7 @@ export function PlanMaterialCostForm({
 				strengths,
 				materials,
 				assets,
+				contracts,
 				slideDetailList,
 			]) => {
 				const normFactorsData = normFactors.result.data;
@@ -179,6 +185,8 @@ export function PlanMaterialCostForm({
 				setMaterials(materials.result.data);
 				const assetData = assets.result.data;
 				setAssets(assetData);
+				const contractsData = contracts.result.data;
+				setContracts(contractsData);
 				const slideDetailData = slideDetailList.result.data;
 				setSlideDetailList(slideDetailData);
 				if (!id) return;
@@ -233,7 +241,10 @@ export function PlanMaterialCostForm({
 						const matchedAsset = assetData.find(
 							(asset) => asset.id === materialReferenceIdFromDetail,
 						);
-						const assignmentCode = matchedAsset?.assignmentCode || '';
+						const assignmentCode =
+							contractsData.find((contract) =>
+								matchedAsset?.assignmentCodeIds.includes(contract.id),
+							)?.code || '';
 						setSlideCode(assignmentCode);
 						setSlideCodeDraft(assignmentCode);
 					});
@@ -281,7 +292,10 @@ export function PlanMaterialCostForm({
 		}
 
 		// Khi có mã máng trượt: lấy toàn bộ asset và lọc theo assignmentCode
-		return asset.assignmentCode.trim().toLowerCase() === normalizedSlideCode;
+		return asset.assignmentCodeIds.some((assignmentCodeId) => {
+			const contract = contracts.find((item) => item.id === assignmentCodeId);
+			return contract?.code.trim().toLowerCase() === normalizedSlideCode;
+		});
 	});
 
 	useEffect(() => {

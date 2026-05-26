@@ -2,8 +2,7 @@ export type Asset = {
 	id: string;
 	code: string;
 	name: string;
-	assignmentCodeId: string;
-	assignmentCode: string;
+	assignmentCodeIds: string[];
 	isSlideAssignmentCode: boolean;
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;

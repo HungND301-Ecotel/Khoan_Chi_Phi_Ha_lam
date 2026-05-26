@@ -16,6 +16,7 @@ public record GetAssignmentCodeDetailByIdQuery(DefaultIdType Id) : IRequest<Assi
 public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetAssignmentCodeDetailByIdQuery, AssignmentCodeDto>
 {
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+
     public async Task<AssignmentCodeDto> Handle(GetAssignmentCodeDetailByIdQuery request, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
@@ -32,6 +33,28 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
                 .Include(c => c.AssignmentCodeMaterials).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
+        var assignmentMaterials = detail.AssignmentCodeMaterials
+            .Where(link => link.Material != null)
+            .Select(link => new AssignmentCodeMaterialDto
+            {
+                Id = link.Material!.Id,
+                Code = link.Material.Code?.Value ?? string.Empty,
+                Name = link.Material.Name,
+                UnitOfMeasureName = link.Material.UnitOfMeasure != null ? link.Material.UnitOfMeasure.Name : string.Empty,
+                MaterialType = link.Material.MaterialType,
+                Role = link.Role,
+                CostAmount = link.Material.Costs
+                    .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
+                    .Select(c => c.Amount)
+                    .FirstOrDefault(),
+                ActualAmount = link.Material.Costs
+                    .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
+                    .Select(c => c.ActualAmount)
+                    .FirstOrDefault()
+            })
+            .OrderBy(m => m.Code)
+            .ThenBy(m => m.Name)
+            .ToList();
 
         return new AssignmentCodeDto
         {
@@ -55,27 +78,11 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
                 .OrderBy(c => c.StartMonth)
                 .ThenBy(c => c.EndMonth)
                 .ToList(),
-            Materials = detail.AssignmentCodeMaterials
-                .Where(link => link.Material != null)
-                .Select(link => link.Material!)
-                .Select(m => new AssignmentCodeMaterialDto
-                {
-                    Id = m.Id,
-                    Code = m.Code?.Value ?? string.Empty,
-                    Name = m.Name,
-                    UnitOfMeasureName = m.UnitOfMeasure != null ? m.UnitOfMeasure.Name : string.Empty,
-                    MaterialType = m.MaterialType,
-                    CostAmount = m.Costs
-                        .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
-                        .Select(c => c.Amount)
-                        .FirstOrDefault(),
-                    ActualAmount = m.Costs
-                        .Where(c => c.CostType == CostType.Material && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
-                        .Select(c => c.ActualAmount)
-                        .FirstOrDefault()
-                })
-                .OrderBy(m => m.Code)
-                .ThenBy(m => m.Name)
+            Materials = assignmentMaterials
+                .Where(m => m.Role == AssignmentCodeMaterialRole.Material)
+                .ToList(),
+            OtherMaterials = assignmentMaterials
+                .Where(m => m.Role == AssignmentCodeMaterialRole.OtherMaterial)
                 .ToList()
         };
     }

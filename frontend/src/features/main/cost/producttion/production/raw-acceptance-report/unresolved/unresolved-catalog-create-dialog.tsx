@@ -1,7 +1,6 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditDialog } from '@/components/datatable/edit';
 import { DialogContext } from '@/data/dialog/dialog-context';
-import { AssetExternalForm } from '@/features/main/catalog/asset/external/form';
 import { AssetInternalForm } from '@/features/main/catalog/asset/internal/form';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { Part } from '@/features/main/catalog/part/main/columns';
@@ -74,26 +73,19 @@ export function UnresolvedCatalogCreateDialog({
 		}
 
 		if (selection.entityGroup === 'material') {
-			switch (selection.specificType) {
-				case 1:
-					return (
-						<AssetInternalForm
-							data={embeddedData as ActionDialogProps<Asset>['data']}
-							defaultCode={defaultCode}
-							successLabel='Vật tư, tài sản'
-							onCreated={onCreated}
-						/>
-					);
-				case 2:
-					return (
-						<AssetExternalForm
-							data={embeddedData as ActionDialogProps<Asset>['data']}
-							defaultCode={defaultCode}
-							successLabel='Vật tư, tài sản khác'
-							onCreated={onCreated}
-						/>
-					);
-			}
+			const successLabel =
+				selection.specificType === 2
+					? 'Vật tư, tài sản khác'
+					: 'Vật tư, tài sản';
+
+			return (
+				<AssetInternalForm
+					data={embeddedData as ActionDialogProps<Asset>['data']}
+					defaultCode={defaultCode}
+					successLabel={successLabel}
+					onCreated={onCreated}
+				/>
+			);
 		}
 
 		if (selection.specificType === 1) {

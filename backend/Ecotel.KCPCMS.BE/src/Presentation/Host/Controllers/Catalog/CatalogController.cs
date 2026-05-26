@@ -279,7 +279,8 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Get All Material", "")]
     public async Task<IActionResult> GetAllMaterial([FromQuery] MaterialType? materialType, [FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
-        var result = await Mediator.Send(new GetAllMaterialQuery(pageIndex, pageSize, search, ignorePagination, materialType, date ?? DateTime.UtcNow));
+        var normalizedMaterialType = materialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : materialType;
+        var result = await Mediator.Send(new GetAllMaterialQuery(pageIndex, pageSize, search, ignorePagination, normalizedMaterialType, date ?? DateTime.UtcNow));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -287,7 +288,8 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Export Material", "")]
     public async Task<IActionResult> ExportMaterial([FromQuery] MaterialType materialType = MaterialType.MaterialInContract)
     {
-        var fileByte = await Mediator.Send(new ExportExcelMaterialQuery(materialType));
+        var normalizedMaterialType = materialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : materialType;
+        var fileByte = await Mediator.Send(new ExportExcelMaterialQuery(normalizedMaterialType));
         var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Vat_tu_tai_san.xlsx");
         return result;
     }
@@ -296,7 +298,8 @@ public class CatalogController : BaseNoAuthController
     [OpenApiOperation("Import Material", "")]
     public async Task<IActionResult> ImportMaterial([FromForm] ImportMaterialDto importModel)
     {
-        var result = await Mediator.Send(new ImportMaterialExcelCommand(importModel.FormFile, importModel.MaterialType));
+        var normalizedMaterialType = importModel.MaterialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : importModel.MaterialType;
+        var result = await Mediator.Send(new ImportMaterialExcelCommand(importModel.FormFile, normalizedMaterialType));
         return Ok(result, MessageCommon.ImportSuccess);
     }
 

@@ -26,8 +26,7 @@ export type AssetInternalDetail = {
 	id: string;
 	code: string;
 	name: string;
-	assigmentCodeId: string | null;
-	assignmentCode: string;
+	assignmentCodeIds: string[];
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	materialType: 1;

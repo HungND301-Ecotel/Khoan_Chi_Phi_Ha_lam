@@ -44,6 +44,14 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         }
 
         var materialIds = request.UpdateModel.MaterialIds.Distinct().ToList();
+        var otherMaterialIds = request.UpdateModel.OtherMaterialIds.Distinct().ToList();
+        var duplicateIds = materialIds.Intersect(otherMaterialIds).ToList();
+        if (duplicateIds.Any())
+        {
+            throw new BadRequestException(CustomResponseMessage.AssignmentCodeDuplicateMaterialIds);
+        }
+
+        var allMaterialIds = materialIds.Concat(otherMaterialIds).Distinct().ToList();
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -71,36 +79,51 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                 predicate: m => m.AssignmentCodeId == existAssignmentCode.Id,
                 disableTracking: false);
 
-            var selectedMaterials = materialIds.Any()
+            var selectedMaterials = allMaterialIds.Any()
                 ? await _materialRepository.GetAllAsync(
-                    predicate: m => materialIds.Contains(m.Id),
+                    predicate: m => allMaterialIds.Contains(m.Id),
                     include: q => q.Include(m => m.Code),
                     disableTracking: false)
                 : new List<Domain.Entities.Index.Material>();
 
-            if (selectedMaterials.Count != materialIds.Count)
+            if (selectedMaterials.Count != allMaterialIds.Count)
             {
                 throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
             }
 
-            var selectedMaterialIdSet = selectedMaterials
-                .Select(m => m.Id)
+            var materialRoleById = materialIds
+                .ToDictionary(materialId => materialId, _ => AssignmentCodeMaterialRole.Material);
+            foreach (var materialId in otherMaterialIds)
+            {
+                materialRoleById[materialId] = AssignmentCodeMaterialRole.OtherMaterial;
+            }
+
+            var selectedLinkKeys = materialRoleById
+                .Select(x => (x.Key, x.Value))
+                .ToHashSet();
+            var currentLinkKeys = currentLinks
+                .Select(link => (link.MaterialId, link.Role))
                 .ToHashSet();
 
-            var currentMaterialIdSet = currentLinks.Select(link => link.MaterialId).ToHashSet();
-
             var linksToDelete = currentLinks
-                .Where(link => !selectedMaterialIdSet.Contains(link.MaterialId))
+                .Where(link => !selectedLinkKeys.Contains((link.MaterialId, link.Role)))
                 .ToList();
             if (linksToDelete.Any())
             {
                 _assignmentCodeMaterialRepository.Delete(linksToDelete);
             }
 
-            foreach (var material in selectedMaterials.Where(m => !currentMaterialIdSet.Contains(m.Id)))
+            var linksToAdd = selectedLinkKeys
+                .Where(link => !currentLinkKeys.Contains(link))
+                .ToList();
+
+            foreach (var linkToAdd in linksToAdd)
             {
                 await _assignmentCodeMaterialRepository.InsertAsync(
-                    AssignmentCodeMaterial.Create(existAssignmentCode.Id, material.Id),
+                    AssignmentCodeMaterial.Create(
+                        existAssignmentCode.Id,
+                        linkToAdd.Key,
+                        linkToAdd.Value),
                     cancellationToken);
             }
 

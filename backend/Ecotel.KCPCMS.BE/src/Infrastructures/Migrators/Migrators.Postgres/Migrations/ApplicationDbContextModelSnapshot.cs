@@ -621,6 +621,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid>("MaterialId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Role")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
                     b.HasIndex("MaterialId");
@@ -1489,6 +1494,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("DeletedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly>("EndMonth")
+                        .HasColumnType("date");
+
                     b.Property<long>("LastModifiedBy")
                         .HasColumnType("bigint");
 
@@ -1501,6 +1509,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<Guid>("ProcessGroupId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartMonth")
+                        .HasColumnType("date");
 
                     b.HasKey("Id");
 

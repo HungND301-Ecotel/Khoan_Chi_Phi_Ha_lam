@@ -43,20 +43,9 @@ export const NAVIGATIONS: Navigation[] = [
 				href: '/catalogs/contract-codes',
 			},
 			{
-				type: 'sub-menu',
+				type: 'link',
 				name: 'Vật tư, tài sản',
-				items: [
-					{
-						type: 'link',
-						name: 'Vật tư, tài sản',
-						href: '/catalogs/assets/internal',
-					},
-					{
-						type: 'link',
-						name: 'Vật tư, tài sản khác',
-						href: '/catalogs/assets/external',
-					},
-				],
+				href: '/catalogs/assets/internal',
 			},
 			{ type: 'link', name: 'Sản phẩm', href: '/catalogs/products' },
 			{ type: 'link', name: 'Thông số', href: '/catalogs/parameters' },

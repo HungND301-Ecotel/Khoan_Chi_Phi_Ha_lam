@@ -27,7 +27,6 @@ type Material = {
 	id: string;
 	code: string;
 	name: string;
-	materialType: number;
 };
 
 type ContractCodeDetail = {
@@ -41,6 +40,7 @@ type ContractCodeDetail = {
 		amount: number;
 	}>;
 	materials?: Material[];
+	otherMaterials?: Material[];
 };
 
 type ContractCodeFormProps = ActionDialogProps<ContractCode> & {
@@ -57,7 +57,7 @@ export function ContractCodeForm({
 	const popup = usePopup();
 	const [units, setUnits] = useState<Unit[]>([]);
 	const [materials, setMaterials] = useState<Material[]>([]);
-	const [selectedMainMaterials, setSelectedMainMaterials] = useState<
+	const [selectedMaterials, setSelectedMaterials] = useState<
 		MultiSelectOption[]
 	>([]);
 	const [selectedOtherMaterials, setSelectedOtherMaterials] = useState<
@@ -73,6 +73,7 @@ export function ContractCodeForm({
 					name: row.name,
 					unitOfMeasureId: row.unitOfMeasureId,
 					materialIds: [],
+					otherMaterialIds: [],
 					costs: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
 				}
 			: CONTRACT_CODE_SCHEMA_DEFAULT,
@@ -101,15 +102,7 @@ export function ContractCodeForm({
 								label: `${material.code} - ${material.name}`,
 							}))
 							.sort((a, b) => a.label.localeCompare(b.label));
-						const selectedMain = (detail.materials ?? [])
-							.filter((material) => material.materialType !== 2)
-							.map<MultiSelectOption>((material) => ({
-								value: material.id,
-								label: `${material.code} - ${material.name}`,
-							}))
-							.sort((a, b) => a.label.localeCompare(b.label));
-						const selectedOther = (detail.materials ?? [])
-							.filter((material) => material.materialType === 2)
+						const selectedOther = (detail.otherMaterials ?? [])
 							.map<MultiSelectOption>((material) => ({
 								value: material.id,
 								label: `${material.code} - ${material.name}`,
@@ -121,6 +114,7 @@ export function ContractCodeForm({
 							name: detail.name,
 							unitOfMeasureId: detail.unitOfMeasureId ?? null,
 							materialIds: selected.map((item) => item.value),
+							otherMaterialIds: selectedOther.map((item) => item.value),
 							costs: detail.costs?.length
 								? detail.costs.map((cost) => ({
 										startMonth: cost.startMonth.substring(0, 10),
@@ -129,9 +123,7 @@ export function ContractCodeForm({
 									}))
 								: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
 						});
-						setSelectedMainMaterials(
-							selectedMain.length > 0 ? selectedMain : selected,
-						);
+						setSelectedMaterials(selected);
 						setSelectedOtherMaterials(selectedOther);
 					});
 			}
@@ -139,18 +131,25 @@ export function ContractCodeForm({
 	}, [form, row, isDuplicate]);
 
 	useEffect(() => {
-		form.setValue('materialIds', [
-			...selectedMainMaterials.map((item) => item.value),
-			...selectedOtherMaterials.map((item) => item.value),
-		]);
-	}, [form, selectedMainMaterials, selectedOtherMaterials]);
+		form.setValue(
+			'materialIds',
+			selectedMaterials.map((item) => item.value),
+		);
+	}, [form, selectedMaterials]);
 
-	const buildMaterialOptions = (targetType: number) =>
+	useEffect(() => {
+		form.setValue(
+			'otherMaterialIds',
+			selectedOtherMaterials.map((item) => item.value),
+		);
+	}, [form, selectedOtherMaterials]);
+
+	const allMaterialOptions = useMemo(
+		() =>
 		Object.values(
 			(materials ?? []).reduce<Record<string, MultiSelectOption>>(
 				(acc, material) => {
 					if (
-						material.materialType !== targetType ||
 						!material.id ||
 						!material.code ||
 						acc[material.id]
@@ -166,11 +165,28 @@ export function ContractCodeForm({
 				},
 				{},
 			),
-		).sort((a, b) => a.label.localeCompare(b.label));
-	const materialOptions = useMemo(() => buildMaterialOptions(1), [materials]);
-	const otherMaterialOptions = useMemo(
-		() => buildMaterialOptions(2),
+		).sort((a, b) => a.label.localeCompare(b.label)),
 		[materials],
+	);
+
+	const materialOptions = useMemo(
+		() =>
+			allMaterialOptions.filter(
+				(option) =>
+					selectedOtherMaterials.every((item) => item.value !== option.value) ||
+					selectedMaterials.some((item) => item.value === option.value),
+			),
+		[allMaterialOptions, selectedMaterials, selectedOtherMaterials],
+	);
+
+	const otherMaterialOptions = useMemo(
+		() =>
+			allMaterialOptions.filter(
+				(option) =>
+					selectedMaterials.every((item) => item.value !== option.value) ||
+					selectedOtherMaterials.some((item) => item.value === option.value),
+			),
+		[allMaterialOptions, selectedMaterials, selectedOtherMaterials],
 	);
 
 	const handleSubmit = async (values: ContractCodeSchema) => {
@@ -223,16 +239,16 @@ export function ContractCodeForm({
 			/>
 
 			<MultiSelect
-				label='Vật tư theo nhóm'
-				placeholder='Chọn vật tư theo nhóm'
-				values={selectedMainMaterials}
-				onValuesChange={setSelectedMainMaterials}
+				label='Vật tư, tài sản'
+				placeholder='Chọn vật tư, tài sản'
+				values={selectedMaterials}
+				onValuesChange={setSelectedMaterials}
 				options={materialOptions}
 			/>
 
 			<MultiSelect
-				label='Vật tư khác'
-				placeholder='Chọn vật tư khác'
+				label='Vật tư, tài sản khác'
+				placeholder='Chọn vật tư, tài sản khác'
 				values={selectedOtherMaterials}
 				onValuesChange={setSelectedOtherMaterials}
 				options={otherMaterialOptions}

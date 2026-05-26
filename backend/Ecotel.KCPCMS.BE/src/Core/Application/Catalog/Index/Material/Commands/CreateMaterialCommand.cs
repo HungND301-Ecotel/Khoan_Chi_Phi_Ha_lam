@@ -35,7 +35,10 @@ namespace Application.Catalog.Index.Material.Commands
             await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
             try
             {
-                var newMaterial = Domain.Entities.Index.Material.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.UnitOfMeasureId, request.CreateModel.AssigmentCodeId, request.CreateModel.MaterialType);
+                var normalizedMaterialType = request.CreateModel.MaterialType == Domain.Common.Enums.MaterialType.MaterialOutContract
+                    ? Domain.Common.Enums.MaterialType.MaterialInContract
+                    : request.CreateModel.MaterialType;
+                var newMaterial = Domain.Entities.Index.Material.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.UnitOfMeasureId, request.CreateModel.AssigmentCodeId, normalizedMaterialType);
 
                 var costList = new List<Cost>();
                 foreach (var cost in request.CreateModel.Costs)

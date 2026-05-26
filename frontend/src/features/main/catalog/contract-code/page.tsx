@@ -81,33 +81,58 @@ type ContractCodeDetail = {
 	code: string;
 	name: string;
 	materials?: ContractCodeMaterialDetail[];
+	otherMaterials?: ContractCodeMaterialDetail[];
 };
 
 function ContractCodeExpand({ row }: ActionDialogProps<ContractCode>) {
 	const [materials, setMaterials] = useState<ContractCodeMaterialDetail[]>([]);
+	const [otherMaterials, setOtherMaterials] = useState<ContractCodeMaterialDetail[]>(
+		[],
+	);
 
 	useEffect(() => {
 		if (!row) return;
 
 		api
 			.get<ContractCodeDetail>(API.CATALOG.CONTRACT_CODE.DETAIL(row.id))
-			.then((res) => setMaterials(res.result?.materials ?? []))
-			.catch(() => setMaterials([]));
+			.then((res) => {
+				setMaterials(res.result?.materials ?? []);
+				setOtherMaterials(res.result?.otherMaterials ?? []);
+			})
+			.catch(() => {
+				setMaterials([]);
+				setOtherMaterials([]);
+			});
 	}, [row]);
 
 	if (!row) return null;
 
 	return (
-		<div className='mx-32'>
-			<DataTable
-				columns={CATALOG_CONTRACT_CODE_EXPAND_COLUMNS}
-				items={materials}
-				hasActions={false}
-				hasPagination={false}
-				hasSort={false}
-				hasIndex={true}
-				compact={true}
-			/>
+		<div className='mx-32 space-y-6'>
+			<div className='space-y-2'>
+				<p className='text-sm font-semibold'>Vật tư, tài sản</p>
+				<DataTable
+					columns={CATALOG_CONTRACT_CODE_EXPAND_COLUMNS}
+					items={materials}
+					hasActions={false}
+					hasPagination={false}
+					hasSort={false}
+					hasIndex={true}
+					compact={true}
+				/>
+			</div>
+			<div className='space-y-2'>
+				<p className='text-sm font-semibold'>Vật tư, tài sản khác</p>
+				<DataTable
+					columns={CATALOG_CONTRACT_CODE_EXPAND_COLUMNS}
+					items={otherMaterials}
+					hasActions={false}
+					hasPagination={false}
+					hasSort={false}
+					hasIndex={true}
+					compact={true}
+				/>
+			</div>
 		</div>
 	);
 }

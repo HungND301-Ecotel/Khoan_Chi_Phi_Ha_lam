@@ -1,0 +1,681 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-05-26T07:54:25.345Z",
+  "reservations": [
+    {
+      "id": "resv-mpm46b6f-gm3zx7",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Queries/ExportExcelMaterialQuery.cs"
+      ],
+      "created_at": "2026-05-26T04:07:17.271Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:17.271Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46b9n-8i9po6",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Specifications/MaterialsByPaginationSpec.cs"
+      ],
+      "created_at": "2026-05-26T04:07:17.387Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:17.387Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46bc1-mvt45z",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/ImportMaterialExcelCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:07:17.473Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:17.473Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46bcl-o8qy0m",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/CreateMaterialCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:07:17.493Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:17.493Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46bpw-ltfetf",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Infrastructures/Migrators/Migrators.Postgres/Migrations/*MaterialType*.cs"
+      ],
+      "created_at": "2026-05-26T04:07:17.972Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:17.972Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46bts-f52q7m",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Queries/GetAllMaterialQuery.cs"
+      ],
+      "created_at": "2026-05-26T04:07:18.112Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:18.112Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46bu6-hfs68k",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/UpdateMaterialCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:07:18.126Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:18.126Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46c10-hmqxm0",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Presentation/Host/Controllers/Catalog/CatalogController.cs"
+      ],
+      "created_at": "2026-05-26T04:07:18.371Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:18.371Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm46v7t-khaq52",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/MaterialCatalogTypeNormalizer.cs"
+      ],
+      "created_at": "2026-05-26T04:07:43.241Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:07:43.241Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm47c0q-6yvodd",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Queries/GetMaterialByIdQuery.cs"
+      ],
+      "created_at": "2026-05-26T04:08:05.018Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:08:05.018Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4oymr-nm4uvl",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "history/unify-material-type/phase-1-story-map.md"
+      ],
+      "created_at": "2026-05-26T04:21:47.475Z",
+      "updated_at": "2026-05-26T04:22:04.437Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:21:47.475Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:22:04.437Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u2t3-vms1d4",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/CreateMaterialCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.167Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.167Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u2ug-qj4yu4",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Presentation/Host/Controllers/Catalog/CatalogController.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.216Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.216Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u2y0-891clt",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/ImportMaterialExcelCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.344Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.344Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u2yd-1eqfcs",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Commands/UpdateMaterialCommand.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.357Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.357Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u36a-2900ig",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Queries/ExportExcelMaterialQuery.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.641Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.641Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u37a-bwygze",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Queries/GetMaterialByIdQuery.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.678Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.678Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u3f5-qp55dm",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/Specifications/MaterialsByPaginationSpec.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.961Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.961Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm4u3fz-3gl22c",
+      "agent": "Codex",
+      "bead_id": "MB1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/MaterialCatalogTypeNormalizer.cs"
+      ],
+      "created_at": "2026-05-26T04:25:46.990Z",
+      "updated_at": "2026-05-26T04:29:23.061Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:25:46.990Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:29:23.061Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm50su8-p4c947",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/external/*"
+      ],
+      "created_at": "2026-05-26T04:30:59.840Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:30:59.840Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm50sx6-o6e6bt",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "frontend/src/features/main/layout/constant.tsx"
+      ],
+      "created_at": "2026-05-26T04:30:59.946Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:30:59.946Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm50szd-x2p3a4",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "frontend/src/features/main/catalog/router.tsx"
+      ],
+      "created_at": "2026-05-26T04:31:00.024Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:31:00.024Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm50t11-424759",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/internal/*"
+      ],
+      "created_at": "2026-05-26T04:31:00.085Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:31:00.085Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm50t42-3tqxik",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/unresolved/unresolved-catalog-create-dialog.tsx"
+      ],
+      "created_at": "2026-05-26T04:31:00.194Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:31:00.194Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm543j6-d0w91i",
+      "agent": "Codex",
+      "bead_id": "MB2",
+      "paths": [
+        "history/unify-material-type/phase-1-story-map.md"
+      ],
+      "created_at": "2026-05-26T04:33:33.666Z",
+      "updated_at": "2026-05-26T04:33:48.540Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:33:33.666Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:33:48.540Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5b9uh-elcp28",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/catalog/contract-code/actions.tsx"
+      ],
+      "created_at": "2026-05-26T04:39:08.441Z",
+      "updated_at": "2026-05-26T04:42:54.672Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:39:08.441Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:42:54.672Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5b9w6-21ymnp",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/unresolved/unresolved-create-dialog.tsx"
+      ],
+      "created_at": "2026-05-26T04:39:08.501Z",
+      "updated_at": "2026-05-26T04:42:54.672Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:39:08.501Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:42:54.672Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5b9z7-nvif4p",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "history/unify-material-type/phase-1-story-map.md"
+      ],
+      "created_at": "2026-05-26T04:39:08.611Z",
+      "updated_at": "2026-05-26T04:42:54.672Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:39:08.611Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:42:54.672Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5ba3l-737b5w",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/acceptance-report-editor/editor.tsx"
+      ],
+      "created_at": "2026-05-26T04:39:08.769Z",
+      "updated_at": "2026-05-26T04:42:54.672Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:39:08.769Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:42:54.672Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5ba3q-ytl4lk",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/unresolved/unresolved-catalog-create-dialog.tsx"
+      ],
+      "created_at": "2026-05-26T04:39:08.774Z",
+      "updated_at": "2026-05-26T04:42:54.672Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:39:08.774Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:42:54.672Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5nc9l-vrf4xk",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/safety-and-welfare/*"
+      ],
+      "created_at": "2026-05-26T04:48:31.449Z",
+      "updated_at": "2026-05-26T04:50:52.052Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:48:31.449Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:50:52.052Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5ncar-ksumj3",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/resource/*"
+      ],
+      "created_at": "2026-05-26T04:48:31.491Z",
+      "updated_at": "2026-05-26T04:50:52.052Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:48:31.491Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:50:52.052Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm5ncaz-j7uivl",
+      "agent": "Codex",
+      "bead_id": "MB3",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/quota-materials/*"
+      ],
+      "created_at": "2026-05-26T04:48:31.499Z",
+      "updated_at": "2026-05-26T04:50:52.052Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T05:48:31.499Z",
+      "status": "released",
+      "released_at": "2026-05-26T04:50:52.052Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jr2j-hxvu2n",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Domain/Common/Enums/EnumCommon.cs"
+      ],
+      "created_at": "2026-05-26T05:41:43.242Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.242Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jr4f-jo45zm",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Infrastructures/Persistence/EfCore.Persistence/Context/ApplicationDbContext.cs"
+      ],
+      "created_at": "2026-05-26T05:41:43.311Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.311Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jr6h-mf2r30",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Dto/Catalog/AssignmentCode/AssignmentCodeDto.cs"
+      ],
+      "created_at": "2026-05-26T05:41:43.385Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.385Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jr83-9a9tmq",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/AssignmentCodes/*"
+      ],
+      "created_at": "2026-05-26T05:41:43.443Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.443Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jrai-uwsxtc",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Infrastructures/Migrators/Migrators.Postgres/Migrations/*"
+      ],
+      "created_at": "2026-05-26T05:41:43.530Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.530Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpm7jrdc-qf147j",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.3",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Domain/Entities/Index/AssignmentCodeMaterial.cs"
+      ],
+      "created_at": "2026-05-26T05:41:43.632Z",
+      "updated_at": "2026-05-26T07:23:42.302Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T06:41:43.632Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:23:42.302Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmba7aw-ol8p0y",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Catalog/Index/Material/*"
+      ],
+      "created_at": "2026-05-26T07:26:16.183Z",
+      "updated_at": "2026-05-26T07:41:41.376Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T08:26:16.183Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:41:41.376Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmba7op-uxnbjl",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.1",
+      "paths": [
+        "frontend/src/features/main/catalog/asset/*"
+      ],
+      "created_at": "2026-05-26T07:26:16.681Z",
+      "updated_at": "2026-05-26T07:41:41.376Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T08:26:16.681Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:41:41.376Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmba8xt-ctj1jv",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.1",
+      "paths": [
+        "backend/Ecotel.KCPCMS.BE/src/Core/Application/Dto/Catalog/Material/MaterialDto.cs"
+      ],
+      "created_at": "2026-05-26T07:26:18.305Z",
+      "updated_at": "2026-05-26T07:41:41.376Z",
+      "ttl_seconds": 3600,
+      "expires_at": "2026-05-26T08:26:18.305Z",
+      "status": "released",
+      "released_at": "2026-05-26T07:41:41.376Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmbws24-7le0nc",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.4",
+      "paths": [
+        "frontend/src/features/main/catalog/contract-code/*"
+      ],
+      "created_at": "2026-05-26T07:43:49.516Z",
+      "updated_at": "2026-05-26T07:49:33.466Z",
+      "ttl_seconds": null,
+      "expires_at": null,
+      "status": "released",
+      "released_at": "2026-05-26T07:49:33.466Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmc5wns-gqz6zw",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.2",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/acceptance-report-editor/*"
+      ],
+      "created_at": "2026-05-26T07:50:55.384Z",
+      "updated_at": "2026-05-26T07:54:25.345Z",
+      "ttl_seconds": null,
+      "expires_at": null,
+      "status": "released",
+      "released_at": "2026-05-26T07:54:25.345Z",
+      "note": ""
+    },
+    {
+      "id": "resv-mpmc5wqq-rxaos3",
+      "agent": "Codex",
+      "bead_id": "khoan_chi_phi_ha_lam-phase-2-assignmentcode-role-split-shb.2",
+      "paths": [
+        "frontend/src/features/main/cost/producttion/production/raw-acceptance-report/unresolved/*"
+      ],
+      "created_at": "2026-05-26T07:50:55.490Z",
+      "updated_at": "2026-05-26T07:54:25.345Z",
+      "ttl_seconds": null,
+      "expires_at": null,
+      "status": "released",
+      "released_at": "2026-05-26T07:54:25.345Z",
+      "note": ""
+    }
+  ]
+}

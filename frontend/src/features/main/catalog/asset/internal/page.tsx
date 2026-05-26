@@ -26,9 +26,7 @@ function MainCatalogAssetInternalPage() {
 
 	const handleExport = async () => {
 		try {
-			const filename = await api.export(
-				`${API.CATALOG.ASSET.EXPORT}?materialType=1`,
-			);
+			const filename = await api.export(API.CATALOG.ASSET.EXPORT);
 			popup.success(`Đã xuất file ${filename}`);
 		} catch (error) {
 			popup.error(error);
@@ -40,9 +38,7 @@ function MainCatalogAssetInternalPage() {
 		data?: ActionDialogProps<Asset>['data'],
 	) => {
 		try {
-			const result = await api.import(API.CATALOG.ASSET.IMPORT, file, {
-				materialType: 1,
-			});
+			const result = await api.import(API.CATALOG.ASSET.IMPORT, file);
 			if (typeof result === 'string') {
 				popup.success(`Đã tải về danh sách lỗi: ${result}`);
 			} else {
@@ -57,10 +53,9 @@ function MainCatalogAssetInternalPage() {
 	return (
 		<DataTable
 			url={API.CATALOG.ASSET.LIST}
-			query={{ ignorePagination: true, materialType: 1 }}
+			query={{ ignorePagination: true }}
 			columns={CATALOG_ASSET_INTERNAL_COLUMNS}
 			filters={[
-				{ key: 'assignmentCode', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'code', label: 'Mã vật tư, tài sản' },
 				{ key: 'name', label: 'Tên vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },

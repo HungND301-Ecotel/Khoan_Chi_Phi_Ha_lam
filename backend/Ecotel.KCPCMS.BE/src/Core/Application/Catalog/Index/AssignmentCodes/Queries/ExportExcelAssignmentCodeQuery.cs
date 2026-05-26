@@ -1,7 +1,8 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,10 +15,10 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
     private readonly IWriteRepository<Domain.Entities.Index.AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<Domain.Entities.Index.AssignmentCode>();
     private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
+
     public async Task<byte[]> Handle(ExportExcelAssignmentCodeQuery request, CancellationToken cancellationToken)
     {
-        var listHiddenProperty = new List<string>();
-        listHiddenProperty.Add(nameof(AssignmentCodeExcelDto.Id));
+        var listHiddenProperty = new List<string> { nameof(AssignmentCodeExcelDto.Id) };
 
         var list = await _assignmentCodeRepository.GetAllAsync(
             include: s => s
@@ -39,20 +40,25 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
             { nameof(AssignmentCodeExcelDto.MaterialCode), materialCodes },
+            { nameof(AssignmentCodeExcelDto.MaterialRole), GetMaterialRoleOptions() },
             { nameof(AssignmentCodeExcelDto.UnitOfMeasureName), unitOfMeasures.ToList() }
         };
 
         var dtoList = new List<AssignmentCodeExcelDto>();
         foreach (var item in list.OrderBy(x => x.Code!.Value).ThenBy(x => x.Name))
         {
-            var linkedMaterialCodes = item.AssignmentCodeMaterials
+            var linkedMaterials = item.AssignmentCodeMaterials
                 .Where(m => m.Material?.Code != null)
-                .Select(m => m.Material!.Code!.Value)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(code => code)
+                .Select(m => new
+                {
+                    MaterialCode = m.Material!.Code!.Value,
+                    MaterialRole = ToDisplayRole(m.Role),
+                })
+                .OrderBy(m => m.MaterialCode)
+                .ThenBy(m => m.MaterialRole)
                 .ToList();
 
-            if (!linkedMaterialCodes.Any())
+            if (!linkedMaterials.Any())
             {
                 dtoList.Add(new AssignmentCodeExcelDto
                 {
@@ -60,19 +66,21 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
                     Code = item.Code?.Value ?? string.Empty,
                     Name = item.Name,
                     MaterialCode = string.Empty,
+                    MaterialRole = string.Empty,
                     UnitOfMeasureName = item.UnitOfMeasure?.Name ?? string.Empty
                 });
                 continue;
             }
 
-            for (var i = 0; i < linkedMaterialCodes.Count; i++)
+            for (var i = 0; i < linkedMaterials.Count; i++)
             {
                 dtoList.Add(new AssignmentCodeExcelDto
                 {
                     Id = i == 0 ? item.Id : Guid.Empty,
                     Code = i == 0 ? (item.Code?.Value ?? string.Empty) : string.Empty,
                     Name = i == 0 ? item.Name : string.Empty,
-                    MaterialCode = linkedMaterialCodes[i],
+                    MaterialCode = linkedMaterials[i].MaterialCode,
+                    MaterialRole = linkedMaterials[i].MaterialRole,
                     UnitOfMeasureName = i == 0 ? (item.UnitOfMeasure?.Name ?? string.Empty) : string.Empty
                 });
             }
@@ -83,5 +91,21 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
             sheetName: "Nhóm vật tư, tài sản",
             hiddenProperties: listHiddenProperty,
             dropdownData: dropdownConfigs);
+    }
+
+    private static List<string> GetMaterialRoleOptions()
+    {
+        return
+        [
+            ToDisplayRole(AssignmentCodeMaterialRole.Material),
+            ToDisplayRole(AssignmentCodeMaterialRole.OtherMaterial),
+        ];
+    }
+
+    private static string ToDisplayRole(AssignmentCodeMaterialRole role)
+    {
+        return role == AssignmentCodeMaterialRole.OtherMaterial
+            ? "Vật tư, tài sản khác"
+            : "Vật tư, tài sản";
     }
 }

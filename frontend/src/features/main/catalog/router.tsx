@@ -1,5 +1,4 @@
 import { MainCatalogAdjustmentRouter } from '@/features/main/catalog/adjustment/router';
-import MainCatalogAssetExternalPage from '@/features/main/catalog/asset/external/page';
 import MainCatalogAssetInternalPage from '@/features/main/catalog/asset/internal/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
 import { MainCatalogDepartmentPage } from '@/features/main/catalog/department/page';
@@ -59,26 +58,6 @@ const MainCatalogRouter: RouteObject = {
 						breadcrumb: 'Vật tư, tài sản',
 						title: 'Vật tư, tài sản',
 					},
-				},
-				{
-					path: 'external',
-					element: <MainCatalogAssetExternalPage />,
-					handle: {
-						breadcrumb: 'Vật tư, tài sản khác',
-						title: 'Vật tư, tài sản khác',
-					},
-				},
-				{
-					path: 'safety-and-welfare',
-					element: <Navigate replace to='../internal' />,
-				},
-				{
-					path: 'resource',
-					element: <Navigate replace to='../internal' />,
-				},
-				{
-					path: 'quota-materials',
-					element: <Navigate replace to='../internal' />,
 				},
 			],
 		},

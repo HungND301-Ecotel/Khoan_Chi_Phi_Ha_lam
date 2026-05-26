@@ -28,8 +28,12 @@ public class CreateProductCommandHandler(IUnitOfWork unitOfWork, ICodeService co
         var processGroup = await _processGroupRepository.GetFirstOrDefaultAsync(predicate: pg => pg.Id == request.CreateModel.ProcessGroupId, disableTracking: true) ??
                            throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
 
-        var newProduct = Domain.Entities.Index.Product.Create(request.CreateModel.Code, request.CreateModel.Name,
-            request.CreateModel.ProcessGroupId);
+        var newProduct = Domain.Entities.Index.Product.Create(
+            request.CreateModel.Code,
+            request.CreateModel.Name,
+            request.CreateModel.ProcessGroupId,
+            request.CreateModel.StartMonth,
+            request.CreateModel.EndMonth);
         await _productRepository.InsertAsync(newProduct);
         await unitOfWork.SaveChangesAsync();
         return true;

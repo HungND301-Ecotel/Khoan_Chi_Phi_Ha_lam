@@ -257,6 +257,10 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<AssignmentCodeMaterial>()
+            .Property(e => e.Role)
+            .HasDefaultValue(AssignmentCodeMaterialRole.Material);
+
+        modelBuilder.Entity<AssignmentCodeMaterial>()
             .HasIndex(e => new { e.AssignmentCodeId, e.MaterialId })
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");

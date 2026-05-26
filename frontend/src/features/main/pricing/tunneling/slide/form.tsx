@@ -233,15 +233,17 @@ export function SlideForm({
 			(cost) => !removedContractIds.includes(cost.assignmentCodeId),
 		);
 
-		const newAssets = assets.filter((asset) =>
-			addedContractIds.includes(asset.assignmentCodeId),
+		const newCosts = assets.flatMap((asset) =>
+			addedContractIds
+				.filter((assignmentCodeId) =>
+					asset.assignmentCodeIds.includes(assignmentCodeId),
+				)
+				.map((assignmentCodeId) => ({
+					assignmentCodeId,
+					materialId: asset.id,
+					amount: NaN,
+				})),
 		);
-
-		const newCosts = newAssets.map((asset) => ({
-			assignmentCodeId: asset.assignmentCodeId,
-			materialId: asset.id,
-			amount: NaN,
-		}));
 
 		updatedCosts = [...updatedCosts, ...newCosts].sort((a, b) => {
 			const aContract = contracts.find(

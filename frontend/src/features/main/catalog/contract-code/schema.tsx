@@ -13,6 +13,7 @@ export const contractCodeSchema = z.object({
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
 	materialIds: z.array(z.string()),
+	otherMaterialIds: z.array(z.string()),
 	costs: z.array(
 		z.object({
 			startMonth: z.iso.date({
@@ -32,6 +33,18 @@ export const contractCodeSchema = z.object({
 				}),
 		}),
 	),
+}).superRefine((data, ctx) => {
+	const duplicateIds = data.materialIds.filter((id) =>
+		data.otherMaterialIds.includes(id),
+	);
+
+	if (duplicateIds.length > 0) {
+		ctx.addIssue({
+			code: 'custom',
+			path: ['otherMaterialIds'],
+			message: 'Một vật tư không thể đồng thời thuộc hai nhóm.',
+		});
+	}
 });
 
 export type ContractCodeSchema = z.infer<typeof contractCodeSchema>;
@@ -41,6 +54,7 @@ export const CONTRACT_CODE_SCHEMA_DEFAULT: ContractCodeSchema = {
 	name: '',
 	unitOfMeasureId: null,
 	materialIds: [],
+	otherMaterialIds: [],
 	costs: [
 		{
 			startMonth: '',

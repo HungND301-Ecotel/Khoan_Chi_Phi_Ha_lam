@@ -27,6 +27,14 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         }
 
         var materialIds = request.CreateModel.MaterialIds.Distinct().ToList();
+        var otherMaterialIds = request.CreateModel.OtherMaterialIds.Distinct().ToList();
+        var duplicateIds = materialIds.Intersect(otherMaterialIds).ToList();
+        if (duplicateIds.Any())
+        {
+            throw new BadRequestException(CustomResponseMessage.AssignmentCodeDuplicateMaterialIds);
+        }
+
+        var allMaterialIds = materialIds.Concat(otherMaterialIds).Distinct().ToList();
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
@@ -50,23 +58,37 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
             await _assignemntcodeRepository.InsertAsync(newAssignmentCode, cancellationToken);
             await unitOfWork.SaveChangesAsync();
 
-            if (materialIds.Any())
+            if (allMaterialIds.Any())
             {
                 var materials = await _materialRepository.GetAllAsync(
-                    predicate: m => materialIds.Contains(m.Id),
+                    predicate: m => allMaterialIds.Contains(m.Id),
                     include: q => q.Include(m => m.Code),
                     disableTracking: false);
 
-                if (materials.Count != materialIds.Count)
+                if (materials.Count != allMaterialIds.Count)
                 {
                     throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
                 }
 
+                var materialById = materials.ToDictionary(material => material.Id);
+                var assignmentCodeMaterials = materialIds
+                    .Select(materialId => AssignmentCodeMaterial.Create(
+                        newAssignmentCode.Id,
+                        materialId,
+                        AssignmentCodeMaterialRole.Material))
+                    .Concat(otherMaterialIds.Select(materialId => AssignmentCodeMaterial.Create(
+                        newAssignmentCode.Id,
+                        materialId,
+                        AssignmentCodeMaterialRole.OtherMaterial)))
+                    .ToList();
+
                 await _assignmentCodeMaterialRepository.InsertAsync(
-                    materials.Select(material => AssignmentCodeMaterial.Create(newAssignmentCode.Id, material.Id)).ToList(),
+                    assignmentCodeMaterials,
                     cancellationToken);
 
-                foreach (var material in materials.Where(m => m.AssigmentCodeId == null))
+                foreach (var material in allMaterialIds
+                    .Select(materialId => materialById[materialId])
+                    .Where(m => m.AssigmentCodeId == null))
                 {
                     material.Update(
                         material.Code?.Value ?? string.Empty,

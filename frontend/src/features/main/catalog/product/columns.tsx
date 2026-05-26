@@ -2,6 +2,8 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export type Product = {
 	id: string;
+	startMonth: string;
+	endMonth: string;
 	code: string;
 	name: string;
 	processGroupId: string;

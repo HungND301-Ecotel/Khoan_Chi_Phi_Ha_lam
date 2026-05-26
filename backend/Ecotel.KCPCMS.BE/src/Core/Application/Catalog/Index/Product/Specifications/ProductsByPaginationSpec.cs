@@ -26,6 +26,8 @@ public class ProductsByPaginationSpec
             .Select(p => new ProductDto
             {
                 Id = p.Id,
+                StartMonth = p.StartMonth,
+                EndMonth = p.EndMonth,
                 Code = p.Code.Value,
                 Name = p.Name,
                 ProcessGroupId = p.ProcessGroupId,
