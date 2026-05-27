@@ -104,19 +104,30 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             for (var itemIndex = 0; itemIndex < createModel.Items.Count; itemIndex++)
             {
                 var item = createModel.Items[itemIndex];
+                var materialsIncludedInContractRevenue = AcceptanceReportCommandItemHelper.ResolveMaterialsIncludedInContractRevenue(
+                    item.MaterialsIncludedInContractRevenueType,
+                    item.MaterialsIncludedInContractRevenue);
+                var additionalCost = AcceptanceReportCommandItemHelper.ResolveAdditionalCost(
+                    item.AdditionalCostClassification,
+                    item.AdditionalCost);
+                var trackedItemType = AcceptanceReportCommandItemHelper.ResolveTrackedItemType(
+                    item.Type,
+                    item.MaterialsIncludedInContractRevenueType,
+                    materialsIncludedInContractRevenue,
+                    additionalCost);
                 var categoryAssignmentCodeId = item.CategoryAssignmentCodeId ?? item.CategoryEquipmentId;
                 var additionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId ?? item.AdditionalCostEquipmentId;
                 var categoryReference = ProductionReference.CreateForAssignmentCode(item.CategoryProductionOrderId, categoryAssignmentCodeId);
                 var additionalCostReference = ProductionReference.CreateForAssignmentCode(item.AdditionalCostProductionOrderId, additionalCostAssignmentCodeId);
-                var processGroupId = AcceptanceReportCommandItemHelper.IsTrackedSctxItem(item.Type)
+                var processGroupId = AcceptanceReportCommandItemHelper.IsTrackedSctxItem(trackedItemType)
                     ? item.ProcessGroupId
                     : null;
                 var categoryAllocations = AcceptanceReportCommandItemHelper.MapCategoryAllocations(item.CategoryAllocations);
                 var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
-                    item.Type,
+                    trackedItemType,
                     item.TrackedMaterialId,
-                    null,
-                    null,
+                    item.MaterialId,
+                    item.PartId,
                     allMaterials);
                 var trackedMaterialId = materialId ?? partId;
 
@@ -125,19 +136,19 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     var existingItem = existingItemsByIds.FirstOrDefault(x => x.Id == item.AcceptanceReportItemId.Value)
                         ?? throw new NotFoundException($"AcceptanceReportItem with Id '{item.AcceptanceReportItemId.Value}' not found");
 
-                    existingItem.UpdateForTrackedMaterial(
+                        existingItem.UpdateForTrackedMaterial(
                         itemIndex,
                         processGroupId,
                         trackedMaterialId,
-                        item.Type,
+                        trackedItemType,
                         item.UsageTime,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
-                        item.MaterialsIncludedInContractRevenue,
+                        materialsIncludedInContractRevenue,
                         item.IsLongTermTracking,
                         item.MaterialsIncludedInContractRevenueQuantity,
-                        item.AdditionalCost,
+                        additionalCost,
                         item.OtherMaterialDetail,
                         item.AdditionalCostQuantity,
                         item.QuotaBasedMaterial,
@@ -158,15 +169,15 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         itemIndex,
                         processGroupId,
                         trackedMaterialId,
-                        item.Type,
+                        trackedItemType,
                         item.UsageTime,
                         item.ItemType,
                         categoryReference,
                         additionalCostReference,
-                        item.MaterialsIncludedInContractRevenue,
+                        materialsIncludedInContractRevenue,
                         item.IsLongTermTracking,
                         item.MaterialsIncludedInContractRevenueQuantity,
-                        item.AdditionalCost,
+                        additionalCost,
                         item.OtherMaterialDetail,
                         item.AdditionalCostQuantity,
                         item.QuotaBasedMaterial,
@@ -181,7 +192,11 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     itemsToCreate.Add(reportItem);
                 }
 
-                if (AcceptanceReportCommandItemHelper.RequiresProcessGroupValidation(item.Type, item.MaterialsIncludedInContractRevenue))
+                if (AcceptanceReportCommandItemHelper.ShouldValidateProcessGroup(
+                    trackedItemType,
+                    materialsIncludedInContractRevenue,
+                    processGroupId,
+                    categoryAllocations))
                 {
                     AcceptanceReportCommandItemHelper.ValidateProcessGroupIds(processGroupId, categoryAllocations, processGroupIdsInPeriod);
                 }

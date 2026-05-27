@@ -3183,7 +3183,7 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.HasIndex("AcceptanceReportItemId");
 
-                    b.ToTable("AcceptanceReportItemQuotaBasedMaterialQuantity");
+                    b.ToTable("AcceptanceReportItemQuotaBasedMaterialQuantity", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReportItemShippedDetail", b =>

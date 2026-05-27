@@ -79,12 +79,14 @@ export type AcceptanceReportItem = {
 	issuedDetails?: QuantityDetail[];
 	shippedDetails?: QuantityDetail[];
 	type: number;
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking?: boolean;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
+	additionalCostClassification?: number | null;
 	additionalCost: number;
 	otherMaterialDetail: number;
 	additionalCostQuantity: number;
@@ -186,8 +188,8 @@ export type CategoryAllocation = {
 
 // Dropdown options
 export const CATEGORY_OPTIONS = [
-	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
-	{ value: MaterialsIncludedInContractRevenue.Maintain, label: 'SCTX' },
+	{ value: MaterialType.Material, label: 'Vật liệu' },
+	{ value: MaterialType.SparePart, label: 'Phụ tùng' },
 ];
 
 export const ADDITIONAL_COST_OPTIONS = [

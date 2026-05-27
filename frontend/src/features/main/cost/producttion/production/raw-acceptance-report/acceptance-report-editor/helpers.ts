@@ -14,6 +14,7 @@ import {
 export const PRODUCTION_ORDER_OPTION_PREFIX = 'production-order:';
 export const ASSIGNMENT_CODE_OPTION_PREFIX = 'assignment-code:';
 export const NONE_PRODUCTION_ORDER_ID = '__none__';
+export const NONE_ASSIGNMENT_CODE_ID = '__none__';
 
 export function toProductionOrderOptionValue(id: string): string {
 	return `${PRODUCTION_ORDER_OPTION_PREFIX}${id}`;
@@ -39,6 +40,13 @@ export function normalizeProductionOrderId(value?: string | null): string | null
 	if (!value) return null;
 	const trimmedValue = value.trim();
 	if (trimmedValue === NONE_PRODUCTION_ORDER_ID) return null;
+	return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+export function normalizeAssignmentCodeId(value?: string | null): string | null {
+	if (!value) return null;
+	const trimmedValue = value.trim();
+	if (trimmedValue === NONE_ASSIGNMENT_CODE_ID) return null;
 	return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
@@ -117,14 +125,11 @@ export function getDefaultAdditionalCostByMaterialType(
 }
 
 export function supportsLongTermTracking(
-	type?: number | null,
+	categoryType?: number | null,
 	showCategoryDropdown?: boolean | null,
-	category?: number | null,
 ): boolean {
 	return (
-		type === MaterialType.SparePart &&
-		Boolean(showCategoryDropdown) &&
-		category === MaterialsIncludedInContractRevenue.Maintain
+		categoryType === MaterialType.SparePart && Boolean(showCategoryDropdown)
 	);
 }
 

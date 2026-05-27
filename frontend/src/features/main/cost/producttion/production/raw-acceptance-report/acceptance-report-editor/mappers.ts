@@ -34,7 +34,7 @@ import {
 	DEFAULT_OTHER_MATERIAL_DETAIL_VALUE,
 	buildCategoryAllocationsForPayload,
 	getDefaultAdditionalCostByMaterialType,
-	getDefaultCategoryByMaterialType,
+	normalizeAssignmentCodeId,
 	supportsLongTermTracking,
 	mapIssuedDetailsToBreakdown,
 	mapShippedDetailsToBreakdown,
@@ -55,7 +55,6 @@ export function mapResolvedImportItem(
 	const isQuotaMaterial =
 		item.type === MaterialType.Material &&
 		item.itemType === ItemType.QuotaMaterials;
-	const defaultCategory = getDefaultCategoryByMaterialType(item.type);
 	const defaultAdditionalCost = isSafetyAndWelfareMaterial
 		? AdditionalCost.OtherMaterial
 		: getDefaultAdditionalCostByMaterialType(item.type);
@@ -85,7 +84,7 @@ export function mapResolvedImportItem(
 		receivedTypes: [RECEIVED_TYPE_OPTIONS[0].value],
 		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
 		quantity: item.issuedQuantity + item.shippedQuantity,
-		category: defaultCategory,
+		categoryType: null,
 		isLongTermTracking: false,
 		categoryProcessGroupIds: [],
 		categoryAssignmentCodeIds: [],
@@ -215,16 +214,31 @@ export function mapRawAcceptanceItemToEditorRow(
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
 		showAssetDropdown,
+		categoryType:
+			showCategoryDropdown
+				? (item.materialsIncludedInContractRevenueType ??
+					(item.materialsIncludedInContractRevenue ===
+					MaterialsIncludedInContractRevenue.Maintain
+						? MaterialType.SparePart
+						: item.materialsIncludedInContractRevenue ===
+							  MaterialsIncludedInContractRevenue.Material
+							? MaterialType.Material
+							: null))
+				: null,
 		category:
 			showCategoryDropdown
 				? item.materialsIncludedInContractRevenue || null
 				: null,
 		isLongTermTracking: supportsLongTermTracking(
-			item.type,
+			item.materialsIncludedInContractRevenueType ??
+				(item.materialsIncludedInContractRevenue ===
+				MaterialsIncludedInContractRevenue.Maintain
+					? MaterialType.SparePart
+					: item.materialsIncludedInContractRevenue ===
+						  MaterialsIncludedInContractRevenue.Material
+						? MaterialType.Material
+						: null),
 			showCategoryDropdown,
-			showCategoryDropdown
-				? (item.materialsIncludedInContractRevenue || null)
-				: null,
 		)
 			? (item.isLongTermTracking ?? true)
 			: false,
@@ -235,9 +249,17 @@ export function mapRawAcceptanceItemToEditorRow(
 		).filter(Boolean),
 		categoryProductionOrderId: item.categoryProductionOrderId ?? null,
 		categoryAssignmentCodeId:
-			item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
+			item.categoryAssignmentCodeId ??
+			item.categoryEquipmentId ??
+			categoryAllocations[0]?.assignmentCodeIds?.[0] ??
+			categoryAllocations[0]?.equipmentIds?.[0] ??
+			null,
 		categoryEquipmentId:
-			item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
+			item.categoryAssignmentCodeId ??
+			item.categoryEquipmentId ??
+			categoryAllocations[0]?.assignmentCodeIds?.[0] ??
+			categoryAllocations[0]?.equipmentIds?.[0] ??
+			null,
 		categoryAssignmentCodeIds: categoryAllocations.map(
 			(allocation: { assignmentCodeIds?: string[]; equipmentIds: string[] }) =>
 				allocation.assignmentCodeIds?.[0] ?? allocation.equipmentIds?.[0] ?? '',
@@ -252,7 +274,9 @@ export function mapRawAcceptanceItemToEditorRow(
 				? (item.materialsIncludedInContractRevenueQuantity ?? 0)
 				: null,
 		additionalCostCategory:
-			showAdditionalCostDropdown ? item.additionalCost || null : null,
+			showAdditionalCostDropdown
+				? (item.additionalCostClassification ?? item.additionalCost ?? null)
+				: null,
 		additionalCostProductionOrderId:
 			item.additionalCostAssignmentCodeId ??
 			item.additionalCostEquipmentId ??
@@ -294,7 +318,6 @@ export function createManualEditorRow(
 	const isQuotaMaterial =
 		item.type === MaterialType.Material &&
 		item.itemType === ItemType.QuotaMaterials;
-	const defaultCategory = getDefaultCategoryByMaterialType(item.type);
 	const defaultAdditionalCost = isSafetyAndWelfareMaterial
 		? AdditionalCost.OtherMaterial
 		: getDefaultAdditionalCostByMaterialType(item.type);
@@ -315,10 +338,8 @@ export function createManualEditorRow(
 		receivedTypes: [RECEIVED_TYPE_OPTIONS[0].value],
 		exportedTypes: [EXPORTED_TYPE_OPTIONS[0].value],
 		quantity: quantityReceived + quantityExported,
-		category: defaultCategory,
-		isLongTermTracking:
-			item.type === MaterialType.SparePart &&
-			defaultCategory === MaterialsIncludedInContractRevenue.Maintain,
+		categoryType: null,
+		isLongTermTracking: false,
 		categoryQuantity: quantityExported,
 		categoryProcessGroupIds: [],
 		categoryAssignmentCodeIds: [],
@@ -436,16 +457,33 @@ function buildShippedDetails(item: AcceptanceReportEditorRow): QuantityDetail[] 
 }
 
 function buildBasePayload(item: AcceptanceReportEditorRow) {
-	const resolvedCategory =
-		item.category ?? getDefaultCategoryByMaterialType(item.type);
+	const materialsIncludedInContractRevenueType = item.showCategoryDropdown
+		? (item.categoryType ?? null)
+		: null;
 	const materialsIncludedInContractRevenue =
-		item.showCategoryDropdown && resolvedCategory
-			? resolvedCategory
-			: MaterialsIncludedInContractRevenue.None;
+		item.showCategoryDropdown &&
+		materialsIncludedInContractRevenueType === MaterialType.Material
+			? MaterialsIncludedInContractRevenue.Material
+			: item.showCategoryDropdown &&
+				  materialsIncludedInContractRevenueType === MaterialType.SparePart
+				? MaterialsIncludedInContractRevenue.Maintain
+				: item.showCategoryDropdown
+					? MaterialsIncludedInContractRevenue.None
+					: MaterialsIncludedInContractRevenue.None;
+	const categoryAssignmentCodeId = normalizeAssignmentCodeId(
+		item.categoryAssignmentCodeId ??
+			item.categoryEquipmentId ??
+			item.categoryAssignmentCodeIds?.[0] ??
+			item.categoryEquipmentIds?.[0] ??
+			null,
+	);
+	const categoryProductionOrderId =
+		item.showCategoryDropdown && materialsIncludedInContractRevenueType != null
+			? normalizeProductionOrderId(item.categoryProductionOrderId)
+			: null;
 	const isLongTermTracking = supportsLongTermTracking(
-		item.type,
+		materialsIncludedInContractRevenueType,
 		item.showCategoryDropdown,
-		materialsIncludedInContractRevenue,
 	)
 		? item.isLongTermTracking
 		: false;
@@ -453,14 +491,7 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		item.categoryAllocations,
 		materialsIncludedInContractRevenue,
 	);
-	const firstCategoryAllocation = categoryAllocations?.[0] ?? null;
-	const processGroupId =
-		item.showCategoryDropdown &&
-		resolvedCategory &&
-		item.type === MaterialType.SparePart
-			? (firstCategoryAllocation?.processGroupId ?? item.categoryProcessGroup) ||
-				null
-			: null;
+	const processGroupId = null;
 	const isSafetyAndWelfareMaterial =
 		item.type === MaterialType.Material &&
 		item.itemType === ItemType.SafetyAndWelfare;
@@ -468,6 +499,10 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		item.showAdditionalCostDropdown && isSafetyAndWelfareMaterial
 			? AdditionalCost.OtherMaterial
 			: item.additionalCostCategory;
+	const additionalCostClassification =
+		item.showAdditionalCostDropdown && resolvedAdditionalCostCategory
+			? resolvedAdditionalCostCategory
+			: null;
 	const additionalCost =
 		item.showAdditionalCostDropdown && resolvedAdditionalCostCategory
 			? resolvedAdditionalCostCategory
@@ -477,20 +512,6 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
 			? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 			: OtherMaterialDetail.None;
-	const categoryProductionOrderId =
-		item.showCategoryDropdown &&
-		resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-			? normalizeProductionOrderId(item.categoryProductionOrderId)
-			: null;
-	const categoryAssignmentCodeId =
-		item.showCategoryDropdown &&
-		resolvedCategory === MaterialsIncludedInContractRevenue.Maintain
-			? (firstCategoryAllocation?.assignmentCodeIds?.[0] ??
-				firstCategoryAllocation?.equipmentIds?.[0] ??
-				item.categoryAssignmentCodeId ??
-				item.categoryEquipmentId ??
-				null)
-			: null;
 	const additionalSelection =
 		item.showAdditionalCostDropdown &&
 		(resolvedAdditionalCostCategory === AdditionalCost.Material ||
@@ -505,8 +526,10 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 	return {
 		item,
 		categoryAllocations,
+		materialsIncludedInContractRevenueType,
 		processGroupId,
 		additionalCost,
+		additionalCostClassification,
 		otherMaterialDetail,
 		categoryProductionOrderId,
 		categoryAssignmentCodeId,
@@ -555,6 +578,8 @@ export function buildAcceptanceReportRequest(
 						base.additionalSelection.assignmentCodeId,
 					issuedDetails: base.issuedDetails,
 					shippedDetails: base.shippedDetails,
+					materialsIncludedInContractRevenueType:
+						base.materialsIncludedInContractRevenueType,
 					materialsIncludedInContractRevenue:
 						base.materialsIncludedInContractRevenue,
 					isLongTermTracking: base.isLongTermTracking,
@@ -562,6 +587,7 @@ export function buildAcceptanceReportRequest(
 					processGroupId: base.processGroupId,
 					materialsIncludedInContractRevenueQuantity:
 						item.categoryQuantity || 0,
+					additionalCostClassification: base.additionalCostClassification,
 					additionalCost: base.additionalCost,
 					otherMaterialDetail: base.otherMaterialDetail,
 					additionalCostQuantity: item.additionalCostQuantity || 0,
@@ -611,11 +637,14 @@ export function buildAcceptanceReportRequest(
 				shippedQuantity: parseQuantity(item.quantityExported),
 				issuedDetails: base.issuedDetails,
 				shippedDetails: base.shippedDetails,
+				materialsIncludedInContractRevenueType:
+					base.materialsIncludedInContractRevenueType,
 				materialsIncludedInContractRevenue:
 					base.materialsIncludedInContractRevenue,
 				isLongTermTracking: base.isLongTermTracking,
 				processGroupId: base.processGroupId,
 				materialsIncludedInContractRevenueQuantity: item.categoryQuantity || 0,
+				additionalCostClassification: base.additionalCostClassification,
 				additionalCost: base.additionalCost,
 				otherMaterialDetail: base.otherMaterialDetail,
 				additionalCostQuantity: item.additionalCostQuantity || 0,

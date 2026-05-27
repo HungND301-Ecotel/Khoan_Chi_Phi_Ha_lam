@@ -63,6 +63,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
             Type = item.IsMaterialItem ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
+            MaterialsIncludedInContractRevenueType = item.MaterialsIncludedInContractRevenueType,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             IsLongTermTracking = item.IsLongTermTracking,
             ProcessGroupId = item.ProcessGroupId,
@@ -79,6 +80,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     AssignmentCodeIds = allocation.AssignmentCodeIds.ToList(),
                 })
                 .ToList(),
+            AdditionalCostClassification = item.AdditionalCostClassification,
             AdditionalCost = item.AdditionalCost,
             OtherMaterialDetail = item.OtherMaterialDetail,
             AdditionalCostQuantity = item.AdditionalCostQuantity,
