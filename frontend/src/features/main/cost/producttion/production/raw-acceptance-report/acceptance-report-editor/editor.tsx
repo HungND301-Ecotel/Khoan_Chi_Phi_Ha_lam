@@ -106,6 +106,7 @@ type AcceptanceReportEditorProps = {
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	assignmentCodeOptions: ProductionOrderOption[];
 	orderOrAssignmentCodeOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	materialLookupOptions?: MaterialLookupOption[];
 	onMaterialAdded?: (option: MaterialLookupOption) => Promise<void> | void;
@@ -253,7 +254,7 @@ function CreateMaterialDialogContent({
 						value={selectedLookupValue}
 						onValueChange={onSelectedLookupValueChange}
 						options={materialLookupOptions}
-						placeholder='Chọn vật tư hoặc phụ tùng'
+						placeholder='Chọn vật tư'
 					/>
 				</div>
 				<div className='grid gap-4 sm:grid-cols-2'>
@@ -324,6 +325,7 @@ export function AcceptanceReportEditor({
 	mode,
 	onCancel,
 	productionOrderOptions,
+	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
 	materialLookupOptions = [],
 	onMaterialAdded,
@@ -351,13 +353,20 @@ export function AcceptanceReportEditor({
 	const [newQuantityExported, setNewQuantityExported] = useState(0);
 	const [isCreatingMaterial, setIsCreatingMaterial] = useState(false);
 	const popup = usePopup();
+	const showRowSelection = true;
+	const showMaterialToolbarActions = Boolean(
+		materialLookupOptions.length > 0 && onMaterialAdded,
+	);
 	const toolbarFilterOptions = useMemo<ToolbarFilterOption[]>(
 		() =>
+			mode === 'import'
+				? []
+				:
 			EDIT_FILTER_OPTIONS.map((option) => ({
 				key: option.key,
 				label: option.label,
 			})),
-		[],
+		[mode],
 	);
 	const selectedToolbarFilterKeys = selectedEditFilterKeys;
 	const visibleMaterialIndexes = useMemo(() => {
@@ -380,6 +389,9 @@ export function AcceptanceReportEditor({
 				if (!matchesSearch) {
 					return false;
 				}
+				if (mode === 'import') {
+					return true;
+				}
 				return (
 					selectedEditFilterKeys.length === 0 ||
 					(selectedEditFilterKeys.includes('category') &&
@@ -392,7 +404,7 @@ export function AcceptanceReportEditor({
 						Boolean(item.showAssetDropdown))
 				);
 			});
-	}, [fields, searchKeyword, selectedEditFilterKeys, watchedMaterials]);
+	}, [fields, mode, searchKeyword, selectedEditFilterKeys, watchedMaterials]);
 	const pageCount = Math.ceil(visibleMaterialIndexes.length / pageSize);
 	const safePageIndex =
 		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
@@ -455,7 +467,7 @@ export function AcceptanceReportEditor({
 			(option) => option.value === selectedLookupValue,
 		);
 		if (!selectedOption) {
-			popup.error('Vui lòng chọn vật tư hoặc phụ tùng cần tạo mới.');
+			popup.error('Vui lòng chọn vật tư cần tạo mới.');
 			return false;
 		}
 
@@ -514,101 +526,101 @@ export function AcceptanceReportEditor({
 					mới từng dòng trước khi lưu phiếu nghiệm thu.
 				</div>
 			)}
-			{(mode === 'edit' || toolbarFilterOptions.length > 0) && (
-				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
-					<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-						<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
-							{mode === 'edit' && (
-								<div className='flex shrink-0 flex-wrap items-center gap-3'>
-									<DialogProvider>
-										<DataTableEditDialog
-											type='Tạo mới'
-											crumb='vật tư'
-											trigger={
-												<Button
-													type='button'
-													variant='warning'
-													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-												>
-													<span className='font-medium'>Tạo mới</span>
-													<AddIcon fontSize='small' />
+			<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
+				<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+					<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
+						{showMaterialToolbarActions && (
+							<div className='flex shrink-0 flex-wrap items-center gap-3'>
+								<DialogProvider>
+									<DataTableEditDialog
+										type='Tạo mới'
+										crumb='vật tư'
+										trigger={
+											<Button
+												type='button'
+												variant='warning'
+												className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+											>
+												<span className='font-medium'>Tạo mới</span>
+												<AddIcon fontSize='small' />
+											</Button>
+										}
+									>
+										<CreateMaterialDialogContent
+											selectedLookupValue={selectedLookupValue}
+											onSelectedLookupValueChange={setSelectedLookupValue}
+											materialLookupOptions={materialLookupOptions}
+											newQuantityReceived={newQuantityReceived}
+											onNewQuantityReceivedChange={setNewQuantityReceived}
+											newQuantityExported={newQuantityExported}
+											onNewQuantityExportedChange={setNewQuantityExported}
+											isCreatingMaterial={isCreatingMaterial}
+											onConfirm={handleCreateMaterial}
+										/>
+									</DataTableEditDialog>
+								</DialogProvider>
+								<DialogProvider>
+									<ActionDialog
+										className='min-h-auto sm:max-w-md'
+										trigger={
+											<Button
+												type='button'
+												variant='destructive'
+												className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+												disabled={selectedRowFieldIds.length === 0}
+											>
+												<span className='font-medium'>
+													Xoá ({selectedRowFieldIds.length})
+												</span>
+												<DeleteIcon fontSize='small' />
+											</Button>
+										}
+									>
+										<DialogHeader>
+											<DialogTitle className='text-center uppercase'>
+												Xác nhận xóa
+											</DialogTitle>
+											<DialogDescription className='text-center'>
+												Bạn có chắc chắn muốn xóa {selectedRowFieldIds.length}{' '}
+												mục không?
+											</DialogDescription>
+										</DialogHeader>
+										<DialogFooter className='flex w-full items-center sm:justify-center'>
+											<DialogClose asChild>
+												<Button variant='secondary' className='w-24'>
+													Huỷ
 												</Button>
-											}
-										>
-											<CreateMaterialDialogContent
-												selectedLookupValue={selectedLookupValue}
-												onSelectedLookupValueChange={setSelectedLookupValue}
-												materialLookupOptions={materialLookupOptions}
-												newQuantityReceived={newQuantityReceived}
-												onNewQuantityReceivedChange={setNewQuantityReceived}
-												newQuantityExported={newQuantityExported}
-												onNewQuantityExportedChange={setNewQuantityExported}
-												isCreatingMaterial={isCreatingMaterial}
-												onConfirm={handleCreateMaterial}
-											/>
-										</DataTableEditDialog>
-									</DialogProvider>
-									<DialogProvider>
-										<ActionDialog
-											className='min-h-auto sm:max-w-md'
-											trigger={
+											</DialogClose>
+											<DialogClose asChild>
 												<Button
-													type='button'
 													variant='destructive'
-													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-													disabled={selectedRowFieldIds.length === 0}
+													onClick={handleDeleteSelectedRows}
+													className='w-24'
 												>
-													<span className='font-medium'>
-														Xoá ({selectedRowFieldIds.length})
-													</span>
-													<DeleteIcon fontSize='small' />
+													Xoá
 												</Button>
-											}
-										>
-											<DialogHeader>
-												<DialogTitle className='text-center uppercase'>
-													Xác nhận xóa
-												</DialogTitle>
-												<DialogDescription className='text-center'>
-													Bạn có chắc chắn muốn xóa {selectedRowFieldIds.length}{' '}
-													mục không?
-												</DialogDescription>
-											</DialogHeader>
-											<DialogFooter className='flex w-full items-center sm:justify-center'>
-												<DialogClose asChild>
-													<Button variant='secondary' className='w-24'>
-														Huỷ
-													</Button>
-												</DialogClose>
-												<DialogClose asChild>
-													<Button
-														variant='destructive'
-														onClick={handleDeleteSelectedRows}
-														className='w-24'
-													>
-														Xoá
-													</Button>
-												</DialogClose>
-											</DialogFooter>
-										</ActionDialog>
-									</DialogProvider>
-								</div>
-							)}
-							<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
-								<InputGroupInput
-									placeholder='Tìm theo mã vật tư hoặc tên vật tư'
-									value={searchKeyword}
-									onChange={(event) => {
-										setSearchKeyword(event.target.value);
-										setPageIndex(0);
-									}}
-									className='peer bg-white'
-								/>
-								<InputGroupAddon align='inline-end'>
-									<SearchIcon className='size-4' />
-								</InputGroupAddon>
-							</InputGroup>
-						</div>
+											</DialogClose>
+										</DialogFooter>
+									</ActionDialog>
+								</DialogProvider>
+							</div>
+						)}
+						<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
+							<InputGroupInput
+								placeholder='Tìm theo mã vật tư hoặc tên vật tư'
+								value={searchKeyword}
+								onChange={(event) => {
+									setSearchKeyword(event.target.value);
+									setPageIndex(0);
+								}}
+								className='peer bg-white'
+							/>
+							<InputGroupAddon align='inline-end'>
+								<SearchIcon className='size-4' />
+							</InputGroupAddon>
+						</InputGroup>
+					</div>
+					{toolbarFilterOptions.length > 0 && (
 						<Popover>
 							<PopoverTrigger asChild>
 								<Button variant='ghost' className={TOOLBAR_BUTTON_CLASS_NAME}>
@@ -672,15 +684,15 @@ export function AcceptanceReportEditor({
 								</div>
 							</PopoverContent>
 						</Popover>
-					</div>
+					)}
 				</div>
-			)}
+			</div>
 			<div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto'>
 				<div className='rounded-lg border shadow-sm'>
 					<Table className='w-full'>
 						<TableHeader className='bg-linear-to-r from-slate-50 to-slate-100'>
 							<TableRow className='bg-linear-to-r from-slate-50 to-slate-100'>
-								{mode === 'edit' && (
+								{showRowSelection && (
 									<TableCell className='w-12 min-w-12 border-b-2 border-slate-200 px-3 py-4 text-center'>
 										<Checkbox
 											checked={
@@ -738,6 +750,7 @@ export function AcceptanceReportEditor({
 									displayIndex={safePageIndex * pageSize + displayIndex + 1}
 									mode={mode}
 									productionOrderOptions={productionOrderOptions}
+									assignmentCodeOptions={assignmentCodeOptions}
 									orderOrAssignmentCodeOptionsByItemId={
 										orderOrAssignmentCodeOptionsByItemId
 									}
@@ -757,7 +770,7 @@ export function AcceptanceReportEditor({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={mode === 'edit' ? 12 : 11}
+										colSpan={showRowSelection ? 12 : 11}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -915,6 +928,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	displayIndex,
 	mode,
 	productionOrderOptions,
+	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
 	selected,
 	onSelectedChange,
@@ -925,6 +939,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	displayIndex?: number;
 	mode: AcceptanceReportEditorMode;
 	productionOrderOptions: ProductionOrderOption[];
+	assignmentCodeOptions: ProductionOrderOption[];
 	orderOrAssignmentCodeOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	selected: boolean;
 	onSelectedChange: (checked: boolean) => void;
@@ -978,6 +993,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const materialName = row?.materialName;
 	const unitOfMeasureName = row?.unitOfMeasureName;
 	const isLongTermTracking = row?.isLongTermTracking ?? false;
+	const showRowSelection = true;
 
 	// ── Derived values ───────────────────────────────────────────────────────
 	const isSparePartByAssignmentCode =
@@ -987,9 +1003,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		(materialOrPartId
 			? orderOrAssignmentCodeOptionsByItemId[materialOrPartId]
 			: undefined) ?? productionOrderOptions;
-	const assignmentCodeOptions = orderOrAssignmentCodeOptions.filter((option) =>
-		option.value.startsWith(ASSIGNMENT_CODE_OPTION_PREFIX),
-	);
 	const productionOrderOnlyOptions = orderOrAssignmentCodeOptions.filter(
 		(option) => option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
 	);
@@ -1669,7 +1682,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		<>
 			{isUnresolved ? (
 				<TableRow className='transition-colors hover:bg-slate-50/50'>
-					{mode === 'edit' && (
+					{showRowSelection && (
 						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
 							<Checkbox
 								checked={selected}
@@ -1789,7 +1802,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								: 'hover:bg-slate-50/50',
 					)}
 				>
-					{mode === 'edit' && (
+					{showRowSelection && (
 						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
 							<Checkbox
 								checked={selected}

@@ -553,17 +553,28 @@ export function buildAcceptanceReportRequest(
 			filePath: context.filePath ?? '',
 			items: values.materials.map((item) => {
 				const base = buildBasePayload(item);
+				const trackedMaterialId = item.materialOrPartId || null;
+				const trackedItemIds =
+					item.type === MaterialType.Material
+						? {
+								trackedMaterialId,
+								materialId: trackedMaterialId,
+								partId: undefined,
+							}
+						: item.type === MaterialType.SparePart
+							? {
+									trackedMaterialId,
+									materialId: undefined,
+									partId: trackedMaterialId,
+								}
+							: {
+									trackedMaterialId,
+									materialId: undefined,
+									partId: undefined,
+								};
 				return {
 					acceptanceReportItemId: item.acceptanceReportItemId || null,
-					trackedMaterialId: item.materialOrPartId || null,
-					materialId:
-						item.type === MaterialType.Material
-							? item.materialOrPartId || null
-							: null,
-					partId:
-						item.type === MaterialType.SparePart
-							? item.materialOrPartId || null
-							: null,
+					...trackedItemIds,
 					usageTime: item.usageTime ?? 0,
 					type: item.type || MaterialType.Material,
 					itemType: item.itemType || ItemType.InContract,
@@ -609,17 +620,28 @@ export function buildAcceptanceReportRequest(
 		filePath: context.filePath ?? '',
 		items: values.materials.map((item) => {
 			const base = buildBasePayload(item);
+			const trackedMaterialId = item.materialOrPartId || null;
+			const trackedItemIds =
+				item.type === MaterialType.Material
+					? {
+							trackedMaterialId,
+							materialId: trackedMaterialId,
+							partId: undefined,
+						}
+					: item.type === MaterialType.SparePart
+						? {
+								trackedMaterialId,
+								materialId: undefined,
+								partId: trackedMaterialId,
+							}
+						: {
+								trackedMaterialId,
+								materialId: undefined,
+								partId: undefined,
+							};
 			return {
 				id: item.id || undefined,
-				trackedMaterialId: item.materialOrPartId || null,
-				materialId:
-					item.type === MaterialType.Material
-						? item.materialOrPartId || null
-						: null,
-				partId:
-					item.type === MaterialType.SparePart
-						? item.materialOrPartId || null
-						: null,
+				...trackedItemIds,
 				usageTime: item.usageTime ?? 0,
 				type: item.type ?? MaterialType.Material,
 				itemType: item.itemType ?? 0,

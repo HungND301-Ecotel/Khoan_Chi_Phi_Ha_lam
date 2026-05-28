@@ -3,14 +3,10 @@ import { DataTableEditDialog } from '@/components/datatable/edit';
 import { DialogContext } from '@/data/dialog/dialog-context';
 import { AssetInternalForm } from '@/features/main/catalog/asset/internal/form';
 import { Asset } from '@/features/main/catalog/asset/types';
-import { Part } from '@/features/main/catalog/part/main/columns';
-import { PartForm } from '@/features/main/catalog/part/main/actions';
-import { OtherPart } from '@/features/main/catalog/part/other/columns';
-import { OtherPartForm } from '@/features/main/catalog/part/other/actions';
 import { ReactNode, useMemo } from 'react';
 
 export type UnresolvedCatalogCreateSelection = {
-	entityGroup: 'material' | 'part';
+	entityGroup: 'material';
 	specificType: number;
 };
 
@@ -46,15 +42,7 @@ function getSelectionLabel(
 				return 'vật tư';
 		}
 	}
-
-	switch (selection.specificType) {
-		case 1:
-			return 'phụ tùng theo thiết bị';
-		case 2:
-			return 'phụ tùng khác';
-		default:
-			return 'phụ tùng';
-	}
+	return 'vật tư';
 }
 
 export function UnresolvedCatalogCreateDialog({
@@ -72,38 +60,13 @@ export function UnresolvedCatalogCreateDialog({
 			return null;
 		}
 
-		if (selection.entityGroup === 'material') {
-			const successLabel =
-				selection.specificType === 2
-					? 'Vật tư, tài sản khác'
-					: 'Vật tư, tài sản';
-
-			return (
-				<AssetInternalForm
-					data={embeddedData as ActionDialogProps<Asset>['data']}
-					defaultCode={defaultCode}
-					successLabel={successLabel}
-					onCreated={onCreated}
-				/>
-			);
-		}
-
-		if (selection.specificType === 1) {
-			return (
-				<PartForm
-					data={embeddedData as ActionDialogProps<Part>['data']}
-					defaultCode={defaultCode}
-					successLabel='Vật tư theo nhóm vật tư, tài sản'
-					onCreated={onCreated}
-				/>
-			);
-		}
-
+		const successLabel =
+			selection.specificType === 2 ? 'Vật tư, tài sản khác' : 'Vật tư, tài sản';
 		return (
-			<OtherPartForm
-				data={embeddedData as ActionDialogProps<OtherPart>['data']}
+			<AssetInternalForm
+				data={embeddedData as ActionDialogProps<Asset>['data']}
 				defaultCode={defaultCode}
-				successLabel='Vật tư khác'
+				successLabel={successLabel}
 				onCreated={onCreated}
 			/>
 		);

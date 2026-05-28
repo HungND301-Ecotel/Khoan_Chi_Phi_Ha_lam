@@ -2,7 +2,7 @@ import z from 'zod';
 
 export const unresolvedCreateSchema = z
 	.object({
-		entityGroup: z.enum(['material', 'part'], {
+		entityGroup: z.enum(['material'], {
 			message: 'Phải chọn nhóm đối tượng',
 		}),
 		specificType: z.number().nullable(),

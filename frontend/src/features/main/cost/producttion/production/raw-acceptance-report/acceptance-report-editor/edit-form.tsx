@@ -14,7 +14,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { Resolver, useForm } from 'react-hook-form';
 import { AcceptanceReportEditor } from './editor';
-import { acceptanceReportEditorFormSchema, type AcceptanceReportEditorFormInput } from './schema';
+import {
+	acceptanceReportEditorFormSchema,
+	type AcceptanceReportEditorFormInput,
+} from './schema';
 import type {
 	AssignmentCodeOption,
 	ImportedItemMeta,
@@ -34,13 +37,6 @@ import {
 	mapAcceptanceReportDetailToEditorForm,
 } from './mappers';
 
-type TrackedMaterialAssignmentCodeMapping = {
-	trackedMaterialId?: string;
-	assignmentCodes?: AssignmentCodeOption[];
-	partId?: string;
-	equipments?: AssignmentCodeOption[];
-};
-
 type ProductionOutputScopeResponse = {
 	processGroups?: {
 		processGroupId: string;
@@ -53,14 +49,6 @@ type MaterialLookupItem = {
 	name: string;
 	unitOfMeasureName: string;
 	materialType: number;
-};
-
-type PartLookupItem = {
-	id: string;
-	code: string;
-	name: string;
-	unitOfMeasureName: string;
-	partType: number;
 };
 
 const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
@@ -85,12 +73,14 @@ export function AcceptanceReportEditForm({
 	const [productionOrderOptions, setProductionOrderOptions] = useState<
 		ProductionOrderOption[]
 	>([]);
+	const [assignmentCodeOptions, setAssignmentCodeOptions] = useState<
+		ProductionOrderOption[]
+	>([]);
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
-	const [assignmentCodeOptionsByMaterialId, setAssignmentCodeOptionsByMaterialId] = useState<
-		Record<string, ProductionOrderOption[]>
-	>({});
-	const [orderOrAssignmentCodeOptionsByItemId, setOrderOrAssignmentCodeOptionsByItemId] =
-		useState<Record<string, ProductionOrderOption[]>>({});
+	const [
+		orderOrAssignmentCodeOptionsByItemId,
+		setOrderOrAssignmentCodeOptionsByItemId,
+	] = useState<Record<string, ProductionOrderOption[]>>({});
 	const [materialLookupOptions, setMaterialLookupOptions] = useState<
 		MaterialLookupOption[]
 	>([]);
@@ -144,16 +134,50 @@ export function AcceptanceReportEditForm({
 	useEffect(() => {
 		let isMounted = true;
 
+		const fetchAssignmentCodes = async () => {
+			try {
+				const response = await api.pagging<AssignmentCodeOption>(
+					API.CATALOG.CONTRACT_CODE.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				const options = (response.result.data ?? [])
+					.sort((a, b) => a.code.localeCompare(b.code))
+					.map((item) => ({
+						value: toAssignmentCodeOptionValue(item.id),
+						label: `[Nhóm vật tư, tài sản] ${item.code} - ${item.name}`,
+					}));
+
+				setAssignmentCodeOptions(options);
+			} catch (err) {
+				if (!isMounted) return;
+				setAssignmentCodeOptions([]);
+				console.error('Failed to fetch assignment codes:', err);
+			}
+		};
+
+		fetchAssignmentCodes();
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
+
+	useEffect(() => {
+		let isMounted = true;
+
 		const fetchMaterialLookupOptions = async () => {
 			try {
-				const [materialsRes, partsRes] = await Promise.all([
-					api.pagging<MaterialLookupItem>(API.CATALOG.ASSET.LIST, {
+				const materialsRes = await api.pagging<MaterialLookupItem>(
+					API.CATALOG.ASSET.LIST,
+					{
 						ignorePagination: true,
-					}),
-					api.pagging<PartLookupItem>(API.CATALOG.PART.LIST, {
-						ignorePagination: true,
-					}),
-				]);
+					},
+				);
 
 				if (!isMounted) return;
 
@@ -169,24 +193,8 @@ export function AcceptanceReportEditForm({
 					materialName: item.name,
 					unitOfMeasureName: item.unitOfMeasureName,
 				}));
-
-				const partOptions: MaterialLookupOption[] = (
-					partsRes.result.data ?? []
-				).map((item) => ({
-					value: `part:${item.id}`,
-					label: `${item.code} - ${item.name}`,
-					materialOrPartId: item.id,
-					type: MaterialType.SparePart,
-					itemType: item.partType,
-					materialCode: item.code,
-					materialName: item.name,
-					unitOfMeasureName: item.unitOfMeasureName,
-				}));
-
 				setMaterialLookupOptions(
-					[...materialOptions, ...partOptions].sort((a, b) =>
-						a.label.localeCompare(b.label),
-					),
+					materialOptions.sort((a, b) => a.label.localeCompare(b.label)),
 				);
 			} catch (err) {
 				if (!isMounted) return;
@@ -206,18 +214,11 @@ export function AcceptanceReportEditForm({
 		const nextOptionsByItemId: Record<string, ProductionOrderOption[]> = {};
 
 		for (const item of importedItems) {
-			const isPartItem = item.type === MaterialType.SparePart;
-			const assignmentCodeOptions = isPartItem
-				? (assignmentCodeOptionsByMaterialId[item.materialOrPartId] ?? [])
-				: [];
-			nextOptionsByItemId[item.materialOrPartId] = [
-				...productionOrderOptions,
-				...assignmentCodeOptions,
-			];
+			nextOptionsByItemId[item.materialOrPartId] = [...productionOrderOptions];
 		}
 
 		setOrderOrAssignmentCodeOptionsByItemId(nextOptionsByItemId);
-	}, [assignmentCodeOptionsByMaterialId, importedItems, productionOrderOptions]);
+	}, [importedItems, productionOrderOptions]);
 
 	useEffect(() => {
 		if (!id) {
@@ -294,55 +295,13 @@ export function AcceptanceReportEditForm({
 				setAcceptanceReportId(response.result.id);
 				setFilePath(response.result.filePath);
 
-				const nextFormValues =
-					mapAcceptanceReportDetailToEditorForm(response.result);
-				const nextImportedItems = extractImportedItems(nextFormValues.materials);
+				const nextFormValues = mapAcceptanceReportDetailToEditorForm(
+					response.result,
+				);
+				const nextImportedItems = extractImportedItems(
+					nextFormValues.materials,
+				);
 				setImportedItems(nextImportedItems);
-
-				const trackedMaterialIds = Array.from(
-					new Set(
-						response.result.items
-							.filter((item) => item.type === MaterialType.SparePart)
-							.map((item) => item.trackedMaterialId ?? item.partId)
-							.filter((trackedMaterialId): trackedMaterialId is string =>
-								Boolean(trackedMaterialId),
-							),
-					),
-				);
-				const fetchedAssignmentCodeOptionsByMaterialId: Record<
-					string,
-					ProductionOrderOption[]
-				> = {};
-
-				if (trackedMaterialIds.length > 0) {
-					const equipmentMappingsRes = await api.post<
-						TrackedMaterialAssignmentCodeMapping[],
-						string[]
-					>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, trackedMaterialIds);
-
-					for (const mapping of equipmentMappingsRes.result ?? []) {
-						const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
-						if (!trackedMaterialId) continue;
-						fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
-							mapping.assignmentCodes ?? mapping.equipments ?? []
-						)
-							.sort((a, b) => a.code.localeCompare(b.code))
-							.map((equipment) => ({
-								value: toAssignmentCodeOptionValue(equipment.id),
-								label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
-							}));
-					}
-				}
-
-				for (const trackedMaterialId of trackedMaterialIds) {
-					if (!fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId]) {
-						fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = [];
-					}
-				}
-
-				setAssignmentCodeOptionsByMaterialId(
-					fetchedAssignmentCodeOptionsByMaterialId,
-				);
 				form.reset(nextFormValues);
 			} catch (err) {
 				console.error('Failed to fetch acceptance report:', err);
@@ -392,46 +351,6 @@ export function AcceptanceReportEditForm({
 			},
 		];
 		setImportedItems(nextImportedItems);
-
-		if (
-			option.type === MaterialType.SparePart &&
-			!assignmentCodeOptionsByMaterialId[option.materialOrPartId]
-		) {
-			try {
-				const equipmentMappingsRes = await api.post<
-					TrackedMaterialAssignmentCodeMapping[],
-					string[]
-				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [
-					option.materialOrPartId,
-				]);
-				const nextAssignmentCodeOptionsByMaterialId = {
-					...assignmentCodeOptionsByMaterialId,
-				};
-				for (const mapping of equipmentMappingsRes.result ?? []) {
-					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
-					if (!trackedMaterialId) continue;
-					nextAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
-						mapping.assignmentCodes ?? mapping.equipments ?? []
-					)
-						.sort((a, b) => a.code.localeCompare(b.code))
-						.map((equipment) => ({
-							value: toAssignmentCodeOptionValue(equipment.id),
-							label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
-						}));
-				}
-				if (!nextAssignmentCodeOptionsByMaterialId[option.materialOrPartId]) {
-					nextAssignmentCodeOptionsByMaterialId[option.materialOrPartId] = [];
-				}
-				setAssignmentCodeOptionsByMaterialId(
-					nextAssignmentCodeOptionsByMaterialId,
-				);
-			} catch (err) {
-				console.error(
-					'Failed to fetch assignment code options for added material:',
-					err,
-				);
-			}
-		}
 	};
 
 	return (
@@ -446,6 +365,7 @@ export function AcceptanceReportEditForm({
 					onCancel={() => setOpen(false)}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}
+					assignmentCodeOptions={assignmentCodeOptions}
 					orderOrAssignmentCodeOptionsByItemId={
 						orderOrAssignmentCodeOptionsByItemId
 					}

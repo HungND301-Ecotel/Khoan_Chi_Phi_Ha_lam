@@ -138,6 +138,17 @@ export function RawAcceptanceReport({
 							<MaterialImportDialog
 								onSave={handleImport}
 								productionOutputId={output?.id}
+								acceptanceReportId={output?.acceptanceReportId ?? null}
+								currentAcceptanceReportDetail={
+									output?.acceptanceReportId
+										? {
+												id: output.acceptanceReportId,
+												productionOutputId: output?.id ?? '',
+												filePath: '',
+												items: rawAcceptanceData as AcceptanceReportItem[],
+											}
+										: null
+								}
 							/>
 						</DataTableEditDialog>
 					</DialogProvider>

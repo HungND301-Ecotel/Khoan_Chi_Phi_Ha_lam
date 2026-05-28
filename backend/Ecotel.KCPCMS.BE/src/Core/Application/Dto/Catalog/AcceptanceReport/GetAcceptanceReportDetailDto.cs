@@ -14,6 +14,9 @@ public record AcceptanceReportCategoryAllocationDetailDto
 
 public record AcceptanceReportDetailItemDto
 {
+    public const string NoneCategoryAssignmentCodeLabel = "[Nhóm vật tư, tài sản] Không thuộc nhóm vật tư, tài sản";
+    public const string NoneCategoryProductionOrderLabel = "[Lệnh sản xuất] Không theo lệnh sản xuất";
+
     private Guid? _trackedMaterialId;
     private string? _trackedMaterialCode;
     private string? _trackedMaterialName;
@@ -21,7 +24,9 @@ public record AcceptanceReportDetailItemDto
     public required Guid Id { get; init; }
     public required Guid AcceptanceReportId { get; init; }
     public required Guid? CategoryProductionOrderId { get; init; }
+    public string? CategoryProductionOrderLabel { get; init; }
     public Guid? CategoryAssignmentCodeId { get; init; }
+    public string? CategoryAssignmentCodeLabel { get; init; }
     public Guid? CategoryEquipmentId => CategoryAssignmentCodeId;
     public Guid? AdditionalCostProductionOrderId { get; init; }
     public Guid? AdditionalCostAssignmentCodeId { get; init; }

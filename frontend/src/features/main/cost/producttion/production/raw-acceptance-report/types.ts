@@ -8,7 +8,9 @@ export type RawAcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
+	categoryAssignmentCodeLabel?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;
@@ -25,6 +27,7 @@ export type RawAcceptanceReportItem = {
 	issuedQuantity: number;
 	shippedQuantity: number;
 	type: number;
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking?: boolean;
 	processGroupId: string | null;
@@ -59,7 +62,9 @@ export type AcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
+	categoryAssignmentCodeLabel?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;

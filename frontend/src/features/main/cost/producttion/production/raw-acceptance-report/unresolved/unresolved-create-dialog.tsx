@@ -28,17 +28,11 @@ type UnresolvedCreateDialogProps = {
 
 const ENTITY_GROUP_OPTIONS = [
 	{ value: 'material', label: 'Vật tư' },
-	{ value: 'part', label: 'Vật tư SCTX' },
 ] as const;
 
 const MATERIAL_TYPE_OPTIONS = [
 	{ value: 1, label: 'Vật tư, tài sản' },
 	{ value: 2, label: 'Vật tư, tài sản khác' },
-] as const;
-
-const PART_TYPE_OPTIONS = [
-	{ value: 1, label: 'Vật tư theo nhóm vật tư, tài sản' },
-	{ value: 2, label: 'Vật tư khác' },
 ] as const;
 
 export function UnresolvedCreateDialog({
@@ -82,20 +76,11 @@ export function UnresolvedCreateDialog({
 			return;
 		}
 
-		if (
-			entityGroup === 'part' &&
-			!PART_TYPE_OPTIONS.some((option) => option.value === specificType)
-		) {
-			form.setValue('specificType', 1);
-		}
 	}, [entityGroup, form, specificType]);
 
 	const specificTypeOptions = useMemo(
-		() =>
-			entityGroup === 'material'
-				? [...MATERIAL_TYPE_OPTIONS]
-				: [...PART_TYPE_OPTIONS],
-		[entityGroup],
+		() => [...MATERIAL_TYPE_OPTIONS],
+		[],
 	);
 
 	const handleSubmit = async (values: UnresolvedCreateSchema) => {
