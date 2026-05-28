@@ -2,48 +2,23 @@ import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
-import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Seamface } from '@/features/main/catalog/parameter/seamface/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { Technology } from '@/features/main/catalog/parameter/technology/columns';
 import { Power } from '@/features/main/catalog/parameter/power/columns';
 import { LongwallMaterialForm } from '@/features/main/pricing/longwall-panel/material/form';
 import {
-	ExpandLongwallMaterialAssignmentCost,
 	ExpandLongwallMaterialDetail,
 	LONGWALL_MATERIAL_DETAIL_CGH_COLUMNS,
 	LONGWALL_MATERIAL_DETAIL_NON_CGH_COLUMNS,
 	LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS,
 	LONGWALL_MATERIAL_COLUMNS,
-	LongwallMaterial,
+	type ExpandLongwallMaterialCostRow,
+	type LongwallMaterial,
 } from '@/features/main/pricing/longwall-panel/material/columns';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
-
-type LongwallMaterialDetailResponse = {
-	id: string;
-	code: string;
-	technologyId?: string;
-	powerId?: string;
-	hardnessId?: string;
-	seamFaceId?: string;
-	longwallParameters?: {
-		id: string;
-		llc: string;
-		lkc: number;
-		mk: number;
-	};
-	cuttingThickness?: {
-		id: string;
-		value?: string;
-		from?: string;
-		to?: string;
-	};
-	costs: Array<{
-		assignmentCodeId: string;
-		totalPrice: number;
-	}>;
-};
+import type { LongwallMaterialDetail } from './type';
 
 export function LongwallPanelMaterialPage() {
 	const popup = usePopup();
@@ -119,19 +94,16 @@ export function LongwallPanelMaterialPage() {
 
 function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
 	const [detail, setDetail] = useState<ExpandLongwallMaterialDetail>();
-	const [costs, setCosts] = useState<ExpandLongwallMaterialAssignmentCost[]>(
-		[],
-	);
+	const [costs, setCosts] = useState<ExpandLongwallMaterialCostRow[]>([]);
 
 	useEffect(() => {
 		if (!row) return;
 
 		const load = async () => {
-			const [detailRes, contractsRes] = await Promise.all([
-				api.get<LongwallMaterialDetailResponse>(
+			const [detailRes] = await Promise.all([
+				api.get<LongwallMaterialDetail>(
 					API.PRICING.MATERIAL.LONGWALL_PANEL.DETAIL(row.id),
 				),
-				api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST),
 			]);
 
 			const materialDetail = detailRes.result;
@@ -190,21 +162,44 @@ function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
 				seamFaceValue: seamFaceRes?.result?.value ?? row.seamFaceName ?? '',
 			});
 
-			const contractMap = new Map(
-				contractsRes.result.data.map((item) => [item.id, item]),
+			const materialCosts = (materialDetail.costs ?? []).map((item) => ({
+				assignmentCodeId: item.assignmentCodeId,
+				assignmentCode: item.assignmentCode,
+				assignmentCodeName: item.assignmentCodeName,
+				materialId: item.materialId,
+				materialCode: item.materialCode,
+				materialName: item.materialName,
+				unitOfMeasureName: item.unitOfMeasureName,
+				unitPrice: item.unitPrice,
+				norm: item.norm,
+				totalPrice: item.totalPrice,
+			}));
+			const normalMaterialTotal = materialCosts.reduce(
+				(sum, item) => sum + Number(item.totalPrice || 0),
+				0,
 			);
+			const otherMaterialPercent = Number(materialDetail.otherMaterialValue || 0);
+			const otherMaterialCost = (normalMaterialTotal * otherMaterialPercent) / 100;
+			const nextCosts =
+				otherMaterialPercent > 0
+					? [
+							...materialCosts,
+							{
+								assignmentCodeId: 'VTK',
+								assignmentCode: 'VTK',
+								assignmentCodeName: 'Vật tư khác',
+								materialId: 'VTK',
+								materialCode: 'VTK',
+								materialName: 'Vật tư khác',
+								unitOfMeasureName: '',
+								unitPrice: null,
+								norm: `${otherMaterialPercent}%`,
+								totalPrice: otherMaterialCost,
+							},
+						]
+					: materialCosts;
 
-			setCosts(
-				(materialDetail.costs ?? []).map((item) => {
-					const contract = contractMap.get(item.assignmentCodeId);
-					return {
-						assignmentCodeId: item.assignmentCodeId,
-						assignmentCode: contract?.code ?? '',
-						assignmentCodeName: contract?.name ?? '',
-						totalPrice: item.totalPrice,
-					};
-				}),
-			);
+			setCosts(nextCosts);
 		};
 
 		load();

@@ -104,6 +104,8 @@ public class GetAllLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork,
             {
                 MaterialUnitPriceId = m.Id,
                 AssignmentCodeId = cost.AssignmentCodeId,
+                MaterialId = cost.MaterialId,
+                Norm = cost.Norm,
                 TotalPrice = cost.TotalPrice
             }))
             .AsNoTracking()
@@ -117,6 +119,8 @@ public class GetAllLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork,
                     .Select(cost => new MaterialUnitPriceAssignmentCodeDto
                     {
                         AssignmentCodeId = cost.AssignmentCodeId,
+                        MaterialId = cost.MaterialId,
+                        Norm = cost.Norm,
                         TotalPrice = cost.TotalPrice
                     })
                     .ToList());
@@ -147,7 +151,7 @@ public class GetAllLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork,
                 StartMonth = m.StartMonth,
                 EndMonth = m.EndMonth,
                 OtherMaterialValue = m.OtherMaterialValue,
-                TotalPrice = materialCosts.Sum(cost => cost.TotalPrice) + m.OtherMaterialValue,
+                TotalPrice = materialCosts.Sum(cost => cost.TotalPrice) * (1 + (m.OtherMaterialValue / 100d)),
                 Costs = materialCosts
             };
         }).ToList();
@@ -186,6 +190,8 @@ public class GetAllLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork,
     {
         public Guid MaterialUnitPriceId { get; init; }
         public Guid AssignmentCodeId { get; init; }
+        public Guid? MaterialId { get; init; }
+        public double Norm { get; init; }
         public double TotalPrice { get; init; }
     }
 }

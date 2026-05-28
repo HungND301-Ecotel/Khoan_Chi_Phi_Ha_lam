@@ -6,7 +6,6 @@ using Application.Dto.Catalog.MaterialUnitPrice;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -24,6 +23,7 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     private const string CacheSignalKey = "ProductUnitPrice";
@@ -53,6 +53,32 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
         if (!checkExisted)
         {
             throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
+        }
+
+        if (request.UpdateModel.Costs.Any(cost => cost.MaterialId == null || cost.MaterialId == Guid.Empty))
+        {
+            throw new BadRequestException(CustomResponseMessage.MaterialNotFound);
+        }
+
+        var duplicateRows = request.UpdateModel.Costs
+            .GroupBy(cost => new { cost.AssignmentCodeId, cost.MaterialId })
+            .Any(group => group.Count() > 1);
+        if (duplicateRows)
+        {
+            throw new BadRequestException("Dữ liệu vật tư theo nhóm bị trùng lặp.");
+        }
+
+        var materialIds = request.UpdateModel.Costs
+            .Select(cost => cost.MaterialId!.Value)
+            .Distinct()
+            .ToList();
+        var existingMaterialIds = await _materialRepository.GetAllAsync(
+            predicate: material => materialIds.Contains(material.Id),
+            selector: material => material.Id,
+            disableTracking: true);
+        if (existingMaterialIds.Count != materialIds.Count)
+        {
+            throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
         }
 
         var materialUnitPrice = await _materialUnitPriceRepository.GetFirstOrDefaultAsync(
@@ -92,7 +118,13 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
                 request.UpdateModel.StartMonth,
                 request.UpdateModel.EndMonth,
                 request.UpdateModel.OtherMaterialValue,
-                request.UpdateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>(),
+                request.UpdateModel.Costs
+                    .Select(cost => MaterialUnitPriceAssignmentCode.Create(
+                        cost.AssignmentCodeId,
+                        cost.TotalPrice,
+                        cost.MaterialId,
+                        cost.Norm))
+                    .ToList(),
                 request.UpdateModel.Type
                 );
 

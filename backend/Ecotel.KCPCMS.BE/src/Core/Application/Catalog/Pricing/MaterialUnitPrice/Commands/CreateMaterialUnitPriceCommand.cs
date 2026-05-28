@@ -6,7 +6,6 @@ using Application.Dto.Catalog.MaterialUnitPrice;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
-using Mapster;
 using MediatR;
 using Shared.Constants;
 
@@ -26,6 +25,7 @@ public class CreateMaterialUnitPriceCommandHandler(
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     public async Task<bool> Handle(CreateMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
         if (await codeService.IsCodeExisted(request.CreateModel.Code))
@@ -56,6 +56,32 @@ public class CreateMaterialUnitPriceCommandHandler(
             throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
+        if (request.CreateModel.Costs.Any(cost => cost.MaterialId == null || cost.MaterialId == Guid.Empty))
+        {
+            throw new BadRequestException(CustomResponseMessage.MaterialNotFound);
+        }
+
+        var duplicateRows = request.CreateModel.Costs
+            .GroupBy(cost => new { cost.AssignmentCodeId, cost.MaterialId })
+            .Any(group => group.Count() > 1);
+        if (duplicateRows)
+        {
+            throw new BadRequestException("Dữ liệu vật tư theo nhóm bị trùng lặp.");
+        }
+
+        var materialIds = request.CreateModel.Costs
+            .Select(cost => cost.MaterialId!.Value)
+            .Distinct()
+            .ToList();
+        var existingMaterialIds = await _materialRepository.GetAllAsync(
+            predicate: material => materialIds.Contains(material.Id),
+            selector: material => material.Id,
+            disableTracking: true);
+        if (existingMaterialIds.Count != materialIds.Count)
+        {
+            throw new NotFoundException(CustomResponseMessage.MaterialNotFound);
+        }
+
         bool processTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProcessId);
         bool passportTask = await _passportRepository.AnyAsync(p => p.Id == request.CreateModel.PassportId);
         bool hardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.CreateModel.HardnessId);
@@ -83,7 +109,13 @@ public class CreateMaterialUnitPriceCommandHandler(
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
                 request.CreateModel.OtherMaterialValue,
-                request.CreateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>(),
+                request.CreateModel.Costs
+                    .Select(cost => MaterialUnitPriceAssignmentCode.Create(
+                        cost.AssignmentCodeId,
+                        cost.TotalPrice,
+                        cost.MaterialId,
+                        cost.Norm))
+                    .ToList(),
                 request.CreateModel.Type);
 
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);

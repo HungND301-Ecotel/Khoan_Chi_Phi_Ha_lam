@@ -1,5 +1,6 @@
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+import type { LongwallMaterialDetailCost } from './type';
 
 export type LongwallParameters = {
 	id: string;
@@ -40,6 +41,8 @@ export type LongwallMaterial = {
 
 	costs: Array<{
 		assignmentCodeId: string;
+		materialId?: string;
+		norm?: number;
 		totalPrice: number;
 	}>;
 	otherMaterialValue?: number;
@@ -164,22 +167,47 @@ export const LONGWALL_MATERIAL_DETAIL_NON_CGH_COLUMNS: ColumnDef<ExpandLongwallM
 		},
 	];
 
-export type ExpandLongwallMaterialAssignmentCost = {
-	assignmentCodeId: string;
-	assignmentCode: string;
-	assignmentCodeName: string;
-	totalPrice: number;
+export type ExpandLongwallMaterialCostRow = Omit<
+	LongwallMaterialDetailCost,
+	'norm' | 'unitPrice'
+> & {
+	norm: number | string;
+	unitPrice?: number | null;
 };
 
-export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallMaterialAssignmentCost>[] =
+export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallMaterialCostRow>[] =
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: 'Nhóm vật tư, tài sản',
+			header: 'Mã nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'assignmentCodeName',
 			header: 'Tên nhóm vật tư, tài sản',
+		},
+		{
+			accessorKey: 'materialCode',
+			header: 'Mã vật tư, tài sản',
+		},
+		{
+			accessorKey: 'materialName',
+			header: 'Tên vật tư, tài sản',
+			cell: ({ row }) => (
+				<span className='whitespace-normal'>{row.original.materialName}</span>
+			),
+		},
+		{
+			accessorKey: 'unitPrice',
+			header: 'Đơn giá (đ)',
+			cell: ({ row }) =>
+				row.original.unitPrice === null || row.original.unitPrice === undefined
+					? ''
+					: formatNumber(row.original.unitPrice),
+		},
+		{
+			accessorKey: 'norm',
+			header: 'Định mức',
+			cell: ({ row }) => String(row.original.norm),
 		},
 		{
 			accessorKey: 'totalPrice',

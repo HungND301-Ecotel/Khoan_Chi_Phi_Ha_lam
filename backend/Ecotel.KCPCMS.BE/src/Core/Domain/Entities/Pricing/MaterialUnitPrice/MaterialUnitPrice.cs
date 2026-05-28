@@ -12,7 +12,7 @@ public abstract class MaterialUnitPrice : AuditableEntity<Guid>, IAggregateRoot
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
     public double OtherMaterialvalue { get; set; }
-    public double TotalPrice => MaterialUnitPriceAssignmentCodes.Sum(m => m.TotalPrice) + OtherMaterialvalue;
+    public double TotalPrice => ApplyOtherMaterialValue(MaterialUnitPriceAssignmentCodes.Sum(m => m.TotalPrice));
 
     // Navigation properties chung
     public virtual Code? Code { get; protected set; }
@@ -30,10 +30,14 @@ public abstract class MaterialUnitPrice : AuditableEntity<Guid>, IAggregateRoot
         if (StartMonth <= effectiveMonth && EndMonth >= effectiveMonth)
         {
             double totalPrice = MaterialUnitPriceAssignmentCodes.Sum(m => m.TotalPrice);
-            totalPrice += OtherMaterialvalue;
-            return totalPrice;
+            return ApplyOtherMaterialValue(totalPrice);
         }
         return 0;
+    }
+
+    public double ApplyOtherMaterialValue(double total)
+    {
+        return total * (1 + OtherMaterialvalue / 100.0);
     }
 
     public void AddCosts(IList<MaterialUnitPriceAssignmentCode> costs)

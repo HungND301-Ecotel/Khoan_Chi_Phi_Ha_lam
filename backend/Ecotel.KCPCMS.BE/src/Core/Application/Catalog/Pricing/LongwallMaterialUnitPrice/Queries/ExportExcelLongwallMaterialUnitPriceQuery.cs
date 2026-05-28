@@ -24,6 +24,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
 
     public async Task<byte[]> Handle(ExportExcelLongwallMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
@@ -39,7 +40,10 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 .Include(s => s.Code)
                 .Include(s => s.MaterialUnitPriceAssignmentCodes)
                     .ThenInclude(c => c.AssignmentCode)
-                        .ThenInclude(a => a.Code),
+                        .ThenInclude(a => a.Code)
+                .Include(s => s.MaterialUnitPriceAssignmentCodes)
+                    .ThenInclude(c => c.Material)
+                        .ThenInclude(m => m.Code),
             disableTracking: true);
 
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
@@ -63,8 +67,17 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
+        var materials = await _materialRepository.GetAllAsync(
+            include: m => m.Include(x => x.Code),
+            disableTracking: true);
         var assignmentOptions = assignments
             .Select(GetAssignmentDisplayName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        var materialOptions = materials
+            .Select(GetMaterialDisplayName)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
@@ -72,6 +85,10 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         if (!assignmentOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
         {
             assignmentOptions.Add(OtherMaterialDisplay);
+        }
+        if (!materialOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
+        {
+            materialOptions.Add(OtherMaterialDisplay);
         }
 
         using var workbook = new XLWorkbook();
@@ -86,7 +103,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         const int longwallParametersCol = 7;
         const int cuttingThicknessCol = 8;
         const int assignmentCol = 9;
-        const int seamFaceStartCol = 10;
+        const int materialCol = 10;
+        const int seamFaceStartCol = 11;
 
         var fixedHeaders = new[]
         {
@@ -98,7 +116,8 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             (powerCol, "Công suất"),
             (longwallParametersCol, "Thông số lò chợ"),
             (cuttingThicknessCol, "Chiều dày lớp khấu"),
-            (assignmentCol, "Nhóm vật tư, tài sản")
+            (assignmentCol, "Nhóm vật tư, tài sản"),
+            (materialCol, "Vật tư tài sản")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();
@@ -182,10 +201,12 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 .GroupBy(GetSeamFaceDisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var assignmentRows = BuildAssignmentRows(group, assignmentOptions);
-            for (var i = 0; i < assignmentRows.Count; i++)
+            var detailRows = BuildDetailRows(group, assignmentOptions);
+            for (var i = 0; i < detailRows.Count; i++)
             {
-                worksheet.Cell(baseRow + i + 1, assignmentCol).Value = assignmentRows[i];
+                var detailRow = baseRow + i + 1;
+                worksheet.Cell(detailRow, assignmentCol).Value = detailRows[i].AssignmentDisplay;
+                worksheet.Cell(detailRow, materialCol).Value = detailRows[i].MaterialDisplay;
             }
 
             foreach (var seamFace in seamFaceColumns)
@@ -198,22 +219,22 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 worksheet.Cell(baseRow, seamFace.valueCol).Value = entity.Code?.Value ?? string.Empty;
                 var costMap = BuildCostMap(entity);
 
-                for (var i = 0; i < assignmentRows.Count; i++)
+                for (var i = 0; i < detailRows.Count; i++)
                 {
-                    var assignmentDisplay = assignmentRows[i];
-                    if (string.IsNullOrWhiteSpace(assignmentDisplay))
+                    var detailRow = detailRows[i];
+                    if (string.IsNullOrWhiteSpace(detailRow.Key))
                     {
                         continue;
                     }
 
-                    if (costMap.TryGetValue(assignmentDisplay, out var amount))
+                    if (costMap.TryGetValue(detailRow.Key, out var amount))
                     {
                         worksheet.Cell(baseRow + i + 1, seamFace.valueCol).Value = amount;
                     }
                 }
             }
 
-            rowIndex += assignmentRows.Count + 1;
+            rowIndex += detailRows.Count + 1;
         }
 
         var lastDataRow = Math.Max(rowIndex - 1, 100);
@@ -224,8 +245,9 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         AddDropdownValidation(workbook, worksheet, longwallParametersCol, longwallParameters, lastDataRow, 5, 3);
         AddDropdownValidation(workbook, worksheet, cuttingThicknessCol, cuttingThicknesses.ToList(), lastDataRow, 6, 3);
         AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 7, 3);
+        AddDropdownValidation(workbook, worksheet, materialCol, materialOptions, lastDataRow, 8, 3);
 
-        var lastHeaderCol = Math.Max(powerCol, seamFaceStartCol + seamFaceNames.Count - 1);
+        var lastHeaderCol = Math.Max(materialCol, seamFaceStartCol + seamFaceNames.Count - 1);
         foreach (var (columns, text) in headerWidthInstructions)
         {
             ApplyColumnWidthForHeader(worksheet, columns, text);
@@ -242,7 +264,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         }
 
         worksheet.SheetView.FreezeRows(2);
-        worksheet.SheetView.FreezeColumns(assignmentCol);
+        worksheet.SheetView.FreezeColumns(materialCol);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -254,27 +276,35 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         return data.SeamFace?.Value?.Trim() ?? string.Empty;
     }
 
-    private static List<string> BuildAssignmentRows(
+    private static List<ExportDetailRow> BuildDetailRows(
         IEnumerable<LongwallMaterialUnitPriceEntity> entities,
         IReadOnlyList<string> assignmentOptions)
     {
-        var allAssignments = entities
+        var allRows = entities
             .SelectMany(entity => BuildCostMap(entity).Keys)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (!allAssignments.Any())
+        if (!allRows.Any())
         {
-            return [string.Empty, string.Empty, string.Empty, OtherMaterialDisplay];
+            return
+            [
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(OtherMaterialDisplay, OtherMaterialDisplay, BuildDetailKey(OtherMaterialDisplay, OtherMaterialDisplay))
+            ];
         }
 
         var optionIndex = assignmentOptions
             .Select((value, index) => new { value, index })
             .ToDictionary(x => x.value, x => x.index, StringComparer.OrdinalIgnoreCase);
 
-        return allAssignments
-            .OrderBy(value => optionIndex.TryGetValue(value, out var index) ? index : int.MaxValue)
-            .ThenBy(value => value, StringComparer.OrdinalIgnoreCase)
+        return allRows
+            .Select(ParseDetailKey)
+            .OrderBy(value => optionIndex.TryGetValue(value.AssignmentDisplay, out var index) ? index : int.MaxValue)
+            .ThenBy(value => value.AssignmentDisplay, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(value => value.MaterialDisplay, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -284,17 +314,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         foreach (var item in entity.MaterialUnitPriceAssignmentCodes)
         {
             var assignmentDisplay = GetAssignmentDisplayName(item);
-            if (string.IsNullOrWhiteSpace(assignmentDisplay))
+            var materialDisplay = GetMaterialDisplayName(item.Material);
+            if (string.IsNullOrWhiteSpace(assignmentDisplay) || string.IsNullOrWhiteSpace(materialDisplay))
             {
                 continue;
             }
 
-            map[assignmentDisplay] = item.TotalPrice;
+            map[BuildDetailKey(assignmentDisplay, materialDisplay)] = item.Norm;
         }
 
         if (entity.OtherMaterialvalue > 0)
         {
-            map[OtherMaterialDisplay] = entity.OtherMaterialvalue;
+            map[BuildDetailKey(OtherMaterialDisplay, OtherMaterialDisplay)] = entity.OtherMaterialvalue;
         }
 
         return map;
@@ -311,6 +342,35 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         }
 
         return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string GetMaterialDisplayName(Domain.Entities.Index.Material? material)
+    {
+        if (material == null)
+        {
+            return string.Empty;
+        }
+
+        var code = material.Code?.Value?.Trim() ?? string.Empty;
+        var name = material.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string BuildDetailKey(string assignmentDisplay, string materialDisplay)
+        => $"{assignmentDisplay}|||{materialDisplay}";
+
+    private static ExportDetailRow ParseDetailKey(string key)
+    {
+        var parts = key.Split("|||", 2, StringSplitOptions.None);
+        var assignmentDisplay = parts.ElementAtOrDefault(0) ?? string.Empty;
+        var materialDisplay = parts.ElementAtOrDefault(1) ?? string.Empty;
+        return new ExportDetailRow(assignmentDisplay, materialDisplay, key);
     }
 
     private static string GetAssignmentDisplayName(AssignmentCode assignment)
@@ -395,4 +455,9 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+(\.\d+)?");
         return match.Success ? double.Parse(match.Value, System.Globalization.CultureInfo.InvariantCulture) : double.MaxValue;
     }
+
+    private sealed record ExportDetailRow(
+        string AssignmentDisplay,
+        string MaterialDisplay,
+        string Key);
 }
