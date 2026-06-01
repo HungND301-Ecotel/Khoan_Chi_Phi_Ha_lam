@@ -319,8 +319,8 @@ function sumFinancialFields(items: UnifiedItem[]): FinancialFields {
  * Get item code based on item type
  */
 function getItemCode(item: UnifiedItem): string {
+	if ('sparePartCode' in item) return item.materialCode || item.sparePartCode;
 	if ('materialCode' in item) return item.materialCode;
-	if ('sparePartCode' in item) return item.sparePartCode;
 	if ('assetCode' in item) return item.assetCode;
 	return '';
 }
@@ -329,8 +329,8 @@ function getItemCode(item: UnifiedItem): string {
  * Get item name based on item type
  */
 function getItemName(item: UnifiedItem): string {
+	if ('sparePartName' in item) return item.materialName || item.sparePartName;
 	if ('materialName' in item) return item.materialName;
-	if ('sparePartName' in item) return item.sparePartName;
 	if ('assetName' in item) return item.assetName;
 	return '';
 }

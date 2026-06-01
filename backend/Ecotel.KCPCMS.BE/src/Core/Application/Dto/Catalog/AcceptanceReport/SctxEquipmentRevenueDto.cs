@@ -4,7 +4,12 @@ public class GetSctxEquipmentRevenueRequest
 {
     public string? FromMonth { get; set; }
     public string? ToMonth { get; set; }
-    public Guid EquipmentId { get; set; }
+    public Guid? AssignmentCodeId { get; set; }
+    public Guid? EquipmentId
+    {
+        get => AssignmentCodeId;
+        set => AssignmentCodeId = value;
+    }
     public Guid? DepartmentId { get; set; }
 }
 
@@ -20,7 +25,8 @@ public class SctxEquipmentRevenueByMonthDto
 
 public class SctxEquipmentRevenueResponseDto
 {
-    public Guid EquipmentId { get; set; }
+    public Guid AssignmentCodeId { get; set; }
+    public Guid? EquipmentId => AssignmentCodeId;
     public IList<SctxEquipmentRevenueByYearDto> Years { get; set; } = new List<SctxEquipmentRevenueByYearDto>();
 }
 

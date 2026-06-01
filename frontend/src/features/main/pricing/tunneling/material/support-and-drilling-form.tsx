@@ -258,8 +258,8 @@ export function SupportAndDrillingForm({
 			/>
 
 			<MultiSelect
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				values={selectedCodes}
 				onValuesChange={setSelectedCodes}
 				options={contracts.map((item) => ({
@@ -338,7 +338,7 @@ function SupportAndDrillingCostRow({
 	return (
 		<FormRow>
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Mã giao khoán</Label>
+				<Label>Nhóm vật tư, tài sản</Label>
 				<Input
 					readOnly
 					value={contract ? `${contract.code} - ${contract.name}` : ''}
@@ -364,7 +364,7 @@ function SupportAndDrillingVtkRow() {
 	return (
 		<FormRow>
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Mã giao khoán</Label>
+				<Label>Nhóm vật tư, tài sản</Label>
 				<Input
 					readOnly
 					value='VTK - Vật tư khác'

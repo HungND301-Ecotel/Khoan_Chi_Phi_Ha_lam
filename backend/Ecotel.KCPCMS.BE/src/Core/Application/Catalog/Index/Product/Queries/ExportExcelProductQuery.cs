@@ -37,6 +37,8 @@ public class ExportExcelProductQueryHandler(IExcelService excelService, IUnitOfW
         var dtoList = list.Select(s => new ProductExcelDto
         {
             Id = s.Id,
+            StartMonth = s.StartMonth,
+            EndMonth = s.EndMonth,
             Code = s.Code?.Value ?? "",
             Name = s.Name,
             ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""

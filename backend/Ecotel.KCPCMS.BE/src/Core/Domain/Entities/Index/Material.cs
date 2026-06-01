@@ -22,6 +22,9 @@ namespace Domain.Entities.Index
         private IList<Cost> _costs = new List<Cost>();
         public virtual IReadOnlyCollection<Cost> Costs => _costs.AsReadOnly();
 
+        private IList<AssignmentCodeMaterial> _assignmentCodeMaterials = new List<AssignmentCodeMaterial>();
+        public virtual IReadOnlyCollection<AssignmentCodeMaterial> AssignmentCodeMaterials => _assignmentCodeMaterials.AsReadOnly();
+
         private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
         public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
 
@@ -29,6 +32,8 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<SlideUnitPriceAssignmentCode> SlideUnitPriceAssignmentCodes => _slideUnitPriceAssignmentCodes.AsReadOnly();
         private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
         public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
+        private IList<MaintainUnitPriceEquipment> _maintainUnitPriceEquipments = new List<MaintainUnitPriceEquipment>();
+        public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
         //constructor
         public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
         {
@@ -135,6 +140,13 @@ namespace Domain.Entities.Index
         public bool CheckChange(Material dto)
         {
             return !(Code?.Value == dto.Code?.Value && Name == dto.Name && AssigmentCodeId == dto.AssigmentCodeId && UnitOfMeasureId == dto.UnitOfMeasureId && MaterialType == dto.MaterialType);
+        }
+
+        public double GetMaterialCost(DateOnly effectiveMonth)
+        {
+            return Costs
+                .FirstOrDefault(c => c.StartMonth <= effectiveMonth && c.EndMonth >= effectiveMonth)
+                ?.Amount ?? 0;
         }
     }
 }

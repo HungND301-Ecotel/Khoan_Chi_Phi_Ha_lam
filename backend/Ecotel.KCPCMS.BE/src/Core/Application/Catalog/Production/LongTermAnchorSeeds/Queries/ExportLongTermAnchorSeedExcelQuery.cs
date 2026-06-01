@@ -8,7 +8,6 @@ using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
-using PartEntity = Domain.Entities.Index.Part;
 
 namespace Application.Catalog.Production.LongTermAnchorSeeds.Queries;
 
@@ -21,7 +20,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
 {
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
-    private readonly IWriteRepository<PartEntity> _partRepository = unitOfWork.GetRepository<PartEntity>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
 
     public async Task<ExportLongTermAnchorSeedExcelResponse> Handle(ExportLongTermAnchorSeedExcelQuery request, CancellationToken cancellationToken)
@@ -59,11 +58,11 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         var rows = seed?.Items
             .OrderBy(x => x.SortOrder)
             .ThenBy(x => x.ProcessGroup.Code != null ? x.ProcessGroup.Code.Value : string.Empty)
-            .ThenBy(x => x.Part.Code != null ? x.Part.Code.Value : string.Empty)
+            .ThenBy(x => GetTrackedMaterialCode(x))
             .Select(x => new LongTermAnchorSeedExcelRowDto
             {
                 Id = x.Id,
-                PartCode = BuildCodeName(x.Part.Code?.Value, x.Part.Name),
+                MaterialCode = BuildCodeName(GetTrackedMaterialCode(x), GetTrackedMaterialName(x)),
                 ProcessGroupCode = BuildCodeName(x.ProcessGroup.Code?.Value, x.ProcessGroup.Name),
                 IssuedQuantity = x.IssuedQuantity,
                 UnitPrice = x.UnitPrice,
@@ -77,7 +76,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
             })
             .ToList() ?? [];
 
-        var parts = await _partRepository.GetAllAsync(
+        var materials = await _materialRepository.GetAllAsync(
             predicate: x => x.Code != null,
             include: q => q.Include(x => x.Code),
             disableTracking: true);
@@ -89,9 +88,18 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         var dropdownConfigs = new Dictionary<string, List<string>>
         {
             {
+                nameof(LongTermAnchorSeedExcelRowDto.MaterialCode),
+                materials
+                    .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList()
+            },
+            {
                 nameof(LongTermAnchorSeedExcelRowDto.PartCode),
-                parts
-                    .Select(x => BuildCodeName(x.Code?.Value, x.Name))
+                materials
+                    .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()
                     .OrderBy(x => x)
@@ -122,4 +130,17 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
 
         return string.IsNullOrWhiteSpace(name) ? code : $"{code} - {name}";
     }
+
+    private static string GetMaterialCode(Material material)
+        => material.Code?.Value ?? string.Empty;
+
+    private static string GetMaterialName(Material material)
+        => material.Name;
+
+    private static string GetTrackedMaterialCode(LongTermAnchorSeedItem item)
+        => item.Material?.Code?.Value ?? item.Part?.Code?.Value ?? string.Empty;
+
+    private static string GetTrackedMaterialName(LongTermAnchorSeedItem item)
+        => item.Material?.Name ?? item.Part?.Name ?? string.Empty;
+
 }

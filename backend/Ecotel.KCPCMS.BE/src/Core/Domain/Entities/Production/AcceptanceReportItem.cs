@@ -13,12 +13,17 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public Guid? PartId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
     public Guid? MaterialId { get; protected set; }
+    public Guid? TrackedMaterialId => MaterialId ?? PartId;
+    public Guid? CategoryAssignmentCodeId => EquipmentId;
+    public bool IsMaterialItem => MaterialId.HasValue;
+    public bool IsTrackedSctxItem => PartId.HasValue;
     public double UsageTime { get; protected set; }
 
     public ItemType ItemType { get; protected set; }
     public Guid? ProductionOrderId { get; protected set; }
     public Guid? AdditionalCostProductionOrderId { get; protected set; }
     public Guid? AdditionalCostEquipmentId { get; protected set; }
+    public Guid? AdditionalCostAssignmentCodeId => AdditionalCostEquipmentId;
 
     public double IssuedQuantity => _issuedDetails.Sum(x => x.Quantity);   // tự tính tổng
 
@@ -46,16 +51,16 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     // Navigation properties
     public virtual AcceptanceReport AcceptanceReport { get; protected set; }
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
-    public virtual Part? Part { get; protected set; }
-    public virtual Equipment? Equipment { get; protected set; }
+    public virtual Material? Part { get; protected set; }
+    public virtual AssignmentCode? Equipment { get; protected set; }
     public virtual Material? Material { get; protected set; }
     public virtual ProductionOrder ProductionOrder { get; protected set; }
 
     public ProductionReference CategoryProductionReference
-        => ProductionReference.Create(ProductionOrderId, EquipmentId);
+        => ProductionReference.CreateForAssignmentCode(ProductionOrderId, CategoryAssignmentCodeId);
 
     public ProductionReference AdditionalCostProductionReference
-        => ProductionReference.Create(AdditionalCostProductionOrderId, AdditionalCostEquipmentId);
+        => ProductionReference.CreateForAssignmentCode(AdditionalCostProductionOrderId, AdditionalCostAssignmentCodeId);
 
     private IList<AcceptanceReportItemIssuedDetail> _issuedDetails = new List<AcceptanceReportItemIssuedDetail>();
     public virtual IReadOnlyCollection<AcceptanceReportItemIssuedDetail> IssuedDetails => _issuedDetails.AsReadOnly();
@@ -85,9 +90,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         var categoryReference = categoryProductionReference ?? ProductionReference.Empty();
         var additionalReference = additionalCostProductionReference ?? ProductionReference.Empty();
 
-        if ((categoryReference.EquipmentId != null || additionalReference.EquipmentId != null) && partId == null)
+        if ((categoryReference.AssignmentCodeId != null || additionalReference.AssignmentCodeId != null) && partId == null)
         {
-            throw new ArgumentException("Phải chỉ rõ Phụ tùng thuộc Thiết bị");
+            throw new ArgumentException("Phải chỉ rõ vật tư gắn với Nhóm vật tư, tài sản");
         }
 
         bool requiresMaintain =
@@ -204,7 +209,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         ProductionReference categoryProductionReference,
         MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
         double materialsIncludedInContractRevenueQuantity,
-        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations)
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations)
     {
         var hasAllocations = categoryAllocations != null && categoryAllocations.Any();
         var requiresAllocation = partId.HasValue
@@ -222,7 +227,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
         if (!requiresAllocation)
         {
-            throw new ArgumentException("Chỉ phụ tùng thuộc vật tư tính vào doanh thu khoán mới được phân bổ theo nhóm công đoạn");
+            throw new ArgumentException("Chỉ vật tư SCTX tính vào doanh thu khoán mới được phân bổ theo nhóm công đoạn");
         }
 
         if (categoryAllocations.Any(x => x.ProcessGroupId == Guid.Empty))
@@ -261,10 +266,29 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         return supportsLongTermTracking && isLongTermTracking;
     }
 
-    private void SyncCategoryAllocations(
-        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations,
+    private void SetCategoryAssignmentCodeId(Guid? assignmentCodeId)
+    {
+        EquipmentId = assignmentCodeId;
+    }
+
+    private void SetAdditionalCostAssignmentCodeId(Guid? assignmentCodeId)
+    {
+        AdditionalCostEquipmentId = assignmentCodeId;
+    }
+
+    private void SyncProductionReferences(
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference)
+    {
+        ProductionOrderId = categoryProductionReference.ProductionOrderId;
+        AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId;
+        SetAdditionalCostAssignmentCodeId(additionalCostProductionReference.AssignmentCodeId);
+    }
+
+    private void SyncCategoryAssignmentCodeAllocations(
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations,
         Guid? fallbackProcessGroupId,
-        Guid? fallbackEquipmentId)
+        Guid? fallbackAssignmentCodeId)
     {
         _categoryAllocations.Clear();
 
@@ -276,17 +300,17 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
                     Id,
                     allocation.ProcessGroupId,
                     allocation.Quantity,
-                    allocation.EquipmentIds));
+                    allocation.AssignmentCodeIds));
             }
 
             var firstAllocation = _categoryAllocations.First();
             ProcessGroupId = firstAllocation.ProcessGroupId;
-            EquipmentId = firstAllocation.Equipments.FirstOrDefault()?.EquipmentId;
+            SetCategoryAssignmentCodeId(firstAllocation.FirstAssignmentCodeId);
             return;
         }
 
         ProcessGroupId = fallbackProcessGroupId;
-        EquipmentId = fallbackEquipmentId;
+        SetCategoryAssignmentCodeId(fallbackAssignmentCodeId);
     }
 
     public static AcceptanceReportItem Create(
@@ -312,7 +336,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
-        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations = null)
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations = null)
     {
         ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
@@ -343,12 +367,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             Asset = asset,
             AssetMaterialQuantity = assetMaterialQuantity,
             ItemType = itemType,
-            ProductionOrderId = categoryProductionReference.ProductionOrderId,
-            AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId,
-            AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId,
         };
 
-        item.SyncCategoryAllocations(categoryAllocations, processGroupId, categoryProductionReference.EquipmentId);
+        item.SyncProductionReferences(categoryProductionReference, additionalCostProductionReference);
+        item.SyncCategoryAssignmentCodeAllocations(categoryAllocations, processGroupId, categoryProductionReference.AssignmentCodeId);
 
         foreach (var detail in issuedDetails)
         {
@@ -372,6 +394,55 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         return item;
     }
 
+    public static AcceptanceReportItem CreateForTrackedMaterial(
+        Guid acceptanceReportId,
+        int sortOrder,
+        Guid? processGroupId,
+        Guid? trackedMaterialId,
+        AcceptanceReportItemType acceptanceReportItemType,
+        double usageTime,
+        ItemType itemType,
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference,
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        bool isLongTermTracking,
+        double materialsIncludedInContractRevenueQuantity,
+        AdditionalCost additionalCost,
+        OtherMaterialDetail otherMaterialDetail,
+        double additionalCostQuantity,
+        QuotaBasedMaterial quotaBasedMaterial,
+        QuotaBasedMaterialType quotaBasedMaterialType,
+        Asset asset,
+        double assetMaterialQuantity,
+        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
+        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations = null)
+        => Create(
+            acceptanceReportId,
+            sortOrder,
+            processGroupId,
+            acceptanceReportItemType == AcceptanceReportItemType.Material ? trackedMaterialId : null,
+            acceptanceReportItemType == AcceptanceReportItemType.Part ? trackedMaterialId : null,
+            usageTime,
+            itemType,
+            categoryProductionReference,
+            additionalCostProductionReference,
+            materialsIncludedInContractRevenue,
+            isLongTermTracking,
+            materialsIncludedInContractRevenueQuantity,
+            additionalCost,
+            otherMaterialDetail,
+            additionalCostQuantity,
+            quotaBasedMaterial,
+            quotaBasedMaterialType,
+            asset,
+            assetMaterialQuantity,
+            issuedDetails,
+            shippedDetails,
+            quotaBasedMaterialQuantities,
+            categoryAllocations);
+
     public void Update(
         int sortOrder,
         Guid? processGroupId,
@@ -394,7 +465,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
         IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
         IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
-        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? categoryAllocations = null)
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations = null)
     {
         ValidateIds(processGroupId, materialId, partId, categoryProductionReference, additionalCostProductionReference,
             materialsIncludedInContractRevenue, additionalCost, quotaBasedMaterial);
@@ -422,11 +493,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         Asset = asset;
         AssetMaterialQuantity = assetMaterialQuantity;
         ItemType = itemType;
-        ProductionOrderId = categoryProductionReference.ProductionOrderId;
-        AdditionalCostProductionOrderId = additionalCostProductionReference.ProductionOrderId;
-        AdditionalCostEquipmentId = additionalCostProductionReference.EquipmentId;
 
-        SyncCategoryAllocations(categoryAllocations, processGroupId, categoryProductionReference.EquipmentId);
+        SyncProductionReferences(categoryProductionReference, additionalCostProductionReference);
+        SyncCategoryAssignmentCodeAllocations(categoryAllocations, processGroupId, categoryProductionReference.AssignmentCodeId);
 
         // Clear và rebuild toàn bộ details (replace strategy)
         _issuedDetails.Clear();
@@ -451,6 +520,53 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             }
         }
     }
+
+    public void UpdateForTrackedMaterial(
+        int sortOrder,
+        Guid? processGroupId,
+        Guid? trackedMaterialId,
+        AcceptanceReportItemType acceptanceReportItemType,
+        double usageTime,
+        ItemType itemType,
+        ProductionReference categoryProductionReference,
+        ProductionReference additionalCostProductionReference,
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        bool isLongTermTracking,
+        double materialsIncludedInContractRevenueQuantity,
+        AdditionalCost additionalCost,
+        OtherMaterialDetail otherMaterialDetail,
+        double additionalCostQuantity,
+        QuotaBasedMaterial quotaBasedMaterial,
+        QuotaBasedMaterialType quotaBasedMaterialType,
+        Asset asset,
+        double assetMaterialQuantity,
+        IList<(IssuedQuantityType Type, double Quantity)> issuedDetails,
+        IList<(ShippedQuantityType Type, double Quantity)> shippedDetails,
+        IList<(QuotaBasedMaterialType Type, double Quantity)>? quotaBasedMaterialQuantities,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations = null)
+        => Update(
+            sortOrder,
+            processGroupId,
+            acceptanceReportItemType == AcceptanceReportItemType.Material ? trackedMaterialId : null,
+            acceptanceReportItemType == AcceptanceReportItemType.Part ? trackedMaterialId : null,
+            usageTime,
+            itemType,
+            categoryProductionReference,
+            additionalCostProductionReference,
+            materialsIncludedInContractRevenue,
+            isLongTermTracking,
+            materialsIncludedInContractRevenueQuantity,
+            additionalCost,
+            otherMaterialDetail,
+            additionalCostQuantity,
+            quotaBasedMaterial,
+            quotaBasedMaterialType,
+            asset,
+            assetMaterialQuantity,
+            issuedDetails,
+            shippedDetails,
+            quotaBasedMaterialQuantities,
+            categoryAllocations);
 
     public void UpdateUsageTime(double usageTime)
     {

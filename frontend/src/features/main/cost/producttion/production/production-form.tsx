@@ -62,6 +62,10 @@ type ProductionFormProps = ActionDialogProps<Production> & {
 type ProductionGroup = NonNullable<ProductionFormSchema['groups']>[number];
 type ProductionGroupProduct = ProductionGroup['products'][number];
 
+function formatCodeNameOption(code?: string | null, name?: string | null) {
+	return [code, name].filter(Boolean).join(' - ');
+}
+
 function createGroupDefault(): ProductionGroup {
 	return {
 		...PRODUCTION_GROUP_DEFAULT,
@@ -439,7 +443,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 
 					const productOptions = availableProducts.map((product) => ({
 						value: product.id,
-						label: `${product.code}`,
+						label: formatCodeNameOption(product.code, product.name),
 					}));
 
 					const selectedProducts = productOptions.filter((option) =>
@@ -485,7 +489,10 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 									label='Nhóm công đoạn sản xuất'
 									placeholder='Chọn nhóm công đoạn sản xuất'
 									options={processGroups.map((processGroup) => ({
-										label: `${processGroup.code}`,
+										label: formatCodeNameOption(
+											processGroup.code,
+											processGroup.name,
+										),
 										value: processGroup.id,
 									}))}
 								/>

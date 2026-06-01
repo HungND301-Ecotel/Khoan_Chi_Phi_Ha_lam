@@ -46,20 +46,23 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = item.Id,
             AcceptanceReportId = item.AcceptanceReportId,
             CategoryProductionOrderId = item.ProductionOrderId,
-            CategoryEquipmentId = item.EquipmentId,
+            CategoryAssignmentCodeId = item.CategoryAssignmentCodeId,
             AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
-            AdditionalCostEquipmentId = item.AdditionalCostEquipmentId,
-            MaterialId = item.MaterialId,
+            AdditionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId,
+            MaterialId = item.TrackedMaterialId,
             PartId = item.PartId,
+            TrackedMaterialId = item.TrackedMaterialId,
             UsageTime = item.UsageTime,
-            MaterialCode = item.Material?.Code?.Value,
-            MaterialName = item.Material?.Name,
-            PartCode = item.Part?.Code?.Value,
-            PartName = item.Part?.Name,
-            PartType = item.Part?.Type,
+            MaterialCode = ResolveTrackedMaterialCode(item),
+            MaterialName = ResolveTrackedMaterialName(item),
+            PartCode = ResolvePartCode(item),
+            PartName = ResolvePartName(item),
+            TrackedMaterialCode = ResolveTrackedMaterialCode(item),
+            TrackedMaterialName = ResolveTrackedMaterialName(item),
+            PartType = item.Part?.MaterialType == MaterialType.MaterialOutContract ? PartType.OtherPart : PartType.Part,
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
-            Type = item.MaterialId.HasValue ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
+            Type = item.IsMaterialItem ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             IsLongTermTracking = item.IsLongTermTracking,
             ProcessGroupId = item.ProcessGroupId,
@@ -73,9 +76,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     ProcessGroupCode = allocation.ProcessGroup?.FixedKey?.Key,
                     ProcessGroupName = allocation.ProcessGroup?.Name,
                     Quantity = allocation.Quantity,
-                    EquipmentIds = allocation.Equipments
-                        .Select(equipment => equipment.EquipmentId)
-                        .ToList(),
+                    AssignmentCodeIds = allocation.AssignmentCodeIds.ToList(),
                 })
                 .ToList(),
             AdditionalCost = item.AdditionalCost,
@@ -119,7 +120,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return 0;
         }
 
-        if (item.MaterialId.HasValue && item.Material?.Costs != null)
+        if (item.IsMaterialItem && item.Material?.Costs != null)
         {
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
@@ -129,7 +130,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return matchingCost != null ? (decimal)matchingCost.Amount : 0;
         }
 
-        if (item.PartId.HasValue && item.Part?.Costs != null)
+        if (item.IsTrackedSctxItem && item.Part?.Costs != null)
         {
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
@@ -149,7 +150,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return 0;
         }
 
-        if (item.MaterialId.HasValue && item.Material?.Costs != null)
+        if (item.IsMaterialItem && item.Material?.Costs != null)
         {
             var matchingCost = item.Material.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Material &&
@@ -159,7 +160,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             return matchingCost != null ? (decimal)matchingCost.ActualAmount : 0;
         }
 
-        if (item.PartId.HasValue && item.Part?.Costs != null)
+        if (item.IsTrackedSctxItem && item.Part?.Costs != null)
         {
             var matchingCost = item.Part.Costs.FirstOrDefault(c =>
                 c.CostType == CostType.Part &&
@@ -171,4 +172,20 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
 
         return 0;
     }
+
+    private static string? ResolveTrackedMaterialCode(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Code?.Value ?? item.Material?.Code?.Value
+            : item.Material?.Code?.Value ?? item.Part?.Code?.Value;
+
+    private static string? ResolveTrackedMaterialName(AcceptanceReportItem item)
+        => item.IsTrackedSctxItem
+            ? item.Part?.Name ?? item.Material?.Name
+            : item.Material?.Name ?? item.Part?.Name;
+
+    private static string? ResolvePartCode(AcceptanceReportItem item)
+        => item.Part?.Code?.Value ?? item.Material?.Code?.Value;
+
+    private static string? ResolvePartName(AcceptanceReportItem item)
+        => item.Part?.Name ?? item.Material?.Name;
 }

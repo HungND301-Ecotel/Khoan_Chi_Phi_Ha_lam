@@ -15,7 +15,7 @@ export type Tunneling = {
 export const MAIN_PRICING_TUNNELING_COLUMNS: ColumnDef<Tunneling>[] = [
 	{
 		accessorKey: 'equipmentCode',
-		header: 'Mã thiết bị',
+		header: 'Nhóm vật tư, tài sản',
 		cell: ({ row }) =>
 			`${row.original.equipmentCode} - ${row.original.equipmentName}`,
 	},
@@ -58,11 +58,11 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 	[
 		{
 			accessorKey: 'partCode',
-			header: () => <span className='whitespace-normal'>{'Mã phụ tùng'}</span>,
+			header: () => <span className='whitespace-normal'>{'Mã vật tư'}</span>,
 		},
 		{
 			accessorKey: 'partName',
-			header: () => <span className='whitespace-normal'>{'Tên phụ tùng'}</span>,
+			header: () => <span className='whitespace-normal'>{'Tên vật tư'}</span>,
 		},
 		{
 			accessorKey: 'unitOfMeasureName',
@@ -117,7 +117,7 @@ export const MAIN_PRICING_TUNNELING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceE
 			accessorKey: 'materialCostPerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Chi phí vật tư SCTX cho 1 phụ tùng/1 mét lò đào (đ/m)'}
+					{'Chi phí vật tư SCTX cho 1 vật tư/1 mét lò đào (đ/m)'}
 				</span>
 			),
 			cell: ({ row }) =>

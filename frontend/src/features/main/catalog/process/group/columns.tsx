@@ -1,14 +1,25 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { ProcessGroupType } from '@/constants/process-group';
+import {
+	getProcessGroupType,
+	ProcessGroupType,
+} from '@/constants/process-group';
 
 export type ProcessGroup = {
 	id: string;
 	fixedKeyId?: string | null;
 	code: string;
 	name: string;
-	fixedKeyType: ProcessGroupType;
+	fixedKeyType?: ProcessGroupType;
 	type?: ProcessGroupType;
 };
+
+export function normalizeProcessGroup(group: ProcessGroup): ProcessGroup {
+	return {
+		...group,
+		fixedKeyType:
+			group.fixedKeyType ?? group.type ?? getProcessGroupType(group.code),
+	};
+}
 
 export const CATALOG_PROCESS_GROUP_COLUMNS: ColumnDef<ProcessGroup>[] = [
 	{

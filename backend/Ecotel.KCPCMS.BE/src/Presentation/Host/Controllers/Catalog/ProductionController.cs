@@ -199,12 +199,15 @@ public class ProductionController : BaseNoAuthController
         return Ok(result, MessageCommon.UpdateSuccess);
     }
 
-    [HttpPost("AcceptanceReport/sctx-revenue-by-equipment")]
-    [OpenApiOperation("Get SCTX Revenue By Equipment", "Get monthly SCTX revenue for one equipment")]
+    [HttpPost("AcceptanceReport/sctx-revenue-by-assignment-code")]
+    [OpenApiOperation("Get SCTX Revenue By AssignmentCode", "Get monthly SCTX revenue for one assignment code")]
     public async Task<IActionResult> GetSctxRevenueByEquipment([FromBody] GetSctxEquipmentRevenueRequest request)
     {
+        var assignmentCodeId = request.AssignmentCodeId ?? request.EquipmentId
+            ?? throw new ArgumentException("AssignmentCodeId or EquipmentId is required");
+
         var result = await Mediator.Send(new GetSctxEquipmentRevenueByYearQuery(
-            request.EquipmentId,
+            assignmentCodeId,
             request.DepartmentId,
             request.FromMonth,
             request.ToMonth));

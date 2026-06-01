@@ -120,7 +120,7 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
 
         if (!checkExisted)
         {
-            throw new Exception("Một hoặc nhiều Mã giao khoán không tồn tại.");
+            throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
         if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))

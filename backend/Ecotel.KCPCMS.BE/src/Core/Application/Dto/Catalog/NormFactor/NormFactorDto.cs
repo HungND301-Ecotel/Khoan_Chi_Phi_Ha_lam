@@ -88,7 +88,7 @@ public class NormFactorExcelDto
     [Display(Name = "Tỷ lệ đá kẹp (Ckẹp)")]
     public string StoneClampRatioName { get; set; } = string.Empty;
 
-    [Display(Name = "Mã giao khoán")]
+    [Display(Name = "Nhóm vật tư, tài sản")]
     public string AssignmentCode { get; set; } = string.Empty;
 
     [Display(Name = "Hệ số điều chỉnh định mức")]

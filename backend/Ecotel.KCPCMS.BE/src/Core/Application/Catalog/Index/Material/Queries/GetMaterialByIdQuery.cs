@@ -20,7 +20,7 @@ public class GetMaterialByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
         var details = await _materialRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
             include: t => t
-                .Include(t => t.AssignmentCode).ThenInclude(t => t.Code)
+                .Include(t => t.AssignmentCodeMaterials)
                 .Include(t => t.UnitOfMeasure)
                 .Include(t => t.Costs)
                 .Include(t => t.Code),
@@ -32,12 +32,16 @@ public class GetMaterialByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
             Id = details.Id,
             Code = details.Code.Value,
             Name = details.Name,
-            AssigmentCodeId = details.AssigmentCodeId,
+            AssignmentCodeIds = details.AssignmentCodeMaterials
+                .Select(link => link.AssignmentCodeId)
+                .Distinct()
+                .ToList(),
             UnitOfMeasureId = details.UnitOfMeasureId,
-            AssigmentCode = details.AssignmentCode is { Code: not null } ? details.AssignmentCode.Code.Value : string.Empty,
-            UnitOfMeasureName = details.AssignmentCode != null ? details.AssignmentCode.Name : string.Empty,
+            UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
             Costs = details.Costs.Adapt<List<MaterialCostDto>>(),
-            MaterialType = details.MaterialType
+            MaterialType = details.MaterialType == Domain.Common.Enums.MaterialType.MaterialOutContract
+                ? Domain.Common.Enums.MaterialType.MaterialInContract
+                : details.MaterialType
         };
     }
 }

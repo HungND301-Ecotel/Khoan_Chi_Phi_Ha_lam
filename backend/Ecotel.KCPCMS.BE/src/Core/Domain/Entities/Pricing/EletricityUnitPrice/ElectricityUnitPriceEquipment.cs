@@ -15,7 +15,7 @@ public abstract class ElectricityUnitPriceEquipment : AuditableEntity<Guid>, IAg
     protected double? CachedTotal { get; set; }
 
     //Navigation Properties
-    public virtual Equipment? Equipment { get; protected set; }
+    public virtual AssignmentCode? Equipment { get; protected set; }
 
     private IList<PlannedElectricityCostAdjustmentFactor> _plannedElectricityCostAdjustmentFactors = new List<PlannedElectricityCostAdjustmentFactor>();
     public virtual IReadOnlyCollection<PlannedElectricityCostAdjustmentFactor> PlannedElectricityCostAdjustmentFactors => _plannedElectricityCostAdjustmentFactors.AsReadOnly();

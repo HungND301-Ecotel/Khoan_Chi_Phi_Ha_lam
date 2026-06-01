@@ -19,7 +19,7 @@ import {
 	type AcceptanceReportEditorRow,
 } from './schema';
 import {
-	type Equipment,
+	type AssignmentCodeOption,
 	type ImportedItemMeta,
 	type ProcessGroupOption,
 	type ProductionOrder,
@@ -32,7 +32,7 @@ import {
 import {
 	NONE_PRODUCTION_ORDER_ID,
 	normalizeCode,
-	toEquipmentOptionValue,
+	toAssignmentCodeOptionValue,
 	toProductionOrderOptionValue,
 } from './helpers';
 import {
@@ -47,9 +47,11 @@ type MaterialImportDialogProps = {
 	productionOutputId?: string;
 };
 
-type PartEquipmentMapping = {
-	partId: string;
-	equipments: Equipment[];
+type TrackedMaterialAssignmentCodeMapping = {
+	trackedMaterialId?: string;
+	assignmentCodes?: AssignmentCodeOption[];
+	partId?: string;
+	equipments?: AssignmentCodeOption[];
 };
 
 type MaterialLookupItem = {
@@ -93,10 +95,10 @@ export function MaterialImportDialog({
 		ProductionOrderOption[]
 	>([]);
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
-	const [equipmentOptionsByPartId, setEquipmentOptionsByPartId] = useState<
+	const [assignmentCodeOptionsByMaterialId, setAssignmentCodeOptionsByMaterialId] = useState<
 		Record<string, ProductionOrderOption[]>
 	>({});
-	const [orderOrEquipmentOptionsByItemId, setOrderOrEquipmentOptionsByItemId] =
+	const [orderOrAssignmentCodeOptionsByItemId, setOrderOrAssignmentCodeOptionsByItemId] =
 		useState<Record<string, ProductionOrderOption[]>>({});
 	const [unresolvedCreateIndex, setUnresolvedCreateIndex] = useState<
 		number | null
@@ -158,17 +160,17 @@ export function MaterialImportDialog({
 
 		for (const item of importedItems) {
 			const isPartItem = item.type === MaterialType.SparePart;
-			const equipmentOptions = isPartItem
-				? (equipmentOptionsByPartId[item.materialOrPartId] ?? [])
+			const assignmentCodeOptions = isPartItem
+				? (assignmentCodeOptionsByMaterialId[item.materialOrPartId] ?? [])
 				: [];
 			nextOptionsByItemId[item.materialOrPartId] = [
 				...productionOrderOptions,
-				...equipmentOptions,
+				...assignmentCodeOptions,
 			];
 		}
 
-		setOrderOrEquipmentOptionsByItemId(nextOptionsByItemId);
-	}, [equipmentOptionsByPartId, importedItems, productionOrderOptions]);
+		setOrderOrAssignmentCodeOptionsByItemId(nextOptionsByItemId);
+	}, [assignmentCodeOptionsByMaterialId, importedItems, productionOrderOptions]);
 
 	useEffect(() => {
 		if (!productionOutputId) {
@@ -251,7 +253,7 @@ export function MaterialImportDialog({
 
 			setImportedItems(extractImportedItems(uploadRows));
 
-			const partIds = Array.from(
+			const trackedMaterialIds = Array.from(
 				new Set(
 					uploadRows
 						.filter((item) => item.type === MaterialType.SparePart)
@@ -259,36 +261,42 @@ export function MaterialImportDialog({
 						.filter((id): id is string => Boolean(id)),
 				),
 			);
-			const fetchedEquipmentOptionsByPartId: Record<
+			const fetchedAssignmentCodeOptionsByMaterialId: Record<
 				string,
 				ProductionOrderOption[]
 			> = {};
 
-			if (partIds.length > 0) {
+			if (trackedMaterialIds.length > 0) {
 				const equipmentMappingsRes = await api.post<
-					PartEquipmentMapping[],
+					TrackedMaterialAssignmentCodeMapping[],
 					string[]
-				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, partIds);
+				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, trackedMaterialIds);
 
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					const sortedEquipments = [...(mapping.equipments ?? [])].sort(
+					const sortedAssignmentCodes = [
+						...(mapping.assignmentCodes ?? mapping.equipments ?? []),
+					].sort(
 						(a, b) => a.code.localeCompare(b.code),
 					);
-					fetchedEquipmentOptionsByPartId[mapping.partId] =
-						sortedEquipments.map((equipment) => ({
-							value: toEquipmentOptionValue(equipment.id),
-							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+					if (!trackedMaterialId) continue;
+					fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] =
+						sortedAssignmentCodes.map((equipment) => ({
+							value: toAssignmentCodeOptionValue(equipment.id),
+							label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
 			}
 
-			for (const partId of partIds) {
-				if (!fetchedEquipmentOptionsByPartId[partId]) {
-					fetchedEquipmentOptionsByPartId[partId] = [];
+			for (const trackedMaterialId of trackedMaterialIds) {
+				if (!fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId]) {
+					fetchedAssignmentCodeOptionsByMaterialId[trackedMaterialId] = [];
 				}
 			}
 
-			setEquipmentOptionsByPartId(fetchedEquipmentOptionsByPartId);
+			setAssignmentCodeOptionsByMaterialId(
+				fetchedAssignmentCodeOptionsByMaterialId,
+			);
 			form.setValue('materials', uploadRows);
 			setShowForm(true);
 		} catch (error) {
@@ -297,8 +305,8 @@ export function MaterialImportDialog({
 			form.setValue('materials', []);
 			setFilePath('');
 			setImportedItems([]);
-			setEquipmentOptionsByPartId({});
-			setOrderOrEquipmentOptionsByItemId({});
+			setAssignmentCodeOptionsByMaterialId({});
+			setOrderOrAssignmentCodeOptionsByItemId({});
 		} finally {
 			setIsLoading(false);
 		}
@@ -332,7 +340,6 @@ export function MaterialImportDialog({
 				API.CATALOG.ASSET.LIST,
 				{
 					ignorePagination: true,
-					materialType: specificType,
 					search: values.code,
 				},
 			);
@@ -390,23 +397,29 @@ export function MaterialImportDialog({
 
 			if (specificType === 1) {
 				const equipmentMappingsRes = await api.post<
-					PartEquipmentMapping[],
+					TrackedMaterialAssignmentCodeMapping[],
 					string[]
 				>(API.PRICING.MAINTENANCE.EQUIPMENTS_BY_PART_IDS, [createdPart.id]);
 
-				const nextEquipmentOptionsByPartId = { ...equipmentOptionsByPartId };
+				const nextAssignmentCodeOptionsByMaterialId = {
+					...assignmentCodeOptionsByMaterialId,
+				};
 				for (const mapping of equipmentMappingsRes.result ?? []) {
-					nextEquipmentOptionsByPartId[mapping.partId] = (
-						mapping.equipments ?? []
+					const trackedMaterialId = mapping.trackedMaterialId || mapping.partId;
+					if (!trackedMaterialId) continue;
+					nextAssignmentCodeOptionsByMaterialId[trackedMaterialId] = (
+						mapping.assignmentCodes ?? mapping.equipments ?? []
 					)
 						.slice()
 						.sort((a, b) => a.code.localeCompare(b.code))
 						.map((equipment) => ({
-							value: toEquipmentOptionValue(equipment.id),
-							label: `[Thiết bị] ${equipment.code} - ${equipment.name}`,
+							value: toAssignmentCodeOptionValue(equipment.id),
+							label: `[Nhóm vật tư, tài sản] ${equipment.code} - ${equipment.name}`,
 						}));
 				}
-				setEquipmentOptionsByPartId(nextEquipmentOptionsByPartId);
+				setAssignmentCodeOptionsByMaterialId(
+					nextAssignmentCodeOptionsByMaterialId,
+				);
 			}
 
 			const nextImportedItems = [
@@ -486,8 +499,8 @@ export function MaterialImportDialog({
 			form.reset();
 			setFilePath('');
 			setImportedItems([]);
-			setEquipmentOptionsByPartId({});
-			setOrderOrEquipmentOptionsByItemId({});
+			setAssignmentCodeOptionsByMaterialId({});
+			setOrderOrAssignmentCodeOptionsByItemId({});
 			setOpen(false);
 			popup.success('Dữ liệu được lưu thành công');
 		} catch (error) {
@@ -514,7 +527,9 @@ export function MaterialImportDialog({
 						onCancel={() => setShowForm(false)}
 						processGroupOptions={processGroupOptions}
 						productionOrderOptions={productionOrderOptions}
-						orderOrEquipmentOptionsByItemId={orderOrEquipmentOptionsByItemId}
+						orderOrAssignmentCodeOptionsByItemId={
+							orderOrAssignmentCodeOptionsByItemId
+						}
 						unresolvedCount={unresolvedCount}
 						onCreateUnresolved={setUnresolvedCreateIndex}
 					/>

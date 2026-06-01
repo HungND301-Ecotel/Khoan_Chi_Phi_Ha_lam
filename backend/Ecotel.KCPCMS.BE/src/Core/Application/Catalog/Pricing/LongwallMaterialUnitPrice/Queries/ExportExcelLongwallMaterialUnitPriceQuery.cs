@@ -98,7 +98,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             (powerCol, "Công suất"),
             (longwallParametersCol, "Thông số lò chợ"),
             (cuttingThicknessCol, "Chiều dày lớp khấu"),
-            (assignmentCol, "Mã giao khoán")
+            (assignmentCol, "Nhóm vật tư, tài sản")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();

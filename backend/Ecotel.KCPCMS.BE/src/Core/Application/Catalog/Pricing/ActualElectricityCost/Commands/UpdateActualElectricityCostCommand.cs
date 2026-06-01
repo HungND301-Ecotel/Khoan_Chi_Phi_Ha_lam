@@ -21,8 +21,8 @@ public class UpdateActualElectricityCostCommandHandler(IUnitOfWork unitOfWork)
         unitOfWork.GetRepository<ActualEletricityEquipment>();
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository =
         unitOfWork.GetRepository<AcceptanceReport>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository =
-        unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository =
+        unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(UpdateActualElectricityCostCommand request, CancellationToken cancellationToken)
     {
@@ -43,11 +43,11 @@ public class UpdateActualElectricityCostCommandHandler(IUnitOfWork unitOfWork)
             throw new NotFoundException(CustomResponseMessage.EntityNotFound);
         }
 
-        var equipmentIds = request.UpdateModel.Equipments.Select(x => x.EquipmentId).Distinct().ToList();
-        int equipmentCount = await _equipmentRepository.CountAsync(x => equipmentIds.Contains(x.Id));
-        if (equipmentCount != equipmentIds.Count)
+        var assignmentCodeIds = request.UpdateModel.Equipments.Select(x => x.EquipmentId).Distinct().ToList();
+        int assignmentCodeCount = await _assignmentCodeRepository.CountAsync(x => assignmentCodeIds.Contains(x.Id));
+        if (assignmentCodeCount != assignmentCodeIds.Count)
         {
-            throw new NotFoundException(CustomResponseMessage.EquipmentNotFound);
+            throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
         var newItems = request.UpdateModel.Equipments

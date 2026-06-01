@@ -20,7 +20,7 @@ public class GetAllMaterialQueryHandler(IPaginationService paginationService, IR
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
             IgnorePagination = request.IgnorePagination,
-            OrderBy = [$"{nameof(Domain.Entities.Index.Material.AssignmentCode)}.{nameof(AssignmentCode.Code)}.{nameof(Code.Value)}"]
+            OrderBy = [nameof(Domain.Entities.Index.Material.Name)]
         };
         var spec = new MaterialsByPaginationSpec(filter, request.Search, request.MaterialType, request.Date);
 
@@ -31,7 +31,7 @@ public class GetAllMaterialQueryHandler(IPaginationService paginationService, IR
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        rawList.Data = rawList.Data.OrderByCodeNatural(d => d.AssignmentCode).ThenBy(d => d.Name).ToList();
+        rawList.Data = rawList.Data.OrderBy(d => d.Name).ToList();
         return rawList;
     }
 }

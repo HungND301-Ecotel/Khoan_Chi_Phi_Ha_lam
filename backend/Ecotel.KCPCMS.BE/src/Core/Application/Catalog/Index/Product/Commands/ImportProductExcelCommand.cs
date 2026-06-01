@@ -30,9 +30,9 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
         var dtos = excelService.ImportFromExcel<ProductExcelDto>(stream);
 
         var dbProcessCodes = (await _processGroupRepository.GetAllAsync(
-                include: p => p.Include(p => p.Code),
+                include: p => p.Include(p => p.FixedKey),
                 disableTracking: true))
-            .Select(p => p.Code?.Value?.Trim())
+            .Select(p => p.FixedKey?.Key?.Trim())
             .Where(code => !string.IsNullOrWhiteSpace(code))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -42,6 +42,11 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
             if (string.IsNullOrWhiteSpace(processGroupCode) || !dbProcessCodes.Contains(processGroupCode))
             {
                 throw new BadRequestException($"Giá trị mã nhóm công đoạn '{dtos[i].ProcessGroupCode}' không tồn tại ở dòng {i + 2}.");
+            }
+
+            if (dtos[i].StartMonth == default || dtos[i].EndMonth == default)
+            {
+                throw new BadRequestException($"Thời gian bắt đầu và thời gian kết thúc là bắt buộc ở dòng {i + 2}.");
             }
         }
 
@@ -63,7 +68,13 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
         {
             if (processGroupIdMap.TryGetValue(d.ProcessGroupCode?.Trim() ?? string.Empty, out var processGroupId))
             {
-                return ProductEntity.Create(d.Id, d.Code, d.Name, processGroupId);
+                return ProductEntity.Create(
+                    d.Id,
+                    d.Code,
+                    d.Name,
+                    processGroupId,
+                    d.StartMonth,
+                    d.EndMonth);
             }
             else
             {
@@ -101,7 +112,12 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                         throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId);
+                    entityToUpdate.Update(
+                        dto.Code?.Value ?? "",
+                        dto.Name,
+                        dto.ProcessGroupId,
+                        dto.StartMonth,
+                        dto.EndMonth);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -112,7 +128,12 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                     throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(ProductEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId));
+                addList.Add(ProductEntity.Create(
+                    dto.Code?.Value ?? "",
+                    dto.Name,
+                    dto.ProcessGroupId,
+                    dto.StartMonth,
+                    dto.EndMonth));
             }
         }
 

@@ -96,7 +96,7 @@ public class ExportLongTermMaterialCostExcelQueryHandler(IUnitOfWork unitOfWork,
 
         return results
             .OrderBy(x => x.ProcessGroupCode)
-            .ThenBy(x => x.PartCode)
+            .ThenBy(x => x.MaterialCode ?? x.PartCode)
             .ToList();
     }
 
@@ -348,9 +348,11 @@ public class ExportLongTermMaterialCostExcelQueryHandler(IUnitOfWork unitOfWork,
             worksheet.Range(row, 1, row, 17).Style.Fill.BackgroundColor = XLColor.FromHtml("#f7f7f7");
             row++;
 
-            foreach (var item in group.OrderBy(x => x.PartCode).ThenBy(x => x.PartName))
+            foreach (var item in group
+                .OrderBy(x => x.MaterialCode ?? x.PartCode)
+                .ThenBy(x => x.MaterialName ?? x.PartName))
             {
-                worksheet.Cell(row, 2).Value = item.PartName ?? string.Empty;
+                worksheet.Cell(row, 2).Value = item.MaterialName ?? item.PartName ?? string.Empty;
                 worksheet.Cell(row, 3).Value = item.UnitOfMeasureName ?? string.Empty;
                 worksheet.Cell(row, 4).Value = item.PendingValueStartPeriod;
                 worksheet.Cell(row, 5).Value = item.IssuedQuantity;

@@ -4,26 +4,72 @@ namespace Application.Dto.Catalog.AcceptanceReport;
 
 public record AcceptanceReportCategoryAllocationDto
 {
+    private List<Guid> _assignmentCodeIds = new();
+
     public required Guid ProcessGroupId { get; init; }
     public required double Quantity { get; init; }
-    public List<Guid> EquipmentIds { get; init; } = new();
+    public List<Guid> AssignmentCodeIds
+    {
+        get => _assignmentCodeIds;
+        init => _assignmentCodeIds = value ?? [];
+    }
+    public List<Guid> EquipmentIds
+    {
+        get => _assignmentCodeIds;
+        init => _assignmentCodeIds = value ?? [];
+    }
 }
 
 public record CreateAcceptanceReportItemDto
 {
+    private Guid? _trackedMaterialId;
+    private Guid? _categoryAssignmentCodeId;
+    private Guid? _additionalCostAssignmentCodeId;
+
     public Guid? AcceptanceReportItemId { get; init; }
 
-    public Guid? MaterialId { get; init; }
-    public Guid? PartId { get; init; }
+    public Guid? TrackedMaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? MaterialId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
+    public Guid? PartId
+    {
+        get => _trackedMaterialId;
+        init => _trackedMaterialId = value;
+    }
     public required double UsageTime { get; init; }
 
     public required AcceptanceReportItemType Type { get; init; }
     public required ItemType ItemType { get; init; }
 
     public Guid? CategoryProductionOrderId { get; init; }
-    public Guid? CategoryEquipmentId { get; init; }
+    public Guid? CategoryAssignmentCodeId
+    {
+        get => _categoryAssignmentCodeId;
+        init => _categoryAssignmentCodeId = value;
+    }
+    public Guid? CategoryEquipmentId
+    {
+        get => _categoryAssignmentCodeId;
+        init => _categoryAssignmentCodeId = value;
+    }
     public Guid? AdditionalCostProductionOrderId { get; init; }
-    public Guid? AdditionalCostEquipmentId { get; init; }
+    public Guid? AdditionalCostAssignmentCodeId
+    {
+        get => _additionalCostAssignmentCodeId;
+        init => _additionalCostAssignmentCodeId = value;
+    }
+    public Guid? AdditionalCostEquipmentId
+    {
+        get => _additionalCostAssignmentCodeId;
+        init => _additionalCostAssignmentCodeId = value;
+    }
 
     public required List<IssuedDetailDto> IssuedDetails { get; init; }
     public required List<ShippedDetailDto> ShippedDetails { get; init; }

@@ -20,7 +20,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
     private const string CacheSignalKey = "ProductUnitPrice";
     private const string ModuleCacheSignalKey = "ElectricityUnitPriceEquipment";
     private readonly IWriteRepository<LongwallElectricityUnitPriceEquipment> _repository = unitOfWork.GetRepository<LongwallElectricityUnitPriceEquipment>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(ImportLongwallElectricityUnitPriceEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
@@ -37,10 +37,10 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
         await CollectReferenceErrors(dtos, importErrors);
 
         // Map data to Entity Model
-        var equipments = await _equipmentRepository.GetAllAsync(
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
             include: e => e.Include(e => e.Code),
             disableTracking: true);
-        var equipmentIdMap = equipments.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
+        var equipmentIdMap = assignmentCodes.Where(e => e.Code != null).ToDictionary(e => e.Code!.Value, e => e.Id);
 
         var excelEntities = new List<LongwallElectricityUnitPriceEquipment>();
         foreach (var item in dtos.Select((dto, index) => new { dto, rowNumber = index + 2 }))
@@ -49,7 +49,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             {
                 if (!equipmentIdMap.TryGetValue(item.dto.EquipmentCode, out var equipmentId))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{item.dto.EquipmentCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{item.dto.EquipmentCode}' không tồn tại.");
                     continue;
                 }
 
@@ -163,7 +163,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
 
     private async Task CollectReferenceErrors(List<LongwallElectricityUnitPriceEquipmentExcelDto> dtoList, ICollection<string> importErrors)
     {
-        var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
+        var dbEquipmentCodes = (await _assignmentCodeRepository.GetAllAsync(
                 include: e => e.Include(e => e.Code),
                 disableTracking: true))
             .Where(e => e.Code != null)
@@ -175,7 +175,7 @@ public class ImportLongwallElectricityUnitPriceEquipmentExcelCommandHandler(IExc
             var equipmentCode = item.dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Dòng {item.rowNumber}: thiết bị '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Dòng {item.rowNumber}: Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
             }
         }
     }

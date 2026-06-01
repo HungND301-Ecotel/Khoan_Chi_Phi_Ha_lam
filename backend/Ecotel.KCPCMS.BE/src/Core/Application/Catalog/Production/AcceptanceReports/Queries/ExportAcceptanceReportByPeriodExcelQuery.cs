@@ -268,7 +268,7 @@ public class ExportAcceptanceReportByPeriodExcelQueryHandler(IUnitOfWork unitOfW
 
             if (group.SectionAType == 2 && string.Equals(groupCode, "VTK", StringComparison.OrdinalIgnoreCase))
             {
-                return string.IsNullOrWhiteSpace(groupName) ? "Vật tư khác (phụ tùng khác)" : groupName;
+                return string.IsNullOrWhiteSpace(groupName) ? "Vật tư khác" : groupName;
             }
 
             return string.IsNullOrWhiteSpace(groupName) ? groupCode : groupName;

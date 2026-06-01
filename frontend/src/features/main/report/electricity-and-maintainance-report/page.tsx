@@ -42,9 +42,9 @@ import {
 
 const UNGROUPED_PROCESS_GROUP = '__ungrouped';
 
-type EquipmentReportRow = {
+type AssignmentCodeReportRow = {
 	key: string;
-	equipmentName: string;
+	assignmentCodeName: string;
 	unitOfMeasureName: string;
 	quantity: number;
 	kValues: number[];
@@ -60,7 +60,7 @@ type ProductReportBlock = {
 	productName: string;
 	productUnitLabel: string;
 	productionMeters: number;
-	rows: EquipmentReportRow[];
+	rows: AssignmentCodeReportRow[];
 };
 
 const toMonthIndex = (dateValue: string | undefined) => {
@@ -330,35 +330,35 @@ export function ElectricityAndMaintainanceReportPage() {
 								const maintainCosts = maintainRes.result?.costs ?? [];
 								const electricityCosts = electricityRes.result?.costs ?? [];
 
-								const maintainByEquipment = new Map(
+								const maintainByAssignmentCode = new Map(
 									maintainCosts.map((cost) => [cost.equipmentId, cost]),
 								);
-								const electricityByEquipment = new Map(
+								const electricityByAssignmentCode = new Map(
 									electricityCosts.map((cost) => [cost.equipmentId, cost]),
 								);
-								const equipmentIds = Array.from(
+								const assignmentCodeIds = Array.from(
 									new Set([
-										...maintainByEquipment.keys(),
-										...electricityByEquipment.keys(),
+										...maintainByAssignmentCode.keys(),
+										...electricityByAssignmentCode.keys(),
 									]),
 								);
 
-								const rows: EquipmentReportRow[] = equipmentIds.map(
-									(equipmentId) => {
-										const maintainCost = maintainByEquipment.get(equipmentId);
+								const rows: AssignmentCodeReportRow[] = assignmentCodeIds.map(
+									(assignmentCodeId) => {
+										const maintainCost = maintainByAssignmentCode.get(assignmentCodeId);
 										const electricityCost =
-											electricityByEquipment.get(equipmentId);
+											electricityByAssignmentCode.get(assignmentCodeId);
 										const maintainFactors =
 											extractMaintainFactors(maintainCost);
 										const electricityFactors =
 											extractElectricityFactors(electricityCost);
 
-										return {
-											key: `${outputId}-${equipmentId}`,
-											equipmentName:
-												maintainCost?.equipmentName ||
-												electricityCost?.equipmentName ||
-												'',
+								return {
+									key: `${outputId}-${assignmentCodeId}`,
+									assignmentCodeName:
+										maintainCost?.equipmentName ||
+										electricityCost?.equipmentName ||
+										'',
 											unitOfMeasureName: 'Cái',
 											quantity:
 												maintainCost?.quantity ??
@@ -766,7 +766,7 @@ function ReportGroupRows({
 								</TableCell>
 							)}
 							<TableCell className='border border-black px-1 py-1'>
-								{row.equipmentName}
+								{row.assignmentCodeName}
 							</TableCell>
 							<TableCell className='border border-black px-1 py-1 text-center'>
 								{row.unitOfMeasureName}

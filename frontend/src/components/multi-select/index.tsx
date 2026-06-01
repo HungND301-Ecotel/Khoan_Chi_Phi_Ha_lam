@@ -76,20 +76,23 @@ export function MultiSelect({
 					<Button
 						variant={'ghost'}
 						className={cn(
-							'flex h-fit max-h-fit min-h-9 w-full flex-wrap rounded-sm border border-[#999999] bg-white px-3 hover:bg-white',
+							'flex h-fit max-h-fit min-h-9 w-full items-start rounded-sm border border-[#999999] bg-white px-3 hover:bg-white',
 							open && 'border-primary border-2',
 							values?.length > 0 ? 'text-black' : 'text-muted-foreground',
 						)}
 					>
-						<div className='flex flex-1 flex-wrap justify-start gap-2 text-left'>
+						<div className='flex min-w-0 flex-1 flex-wrap justify-start gap-2 text-left'>
 							{values?.length > 0 ? (
 								values.map((selected) => (
 									<div
 										key={selected.value}
-										className='flex w-fit shrink-0 items-center gap-1 rounded-full bg-[#dfdfdf] px-2 py-0.5 text-xs text-black'
+										className='flex max-w-full items-start gap-1 rounded-full bg-[#dfdfdf] px-2 py-0.5 text-xs text-black'
 									>
-										<span>{selected.label}</span>
+										<span className='wrap-break-word whitespace-normal'>
+											{selected.label}
+										</span>
 										<div
+											className='shrink-0'
 											onClick={(event) => {
 												event.stopPropagation();
 												handleRemove(selected.value);
@@ -103,7 +106,7 @@ export function MultiSelect({
 								<span>{placeholder}</span>
 							)}
 						</div>
-						<ChevronDownIcon />
+						<ChevronDownIcon className='mt-1 shrink-0' />
 					</Button>
 				</PopoverTrigger>
 
@@ -119,9 +122,7 @@ export function MultiSelect({
 
 							if (!normalizedSearch) return 1;
 
-							const tokens = normalizedSearch
-								.split(/\s+/)
-								.filter(Boolean);
+							const tokens = normalizedSearch.split(/\s+/).filter(Boolean);
 							return tokens.every((token) => normalizedValue.includes(token))
 								? 1
 								: 0;

@@ -88,8 +88,8 @@ export function MainPricingLongwallElectricityPage() {
 			columns={LONGWALL_ELECTRICITY_COLUMNS}
 			items={items}
 			filters={[
-				{ key: 'equipmentCode', label: 'Mã thiết bị' },
-				{ key: 'equipmentName', label: 'Tên thiết bị' },
+				{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' },
+				{ key: 'equipmentName', label: 'Tên nhóm vật tư, tài sản' },
 			]}
 			onCreate={(props) => <ElectricityForm {...props} onSuccess={fetchData} />}
 			onDuplicate={(props) => (

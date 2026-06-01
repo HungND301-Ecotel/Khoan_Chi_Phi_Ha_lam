@@ -23,6 +23,7 @@ function parseSchemaNumber(value: number | string | null | undefined): number {
 const categoryAllocationSchema = z.object({
 	processGroupId: z.string().nullable(),
 	quantity: z.number().nullable().default(null),
+	assignmentCodeIds: z.array(z.string()).default([]),
 	equipmentIds: z.array(z.string()).default([]),
 });
 
@@ -62,12 +63,15 @@ export const materialFormSchema = z
 		categoryProcessGroup: z.string().nullable(),
 		categoryProcessGroupIds: z.array(z.string()).optional(),
 		categoryProductionOrderId: z.string().nullable(),
+		categoryAssignmentCodeId: z.string().nullable().optional(),
 		categoryEquipmentId: z.string().nullable().optional(),
+		categoryAssignmentCodeIds: z.array(z.string()).optional(),
 		categoryEquipmentIds: z.array(z.string()).optional(),
 		categoryAllocations: z.array(categoryAllocationSchema).optional(),
 		showCategoryDropdown: z.boolean(),
 		additionalCostCategory: z.number().nullable(),
 		additionalCostProductionOrderId: z.string().nullable(),
+		additionalCostAssignmentCodeId: z.string().nullable().optional(),
 		otherMaterialDetail: z.number().nullable().optional(),
 		showAdditionalCostDropdown: z.boolean(),
 		contractLimitCategory: z.number().nullable(),
@@ -112,21 +116,26 @@ export const materialFormSchema = z
 			if (isUnresolvedRow(data)) return true;
 			const categoryValue =
 				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const needsEquipment =
+			const needsAssignmentCode =
 				categoryValue === 3 && data.type === 2 && data.itemType === 1;
-			if (!data.showCategoryDropdown || !needsEquipment) return true;
+			if (!data.showCategoryDropdown || !needsAssignmentCode) return true;
 			const allocations = data.categoryAllocations ?? [];
+			const selectedAssignmentCodeIds =
+				data.categoryAssignmentCodeIds ?? data.categoryEquipmentIds ?? [];
 			return (
 				allocations.length > 0 &&
-				(data.categoryEquipmentIds?.length ?? 0) >= allocations.length &&
+				selectedAssignmentCodeIds.length >= allocations.length &&
 				allocations.every(
-					(allocation) => (allocation.equipmentIds?.length ?? 0) > 0,
+					(allocation) =>
+						(allocation.assignmentCodeIds?.length ??
+							allocation.equipmentIds?.length ??
+							0) > 0,
 				)
 			);
 		},
 		{
-			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 thiết bị',
-			path: ['categoryEquipmentIds'],
+			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 Nhóm vật tư, tài sản',
+			path: ['categoryAssignmentCodeIds'],
 		},
 	)
 	.refine(
@@ -248,7 +257,10 @@ export const materialFormSchema = z
 					data.type === 2 &&
 					data.itemType === 1 &&
 					(data.categoryAllocations?.some(
-						(allocation) => (allocation.equipmentIds?.length ?? 0) === 0,
+						(allocation) =>
+							(allocation.assignmentCodeIds?.length ??
+								allocation.equipmentIds?.length ??
+								0) === 0,
 					) ??
 						true)
 				);
@@ -335,12 +347,15 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	categoryProcessGroup: null,
 	categoryProcessGroupIds: [],
 	categoryProductionOrderId: null,
+	categoryAssignmentCodeId: null,
 	categoryEquipmentId: null,
+	categoryAssignmentCodeIds: [],
 	categoryEquipmentIds: [],
 	categoryAllocations: [],
 	showCategoryDropdown: false,
 	additionalCostCategory: null,
 	additionalCostProductionOrderId: null,
+	additionalCostAssignmentCodeId: null,
 	otherMaterialDetail: null,
 	showAdditionalCostDropdown: false,
 	contractLimitCategory: null,

@@ -41,11 +41,11 @@ export const planMaintainCostSchema = z.object({
 	maintainUnitPriceIds: z
 		.array(
 			z.string().nonempty({
-				error: 'Mã thiết bị không được để trống',
+				error: 'Nhóm vật tư, tài sản không được để trống',
 			}),
 		)
 		.nonempty({
-			error: 'Mã thiết bị không được để trống',
+			error: 'Nhóm vật tư, tài sản không được để trống',
 		}),
 	costs: z.array(
 		z.object({

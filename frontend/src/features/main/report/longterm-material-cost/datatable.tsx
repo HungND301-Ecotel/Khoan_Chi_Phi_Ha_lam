@@ -69,6 +69,12 @@ interface ExcelStructuredTableProps {
 	startIndex?: number;
 }
 
+const getMaterialCode = (item: LongtermMaterialDetailItem) =>
+	item.materialCode || item.partCode || '';
+
+const getMaterialName = (item: LongtermMaterialDetailItem) =>
+	item.materialName || item.partName || '';
+
 const borderCellClass =
 	'border border-black px-0.5 py-1 align-middle leading-tight whitespace-normal break-words';
 
@@ -172,10 +178,10 @@ const ExcelStructuredTable = ({
 							STT
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
-							MÃ PHỤ TÙNG
+							MÃ VẬT TƯ
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
-							TÊN PHỤ TÙNG
+							TÊN VẬT TƯ
 						</th>
 						<th rowSpan={2} className={borderCellClass}>
 							ĐVT
@@ -267,15 +273,15 @@ const ExcelStructuredTable = ({
 					) : (
 						items.map((item, index) => (
 							<tr
-								key={item.id || `${item.partCode}-${index}`}
+								key={item.id || `${getMaterialCode(item)}-${index}`}
 								className='bg-white'
 							>
 								<td className={borderCellClass}>{startIndex + index}</td>
 								<td className={cn(borderCellClass, 'text-left')}>
-									{item.partCode}
+									{getMaterialCode(item)}
 								</td>
 								<td className={cn(borderCellClass, 'text-left')}>
-									{item.partName}
+									{getMaterialName(item)}
 								</td>
 								<td className={borderCellClass}>{item.unitOfMeasureName}</td>
 								<td className={cn(borderCellClass, 'text-right')}>
@@ -464,8 +470,8 @@ export function LongtermMaterialCostDataTable({
 
 		return processGroupFilteredItems.filter((item) => {
 			const keywords = [
-				item.partCode,
-				item.partName,
+				getMaterialCode(item),
+				getMaterialName(item),
 				item.unitOfMeasureName,
 				item.processGroupCode,
 				item.processGroupName,
@@ -600,7 +606,7 @@ export function LongtermMaterialCostDataTable({
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Tháng</p>
 						<Select value={month} onValueChange={setMonth}>
-							<SelectTrigger className='w-[150px] bg-white'>
+							<SelectTrigger className='w-37.5 bg-white'>
 								<SelectValue placeholder='Chọn tháng' />
 							</SelectTrigger>
 							<SelectContent>
@@ -616,7 +622,7 @@ export function LongtermMaterialCostDataTable({
 					<div className='space-y-1'>
 						<p className='text-sm font-medium'>Năm</p>
 						<Select value={year} onValueChange={setYear}>
-							<SelectTrigger className='w-[120px] bg-white'>
+							<SelectTrigger className='w-30 bg-white'>
 								<SelectValue placeholder='Chọn năm' />
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
@@ -637,7 +643,7 @@ export function LongtermMaterialCostDataTable({
 								setSelectedProcessGroup(value);
 							}}
 						>
-							<SelectTrigger className='w-[260px] bg-white'>
+							<SelectTrigger className='w-65 bg-white'>
 								<SelectValue placeholder='Chọn nhóm công đoạn' />
 							</SelectTrigger>
 							<SelectContent className='max-h-64'>
@@ -664,7 +670,7 @@ export function LongtermMaterialCostDataTable({
 										setSearchQuery(event.target.value);
 									}}
 									placeholder='Tìm theo mã, tên phụ tùng, nhóm công đoạn...'
-									className='h-10 w-[340px] bg-white pl-8 text-base'
+									className='h-10 w-85 bg-white pl-8 text-base'
 								/>
 							</div>
 						</div>

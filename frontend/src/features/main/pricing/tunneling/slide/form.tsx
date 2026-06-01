@@ -233,15 +233,17 @@ export function SlideForm({
 			(cost) => !removedContractIds.includes(cost.assignmentCodeId),
 		);
 
-		const newAssets = assets.filter((asset) =>
-			addedContractIds.includes(asset.assignmentCodeId),
+		const newCosts = assets.flatMap((asset) =>
+			addedContractIds
+				.filter((assignmentCodeId) =>
+					asset.assignmentCodeIds.includes(assignmentCodeId),
+				)
+				.map((assignmentCodeId) => ({
+					assignmentCodeId,
+					materialId: asset.id,
+					amount: NaN,
+				})),
 		);
-
-		const newCosts = newAssets.map((asset) => ({
-			assignmentCodeId: asset.assignmentCodeId,
-			materialId: asset.id,
-			amount: NaN,
-		}));
 
 		updatedCosts = [...updatedCosts, ...newCosts].sort((a, b) => {
 			const aContract = contracts.find(
@@ -367,8 +369,8 @@ export function SlideForm({
 			/>
 
 			<MultiSelect
-				label='Mã giao khoán'
-				placeholder='Chọn mã giao khoán'
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
 				values={selectedContracts}
 				onValuesChange={setSelectedContracts}
 				options={contracts.map((item) => ({
@@ -455,7 +457,7 @@ function PricingMaterialCosts({
 	return (
 		<>
 			<div className='flex flex-1 flex-col gap-2'>
-				<Label>Mã giao khoán</Label>
+				<Label>Nhóm vật tư, tài sản</Label>
 				<Input
 					readOnly
 					value={contract?.code}

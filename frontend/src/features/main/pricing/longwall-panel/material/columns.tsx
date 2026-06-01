@@ -175,11 +175,11 @@ export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallM
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: 'Mã giao khoán',
+			header: 'Nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'assignmentCodeName',
-			header: 'Tên giao khoán',
+			header: 'Tên nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'totalPrice',

@@ -15,11 +15,11 @@ import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import {
 	AdditionalCostResponse,
 	MATERIAL_COLUMNS,
+	MAINTAIN_COLUMNS,
 	MaterialCost,
 	OTHER_MATERIALS_COLUMNS,
 	OtherMaterial,
-	SCTXCost,
-	SCTX_COLUMNS,
+	MaintainCost,
 } from '@/features/main/cost/producttion/production/additional-cost/columns';
 import { api } from '@/lib/api';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -32,7 +32,7 @@ export function AdditionalCost({
 	reloadKey,
 }: ProductCostExpandProps) {
 	const [materials, setMaterials] = useState<MaterialCost[]>([]);
-	const [sctx, setSCTX] = useState<SCTXCost[]>([]);
+	const [maintainMaterials, setMaintainMaterials] = useState<MaintainCost[]>([]);
 	const [otherMaterials, setOtherMaterials] = useState<OtherMaterial[]>([]);
 
 	useEffect(() => {
@@ -63,11 +63,12 @@ export function AdditionalCost({
 					);
 
 					// Transform maintain data (SCTX)
-					const sctxItems: SCTXCost[] = (data.maintain || []).map(
+					const maintainItems: MaintainCost[] = (data.maintain || []).map(
 						(item, idx) => ({
 							id: `${item.code}-${idx}`,
-							partCode: item.code,
-							partName: item.name,
+							materialId: item.materialId,
+							materialCode: item.code,
+							materialName: item.name,
 							unitOfMeasure: item.unitOfMeasureName,
 							quantity: item.additionalCostQuantity,
 						}),
@@ -85,7 +86,7 @@ export function AdditionalCost({
 					);
 
 					setMaterials(materialItems);
-					setSCTX(sctxItems);
+					setMaintainMaterials(maintainItems);
 					setOtherMaterials(otherItems);
 				}
 			} catch (err) {
@@ -147,12 +148,12 @@ export function AdditionalCost({
 
 							{/* SCTX Section */}
 							<div className='flex flex-col gap-2'>
-								{sctx && sctx.length > 0 && (
+								{maintainMaterials && maintainMaterials.length > 0 && (
 									<>
 										<h4 className='text-sm font-semibold'>SCTX</h4>
 										<DataTable
-											columns={SCTX_COLUMNS}
-											items={sctx}
+											columns={MAINTAIN_COLUMNS}
+											items={maintainMaterials}
 											compact={true}
 											hasActions={false}
 											hasPagination={false}

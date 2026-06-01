@@ -33,6 +33,12 @@ export function FixedColumnDataTable({
 }: FixedColumnDataTableProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 
+	const getMaterialCode = (item: LongtermMaterialDetailItem) =>
+		item.materialCode || item.partCode || '';
+
+	const getMaterialName = (item: LongtermMaterialDetailItem) =>
+		item.materialName || item.partName || '';
+
 	if (loading) {
 		return (
 			<div className='border-border flex h-96 items-center justify-center rounded-t-md border bg-white shadow'>
@@ -111,7 +117,7 @@ export function FixedColumnDataTable({
 						}}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-between gap-2 px-4 py-2 font-bold'>
-							Mã phụ tùng
+							Mã vật tư
 						</div>
 					</TableHead>
 					<TableHead
@@ -124,7 +130,7 @@ export function FixedColumnDataTable({
 						}}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-between gap-2 px-4 py-2 font-bold'>
-							Tên phụ tùng
+							Tên vật tư
 						</div>
 					</TableHead>
 					<TableHead
@@ -368,7 +374,7 @@ export function FixedColumnDataTable({
 								boxShadow: '2px 0 5px -2px rgba(0, 0, 0, 0.1)',
 							}}
 						>
-							{item.partCode}
+							{getMaterialCode(item)}
 						</TableCell>
 						<TableCell
 							className='sticky z-10 bg-white'
@@ -378,7 +384,7 @@ export function FixedColumnDataTable({
 								boxShadow: '2px 0 5px -2px rgba(0, 0, 0, 0.1)',
 							}}
 						>
-							{item.partName}
+							{getMaterialName(item)}
 						</TableCell>
 						<TableCell
 							className='sticky z-10 bg-white'

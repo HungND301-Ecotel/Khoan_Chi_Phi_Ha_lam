@@ -24,6 +24,8 @@ public class GetProductByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
         return new ProductDto
         {
             Id = productExisted.Id,
+            StartMonth = productExisted.StartMonth,
+            EndMonth = productExisted.EndMonth,
             Code = productExisted.Code.Value,
             Name = productExisted.Name,
             ProcessGroupId = productExisted.ProcessGroupId,

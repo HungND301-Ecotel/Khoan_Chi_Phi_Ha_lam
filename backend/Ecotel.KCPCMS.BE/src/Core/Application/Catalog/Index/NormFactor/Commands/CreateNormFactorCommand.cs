@@ -29,7 +29,7 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         var uniqueAssignmentIds = assignmentConfigs.Select(a => a.AssignmentCodeId).Distinct().ToList();
         if (uniqueAssignmentIds.Count != assignmentConfigs.Count)
         {
-            throw new BadRequestException("Mã giao khoán bị trùng trong thành phần điều chỉnh định mức.");
+            throw new BadRequestException("Nhóm vật tư, tài sản bị trùng trong thành phần điều chỉnh định mức.");
         }
 
         var checkProductionProcess = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProductionProcessId);

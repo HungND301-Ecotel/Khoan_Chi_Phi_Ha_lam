@@ -7,6 +7,7 @@ import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
@@ -28,7 +29,7 @@ import {
 } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
+import { PlusCircleIcon, TriangleAlertIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
 	type UseFormReturn,
@@ -49,12 +50,43 @@ type MonthSectionProps = {
 	products: Product[];
 	units: Unit[];
 	akProcessGroupIds: Set<string>;
+	shouldPreserveInvalidSelection: (
+		item: DepartmentPlanFormSchema['months'][number]['items'][number],
+		month?: string,
+	) => boolean;
 	onSyncProductUnit: (
 		productId: string,
 		unitOfMeasureId: string,
 		origin: { monthIndex: number; itemIndex: number },
 	) => void;
 };
+
+const isProductAvailableForMonth = (product: Product, month?: string) => {
+	if (!month) return true;
+	return product.startMonth <= month && month <= product.endMonth;
+};
+
+const formatMonthLabel = (month?: string) => {
+	if (!month) return 'chưa chọn tháng';
+	const [year, monthValue] = month.split('-');
+	if (!year || !monthValue) return month;
+	return `Tháng ${monthValue}/${year}`;
+};
+
+const getInvalidSelectedProduct = (
+	products: Product[],
+	productId?: string,
+	month?: string,
+) => {
+	if (!productId || !month) return null;
+	const product = products.find((item) => item.id === productId);
+	if (!product) return null;
+	return isProductAvailableForMonth(product, month) ? null : product;
+};
+
+const getPersistedItemKey = (
+	item: DepartmentPlanFormSchema['months'][number]['items'][number],
+) => item.outputId || item.productUnitPriceId || '';
 
 function MonthSection({
 	form,
@@ -64,6 +96,7 @@ function MonthSection({
 	products,
 	units,
 	akProcessGroupIds,
+	shouldPreserveInvalidSelection,
 	onSyncProductUnit,
 }: MonthSectionProps) {
 	const monthPath = `months.${monthIndex}` as const;
@@ -82,6 +115,10 @@ function MonthSection({
 
 	const getProduct = (productId?: string) =>
 		products.find((product) => product.id === productId);
+
+	const availableProducts = products.filter((product) =>
+		isProductAvailableForMonth(product, watchedMonth?.month),
+	);
 
 	const handleProductChange = (itemIndex: number, productId: string) => {
 		form.setValue(
@@ -163,6 +200,23 @@ function MonthSection({
 				{itemFields.map((field, itemIndex) => {
 					const currentItem = watchedMonth?.items?.[itemIndex];
 					const product = getProduct(currentItem?.productId);
+					const invalidSelectedProduct =
+						currentItem &&
+						shouldPreserveInvalidSelection(currentItem, watchedMonth?.month)
+						? getInvalidSelectedProduct(
+								products,
+								currentItem?.productId,
+								watchedMonth?.month,
+							)
+						: null;
+					const selectableProducts = invalidSelectedProduct
+						? [...availableProducts, invalidSelectedProduct].filter(
+								(productOption, index, allOptions) =>
+									allOptions.findIndex(
+										(candidate) => candidate.id === productOption.id,
+									) === index,
+							)
+						: availableProducts;
 					const isAkApplicable =
 						!!product?.processGroupId &&
 						akProcessGroupIds.has(product.processGroupId);
@@ -180,7 +234,7 @@ function MonthSection({
 									onValueChange={(value) =>
 										handleProductChange(itemIndex, value)
 									}
-									options={products.map((productOption) => ({
+									options={selectableProducts.map((productOption) => ({
 										label: `${productOption.code} - ${productOption.name}`,
 										value: productOption.id,
 									}))}
@@ -321,6 +375,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
 		new Set(),
 	);
+	const [legacyProductIds, setLegacyProductIds] = useState<Map<string, string>>(
+		new Map(),
+	);
 	const isEdit = !!row;
 
 	const form = useForm<DepartmentPlanFormSchema>({
@@ -343,6 +400,35 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		name: 'months',
 		defaultValue: DEPARTMENT_PLAN_FORM_DEFAULT.months,
 	}) as DepartmentPlanFormSchema['months'];
+
+	const invalidLegacySelections = useMemo(() => {
+		if (!isEdit) return [];
+
+		return watchedMonths.flatMap((month, monthIndex) =>
+			month.items.flatMap((item, itemIndex) => {
+				const legacyProductId = legacyProductIds.get(getPersistedItemKey(item));
+				if (!legacyProductId || legacyProductId !== item.productId) {
+					return [];
+				}
+
+				const product = getInvalidSelectedProduct(
+					products,
+					item.productId,
+					month.month,
+				);
+				if (!product) return [];
+
+				return [
+					{
+						monthIndex,
+						itemIndex,
+						month: month.month,
+						product,
+					},
+				];
+			}),
+		);
+	}, [isEdit, legacyProductIds, products, watchedMonths]);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -397,6 +483,17 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						})),
 					})),
 				});
+				setLegacyProductIds(
+					new Map(
+						mappedDetail.months.flatMap((month) =>
+							month.items.flatMap((item) => {
+								const itemKey = item.outputId || item.productUnitPriceId;
+								if (!itemKey) return [];
+								return [[itemKey, item.productId] as const];
+							}),
+						),
+					),
+				);
 			},
 		);
 	}, [form, row]);
@@ -404,6 +501,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	useEffect(() => {
 		if (!row) {
 			form.reset(DEPARTMENT_PLAN_FORM_DEFAULT);
+			setLegacyProductIds(new Map());
 		}
 	}, [form, row]);
 
@@ -466,6 +564,45 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		});
 	}, [form, watchedMonths]);
 
+	const shouldPreserveInvalidSelection = (
+		item: DepartmentPlanFormSchema['months'][number]['items'][number],
+		month?: string,
+	) => {
+		if (!isEdit || !month) return false;
+		const itemKey = getPersistedItemKey(item);
+		if (!itemKey) return false;
+
+		const legacyProductId = legacyProductIds.get(itemKey);
+		return !!legacyProductId && legacyProductId === item.productId;
+	};
+
+	useEffect(() => {
+		watchedMonths.forEach((month, monthIndex) => {
+			month.items.forEach((item, itemIndex) => {
+				if (!getInvalidSelectedProduct(products, item.productId, month.month)) {
+					return;
+				}
+
+				if (shouldPreserveInvalidSelection(item, month.month)) {
+					return;
+				}
+
+				form.setValue(`months.${monthIndex}.items.${itemIndex}.productId`, '', {
+					shouldDirty: true,
+					shouldValidate: true,
+				});
+				form.setValue(
+					`months.${monthIndex}.items.${itemIndex}.unitOfMeasureId`,
+					'',
+					{
+						shouldDirty: true,
+						shouldValidate: true,
+					},
+				);
+			});
+		});
+	}, [form, products, watchedMonths, isEdit, legacyProductIds]);
+
 	const handleSubmit = async (values: DepartmentPlanFormSchema) => {
 		try {
 			const payload = {
@@ -527,6 +664,26 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 			<FormSeparator />
 
 			<div className='flex flex-col gap-4'>
+				{invalidLegacySelections.length > 0 && (
+					<Alert variant='destructive'>
+						<TriangleAlertIcon />
+						<AlertTitle>
+							Một số sản phẩm đang chọn không còn thuộc khoảng thời gian áp dụng
+						</AlertTitle>
+						<AlertDescription>
+							<div className='space-y-1'>
+								{invalidLegacySelections.map((selection) => (
+									<p
+										key={`${selection.monthIndex}-${selection.itemIndex}-${selection.product.id}`}
+									>
+										{`${formatMonthLabel(selection.month)}: ${selection.product.code} - ${selection.product.name}`}
+									</p>
+								))}
+							</div>
+						</AlertDescription>
+					</Alert>
+				)}
+
 				{monthFields.map((field, monthIndex) => (
 					<MonthSection
 						key={field.id}
@@ -537,6 +694,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						products={products}
 						units={units}
 						akProcessGroupIds={akProcessGroupIds}
+						shouldPreserveInvalidSelection={shouldPreserveInvalidSelection}
 						onSyncProductUnit={syncProductUnit}
 					/>
 				))}

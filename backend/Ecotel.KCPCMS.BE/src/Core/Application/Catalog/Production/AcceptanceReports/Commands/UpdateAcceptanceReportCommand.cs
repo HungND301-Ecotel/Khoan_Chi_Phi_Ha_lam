@@ -19,7 +19,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
     private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _acceptanceReportItemLogRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
 
     public async Task<UpdateAcceptanceReportResponseDto> Handle(UpdateAcceptanceReportCommand request, CancellationToken cancellationToken)
     {
@@ -58,10 +57,9 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         var processGroupIdsInPeriod = productionOutput.ProductionOutputProcessGroups
             .Select(x => x.ProcessGroupId)
             .ToHashSet();
-        var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
-        var allMaterials = await _materialRepository.GetAllAsync(disableTracking: true);
-        var allParts = await _partRepository.GetAllAsync(
-            include: q => q.Include(p => p.Costs),
+        var outputByProcessGroup = AcceptanceReportTrackingLogBuilder.BuildOutputByProcessGroup(productionOutput);
+        var allMaterials = await _materialRepository.GetAllAsync(
+            include: q => q.Include(m => m.Costs),
             disableTracking: true);
 
         // Get existing items for comparison (include QuotaBasedMaterialQuantities for EF tracking)
@@ -127,22 +125,33 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 {
                     ValidateQuantityTotals(updateItem);
 
-                    var categoryReference = ProductionReference.Create(
+                    var categoryAssignmentCodeId =
+                        updateItem.CategoryAssignmentCodeId ?? updateItem.CategoryEquipmentId;
+                    var additionalCostAssignmentCodeId =
+                        updateItem.AdditionalCostAssignmentCodeId ?? updateItem.AdditionalCostEquipmentId;
+                    var categoryReference = ProductionReference.CreateForAssignmentCode(
                         updateItem.CategoryProductionOrderId,
-                        updateItem.CategoryEquipmentId);
-                    var additionalCostReference = ProductionReference.Create(
+                        categoryAssignmentCodeId);
+                    var additionalCostReference = ProductionReference.CreateForAssignmentCode(
                         updateItem.AdditionalCostProductionOrderId,
-                        updateItem.AdditionalCostEquipmentId);
-                    var processGroupId = existingItem.PartId.HasValue
+                        additionalCostAssignmentCodeId);
+                    var processGroupId = existingItem.IsTrackedSctxItem
                         ? updateItem.ProcessGroupId
                         : null;
-                    var categoryAllocations = MapCategoryAllocations(updateItem.CategoryAllocations);
+                    var categoryAllocations = AcceptanceReportCommandItemHelper.MapCategoryAllocations(updateItem.CategoryAllocations);
+                    var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
+                        existingItem.IsTrackedSctxItem ? AcceptanceReportItemType.Part : AcceptanceReportItemType.Material,
+                        updateItem.TrackedMaterialId,
+                        null,
+                        null,
+                        allMaterials);
+                    var trackedMaterialId = materialId ?? partId;
 
-                    existingItem.Update(
+                    existingItem.UpdateForTrackedMaterial(
                         itemSortOrders[existingItem.Id],
                         processGroupId,
-                        existingItem.MaterialId,
-                        existingItem.PartId,
+                        trackedMaterialId,
+                        existingItem.IsTrackedSctxItem ? AcceptanceReportItemType.Part : AcceptanceReportItemType.Material,
                         updateItem.UsageTime,
                         updateItem.ItemType,
                         categoryReference,
@@ -162,7 +171,7 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                         updateItem.QuotaBasedMaterialQuantities?.Select(x => (x.Type, x.Quantity)).ToList(),
                         categoryAllocations);
 
-                    if (existingItem.PartId.HasValue &&
+                    if (existingItem.IsTrackedSctxItem &&
                         updateItem.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
                     {
                         var processGroupIdsToValidate = categoryAllocations != null && categoryAllocations.Any()
@@ -191,72 +200,39 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
             {
                 ValidateQuantityTotals(createItem);
 
-                var categoryReference = ProductionReference.Create(
+                var categoryAssignmentCodeId =
+                    createItem.CategoryAssignmentCodeId ?? createItem.CategoryEquipmentId;
+                var additionalCostAssignmentCodeId =
+                    createItem.AdditionalCostAssignmentCodeId ?? createItem.AdditionalCostEquipmentId;
+                var categoryReference = ProductionReference.CreateForAssignmentCode(
                     createItem.CategoryProductionOrderId,
-                    createItem.CategoryEquipmentId);
-                var additionalCostReference = ProductionReference.Create(
+                    categoryAssignmentCodeId);
+                var additionalCostReference = ProductionReference.CreateForAssignmentCode(
                     createItem.AdditionalCostProductionOrderId,
-                    createItem.AdditionalCostEquipmentId);
-                var processGroupId = createItem.Type == AcceptanceReportItemType.Part
+                    additionalCostAssignmentCodeId);
+                var processGroupId = AcceptanceReportCommandItemHelper.IsTrackedSctxItem(createItem.Type)
                     ? createItem.ProcessGroupId
                     : null;
-                var categoryAllocations = MapCategoryAllocations(createItem.CategoryAllocations);
+                var categoryAllocations = AcceptanceReportCommandItemHelper.MapCategoryAllocations(createItem.CategoryAllocations);
+                var (materialId, partId) = AcceptanceReportCommandItemHelper.ResolveTrackedItemIds(
+                    createItem.Type,
+                    createItem.TrackedMaterialId,
+                    null,
+                    null,
+                    allMaterials);
 
-                Guid? materialId = null;
-                Guid? partId = null;
-
-                if (createItem.Type == AcceptanceReportItemType.Material)
+                if (AcceptanceReportCommandItemHelper.RequiresProcessGroupValidation(createItem.Type, createItem.MaterialsIncludedInContractRevenue))
                 {
-                    if (!createItem.MaterialId.HasValue)
-                    {
-                        throw new NotFoundException("MaterialId is required for material item");
-                    }
-
-                    var materialExists = allMaterials.Any(m => m.Id == createItem.MaterialId.Value);
-                    if (!materialExists)
-                    {
-                        throw new NotFoundException($"Material with Id '{createItem.MaterialId.Value}' not found");
-                    }
-
-                    materialId = createItem.MaterialId.Value;
-                }
-                else if (createItem.Type == AcceptanceReportItemType.Part)
-                {
-                    if (!createItem.PartId.HasValue)
-                    {
-                        throw new NotFoundException("PartId is required for SCTX item");
-                    }
-
-                    var partExists = allParts.Any(p => p.Id == createItem.PartId.Value);
-                    if (!partExists)
-                    {
-                        throw new NotFoundException($"Part with Id '{createItem.PartId.Value}' not found");
-                    }
-
-                    partId = createItem.PartId.Value;
+                    AcceptanceReportCommandItemHelper.ValidateProcessGroupIds(processGroupId, categoryAllocations, processGroupIdsInPeriod);
                 }
 
-                if (createItem.Type == AcceptanceReportItemType.Part &&
-                    createItem.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
-                {
-                    var processGroupIdsToValidate = categoryAllocations != null && categoryAllocations.Any()
-                        ? categoryAllocations.Select(x => x.ProcessGroupId)
-                        : processGroupId.HasValue
-                            ? new[] { processGroupId.Value }
-                            : [];
-
-                    if (!processGroupIdsToValidate.Any() || processGroupIdsToValidate.Any(id => !processGroupIdsInPeriod.Contains(id)))
-                    {
-                        throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
-                    }
-                }
-
-                var reportItem = AcceptanceReportItem.Create(
+                var trackedMaterialId = materialId ?? partId;
+                var reportItem = AcceptanceReportItem.CreateForTrackedMaterial(
                     acceptanceReport.Id,
                     sortOrder,
                     processGroupId,
-                    materialId,
-                    partId,
+                    trackedMaterialId,
+                    createItem.Type,
                     createItem.UsageTime,
                     createItem.ItemType,
                     categoryReference,
@@ -308,58 +284,12 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 }
             }
 
-            var logsToCreate = new List<AcceptanceReportItemLog>();
-            foreach (var existingItem in existingItems.Where(i => itemsToUpdate.ContainsKey(i.Id)).Concat(createdItems))
-            {
-                var residualQuantity = existingItem.IssuedQuantity - existingItem.ShippedQuantity;
-                if (!ShouldCreateLongTermTracking(existingItem, residualQuantity))
-                {
-                    continue;
-                }
-
-                var part = allParts.FirstOrDefault(p => p.Id == existingItem.PartId.Value);
-                if (part == null)
-                {
-                    continue;
-                }
-
-                var cost = part.Costs?.FirstOrDefault(c =>
-                    c.StartMonth <= productionOutput.StartMonth &&
-                    c.EndMonth >= productionOutput.EndMonth);
-
-                var unitPrice = (decimal)(cost?.Amount ?? 0);
-
-                foreach (var trackingAllocation in BuildTrackingAllocations(existingItem, residualQuantity))
-                {
-                    var actualOutput = productionOutput.ProductionMeters;
-                    var plannedOutput = 1.0;
-                    var standardOutput = productionOutput.StandardProductionMeters;
-
-                    if (trackingAllocation.ProcessGroupId.HasValue
-                        && outputByProcessGroup.TryGetValue(trackingAllocation.ProcessGroupId.Value, out var metrics))
-                    {
-                        actualOutput = metrics.ActualOutput;
-                        plannedOutput = metrics.PlannedOutput;
-                        standardOutput = metrics.StandardOutput;
-                    }
-
-                    logsToCreate.Add(AcceptanceReportItemLog.Create(
-                        acceptanceReportItemId: existingItem.Id,
-                        acceptanceReportId: acceptanceReport.Id,
-                        periodStartMonth: productionOutput.StartMonth,
-                        periodEndMonth: productionOutput.EndMonth,
-                        pendingValueStartPeriod: 0,
-                        issuedQuantity: trackingAllocation.Quantity,
-                        unitPrice: unitPrice,
-                        usageTime: existingItem.UsageTime,
-                        allocatedTime: 0,
-                        actualOutput: actualOutput,
-                        plannedOutput: plannedOutput,
-                        standardOutput: standardOutput,
-                        allocationRatio: 1.0,
-                        acceptanceReportItemCategoryAllocationId: trackingAllocation.CategoryAllocationId));
-                }
-            }
+            var logsToCreate = AcceptanceReportTrackingLogBuilder.BuildTrackingLogs(
+                acceptanceReport.Id,
+                existingItems.Where(i => itemsToUpdate.ContainsKey(i.Id)).Concat(createdItems),
+                allMaterials,
+                productionOutput,
+                outputByProcessGroup);
 
             if (logsToCreate.Any())
             {
@@ -384,23 +314,6 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         }
     }
 
-    private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(ProductionOutput productionOutput)
-    {
-        var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
-
-        foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
-        {
-            var plannedOutput = processGroup.PlanProductionMeters;
-
-            result[processGroup.ProcessGroupId] = (
-                processGroup.ProductionMeters,
-                plannedOutput,
-                processGroup.StandardProductionMeters);
-        }
-
-        return result;
-    }
-
     private static void ValidateQuantityTotals(UpdateAcceptanceReportItemDto updateItem)
     {
         var issuedDetailTotal = updateItem.IssuedDetails.Sum(x => x.Quantity);
@@ -416,57 +329,5 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
         }
     }
 
-    private static IList<(Guid ProcessGroupId, double Quantity, IList<Guid> EquipmentIds)>? MapCategoryAllocations(
-        List<AcceptanceReportCategoryAllocationDto>? dtos)
-        => dtos?.Select(x => (x.ProcessGroupId, x.Quantity, (IList<Guid>)x.EquipmentIds.ToList())).ToList();
-
-    private static IList<(Guid? CategoryAllocationId, Guid? ProcessGroupId, double Quantity)> BuildTrackingAllocations(
-        AcceptanceReportItem item,
-        double residualQuantity)
-    {
-        if (residualQuantity <= 0)
-        {
-            return [];
-        }
-
-        if (item.CategoryAllocations.Any())
-        {
-            var totalAllocationQuantity = item.CategoryAllocations.Sum(x => x.Quantity);
-            if (totalAllocationQuantity <= 0)
-            {
-                return
-                [
-                    (
-                        CategoryAllocationId: (Guid?)null,
-                        ProcessGroupId: item.ProcessGroupId,
-                        Quantity: residualQuantity
-                    )
-                ];
-            }
-
-            return item.CategoryAllocations
-                .Select(allocation => (
-                    CategoryAllocationId: (Guid?)allocation.Id,
-                    ProcessGroupId: (Guid?)allocation.ProcessGroupId,
-                    Quantity: residualQuantity * allocation.Quantity / totalAllocationQuantity))
-                .Where(x => x.Quantity > 0)
-                .ToList();
-        }
-
-        return
-        [
-            (
-                CategoryAllocationId: (Guid?)null,
-                ProcessGroupId: item.ProcessGroupId,
-                Quantity: residualQuantity
-            )
-        ];
-    }
-
-    private static bool ShouldCreateLongTermTracking(AcceptanceReportItem item, double residualQuantity)
-        => item.PartId.HasValue
-            && item.MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain
-            && item.IsLongTermTracking
-            && residualQuantity > 0;
 }
 

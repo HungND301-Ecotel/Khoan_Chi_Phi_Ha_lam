@@ -2,6 +2,7 @@ import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
+import { FormMonthYear } from '@/components/form/form-month-year';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormText } from '@/components/form/form-text';
 import { usePopup } from '@/components/popup';
@@ -37,20 +38,29 @@ export function ProductForm({
 	const form = useForm<ProductFormSchema>({
 		resolver: zodResolver(productFormSchema),
 		mode: 'onSubmit',
-		defaultValues: row
-			? {
-					code: isDuplicate ? '' : row.code,
-					name: row.name,
-					processGroupId: row.processGroupId,
-				}
-			: PRODUCT_FORM_DEFAULT,
+		defaultValues: PRODUCT_FORM_DEFAULT,
 	});
 
 	useEffect(() => {
 		api
 			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
 			.then((res) => setGroups(res.result.data));
-	}, [row, form]);
+	}, []);
+
+	useEffect(() => {
+		if (row) {
+			form.reset({
+				code: isDuplicate ? '' : row.code,
+				name: row.name,
+				processGroupId: row.processGroupId,
+				startMonth: row.startMonth,
+				endMonth: row.endMonth,
+			});
+			return;
+		}
+
+		form.reset(PRODUCT_FORM_DEFAULT);
+	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: ProductFormSchema) => {
 		try {
@@ -76,6 +86,23 @@ export function ProductForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
+			<div className='flex w-full gap-4'>
+				<FormMonthYear
+					control={form.control}
+					name='startMonth'
+					label='Thời gian bắt đầu'
+					placeholder='Nhập thời gian bắt đầu'
+					className='flex-1'
+				/>
+				<FormMonthYear
+					control={form.control}
+					name='endMonth'
+					label='Thời gian kết thúc'
+					placeholder='Nhập thời gian kết thúc'
+					className='flex-1'
+				/>
+			</div>
+
 			<FormComboBox
 				control={form.control}
 				name='processGroupId'

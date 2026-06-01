@@ -1,6 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 
+using Application.Dto.Catalog.Cost;
+using Domain.Common.Enums;
+
 namespace Application.Dto.Catalog.AssignmentCode
 {
     public class AssignmentCodeDto : IDto
@@ -10,7 +13,10 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public double CurrentPrice { get; set; }
+        public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
         public IList<AssignmentCodeMaterialDto> Materials { get; set; } = new List<AssignmentCodeMaterialDto>();
+        public IList<AssignmentCodeMaterialDto> OtherMaterials { get; set; } = new List<AssignmentCodeMaterialDto>();
     }
 
     public class AssignmentCodeMaterialDto
@@ -19,6 +25,8 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string UnitOfMeasureName { get; set; } = string.Empty;
+        public MaterialType MaterialType { get; set; }
+        public AssignmentCodeMaterialRole Role { get; set; } = AssignmentCodeMaterialRole.Material;
         public double CostAmount { get; set; }
         public double ActualAmount { get; set; }
     }
@@ -33,12 +41,14 @@ namespace Application.Dto.Catalog.AssignmentCode
     public class AssignmentCodeExcelDto
     {
         public Guid Id { get; set; }
-        [Display(Name = "Mã giao khoán")]
+        [Display(Name = "Nhóm vật tư, tài sản")]
         public string Code { get; set; }
-        [Display(Name = "Tên giao khoán")]
+        [Display(Name = "Tên nhóm vật tư, tài sản")]
         public string Name { get; set; }
         [Display(Name = "Mã vật tư, tài sản")]
         public string MaterialCode { get; set; } = string.Empty;
+        [Display(Name = "Loại vật tư, tài sản")]
+        public string MaterialRole { get; set; } = string.Empty;
         [Display(Name = "Đơn vị tính")]
         public string UnitOfMeasureName { get; set; } = string.Empty;
     }
@@ -49,6 +59,8 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public IList<Guid> MaterialIds { get; set; } = new List<Guid>();
+        public IList<Guid> OtherMaterialIds { get; set; } = new List<Guid>();
+        public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
     }
 
     public class UpdateAssignmentCodeDto
@@ -58,5 +70,7 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public IList<Guid> MaterialIds { get; set; } = new List<Guid>();
+        public IList<Guid> OtherMaterialIds { get; set; } = new List<Guid>();
+        public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
     }
 }

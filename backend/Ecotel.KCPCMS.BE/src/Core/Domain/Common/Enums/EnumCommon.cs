@@ -132,20 +132,20 @@ public enum ProductUnitPriceScenarioType
 
 public enum MaterialType
 {
-    [Display(Name = "Trong khoán")]
+    [Display(Name = "Vật tư, tài sản")]
     MaterialInContract = 1,
 
-    [Display(Name = "Ngoài khoán")]
+    [Display(Name = "Vật tư, tài sản khác")]
     MaterialOutContract = 2,
+}
 
-    [Display(Name = "Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão")]
-    SafetyAndWelfareMaterials = 3,
+public enum AssignmentCodeMaterialRole
+{
+    [Display(Name = "Vật tư, tài sản")]
+    Material = 1,
 
-    [Display(Name = "Tài sản")]
-    Resource = 4,
-
-    [Display(Name = "Vật tư theo hạn mức")]
-    QuotaMaterials = 5,
+    [Display(Name = "Vật tư, tài sản khác")]
+    OtherMaterial = 2,
 }
 
 public enum MaterialUnitPriceType

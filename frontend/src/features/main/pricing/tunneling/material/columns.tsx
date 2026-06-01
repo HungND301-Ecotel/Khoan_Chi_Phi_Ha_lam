@@ -127,7 +127,7 @@ export const MAIN_PRICING_MATERIAL_EXPAND_COLUMNS: ColumnDef<FlatMaterialCost>[]
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: () => <span>Mã giao khoán</span>,
+			header: () => <span>Nhóm vật tư, tài sản</span>,
 			cell: ({ row }) => (
 				<span className='font-semibold'>
 					{row.original.isGroupRow && row.original.assignmentCode}
@@ -189,11 +189,11 @@ export const MAIN_PRICING_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandMater
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: 'Mã giao khoán',
+			header: 'Nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'assignmentCodeName',
-			header: 'Tên giao khoán',
+			header: 'Tên nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'totalPrice',

@@ -18,7 +18,7 @@ namespace Domain.Entities.Pricing
 
         // Navigation properties
         public virtual MaintainUnitPrice? MaintainUnitPrice { get; protected set; } = null!;
-        public virtual Part? Part { get; protected set; } = null!;
+        public virtual Material? Part { get; protected set; } = null!;
 
         private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
         public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();

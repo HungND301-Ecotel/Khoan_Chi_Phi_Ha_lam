@@ -23,15 +23,15 @@ export const ERROR: Record<string, string> = {
 		'Chỉ đơn giá vật tư mới được phép sử dụng số lượng.',
 	EQUIPMENT_PARTS_INVALID: 'Phụ tùng thiết bị không hợp lệ.',
 	ASSIGNMENT_CODE_INVALID_MATERIAL_IDS:
-		'Mã giao khoán chứa các mã vật tư không hợp lệ.',
+		'Nhóm vật tư, tài sản chứa các mã vật tư không hợp lệ.',
 	ASSIGNMENT_CODE_DUPLICATE_MATERIAL_IDS:
-		'Mã giao khoán có vật tư bị trùng lặp.',
+		'Nhóm vật tư, tài sản có vật tư bị trùng lặp.',
 	DELETE_ID_DUPLICATED: 'ID cần xóa bị trùng lặp.',
 	DELETE_IDS_EMPTY: 'Danh sách ID cần xóa bị trống.',
 	ONE_OR_MORE_REFERENCED_SPECIFICATION_IDS_INVALID:
 		'Một hoặc nhiều mã định mức tham chiếu không hợp lệ.',
 	ENTITY_NOT_FOUND: 'Không tìm thấy đối tượng.',
-	ASSIGNMENT_CODE_NOT_FOUND: 'Không tìm thấy Mã giao khoán.',
+	ASSIGNMENT_CODE_NOT_FOUND: 'Không tìm thấy Nhóm vật tư, tài sản.',
 	ADJUSTMENT_FACTOR_NOT_FOUND: 'Không tìm thấy Hệ số điều chỉnh.',
 	EQUIPMENT_NOT_FOUND: 'Không tìm thấy Thiết bị.',
 	UNIT_OF_MEASURE_NOT_FOUND: 'Không tìm thấy Đơn vị tính.',
@@ -51,7 +51,7 @@ export const ERROR: Record<string, string> = {
 	PRODUCT_UNIT_PRICE_NOT_FOUND: 'Không tìm thấy Đơn giá sản phẩm.',
 	CODE_ALREADY_EXISTS: 'Mã đã tồn tại.',
 	ADJUSTMENT_FACTOR_CODE_ALREADY_EXISTS: 'Mã Hệ số điều chỉnh đã tồn tại.',
-	ASSIGNMENT_CODE_ALREADY_EXISTS: 'Mã giao khoán đã tồn tại.',
+	ASSIGNMENT_CODE_ALREADY_EXISTS: 'Nhóm vật tư, tài sản đã tồn tại.',
 	EQUIPMENT_CODE_ALREADY_EXISTS: 'Mã Thiết bị đã tồn tại.',
 	MATERIAL_CODE_ALREADY_EXISTS: 'Mã Vật tư đã tồn tại.',
 	PART_CODE_ALREADY_EXISTS: 'Mã Phụ tùng đã tồn tại.',
@@ -106,7 +106,7 @@ export const ERROR: Record<string, string> = {
 
 	// Additional not found
 	SLIDE_UNIT_PRICE_ASSIGNMENT_CODE_NOT_FOUND:
-		'Không tìm thấy Đơn giá trượt cho Mã giao khoán.',
+		'Không tìm thấy Đơn giá trượt cho Nhóm vật tư, tài sản.',
 	MAINTAIN_UNIT_PRICE_EQUIPMENT_NOT_FOUND:
 		'Không tìm thấy Đơn giá bảo dưỡng cho Thiết bị.',
 	MATERIAL_PART_NOT_FOUND: 'Không tìm thấy Vật tư hoặc Phụ tùng.',

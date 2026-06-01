@@ -101,7 +101,7 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 				url={API.PRICING.MAINTENANCE.LIST}
 				query={query}
 				getRowId={(row) => row.id}
-				filters={[{ key: 'equipmentCode', label: 'Mã thiết bị' }]}
+				filters={[{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' }]}
 				onCreate={(props) => <LongwallPanelForm {...props} />}
 				onDuplicate={(props) => <LongwallPanelForm {...props} isDuplicate />}
 				onUpdate={(props) => <LongwallPanelForm {...props} />}

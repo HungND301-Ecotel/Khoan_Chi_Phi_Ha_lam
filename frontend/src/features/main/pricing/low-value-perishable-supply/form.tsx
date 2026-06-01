@@ -8,11 +8,13 @@ import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
 import { API } from '@/constants/api-enpoint';
 import { LowValuePerishableSupplyType } from '@/constants/low-value-perishable-supply';
-import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { Department } from '@/features/main/catalog/department/columns';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import {
+	normalizeProcessGroup,
+	ProcessGroup,
+} from '@/features/main/catalog/process/group/columns';
 import {
 	LOW_VALUE_PERISHABLE_SUPPLY_FORM_DEFAULT,
 	lowValuePerishableSupplyFormSchema,
@@ -20,7 +22,7 @@ import {
 } from '@/features/main/pricing/low-value-perishable-supply/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LowValuePerishableSupplyUnitPrice } from './columns';
 
@@ -58,10 +60,7 @@ export function LowValuePerishableSupplyForm({
 		]).then(([departmentsRes, processGroupsRes]) => {
 			setDepartments(departmentsRes.result.data);
 			setProcessGroups(
-				(processGroupsRes.result.data ?? []).map((item) => ({
-					...item,
-					fixedKeyType: item.fixedKeyType,
-				})),
+				(processGroupsRes.result.data ?? []).map(normalizeProcessGroup),
 			);
 
 			if (!row) {
@@ -77,17 +76,6 @@ export function LowValuePerishableSupplyForm({
 			});
 		});
 	}, [form, row]);
-
-	const filteredProcessGroups = useMemo(() => {
-		const processGroupType =
-			type === LowValuePerishableSupplyType.TunnelExcavation
-				? ProcessGroupType.DL
-				: ProcessGroupType.LC;
-
-		return processGroups.filter(
-			(item) => item.fixedKeyType === processGroupType,
-		);
-	}, [processGroups, type]);
 
 	const handleSubmit = async (values: LowValuePerishableSupplyFormSchema) => {
 		const payload = {
@@ -151,7 +139,7 @@ export function LowValuePerishableSupplyForm({
 				name='processGroupId'
 				label='Nhóm công đoạn'
 				placeholder='Chọn nhóm công đoạn'
-				options={filteredProcessGroups.map((item) => ({
+				options={processGroups.map((item) => ({
 					label: `${item.code} - ${item.name}`,
 					value: item.id,
 				}))}

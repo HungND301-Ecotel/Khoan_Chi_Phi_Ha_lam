@@ -22,10 +22,27 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import {
 	AdjustmentMaintainCostDetail,
+	AdjustmentMaintainCostItem,
 	AdjustmentMaintainCostSummary,
 	getAdjustmentMaintainCostColumns,
 	getAdjustmentMaintainCostSummaryColumns,
 } from './columns';
+
+const normalizeMaintainCostItem = (
+	item: AdjustmentMaintainCostItem,
+): AdjustmentMaintainCostItem => ({
+	...item,
+	assignmentCodeId: item.assignmentCodeId || item.equipmentId || '',
+	assignmentCode: item.assignmentCode || item.equipmentCode || '',
+	assignmentCodeName: item.assignmentCodeName || item.equipmentName || '',
+});
+
+const normalizeMaintainCostDetail = (
+	detail: AdjustmentMaintainCostDetail,
+): AdjustmentMaintainCostDetail => ({
+	...detail,
+	costs: detail.costs.map(normalizeMaintainCostItem),
+});
 
 export function AdjustmentMaintainCost({
 	id,
@@ -57,14 +74,15 @@ export function AdjustmentMaintainCost({
 				API.COST.ADJUSTMENT_MAINTAIN.DETAIL(id),
 			)
 			.then((res) => {
-				setAdjustmentMaintainCost(res.result);
+				const normalizedResult = normalizeMaintainCostDetail(res.result);
+				setAdjustmentMaintainCost(normalizedResult);
 				setSummary([
 					{
-						akRatePercent: res.result.akRatePercent || 0,
+						akRatePercent: normalizedResult.akRatePercent || 0,
 					},
 				]);
 				let total = 0;
-				res.result.costs.forEach((item) => {
+				normalizedResult.costs.forEach((item) => {
 					const { totalPrice } = item;
 					total += totalPrice;
 				});

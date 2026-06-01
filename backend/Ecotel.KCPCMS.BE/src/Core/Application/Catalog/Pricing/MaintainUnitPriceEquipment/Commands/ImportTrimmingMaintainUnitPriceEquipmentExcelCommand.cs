@@ -20,8 +20,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
     private const string CacheSignalKey = "ProductUnitPrice";
     private const string ModuleCacheSignalKey = "MaintainUnitPriceEquipment";
     private readonly IWriteRepository<MaintainUnitPrice> _repository = unitOfWork.GetRepository<MaintainUnitPrice>();
-    private readonly IWriteRepository<Equipment> _equipmentRepository = unitOfWork.GetRepository<Equipment>();
-    private readonly IWriteRepository<Part> _partRepository = unitOfWork.GetRepository<Part>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
 
     public async Task<bool> Handle(ImportTrimmingMaintainUnitPriceEquipmentExcelCommand request, CancellationToken cancellationToken)
     {
@@ -39,12 +38,12 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
         ThrowIfImportErrors(importErrors);
 
         // Map data
-        var equipments = await _equipmentRepository.GetAllAsync(
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
             include: e => e
                 .Include(e => e.Code),
             disableTracking: true);
 
-        var equipmentIdMap = equipments
+        var equipmentIdMap = assignmentCodes
             .Where(e => e.Code != null)
             .GroupBy(e => e.Code!.Value)
             .ToDictionary(g => g.Key, g => g.First().Id);
@@ -303,7 +302,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
 
     private async Task CollectReferenceErrors(List<TrimmingMaintainUnitPriceImportDto> dtoList, ICollection<string> importErrors)
     {
-        var dbEquipmentCodes = (await _equipmentRepository.GetAllAsync(
+        var dbEquipmentCodes = (await _assignmentCodeRepository.GetAllAsync(
                 include: e => e
                     .Include(e => e.Code),
                 disableTracking: true))
@@ -316,7 +315,7 @@ public class ImportTrimmingMaintainUnitPriceEquipmentExcelCommandHandler(IUnitOf
             var equipmentCode = dto.EquipmentCode?.Trim();
             if (!string.IsNullOrWhiteSpace(equipmentCode) && !dbEquipmentCodes.Contains(equipmentCode))
             {
-                importErrors.Add($"Thiết bị '{equipmentCode}' không tồn tại.");
+                importErrors.Add($"Nhóm vật tư, tài sản '{equipmentCode}' không tồn tại.");
             }
         }
     }
