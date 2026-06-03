@@ -9,6 +9,7 @@
 REGISTRY=ecoteldev
 RELEASE_VERSION=release
 STAGING_VERSION=staging
+TEST_VERSION=test-dev
 TAG_VERSION=$(shell git describe --tags --abbrev=0)
 
 ## Get current branch & commit ID to save to .info file 
@@ -53,7 +54,7 @@ release:
 
 # Docker compose build & publishing to Dockerhub for test
 test:
-	@echo "REGISTRY=${REGISTRY}\nVERSION=${TEST_VERSION}-$${TAG_VERSION:-dev}-${commit_id}" > .env
+	@echo "REGISTRY=${REGISTRY}\nVERSION=${TEST_VERSION}-${TAG_VERSION}-${commit_id}" > .env
 	@echo "Docker compose build from a file..."
 	docker compose -f docker-compose-build_test.yaml build \
 		--parallel \

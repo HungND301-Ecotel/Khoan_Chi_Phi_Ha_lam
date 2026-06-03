@@ -2,8 +2,8 @@
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
+using Domain.Common.Enums;
 using Domain.Entities.Pricing.MaterialUnitPrice;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -26,7 +26,10 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
                 .Include(u => u.InsertItem)
                 .Include(u => u.SupportStep)
                 .Include(u => u.ProductionProcess)
-                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code),
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Code)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.UnitOfMeasure)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         string passportName =
@@ -46,7 +49,30 @@ public class GetMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             TotalPrice = materialUnitPrice.TotalPrice,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
             Type = materialUnitPrice.Type,
-            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.OrderBy(m => m.AssignmentCode.Code.Value).ThenBy(m => m.AssignmentCode.Name).Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes
+                .OrderBy(m => m.AssignmentCode.Code.Value)
+                .ThenBy(m => m.AssignmentCode.Name)
+                .ThenBy(m => m.Material != null ? m.Material.Code!.Value : string.Empty)
+                .ThenBy(m => m.Material != null ? m.Material.Name : string.Empty)
+                .Select(m => new MaterialUnitPriceAssignmentCodeDto
+                {
+                    AssignmentCodeId = m.AssignmentCodeId,
+                    AssignmentCode = m.AssignmentCode.Code.Value,
+                    AssignmentCodeName = m.AssignmentCode.Name,
+                    MaterialId = m.MaterialId,
+                    MaterialCode = m.Material?.Code?.Value ?? string.Empty,
+                    MaterialName = m.Material?.Name ?? string.Empty,
+                    UnitOfMeasureName = m.Material?.UnitOfMeasure?.Name ?? string.Empty,
+                    UnitPrice = m.Material?.Costs
+                        .Where(c => c.CostType == CostType.Material &&
+                                    c.StartMonth <= materialUnitPrice.StartMonth &&
+                                    c.EndMonth >= materialUnitPrice.StartMonth)
+                        .Select(c => c.Amount)
+                        .FirstOrDefault() ?? 0,
+                    Norm = m.Norm,
+                    TotalPrice = m.TotalPrice
+                })
+                .ToList()
         };
     }
 }

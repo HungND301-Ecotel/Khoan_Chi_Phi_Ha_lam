@@ -17,11 +17,21 @@ export type Material = {
 	totalPrice: number;
 };
 
+export type MaterialDetailCost = {
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	materialId: string;
+	materialCode: string;
+	materialName: string;
+	unitOfMeasureName: string;
+	unitPrice: number;
+	norm: number;
+	totalPrice: number;
+};
+
 export type MaterialDetail = {
-	costs: Array<{
-		assignmentCodeId: string;
-		totalPrice: number;
-	}>;
+	costs: MaterialDetailCost[];
 	otherMaterialValue?: number;
 };
 
@@ -50,9 +60,6 @@ export type SupportAndDrillingMaterialDetail = {
 	technologyId?: string | null;
 	startMonth: string;
 	endMonth: string;
-	costs: Array<{
-		assignmentCodeId: string;
-		totalPrice: number;
-	}>;
+	costs: MaterialDetailCost[];
 	otherMaterialValue?: number;
 };

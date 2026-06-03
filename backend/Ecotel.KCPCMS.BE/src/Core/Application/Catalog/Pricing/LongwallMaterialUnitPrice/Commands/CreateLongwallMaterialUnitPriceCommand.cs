@@ -4,11 +4,12 @@ using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
+using Application.Dto.Catalog.MaterialUnitPrice;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
-using Mapster;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
 
 namespace Application.Catalog.Pricing.LongwallMaterialUnitPrice.Commands;
@@ -29,6 +30,7 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
     private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
 
     // Valid format: "M =12m", "M =12,7m", "M =12.7m"
     private static readonly Regex InterpolationSeamFaceRegex =
@@ -110,6 +112,8 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
             throw new Exception("Một hoặc nhiều Nhóm vật tư, tài sản không tồn tại.");
         }
 
+        var costs = await ValidateAndMapCostsAsync(request.CreateModel.Costs, cancellationToken);
+
         // --- Referenced entity existence checks ---
         bool longwallParamsTask = await _longwallParametersRepository.AnyAsync(p => p.Id == request.CreateModel.LongwallParametersId);
         bool cuttingThicknessTask = await _cuttingThicknessRepository.AnyAsync(p => p.Id == request.CreateModel.CuttingThicknessId);
@@ -167,7 +171,7 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
                 request.CreateModel.StartMonth,
                 request.CreateModel.EndMonth,
                 request.CreateModel.OtherMaterialValue,
-                request.CreateModel.Costs.Adapt<List<MaterialUnitPriceAssignmentCode>>());
+                costs);
 
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();
@@ -183,5 +187,70 @@ public class CreateLongwallMaterialUnitPriceCommandHandler(
         }
 
         return true;
+    }
+
+    private async Task<List<MaterialUnitPriceAssignmentCode>> ValidateAndMapCostsAsync(
+        IList<MaterialUnitPriceAssignmentCodeDto> costs,
+        CancellationToken cancellationToken)
+    {
+        if (costs.Count == 0)
+        {
+            return [];
+        }
+
+        var missingMaterialIds = costs
+            .Where(cost => !cost.MaterialId.HasValue || cost.MaterialId.Value == Guid.Empty)
+            .ToList();
+        if (missingMaterialIds.Count != 0)
+        {
+            throw new BadRequestException("Vật tư tài sản không được để trống.");
+        }
+
+        var duplicateKeys = costs
+            .GroupBy(cost => new { cost.AssignmentCodeId, cost.MaterialId })
+            .Where(group => group.Count() > 1)
+            .ToList();
+        if (duplicateKeys.Count != 0)
+        {
+            throw new BadRequestException("Không được chọn trùng cặp Nhóm vật tư, tài sản và Vật tư tài sản.");
+        }
+
+        var materialIds = costs
+            .Select(cost => cost.MaterialId!.Value)
+            .Distinct()
+            .ToList();
+
+        var materials = await _materialRepository.GetAllAsync(
+            predicate: material => materialIds.Contains(material.Id),
+            include: query => query.Include(material => material.AssignmentCodeMaterials),
+            disableTracking: true);
+
+        var materialsById = materials.ToDictionary(material => material.Id);
+        var missingIds = materialIds.Where(id => !materialsById.ContainsKey(id)).ToList();
+        if (missingIds.Count != 0)
+        {
+            throw new BadRequestException("Một hoặc nhiều Vật tư tài sản không tồn tại.");
+        }
+
+        foreach (var cost in costs)
+        {
+            var material = materialsById[cost.MaterialId!.Value];
+            var belongsToAssignment =
+                material.AssigmentCodeId == cost.AssignmentCodeId ||
+                material.AssignmentCodeMaterials.Any(link => link.AssignmentCodeId == cost.AssignmentCodeId);
+
+            if (!belongsToAssignment)
+            {
+                throw new BadRequestException("Vật tư tài sản không thuộc Nhóm vật tư, tài sản đã chọn.");
+            }
+        }
+
+        return costs
+            .Select(cost => MaterialUnitPriceAssignmentCode.Create(
+                cost.AssignmentCodeId,
+                cost.TotalPrice,
+                cost.MaterialId!.Value,
+                cost.Norm))
+            .ToList();
     }
 }

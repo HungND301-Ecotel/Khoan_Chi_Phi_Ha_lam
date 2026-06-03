@@ -3,7 +3,6 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MaterialUnitPrice;
 using Domain.Entities.Pricing.MaterialUnitPrice;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -24,7 +23,10 @@ public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitO
                 .Include(u => u.Passport)
                 .Include(u => u.Hardness)
                 .Include(u => u.ProductionProcess)
-                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode),
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Code)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.UnitOfMeasure)
+                .Include(u => u.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         string passportName =
@@ -42,7 +44,24 @@ public class GetTunnelSupportAndDrillingMaterialUnitPriceByIdQueryHandler(IUnitO
             TechnologyId = materialUnitPrice.TechnologyId,
             TotalPrice = materialUnitPrice.TotalPrice,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
-            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
+            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes
+                .Select(m => new MaterialUnitPriceAssignmentCodeDto
+                {
+                    AssignmentCodeId = m.AssignmentCodeId,
+                    AssignmentCode = m.AssignmentCode?.Code?.Value ?? string.Empty,
+                    AssignmentCodeName = m.AssignmentCode?.Name ?? string.Empty,
+                    MaterialId = m.MaterialId,
+                    MaterialCode = m.Material?.Code?.Value ?? string.Empty,
+                    MaterialName = m.Material?.Name ?? string.Empty,
+                    UnitOfMeasureName = m.Material?.UnitOfMeasure?.Name ?? string.Empty,
+                    UnitPrice = m.Material != null ? m.Material.GetMaterialCost(materialUnitPrice.StartMonth) : 0,
+                    Norm = m.Norm,
+                    TotalPrice = m.TotalPrice
+                })
+                .OrderBy(m => m.AssignmentCode)
+                .ThenBy(m => m.MaterialCode)
+                .ThenBy(m => m.MaterialName)
+                .ToList()
         };
     }
 }

@@ -33,14 +33,33 @@ export const longwallMaterialFormSchema = z.object({
 			assignmentCodeId: z
 				.string()
 				.nonempty({ error: 'ID Nhóm vật tư, tài sản không được để trống' }),
+			materialId: z.string().nonempty({ error: 'ID vật tư không được để trống' }),
+			norm: z
+				.any()
+				.transform((val) => Number(val))
+				.refine((val) => !Number.isNaN(val), {
+					message: 'Định mức không được để trống',
+				}),
 			totalPrice: z
-				.number({ message: 'Đơn giá không được để trống' })
-				.min(0, { message: 'Đơn giá phải lớn hơn hoặc bằng 0' }),
+				.any()
+				.transform((val) => Number(val))
+				.refine((val) => !Number.isNaN(val) && val >= 0, {
+					message: 'Đơn giá vật liệu phải lớn hơn hoặc bằng 0',
+				}),
 		}),
 	),
 	otherMaterialValue: z
-		.number({ message: 'Tỷ lệ vật tư khác không được để trống' })
-		.min(0, { message: 'Tỷ lệ phải lớn hơn hoặc bằng 0' })
+		.any()
+		.transform((val) =>
+			val === undefined || val === null || val === '' ? undefined : Number(val),
+		)
+		.refine(
+			(val) =>
+				val === undefined || (!Number.isNaN(val) && val >= 1 && val <= 100),
+			{
+				message: 'Định mức vật tư khác phải từ 1 đến 100 (%)',
+			},
+		)
 		.optional(),
 });
 

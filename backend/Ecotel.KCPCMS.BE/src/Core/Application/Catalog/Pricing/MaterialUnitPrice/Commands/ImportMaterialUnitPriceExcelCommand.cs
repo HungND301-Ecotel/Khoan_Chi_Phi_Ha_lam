@@ -33,6 +33,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
     private readonly IWriteRepository<InsertItem> _insertItemRepository = unitOfWork.GetRepository<InsertItem>();
     private readonly IWriteRepository<SupportStep> _supportStepRepository = unitOfWork.GetRepository<SupportStep>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     public async Task<bool> Handle(ImportMaterialUnitPriceExcelCommand request, CancellationToken cancellationToken)
@@ -52,11 +53,19 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
+        var materials = await _materialRepository.GetAllAsync(
+            include: m => m
+                .Include(x => x.Code)
+                .Include(x => x.Costs)
+                .Include(x => x.AssignmentCodeMaterials),
+            disableTracking: true);
 
         var assignmentLookup = BuildAssignmentLookup(assignments);
+        var materialLookup = BuildMaterialLookup(materials);
+        var materialById = materials.ToDictionary(m => m.Id);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, materialLookup, importErrors);
         ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
@@ -154,11 +163,13 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                     .Select(c => new MaterialUnitPriceAssignmentCodeDto
                     {
                         AssignmentCodeId = c.AssignmentCodeId,
-                        TotalPrice = c.TotalPrice
+                        MaterialId = c.MaterialId,
+                        Norm = c.Norm,
+                        TotalPrice = (materialById.TryGetValue(c.MaterialId, out var material)
+                                ? material.GetMaterialCost(startMonth)
+                                : 0) * c.Norm
                     })
                     .ToList();
-                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
-
                 if (dbCodeLookup.TryGetValue(code, out var existingEntity))
                 {
                     if (existingEntity.MaterialUnitPriceAssignmentCodes.Any())
@@ -177,7 +188,13 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                         startMonth,
                         endMonth,
                         row.OtherMaterialValue,
-                        costs,
+                        costDtos
+                            .Select(cost => MaterialUnitPriceAssignmentCode.Create(
+                                cost.AssignmentCodeId,
+                                cost.TotalPrice,
+                                cost.MaterialId,
+                                cost.Norm))
+                            .ToList(),
                         request.Type);
                     updateList.Add(existingEntity);
                     matchedCodes.Add(code);
@@ -195,7 +212,13 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                         startMonth,
                         endMonth,
                         row.OtherMaterialValue,
-                        costs,
+                        costDtos
+                            .Select(cost => MaterialUnitPriceAssignmentCode.Create(
+                                cost.AssignmentCodeId,
+                                cost.TotalPrice,
+                                cost.MaterialId,
+                                cost.Norm))
+                            .ToList(),
                         request.Type);
                     addList.Add(newEntity);
                     matchedCodes.Add(code);
@@ -256,6 +279,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
     private static List<ParsedMaterialUnitPriceRow> ParseFromCustomTemplate(
         Stream fileStream,
         IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
+        IReadOnlyDictionary<string, MaterialLookupItem> materialLookup,
         ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
@@ -268,7 +292,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
         const int insertItemCol = 5;
         const int supportStepCol = 6;
         const int assignmentCol = 7;
-        const int passportStartCol = 8;
+        const int materialCol = 8;
+        const int passportStartCol = 9;
 
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
@@ -297,6 +322,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
         for (var row = 3; row <= lastRow; row++)
         {
             var assignmentText = worksheet.Cell(row, assignmentCol).GetString().Trim();
+            var materialText = worksheet.Cell(row, materialCol).GetString().Trim();
             var startMonth = worksheet.Cell(row, startMonthCol).GetString().Trim();
             var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
             var processName = worksheet.Cell(row, processCol).GetString().Trim();
@@ -305,7 +331,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
             var supportStepName = worksheet.Cell(row, supportStepCol).GetString().Trim();
 
             var passportCodeByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (string.IsNullOrWhiteSpace(assignmentText))
+            if (string.IsNullOrWhiteSpace(assignmentText) && string.IsNullOrWhiteSpace(materialText))
             {
                 foreach (var passport in passportPositions)
                 {
@@ -394,6 +420,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
 
             var isOtherMaterial = IsOtherMaterialAssignment(assignmentText);
             AssignmentLookupItem? assignment = null;
+            MaterialLookupItem? material = null;
 
             if (!isOtherMaterial)
             {
@@ -403,6 +430,27 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                     importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không tồn tại ở dòng {row}.");
                     continue;
                 }
+
+                var materialKey = NormalizeLookupValue(materialText);
+                if (!materialLookup.TryGetValue(materialKey, out material))
+                {
+                    importErrors.Add($"Vật tư tài sản '{materialText}' không tồn tại ở dòng {row}.");
+                    continue;
+                }
+
+                if (!material.AssignmentCodeIds.Contains(assignment.Id))
+                {
+                    importErrors.Add(
+                        $"Vật tư tài sản '{materialText}' không thuộc nhóm vật tư, tài sản '{assignmentText}' ở dòng {row}.");
+                    continue;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(materialText) &&
+                     NormalizeLookupValue(materialText) != NormalizeLookupValue(OtherMaterialDisplay) &&
+                     NormalizeLookupValue(materialText) != "VTK")
+            {
+                importErrors.Add($"Vật tư tài sản '{materialText}' không hợp lệ cho dòng VTK ở dòng {row}.");
+                continue;
             }
 
             foreach (var passport in passportPositions)
@@ -413,9 +461,9 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
                     continue;
                 }
 
-                if (!TryParseDouble(ttCell, out var totalPrice))
+                if (!TryParseDouble(ttCell, out var norm))
                 {
-                    importErrors.Add($"Giá trị TT không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
+                    importErrors.Add($"Giá trị định mức không hợp lệ tại dòng {row}, cột {passport.valueCol}.");
                     continue;
                 }
 
@@ -446,19 +494,24 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
 
                 if (isOtherMaterial)
                 {
-                    aggregate.AddOtherMaterial(totalPrice);
+                    aggregate.AddOtherMaterial(norm);
                     continue;
                 }
 
-                if (assignment == null)
+                if (assignment == null || material == null)
                 {
-                    importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không hợp lệ ở dòng {row}.");
+                    importErrors.Add($"Dòng dữ liệu vật tư không hợp lệ ở dòng {row}.");
                     continue;
                 }
 
                 try
                 {
-                    aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                    aggregate.AddAssignmentCost(
+                        assignment.Id,
+                        material.Id,
+                        norm,
+                        assignment.Display,
+                        material.Display);
                 }
                 catch (BadRequestException ex)
                 {
@@ -495,7 +548,47 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
         return lookup;
     }
 
+    private static IReadOnlyDictionary<string, MaterialLookupItem> BuildMaterialLookup(
+        IEnumerable<Domain.Entities.Index.Material> materials)
+    {
+        var lookup = new Dictionary<string, MaterialLookupItem>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var material in materials)
+        {
+            var code = material.Code?.Value?.Trim() ?? string.Empty;
+            var name = material.Name?.Trim() ?? string.Empty;
+            var display = BuildMaterialDisplay(code, name);
+            var assignmentCodeIds = material.AssignmentCodeMaterials
+                .Select(link => link.AssignmentCodeId)
+                .Distinct()
+                .ToHashSet();
+            var item = new MaterialLookupItem(material.Id, display, assignmentCodeIds);
+
+            if (!string.IsNullOrWhiteSpace(code))
+            {
+                lookup.TryAdd(NormalizeLookupValue(code), item);
+            }
+
+            if (!string.IsNullOrWhiteSpace(display))
+            {
+                lookup.TryAdd(NormalizeLookupValue(display), item);
+            }
+        }
+
+        return lookup;
+    }
+
     private static string BuildAssignmentDisplay(string code, string name)
+    {
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string BuildMaterialDisplay(string code, string name)
     {
         if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
         {
@@ -578,6 +671,7 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
     }
 
     private sealed record AssignmentLookupItem(Guid Id, string Display);
+    private sealed record MaterialLookupItem(Guid Id, string Display, HashSet<Guid> AssignmentCodeIds);
 
     private sealed record MaterialRowContext(
         string StartMonth,
@@ -608,7 +702,8 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
         string startMonth,
         string endMonth)
     {
-        private readonly Dictionary<Guid, AssignmentCostImportItem> _assignmentCostMap = new();
+        private readonly Dictionary<string, AssignmentCostImportItem> _assignmentCostMap = new(StringComparer.OrdinalIgnoreCase);
+        private bool _hasOtherMaterial;
 
         public string Code { get; } = code;
         public string ProcessName { get; } = processName;
@@ -623,20 +718,32 @@ public class ImportMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, 
 
         public void AddOtherMaterial(double amount)
         {
+            if (_hasOtherMaterial)
+            {
+                throw new BadRequestException(
+                    $"VTK - Vật tư khác bị trùng cho mã định mức vật liệu '{Code}'.");
+            }
+            _hasOtherMaterial = true;
             OtherMaterialValue += amount;
         }
 
-        public void AddAssignmentCost(Guid assignmentCodeId, double amount, string assignmentDisplay)
+        public void AddAssignmentCost(
+            Guid assignmentCodeId,
+            Guid materialId,
+            double norm,
+            string assignmentDisplay,
+            string materialDisplay)
         {
-            if (_assignmentCostMap.ContainsKey(assignmentCodeId))
+            var key = $"{assignmentCodeId}:{materialId}";
+            if (_assignmentCostMap.ContainsKey(key))
             {
                 throw new BadRequestException(
-                    $"Nhóm vật tư, tài sản '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
+                    $"Dòng vật tư '{materialDisplay}' trong nhóm '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
             }
 
-            _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, amount);
+            _assignmentCostMap[key] = new AssignmentCostImportItem(assignmentCodeId, materialId, norm);
         }
     }
 
-    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, double TotalPrice);
+    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, Guid MaterialId, double Norm);
 }

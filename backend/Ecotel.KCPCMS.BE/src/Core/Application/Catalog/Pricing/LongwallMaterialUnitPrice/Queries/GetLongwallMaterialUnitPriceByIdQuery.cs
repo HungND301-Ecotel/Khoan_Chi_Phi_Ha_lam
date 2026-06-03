@@ -5,7 +5,6 @@ using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.LongwallMaterialUnitPrice;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.MaterialUnitPrice;
-using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -29,15 +28,56 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
                 .Include(u => u.CuttingThickness)
                 .Include(u => u.SeamFace)
                 .Include(u => u.Technology)
-                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code),
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.AssignmentCode).ThenInclude(m => m.Code)
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Code)
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.UnitOfMeasure)
+                .Include(m => m.MaterialUnitPriceAssignmentCodes).ThenInclude(m => m.Material).ThenInclude(m => m.Costs),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+
+        var costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes
+            .Select(cost =>
+            {
+                var unitPrice = cost.Material?.Costs
+                    .FirstOrDefault(item =>
+                        item.StartMonth <= materialUnitPrice.StartMonth &&
+                        item.EndMonth >= materialUnitPrice.StartMonth)
+                    ?.Amount ?? 0;
+
+                return new MaterialUnitPriceAssignmentCodeDto
+                {
+                    AssignmentCodeId = cost.AssignmentCodeId,
+                    AssignmentCode = cost.AssignmentCode?.Code?.Value ?? string.Empty,
+                    AssignmentCodeName = cost.AssignmentCode?.Name ?? string.Empty,
+                    MaterialId = cost.MaterialId,
+                    MaterialCode = cost.Material?.Code?.Value ?? string.Empty,
+                    MaterialName = cost.Material?.Name ?? string.Empty,
+                    UnitOfMeasureName = cost.Material?.UnitOfMeasure?.Name ?? string.Empty,
+                    UnitPrice = unitPrice,
+                    Norm = cost.Norm,
+                    TotalPrice = cost.TotalPrice,
+                };
+            })
+            .OrderBy(cost => cost.AssignmentCode)
+            .ThenBy(cost => cost.MaterialCode)
+            .ThenBy(cost => cost.MaterialName)
+            .ToList();
 
         return new LongwallMaterialUnitPriceDetailDto
         {
             Id = materialUnitPrice.Id,
             Code = materialUnitPrice.Code.Value,
-            CuttingThickness = materialUnitPrice.CuttingThickness.Adapt<CuttingThicknessDto>(),
-            LongwallParameters = materialUnitPrice.LongwallParameters.Adapt<LongwallParametersDto>(),
+            CuttingThickness = new CuttingThicknessDto
+            {
+                Id = materialUnitPrice.CuttingThickness!.Id,
+                Value = materialUnitPrice.CuttingThickness.Value,
+            },
+            LongwallParameters = new LongwallParametersDto
+            {
+                Id = materialUnitPrice.LongwallParameters!.Id,
+                Llc = materialUnitPrice.LongwallParameters.Llc,
+                Lkc = materialUnitPrice.LongwallParameters.Lkc,
+                Mk = materialUnitPrice.LongwallParameters.Mk,
+            },
             SeamFaceId = materialUnitPrice.SeamFaceId,
             TechnologyId = materialUnitPrice.TechnologyId,
             PowerId = materialUnitPrice.PowerId,
@@ -48,7 +88,7 @@ public class GetLongwallMaterialUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork
             StartMonth = materialUnitPrice.StartMonth,
             EndMonth = materialUnitPrice.EndMonth,
             OtherMaterialValue = materialUnitPrice.OtherMaterialvalue,
-            Costs = materialUnitPrice.MaterialUnitPriceAssignmentCodes.OrderBy(m => m.AssignmentCode.Code.Value).ThenBy(m => m.AssignmentCode.Name).Adapt<List<MaterialUnitPriceAssignmentCodeDto>>()
+            Costs = costs
         };
     }
 }
