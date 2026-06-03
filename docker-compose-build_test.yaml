@@ -6,18 +6,18 @@
 # b. Push:  $ docker compose -f docker-compose-build.yaml push
 #####
 services:
-  khl_reverse_proxy_service_test:
+  khl_reverseproxy_test:
     build:
       context: ./reverse_proxy
     image: ${REGISTRY}/khl_reverse_proxy_img_test:${VERSION}
 
-  khl_backend_service_test:
+  khl_backend_test:
     build:
       context: ./backend/Ecotel.KCPCMS.BE
       dockerfile: src/Presentation/Host/Dockerfile
     image: ${REGISTRY}/khl_ecotel_backend_img_test:${VERSION}
 
-  khl_frontend_service_test:
+  khl_frontend_test:
     build:
       context: ./frontend
     image: ${REGISTRY}/khl_ecotel_frontend_img_test:${VERSION}

@@ -85,7 +85,7 @@ jobs:
             docker compose -f test-docker-compose.yaml down # always down first
             docker ps
 
-      - name: Deploy to Staging via SSH
+      - name: Deploy to Test via SSH
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.RELEASE_HOST }}
