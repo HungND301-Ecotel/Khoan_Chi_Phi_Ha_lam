@@ -53,7 +53,8 @@ release:
 
 # Docker compose build & publishing to Dockerhub for test
 test:
-	@echo "REGISTRY=${REGISTRY}\nVERSION=test-dev-${commit_id}" > .env	@echo "Docker compose build from a file..."
+	@printf "REGISTRY=%s\nVERSION=%s\n" "${REGISTRY}" "test-dev-${commit_id}" > .env
+	@echo "Docker compose build from a file..."
 	docker compose -f docker-compose-build_test.yaml build \
 		--parallel \
 		--build-arg NGINX_CONF=nginx_test.conf
