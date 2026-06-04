@@ -56,6 +56,8 @@ public sealed class LongwallMaterialUnitPricesByPaginationSpec
             Costs = m.MaterialUnitPriceAssignmentCodes.Select(m => new MaterialUnitPriceAssignmentCodeDto
             {
                 AssignmentCodeId = m.AssignmentCodeId,
+                MaterialId = m.MaterialId,
+                Norm = m.Norm,
                 TotalPrice = m.TotalPrice
             })
         });

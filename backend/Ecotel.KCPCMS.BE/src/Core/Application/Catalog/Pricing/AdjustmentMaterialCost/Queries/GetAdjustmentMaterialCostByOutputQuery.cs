@@ -130,7 +130,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
                 .FirstOrDefault();
         }
 
-        var materialCost = SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice) + plannedMaterialCost.MaterialUnitPrice.OtherMaterialvalue;
+        var materialCost = plannedMaterialCost.MaterialUnitPrice.ApplyOtherMaterialValue(
+            SumMaterialUnitPriceCost(plannedMaterialCost.MaterialUnitPrice));
         if (targetHardnessId.HasValue
             && plannedMaterialCost.MaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialForCost)
         {
@@ -141,7 +142,8 @@ public class GetAdjustmentMaterialCostByOutputQueryHandler(IUnitOfWork unitOfWor
 
             if (targetMaterial != null)
             {
-                materialCost = SumMaterialUnitPriceCost(targetMaterial) + targetMaterial.OtherMaterialvalue;
+                materialCost = targetMaterial.ApplyOtherMaterialValue(
+                    SumMaterialUnitPriceCost(targetMaterial));
             }
         }
 

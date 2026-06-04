@@ -712,6 +712,9 @@ public class ApplicationDbContext(
             .WithOne(h => h.MaterialUnitPrice)
             .HasForeignKey(s => s.MaterialUnitPriceId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MaterialUnitPrice>()
+            .Navigation(s => s.MaterialUnitPriceAssignmentCodes)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         //TunnelExcavationMaterialUnitPrice - Đào lò specific configuration
         modelBuilder.Entity<TunnelExcavationMaterialUnitPrice>()
@@ -812,9 +815,16 @@ public class ApplicationDbContext(
 
         //MaterialUnitPriceAssignmentCode table
         modelBuilder.Entity<MaterialUnitPriceAssignmentCode>()
-            .HasIndex(e => new { e.MaterialUnitPriceId, e.AssignmentCodeId })
+            .HasIndex(e => new { e.MaterialUnitPriceId, e.AssignmentCodeId, e.MaterialId })
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<MaterialUnitPriceAssignmentCode>()
+            .HasIndex(e => e.MaterialId);
+        modelBuilder.Entity<MaterialUnitPriceAssignmentCode>()
+            .HasOne(e => e.Material)
+            .WithMany()
+            .HasForeignKey(e => e.MaterialId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         //MaintainUnitPrice table
         modelBuilder.Entity<MaintainUnitPrice>()

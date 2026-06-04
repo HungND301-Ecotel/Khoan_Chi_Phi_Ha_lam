@@ -20,6 +20,7 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<Technology> _technologyRepository = unitOfWork.GetRepository<Technology>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
 
     public async Task<byte[]> Handle(ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQuery request, CancellationToken cancellationToken)
     {
@@ -32,7 +33,10 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
                 .Include(s => s.Code)
                 .Include(s => s.MaterialUnitPriceAssignmentCodes)
                     .ThenInclude(c => c.AssignmentCode)
-                        .ThenInclude(a => a.Code),
+                        .ThenInclude(a => a.Code)
+                .Include(s => s.MaterialUnitPriceAssignmentCodes)
+                    .ThenInclude(c => c.Material)
+                        .ThenInclude(m => m.Code),
             disableTracking: true);
 
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
@@ -42,8 +46,17 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
+        var materials = await _materialRepository.GetAllAsync(
+            include: m => m.Include(x => x.Code),
+            disableTracking: true);
         var assignmentOptions = assignments
             .Select(GetAssignmentDisplayName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+        var materialOptions = materials
+            .Select(GetMaterialDisplayName)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
@@ -51,6 +64,10 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         if (!assignmentOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
         {
             assignmentOptions.Add(OtherMaterialDisplay);
+        }
+        if (!materialOptions.Contains(OtherMaterialDisplay, StringComparer.OrdinalIgnoreCase))
+        {
+            materialOptions.Add(OtherMaterialDisplay);
         }
 
         using var workbook = new XLWorkbook();
@@ -62,7 +79,8 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         const int hardnessCol = 4;
         const int technologyCol = 5;
         const int assignmentCol = 6;
-        const int passportStartCol = 7;
+        const int materialCol = 7;
+        const int passportStartCol = 8;
 
         var fixedHeaders = new[]
         {
@@ -71,7 +89,8 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
             (processCol, "Công đoạn sản xuất"),
             (hardnessCol, "Độ kiên cố than đá"),
             (technologyCol, "Công nghệ"),
-            (assignmentCol, "Nhóm vật tư, tài sản")
+            (assignmentCol, "Nhóm vật tư, tài sản"),
+            (materialCol, "Vật tư tài sản")
         };
 
         var headerWidthInstructions = new List<(int[] columns, string headerText)>();
@@ -144,10 +163,12 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
                 .GroupBy(GetPassportDisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var assignmentRows = BuildAssignmentRows(group, assignmentOptions);
-            for (var i = 0; i < assignmentRows.Count; i++)
+            var detailRows = BuildDetailRows(group, assignmentOptions);
+            for (var i = 0; i < detailRows.Count; i++)
             {
-                worksheet.Cell(baseRow + i + 1, assignmentCol).Value = assignmentRows[i];
+                var detailRow = baseRow + i + 1;
+                worksheet.Cell(detailRow, assignmentCol).Value = detailRows[i].AssignmentDisplay;
+                worksheet.Cell(detailRow, materialCol).Value = detailRows[i].MaterialDisplay;
             }
 
             foreach (var passport in passportColumns)
@@ -160,22 +181,22 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
                 worksheet.Cell(baseRow, passport.valueCol).Value = entity.Code?.Value ?? string.Empty;
                 var costMap = BuildCostMap(entity);
 
-                for (var i = 0; i < assignmentRows.Count; i++)
+                for (var i = 0; i < detailRows.Count; i++)
                 {
-                    var assignmentDisplay = assignmentRows[i];
-                    if (string.IsNullOrWhiteSpace(assignmentDisplay))
+                    var detailRow = detailRows[i];
+                    if (string.IsNullOrWhiteSpace(detailRow.Key))
                     {
                         continue;
                     }
 
-                    if (costMap.TryGetValue(assignmentDisplay, out var amount))
+                    if (costMap.TryGetValue(detailRow.Key, out var amount))
                     {
                         worksheet.Cell(baseRow + i + 1, passport.valueCol).Value = amount;
                     }
                 }
             }
 
-            rowIndex += assignmentRows.Count + 1;
+            rowIndex += detailRows.Count + 1;
         }
 
         var lastDataRow = Math.Max(rowIndex - 1, 100);
@@ -183,8 +204,9 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         AddDropdownValidation(workbook, worksheet, hardnessCol, hardnesses.ToList(), lastDataRow, 2);
         AddDropdownValidation(workbook, worksheet, technologyCol, technologies.ToList(), lastDataRow, 3);
         AddDropdownValidation(workbook, worksheet, assignmentCol, assignmentOptions, lastDataRow, 4);
+        AddDropdownValidation(workbook, worksheet, materialCol, materialOptions, lastDataRow, 5);
 
-        var lastHeaderCol = Math.Max(technologyCol, passportStartCol + passportList.Count - 1);
+        var lastHeaderCol = Math.Max(materialCol, passportStartCol + passportList.Count - 1);
         foreach (var (columns, text) in headerWidthInstructions)
         {
             ApplyColumnWidthForHeader(worksheet, columns, text);
@@ -208,27 +230,35 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         return stream.ToArray();
     }
 
-    private static List<string> BuildAssignmentRows(
+    private static List<ExportDetailRow> BuildDetailRows(
         IEnumerable<TunnelSupportAndDrillingMaterialUnitPrice> entities,
         IReadOnlyList<string> assignmentOptions)
     {
-        var allAssignments = entities
+        var allRows = entities
             .SelectMany(entity => BuildCostMap(entity).Keys)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (!allAssignments.Any())
+        if (!allRows.Any())
         {
-            return [string.Empty, string.Empty, string.Empty, OtherMaterialDisplay];
+            return
+            [
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(string.Empty, string.Empty, string.Empty),
+                new ExportDetailRow(OtherMaterialDisplay, OtherMaterialDisplay, BuildDetailKey(OtherMaterialDisplay, OtherMaterialDisplay))
+            ];
         }
 
         var optionIndex = assignmentOptions
             .Select((value, index) => new { value, index })
             .ToDictionary(x => x.value, x => x.index, StringComparer.OrdinalIgnoreCase);
 
-        return allAssignments
-            .OrderBy(value => optionIndex.TryGetValue(value, out var index) ? index : int.MaxValue)
-            .ThenBy(value => value, StringComparer.OrdinalIgnoreCase)
+        return allRows
+            .Select(ParseDetailKey)
+            .OrderBy(value => optionIndex.TryGetValue(value.AssignmentDisplay, out var index) ? index : int.MaxValue)
+            .ThenBy(value => value.AssignmentDisplay, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(value => value.MaterialDisplay, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -239,17 +269,18 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         foreach (var item in entity.MaterialUnitPriceAssignmentCodes)
         {
             var assignmentDisplay = GetAssignmentDisplayName(item);
-            if (string.IsNullOrWhiteSpace(assignmentDisplay))
+            var materialDisplay = GetMaterialDisplayName(item.Material);
+            if (string.IsNullOrWhiteSpace(assignmentDisplay) || string.IsNullOrWhiteSpace(materialDisplay))
             {
                 continue;
             }
 
-            map[assignmentDisplay] = item.TotalPrice;
+            map[BuildDetailKey(assignmentDisplay, materialDisplay)] = item.Norm;
         }
 
         if (entity.OtherMaterialvalue > 0)
         {
-            map[OtherMaterialDisplay] = entity.OtherMaterialvalue;
+            map[BuildDetailKey(OtherMaterialDisplay, OtherMaterialDisplay)] = entity.OtherMaterialvalue;
         }
 
         return map;
@@ -266,6 +297,35 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
         }
 
         return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string GetMaterialDisplayName(Domain.Entities.Index.Material? material)
+    {
+        if (material == null)
+        {
+            return string.Empty;
+        }
+
+        var code = material.Code?.Value?.Trim() ?? string.Empty;
+        var name = material.Name?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
+            return $"{code} - {name}";
+        }
+
+        return !string.IsNullOrWhiteSpace(code) ? code : name;
+    }
+
+    private static string BuildDetailKey(string assignmentDisplay, string materialDisplay)
+        => $"{assignmentDisplay}|||{materialDisplay}";
+
+    private static ExportDetailRow ParseDetailKey(string key)
+    {
+        var parts = key.Split("|||", 2, StringSplitOptions.None);
+        var assignmentDisplay = parts.ElementAtOrDefault(0) ?? string.Empty;
+        var materialDisplay = parts.ElementAtOrDefault(1) ?? string.Empty;
+        return new ExportDetailRow(assignmentDisplay, materialDisplay, key);
     }
 
     private static string GetAssignmentDisplayName(AssignmentCode assignment)
@@ -347,4 +407,9 @@ public class ExportExcelTunnelSupportAndDrillingMaterialUnitPriceQueryHandler(IU
 
         return $"H/c {data.Passport.Name}; {data.Passport.Sd}; {data.Passport.Sc}";
     }
+
+    private sealed record ExportDetailRow(
+        string AssignmentDisplay,
+        string MaterialDisplay,
+        string Key);
 }

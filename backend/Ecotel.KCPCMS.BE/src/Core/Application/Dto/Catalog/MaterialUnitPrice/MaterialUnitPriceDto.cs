@@ -71,6 +71,14 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
     public class MaterialUnitPriceAssignmentCodeDto
     {
         public DefaultIdType AssignmentCodeId { get; set; }
+        public string AssignmentCode { get; set; } = string.Empty;
+        public string AssignmentCodeName { get; set; } = string.Empty;
+        public DefaultIdType? MaterialId { get; set; }
+        public string MaterialCode { get; set; } = string.Empty;
+        public string MaterialName { get; set; } = string.Empty;
+        public string UnitOfMeasureName { get; set; } = string.Empty;
+        public double UnitPrice { get; set; }
+        public double Norm { get; set; }
         public double TotalPrice { get; set; }
     }
 

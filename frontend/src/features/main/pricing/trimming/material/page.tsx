@@ -2,22 +2,21 @@ import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
-import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Insert } from '@/features/main/catalog/parameter/insert/columns';
 import { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import { Step } from '@/features/main/catalog/parameter/step/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { MaterialForm } from '@/features/main/pricing/trimming/material/form';
 import {
-	ExpandMaterialAssignmentCost,
+	ExpandMaterialCostRow,
 	ExpandMaterialDetail,
 	MAIN_PRICING_MATERIAL_COLUMNS,
 	MAIN_PRICING_MATERIAL_DETAIL_COLUMNS,
-	MAIN_PRICING_MATERIAL_EXPAND_SUMMARY_COLUMNS,
+	MAIN_PRICING_MATERIAL_EXPAND_COLUMNS,
 } from '@/features/main/pricing/trimming/material/columns';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
-import { Material } from './type';
+import { Material, MaterialDetail } from './type';
 
 export function MainPricingTrimmingMaterialPage() {
 	const popup = usePopup();
@@ -89,7 +88,7 @@ export function MainPricingTrimmingMaterialPage() {
 
 function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 	const [detail, setDetail] = useState<ExpandMaterialDetail>();
-	const [costs, setCosts] = useState<ExpandMaterialAssignmentCost[]>([]);
+	const [costs, setCosts] = useState<ExpandMaterialCostRow[]>([]);
 
 	useEffect(() => {
 		if (!row) return;
@@ -99,35 +98,51 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 			api.get<Strength>(API.CATALOG.PARAMETER.STRENGTH.DETAIL(row.hardnessId)),
 			api.get<Insert>(API.CATALOG.PARAMETER.INSERT.DETAIL(row.insertItemId)),
 			api.get<Step>(API.CATALOG.PARAMETER.STEP.DETAIL(row.supportStepId)),
-			api.get<{
-				costs: Array<{ assignmentCodeId: string; totalPrice: number }>;
-			}>(API.PRICING.MATERIAL.TRIMMING.DETAIL(row.id)),
-			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST),
+			api.get<MaterialDetail>(API.PRICING.MATERIAL.TRIMMING.DETAIL(row.id)),
 		]);
 
 		promises.then(
-			([passport, strength, insert, step, materialDetail, contractCodes]) => {
+			([passport, strength, insert, step, materialDetail]) => {
 				setDetail({
 					passport: passport.result,
 					strength: strength.result,
 					insert: insert.result,
 					step: step.result,
 				});
-
-				const contractMap = new Map(
-					contractCodes.result.data.map((item) => [item.id, item]),
-				);
+				const materialCosts = (materialDetail.result.costs ?? []).map((item) => ({
+						assignmentCodeId: item.assignmentCodeId,
+						assignmentCode: item.assignmentCode,
+						assignmentCodeName: item.assignmentCodeName,
+						materialId: item.materialId,
+						materialCode: item.materialCode,
+						materialName: item.materialName,
+						unitPrice: item.unitPrice,
+						norm: item.norm,
+						totalPrice: item.totalPrice,
+					}));
+				const otherMaterialValue = materialDetail.result.otherMaterialValue;
+				const vtkTotal =
+					materialCosts.reduce((sum, item) => sum + item.totalPrice, 0) *
+					(Number(otherMaterialValue) || 0) /
+					100;
 
 				setCosts(
-					(materialDetail.result.costs ?? []).map((item) => {
-						const contract = contractMap.get(item.assignmentCodeId);
-						return {
-							assignmentCodeId: item.assignmentCodeId,
-							assignmentCode: contract?.code ?? '',
-							assignmentCodeName: contract?.name ?? '',
-							totalPrice: item.totalPrice,
-						};
-					}),
+					otherMaterialValue === undefined || otherMaterialValue === null
+						? materialCosts
+						: [
+								...materialCosts,
+								{
+									assignmentCodeId: 'VTK',
+									assignmentCode: 'VTK',
+									assignmentCodeName: 'Vật tư khác',
+									materialId: 'VTK',
+									materialCode: 'VTK',
+									materialName: 'Vật tư khác',
+									unitPrice: null,
+									norm: `${otherMaterialValue}%`,
+									totalPrice: vtkTotal,
+								},
+							],
 				);
 			},
 		);
@@ -150,7 +165,7 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 			<div className='bg-border h-0.5' />
 
 			<DataTable
-				columns={MAIN_PRICING_MATERIAL_EXPAND_SUMMARY_COLUMNS}
+				columns={MAIN_PRICING_MATERIAL_EXPAND_COLUMNS}
 				items={costs}
 				hasActions={false}
 				hasPagination={false}

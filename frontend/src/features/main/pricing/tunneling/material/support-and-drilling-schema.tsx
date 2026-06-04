@@ -25,14 +25,21 @@ export const supportAndDrillingFormSchema = z.object({
 			assignmentCodeId: z
 				.string()
 				.nonempty({ error: 'ID Nhóm vật tư, tài sản không được để trống' }),
+			materialId: z
+				.string()
+				.nonempty({ error: 'ID Vật tư, tài sản không được để trống' }),
+			norm: z
+				.number({ message: 'Định mức không được để trống' })
+				.min(0, { message: 'Định mức phải lớn hơn hoặc bằng 0' }),
 			totalPrice: z
-				.number({ message: 'Đơn giá không được để trống' })
-				.min(0, { message: 'Đơn giá phải lớn hơn hoặc bằng 0' }),
+				.number({ message: 'Đơn giá vật liệu không hợp lệ' })
+				.min(0, { message: 'Đơn giá vật liệu phải lớn hơn hoặc bằng 0' }),
 		}),
 	),
 	otherMaterialValue: z
 		.number({ message: 'Tỷ lệ vật tư khác không được để trống' })
-		.min(0, { message: 'Tỷ lệ phải lớn hơn hoặc bằng 0' })
+		.min(1, { message: 'Tỷ lệ phải từ 1 đến 100 (%)' })
+		.max(100, { message: 'Tỷ lệ phải từ 1 đến 100 (%)' })
 		.optional(),
 });
 

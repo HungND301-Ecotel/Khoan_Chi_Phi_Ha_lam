@@ -1,0 +1,102 @@
+# Reference:
+# 1. https://github.com/actions/starter-workflows/blob/main/deployments/azure-webapps-node.yml
+name: Build and run tests for staging version
+
+on:
+  pull_request:
+    branches:
+      - main # Trigger when a pull request is opened for 'main'
+
+concurrency:
+  group: build-and-test # ← cùng group thì xếp hàng
+  cancel-in-progress: false # ← không cancel job trước đó
+
+env:
+  WEBAPP_NAME: ECOTEL_KHOAN_HA_LAM # set this to your application's name
+  WEBAPP_PACKAGE_PATH: "." # set this to the path to your web app project, defaults to the repository root
+  NODE_VERSION: "20.x" # set this to the node version to use
+
+# permissions:
+#   contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Working Directory
+        run: pwd
+
+      - name: Create an .env file in frontend for building image
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > ./frontend/.env
+
+      - name: List Files
+        run: ls -laR
+
+      - name: Run Makefiles with Secrets to build anh push docker images to dockerhub
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        run: |
+          make test
+          ls -al .env
+          cat .env
+          cp .env deployment/test/
+
+      - name: Ensure target directory exists
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
+          script: |
+            mkdir -p /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/test
+
+      - name: Transfer docker-compose file to VPS for deployment
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
+          source: deployment/test/*
+          target: "/home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/test"
+          strip_components: 2 # Removes "deployment/test/" folder path!
+
+      - name: Clean up containers and stuff via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
+          script: |
+            # Change to test deployment directory
+            cd /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/test 
+            # Debug info
+            pwd
+            ls -al
+            docker image prune -f
+            docker compose -f test-docker-compose.yaml down # always down first
+            docker ps
+
+      - name: Deploy to Test via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          port: ${{ secrets.RELEASE_SSH_PORT }}
+          script: |
+            ### Change to test deployment directory
+            cd /home/${{ secrets.RELEASE_USER }}/ecotel_khl/deployment/test 
+            ### Clean up unused images
+            docker image prune -f # clean up unused images
+            ### Provide permissions and start the application
+            chmod +x start-app.sh
+            ./start-app.sh

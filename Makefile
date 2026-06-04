@@ -9,6 +9,7 @@
 REGISTRY=ecoteldev
 RELEASE_VERSION=release
 STAGING_VERSION=staging
+TEST_VERSION=test-dev
 TAG_VERSION=$(shell git describe --tags --abbrev=0)
 
 ## Get current branch & commit ID to save to .info file 
@@ -50,6 +51,18 @@ release:
 	echo "$$DOCKER_HUB_ACCESS_TOKEN" | docker login -u "$$DOCKER_HUB_USERNAME" --password-stdin
 	@echo "Docker compose push to a DockerHub image repository for release"
 	docker compose -f docker-compose-build.yaml push
+
+# Docker compose build & publishing to Dockerhub for test
+test:
+	@echo "REGISTRY=${REGISTRY}\nVERSION=${TEST_VERSION}-${TAG_VERSION}-${commit_id}" > .env
+	@echo "Docker compose build from a file..."
+	docker compose -f docker-compose-build_test.yaml build \
+		--parallel \
+		--build-arg NGINX_CONF=nginx_test.conf
+	@echo "Docker login with github secrets"
+	echo "$$DOCKER_HUB_ACCESS_TOKEN" | docker login -u "$$DOCKER_HUB_USERNAME" --password-stdin
+	@echo "Docker compose push to a DockerHub image repository for test"
+	docker compose -f docker-compose-build_test.yaml push
 
 # remove previous images and containers
 clean:
