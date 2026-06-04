@@ -146,26 +146,22 @@ export function ContractCodeForm({
 
 	const allMaterialOptions = useMemo(
 		() =>
-		Object.values(
-			(materials ?? []).reduce<Record<string, MultiSelectOption>>(
-				(acc, material) => {
-					if (
-						!material.id ||
-						!material.code ||
-						acc[material.id]
-					) {
-						return acc;
-					}
+			Object.values(
+				(materials ?? []).reduce<Record<string, MultiSelectOption>>(
+					(acc, material) => {
+						if (!material.id || !material.code || acc[material.id]) {
+							return acc;
+						}
 
-					acc[material.id] = {
-						value: material.id,
-						label: `${material.code} - ${material.name}`,
-					};
-					return acc;
-				},
-				{},
-			),
-		).sort((a, b) => a.label.localeCompare(b.label)),
+						acc[material.id] = {
+							value: material.id,
+							label: `${material.code} - ${material.name}`,
+						};
+						return acc;
+					},
+					{},
+				),
+			).sort((a, b) => a.label.localeCompare(b.label)),
 		[materials],
 	);
 
@@ -216,8 +212,8 @@ export function ContractCodeForm({
 			<FormInput
 				control={form.control}
 				name='code'
-				label='Nhóm vật tư, tài sản'
-				placeholder='Nhập nhóm vật tư, tài sản, ví dụ: VLN'
+				label='Mã nhóm vật tư, tài sản'
+				placeholder='Nhập mã nhóm vật tư, tài sản, ví dụ: VLN'
 			/>
 
 			<FormInput
@@ -239,16 +235,16 @@ export function ContractCodeForm({
 			/>
 
 			<MultiSelect
-				label='Vật tư, tài sản'
-				placeholder='Chọn vật tư, tài sản'
+				label='Danh sách vật tư, tài sản'
+				placeholder='Chọn danh sách vật tư, tài sản'
 				values={selectedMaterials}
 				onValuesChange={setSelectedMaterials}
 				options={materialOptions}
 			/>
 
 			<MultiSelect
-				label='Vật tư, tài sản khác'
-				placeholder='Chọn vật tư, tài sản khác'
+				label='Danh sách Vật tư, tài sản khác'
+				placeholder='Chọn danh sách vật tư, tài sản khác'
 				values={selectedOtherMaterials}
 				onValuesChange={setSelectedOtherMaterials}
 				options={otherMaterialOptions}

@@ -19,9 +19,7 @@ function MainCatalogContractCodePage() {
 			const rows = selected.rows.map((row) => row.original.id);
 			await api.delete(API.CATALOG.CONTRACT_CODE.DELETES, rows);
 
-			popup.success(
-				`Đã xoá thành công ${rows.length} nhóm vật tư, tài sản.`,
-			);
+			popup.success(`Đã xoá thành công ${rows.length} nhóm vật tư, tài sản.`);
 			await data.refresh();
 			data.table.toggleAllRowsSelected(false);
 		} catch (error) {
@@ -86,9 +84,9 @@ type ContractCodeDetail = {
 
 function ContractCodeExpand({ row }: ActionDialogProps<ContractCode>) {
 	const [materials, setMaterials] = useState<ContractCodeMaterialDetail[]>([]);
-	const [otherMaterials, setOtherMaterials] = useState<ContractCodeMaterialDetail[]>(
-		[],
-	);
+	const [otherMaterials, setOtherMaterials] = useState<
+		ContractCodeMaterialDetail[]
+	>([]);
 
 	useEffect(() => {
 		if (!row) return;

@@ -108,6 +108,7 @@ export const MAIN_PRICING_MATERIAL_DETAIL_COLUMNS: ColumnDef<ExpandMaterialDetai
 	];
 
 export type ExpandMaterialCostRow = {
+	rowType?: 'group-summary' | 'material-item';
 	assignmentCodeId: string;
 	assignmentCode: string;
 	assignmentCodeName: string;
@@ -124,39 +125,69 @@ export const MAIN_PRICING_MATERIAL_EXPAND_COLUMNS: ColumnDef<ExpandMaterialCostR
 		{
 			accessorKey: 'assignmentCode',
 			header: () => <span>Mã nhóm vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>{row.original.assignmentCode}</span>
+				) : (
+					''
+				),
 		},
 		{
 			accessorKey: 'assignmentCodeName',
 			header: () => <span>Tên nhóm vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? row.original.assignmentCodeName
+					: '',
 		},
 		{
 			accessorKey: 'materialCode',
 			header: () => <span>Mã vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? ''
+					: row.original.materialCode,
 		},
 		{
 			accessorKey: 'materialName',
 			header: () => <span>Tên vật tư, tài sản</span>,
 			cell: ({ row }) => (
-				<span className='whitespace-normal'>{row.original.materialName}</span>
+				<span className='whitespace-normal'>
+					{row.original.rowType === 'group-summary'
+						? ''
+						: row.original.materialName}
+				</span>
 			),
 		},
 		{
 			accessorKey: 'unitPrice',
 			header: 'Đơn giá (đ)',
 			cell: ({ row }) =>
-				row.original.unitPrice === null || row.original.unitPrice === undefined
+				row.original.rowType === 'group-summary' ||
+				row.original.unitPrice === null ||
+				row.original.unitPrice === undefined
 					? ''
 					: formatNumber(row.original.unitPrice),
 		},
 		{
 			accessorKey: 'norm',
 			header: 'Định mức',
-			cell: ({ row }) => String(row.original.norm),
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? ''
+					: String(row.original.norm),
 		},
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá vật liệu (đ/m)',
-			cell: ({ row }) => formatNumber(row.original.totalPrice),
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>
+						{formatNumber(row.original.totalPrice)}
+					</span>
+				) : (
+					formatNumber(row.original.totalPrice)
+				),
 		},
 	];
 

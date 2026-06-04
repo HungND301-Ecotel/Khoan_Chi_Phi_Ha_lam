@@ -185,6 +185,7 @@ export function DataTable<TData>({
 
 	// Check if any column has size defined
 	const hasColumnSize = columns.some((col) => col.size !== undefined);
+	const indexColumnStyle = hasColumnSize ? { width: '64px' } : undefined;
 	const shouldRenderActionBar =
 		hasActions &&
 		(showCreateAction ||
@@ -351,7 +352,11 @@ export function DataTable<TData>({
 									)}
 
 									{isFirstHeaderGroup && hasIndex && (
-										<TableHead className='p-0' rowSpan={totalHeaderGroups}>
+										<TableHead
+											className='p-0'
+											rowSpan={totalHeaderGroups}
+											style={indexColumnStyle}
+										>
 											<div className='inline-flex h-6 w-full cursor-pointer flex-nowrap items-center justify-between gap-2 px-4'>
 												{!onDelete && 'STT'}
 											</div>
@@ -515,7 +520,10 @@ export function DataTable<TData>({
 										)}
 
 										{hasIndex && (
-											<TableCell className='w-10 px-4 py-0'>
+											<TableCell
+												className='w-10 px-4 py-0 whitespace-nowrap'
+												style={indexColumnStyle}
+											>
 												{index + 1}
 											</TableCell>
 										)}

@@ -18,7 +18,101 @@ import {
 } from '@/features/main/pricing/longwall-panel/material/columns';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
-import type { LongwallMaterialDetail } from './type';
+import type { LongwallMaterialDetail, LongwallMaterialDetailCost } from './type';
+
+function buildGroupedExpandRows(
+	costItems: LongwallMaterialDetailCost[],
+	otherMaterialValue?: number | null,
+): ExpandLongwallMaterialCostRow[] {
+	const groupedRows = new Map<
+		string,
+		{
+			assignmentCodeId: string;
+			assignmentCode: string;
+			assignmentCodeName: string;
+			items: ExpandLongwallMaterialCostRow[];
+		}
+	>();
+
+	costItems.forEach((item) => {
+		const groupKey =
+			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+
+		if (!groupedRows.has(groupKey)) {
+			groupedRows.set(groupKey, {
+				assignmentCodeId: item.assignmentCodeId || groupKey,
+				assignmentCode: item.assignmentCode,
+				assignmentCodeName: item.assignmentCodeName,
+				items: [],
+			});
+		}
+
+		groupedRows.get(groupKey)?.items.push({
+			rowType: 'material-item',
+			assignmentCodeId: item.assignmentCodeId,
+			assignmentCode: item.assignmentCode,
+			assignmentCodeName: item.assignmentCodeName,
+			materialId: item.materialId,
+			materialCode: item.materialCode,
+			materialName: item.materialName,
+			unitOfMeasureName: item.unitOfMeasureName,
+			unitPrice: item.unitPrice,
+			norm: item.norm,
+			totalPrice: item.totalPrice,
+		});
+	});
+
+	const rows = Array.from(groupedRows.values()).flatMap((group) => {
+		const groupTotal = group.items.reduce(
+			(sum, item) => sum + Number(item.totalPrice || 0),
+			0,
+		);
+
+		return [
+			{
+				rowType: 'group-summary' as const,
+				assignmentCodeId: group.assignmentCodeId,
+				assignmentCode: group.assignmentCode,
+				assignmentCodeName: group.assignmentCodeName,
+				materialId: `group-${group.assignmentCodeId}`,
+				materialCode: '',
+				materialName: '',
+				unitOfMeasureName: '',
+				unitPrice: null,
+				norm: '',
+				totalPrice: groupTotal,
+			},
+			...group.items,
+		];
+	});
+
+	if (otherMaterialValue === undefined || otherMaterialValue === null) {
+		return rows;
+	}
+
+	const baseTotal = costItems.reduce(
+		(sum, item) => sum + Number(item.totalPrice || 0),
+		0,
+	);
+	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+
+	return [
+		...rows,
+		{
+			rowType: 'group-summary',
+			assignmentCodeId: 'VTK',
+			assignmentCode: 'VTK',
+			assignmentCodeName: 'Vật tư khác',
+			materialId: 'group-VTK',
+			materialCode: '',
+			materialName: '',
+			unitOfMeasureName: '',
+			unitPrice: null,
+			norm: '',
+			totalPrice: otherMaterialTotal,
+		},
+	];
+}
 
 export function LongwallPanelMaterialPage() {
 	const popup = usePopup();
@@ -161,45 +255,12 @@ function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
 				cuttingThicknessValue,
 				seamFaceValue: seamFaceRes?.result?.value ?? row.seamFaceName ?? '',
 			});
-
-			const materialCosts = (materialDetail.costs ?? []).map((item) => ({
-				assignmentCodeId: item.assignmentCodeId,
-				assignmentCode: item.assignmentCode,
-				assignmentCodeName: item.assignmentCodeName,
-				materialId: item.materialId,
-				materialCode: item.materialCode,
-				materialName: item.materialName,
-				unitOfMeasureName: item.unitOfMeasureName,
-				unitPrice: item.unitPrice,
-				norm: item.norm,
-				totalPrice: item.totalPrice,
-			}));
-			const normalMaterialTotal = materialCosts.reduce(
-				(sum, item) => sum + Number(item.totalPrice || 0),
-				0,
+			setCosts(
+				buildGroupedExpandRows(
+					materialDetail.costs ?? [],
+					materialDetail.otherMaterialValue,
+				),
 			);
-			const otherMaterialPercent = Number(materialDetail.otherMaterialValue || 0);
-			const otherMaterialCost = (normalMaterialTotal * otherMaterialPercent) / 100;
-			const nextCosts =
-				otherMaterialPercent > 0
-					? [
-							...materialCosts,
-							{
-								assignmentCodeId: 'VTK',
-								assignmentCode: 'VTK',
-								assignmentCodeName: 'Vật tư khác',
-								materialId: 'VTK',
-								materialCode: 'VTK',
-								materialName: 'Vật tư khác',
-								unitOfMeasureName: '',
-								unitPrice: null,
-								norm: `${otherMaterialPercent}%`,
-								totalPrice: otherMaterialCost,
-							},
-						]
-					: materialCosts;
-
-			setCosts(nextCosts);
 		};
 
 		load();

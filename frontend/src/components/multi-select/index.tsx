@@ -76,12 +76,12 @@ export function MultiSelect({
 					<Button
 						variant={'ghost'}
 						className={cn(
-							'flex h-fit max-h-fit min-h-9 w-full items-start rounded-sm border border-[#999999] bg-white px-3 hover:bg-white',
+							'flex h-auto min-h-9 w-full items-start overflow-hidden whitespace-normal rounded-sm border border-[#999999] bg-white px-3 py-2 hover:bg-white',
 							open && 'border-primary border-2',
 							values?.length > 0 ? 'text-black' : 'text-muted-foreground',
 						)}
 					>
-						<div className='flex min-w-0 flex-1 flex-wrap justify-start gap-2 text-left'>
+						<div className='flex max-h-24 min-w-0 flex-1 flex-wrap content-start justify-start gap-2 overflow-y-auto pr-1 text-left'>
 							{values?.length > 0 ? (
 								values.map((selected) => (
 									<div
@@ -106,7 +106,7 @@ export function MultiSelect({
 								<span>{placeholder}</span>
 							)}
 						</div>
-						<ChevronDownIcon className='mt-1 shrink-0' />
+						<ChevronDownIcon className='mt-1 shrink-0 self-start' />
 					</Button>
 				</PopoverTrigger>
 

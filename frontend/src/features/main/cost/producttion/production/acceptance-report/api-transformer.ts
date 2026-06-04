@@ -20,16 +20,18 @@ import {
 	UnifiedItem,
 } from './types';
 
+const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
+
 const ADDITIONAL_COST_TYPE_LABELS: Record<number, string> = {
 	2: 'Vật liệu',
-	3: 'Sửa chữa thường xuyên',
+	3: 'SCTX',
 	4: 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
 };
 
 const SECTION_A_TYPE_LABELS: Record<number, string> = {
 	1: 'Vật liệu',
-	2: 'Chi phí sửa chữa thường xuyên (Các loại vật tư SCTX theo kế hoạch vật tư)',
-	3: 'Chi phí sửa chữa thường xuyên dài kỳ phân bổ',
+	2: 'Phụ tùng',
+	3: 'Phụ tùng',
 };
 
 const OTHER_MATERIAL_DETAIL_LABELS_BY_NUMBER: Record<number, string> = {
@@ -143,12 +145,15 @@ function normalizeGroupName(
 			return `${groupName || groupCode}`;
 		}
 		if (
-			resolveSectionAType(materialGroup) === 2 &&
+			resolveSectionAType(materialGroup) !== 1 &&
 			groupCode.toUpperCase() === 'VTK'
 		) {
-			return groupName || 'Vật tư khác (phụ tùng khác)';
+			return groupName || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 		}
-		return groupName || groupCode;
+		if (groupCode.toUpperCase() === 'NO_ORDER') {
+			return groupName || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
+		}
+		return groupName || groupCode || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 	}
 
 	if (sectionKey === 'sectionB') {
@@ -160,15 +165,15 @@ function normalizeGroupName(
 			);
 		}
 		if (groupCode.toUpperCase() === 'NO_ORDER') {
-			return '';
+			return groupName || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 		}
 		if (materialGroup.productionOrderId) {
 			return `${groupName || groupCode}`;
 		}
-		return groupName || groupCode;
+		return groupName || groupCode || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 	}
 
-	return groupName || groupCode;
+	return groupName || groupCode || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 }
 
 function shouldUseFlatItems(
@@ -500,7 +505,7 @@ const SECTION_CATEGORY_CONFIG: SectionCategoryConfig[] = [
 	{
 		key: 'sectionA',
 		categoryType: 1,
-		categoryName: 'Vật tư đã tính vào doanh thu khoán',
+		categoryName: 'Vật tư tính vào doanh thu khoán',
 	},
 	{
 		key: 'sectionB',
