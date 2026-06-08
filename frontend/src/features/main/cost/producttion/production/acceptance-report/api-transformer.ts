@@ -534,7 +534,7 @@ function createMaterialTypeGroups(
 			normalizeForCompare(grouped[0]?.groupName) ===
 				normalizeForCompare(matType);
 
-		if (shouldUseFlatItems(matGroup, sectionKey) || isRedundantQuotaGroup) {
+		if (shouldUseFlatItems() || isRedundantQuotaGroup) {
 			grouped.forEach((group) => {
 				target.flatItems.push(...group.items);
 			});

@@ -15,6 +15,7 @@ import { Production } from '@/features/main/cost/producttion/production/columns'
 import { ProductionOutputDto } from '@/features/main/cost/producttion/production/acceptance-report/api-types';
 import {
 	applyProductionOrderNames,
+	type ProductionOrderDisplayInfo,
 	transformApiResponseToHierarchical,
 } from '@/features/main/cost/producttion/production/acceptance-report/api-transformer';
 import { AcceptanceReportDataTable as AcceptanceReportGrid } from '@/features/main/cost/producttion/production/acceptance-report/datatable';
@@ -249,12 +250,16 @@ export function AcceptanceReportDataTable({
 				),
 			]);
 
-			const productionOrderNameById = Object.fromEntries(
+			const productionOrderNameById: Record<string, ProductionOrderDisplayInfo> =
+				Object.fromEntries(
 				(productionOrderResponse.result.data ?? []).map((item) => [
 					item.id,
-					[item.code, item.name].filter(Boolean).join(' - ') || item.id,
+					{
+						code: item.code || item.id,
+						name: item.name || item.code || item.id,
+					},
 				]),
-			);
+				);
 
 			const mergedRows = detailResponses.flatMap((response, index) => {
 				const detail = response.result;
