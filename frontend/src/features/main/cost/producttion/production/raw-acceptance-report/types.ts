@@ -8,7 +8,9 @@ export type RawAcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
+	categoryAssignmentCodeLabel?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;
@@ -25,6 +27,7 @@ export type RawAcceptanceReportItem = {
 	issuedQuantity: number;
 	shippedQuantity: number;
 	type: number;
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking?: boolean;
 	processGroupId: string | null;
@@ -59,7 +62,9 @@ export type AcceptanceReportItem = {
 	usageTime?: number;
 	categoryAllocations?: CategoryAllocation[];
 	categoryProductionOrderId?: string | null;
+	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
+	categoryAssignmentCodeLabel?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;
@@ -79,12 +84,14 @@ export type AcceptanceReportItem = {
 	issuedDetails?: QuantityDetail[];
 	shippedDetails?: QuantityDetail[];
 	type: number;
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking?: boolean;
 	processGroupId: string | null;
 	processGroupCode: string | null;
 	processGroupName: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
+	additionalCostClassification?: number | null;
 	additionalCost: number;
 	otherMaterialDetail: number;
 	additionalCostQuantity: number;
@@ -186,8 +193,8 @@ export type CategoryAllocation = {
 
 // Dropdown options
 export const CATEGORY_OPTIONS = [
-	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
-	{ value: MaterialsIncludedInContractRevenue.Maintain, label: 'SCTX' },
+	{ value: MaterialType.Material, label: 'Vật liệu' },
+	{ value: MaterialType.SparePart, label: 'Phụ tùng' },
 ];
 
 export const ADDITIONAL_COST_OPTIONS = [

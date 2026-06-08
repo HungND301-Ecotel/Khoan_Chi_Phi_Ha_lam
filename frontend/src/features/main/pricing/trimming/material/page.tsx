@@ -16,7 +16,95 @@ import {
 } from '@/features/main/pricing/trimming/material/columns';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
-import { Material, MaterialDetail } from './type';
+import { Material, MaterialDetail, MaterialDetailCost } from './type';
+
+function buildGroupedExpandRows(
+	costItems: MaterialDetailCost[],
+	otherMaterialValue?: number | null,
+): ExpandMaterialCostRow[] {
+	const groupedRows = new Map<
+		string,
+		{
+			assignmentCodeId: string;
+			assignmentCode: string;
+			assignmentCodeName: string;
+			items: ExpandMaterialCostRow[];
+		}
+	>();
+
+	costItems.forEach((item) => {
+		const groupKey =
+			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+
+		if (!groupedRows.has(groupKey)) {
+			groupedRows.set(groupKey, {
+				assignmentCodeId: item.assignmentCodeId || groupKey,
+				assignmentCode: item.assignmentCode,
+				assignmentCodeName: item.assignmentCodeName,
+				items: [],
+			});
+		}
+
+		groupedRows.get(groupKey)?.items.push({
+			rowType: 'material-item',
+			assignmentCodeId: item.assignmentCodeId,
+			assignmentCode: item.assignmentCode,
+			assignmentCodeName: item.assignmentCodeName,
+			materialId: item.materialId,
+			materialCode: item.materialCode,
+			materialName: item.materialName,
+			unitPrice: item.unitPrice,
+			norm: item.norm,
+			totalPrice: item.totalPrice,
+		});
+	});
+
+	const rows = Array.from(groupedRows.values()).flatMap((group) => {
+		const groupTotal = group.items.reduce(
+			(sum, item) => sum + item.totalPrice,
+			0,
+		);
+
+		return [
+			{
+				rowType: 'group-summary' as const,
+				assignmentCodeId: group.assignmentCodeId,
+				assignmentCode: group.assignmentCode,
+				assignmentCodeName: group.assignmentCodeName,
+				materialId: `group-${group.assignmentCodeId}`,
+				materialCode: '',
+				materialName: '',
+				unitPrice: null,
+				norm: '',
+				totalPrice: groupTotal,
+			},
+			...group.items,
+		];
+	});
+
+	if (otherMaterialValue === undefined || otherMaterialValue === null) {
+		return rows;
+	}
+
+	const baseTotal = costItems.reduce((sum, item) => sum + item.totalPrice, 0);
+	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+
+	return [
+		...rows,
+		{
+			rowType: 'group-summary',
+			assignmentCodeId: 'VTK',
+			assignmentCode: 'VTK',
+			assignmentCodeName: 'Vật tư khác',
+			materialId: 'group-VTK',
+			materialCode: '',
+			materialName: '',
+			unitPrice: null,
+			norm: '',
+			totalPrice: otherMaterialTotal,
+		},
+	];
+}
 
 export function MainPricingTrimmingMaterialPage() {
 	const popup = usePopup();
@@ -109,40 +197,11 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 					insert: insert.result,
 					step: step.result,
 				});
-				const materialCosts = (materialDetail.result.costs ?? []).map((item) => ({
-						assignmentCodeId: item.assignmentCodeId,
-						assignmentCode: item.assignmentCode,
-						assignmentCodeName: item.assignmentCodeName,
-						materialId: item.materialId,
-						materialCode: item.materialCode,
-						materialName: item.materialName,
-						unitPrice: item.unitPrice,
-						norm: item.norm,
-						totalPrice: item.totalPrice,
-					}));
-				const otherMaterialValue = materialDetail.result.otherMaterialValue;
-				const vtkTotal =
-					materialCosts.reduce((sum, item) => sum + item.totalPrice, 0) *
-					(Number(otherMaterialValue) || 0) /
-					100;
-
 				setCosts(
-					otherMaterialValue === undefined || otherMaterialValue === null
-						? materialCosts
-						: [
-								...materialCosts,
-								{
-									assignmentCodeId: 'VTK',
-									assignmentCode: 'VTK',
-									assignmentCodeName: 'Vật tư khác',
-									materialId: 'VTK',
-									materialCode: 'VTK',
-									materialName: 'Vật tư khác',
-									unitPrice: null,
-									norm: `${otherMaterialValue}%`,
-									totalPrice: vtkTotal,
-								},
-							],
+					buildGroupedExpandRows(
+						materialDetail.result.costs ?? [],
+						materialDetail.result.otherMaterialValue,
+					),
 				);
 			},
 		);

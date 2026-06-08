@@ -150,4 +150,24 @@ Before ending a substantial Khuym work chunk:
 1. Update or close the active bead/task if one exists.
 2. Leave `.khuym/state.json` and `.khuym/HANDOFF.json` consistent with the current pause/resume state.
 3. Mention any remaining blockers, open questions, or next actions in the final response.
+
+## Worker Completion Protocol
+
+For every Khuym worker spawned in this repo, completion is not finished until all steps below succeed:
+
+1. Run `br update <bead-id> --status done`
+2. Run `node .codex/khuym_reservations.mjs release --agent <your-nickname> --json`
+3. Write final status to `.codex/reports/<bead-id>-<nickname>.done.json` with:
+   ```json
+   {
+     "status": "done",
+     "agent": "<nickname>",
+     "bead_id": "<bead-id>",
+     "files_modified": ["..."],
+     "summary": "<one sentence>",
+     "completed_at": "<iso timestamp>"
+   }
+   ```
+
+If any of those steps cannot be completed, the worker must return `[BLOCKED]` with the reason instead of silently stopping or treating code changes alone as completion.
 <!-- KHUYM:END -->

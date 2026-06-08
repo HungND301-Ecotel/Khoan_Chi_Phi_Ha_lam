@@ -171,6 +171,7 @@ export type ExpandLongwallMaterialCostRow = Omit<
 	LongwallMaterialDetailCost,
 	'norm' | 'unitPrice'
 > & {
+	rowType?: 'group-summary' | 'material-item';
 	norm: number | string;
 	unitPrice?: number | null;
 };
@@ -180,38 +181,68 @@ export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallM
 		{
 			accessorKey: 'assignmentCode',
 			header: 'Mã nhóm vật tư, tài sản',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>{row.original.assignmentCode}</span>
+				) : (
+					''
+				),
 		},
 		{
 			accessorKey: 'assignmentCodeName',
 			header: 'Tên nhóm vật tư, tài sản',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? row.original.assignmentCodeName
+					: '',
 		},
 		{
 			accessorKey: 'materialCode',
 			header: 'Mã vật tư, tài sản',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? ''
+					: row.original.materialCode,
 		},
 		{
 			accessorKey: 'materialName',
 			header: 'Tên vật tư, tài sản',
 			cell: ({ row }) => (
-				<span className='whitespace-normal'>{row.original.materialName}</span>
+				<span className='whitespace-normal'>
+					{row.original.rowType === 'group-summary'
+						? ''
+						: row.original.materialName}
+				</span>
 			),
 		},
 		{
 			accessorKey: 'unitPrice',
 			header: 'Đơn giá (đ)',
 			cell: ({ row }) =>
-				row.original.unitPrice === null || row.original.unitPrice === undefined
+				row.original.rowType === 'group-summary' ||
+				row.original.unitPrice === null ||
+				row.original.unitPrice === undefined
 					? ''
 					: formatNumber(row.original.unitPrice),
 		},
 		{
 			accessorKey: 'norm',
 			header: 'Định mức',
-			cell: ({ row }) => String(row.original.norm),
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? ''
+					: String(row.original.norm),
 		},
 		{
 			accessorKey: 'totalPrice',
 			header: 'Đơn giá vật liệu (đ/tấn)',
-			cell: ({ row }) => formatNumber(row.original.totalPrice),
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>
+						{formatNumber(row.original.totalPrice)}
+					</span>
+				) : (
+					formatNumber(row.original.totalPrice)
+				),
 		},
 	];

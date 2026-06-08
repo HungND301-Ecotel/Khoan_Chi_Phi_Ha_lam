@@ -8,6 +8,51 @@ namespace Application.Catalog.Production.AcceptanceReports.Commands;
 
 internal static class AcceptanceReportCommandItemHelper
 {
+    internal static MaterialsIncludedInContractRevenue ResolveMaterialsIncludedInContractRevenue(
+        AcceptanceReportItemType? materialsIncludedInContractRevenueType,
+        MaterialsIncludedInContractRevenue legacyValue)
+        => materialsIncludedInContractRevenueType switch
+        {
+            AcceptanceReportItemType.Material => MaterialsIncludedInContractRevenue.Material,
+            AcceptanceReportItemType.Part => MaterialsIncludedInContractRevenue.Maintain,
+            _ => legacyValue
+        };
+
+    internal static AdditionalCost ResolveAdditionalCost(
+        AdditionalCost? additionalCostClassification,
+        AdditionalCost legacyValue)
+        => additionalCostClassification ?? legacyValue;
+
+    internal static AcceptanceReportItemType ResolveTrackedItemType(
+        AcceptanceReportItemType fallbackType,
+        AcceptanceReportItemType? materialsIncludedInContractRevenueType,
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        AdditionalCost additionalCost)
+    {
+        if (materialsIncludedInContractRevenueType.HasValue)
+        {
+            return materialsIncludedInContractRevenueType.Value;
+        }
+
+        if (materialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Material)
+        {
+            return AcceptanceReportItemType.Material;
+        }
+
+        if (materialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.Maintain)
+        {
+            return AcceptanceReportItemType.Part;
+        }
+
+        return additionalCost switch
+        {
+            AdditionalCost.Material => AcceptanceReportItemType.Material,
+            AdditionalCost.Maintain => AcceptanceReportItemType.Part,
+            AdditionalCost.SafeAndWelfare => AcceptanceReportItemType.Material,
+            _ => fallbackType
+        };
+    }
+
     internal static IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? MapCategoryAllocations(
         List<AcceptanceReportCategoryAllocationDto>? dtos)
         => dtos?.Select(x => (
@@ -69,7 +114,12 @@ internal static class AcceptanceReportCommandItemHelper
                 ? new[] { processGroupId.Value }
                 : [];
 
-        if (!processGroupIdsToValidate.Any() || processGroupIdsToValidate.Any(id => !processGroupIdsInPeriod.Contains(id)))
+        if (!processGroupIdsToValidate.Any())
+        {
+            return;
+        }
+
+        if (processGroupIdsToValidate.Any(id => !processGroupIdsInPeriod.Contains(id)))
         {
             throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
         }
@@ -81,9 +131,12 @@ internal static class AcceptanceReportCommandItemHelper
     internal static bool IsTrackedSctxItem(AcceptanceReportItemType itemType)
         => itemType == AcceptanceReportItemType.Part;
 
-    internal static bool RequiresProcessGroupValidation(
+    internal static bool ShouldValidateProcessGroup(
         AcceptanceReportItemType itemType,
-        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue)
+        MaterialsIncludedInContractRevenue materialsIncludedInContractRevenue,
+        Guid? processGroupId,
+        IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations)
         => IsTrackedSctxItem(itemType)
-            && materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None;
+            && materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None
+            && (processGroupId.HasValue || (categoryAllocations?.Any() ?? false));
 }

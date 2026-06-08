@@ -25,6 +25,7 @@ import {
 	AdditionalCost,
 	QuotaBasedMaterial,
 	Asset,
+	MaterialType,
 } from './types';
 
 interface RawAcceptanceReportDataTableProps {
@@ -32,15 +33,27 @@ interface RawAcceptanceReportDataTableProps {
 	largeText?: boolean;
 }
 
+const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
+const DEFAULT_PRODUCTION_ORDER_LABEL = 'Không theo lệnh sản xuất';
+
 // Helper functions to map enum values to display labels
-const getMaterialsIncludedLabel = (value: number): string => {
-	switch (value) {
-		case MaterialsIncludedInContractRevenue.Material:
+const getMaterialsIncludedTypeLabel = (
+	item: RawAcceptanceReportItem,
+): string => {
+	switch (item.materialsIncludedInContractRevenueType) {
+		case MaterialType.Material:
 			return 'Vật liệu';
-		case MaterialsIncludedInContractRevenue.Maintain:
-			return 'Chi phí SCTX';
+		case MaterialType.SparePart:
+			return 'Phụ tùng';
 		default:
-			return '';
+			switch (item.materialsIncludedInContractRevenue) {
+				case MaterialsIncludedInContractRevenue.Material:
+					return 'Vật liệu';
+				case MaterialsIncludedInContractRevenue.Maintain:
+					return 'Phụ tùng';
+				default:
+					return '';
+			}
 	}
 };
 
@@ -88,16 +101,10 @@ export function RawAcceptanceReportDataTable({
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	const getTrackedMaterialCode = (item: RawAcceptanceReportItem) =>
-		item.materialCode ||
-		item.trackedMaterialCode ||
-		item.partCode ||
-		'-';
+		item.materialCode || item.trackedMaterialCode || item.partCode || '-';
 
 	const getTrackedMaterialName = (item: RawAcceptanceReportItem) =>
-		item.materialName ||
-		item.trackedMaterialName ||
-		item.partName ||
-		'-';
+		item.materialName || item.trackedMaterialName || item.partName || '-';
 
 	if (!items || items.length === 0) {
 		return (
@@ -307,16 +314,17 @@ export function RawAcceptanceReportDataTable({
 									MaterialsIncludedInContractRevenue.None && (
 									<>
 										<Badge variant='secondary' className='text-xs'>
-											{getMaterialsIncludedLabel(
-												item.materialsIncludedInContractRevenue,
-											)}
+											{getMaterialsIncludedTypeLabel(item)}
 										</Badge>
-										{item.processGroupId && (
-											<Badge variant='outline' className='text-xs'>
-												{`${item.processGroupCode} - ${item.processGroupName}`}
-											</Badge>
-										)}
-										<span className='text-xs'>
+										<Badge variant='outline' className='text-xs'>
+											{item.categoryAssignmentCodeLabel?.trim() ||
+												DEFAULT_CATEGORY_ASSIGNMENT_LABEL}
+										</Badge>
+										<Badge variant='outline' className='text-xs'>
+											{item.categoryProductionOrderLabel?.trim() ||
+												DEFAULT_PRODUCTION_ORDER_LABEL}
+										</Badge>
+										<span className='text-xs text-slate-600'>
 											SL:{' '}
 											{formatNumber(
 												item.materialsIncludedInContractRevenueQuantity || 0,

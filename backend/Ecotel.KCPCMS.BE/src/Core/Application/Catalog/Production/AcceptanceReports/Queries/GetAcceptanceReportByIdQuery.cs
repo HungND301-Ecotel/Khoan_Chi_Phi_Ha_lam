@@ -23,6 +23,8 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             include: q => q
                 .Include(a => a.ProductionOutput)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.ProcessGroup).ThenInclude(pg => pg.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Equipment).ThenInclude(e => e.Code)
+                .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.ProductionOrder).ThenInclude(po => po.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.CategoryAllocations).ThenInclude(c => c.ProcessGroup).ThenInclude(pg => pg.Code)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.CategoryAllocations).ThenInclude(c => c.Equipments)
                 .Include(a => a.AcceptanceReportItems).ThenInclude(i => i.Material).ThenInclude(m => m.Code)
@@ -46,7 +48,9 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             Id = item.Id,
             AcceptanceReportId = item.AcceptanceReportId,
             CategoryProductionOrderId = item.ProductionOrderId,
+            CategoryProductionOrderLabel = ResolveCategoryProductionOrderLabel(item),
             CategoryAssignmentCodeId = item.CategoryAssignmentCodeId,
+            CategoryAssignmentCodeLabel = ResolveCategoryAssignmentCodeLabel(item),
             AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
             AdditionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId,
             MaterialId = item.TrackedMaterialId,
@@ -63,6 +67,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             UnitOfMeasureName = item.Material?.UnitOfMeasure?.Name
                               ?? item.Part?.UnitOfMeasure?.Name,
             Type = item.IsMaterialItem ? AcceptanceReportItemType.Material : AcceptanceReportItemType.Part,
+            MaterialsIncludedInContractRevenueType = item.MaterialsIncludedInContractRevenueType,
             MaterialsIncludedInContractRevenue = item.MaterialsIncludedInContractRevenue,
             IsLongTermTracking = item.IsLongTermTracking,
             ProcessGroupId = item.ProcessGroupId,
@@ -79,6 +84,7 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                     AssignmentCodeIds = allocation.AssignmentCodeIds.ToList(),
                 })
                 .ToList(),
+            AdditionalCostClassification = item.AdditionalCostClassification,
             AdditionalCost = item.AdditionalCost,
             OtherMaterialDetail = item.OtherMaterialDetail,
             AdditionalCostQuantity = item.AdditionalCostQuantity,
@@ -188,4 +194,14 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
 
     private static string? ResolvePartName(AcceptanceReportItem item)
         => item.Part?.Name ?? item.Material?.Name;
+
+    private static string ResolveCategoryAssignmentCodeLabel(AcceptanceReportItem item)
+        => item.Equipment == null
+            ? AcceptanceReportDetailItemDto.NoneCategoryAssignmentCodeLabel
+            : $"[Nhóm vật tư, tài sản] {item.Equipment.Code?.Value} - {item.Equipment.Name}";
+
+    private static string ResolveCategoryProductionOrderLabel(AcceptanceReportItem item)
+        => item.ProductionOrder == null
+            ? AcceptanceReportDetailItemDto.NoneCategoryProductionOrderLabel
+            : $"[Lệnh sản xuất] {item.ProductionOrder.Code?.Value} - {item.ProductionOrder.Name}";
 }

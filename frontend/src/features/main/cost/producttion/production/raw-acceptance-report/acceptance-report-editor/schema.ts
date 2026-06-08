@@ -4,16 +4,6 @@ function isUnresolvedRow(data: { resolutionStatus?: string | null }): boolean {
 	return data.resolutionStatus === 'unresolved';
 }
 
-function getDefaultCategoryByMaterialType(type?: number | null): number | null {
-	if (type === 1) return 2; // Material -> Vật liệu
-	if (type === 2) return 3; // SparePart -> SCTX
-	return null;
-}
-
-function requiresCategoryProcessGroup(data: { type?: number | null }): boolean {
-	return data.type === 2;
-}
-
 function parseSchemaNumber(value: number | string | null | undefined): number {
 	if (value == null || value === '') return 0;
 	const normalized = Number(value);
@@ -58,6 +48,7 @@ export const materialFormSchema = z
 		categoryQuantity: z.number().nullable().optional(),
 		additionalCostQuantity: z.number().nullable().optional(),
 		contractLimitQuantity: z.number().nullable().optional(),
+		categoryType: z.number().nullable(),
 		category: z.number().nullable(),
 		isLongTermTracking: z.boolean().default(false),
 		categoryProcessGroup: z.string().nullable(),
@@ -99,92 +90,33 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
-			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			if (!data.showCategoryDropdown || !categoryValue) return true;
-			if (!requiresCategoryProcessGroup(data)) return true;
-			return (data.categoryProcessGroupIds?.length ?? 0) > 0;
+			if (isUnresolvedRow(data) || !data.showCategoryDropdown) return true;
+			return data.categoryType != null;
 		},
 		{
-			message: 'Phải chọn ít nhất 1 nhóm công đoạn',
-			path: ['categoryProcessGroupIds'],
+			message: 'Phải chọn loại vật tư',
+			path: ['categoryType'],
+		},
+	)
+	.refine(
+		(data) => {
+			if (isUnresolvedRow(data) || !data.showAdditionalCostDropdown) return true;
+			return data.additionalCostCategory != null;
+		},
+		{
+			message: 'Phải chọn loại bổ sung chi phí',
+			path: ['additionalCostCategory'],
 		},
 	)
 	.refine(
 		(data) => {
 			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			const needsAssignmentCode =
-				categoryValue === 3 && data.type === 2 && data.itemType === 1;
-			if (!data.showCategoryDropdown || !needsAssignmentCode) return true;
-			const allocations = data.categoryAllocations ?? [];
-			const selectedAssignmentCodeIds =
-				data.categoryAssignmentCodeIds ?? data.categoryEquipmentIds ?? [];
-			return (
-				allocations.length > 0 &&
-				selectedAssignmentCodeIds.length >= allocations.length &&
-				allocations.every(
-					(allocation) =>
-						(allocation.assignmentCodeIds?.length ??
-							allocation.equipmentIds?.length ??
-							0) > 0,
-				)
-			);
+			if (!data.showCategoryDropdown || data.categoryType == null) return true;
+			return data.categoryQuantity != null;
 		},
 		{
-			message: 'Mỗi nhóm công đoạn phải chọn ít nhất 1 Nhóm vật tư, tài sản',
-			path: ['categoryAssignmentCodeIds'],
-		},
-	)
-	.refine(
-		(data) => {
-			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			if (
-				!data.showCategoryDropdown ||
-				!categoryValue ||
-				!requiresCategoryProcessGroup(data)
-			) {
-				return true;
-			}
-
-			return (data.categoryAllocations ?? []).every(
-				(allocation) =>
-					allocation.processGroupId != null &&
-					allocation.processGroupId.length > 0,
-			);
-		},
-		{
-			message: 'Mỗi phân bổ phải có nhóm công đoạn',
-			path: ['categoryAllocations'],
-		},
-	)
-	.refine(
-		(data) => {
-			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
-			if (
-				!data.showCategoryDropdown ||
-				!categoryValue ||
-				!requiresCategoryProcessGroup(data)
-			) {
-				return true;
-			}
-
-			const total = (data.categoryAllocations ?? []).reduce(
-				(acc, allocation) => acc + parseSchemaNumber(allocation.quantity),
-				0,
-			);
-			return Math.abs(total - parseSchemaNumber(data.categoryQuantity)) < 0.01;
-		},
-		{
-			message:
-				'Tổng số lượng phân bổ theo nhóm công đoạn phải bằng số lượng vật tư của cột',
-			path: ['categoryAllocations'],
+			message: 'Phải nhập số lượng vật tư',
+			path: ['categoryQuantity'],
 		},
 	)
 	.refine(
@@ -245,25 +177,8 @@ export const materialFormSchema = z
 	.refine(
 		(data) => {
 			if (isUnresolvedRow(data)) return true;
-			const categoryValue =
-				data.category ?? getDefaultCategoryByMaterialType(data.type);
 			const hasCategoryActive =
-				data.showCategoryDropdown &&
-				categoryValue &&
-				(!requiresCategoryProcessGroup(data) ||
-					(data.categoryAllocations?.length ?? 0) > 0) &&
-				!(
-					categoryValue === 3 &&
-					data.type === 2 &&
-					data.itemType === 1 &&
-					(data.categoryAllocations?.some(
-						(allocation) =>
-							(allocation.assignmentCodeIds?.length ??
-								allocation.equipmentIds?.length ??
-								0) === 0,
-					) ??
-						true)
-				);
+				data.showCategoryDropdown && data.categoryType != null;
 			const hasAdditionalCostActive =
 				data.showAdditionalCostDropdown &&
 				data.additionalCostCategory &&
@@ -342,6 +257,7 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	categoryQuantity: null,
 	additionalCostQuantity: null,
 	contractLimitQuantity: null,
+	categoryType: null,
 	category: null,
 	isLongTermTracking: false,
 	categoryProcessGroup: null,

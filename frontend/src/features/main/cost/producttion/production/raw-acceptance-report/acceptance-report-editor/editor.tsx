@@ -48,6 +48,7 @@ import {
 	AdditionalCost,
 	ADDITIONAL_COST_OPTIONS,
 	type AcceptanceReportEditorMode,
+	CATEGORY_OPTIONS,
 	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
@@ -55,7 +56,6 @@ import {
 	ItemType,
 	type MaterialLookupOption,
 	MaterialType,
-	MaterialsIncludedInContractRevenue,
 	OTHER_MATERIAL_DETAIL_OPTIONS,
 	type ProcessGroupOption,
 	type ProductionOrderOption,
@@ -106,6 +106,7 @@ type AcceptanceReportEditorProps = {
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	assignmentCodeOptions: ProductionOrderOption[];
 	orderOrAssignmentCodeOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	materialLookupOptions?: MaterialLookupOption[];
 	onMaterialAdded?: (option: MaterialLookupOption) => Promise<void> | void;
@@ -144,43 +145,6 @@ const EDIT_FILTER_OPTIONS: EditFilterOption[] = [
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getDefaultCategoryByMaterialType(type?: number | null): number | null {
-	if (type === MaterialType.Material)
-		return MaterialsIncludedInContractRevenue.Material;
-	if (type === MaterialType.SparePart)
-		return MaterialsIncludedInContractRevenue.Maintain;
-	return null;
-}
-
-function getDefaultAdditionalCostByMaterialType(
-	type?: number | null,
-): number | null {
-	if (type === MaterialType.Material) return AdditionalCost.Material;
-	if (type === MaterialType.SparePart) return AdditionalCost.Maintain;
-	return null;
-}
-
-function createCategoryAllocation(
-	processGroupId: string | null = null,
-	quantity: number | null = null,
-	assignmentCodeIds: string[] = [],
-): CategoryAllocation {
-	return {
-		processGroupId,
-		quantity,
-		assignmentCodeIds,
-		equipmentIds: assignmentCodeIds,
-	};
-}
-
-function parseAllocationQuantity(
-	value: number | string | null | undefined,
-): number {
-	if (value == null || value === '') return 0;
-	const normalized = Number(value);
-	return Number.isFinite(normalized) ? normalized : 0;
-}
 
 function splitAllocationQuantities(total: number, count: number): number[] {
 	if (count <= 0) return [];
@@ -234,252 +198,11 @@ function redistributeBreakdownQuantities(
 	);
 }
 
-function extractCategoryProcessGroupIds(
-	allocations: CategoryAllocation[] | undefined,
-): string[] {
-	return (allocations ?? [])
-		.map((allocation) => allocation.processGroupId)
-		.filter((value): value is string => Boolean(value));
-}
-
-function extractCategoryAssignmentCodeIds(
-	allocations: CategoryAllocation[] | undefined,
-): string[] {
-	return (allocations ?? [])
-		.map(
-			(allocation) =>
-				allocation.assignmentCodeIds?.[0] ?? allocation.equipmentIds?.[0],
-		)
-		.filter((value): value is string => Boolean(value));
-}
-
-function syncCategoryAllocations(
-	processGroupIds: string[],
-	currentAllocations: CategoryAllocation[] | undefined,
-	totalQuantity: number,
-	needsAssignmentCode: boolean,
-): CategoryAllocation[] {
-	const previousAllocationByProcessGroupId = new Map(
-		(currentAllocations ?? [])
-			.filter((allocation) => allocation.processGroupId)
-			.map((allocation) => [allocation.processGroupId as string, allocation]),
-	);
-	const previousQuantities = processGroupIds.map((processGroupId) =>
-		parseAllocationQuantity(
-			previousAllocationByProcessGroupId.get(processGroupId)?.quantity,
-		),
-	);
-	const hasExistingQuantities = previousQuantities.some(
-		(quantity) => quantity > 0,
-	);
-	const nextQuantities = hasExistingQuantities
-		? previousQuantities
-		: splitAllocationQuantities(totalQuantity, processGroupIds.length);
-	const quantityDelta = Number(
-		(
-			totalQuantity -
-			nextQuantities.reduce((sum, quantity) => sum + quantity, 0)
-		).toFixed(2),
-	);
-
-	if (processGroupIds.length > 0 && Math.abs(quantityDelta) >= 0.01) {
-		nextQuantities[processGroupIds.length - 1] = Number(
-			(
-				(nextQuantities[processGroupIds.length - 1] ?? 0) + quantityDelta
-			).toFixed(2),
-		);
-	}
-
-	return processGroupIds.map((processGroupId, index) => {
-		const previousAllocation =
-			previousAllocationByProcessGroupId.get(processGroupId);
-		const assignmentCodeIds = needsAssignmentCode
-			? (previousAllocation?.assignmentCodeIds?.filter(Boolean).slice(0, 1) ??
-				previousAllocation?.equipmentIds?.filter(Boolean).slice(0, 1) ??
-				[])
-			: [];
-
-		return createCategoryAllocation(
-			processGroupId,
-			nextQuantities[index] ?? 0,
-			assignmentCodeIds,
-		);
-	});
-}
-
-function getCategoryAllocationSignature(
-	allocations: CategoryAllocation[] | undefined,
-): string {
-	return JSON.stringify(
-		(allocations ?? []).map((allocation) => ({
-			processGroupId: allocation.processGroupId ?? null,
-			quantity: parseAllocationQuantity(allocation.quantity),
-			assignmentCodeIds:
-				allocation.assignmentCodeIds ?? allocation.equipmentIds ?? [],
-			equipmentIds:
-				allocation.assignmentCodeIds ?? allocation.equipmentIds ?? [],
-		})),
-	);
-}
-
-function getMaterialBadge(
-	type?: number | null,
-	itemType?: number | null,
-): {
-	label: string;
-	className: string;
-} {
-	if (
-		type === MaterialType.Material &&
-		itemType === ItemType.SafetyAndWelfare
-	) {
-		return {
-			label: 'Vật tư, tài sản',
-			className:
-				'rounded bg-emerald-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-emerald-700',
-		};
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.Resource) {
-		return {
-			label: 'Vật tư, tài sản',
-			className:
-				'rounded bg-violet-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-violet-700',
-		};
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
-		return {
-			label: 'Vật tư, tài sản',
-			className:
-				'rounded bg-cyan-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-cyan-700',
-		};
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.InContract) {
-		return {
-			label: 'Vật tư, tài sản',
-			className:
-				'rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700',
-		};
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
-		return {
-			label: 'Vật tư, tài sản',
-			className:
-				'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
-		};
-	}
-
-	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
-		return {
-			label: 'Vật tư theo nhóm vật tư, tài sản',
-			className:
-				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
-		};
-	}
-
-	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
-		return {
-			label: 'Vật tư khác',
-			className:
-				'rounded bg-orange-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-orange-700',
-		};
-	}
-
-	if (type === MaterialType.Material) {
-		return {
-			label: 'Vật liệu',
-			className:
-				'rounded bg-blue-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-blue-700',
-		};
-	}
-
-	if (type === MaterialType.SparePart) {
-		return {
-			label: 'Vật tư',
-			className:
-				'rounded bg-amber-100 px-1.5 py-0.5 text-center text-[10px] font-medium text-amber-700',
-		};
-	}
-
-	return {
-		label: 'Vật tư',
-		className:
-			'rounded bg-slate-200 px-1.5 py-0.5 text-center text-[10px] font-medium text-slate-700',
-	};
-}
-
-type MaterialBadgeFilterOption = {
-	key: string;
-	label: string;
-	className: string;
-};
-
 type ToolbarFilterOption = {
 	key: string;
 	label: string;
 	className?: string;
 };
-
-function getMaterialBadgeFilterKey(
-	type?: number | null,
-	itemType?: number | null,
-): string {
-	if (
-		type === MaterialType.Material &&
-		itemType === ItemType.SafetyAndWelfare
-	) {
-		return 'material-safety-and-welfare';
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.Resource) {
-		return 'material-asset';
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.QuotaMaterials) {
-		return 'material-quota';
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.InContract) {
-		return 'material-in-contract';
-	}
-
-	if (type === MaterialType.Material && itemType === ItemType.OutContract) {
-		return 'material-out-contract';
-	}
-
-	if (type === MaterialType.SparePart && itemType === ItemType.InContract) {
-		return 'spare-part-in-contract';
-	}
-
-	if (type === MaterialType.SparePart && itemType === ItemType.OutContract) {
-		return 'spare-part-out-contract';
-	}
-
-	if (type === MaterialType.Material) {
-		return 'material-default';
-	}
-
-	if (type === MaterialType.SparePart) {
-		return 'spare-part-default';
-	}
-
-	return 'material-unknown';
-}
-
-function getMaterialBadgeFilterOption(
-	type?: number | null,
-	itemType?: number | null,
-): MaterialBadgeFilterOption {
-	const badge = getMaterialBadge(type, itemType);
-	return {
-		key: getMaterialBadgeFilterKey(type, itemType),
-		label: badge.label,
-		className: badge.className,
-	};
-}
 
 const CONTRACT_LIMIT_SECONDARY_MULTI_OPTIONS =
 	CONTRACT_LIMIT_SECONDARY_OPTIONS.map((option) => ({
@@ -531,7 +254,7 @@ function CreateMaterialDialogContent({
 						value={selectedLookupValue}
 						onValueChange={onSelectedLookupValueChange}
 						options={materialLookupOptions}
-						placeholder='Chọn vật tư hoặc phụ tùng'
+						placeholder='Chọn vật tư'
 					/>
 				</div>
 				<div className='grid gap-4 sm:grid-cols-2'>
@@ -601,8 +324,8 @@ function CreateMaterialDialogContent({
 export function AcceptanceReportEditor({
 	mode,
 	onCancel,
-	processGroupOptions,
 	productionOrderOptions,
+	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
 	materialLookupOptions = [],
 	onMaterialAdded,
@@ -618,9 +341,6 @@ export function AcceptanceReportEditor({
 		control: form.control,
 		name: 'materials',
 	}) as MaterialRowValues[] | undefined;
-	const [selectedMaterialBadgeKeys, setSelectedMaterialBadgeKeys] = useState<
-		string[]
-	>([]);
 	const [selectedEditFilterKeys, setSelectedEditFilterKeys] = useState<
 		EditFilterKey[]
 	>(EDIT_FILTER_OPTIONS.map((option) => option.key));
@@ -633,76 +353,24 @@ export function AcceptanceReportEditor({
 	const [newQuantityExported, setNewQuantityExported] = useState(0);
 	const [isCreatingMaterial, setIsCreatingMaterial] = useState(false);
 	const popup = usePopup();
-	const materialBadgeFilters = useMemo(() => {
-		const map = new Map<string, MaterialBadgeFilterOption>();
-		for (const item of fields) {
-			if (item?.resolutionStatus === 'unresolved') {
-				continue;
-			}
-			const option = getMaterialBadgeFilterOption(item?.type, item?.itemType);
-			if (!map.has(option.key)) {
-				map.set(option.key, option);
-			}
-		}
-		return Array.from(map.values());
-	}, [fields]);
+	const showRowSelection = true;
+	const showMaterialToolbarActions = Boolean(
+		materialLookupOptions.length > 0 && onMaterialAdded,
+	);
 	const toolbarFilterOptions = useMemo<ToolbarFilterOption[]>(
 		() =>
-			mode === 'edit'
-				? EDIT_FILTER_OPTIONS.map((option) => ({
-						key: option.key,
-						label: option.label,
-					}))
-				: materialBadgeFilters.map((option) => ({
-						key: option.key,
-						label: option.label,
-						className: option.className,
-					})),
-		[materialBadgeFilters, mode],
+			mode === 'import'
+				? []
+				:
+			EDIT_FILTER_OPTIONS.map((option) => ({
+				key: option.key,
+				label: option.label,
+			})),
+		[mode],
 	);
-	const selectedToolbarFilterKeys =
-		mode === 'edit'
-			? selectedEditFilterKeys
-			: (selectedMaterialBadgeKeys as string[]);
+	const selectedToolbarFilterKeys = selectedEditFilterKeys;
 	const visibleMaterialIndexes = useMemo(() => {
 		const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
-
-		if (mode === 'edit') {
-			return fields
-				.map((_, index) => index)
-				.filter((index) => {
-					const item = watchedMaterials?.[index] ?? fields[index];
-					if (!item) return true;
-
-					const materialCode = item.materialCode?.toLowerCase() ?? '';
-					const materialName = item.materialName?.toLowerCase() ?? '';
-					const matchesSearch =
-						!normalizedSearchKeyword ||
-						materialCode.includes(normalizedSearchKeyword) ||
-						materialName.includes(normalizedSearchKeyword);
-
-					if (!matchesSearch) {
-						return false;
-					}
-
-					const matchesFilter =
-						selectedEditFilterKeys.length === 0 ||
-						(selectedEditFilterKeys.includes('category') &&
-							Boolean(item.showCategoryDropdown)) ||
-						(selectedEditFilterKeys.includes('additional-cost') &&
-							Boolean(item.showAdditionalCostDropdown)) ||
-						(selectedEditFilterKeys.includes('contract-limit') &&
-							Boolean(item.showContractLimitDropdown)) ||
-						(selectedEditFilterKeys.includes('asset') &&
-							Boolean(item.showAssetDropdown));
-
-					if (!matchesFilter) {
-						return false;
-					}
-					return true;
-				});
-		}
-
 		return fields
 			.map((_, index) => index)
 			.filter((index) => {
@@ -721,64 +389,29 @@ export function AcceptanceReportEditor({
 				if (!matchesSearch) {
 					return false;
 				}
-
-				if (item?.resolutionStatus === 'unresolved') {
+				if (mode === 'import') {
 					return true;
 				}
-				if (selectedMaterialBadgeKeys.length === 0) {
-					return true;
-				}
-				const key = getMaterialBadgeFilterKey(item?.type, item?.itemType);
-				return selectedMaterialBadgeKeys.includes(key);
+				return (
+					selectedEditFilterKeys.length === 0 ||
+					(selectedEditFilterKeys.includes('category') &&
+						Boolean(item.showCategoryDropdown)) ||
+					(selectedEditFilterKeys.includes('additional-cost') &&
+						Boolean(item.showAdditionalCostDropdown)) ||
+					(selectedEditFilterKeys.includes('contract-limit') &&
+						Boolean(item.showContractLimitDropdown)) ||
+					(selectedEditFilterKeys.includes('asset') &&
+						Boolean(item.showAssetDropdown))
+				);
 			});
-	}, [
-		fields,
-		mode,
-		searchKeyword,
-		selectedEditFilterKeys,
-		selectedMaterialBadgeKeys,
-		watchedMaterials,
-	]);
-	const paginatedMaterialIndexes = useMemo(() => {
-		const start = pageIndex * pageSize;
-		return visibleMaterialIndexes.slice(start, start + pageSize);
-	}, [pageIndex, pageSize, visibleMaterialIndexes]);
+	}, [fields, mode, searchKeyword, selectedEditFilterKeys, watchedMaterials]);
 	const pageCount = Math.ceil(visibleMaterialIndexes.length / pageSize);
-
-	useEffect(() => {
-		if (mode === 'edit') {
-			return;
-		}
-
-		if (materialBadgeFilters.length === 0) {
-			setSelectedMaterialBadgeKeys([]);
-			return;
-		}
-
-		const availableKeys = new Set(
-			materialBadgeFilters.map((option) => option.key),
-		);
-		setSelectedMaterialBadgeKeys((prev) => {
-			const next = prev.filter((key) => availableKeys.has(key));
-			if (next.length === 0) {
-				return Array.from(availableKeys);
-			}
-			return next;
-		});
-	}, [materialBadgeFilters, mode]);
-
-	useEffect(() => {
-		if (pageCount === 0) {
-			if (pageIndex !== 0) {
-				setPageIndex(0);
-			}
-			return;
-		}
-
-		if (pageIndex > pageCount - 1) {
-			setPageIndex(pageCount - 1);
-		}
-	}, [pageCount, pageIndex]);
+	const safePageIndex =
+		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
+	const paginatedMaterialIndexes = useMemo(() => {
+		const start = safePageIndex * pageSize;
+		return visibleMaterialIndexes.slice(start, start + pageSize);
+	}, [pageSize, safePageIndex, visibleMaterialIndexes]);
 
 	useEffect(() => {
 		if (Object.keys(form.formState.errors).length > 0) {
@@ -786,31 +419,14 @@ export function AcceptanceReportEditor({
 		}
 	}, [form.formState.errors]);
 
-	useEffect(() => {
-		const availableFieldIds = new Set(fields.map((field) => field.id));
-		setSelectedRowFieldIds((prev) =>
-			prev.filter((fieldId) => availableFieldIds.has(fieldId)),
-		);
-	}, [fields]);
-
 	const toggleToolbarFilter = (key: string, checked: boolean) => {
-		if (mode === 'edit') {
-			setSelectedEditFilterKeys((prev) => {
-				if (checked) {
-					return prev.includes(key as EditFilterKey)
-						? prev
-						: [...prev, key as EditFilterKey];
-				}
-				return prev.filter((item) => item !== key);
-			});
-		} else {
-			setSelectedMaterialBadgeKeys((prev) => {
-				if (checked) {
-					return prev.includes(key) ? prev : [...prev, key];
-				}
-				return prev.filter((item) => item !== key);
-			});
-		}
+		setSelectedEditFilterKeys((prev) => {
+			const typedKey = key as EditFilterKey;
+			if (checked) {
+				return prev.includes(typedKey) ? prev : [...prev, typedKey];
+			}
+			return prev.filter((item) => item !== typedKey);
+		});
 		setPageIndex(0);
 	};
 
@@ -851,7 +467,7 @@ export function AcceptanceReportEditor({
 			(option) => option.value === selectedLookupValue,
 		);
 		if (!selectedOption) {
-			popup.error('Vui lòng chọn vật tư hoặc phụ tùng cần tạo mới.');
+			popup.error('Vui lòng chọn vật tư cần tạo mới.');
 			return false;
 		}
 
@@ -910,101 +526,101 @@ export function AcceptanceReportEditor({
 					mới từng dòng trước khi lưu phiếu nghiệm thu.
 				</div>
 			)}
-			{(mode === 'edit' || toolbarFilterOptions.length > 0) && (
-				<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
-					<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-						<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
-							{mode === 'edit' && (
-								<div className='flex shrink-0 flex-wrap items-center gap-3'>
-									<DialogProvider>
-										<DataTableEditDialog
-											type='Tạo mới'
-											crumb='vật tư'
-											trigger={
-												<Button
-													type='button'
-													variant='warning'
-													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-												>
-													<span className='font-medium'>Tạo mới</span>
-													<AddIcon fontSize='small' />
+			<div className='rounded-lg border border-slate-200 bg-slate-50 p-3'>
+				<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+					<div className='flex flex-1 flex-col gap-3 lg:flex-row lg:items-center'>
+						{showMaterialToolbarActions && (
+							<div className='flex shrink-0 flex-wrap items-center gap-3'>
+								<DialogProvider>
+									<DataTableEditDialog
+										type='Tạo mới'
+										crumb='vật tư'
+										trigger={
+											<Button
+												type='button'
+												variant='warning'
+												className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+											>
+												<span className='font-medium'>Tạo mới</span>
+												<AddIcon fontSize='small' />
+											</Button>
+										}
+									>
+										<CreateMaterialDialogContent
+											selectedLookupValue={selectedLookupValue}
+											onSelectedLookupValueChange={setSelectedLookupValue}
+											materialLookupOptions={materialLookupOptions}
+											newQuantityReceived={newQuantityReceived}
+											onNewQuantityReceivedChange={setNewQuantityReceived}
+											newQuantityExported={newQuantityExported}
+											onNewQuantityExportedChange={setNewQuantityExported}
+											isCreatingMaterial={isCreatingMaterial}
+											onConfirm={handleCreateMaterial}
+										/>
+									</DataTableEditDialog>
+								</DialogProvider>
+								<DialogProvider>
+									<ActionDialog
+										className='min-h-auto sm:max-w-md'
+										trigger={
+											<Button
+												type='button'
+												variant='destructive'
+												className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
+												disabled={selectedRowFieldIds.length === 0}
+											>
+												<span className='font-medium'>
+													Xoá ({selectedRowFieldIds.length})
+												</span>
+												<DeleteIcon fontSize='small' />
+											</Button>
+										}
+									>
+										<DialogHeader>
+											<DialogTitle className='text-center uppercase'>
+												Xác nhận xóa
+											</DialogTitle>
+											<DialogDescription className='text-center'>
+												Bạn có chắc chắn muốn xóa {selectedRowFieldIds.length}{' '}
+												mục không?
+											</DialogDescription>
+										</DialogHeader>
+										<DialogFooter className='flex w-full items-center sm:justify-center'>
+											<DialogClose asChild>
+												<Button variant='secondary' className='w-24'>
+													Huỷ
 												</Button>
-											}
-										>
-											<CreateMaterialDialogContent
-												selectedLookupValue={selectedLookupValue}
-												onSelectedLookupValueChange={setSelectedLookupValue}
-												materialLookupOptions={materialLookupOptions}
-												newQuantityReceived={newQuantityReceived}
-												onNewQuantityReceivedChange={setNewQuantityReceived}
-												newQuantityExported={newQuantityExported}
-												onNewQuantityExportedChange={setNewQuantityExported}
-												isCreatingMaterial={isCreatingMaterial}
-												onConfirm={handleCreateMaterial}
-											/>
-										</DataTableEditDialog>
-									</DialogProvider>
-									<DialogProvider>
-										<ActionDialog
-											className='min-h-auto sm:max-w-md'
-											trigger={
+											</DialogClose>
+											<DialogClose asChild>
 												<Button
-													type='button'
 													variant='destructive'
-													className={cn(DATATABLE_ACTION_SHADOW, 'min-w-24')}
-													disabled={selectedRowFieldIds.length === 0}
+													onClick={handleDeleteSelectedRows}
+													className='w-24'
 												>
-													<span className='font-medium'>
-														Xoá ({selectedRowFieldIds.length})
-													</span>
-													<DeleteIcon fontSize='small' />
+													Xoá
 												</Button>
-											}
-										>
-											<DialogHeader>
-												<DialogTitle className='text-center uppercase'>
-													Xác nhận xóa
-												</DialogTitle>
-												<DialogDescription className='text-center'>
-													Bạn có chắc chắn muốn xóa {selectedRowFieldIds.length}{' '}
-													mục không?
-												</DialogDescription>
-											</DialogHeader>
-											<DialogFooter className='flex w-full items-center sm:justify-center'>
-												<DialogClose asChild>
-													<Button variant='secondary' className='w-24'>
-														Huỷ
-													</Button>
-												</DialogClose>
-												<DialogClose asChild>
-													<Button
-														variant='destructive'
-														onClick={handleDeleteSelectedRows}
-														className='w-24'
-													>
-														Xoá
-													</Button>
-												</DialogClose>
-											</DialogFooter>
-										</ActionDialog>
-									</DialogProvider>
-								</div>
-							)}
-							<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
-								<InputGroupInput
-									placeholder='Tìm theo mã vật tư hoặc tên vật tư'
-									value={searchKeyword}
-									onChange={(event) => {
-										setSearchKeyword(event.target.value);
-										setPageIndex(0);
-									}}
-									className='peer bg-white'
-								/>
-								<InputGroupAddon align='inline-end'>
-									<SearchIcon className='size-4' />
-								</InputGroupAddon>
-							</InputGroup>
-						</div>
+											</DialogClose>
+										</DialogFooter>
+									</ActionDialog>
+								</DialogProvider>
+							</div>
+						)}
+						<InputGroup className='w-full flex-1 rounded-sm border-[#d4d5d7] shadow-none hover:border-black'>
+							<InputGroupInput
+								placeholder='Tìm theo mã vật tư hoặc tên vật tư'
+								value={searchKeyword}
+								onChange={(event) => {
+									setSearchKeyword(event.target.value);
+									setPageIndex(0);
+								}}
+								className='peer bg-white'
+							/>
+							<InputGroupAddon align='inline-end'>
+								<SearchIcon className='size-4' />
+							</InputGroupAddon>
+						</InputGroup>
+					</div>
+					{toolbarFilterOptions.length > 0 && (
 						<Popover>
 							<PopoverTrigger asChild>
 								<Button variant='ghost' className={TOOLBAR_BUTTON_CLASS_NAME}>
@@ -1023,11 +639,7 @@ export function AcceptanceReportEditor({
 												size='sm'
 												className='h-auto px-2 py-1 text-xs'
 												onClick={() => {
-													if (mode === 'edit') {
-														setSelectedEditFilterKeys([]);
-													} else {
-														setSelectedMaterialBadgeKeys([]);
-													}
+													setSelectedEditFilterKeys([]);
 													setPageIndex(0);
 												}}
 											>
@@ -1038,7 +650,7 @@ export function AcceptanceReportEditor({
 									<div className='space-y-2'>
 										{toolbarFilterOptions.map((option) => {
 											const checked = selectedToolbarFilterKeys.includes(
-												option.key,
+												option.key as EditFilterKey,
 											);
 											return (
 												<label
@@ -1072,15 +684,15 @@ export function AcceptanceReportEditor({
 								</div>
 							</PopoverContent>
 						</Popover>
-					</div>
+					)}
 				</div>
-			)}
+			</div>
 			<div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto'>
 				<div className='rounded-lg border shadow-sm'>
 					<Table className='w-full'>
 						<TableHeader className='bg-linear-to-r from-slate-50 to-slate-100'>
 							<TableRow className='bg-linear-to-r from-slate-50 to-slate-100'>
-								{mode === 'edit' && (
+								{showRowSelection && (
 									<TableCell className='w-12 min-w-12 border-b-2 border-slate-200 px-3 py-4 text-center'>
 										<Checkbox
 											checked={
@@ -1135,10 +747,10 @@ export function AcceptanceReportEditor({
 									key={fields[index].id}
 									fieldId={fields[index].id}
 									index={index}
-									displayIndex={pageIndex * pageSize + displayIndex + 1}
+									displayIndex={safePageIndex * pageSize + displayIndex + 1}
 									mode={mode}
-									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
+									assignmentCodeOptions={assignmentCodeOptions}
 									orderOrAssignmentCodeOptionsByItemId={
 										orderOrAssignmentCodeOptionsByItemId
 									}
@@ -1158,7 +770,7 @@ export function AcceptanceReportEditor({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={mode === 'edit' ? 12 : 11}
+										colSpan={showRowSelection ? 12 : 11}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -1172,7 +784,7 @@ export function AcceptanceReportEditor({
 			{visibleMaterialIndexes.length > 0 && (
 				<ClientPagination
 					totalItems={visibleMaterialIndexes.length}
-					pageIndex={pageIndex}
+					pageIndex={safePageIndex}
 					pageSize={pageSize}
 					onPageIndexChange={setPageIndex}
 					onPageSizeChange={(nextPageSize) => {
@@ -1315,8 +927,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
 	mode,
-	processGroupOptions,
 	productionOrderOptions,
+	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
 	selected,
 	onSelectedChange,
@@ -1326,8 +938,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index: number;
 	displayIndex?: number;
 	mode: AcceptanceReportEditorMode;
-	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
+	assignmentCodeOptions: ProductionOrderOption[];
 	orderOrAssignmentCodeOptionsByItemId: Record<string, ProductionOrderOption[]>;
 	selected: boolean;
 	onSelectedChange: (checked: boolean) => void;
@@ -1343,23 +955,11 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const showAdditionalCostDropdown = row?.showAdditionalCostDropdown ?? false;
 	const showContractLimitDropdown = row?.showContractLimitDropdown ?? false;
 	const showAssetDropdown = row?.showAssetDropdown ?? false;
-	const categoryValue = row?.category;
-	const categoryProcessGroupValue = row?.categoryProcessGroup;
-	const categoryProcessGroupIds = row?.categoryProcessGroupIds as
-		| string[]
-		| undefined;
+	const categoryType = row?.categoryType;
 	const categoryProductionOrderId = row?.categoryProductionOrderId;
 	const categoryAssignmentCodeId = row?.categoryAssignmentCodeId;
 	const categoryEquipmentId =
 		row?.categoryAssignmentCodeId ?? row?.categoryEquipmentId;
-	const categoryAssignmentCodeIds = row?.categoryAssignmentCodeIds as
-		| string[]
-		| undefined;
-	const categoryEquipmentIds = (row?.categoryAssignmentCodeIds ??
-		row?.categoryEquipmentIds) as string[] | undefined;
-	const categoryAllocations = row?.categoryAllocations as
-		| CategoryAllocation[]
-		| undefined;
 	const additionalCostCategory = row?.additionalCostCategory;
 	const additionalCostProductionOrderId = row?.additionalCostProductionOrderId;
 	const otherMaterialDetailValue = row?.otherMaterialDetail;
@@ -1393,36 +993,29 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const materialName = row?.materialName;
 	const unitOfMeasureName = row?.unitOfMeasureName;
 	const isLongTermTracking = row?.isLongTermTracking ?? false;
+	const showRowSelection = true;
 
 	// ── Derived values ───────────────────────────────────────────────────────
-	const defaultCategoryByType =
-		getDefaultCategoryByMaterialType(materialTypeValue);
-	const defaultAdditionalCostByType =
-		getDefaultAdditionalCostByMaterialType(materialTypeValue);
-	const isSafetyAndWelfareMaterial =
-		materialTypeValue === MaterialType.Material &&
-		itemTypeValue === ItemType.SafetyAndWelfare;
 	const isSparePartByAssignmentCode =
 		materialTypeValue === MaterialType.SparePart &&
 		itemTypeValue === ItemType.InContract;
-	const categoryNeedsProcessGroup =
-		materialTypeValue === MaterialType.SparePart;
-
-	const resolvedCategoryValue = categoryValue ?? defaultCategoryByType;
 	const orderOrAssignmentCodeOptions =
 		(materialOrPartId
 			? orderOrAssignmentCodeOptionsByItemId[materialOrPartId]
 			: undefined) ?? productionOrderOptions;
-	const assignmentCodeOptions = orderOrAssignmentCodeOptions.filter((option) =>
-		option.value.startsWith(ASSIGNMENT_CODE_OPTION_PREFIX),
-	);
 	const productionOrderOnlyOptions = orderOrAssignmentCodeOptions.filter(
 		(option) => option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX),
 	);
-	const categoryAssignmentCodeOptions = assignmentCodeOptions.map((option) => ({
-		value: parseAssignmentCodeOptionId(option.value),
-		label: option.label,
-	}));
+	const categoryAssignmentCodeOptions = [
+		{
+			value: '__none__',
+			label: '[Nhóm vật tư, tài sản] Không thuộc nhóm vật tư, tài sản',
+		},
+		...assignmentCodeOptions.map((option) => ({
+			value: parseAssignmentCodeOptionId(option.value),
+			label: option.label,
+		})),
+	];
 	const categoryProductionOrderOptions = productionOrderOnlyOptions.map(
 		(option) => ({
 			value: parseProductionOrderOptionId(option.value),
@@ -1433,39 +1026,14 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		? productionOrderOnlyOptions
 		: orderOrAssignmentCodeOptions;
 
-	const additionalCostOptionsByType =
-		defaultAdditionalCostByType == null
-			? ADDITIONAL_COST_OPTIONS
-			: ADDITIONAL_COST_OPTIONS.filter(
-					(o) =>
-						o.value === defaultAdditionalCostByType ||
-						o.value === AdditionalCost.OtherMaterial,
-				);
+	const additionalCostOptionsByType = ADDITIONAL_COST_OPTIONS;
 
 	const needsSecondComboBox =
 		contractLimitCategoryValue === QuotaBasedMaterial.MineSupport ||
 		contractLimitCategoryValue === QuotaBasedMaterial.SupportAccessories;
-	const categoryNeedsProductionOrder =
-		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
+	const categoryNeedsProductionOrder = categoryType != null;
 	const supportsRowLongTermTracking =
-		materialTypeValue === MaterialType.SparePart &&
-		showCategoryDropdown &&
-		resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
-	const categoryNeedsAssignmentCode =
-		categoryNeedsProductionOrder && isSparePartByAssignmentCode;
-	const categorySelectedProcessGroupIds = categoryProcessGroupIds ?? [];
-	const categorySelectedAssignmentCodeIds =
-		categoryAssignmentCodeIds ?? categoryEquipmentIds ?? [];
-	const categoryAllocationRows = (categoryAllocations ?? []).filter(
-		(allocation) => allocation.processGroupId,
-	);
-	const hasValidCategoryAllocations =
-		!categoryNeedsProcessGroup || categorySelectedProcessGroupIds.length > 0;
-	const hasValidCategoryAssignmentCodes =
-		!categoryNeedsAssignmentCode ||
-		(categorySelectedProcessGroupIds.length > 0 &&
-			categorySelectedAssignmentCodeIds.length >=
-				categorySelectedProcessGroupIds.length);
+		showCategoryDropdown && categoryType === MaterialType.SparePart;
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -1489,30 +1057,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		key: K,
 		value: MaterialRowValues[K],
 	) => form.setValue(`${basename}.${key}` as RowPath, value as never);
-
-	const updateCategoryAllocation = (
-		processGroupId: string,
-		updater: (allocation: CategoryAllocation) => CategoryAllocation,
-	) => {
-		const nextAllocations = categoryAllocationRows.map((allocation) =>
-			allocation.processGroupId === processGroupId
-				? updater(allocation)
-				: allocation,
-		);
-
-		set('categoryAllocations', nextAllocations);
-		const nextAssignmentCodeIds =
-			extractCategoryAssignmentCodeIds(nextAllocations);
-		set('categoryAssignmentCodeIds', nextAssignmentCodeIds);
-		set('categoryEquipmentIds', nextAssignmentCodeIds);
-		set(
-			'categoryQuantity',
-			nextAllocations.reduce(
-				(sum, allocation) => sum + parseAllocationQuantity(allocation.quantity),
-				0,
-			),
-		);
-	};
 
 	// ── Initialize MultiSelect defaults on mount ─────────────────────────────
 	useEffect(() => {
@@ -1567,8 +1111,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	});
 
 	const prevDropdownState = useRef({
-		category: null as number | null | undefined,
-		categoryProcessGroup: null as string | null | undefined,
+		categoryType: null as number | null | undefined,
 		categoryProductionOrderId: null as string | null | undefined,
 		categoryAssignmentCodeId: null as string | null | undefined,
 		categoryEquipmentId: null as string | null | undefined,
@@ -1624,10 +1167,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			resetCellFields(form, basename, [
 				{
 					checkbox: 'showCategoryDropdown',
-					dropdown: 'category',
-					dropdownSecondary: 'categoryProcessGroup',
-					dropdownTertiary: 'categoryProductionOrderId',
-					dropdownQuaternary: 'categoryAssignmentCodeId',
+					dropdown: 'categoryType',
+					dropdownSecondary: 'categoryProductionOrderId',
+					dropdownTertiary: 'categoryAssignmentCodeId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -1643,10 +1186,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			resetCellFields(form, basename, [
 				{
 					checkbox: 'showCategoryDropdown',
-					dropdown: 'category',
-					dropdownSecondary: 'categoryProcessGroup',
-					dropdownTertiary: 'categoryProductionOrderId',
-					dropdownQuaternary: 'categoryAssignmentCodeId',
+					dropdown: 'categoryType',
+					dropdownSecondary: 'categoryProductionOrderId',
+					dropdownTertiary: 'categoryAssignmentCodeId',
+					dropdownQuaternary: 'categoryEquipmentId',
 					quantity: 'categoryQuantity',
 				},
 				{
@@ -1675,16 +1218,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				resetCellFields(form, basename, [
 					{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
 				]);
-			if (categoryValue == null && defaultCategoryByType != null)
-				set('category', defaultCategoryByType);
 			if (
-				categoryNeedsProcessGroup &&
-				!categoryProcessGroupValue &&
-				processGroupOptions.length === 1
-			)
-				set('categoryProcessGroup', processGroupOptions[0].value);
-			if (
-				resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain &&
+				categoryType != null &&
 				categoryProductionOrderId == null &&
 				categoryProductionOrderOptions.length > 0
 			)
@@ -1692,6 +1227,12 @@ const MaterialImportRow = memo(function MaterialImportRow({
 					'categoryProductionOrderId',
 					categoryProductionOrderOptions[0].value,
 				);
+			if (categoryType != null && categoryAssignmentCodeId == null) {
+				set(
+					'categoryAssignmentCodeId',
+					categoryAssignmentCodeOptions[0]?.value ?? null,
+				);
+			}
 		} else if (justEnabledAdditional) {
 			if (prev.showContractLimitDropdown)
 				resetCellFields(form, basename, [
@@ -1705,12 +1246,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				resetCellFields(form, basename, [
 					{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
 				]);
-			if (isSafetyAndWelfareMaterial) {
-				if (additionalCostCategory !== AdditionalCost.OtherMaterial) {
-					set('additionalCostCategory', AdditionalCost.OtherMaterial);
-				}
-			} else if (!additionalCostCategory && defaultAdditionalCostByType != null)
-				set('additionalCostCategory', defaultAdditionalCostByType);
 			if (
 				additionalCostCategory === AdditionalCost.Material ||
 				additionalCostCategory === AdditionalCost.Maintain
@@ -1737,15 +1272,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		}
 
 		if (justDisabledCategory) {
-			set('category', null);
-			set('categoryProcessGroup', null);
-			set('categoryProcessGroupIds', []);
+			set('categoryType', null);
 			set('categoryProductionOrderId', null);
 			set('categoryAssignmentCodeId', null);
-			set('categoryAssignmentCodeIds', []);
 			set('categoryEquipmentId', null);
-			set('categoryEquipmentIds', []);
-			set('categoryAllocations', []);
 			set('categoryQuantity', null);
 		}
 		if (justDisabledAdditional) {
@@ -1774,208 +1304,44 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
 		showAssetDropdown,
-		categoryValue,
-		resolvedCategoryValue,
-		categoryProcessGroupValue,
+		categoryType,
 		categoryProductionOrderId,
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
 		additionalCostCategory,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
-		defaultCategoryByType,
-		defaultAdditionalCostByType,
-		isSafetyAndWelfareMaterial,
-		processGroupOptions,
 		categoryProductionOrderOptions,
 		categoryAssignmentCodeOptions,
-		categoryNeedsAssignmentCode,
 		additionalCostOrderOrAssignmentCodeOptions,
 		form,
 		basename,
 	]);
 
 	useEffect(() => {
-		if (!showAdditionalCostDropdown || !isSafetyAndWelfareMaterial) return;
-		if (additionalCostCategory === AdditionalCost.OtherMaterial) return;
-		set('additionalCostCategory', AdditionalCost.OtherMaterial);
-	}, [
-		showAdditionalCostDropdown,
-		isSafetyAndWelfareMaterial,
-		additionalCostCategory,
-	]);
-
-	useEffect(() => {
-		if (
-			!showCategoryDropdown ||
-			!resolvedCategoryValue ||
-			!categoryNeedsProcessGroup
-		) {
-			if ((categoryProcessGroupIds?.length ?? 0) > 0) {
-				set('categoryProcessGroupIds', []);
-			}
-			if ((categoryAssignmentCodeIds?.length ?? 0) > 0) {
-				set('categoryAssignmentCodeIds', []);
-			}
-			if ((categoryEquipmentIds?.length ?? 0) > 0) {
-				set('categoryEquipmentIds', []);
-			}
-			if ((categoryAllocations?.length ?? 0) > 0) {
-				set('categoryAllocations', []);
-			}
-			return;
-		}
-
-		if ((categoryProcessGroupIds?.length ?? 0) > 0) {
-			return;
-		}
-
-		const nextProcessGroupIds =
-			extractCategoryProcessGroupIds(categoryAllocations).length > 0
-				? extractCategoryProcessGroupIds(categoryAllocations)
-				: categoryProcessGroupValue
-					? [categoryProcessGroupValue]
-					: processGroupOptions.length === 1
-						? [processGroupOptions[0].value]
-						: [];
-
-		if (nextProcessGroupIds.length > 0) {
-			set('categoryProcessGroupIds', nextProcessGroupIds);
-		}
-	}, [
-		showCategoryDropdown,
-		resolvedCategoryValue,
-		categoryNeedsProcessGroup,
-		categoryProcessGroupIds,
-		categoryProcessGroupValue,
-		categoryAssignmentCodeIds,
-		categoryEquipmentIds,
-		categoryAllocations,
-		processGroupOptions,
-	]);
-
-	useEffect(() => {
-		if (
-			!showCategoryDropdown ||
-			!resolvedCategoryValue ||
-			!categoryNeedsProcessGroup
-		) {
-			return;
-		}
-
-		const processGroupIds = categoryProcessGroupIds ?? [];
-		if (processGroupIds.length === 0) {
-			if ((categoryAllocations?.length ?? 0) > 0) {
-				set('categoryAllocations', []);
-			}
-			if (categoryProcessGroupValue != null) {
-				set('categoryProcessGroup', null);
-			}
-			if (categoryAssignmentCodeId != null) {
-				set('categoryAssignmentCodeId', null);
-			}
-			if (categoryEquipmentId != null) {
-				set('categoryEquipmentId', null);
-			}
-			return;
-		}
-
-		const derivedAssignmentCodeIds =
-			(categoryAssignmentCodeIds?.length ?? 0) > 0
-				? (categoryAssignmentCodeIds ?? [])
-				: (categoryEquipmentIds?.length ?? 0) > 0
-					? (categoryEquipmentIds ?? [])
-					: extractCategoryAssignmentCodeIds(categoryAllocations);
-		const nextAllocations = syncCategoryAllocations(
-			processGroupIds,
-			categoryAllocations,
-			parseAllocationQuantity(categoryQuantity),
-			categoryNeedsAssignmentCode,
-		);
-		const normalizedAssignmentCodeIds = categoryNeedsAssignmentCode
-			? derivedAssignmentCodeIds.slice(0, processGroupIds.length)
-			: [];
-
-		if (
-			(categoryAssignmentCodeIds ?? [])
-				.slice(0, processGroupIds.length)
-				.join(',') !== normalizedAssignmentCodeIds.join(',')
-		) {
-			set('categoryAssignmentCodeIds', normalizedAssignmentCodeIds);
-		}
-
-		if (
-			(categoryEquipmentIds ?? [])
-				.slice(0, processGroupIds.length)
-				.join(',') !== normalizedAssignmentCodeIds.join(',')
-		) {
-			set('categoryEquipmentIds', normalizedAssignmentCodeIds);
-		}
-
-		if (categoryProcessGroupValue !== processGroupIds[0]) {
-			set('categoryProcessGroup', processGroupIds[0]);
-		}
-		if (
-			(categoryAssignmentCodeId ?? null) !==
-			(normalizedAssignmentCodeIds[0] ?? null)
-		) {
-			set('categoryAssignmentCodeId', normalizedAssignmentCodeIds[0] ?? null);
-		}
-		if (
-			(categoryEquipmentId ?? null) !== (normalizedAssignmentCodeIds[0] ?? null)
-		) {
-			set('categoryEquipmentId', normalizedAssignmentCodeIds[0] ?? null);
-		}
-		if (
-			getCategoryAllocationSignature(categoryAllocations) !==
-			getCategoryAllocationSignature(nextAllocations)
-		) {
-			set('categoryAllocations', nextAllocations);
-		}
-	}, [
-		showCategoryDropdown,
-		resolvedCategoryValue,
-		categoryNeedsProcessGroup,
-		categoryNeedsAssignmentCode,
-		categoryProcessGroupIds,
-		categoryAssignmentCodeIds,
-		categoryEquipmentIds,
-		categoryAllocations,
-		categoryQuantity,
-		categoryProcessGroupValue,
-		categoryAssignmentCodeId,
-		categoryEquipmentId,
-	]);
-
-	useEffect(() => {
-		if (!showCategoryDropdown || !resolvedCategoryValue) return;
-		if (!categoryNeedsProcessGroup) {
-			if (categoryProcessGroupValue != null) set('categoryProcessGroup', null);
-			return;
-		}
-		if (processGroupOptions.length !== 1 || categoryProcessGroupValue) return;
-		set('categoryProcessGroup', processGroupOptions[0].value);
-	}, [
-		showCategoryDropdown,
-		resolvedCategoryValue,
-		categoryNeedsProcessGroup,
-		categoryProcessGroupValue,
-		processGroupOptions,
-	]);
-
-	useEffect(() => {
 		if (!showCategoryDropdown) return;
-		if (categoryValue == null && defaultCategoryByType != null) {
-			set('category', defaultCategoryByType);
-			return;
-		}
-		if (resolvedCategoryValue !== MaterialsIncludedInContractRevenue.Maintain) {
-			if (categoryProductionOrderId != null)
-				set('categoryProductionOrderId', null);
+		if (categoryType == null) {
 			if (categoryAssignmentCodeId != null)
 				set('categoryAssignmentCodeId', null);
 			if (categoryEquipmentId != null) set('categoryEquipmentId', null);
+			if (categoryProductionOrderId != null)
+				set('categoryProductionOrderId', null);
 			return;
+		}
+		const hasValidAssignmentCodeSelection =
+			categoryAssignmentCodeId != null &&
+			categoryAssignmentCodeOptions.some(
+				(option) => option.value === categoryAssignmentCodeId,
+			);
+		if (!hasValidAssignmentCodeSelection) {
+			set(
+				'categoryAssignmentCodeId',
+				categoryAssignmentCodeOptions[0]?.value ?? null,
+			);
+			return;
+		}
+		if ((categoryEquipmentId ?? null) !== (categoryAssignmentCodeId ?? null)) {
+			set('categoryEquipmentId', categoryAssignmentCodeId ?? null);
 		}
 		if (
 			categoryProductionOrderId == null &&
@@ -1983,22 +1349,14 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		) {
 			set('categoryProductionOrderId', categoryProductionOrderOptions[0].value);
 		}
-		if (categoryNeedsAssignmentCode) {
-			return;
-		}
-		if (categoryAssignmentCodeId != null) set('categoryAssignmentCodeId', null);
-		if (categoryEquipmentId != null) set('categoryEquipmentId', null);
 	}, [
 		showCategoryDropdown,
-		categoryValue,
-		defaultCategoryByType,
-		resolvedCategoryValue,
+		categoryType,
 		categoryProductionOrderId,
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
 		categoryProductionOrderOptions,
 		categoryAssignmentCodeOptions,
-		categoryNeedsAssignmentCode,
 	]);
 
 	useEffect(() => {
@@ -2046,10 +1404,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 
 	useEffect(() => {
 		const prev = prevDropdownState.current;
-		const categoryRequiresProductionOrder =
-			resolvedCategoryValue === MaterialsIncludedInContractRevenue.Maintain;
-		const categoryRequiresAssignmentCode =
-			categoryRequiresProductionOrder && isSparePartByAssignmentCode;
+		const categoryRequiresProductionOrder = categoryType != null;
 		const additionalRequiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
@@ -2057,12 +1412,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			additionalCostCategory === AdditionalCost.OtherMaterial;
 		const hasCategoryActiveNow = Boolean(
 			showCategoryDropdown &&
-			resolvedCategoryValue &&
-			(!categoryNeedsProcessGroup || categoryProcessGroupValue) &&
-			(!categoryRequiresProductionOrder || categoryProductionOrderId != null) &&
-			(!categoryRequiresAssignmentCode ||
-				categoryAssignmentCodeId != null ||
-				categoryEquipmentId != null),
+			categoryType != null &&
+			categoryAssignmentCodeId != null &&
+			(!categoryRequiresProductionOrder || categoryProductionOrderId != null),
 		);
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
@@ -2073,13 +1425,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		);
 		const hasCategoryActiveBefore = Boolean(
 			prev.showCategoryDropdown &&
-			prev.category &&
-			(!categoryNeedsProcessGroup || prev.categoryProcessGroup) &&
-			(prev.category !== MaterialsIncludedInContractRevenue.Maintain ||
-				(prev.categoryProductionOrderId != null &&
-					(!isSparePartByAssignmentCode ||
-						prev.categoryAssignmentCodeId != null ||
-						prev.categoryEquipmentId != null))),
+			prev.categoryType != null &&
+			prev.categoryAssignmentCodeId != null &&
+			prev.categoryProductionOrderId != null,
 		);
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
@@ -2115,8 +1463,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		}
 
 		prevDropdownState.current = {
-			category: categoryValue,
-			categoryProcessGroup: categoryProcessGroupValue,
+			categoryType,
 			categoryProductionOrderId,
 			categoryAssignmentCodeId,
 			categoryEquipmentId,
@@ -2129,9 +1476,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			showAssetDropdown,
 		};
 	}, [
-		categoryValue,
-		resolvedCategoryValue,
-		categoryProcessGroupValue,
+		categoryType,
 		categoryProductionOrderId,
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
@@ -2140,8 +1485,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		otherMaterialDetailValue,
 		contractLimitCategoryValue,
 		quantityExported,
-		isSparePartByAssignmentCode,
-		categoryNeedsProcessGroup,
 		showCategoryDropdown,
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
@@ -2244,10 +1587,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		let total = 0;
 		if (
 			showCategoryDropdown &&
-			resolvedCategoryValue &&
-			hasValidCategoryAllocations &&
+			categoryType != null &&
+			categoryAssignmentCodeId != null &&
 			(!categoryNeedsProductionOrder || categoryProductionOrderId != null) &&
-			hasValidCategoryAssignmentCodes &&
 			categoryQuantity != null
 		)
 			total += Number(categoryQuantity);
@@ -2331,7 +1673,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const activeExportedKeys = exportedTypes ?? [EXPORTED_TYPE_OPTIONS[0].value];
 	const showReceivedBreakdown = activeReceivedKeys.length > 1;
 	const showExportedBreakdown = activeExportedKeys.length > 1;
-	const materialBadge = getMaterialBadge(materialTypeValue, itemTypeValue);
 	const isUnresolved = resolutionStatus === 'unresolved';
 	const unresolvedInputClassName =
 		'border-red-300 bg-slate-100 text-slate-500 focus-visible:ring-red-200';
@@ -2341,7 +1682,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		<>
 			{isUnresolved ? (
 				<TableRow className='transition-colors hover:bg-slate-50/50'>
-					{mode === 'edit' && (
+					{showRowSelection && (
 						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
 							<Checkbox
 								checked={selected}
@@ -2461,7 +1802,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								: 'hover:bg-slate-50/50',
 					)}
 				>
-					{mode === 'edit' && (
+					{showRowSelection && (
 						<TableCell className='w-12 border-b border-slate-200 px-3 py-4 text-center'>
 							<Checkbox
 								checked={selected}
@@ -2480,18 +1821,11 @@ const MaterialImportRow = memo(function MaterialImportRow({
 
 					{/* Mã vật tư */}
 					<TableCell className='sticky left-16 z-20 w-[10%] min-w-32 border-b border-slate-200 bg-white px-4 py-4 shadow-xs hover:bg-slate-50'>
-						<div className='flex flex-col gap-1'>
-							<div className='flex items-center gap-2'>
-								<Input
-									readOnly
-									value={materialCode || ''}
-									className='border-slate-300 bg-slate-100 font-medium text-slate-500'
-								/>
-							</div>
-							<span className={materialBadge.className}>
-								{materialBadge.label}
-							</span>
-						</div>
+						<Input
+							readOnly
+							value={materialCode || ''}
+							className='border-slate-300 bg-slate-100 font-medium text-slate-500'
+						/>
 					</TableCell>
 
 					{/* Tên vật tư */}
@@ -2666,28 +2000,26 @@ const MaterialImportRow = memo(function MaterialImportRow({
 								)}
 							{showCategoryDropdown && (
 								<>
-									{resolvedCategoryValue && categoryNeedsProcessGroup && (
-										<div className='w-full'>
-											<FormMultiSelect
-												control={form.control}
-												name={`${basename}.categoryProcessGroupIds` as RowPath}
-												options={processGroupOptions}
-												placeholder='Chọn nhóm công đoạn'
-											/>
-										</div>
-									)}
-									{resolvedCategoryValue && !categoryNeedsProcessGroup && (
-										<div className='w-full'>
-											<FormNumber
-												control={form.control}
-												name={`${basename}.categoryQuantity` as RowPath}
-												placeholder='Nhập số lượng'
-											/>
-										</div>
-									)}
-									{resolvedCategoryValue ===
-										MaterialsIncludedInContractRevenue.Maintain && (
+									<div className='w-full'>
+										<FormComboBox
+											control={form.control}
+											name={`${basename}.categoryType` as RowPath}
+											options={CATEGORY_OPTIONS}
+											placeholder='Chọn loại vật tư'
+										/>
+									</div>
+									{categoryType != null && (
 										<>
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={
+														`${basename}.categoryAssignmentCodeId` as RowPath
+													}
+													options={categoryAssignmentCodeOptions}
+													placeholder='Chọn Nhóm vật tư, tài sản'
+												/>
+											</div>
 											<div className='w-full'>
 												<FormComboBox
 													control={form.control}
@@ -2695,129 +2027,37 @@ const MaterialImportRow = memo(function MaterialImportRow({
 														`${basename}.categoryProductionOrderId` as RowPath
 													}
 													options={categoryProductionOrderOptions}
-													placeholder='Chọn quyết định, lệnh sản xuất'
+													placeholder='Chọn lệnh sản xuất'
 												/>
 											</div>
-											{categoryNeedsAssignmentCode && (
-												<div className='w-full'>
-													<div className='space-y-2'>
-														<div className='flex w-full items-start gap-2'>
-															{categoryAllocationRows.map((allocation) => {
-																const processGroupId =
-																	allocation.processGroupId ?? '';
-																const processGroupLabel =
-																	processGroupOptions.find(
-																		(option) => option.value === processGroupId,
-																	)?.label ?? processGroupId;
-																const selectedAssignmentCodeId =
-																	allocation.assignmentCodeIds?.[0] ??
-																	allocation.equipmentIds?.[0] ??
-																	'';
-
-																return (
-																	<div
-																		key={`${processGroupId}-assignment-code`}
-																		className='min-w-0 flex-1'
-																	>
-																		<label
-																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
-																			title={processGroupLabel}
-																		>
-																			{processGroupLabel}
-																		</label>
-																		<FormComboBox
-																			value={selectedAssignmentCodeId}
-																			onValueChange={(value) => {
-																				updateCategoryAllocation(
-																					processGroupId,
-																					(currentAllocation) => ({
-																						...currentAllocation,
-																						assignmentCodeIds: value
-																							? [value]
-																							: [],
-																						equipmentIds: value ? [value] : [],
-																					}),
-																				);
-																			}}
-																			options={categoryAssignmentCodeOptions}
-																			placeholder='Chọn Nhóm vật tư, tài sản'
-																		/>
-																	</div>
-																);
-															})}
+											<div className='w-full'>
+												<label className='mb-1.5 block text-xs font-medium text-slate-600'>
+													Số lượng vật tư
+												</label>
+												<FormNumber
+													control={form.control}
+													name={`${basename}.categoryQuantity` as RowPath}
+													placeholder='Nhập số lượng'
+												/>
+											</div>
+											{categoryAssignmentCodeId != null &&
+												(!categoryNeedsProductionOrder ||
+													categoryProductionOrderId != null) && (
+													<div className='w-full'>
+														<div
+															className={cn(
+																'mt-1 text-xs',
+																isValidTotal
+																	? 'text-green-600'
+																	: 'text-red-600',
+															)}
+														>
+															Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
 														</div>
 													</div>
-												</div>
-											)}
-											{categoryNeedsProcessGroup && (
-												<div className='w-full'>
-													<div className='space-y-2'>
-														<div className='flex w-full items-start gap-2'>
-															{categoryAllocationRows.map((allocation) => {
-																const processGroupId =
-																	allocation.processGroupId ?? '';
-																const processGroupLabel =
-																	processGroupOptions.find(
-																		(option) => option.value === processGroupId,
-																	)?.label ?? processGroupId;
-
-																return (
-																	<div
-																		key={`${processGroupId}-quantity`}
-																		className='min-w-0 flex-1'
-																	>
-																		<label
-																			className='mb-1.5 block truncate text-[10px] leading-tight font-medium text-slate-500'
-																			title={processGroupLabel}
-																		>
-																			{processGroupLabel}
-																		</label>
-																		<FormNumberInput
-																			value={parseAllocationQuantity(
-																				allocation.quantity,
-																			)}
-																			onValueChange={(value) => {
-																				updateCategoryAllocation(
-																					processGroupId,
-																					(currentAllocation) => ({
-																						...currentAllocation,
-																						quantity: value ?? 0,
-																					}),
-																				);
-																			}}
-																			placeholder='Nhập số lượng'
-																		/>
-																	</div>
-																);
-															})}
-														</div>
-														{categoryAllocationRows.length === 0 && (
-															<p className='text-xs text-slate-500'>
-																Chọn nhóm công đoạn để nhập số lượng theo từng
-																nhóm.
-															</p>
-														)}
-													</div>
-												</div>
-											)}
+												)}
 										</>
 									)}
-									{resolvedCategoryValue &&
-										hasValidCategoryAllocations &&
-										(!categoryNeedsProductionOrder ||
-											categoryProductionOrderId != null) &&
-										hasValidCategoryAssignmentCodes && (
-											<div className='w-full'>
-												<div
-													className={cn(
-														'mt-1 text-xs',
-														isValidTotal ? 'text-green-600' : 'text-red-600',
-													)}
-												>
-													Tổng cộng: {exportedQty} Đã nhập: {totalQuantity}
-												</div>
-											</div>
-										)}
 								</>
 							)}
 						</div>
@@ -2834,16 +2074,14 @@ const MaterialImportRow = memo(function MaterialImportRow({
 							</div>
 							{showAdditionalCostDropdown && (
 								<>
-									{!isSafetyAndWelfareMaterial && (
-										<div className='w-full'>
-											<FormComboBox
-												control={form.control}
-												name={`${basename}.additionalCostCategory` as RowPath}
-												options={additionalCostOptionsByType}
-												placeholder='Chọn danh mục'
-											/>
-										</div>
-									)}
+									<div className='w-full'>
+										<FormComboBox
+											control={form.control}
+											name={`${basename}.additionalCostCategory` as RowPath}
+											options={additionalCostOptionsByType}
+											placeholder='Chọn danh mục'
+										/>
+									</div>
 									{additionalCostCategory && (
 										<>
 											{additionalCostNeedsProductionOrder && (

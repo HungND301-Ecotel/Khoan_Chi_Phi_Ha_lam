@@ -335,15 +335,6 @@ function getItemName(item: UnifiedItem): string {
 	return '';
 }
 
-function normalizeForCompare(value?: string | null): string {
-	return (value ?? '')
-		.trim()
-		.toLocaleLowerCase()
-		.replace(/đ/g, 'd')
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '');
-}
-
 function getAllItemsFromGroup(group: GroupCodeGroup): UnifiedItem[] {
 	return [
 		...group.items,
@@ -357,35 +348,6 @@ function getAllItemsFromType(type: TypeGroup): UnifiedItem[] {
 		...type.groups.flatMap((group) => getAllItemsFromGroup(group)),
 		...(type.flatItems ?? []),
 	];
-}
-
-function isContractedRevenueCategoryName(categoryName: string): boolean {
-	return (
-		normalizeForCompare(categoryName) ===
-		'vat tu da tinh vao doanh thu khoan'
-	);
-}
-
-function isSectionASctxSubtypeName(typeName: string): boolean {
-	const normalized = normalizeForCompare(typeName);
-	return (
-		normalized ===
-			'chi phi sua chua thuong xuyen (cac loai vat tu sctx theo ke hoach vat tu)' ||
-		normalized === 'chi phi sua chua thuong xuyen dai ky phan bo'
-	);
-}
-
-function getSectionASctxSubtypeCode(typeName: string): string {
-	const normalized = normalizeForCompare(typeName);
-
-	if (
-		normalized ===
-		'chi phi sua chua thuong xuyen (cac loai vat tu sctx theo ke hoach vat tu)'
-	) {
-		return 'CPSCTX-TKHVT';
-	}
-
-	return '';
 }
 
 /**
@@ -546,78 +508,8 @@ export function flattenHierarchicalData(
 			return;
 		}
 
-		const shouldGroupSectionASctx =
-			isContractedRevenueCategoryName(category.categoryName) &&
-			category.types.some((type) => isSectionASctxSubtypeName(type.typeName));
-		let hasRenderedSectionASctxParent = false;
-
 		// Level 1: Types
 		category.types.forEach((type, typeIndex) => {
-			const isSectionASctxSubtype = isSectionASctxSubtypeName(type.typeName);
-
-			if (shouldGroupSectionASctx && isSectionASctxSubtype) {
-				if (hasRenderedSectionASctxParent) {
-					return;
-				}
-
-				const sctxTypes = category.types.filter((candidate) =>
-					isSectionASctxSubtypeName(candidate.typeName),
-				);
-				const sctxParentTotals = sumFinancialFields(
-					sctxTypes.flatMap((candidate) => getAllItemsFromType(candidate)),
-				);
-
-				result.push({
-					id: `cat-${catIndex}-type-sctx-parent`,
-					rowType: 'type',
-					label: 'Chi phí Sửa chữa thường xuyên',
-					code: '',
-					name: 'Chi phí Sửa chữa thường xuyên',
-					level: 1,
-					data: sctxParentTotals,
-				});
-
-				sctxTypes.forEach((sctxType, sctxIndex) => {
-					const subtypeTotals = calculateTypeTotals(sctxType);
-
-					result.push({
-						id: `cat-${catIndex}-type-sctx-sub-${sctxIndex}`,
-						rowType: 'group',
-						label: sctxType.typeName,
-						code: getSectionASctxSubtypeCode(sctxType.typeName),
-						name: sctxType.typeName,
-						level: 2,
-						data: subtypeTotals,
-					});
-
-					sctxType.groups.forEach((group, groupIndex) => {
-						appendGroupRows(
-							group,
-							`cat-${catIndex}-type-sctx-sub-${sctxIndex}-grp-${groupIndex}`,
-							3,
-						);
-					});
-
-					sctxType.flatItems?.forEach((item, itemIndex) => {
-						result.push({
-							id: `cat-${catIndex}-type-sctx-sub-${sctxIndex}-flat-${itemIndex}`,
-							rowType: 'item',
-							label: '',
-							level: 3,
-							code: getItemCode(item),
-							name: getItemName(item),
-							itemCode: getItemCode(item),
-							itemName: getItemName(item),
-							unit: item.unit,
-							data: item,
-						});
-					});
-				});
-
-				hasRenderedSectionASctxParent = true;
-				return;
-			}
-
 			const typeTotals = calculateTypeTotals(type);
 
 			// Type row with totals

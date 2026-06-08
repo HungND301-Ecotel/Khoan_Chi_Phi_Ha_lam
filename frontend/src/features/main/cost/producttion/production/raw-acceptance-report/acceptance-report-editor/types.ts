@@ -182,10 +182,12 @@ export type CreateAcceptanceReportItem = {
 	additionalCostEquipmentId?: string | null;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking: boolean;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
+	additionalCostClassification?: number | null;
 	additionalCost: number;
 	otherMaterialDetail: number;
 	additionalCostQuantity: number;
@@ -222,10 +224,12 @@ export type UpdateAcceptanceReportItem = {
 	shippedQuantity: number;
 	issuedDetails: QuantityDetail[];
 	shippedDetails: QuantityDetail[];
+	materialsIncludedInContractRevenueType?: number | null;
 	materialsIncludedInContractRevenue: number;
 	isLongTermTracking: boolean;
 	processGroupId: string | null;
 	materialsIncludedInContractRevenueQuantity: number;
+	additionalCostClassification?: number | null;
 	additionalCost: number;
 	otherMaterialDetail: number;
 	additionalCostQuantity: number;
@@ -243,8 +247,8 @@ export type UpdateAcceptanceReportRequest = {
 };
 
 export const CATEGORY_OPTIONS = [
-	{ value: MaterialsIncludedInContractRevenue.Material, label: 'Vật liệu' },
-	{ value: MaterialsIncludedInContractRevenue.Maintain, label: 'SCTX' },
+	{ value: MaterialType.Material, label: 'Vật liệu' },
+	{ value: MaterialType.SparePart, label: 'Phụ tùng' },
 ];
 
 export const ADDITIONAL_COST_OPTIONS = [

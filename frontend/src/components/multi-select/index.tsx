@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ChevronDownIcon, XCircleIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type MultiSelectOption = {
 	value: string;
@@ -39,6 +39,10 @@ export function MultiSelect({
 	onValuesChange,
 }: MultiSelectProps) {
 	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const [dialogBoundary, setDialogBoundary] = useState<HTMLElement | null>(
+		null,
+	);
 
 	const normalizeText = (text: string) =>
 		text
@@ -68,27 +72,36 @@ export function MultiSelect({
 		}
 	};
 
+	useEffect(() => {
+		if (!open) return;
+
+		setDialogBoundary(
+			triggerRef.current?.closest('[data-slot="dialog-content"]') as HTMLElement | null,
+		);
+	}, [open]);
+
 	return (
 		<div className='flex flex-col gap-2'>
 			{label && <Label>{label}</Label>}
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger asChild>
 					<Button
+						ref={triggerRef}
 						variant={'ghost'}
 						className={cn(
-							'flex h-fit max-h-fit min-h-9 w-full items-start rounded-sm border border-[#999999] bg-white px-3 hover:bg-white',
+							'flex h-auto min-h-9 w-full items-start overflow-hidden rounded-sm border border-[#999999] bg-white px-3 py-2 hover:bg-white',
 							open && 'border-primary border-2',
 							values?.length > 0 ? 'text-black' : 'text-muted-foreground',
 						)}
 					>
-						<div className='flex min-w-0 flex-1 flex-wrap justify-start gap-2 text-left'>
+						<div className='flex max-h-24 min-w-0 flex-1 flex-wrap content-start justify-start gap-2 overflow-y-auto pr-1 text-left'>
 							{values?.length > 0 ? (
 								values.map((selected) => (
 									<div
 										key={selected.value}
-										className='flex max-w-full items-start gap-1 rounded-full bg-[#dfdfdf] px-2 py-0.5 text-xs text-black'
+										className='flex max-w-full min-w-0 items-center gap-1 rounded-full bg-[#dfdfdf] px-2 py-0.5 text-xs text-black'
 									>
-										<span className='wrap-break-word whitespace-normal'>
+										<span className='min-w-0 truncate whitespace-nowrap'>
 											{selected.label}
 										</span>
 										<div
@@ -106,7 +119,7 @@ export function MultiSelect({
 								<span>{placeholder}</span>
 							)}
 						</div>
-						<ChevronDownIcon className='mt-1 shrink-0' />
+						<ChevronDownIcon className='mt-1 shrink-0 self-start' />
 					</Button>
 				</PopoverTrigger>
 
@@ -114,6 +127,11 @@ export function MultiSelect({
 					className='p-0'
 					style={{ width: 'var(--radix-popover-trigger-width)' }}
 					align='start'
+					collisionBoundary={dialogBoundary ?? undefined}
+					collisionPadding={8}
+					sticky='always'
+					updatePositionStrategy='always'
+					hideWhenDetached
 				>
 					<Command
 						filter={(value, search) => {

@@ -14,22 +14,16 @@ import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AcceptanceReportDataTable } from './datatable';
-import { HierarchicalRow } from './types';
 import { calculateTypeTotals, flattenHierarchicalData } from './utils';
 import { useAcceptanceReportDetail } from './use-acceptance-report-detail';
 
 export function AcceptanceReport({
 	id,
-	output: _output,
-	plan: _plan,
-	callback: _callback,
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
-	const [flattenedData, setFlattenedData] = useState<HierarchicalRow[]>([]);
-
 	// Fetch data from API
 	const {
 		data: hierarchicalData,
@@ -49,7 +43,9 @@ export function AcceptanceReport({
 		const contractedRevenueCategory = hierarchicalData?.categories.find(
 			(category) =>
 				normalize(category.categoryName) ===
-				'vat tu da tinh vao doanh thu khoan',
+					'vat tu tinh vao doanh thu khoan' ||
+				normalize(category.categoryName) ===
+					'vat tu da tinh vao doanh thu khoan',
 		);
 
 		if (!contractedRevenueCategory) {
@@ -59,38 +55,25 @@ export function AcceptanceReport({
 		const materialType = contractedRevenueCategory.types.find(
 			(type) => normalize(type.typeName) === 'vat lieu',
 		);
-		const sctxPlannedType = contractedRevenueCategory.types.find((type) =>
-			normalize(type.typeName).includes(
-				'chi phi sua chua thuong xuyen (cac loai vat tu sctx theo ke hoach vat tu)',
-			),
-		);
-		const sctxLongtermType = contractedRevenueCategory.types.find((type) =>
-			normalize(type.typeName).includes(
-				'chi phi sua chua thuong xuyen dai ky phan bo',
-			),
+		const sparePartType = contractedRevenueCategory.types.find(
+			(type) => normalize(type.typeName) === 'phu tung',
 		);
 
 		return {
 			materialCost: materialType
 				? calculateTypeTotals(materialType).issueForProductionAmount
 				: 0,
-			sctxCost:
-				(sctxPlannedType
-					? calculateTypeTotals(sctxPlannedType).issueTotalAmount
-					: 0) +
-				(sctxLongtermType
-					? calculateTypeTotals(sctxLongtermType).issueTotalAmount
-					: 0),
+			sctxCost: sparePartType
+				? calculateTypeTotals(sparePartType).issueTotalAmount
+				: 0,
 		};
 	}, [hierarchicalData]);
 
-	// Flatten and update data when hierarchical data changes
-	useEffect(() => {
-		if (hierarchicalData) {
-			const flattened = flattenHierarchicalData(hierarchicalData);
-			setFlattenedData(flattened);
-		}
-	}, [hierarchicalData]);
+	const flattenedData = useMemo(
+		() =>
+			hierarchicalData ? flattenHierarchicalData(hierarchicalData) : [],
+		[hierarchicalData],
+	);
 
 	return (
 		<AccordionItem value={'acceptance-report'} className='border-none'>

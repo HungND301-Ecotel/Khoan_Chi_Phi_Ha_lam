@@ -57,6 +57,7 @@ public record UpdateAcceptanceReportItemDto
     }
 
     // Vật tư tính vào doanh thu khoán
+    public AcceptanceReportItemType? MaterialsIncludedInContractRevenueType { get; init; }
     public required MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; init; }
     public bool IsLongTermTracking { get; init; }
     public Guid? ProcessGroupId { get; init; }
@@ -64,6 +65,7 @@ public record UpdateAcceptanceReportItemDto
     public List<AcceptanceReportCategoryAllocationDto>? CategoryAllocations { get; init; }
 
     // Bổ sung chi phí
+    public AdditionalCost? AdditionalCostClassification { get; init; }
     public required AdditionalCost AdditionalCost { get; init; }
     public required OtherMaterialDetail OtherMaterialDetail { get; init; }
     public required double AdditionalCostQuantity { get; init; }

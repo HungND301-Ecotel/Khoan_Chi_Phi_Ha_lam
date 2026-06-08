@@ -31,11 +31,18 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     //Vật tư tính vào doanh thu khoán
     public MaterialsIncludedInContractRevenue MaterialsIncludedInContractRevenue { get; protected set; }
+    public AcceptanceReportItemType? MaterialsIncludedInContractRevenueType
+        => MaterialsIncludedInContractRevenue == MaterialsIncludedInContractRevenue.None
+            ? null
+            : IsTrackedSctxItem
+                ? AcceptanceReportItemType.Part
+                : AcceptanceReportItemType.Material;
     public bool IsLongTermTracking { get; protected set; }
     public double MaterialsIncludedInContractRevenueQuantity { get; protected set; }
 
     //Bổ sung chi phí
     public AdditionalCost AdditionalCost { get; protected set; }
+    public AdditionalCost AdditionalCostClassification => AdditionalCost;
     public OtherMaterialDetail OtherMaterialDetail { get; protected set; }
     public double AdditionalCostQuantity { get; protected set; }
 
@@ -90,7 +97,9 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         var categoryReference = categoryProductionReference ?? ProductionReference.Empty();
         var additionalReference = additionalCostProductionReference ?? ProductionReference.Empty();
 
-        if ((categoryReference.AssignmentCodeId != null || additionalReference.AssignmentCodeId != null) && partId == null)
+        if ((categoryReference.AssignmentCodeId != null || additionalReference.AssignmentCodeId != null)
+            && materialId == null
+            && partId == null)
         {
             throw new ArgumentException("Phải chỉ rõ vật tư gắn với Nhóm vật tư, tài sản");
         }
@@ -114,12 +123,6 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             throw new ArgumentException(CustomResponseMessage.MaterialIdRequired);
         }
 
-        if (partId != null &&
-            materialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None &&
-            processGroupId == null)
-        {
-            throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
-        }
     }
 
     private static void ValidateQuantityDetails(
@@ -217,11 +220,6 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
         if (!hasAllocations)
         {
-            if (requiresAllocation && processGroupId == null)
-            {
-                throw new ArgumentException(CustomResponseMessage.ProcessGroupNotFound);
-            }
-
             return;
         }
 
