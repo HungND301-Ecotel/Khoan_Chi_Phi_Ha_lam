@@ -58,8 +58,8 @@ function MainCatalogContractCodePage() {
 			url={`${API.CATALOG.CONTRACT_CODE.LIST}`}
 			columns={CATALOG_CONTRACT_CODE_COLUMNS}
 			filters={[
+				{ key: 'code', label: 'Mã nhóm vật tư, tài sản' },
 				{ key: 'name', label: 'Tên nhóm vật tư, tài sản' },
-				{ key: 'code', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 				{ key: 'currentPrice', label: 'Đơn giá điện năng' },
 			]}

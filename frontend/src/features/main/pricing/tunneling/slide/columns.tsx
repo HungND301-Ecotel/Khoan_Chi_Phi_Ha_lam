@@ -104,6 +104,7 @@ export type SlideDetail = {
 export type SlideDetailMaterial = {
 	assignmentCodeId: string;
 	assignmentCode: string;
+	assignmentCodeName?: string;
 	costs: SlideDetailMaterialCost[];
 };
 

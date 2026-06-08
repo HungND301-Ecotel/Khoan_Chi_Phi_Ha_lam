@@ -9,6 +9,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 {
     public Guid AcceptanceReportId { get; protected set; }
     public int SortOrder { get; protected set; }
+    public string? DocumentNumber { get; protected set; }
+    public DateOnly? PostingDate { get; protected set; }
     public Guid? ProcessGroupId { get; protected set; }
     public Guid? PartId { get; protected set; }
     public Guid? EquipmentId { get; protected set; }
@@ -314,6 +316,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public static AcceptanceReportItem Create(
         Guid acceptanceReportId,
         int sortOrder,
+        string? documentNumber,
+        DateOnly? postingDate,
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
@@ -348,6 +352,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         {
             AcceptanceReportId = acceptanceReportId,
             SortOrder = sortOrder,
+            DocumentNumber = string.IsNullOrWhiteSpace(documentNumber)
+                ? null
+                : documentNumber.Trim(),
+            PostingDate = postingDate,
             MaterialId = materialId,
             PartId = partId,
             UsageTime = usageTime,
@@ -395,6 +403,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
     public static AcceptanceReportItem CreateForTrackedMaterial(
         Guid acceptanceReportId,
         int sortOrder,
+        string? documentNumber,
+        DateOnly? postingDate,
         Guid? processGroupId,
         Guid? trackedMaterialId,
         AcceptanceReportItemType acceptanceReportItemType,
@@ -419,6 +429,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         => Create(
             acceptanceReportId,
             sortOrder,
+            documentNumber,
+            postingDate,
             processGroupId,
             acceptanceReportItemType == AcceptanceReportItemType.Material ? trackedMaterialId : null,
             acceptanceReportItemType == AcceptanceReportItemType.Part ? trackedMaterialId : null,
@@ -443,6 +455,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     public void Update(
         int sortOrder,
+        string? documentNumber,
+        DateOnly? postingDate,
         Guid? processGroupId,
         Guid? materialId,
         Guid? partId,
@@ -474,6 +488,10 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             materialsIncludedInContractRevenueQuantity, categoryAllocations);
 
         SortOrder = sortOrder;
+        DocumentNumber = string.IsNullOrWhiteSpace(documentNumber)
+            ? null
+            : documentNumber.Trim();
+        PostingDate = postingDate;
         MaterialId = materialId;
         PartId = partId;
         UsageTime = usageTime;
@@ -521,6 +539,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
 
     public void UpdateForTrackedMaterial(
         int sortOrder,
+        string? documentNumber,
+        DateOnly? postingDate,
         Guid? processGroupId,
         Guid? trackedMaterialId,
         AcceptanceReportItemType acceptanceReportItemType,
@@ -544,6 +564,8 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         IList<(Guid ProcessGroupId, double Quantity, IList<Guid> AssignmentCodeIds)>? categoryAllocations = null)
         => Update(
             sortOrder,
+            documentNumber,
+            postingDate,
             processGroupId,
             acceptanceReportItemType == AcceptanceReportItemType.Material ? trackedMaterialId : null,
             acceptanceReportItemType == AcceptanceReportItemType.Part ? trackedMaterialId : null,

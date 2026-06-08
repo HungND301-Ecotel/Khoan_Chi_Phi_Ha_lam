@@ -40,7 +40,6 @@ import {
 	mapShippedDetailsToBreakdown,
 	normalizeProductionOrderId,
 	parseQuantity,
-	resolveSelectionIds,
 } from './helpers';
 import { MATERIAL_FORM_DEFAULT } from './schema';
 
@@ -68,6 +67,8 @@ export function mapResolvedImportItem(
 		resolutionStatus: ImportResolutionStatus.Resolved,
 		sourceRowNumber: item.rowNumber ?? null,
 		partType: item.partType ?? null,
+		documentNumber: item.documentNumber ?? '',
+		postingDate: item.postingDate ?? null,
 		materialCode:
 			item.type === MaterialType.Material
 				? (item.materialCode ?? item.trackedMaterialCode ?? '')
@@ -108,6 +109,8 @@ export function mapUnresolvedImportItem(
 		resolutionStatus: ImportResolutionStatus.Unresolved,
 		unresolvedReason: item.unresolvedReason,
 		sourceRowNumber: item.rowNumber,
+		documentNumber: item.documentNumber ?? '',
+		postingDate: item.postingDate ?? null,
 		materialCode: item.materialCode,
 		materialName: item.materialName ?? '',
 		unitOfMeasureName: item.unitOfMeasureName,
@@ -192,6 +195,8 @@ export function mapRawAcceptanceItemToEditorRow(
 		materialOrPartId:
 			item.trackedMaterialId ?? item.partId ?? item.materialId ?? undefined,
 		partType: item.partType ?? null,
+		documentNumber: item.documentNumber ?? '',
+		postingDate: item.postingDate ?? null,
 		materialCode:
 			item.type === MaterialType.Material
 				? (item.materialCode ?? item.trackedMaterialCode ?? '')
@@ -277,10 +282,10 @@ export function mapRawAcceptanceItemToEditorRow(
 			showAdditionalCostDropdown
 				? (item.additionalCostClassification ?? item.additionalCost ?? null)
 				: null,
-		additionalCostProductionOrderId:
+		additionalCostProductionOrderId: item.additionalCostProductionOrderId ?? null,
+		additionalCostAssignmentCodeId:
 			item.additionalCostAssignmentCodeId ??
 			item.additionalCostEquipmentId ??
-			item.additionalCostProductionOrderId ??
 			null,
 		otherMaterialDetail:
 			showAdditionalCostDropdown &&
@@ -516,7 +521,14 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		item.showAdditionalCostDropdown &&
 		(resolvedAdditionalCostCategory === AdditionalCost.Material ||
 			resolvedAdditionalCostCategory === AdditionalCost.Maintain)
-			? resolveSelectionIds(item.additionalCostProductionOrderId)
+			? {
+					productionOrderId: normalizeProductionOrderId(
+						item.additionalCostProductionOrderId,
+					),
+					assignmentCodeId: normalizeAssignmentCodeId(
+						item.additionalCostAssignmentCodeId,
+					),
+				}
 			: {
 					productionOrderId: null,
 					assignmentCodeId: null,
@@ -574,6 +586,8 @@ export function buildAcceptanceReportRequest(
 								};
 				return {
 					acceptanceReportItemId: item.acceptanceReportItemId || null,
+					documentNumber: item.documentNumber?.trim() || null,
+					postingDate: item.postingDate || null,
 					...trackedItemIds,
 					usageTime: item.usageTime ?? 0,
 					type: item.type || MaterialType.Material,
@@ -641,6 +655,8 @@ export function buildAcceptanceReportRequest(
 							};
 			return {
 				id: item.id || undefined,
+				documentNumber: item.documentNumber?.trim() || null,
+				postingDate: item.postingDate || null,
 				...trackedItemIds,
 				usageTime: item.usageTime ?? 0,
 				type: item.type ?? MaterialType.Material,

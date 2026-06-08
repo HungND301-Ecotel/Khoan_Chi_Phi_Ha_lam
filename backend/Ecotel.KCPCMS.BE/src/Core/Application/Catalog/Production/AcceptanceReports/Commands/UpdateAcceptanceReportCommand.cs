@@ -160,6 +160,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                     existingItem.UpdateForTrackedMaterial(
                         itemSortOrders[existingItem.Id],
+                        updateItem.DocumentNumber,
+                        updateItem.PostingDate,
                         processGroupId,
                         trackedMaterialId,
                         trackedItemType,
@@ -253,6 +255,8 @@ public class UpdateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                 var reportItem = AcceptanceReportItem.CreateForTrackedMaterial(
                     acceptanceReport.Id,
                     sortOrder,
+                    createItem.DocumentNumber,
+                    createItem.PostingDate,
                     processGroupId,
                     trackedMaterialId,
                     trackedItemType,

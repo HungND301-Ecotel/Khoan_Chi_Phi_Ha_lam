@@ -125,13 +125,13 @@ export function FormMonthYear<T extends FieldValues>({
 					</Button>
 				</DropdownMenuTrigger>
 
-				<DropdownMenuContent className='w-[280px] space-y-3 p-3' align='start'>
+				<DropdownMenuContent className='w-70 space-y-3 p-3' align='start'>
 					{/* Year Selector */}
 					<Select value={String(selectedYear)} onValueChange={handleYearChange}>
 						<SelectTrigger className='w-full'>
 							<SelectValue placeholder='Chọn năm' />
 						</SelectTrigger>
-						<SelectContent className='max-h-[200px]'>
+						<SelectContent className='max-h-50'>
 							{Array.from({ length: 201 }, (_, index) => {
 								const year = currentYear + 100 - index;
 								return (

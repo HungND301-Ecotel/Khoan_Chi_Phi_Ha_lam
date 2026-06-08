@@ -51,10 +51,18 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 }
 
                 var idStr = row.Cell(1).Value.ToString()?.Trim();
-                var materialCode = row.Cell(2).Value.ToString()?.Trim();
+                var documentNumber = row.Cell(2).Value.ToString()?.Trim();
+                var postingDateCell = row.Cell(3);
+                var materialCode = row.Cell(4).Value.ToString()?.Trim();
                 var normalizedMaterialCode = NormalizeCode(materialCode);
-                var quantityReceived = row.Cell(3).Value.ToString()?.Trim();
-                var quantityDispensed = row.Cell(4).Value.ToString()?.Trim();
+                var quantityReceived = row.Cell(5).Value.ToString()?.Trim();
+                var quantityDispensed = row.Cell(6).Value.ToString()?.Trim();
+
+                if (!TryParsePostingDate(postingDateCell, out var postingDate))
+                {
+                    fatalErrors.Add($"Ngày vào sổ không đúng định dạng ở dòng {rowNumber}.");
+                    continue;
+                }
 
                 Guid? reportItemId = null;
                 if (!string.IsNullOrWhiteSpace(idStr) && Guid.TryParse(idStr, out var parsedId))
@@ -92,6 +100,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                     {
                         RowNumber = rowNumber,
                         ReportItemId = reportItemId,
+                        DocumentNumber = documentNumber,
+                        PostingDate = postingDate,
                         MaterialCode = materialCode,
                         MaterialName = null,
                         IssuedQuantity = receivedValue,
@@ -115,6 +125,8 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 {
                     ReportItemId = reportItemId,
                     RowNumber = rowNumber,
+                    DocumentNumber = documentNumber,
+                    PostingDate = postingDate,
                     TrackedMaterialId = materialId ?? partId,
                     MaterialId = materialId,
                     PartId = partId,
@@ -176,6 +188,42 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
         }
 
         return double.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out parsedValue);
+    }
+
+    private static bool TryParsePostingDate(IXLCell cell, out DateOnly? postingDate)
+    {
+        postingDate = null;
+
+        var rawValue = cell.Value.ToString()?.Trim();
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return true;
+        }
+
+        if (cell.TryGetValue<DateTime>(out var dateTime))
+        {
+            postingDate = DateOnly.FromDateTime(dateTime);
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(
+                rawValue,
+                ["d/M/yyyy", "dd/MM/yyyy", "yyyy-MM-dd", "M/d/yyyy", "MM/dd/yyyy"],
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsedDate))
+        {
+            postingDate = parsedDate;
+            return true;
+        }
+
+        if (DateOnly.TryParse(rawValue, CultureInfo.CurrentCulture, DateTimeStyles.None, out parsedDate))
+        {
+            postingDate = parsedDate;
+            return true;
+        }
+
+        return false;
     }
 
     private static string NormalizeCode(string? value)

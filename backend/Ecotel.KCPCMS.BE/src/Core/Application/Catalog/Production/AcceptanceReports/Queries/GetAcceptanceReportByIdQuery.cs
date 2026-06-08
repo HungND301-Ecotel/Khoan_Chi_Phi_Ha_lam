@@ -51,6 +51,8 @@ public class GetAcceptanceReportByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
             CategoryProductionOrderLabel = ResolveCategoryProductionOrderLabel(item),
             CategoryAssignmentCodeId = item.CategoryAssignmentCodeId,
             CategoryAssignmentCodeLabel = ResolveCategoryAssignmentCodeLabel(item),
+            DocumentNumber = item.DocumentNumber,
+            PostingDate = item.PostingDate,
             AdditionalCostProductionOrderId = item.AdditionalCostProductionOrderId,
             AdditionalCostAssignmentCodeId = item.AdditionalCostAssignmentCodeId,
             MaterialId = item.TrackedMaterialId,

@@ -1194,6 +1194,12 @@ public class ApplicationDbContext(
             .Property(i => i.IsLongTermTracking)
             .HasDefaultValue(false);
         modelBuilder.Entity<AcceptanceReportItem>()
+            .Property(i => i.DocumentNumber)
+            .HasMaxLength(255);
+        modelBuilder.Entity<AcceptanceReportItem>()
+            .Property(i => i.PostingDate)
+            .HasColumnType("date");
+        modelBuilder.Entity<AcceptanceReportItem>()
             .HasIndex(i => new { i.AcceptanceReportId, i.SortOrder })
             .HasFilter("\"DeletedOn\" IS NULL");
         modelBuilder.Entity<AcceptanceReportItem>()

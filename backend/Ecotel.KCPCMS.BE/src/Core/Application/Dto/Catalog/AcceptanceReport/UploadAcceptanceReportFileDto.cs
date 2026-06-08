@@ -20,6 +20,8 @@ public record AcceptanceReportItemDto
     /// </summary>
     public Guid? ReportItemId { get; init; }
     public int RowNumber { get; init; }
+    public string? DocumentNumber { get; init; }
+    public DateOnly? PostingDate { get; init; }
 
     public Guid? TrackedMaterialId
     {
@@ -71,6 +73,8 @@ public record UnresolvedAcceptanceReportItemDto
 {
     public int RowNumber { get; init; }
     public Guid? ReportItemId { get; init; }
+    public string? DocumentNumber { get; init; }
+    public DateOnly? PostingDate { get; init; }
     public required string MaterialCode { get; init; }
     public string? MaterialName { get; init; }
     public string UnitOfMeasureName { get; init; } = string.Empty;

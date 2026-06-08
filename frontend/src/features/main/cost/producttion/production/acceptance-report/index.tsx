@@ -56,7 +56,9 @@ export function AcceptanceReport({
 			(type) => normalize(type.typeName) === 'vat lieu',
 		);
 		const sparePartType = contractedRevenueCategory.types.find(
-			(type) => normalize(type.typeName) === 'phu tung',
+			(type) =>
+				normalize(type.typeName) === 'sctx' ||
+				normalize(type.typeName) === 'phu tung',
 		);
 
 		return {
