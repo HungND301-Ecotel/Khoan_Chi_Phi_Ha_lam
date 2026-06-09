@@ -7,7 +7,7 @@ export type Credentials = {
 
 export type AuthContextValue = {
 	loading: boolean;
-	user?: boolean;
+	user: boolean;
 	signIn: (credentials: Credentials) => Promise<void>;
 	signOut: () => void;
 };

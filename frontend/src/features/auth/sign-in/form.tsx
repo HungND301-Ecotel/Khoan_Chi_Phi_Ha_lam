@@ -31,7 +31,12 @@ export function SignInForm({ className }: React.ComponentProps<'form'>) {
 	});
 
 	const handleSubmit = async (data: SignInValues) => {
-		await signIn(data);
+		try {
+			await signIn(data);
+		} catch (error) {
+			// Lỗi đã được xử lý trong signIn, không cần xử lý lại
+			console.error('Sign in error:', error);
+		}
 	};
 
 	return (
@@ -57,6 +62,7 @@ export function SignInForm({ className }: React.ComponentProps<'form'>) {
 						name='username'
 						label='Tên đăng nhập'
 						placeholder='Nhập tên đăng nhập'
+						disabled={form.formState.isSubmitting}
 					/>
 
 					<FormPassword
@@ -64,10 +70,23 @@ export function SignInForm({ className }: React.ComponentProps<'form'>) {
 						name='password'
 						label='Mật khẩu'
 						placeholder='Nhập mật khẩu'
+						disabled={form.formState.isSubmitting}
 					/>
 
-					<Button className='w-full' size={'lg'} variant={'warning'}>
-						{form.formState.isSubmitting ? <Spinner /> : 'Đăng nhập'}
+					<Button 
+						className='w-full' 
+						size={'lg'} 
+						variant={'warning'}
+						disabled={form.formState.isSubmitting}
+					>
+						{form.formState.isSubmitting ? (
+							<>
+								<Spinner />
+								<span className='ml-2'>Đang đăng nhập...</span>
+							</>
+						) : (
+							'Đăng nhập'
+						)}
 					</Button>
 				</CardContent>
 

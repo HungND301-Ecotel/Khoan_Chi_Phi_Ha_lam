@@ -3,6 +3,7 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { AuthContext, Credentials } from '@/data/auth/auth-context';
 import { api } from '@/lib/api';
+import { authStorage, TokenData } from '@/lib/auth-storage';
 import {
 	PropsWithChildren,
 	useCallback,
@@ -22,21 +23,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 	const popup = usePopup();
 
+	// Kiểm tra token khi component mount
 	useEffect(() => {
-		const tokens = authStore.get();
-		if (tokens) setUser(true);
-		setLoading(false);
-	}, [navigate]);
+		const initAuth = () => {
+			// Kiểm tra xem token còn hợp lệ không
+			if (authStorage.isTokenValid()) {
+				setUser(true);
+			} else {
+				setUser(false);
+			}
+
+			setLoading(false);
+		};
+
+		initAuth();
+	}, []);
 
 	const signIn = useCallback(
 		async (credentials: Credentials) => {
 			try {
-				const { result } = await api.post<Tokens, Credentials>(
+				const { result } = await api.post<TokenData, Credentials>(
 					API.AUTH.SIGN_IN,
 					credentials,
 				);
 
-				authStore.set(result);
+				authStorage.set(result);
 				setUser(true);
 				popup.success('Đăng nhập thành công');
 				navigate('/');
@@ -49,10 +60,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 	);
 
 	const signOut = useCallback(() => {
-		authStore.clear();
-		setUser(undefined);
+		authStorage.clear();
+		setUser(false);
 		popup.success('Đăng xuất thành công');
-		navigate('/auth/sign-in');
+		navigate('/auth/sign-in', { replace: true });
 	}, [navigate, popup]);
 
 	const value = useMemo(
@@ -67,32 +78,3 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 	return <AuthContext.Provider value={value} children={children} />;
 }
-
-const authStore = {
-	set: (tokens: Tokens) => {
-		localStorage.setItem('token', tokens.token);
-		localStorage.setItem('refreshToken', tokens.refreshToken);
-		localStorage.setItem(
-			'refreshTokenExpiryTime',
-			tokens.refreshTokenExpiryTime,
-		);
-	},
-	get: () => {
-		const token = localStorage.getItem('token');
-		const refreshToken = localStorage.getItem('refreshToken');
-		const expiry = localStorage.getItem('refreshTokenExpiryTime');
-		if (!token || !refreshToken || !expiry) return null;
-		return { token, refreshToken, refreshTokenExpiryTime: expiry };
-	},
-	clear: () => {
-		localStorage.removeItem('token');
-		localStorage.removeItem('refreshToken');
-		localStorage.removeItem('refreshTokenExpiryTime');
-	},
-};
-
-export type Tokens = {
-	token: string;
-	refreshToken: string;
-	refreshTokenExpiryTime: string;
-};
