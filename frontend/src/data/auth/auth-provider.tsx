@@ -18,7 +18,7 @@ export type AuthProviderProps = PropsWithChildren;
 export function AuthProvider({ children }: AuthProviderProps) {
 	const navigate = useNavigate();
 
-	const [user, setUser] = useState<boolean>();
+	const [user, setUser] = useState<boolean>(false);
 	const [loading, setLoading] = useState(true);
 
 	const popup = usePopup();

@@ -17,6 +17,7 @@ export type FormInputProps<T extends FieldValues> = FormControlProps<T> &
 		keyof FormControlProps<T> | keyof ControllerRenderProps<T, Path<T>> | 'id'
 	> & {
 		supports?: string[];
+		disabled?: boolean;
 	};
 
 export function FormInput<T extends FieldValues>({
