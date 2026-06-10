@@ -99,7 +99,9 @@ export class TokenRefreshService {
 		}
 
 		this.isRefreshing = true;
-		this.refreshPromise = this._performRefresh(tokens);
+		// Lưu token ban đầu để check race condition sau này
+		const originalToken = tokens.token;
+		this.refreshPromise = this._performRefresh(tokens, originalToken);
 
 		try {
 			const result = await this.refreshPromise;
@@ -114,7 +116,8 @@ export class TokenRefreshService {
 	 * Thực hiện refresh token (nội bộ)
 	 */
 	private static async _performRefresh(
-        tokens: TokenData
+        tokens: TokenData,
+        originalToken: string
     ): Promise<TokenData | null> {
         try {
             const response = await fetch(`${base}${API.AUTH.REFRESH}`, {
@@ -131,7 +134,16 @@ export class TokenRefreshService {
             const json = await response.json();
 
             if (!json.success) {
+                // 401/403 - auth error, logout
                 authStorage.clear();
+                return null;
+            }
+
+            // ⚠️ FIX: Check race condition - đảm bảo token hiện tại khớp với request
+            // Nếu token đã bị clear (user logout), không set token mới
+            const currentTokens = authStorage.get();
+            if (!currentTokens || currentTokens.token !== originalToken) {
+                // Token đã thay đổi (user logout hoặc refresh khác), không set
                 return null;
             }
 
@@ -144,6 +156,21 @@ export class TokenRefreshService {
             authStorage.set(newTokens);
             return newTokens;
         } catch (error) {
+            // ⚠️ FIX: Phân biệt network error vs auth error
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const isNetworkError = 
+                error instanceof TypeError || 
+                errorMessage.includes('fetch') ||
+                errorMessage.includes('Network');
+
+            if (isNetworkError) {
+                // Network error / timeout - giữ session, không logout
+                console.warn('Token refresh failed due to network error:', error);
+                return null; // Cho phép retry lần sau
+            }
+
+            // Auth error hoặc lỗi khác - logout
+            console.error('Token refresh failed:', error);
             authStorage.clear();
             return null;
         }

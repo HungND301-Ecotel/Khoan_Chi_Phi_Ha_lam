@@ -34,8 +34,7 @@ export function SignInForm({ className }: React.ComponentProps<'form'>) {
 		try {
 			await signIn(data);
 		} catch (error) {
-			// Lỗi đã được xử lý trong signIn, không cần xử lý lại
-			console.error('Sign in error:', error);
+
 		}
 	};
 

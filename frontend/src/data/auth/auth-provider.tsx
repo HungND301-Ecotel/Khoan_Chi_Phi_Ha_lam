@@ -4,6 +4,7 @@ import { API } from '@/constants/api-enpoint';
 import { AuthContext, Credentials } from '@/data/auth/auth-context';
 import { api } from '@/lib/api';
 import { authStorage, TokenData } from '@/lib/auth-storage';
+import { TokenRefreshService } from '@/lib/token-refresh-service';
 import {
 	PropsWithChildren,
 	useCallback,
@@ -25,19 +26,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 	// Kiểm tra token khi component mount
 	useEffect(() => {
-		const initAuth = () => {
-			// Kiểm tra xem token còn hợp lệ không
-			if (authStorage.isTokenValid()) {
-				setUser(true);
-			} else {
-				setUser(false);
-			}
+    const initAuth = async () => {
+        try {
+            await TokenRefreshService.ensureToken();
 
-			setLoading(false);
-		};
+            setUser(true);
+        } catch {
+            authStorage.clear();
 
-		initAuth();
-	}, []);
+            setUser(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    initAuth();
+}, []);
 
 	const signIn = useCallback(
 		async (credentials: Credentials) => {
