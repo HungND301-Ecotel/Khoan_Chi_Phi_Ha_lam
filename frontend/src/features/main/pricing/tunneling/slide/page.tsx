@@ -5,7 +5,7 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import {
-	FlatSlideCost,
+	ExpandSlideCostRow,
 	MAIN_PRICING_DETAIL_EXPAND_COLUMNS,
 	MAIN_PRICING_SLIDE_COLUMNS,
 	MAIN_PRICING_SLIDE_EXPAND_COLUMNS,
@@ -17,6 +17,55 @@ import {
 } from '@/features/main/pricing/tunneling/slide/form';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
+
+const deriveNormFromAmount = (amount: number, unitPrice: number) => {
+	if (unitPrice > 0) {
+		return amount / unitPrice;
+	}
+
+	return amount === 0 ? 0 : amount;
+};
+
+function buildGroupedExpandRows(
+	materialCosts: SlideDetail['materialCost'],
+): ExpandSlideCostRow[] {
+	return materialCosts.flatMap((group) => {
+		const groupItems = group.costs.map((cost) => ({
+			rowType: 'material-item' as const,
+			assignmentCodeId: group.assignmentCodeId,
+			assignmentCode: group.assignmentCode,
+			assignmentCodeName: group.assignmentCodeName,
+			materialId: cost.materialId,
+			materialCode: cost.materialCode,
+			materialName: cost.materialName,
+			unitOfMeasureName: cost.unitOfMeasureName,
+			unitPrice: cost.cost,
+			norm: deriveNormFromAmount(cost.amount, cost.cost),
+			totalPrice: cost.amount,
+		}));
+		const groupTotal = groupItems.reduce(
+			(sum, item) => sum + item.totalPrice,
+			0,
+		);
+
+		return [
+			{
+				rowType: 'group-summary' as const,
+				assignmentCodeId: group.assignmentCodeId,
+				assignmentCode: group.assignmentCode,
+				assignmentCodeName: group.assignmentCodeName,
+				materialId: `group-${group.assignmentCodeId}`,
+				materialCode: '',
+				materialName: '',
+				unitOfMeasureName: '',
+				unitPrice: null,
+				norm: '',
+				totalPrice: groupTotal,
+			},
+			...groupItems,
+		];
+	});
+}
 
 export function MainPricingSlidePage() {
 	const popup = usePopup();
@@ -85,9 +134,9 @@ export function MainPricingSlidePage() {
 }
 
 function SlideDetailExpand({ row }: ActionDialogProps<Slide>) {
-	const [slide, setSlide] = useState<SlideDetail>();
 	const [passport, setPassport] = useState<Passport>();
 	const [strength, setStrength] = useState<Strength>();
+	const [costs, setCosts] = useState<ExpandSlideCostRow[]>([]);
 
 	useEffect(() => {
 		if (!row) return;
@@ -100,45 +149,9 @@ function SlideDetailExpand({ row }: ActionDialogProps<Slide>) {
 		promises.then(([passport, strength, slide]) => {
 			setPassport(passport.result);
 			setStrength(strength.result);
-			setSlide(slide.result);
+			setCosts(buildGroupedExpandRows(slide.result.materialCost ?? []));
 		});
 	}, [row]);
-
-	function flattenData(): FlatSlideCost[] {
-		const data = slide?.materialCost || [];
-		const result: FlatSlideCost[] = [];
-
-		data.forEach((item, index) => {
-			const groupTotal = item.costs.reduce((sum, c) => sum + c.amount, 0);
-			result.push({
-				isGroupRow: true,
-				rowIndex: index + 1,
-				assignmentCodeId: item.assignmentCodeId,
-				assignmentCode: item.assignmentCode,
-				assignmentCodeName: item.assignmentCodeName,
-				totalPrice: groupTotal,
-			});
-
-			item.costs.forEach((cost) => {
-				result.push({
-					isGroupRow: false,
-					rowIndex: index + 1,
-					assignmentCodeId: item.assignmentCodeId,
-					assignmentCode: item.assignmentCode,
-					assignmentCodeName: item.assignmentCodeName,
-					materialId: cost.materialId,
-					materialCode: cost.materialCode,
-					materialName: cost.materialName,
-					unitOfMeasureName: cost.unitOfMeasureName,
-					cost: cost.cost,
-					quantity: cost.amount,
-					totalPrice: cost.amount,
-				});
-			});
-		});
-
-		return result;
-	}
 
 	return (
 		<div className='mx-32 flex flex-col gap-4'>
@@ -156,7 +169,7 @@ function SlideDetailExpand({ row }: ActionDialogProps<Slide>) {
 
 			<DataTable
 				columns={MAIN_PRICING_SLIDE_EXPAND_COLUMNS}
-				items={flattenData()}
+				items={costs}
 				hasActions={false}
 				hasPagination={false}
 				hasSort={false}
