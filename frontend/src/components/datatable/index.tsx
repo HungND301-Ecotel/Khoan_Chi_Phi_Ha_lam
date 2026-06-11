@@ -132,6 +132,7 @@ export function DataTable<TData>({
 		items,
 		transformData,
 		getRowId,
+		filters?.map((filter) => String(filter.key)),
 	);
 	const { table, loading } = datatable;
 
