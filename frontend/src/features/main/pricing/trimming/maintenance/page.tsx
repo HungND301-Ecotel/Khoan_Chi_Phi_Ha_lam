@@ -67,7 +67,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 			const filename = await api.export(
 				API.PRICING.MAINTENANCE.TRIMMING_EXPORT,
 			);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

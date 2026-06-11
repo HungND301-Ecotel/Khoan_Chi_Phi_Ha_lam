@@ -689,7 +689,7 @@ export function LongtermMaterialCostDataTable({
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>

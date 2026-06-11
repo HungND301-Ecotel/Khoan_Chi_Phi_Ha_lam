@@ -30,7 +30,7 @@ export function MainCatalogParameterClampPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.PARAMETER.CLAMP.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

@@ -34,7 +34,8 @@ function buildGroupedExpandRows(
 
 	costItems.forEach((item) => {
 		const groupKey =
-			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+			item.assignmentCodeId ||
+			`${item.assignmentCode}-${item.assignmentCodeName}`;
 
 		if (!groupedRows.has(groupKey)) {
 			groupedRows.set(groupKey, {
@@ -87,7 +88,8 @@ function buildGroupedExpandRows(
 	}
 
 	const baseTotal = costItems.reduce((sum, item) => sum + item.totalPrice, 0);
-	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+	const otherMaterialTotal =
+		(baseTotal * (Number(otherMaterialValue) || 0)) / 100;
 
 	return [
 		...rows,
@@ -128,7 +130,7 @@ export function MainPricingTrimmingMaterialPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.MATERIAL.TRIMMING.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}
@@ -189,22 +191,20 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 			api.get<MaterialDetail>(API.PRICING.MATERIAL.TRIMMING.DETAIL(row.id)),
 		]);
 
-		promises.then(
-			([passport, strength, insert, step, materialDetail]) => {
-				setDetail({
-					passport: passport.result,
-					strength: strength.result,
-					insert: insert.result,
-					step: step.result,
-				});
-				setCosts(
-					buildGroupedExpandRows(
-						materialDetail.result.costs ?? [],
-						materialDetail.result.otherMaterialValue,
-					),
-				);
-			},
-		);
+		promises.then(([passport, strength, insert, step, materialDetail]) => {
+			setDetail({
+				passport: passport.result,
+				strength: strength.result,
+				insert: insert.result,
+				step: step.result,
+			});
+			setCosts(
+				buildGroupedExpandRows(
+					materialDetail.result.costs ?? [],
+					materialDetail.result.otherMaterialValue,
+				),
+			);
+		});
 	}, [row]);
 
 	const detailItems = useMemo(() => [detail ?? {}], [detail]);

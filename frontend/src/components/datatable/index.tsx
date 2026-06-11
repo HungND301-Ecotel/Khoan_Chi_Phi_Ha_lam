@@ -308,7 +308,7 @@ export function DataTable<TData>({
 								) : (
 									<>
 										<DownloadIcon fontSize='small' />
-										<span className='hidden xl:block'>Xuất file</span>
+										<span className='hidden xl:block'>Tải xuống</span>
 									</>
 								)}
 							</Button>

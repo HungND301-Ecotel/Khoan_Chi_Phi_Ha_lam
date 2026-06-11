@@ -345,7 +345,8 @@ export function ElectricityAndMaintainanceReportPage() {
 
 								const rows: AssignmentCodeReportRow[] = assignmentCodeIds.map(
 									(assignmentCodeId) => {
-										const maintainCost = maintainByAssignmentCode.get(assignmentCodeId);
+										const maintainCost =
+											maintainByAssignmentCode.get(assignmentCodeId);
 										const electricityCost =
 											electricityByAssignmentCode.get(assignmentCodeId);
 										const maintainFactors =
@@ -353,12 +354,12 @@ export function ElectricityAndMaintainanceReportPage() {
 										const electricityFactors =
 											extractElectricityFactors(electricityCost);
 
-								return {
-									key: `${outputId}-${assignmentCodeId}`,
-									assignmentCodeName:
-										maintainCost?.equipmentName ||
-										electricityCost?.equipmentName ||
-										'',
+										return {
+											key: `${outputId}-${assignmentCodeId}`,
+											assignmentCodeName:
+												maintainCost?.equipmentName ||
+												electricityCost?.equipmentName ||
+												'',
 											unitOfMeasureName: 'Cái',
 											quantity:
 												maintainCost?.quantity ??
@@ -431,7 +432,7 @@ export function ElectricityAndMaintainanceReportPage() {
 
 	const handleExport = async () => {
 		if (!filteredItems.length) {
-			popup.error('Không có dữ liệu để xuất file');
+			popup.error('Không có dữ liệu để Tải xuống');
 			return;
 		}
 
@@ -460,7 +461,7 @@ export function ElectricityAndMaintainanceReportPage() {
 				},
 			);
 
-			popup.success(`Đã xuất file ${fileName}`);
+			popup.success(`Đã Tải xuống ${fileName}`);
 		} catch (err) {
 			popup.error(err);
 		} finally {
@@ -548,7 +549,7 @@ export function ElectricityAndMaintainanceReportPage() {
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>

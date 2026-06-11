@@ -235,7 +235,6 @@ export function AcceptanceReportDataTable({
 				return;
 			}
 
-
 			const [detailResponses, productionOrderResponse] = await Promise.all([
 				Promise.all(
 					outputsByPeriod.map((output) =>
@@ -250,8 +249,10 @@ export function AcceptanceReportDataTable({
 				),
 			]);
 
-			const productionOrderNameById: Record<string, ProductionOrderDisplayInfo> =
-				Object.fromEntries(
+			const productionOrderNameById: Record<
+				string,
+				ProductionOrderDisplayInfo
+			> = Object.fromEntries(
 				(productionOrderResponse.result.data ?? []).map((item) => [
 					item.id,
 					{
@@ -259,7 +260,7 @@ export function AcceptanceReportDataTable({
 						name: item.name || item.code || item.id,
 					},
 				]),
-				);
+			);
 
 			const mergedRows = detailResponses.flatMap((response, index) => {
 				const detail = response.result;
@@ -295,15 +296,17 @@ export function AcceptanceReportDataTable({
 	}, [fetchAcceptanceReport]);
 
 	const handleExport = async () => {
-
 		if (rows.length === 0) return;
 		setIsExporting(true);
 		try {
 			const exportFileName = `bang-nghiem-thu-vat-tu-su-dung-va-ket-chuyen-chi-phi-thang-${month}-nam-${year}.xlsx`;
-			await api.export(API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_PERIOD(month, year), {
-				fileName: exportFileName,
-				forceFileName: true,
-			});
+			await api.export(
+				API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_PERIOD(month, year),
+				{
+					fileName: exportFileName,
+					forceFileName: true,
+				},
+			);
 		} catch (err) {
 			console.error('Failed to export acceptance report:', err);
 		} finally {
@@ -380,7 +383,7 @@ export function AcceptanceReportDataTable({
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>

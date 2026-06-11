@@ -30,7 +30,7 @@ export default function MainCatalogUnitPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.UNIT.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

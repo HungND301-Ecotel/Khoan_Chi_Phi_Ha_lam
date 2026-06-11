@@ -89,7 +89,7 @@ export function MainPricingSlidePage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.SLIDE.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

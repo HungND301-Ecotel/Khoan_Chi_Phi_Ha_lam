@@ -4,18 +4,13 @@ import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { AkFactorConfigForm } from './actions';
-import {
-	CATALOG_AK_FACTOR_CONFIG_COLUMNS,
-	AkFactorConfig,
-} from './columns';
+import { CATALOG_AK_FACTOR_CONFIG_COLUMNS, AkFactorConfig } from './columns';
 
 export function MainCatalogAkFactorConfigPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
-	const handleDelete = async ({
-		data,
-	}: ActionDialogProps<AkFactorConfig>) => {
+	const handleDelete = async ({ data }: ActionDialogProps<AkFactorConfig>) => {
 		try {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const ids = selected.rows.map((row) => row.original.id);
@@ -32,7 +27,7 @@ export function MainCatalogAkFactorConfigPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.AK_FACTOR_CONFIG.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã Tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

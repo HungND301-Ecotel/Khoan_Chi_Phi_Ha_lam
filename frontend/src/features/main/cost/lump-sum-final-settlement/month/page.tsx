@@ -34,35 +34,57 @@ const shadow = cn(
 );
 
 export function MainCostLumpSumFinalSettlementMonthPage() {
-	const [filteredData, setFilteredData] = useState<LumpSumFinalSettlement[]>([]);
+	const [filteredData, setFilteredData] = useState<LumpSumFinalSettlement[]>(
+		[],
+	);
 	const [quarterSpecialQuantities, setQuarterSpecialQuantities] = useState({
 		coalExcavationActualQuantity: 0,
 		coalCrosscutActualQuantity: 0,
 		meterExcavationActualQuantity: 0,
 		meterCrosscutActualQuantity: 0,
 	});
-	const [specialQuantityEditingField, setSpecialQuantityEditingField] = useState<
-		'coalExcavationActualQuantity' | 'coalCrosscutActualQuantity' | null
-	>(null);
+	const [specialQuantityEditingField, setSpecialQuantityEditingField] =
+		useState<
+			'coalExcavationActualQuantity' | 'coalCrosscutActualQuantity' | null
+		>(null);
 	const [specialQuantityDraft, setSpecialQuantityDraft] = useState({
 		coalExcavationActualQuantity: 0,
 		coalCrosscutActualQuantity: 0,
 	});
-	const [revenueByMonth, setRevenueByMonth] = useState<LumpSumQuarterRevenueByMonth | null>(null);
-	const [costByMonth, setCostByMonth] = useState<LumpSumQuarterRevenueByMonth | null>(null);
-	const [savingByMonth, setSavingByMonth] = useState<LumpSumQuarterRevenueByMonth | null>(null);
-	const [transferredCostByMonth, setTransferredCostByMonth] = useState<LumpSumQuarterTransferredCost | null>(null);
+	const [revenueByMonth, setRevenueByMonth] =
+		useState<LumpSumQuarterRevenueByMonth | null>(null);
+	const [costByMonth, setCostByMonth] =
+		useState<LumpSumQuarterRevenueByMonth | null>(null);
+	const [savingByMonth, setSavingByMonth] =
+		useState<LumpSumQuarterRevenueByMonth | null>(null);
+	const [transferredCostByMonth, setTransferredCostByMonth] =
+		useState<LumpSumQuarterTransferredCost | null>(null);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
-	const [savingCarryForwardByMonths, setSavingCarryForwardByMonths] = useState<{ month: number; value: number }[]>([]);
-	const [savingCarryForwardToNextMonths, setSavingCarryForwardToNextMonths] = useState(0);
-	const [savingCarryForwardToNextMonthsDraft, setSavingCarryForwardToNextMonthsDraft] = useState(0);
-	const [savingCarryForwardEditing, setSavingCarryForwardEditing] = useState(false);
-	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
-	const [editingSnapshot, setEditingSnapshot] = useState<Record<string, LumpSumQuarterCustomCost>>({});
+	const [savingCarryForwardByMonths, setSavingCarryForwardByMonths] = useState<
+		{ month: number; value: number }[]
+	>([]);
+	const [savingCarryForwardToNextMonths, setSavingCarryForwardToNextMonths] =
+		useState(0);
+	const [
+		savingCarryForwardToNextMonthsDraft,
+		setSavingCarryForwardToNextMonthsDraft,
+	] = useState(0);
+	const [savingCarryForwardEditing, setSavingCarryForwardEditing] =
+		useState(false);
+	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>(
+		[],
+	);
+	const [editingSnapshot, setEditingSnapshot] = useState<
+		Record<string, LumpSumQuarterCustomCost>
+	>({});
 	const [isLoading, setIsLoading] = useState(false);
-	const [departments, setDepartments] = useState<{ value: string; label: string }[]>([{ value: '', label: 'Tất cả đơn vị' }]);
-	const [processGroups, setProcessGroups] = useState<{ value: string; label: string }[]>([{ value: '', label: 'Tất cả nhóm công đoạn' }]);
+	const [departments, setDepartments] = useState<
+		{ value: string; label: string }[]
+	>([{ value: '', label: 'Tất cả đơn vị' }]);
+	const [processGroups, setProcessGroups] = useState<
+		{ value: string; label: string }[]
+	>([{ value: '', label: 'Tất cả nhóm công đoạn' }]);
 
 	const now = new Date();
 	const defaultMonth = String(now.getMonth() + 1);
@@ -87,23 +109,34 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	}, [defaultMonth, defaultYear, form]);
 
 	const fetchLumpSumMonth = useCallback(
-		async (payload: { month: string; year: string; processGroupId?: string | null; departmentId?: string | null }) => {
+		async (payload: {
+			month: string;
+			year: string;
+			processGroupId?: string | null;
+			departmentId?: string | null;
+		}) => {
 			setIsLoading(true);
 			try {
-				const monthRes = await api.post<LumpSumFinalSettlementMonthResponse, LumpSumFinalSettlementListRequest>(
-					API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST,
-					payload,
-				);
+				const monthRes = await api.post<
+					LumpSumFinalSettlementMonthResponse,
+					LumpSumFinalSettlementListRequest
+				>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
 				setFilteredData(groupByProcessGroup(monthRes.result.items ?? [], 5));
 				setQuarterSpecialQuantities({
-					coalExcavationActualQuantity: monthRes.result.coalExcavationActualQuantity ?? 0,
-					coalCrosscutActualQuantity: monthRes.result.coalCrosscutActualQuantity ?? 0,
-					meterExcavationActualQuantity: monthRes.result.meterExcavationActualQuantity ?? 0,
-					meterCrosscutActualQuantity: monthRes.result.meterCrosscutActualQuantity ?? 0,
+					coalExcavationActualQuantity:
+						monthRes.result.coalExcavationActualQuantity ?? 0,
+					coalCrosscutActualQuantity:
+						monthRes.result.coalCrosscutActualQuantity ?? 0,
+					meterExcavationActualQuantity:
+						monthRes.result.meterExcavationActualQuantity ?? 0,
+					meterCrosscutActualQuantity:
+						monthRes.result.meterCrosscutActualQuantity ?? 0,
 				});
 				setSpecialQuantityDraft({
-					coalExcavationActualQuantity: monthRes.result.coalExcavationActualQuantity ?? 0,
-					coalCrosscutActualQuantity: monthRes.result.coalCrosscutActualQuantity ?? 0,
+					coalExcavationActualQuantity:
+						monthRes.result.coalExcavationActualQuantity ?? 0,
+					coalCrosscutActualQuantity:
+						monthRes.result.coalCrosscutActualQuantity ?? 0,
 				});
 				setSpecialQuantityEditingField(null);
 				setRevenueByMonth(monthRes.result.revenue ?? null);
@@ -111,10 +144,18 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setSavingByMonth(monthRes.result.saving ?? null);
 				setTransferredCostByMonth(monthRes.result.transferredCost ?? null);
 				setAcceptedSavingMonth(monthRes.result.acceptedSavingMonth ?? 0);
-				setSavingAddedToIncomeMonth(monthRes.result.savingAddedToIncomeMonth ?? 0);
-				setSavingCarryForwardByMonths(monthRes.result.savingCarryForwardByMonths ?? []);
-				setSavingCarryForwardToNextMonths(monthRes.result.savingCarryForwardToNextMonths ?? 0);
-				setSavingCarryForwardToNextMonthsDraft(monthRes.result.savingCarryForwardToNextMonths ?? 0);
+				setSavingAddedToIncomeMonth(
+					monthRes.result.savingAddedToIncomeMonth ?? 0,
+				);
+				setSavingCarryForwardByMonths(
+					monthRes.result.savingCarryForwardByMonths ?? [],
+				);
+				setSavingCarryForwardToNextMonths(
+					monthRes.result.savingCarryForwardToNextMonths ?? 0,
+				);
+				setSavingCarryForwardToNextMonthsDraft(
+					monthRes.result.savingCarryForwardToNextMonths ?? 0,
+				);
 				setSavingCarryForwardEditing(false);
 				setCustomCosts(monthRes.result.customCosts ?? []);
 				setEditingSnapshot({});
@@ -175,7 +216,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				actualQuantity: quantity,
 				materials: { unitPrice: materialUnit, totalAmount: materialTotal },
 				maintains: { unitPrice: maintainUnit, totalAmount: maintainTotal },
-				electricities: { unitPrice: electricityUnit, totalAmount: electricityTotal },
+				electricities: {
+					unitPrice: electricityUnit,
+					totalAmount: electricityTotal,
+				},
 				totalAmount: materialTotal + maintainTotal + electricityTotal,
 			};
 		},
@@ -220,9 +264,18 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			unitOfMeasureName: options?.unitOfMeasureName ?? '',
 			plannedQuantity: options?.hidePlanActual ? undefined : 0,
 			actualQuantity: options?.hidePlanActual ? undefined : 0,
-			materials: { unitPrice: options?.hideUnitPrice ? undefined : 0, totalAmount: options?.materialsTotalAmount ?? 0 },
-			maintains: { unitPrice: options?.hideUnitPrice ? undefined : 0, totalAmount: options?.maintainsTotalAmount ?? 0 },
-			electricities: { unitPrice: options?.hideUnitPrice ? undefined : 0, totalAmount: options?.electricitiesTotalAmount ?? 0 },
+			materials: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.materialsTotalAmount ?? 0,
+			},
+			maintains: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.maintainsTotalAmount ?? 0,
+			},
+			electricities: {
+				unitPrice: options?.hideUnitPrice ? undefined : 0,
+				totalAmount: options?.electricitiesTotalAmount ?? 0,
+			},
 			totalAmount: options?.totalAmount ?? 0,
 		});
 
@@ -233,7 +286,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				unitOfMeasureName: 'Đồng',
 				materialsTotalAmount: revenueByMonth?.materials?.totalAmount ?? 0,
 				maintainsTotalAmount: revenueByMonth?.maintains?.totalAmount ?? 0,
-				electricitiesTotalAmount: revenueByMonth?.electricities?.totalAmount ?? 0,
+				electricitiesTotalAmount:
+					revenueByMonth?.electricities?.totalAmount ?? 0,
 				totalAmount: revenueByMonth?.totalAmount ?? 0,
 				hidePlanActual: true,
 				hideUnitPrice: true,
@@ -253,64 +307,83 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				sttLabel: 'II.1',
 				isTransferredDefaultRow: true,
 				month: Number(selectedMonth),
-				materialsTotalAmount: transferredCostByMonth?.materials?.totalAmount ?? 0,
-				maintainsTotalAmount: transferredCostByMonth?.maintains?.totalAmount ?? 0,
-				electricitiesTotalAmount: transferredCostByMonth?.electricities?.totalAmount ?? 0,
+				materialsTotalAmount:
+					transferredCostByMonth?.materials?.totalAmount ?? 0,
+				maintainsTotalAmount:
+					transferredCostByMonth?.maintains?.totalAmount ?? 0,
+				electricitiesTotalAmount:
+					transferredCostByMonth?.electricities?.totalAmount ?? 0,
 				totalAmount: transferredCostByMonth?.totalAmount ?? 0,
 				hidePlanActual: true,
 				hideUnitPrice: true,
 			}),
 			...customCostRows,
-			makeZeroRow(`Giá trị tiết kiệm(+)/bội chi(-) tháng ${selectedMonth}/${selectedYear}`, {
-				sttLabel: 'III',
-				isBold: true,
-				unitOfMeasureName: 'Đồng',
-				materialsTotalAmount: savingByMonth?.materials?.totalAmount ?? 0,
-				maintainsTotalAmount: savingByMonth?.maintains?.totalAmount ?? 0,
-				electricitiesTotalAmount: savingByMonth?.electricities?.totalAmount ?? 0,
-				totalAmount: savingByMonth?.totalAmount ?? 0,
-				hidePlanActual: true,
-				hideUnitPrice: true,
-			}),
-			makeZeroRow(`Tổng giá trị tiết kiệm được chấp nhận tháng ${selectedMonth}/${selectedYear}`, {
-				sttLabel: '*',
-				isBold: true,
-				unitOfMeasureName: 'Đồng',
-				hidePlanActual: true,
-				hideUnitPrice: true,
-				isMergedValueRow: true,
-				mergedValue: acceptedSavingMonth,
-			}),
-			makeZeroRow(`Giá trị tiết kiệm được cộng vào thu nhập tháng ${selectedMonth}/${selectedYear}`, {
-				sttLabel: '*',
-				isBold: true,
-				unitOfMeasureName: 'Đồng',
-				hidePlanActual: true,
-				hideUnitPrice: true,
-				isMergedValueRow: true,
-				mergedValue: savingAddedToIncomeMonth,
-			}),
-			...savingCarryForwardByMonths.map((item) =>
-				makeZeroRow(`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${item.month}`, {
+			makeZeroRow(
+				`Giá trị tiết kiệm(+)/bội chi(-) tháng ${selectedMonth}/${selectedYear}`,
+				{
+					sttLabel: 'III',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: savingByMonth?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: savingByMonth?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						savingByMonth?.electricities?.totalAmount ?? 0,
+					totalAmount: savingByMonth?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				},
+			),
+			makeZeroRow(
+				`Tổng giá trị tiết kiệm được chấp nhận tháng ${selectedMonth}/${selectedYear}`,
+				{
 					sttLabel: '*',
 					isBold: true,
 					unitOfMeasureName: 'Đồng',
 					hidePlanActual: true,
 					hideUnitPrice: true,
 					isMergedValueRow: true,
-					mergedValue: item.value ?? 0,
-				}),
+					mergedValue: acceptedSavingMonth,
+				},
 			),
-			makeZeroRow('Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo', {
-				sttLabel: '*',
-				isBold: true,
-				unitOfMeasureName: 'Đồng',
-				hidePlanActual: true,
-				hideUnitPrice: true,
-				isSavingCarryForwardInputRow: true,
-				isEditing: savingCarryForwardEditing,
-				mergedValue: savingCarryForwardToNextMonthsDraft,
-			}),
+			makeZeroRow(
+				`Giá trị tiết kiệm được cộng vào thu nhập tháng ${selectedMonth}/${selectedYear}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: savingAddedToIncomeMonth,
+				},
+			),
+			...savingCarryForwardByMonths.map((item) =>
+				makeZeroRow(
+					`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${item.month}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: item.value ?? 0,
+					},
+				),
+			),
+			makeZeroRow(
+				'Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo',
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isSavingCarryForwardInputRow: true,
+					isEditing: savingCarryForwardEditing,
+					mergedValue: savingCarryForwardToNextMonthsDraft,
+				},
+			),
 		];
 
 		const specialRows: LumpSumFinalSettlement[] = [
@@ -321,11 +394,13 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				isBold: true,
 				isSpecialQuantityRow: true,
 				specialQuantityField: 'coalExcavationActualQuantity',
-				isEditing: specialQuantityEditingField === 'coalExcavationActualQuantity',
+				isEditing:
+					specialQuantityEditingField === 'coalExcavationActualQuantity',
 				plannedQuantity: undefined,
-				actualQuantity: specialQuantityEditingField === 'coalExcavationActualQuantity'
-					? specialQuantityDraft.coalExcavationActualQuantity
-					: quarterSpecialQuantities.coalExcavationActualQuantity,
+				actualQuantity:
+					specialQuantityEditingField === 'coalExcavationActualQuantity'
+						? specialQuantityDraft.coalExcavationActualQuantity
+						: quarterSpecialQuantities.coalExcavationActualQuantity,
 				excludeFromSummary: true,
 			},
 			{
@@ -337,9 +412,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				specialQuantityField: 'coalCrosscutActualQuantity',
 				isEditing: specialQuantityEditingField === 'coalCrosscutActualQuantity',
 				plannedQuantity: undefined,
-				actualQuantity: specialQuantityEditingField === 'coalCrosscutActualQuantity'
-					? specialQuantityDraft.coalCrosscutActualQuantity
-					: quarterSpecialQuantities.coalCrosscutActualQuantity,
+				actualQuantity:
+					specialQuantityEditingField === 'coalCrosscutActualQuantity'
+						? specialQuantityDraft.coalCrosscutActualQuantity
+						: quarterSpecialQuantities.coalCrosscutActualQuantity,
 				excludeFromSummary: true,
 			},
 			{
@@ -387,8 +463,17 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	useEffect(() => {
 		const fetchDepartments = async () => {
 			try {
-				const response = await api.pagging<Department>(API.CATALOG.DEPARTMENT.LIST, { ignorePagination: true });
-				setDepartments([{ value: '', label: 'Tất cả đơn vị' }, ...(response.result.data ?? []).map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]);
+				const response = await api.pagging<Department>(
+					API.CATALOG.DEPARTMENT.LIST,
+					{ ignorePagination: true },
+				);
+				setDepartments([
+					{ value: '', label: 'Tất cả đơn vị' },
+					...(response.result.data ?? []).map((item) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					})),
+				]);
 			} catch (error) {
 				console.error('Error fetching departments:', error);
 			}
@@ -396,8 +481,17 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 
 		const fetchProcessGroups = async () => {
 			try {
-				const response = await api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST, { ignorePagination: true });
-				setProcessGroups([{ value: '', label: 'Tất cả nhóm công đoạn' }, ...(response.result.data ?? []).map((item) => ({ value: item.id, label: `${item.code} - ${item.name}` }))]);
+				const response = await api.pagging<ProcessGroup>(
+					API.CATALOG.PROCESS.GROUP.LIST,
+					{ ignorePagination: true },
+				);
+				setProcessGroups([
+					{ value: '', label: 'Tất cả nhóm công đoạn' },
+					...(response.result.data ?? []).map((item) => ({
+						value: item.id,
+						label: `${item.code} - ${item.name}`,
+					})),
+				]);
 			} catch (error) {
 				console.error('Error fetching process groups:', error);
 			}
@@ -417,7 +511,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			const { month, year, processGroupId } = getCurrentFilter();
 			const payload: UpsertLumpSumQuarterCustomCostRequest = {
 				id: target.id.startsWith('temp-') ? undefined : target.id,
-				month: String(target.month ? Number(target.month) : row.month ?? Number(month)),
+				month: String(
+					target.month ? Number(target.month) : (row.month ?? Number(month)),
+				),
 				year,
 				processGroupId: processGroupId ?? '',
 				actualQuantity: target.actualQuantity || 0,
@@ -429,9 +525,15 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 
 			try {
 				if (payload.id) {
-					await api.put<boolean, UpsertLumpSumQuarterCustomCostRequest>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_UPDATE, payload);
+					await api.put<boolean, UpsertLumpSumQuarterCustomCostRequest>(
+						API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_UPDATE,
+						payload,
+					);
 				} else {
-					await api.post<boolean, UpsertLumpSumQuarterCustomCostRequest>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_CREATE, payload);
+					await api.post<boolean, UpsertLumpSumQuarterCustomCostRequest>(
+						API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_CREATE,
+						payload,
+					);
 				}
 				await reloadCurrentMonth();
 				setEditingSnapshot((prev) => {
@@ -461,7 +563,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				return;
 			}
 			try {
-				await api.delete<boolean, undefined>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_DELETE(id));
+				await api.delete<boolean, undefined>(
+					API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_CUSTOM_COST_DELETE(id),
+				);
 				await reloadCurrentMonth();
 			} catch (error) {
 				console.error('Error deleting custom cost:', error);
@@ -514,104 +618,156 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		setEditingSnapshot((prev) => {
 			const snapshot = prev[id];
 			if (!snapshot) return prev;
-			setCustomCosts((old) => old.map((x) => (x.id === id ? { ...snapshot } : x)));
+			setCustomCosts((old) =>
+				old.map((x) => (x.id === id ? { ...snapshot } : x)),
+			);
 			const next = { ...prev };
 			delete next[id];
 			return next;
 		});
 	}, []);
 
-	const changeCustomCostValue = useCallback((row: LumpSumFinalSettlement, field: 'customName' | 'actualQuantity' | 'materialUnitPrice' | 'maintainUnitPrice' | 'electricityUnitPrice', value: number | string) => {
-		if (!row.id) return;
-		setCustomCosts((prev) =>
-			prev.map((x) => {
-				if (x.id !== row.id) return x;
-				if (field === 'customName') return { ...x, customName: String(value) };
-				return { ...x, [field]: Number(value) };
-			}),
-		);
-	}, []);
+	const changeCustomCostValue = useCallback(
+		(
+			row: LumpSumFinalSettlement,
+			field:
+				| 'customName'
+				| 'actualQuantity'
+				| 'materialUnitPrice'
+				| 'maintainUnitPrice'
+				| 'electricityUnitPrice',
+			value: number | string,
+		) => {
+			if (!row.id) return;
+			setCustomCosts((prev) =>
+				prev.map((x) => {
+					if (x.id !== row.id) return x;
+					if (field === 'customName')
+						return { ...x, customName: String(value) };
+					return { ...x, [field]: Number(value) };
+				}),
+			);
+		},
+		[],
+	);
 
-	const editSpecialQuantity = useCallback((row: LumpSumFinalSettlement) => {
-		if (!row.specialQuantityField) return;
-		setSpecialQuantityDraft({
-			coalExcavationActualQuantity: quarterSpecialQuantities.coalExcavationActualQuantity,
-			coalCrosscutActualQuantity: quarterSpecialQuantities.coalCrosscutActualQuantity,
-		});
-		setSpecialQuantityEditingField(row.specialQuantityField);
-	}, [quarterSpecialQuantities]);
+	const editSpecialQuantity = useCallback(
+		(row: LumpSumFinalSettlement) => {
+			if (!row.specialQuantityField) return;
+			setSpecialQuantityDraft({
+				coalExcavationActualQuantity:
+					quarterSpecialQuantities.coalExcavationActualQuantity,
+				coalCrosscutActualQuantity:
+					quarterSpecialQuantities.coalCrosscutActualQuantity,
+			});
+			setSpecialQuantityEditingField(row.specialQuantityField);
+		},
+		[quarterSpecialQuantities],
+	);
 
 	const cancelSpecialQuantity = useCallback(() => {
 		setSpecialQuantityDraft({
-			coalExcavationActualQuantity: quarterSpecialQuantities.coalExcavationActualQuantity,
-			coalCrosscutActualQuantity: quarterSpecialQuantities.coalCrosscutActualQuantity,
+			coalExcavationActualQuantity:
+				quarterSpecialQuantities.coalExcavationActualQuantity,
+			coalCrosscutActualQuantity:
+				quarterSpecialQuantities.coalCrosscutActualQuantity,
 		});
 		setSpecialQuantityEditingField(null);
 	}, [quarterSpecialQuantities]);
 
-	const changeSpecialQuantityValue = useCallback((row: LumpSumFinalSettlement, value: number) => {
-		if (!row.specialQuantityField) return;
-		if (row.specialQuantityField === 'coalExcavationActualQuantity') {
-			setSpecialQuantityDraft((prev) => ({ ...prev, coalExcavationActualQuantity: Number(value ?? 0) }));
-			return;
-		}
-		setSpecialQuantityDraft((prev) => ({ ...prev, coalCrosscutActualQuantity: Number(value ?? 0) }));
-	}, []);
+	const changeSpecialQuantityValue = useCallback(
+		(row: LumpSumFinalSettlement, value: number) => {
+			if (!row.specialQuantityField) return;
+			if (row.specialQuantityField === 'coalExcavationActualQuantity') {
+				setSpecialQuantityDraft((prev) => ({
+					...prev,
+					coalExcavationActualQuantity: Number(value ?? 0),
+				}));
+				return;
+			}
+			setSpecialQuantityDraft((prev) => ({
+				...prev,
+				coalCrosscutActualQuantity: Number(value ?? 0),
+			}));
+		},
+		[],
+	);
 
-	const saveSpecialQuantity = useCallback(async (row: LumpSumFinalSettlement) => {
-		void row;
-		const { month, year, processGroupId } = getCurrentFilter();
-		const payload: UpdateLumpSumMonthSpecialQuantityRequest = {
-			month,
-			year,
-			processGroupId: processGroupId ?? '',
-			coalExcavationActualQuantity: specialQuantityDraft.coalExcavationActualQuantity || 0,
-			coalCrosscutActualQuantity: specialQuantityDraft.coalCrosscutActualQuantity || 0,
-		};
-		try {
-			await api.put<boolean, UpdateLumpSumMonthSpecialQuantityRequest>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_SPECIAL_QUANTITY_UPDATE, payload);
-			await reloadCurrentMonth();
-		} catch (error) {
-			console.error('Error saving month special quantities:', error);
-		}
-	}, [getCurrentFilter, reloadCurrentMonth, specialQuantityDraft]);
+	const saveSpecialQuantity = useCallback(
+		async (row: LumpSumFinalSettlement) => {
+			void row;
+			const { month, year, processGroupId } = getCurrentFilter();
+			const payload: UpdateLumpSumMonthSpecialQuantityRequest = {
+				month,
+				year,
+				processGroupId: processGroupId ?? '',
+				coalExcavationActualQuantity:
+					specialQuantityDraft.coalExcavationActualQuantity || 0,
+				coalCrosscutActualQuantity:
+					specialQuantityDraft.coalCrosscutActualQuantity || 0,
+			};
+			try {
+				await api.put<boolean, UpdateLumpSumMonthSpecialQuantityRequest>(
+					API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_SPECIAL_QUANTITY_UPDATE,
+					payload,
+				);
+				await reloadCurrentMonth();
+			} catch (error) {
+				console.error('Error saving month special quantities:', error);
+			}
+		},
+		[getCurrentFilter, reloadCurrentMonth, specialQuantityDraft],
+	);
 
-	const changeSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement, value: number) => {
-		void row;
-		setSavingCarryForwardToNextMonthsDraft(Number(value ?? 0));
-	}, []);
+	const changeSavingCarryForwardValue = useCallback(
+		(row: LumpSumFinalSettlement, value: number) => {
+			void row;
+			setSavingCarryForwardToNextMonthsDraft(Number(value ?? 0));
+		},
+		[],
+	);
 
-	const saveSavingCarryForwardValue = useCallback(async (row: LumpSumFinalSettlement) => {
-		void row;
-		const { month, year, processGroupId } = getCurrentFilter();
-		const payload: UpdateLumpSumMonthCarryForwardRequest = {
-			month,
-			year,
-			processGroupId: processGroupId ?? '',
-			savingCarryForwardToNextMonths: savingCarryForwardToNextMonthsDraft || 0,
-		};
-		try {
-			await api.put<boolean, UpdateLumpSumMonthCarryForwardRequest>(
-				API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_CARRY_FORWARD_UPDATE,
-				payload,
-			);
+	const saveSavingCarryForwardValue = useCallback(
+		async (row: LumpSumFinalSettlement) => {
+			void row;
+			const { month, year, processGroupId } = getCurrentFilter();
+			const payload: UpdateLumpSumMonthCarryForwardRequest = {
+				month,
+				year,
+				processGroupId: processGroupId ?? '',
+				savingCarryForwardToNextMonths:
+					savingCarryForwardToNextMonthsDraft || 0,
+			};
+			try {
+				await api.put<boolean, UpdateLumpSumMonthCarryForwardRequest>(
+					API.COST.LUMP_SUM_FINAL_SETTLEMENT.MONTH_CARRY_FORWARD_UPDATE,
+					payload,
+				);
+				setSavingCarryForwardEditing(false);
+				await reloadCurrentMonth();
+			} catch (error) {
+				console.error('Error saving month carry forward value:', error);
+			}
+		},
+		[getCurrentFilter, reloadCurrentMonth, savingCarryForwardToNextMonthsDraft],
+	);
+
+	const editSavingCarryForwardValue = useCallback(
+		(row: LumpSumFinalSettlement) => {
+			void row;
+			setSavingCarryForwardEditing(true);
+		},
+		[],
+	);
+
+	const cancelSavingCarryForwardValue = useCallback(
+		(row: LumpSumFinalSettlement) => {
+			void row;
+			setSavingCarryForwardToNextMonthsDraft(savingCarryForwardToNextMonths);
 			setSavingCarryForwardEditing(false);
-			await reloadCurrentMonth();
-		} catch (error) {
-			console.error('Error saving month carry forward value:', error);
-		}
-	}, [getCurrentFilter, reloadCurrentMonth, savingCarryForwardToNextMonthsDraft]);
-
-	const editSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement) => {
-		void row;
-		setSavingCarryForwardEditing(true);
-	}, []);
-
-	const cancelSavingCarryForwardValue = useCallback((row: LumpSumFinalSettlement) => {
-		void row;
-		setSavingCarryForwardToNextMonthsDraft(savingCarryForwardToNextMonths);
-		setSavingCarryForwardEditing(false);
-	}, [savingCarryForwardToNextMonths]);
+		},
+		[savingCarryForwardToNextMonths],
+	);
 
 	const handleFilter = useCallback(
 		(data: YearFilterForm) => {
@@ -658,14 +814,41 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				<FormProvider context={form} onSubmit={handleFilter}>
 					<div className='flex items-end justify-between gap-4'>
 						<div className='grid w-full max-w-4xl flex-1 grid-cols-1 gap-4 md:grid-cols-4'>
-							<FormMonthYear control={form.control} month='month' year='year' label='Thời gian' placeholder='Chọn thời gian' />
-							<FormComboBox control={form.control} name='processGroup' label='Nhóm công đoạn sản xuất' placeholder='Tất cả nhóm công đoạn' options={processGroups} />
-							<FormComboBox control={form.control} name='department' label='Đơn vị' placeholder='Tất cả đơn vị' options={departments} />
+							<FormMonthYear
+								control={form.control}
+								month='month'
+								year='year'
+								label='Thời gian'
+								placeholder='Chọn thời gian'
+							/>
+							<FormComboBox
+								control={form.control}
+								name='processGroup'
+								label='Nhóm công đoạn sản xuất'
+								placeholder='Tất cả nhóm công đoạn'
+								options={processGroups}
+							/>
+							<FormComboBox
+								control={form.control}
+								name='department'
+								label='Đơn vị'
+								placeholder='Tất cả đơn vị'
+								options={departments}
+							/>
 						</div>
 						<div className='flex shrink-0 gap-4'>
-							<Button variant={'ghost'} className={shadow}><DownloadIcon fontSize='small' /><span className='hidden xl:block'>Xuất file</span></Button>
-							<Button variant={'ghost'} className={shadow}><PrintIcon fontSize='small' /><span className='hidden xl:block'>In</span></Button>
-							<Button variant={'ghost'} className={shadow}><EmailIcon fontSize='small' /><span className='hidden xl:block'>Gửi</span></Button>
+							<Button variant={'ghost'} className={shadow}>
+								<DownloadIcon fontSize='small' />
+								<span className='hidden xl:block'>Tải xuống</span>
+							</Button>
+							<Button variant={'ghost'} className={shadow}>
+								<PrintIcon fontSize='small' />
+								<span className='hidden xl:block'>In</span>
+							</Button>
+							<Button variant={'ghost'} className={shadow}>
+								<EmailIcon fontSize='small' />
+								<span className='hidden xl:block'>Gửi</span>
+							</Button>
 						</div>
 					</div>
 				</FormProvider>
