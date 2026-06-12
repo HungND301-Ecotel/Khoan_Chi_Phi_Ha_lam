@@ -1,6 +1,9 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 const base = import.meta.env.VITE_API_BASE_URL;
 
+import { authStorage } from '@/lib/auth-storage';
+import { TokenRefreshService } from '@/lib/token-refresh-service';
+
 export type BaseResponse<T> = {
 	result: T;
 	success: boolean;
@@ -60,21 +63,55 @@ export type PaggingRequest = {
 	maintainType?: number;
 };
 
+/**
+ * Lấy headers với token
+ */
+const getHeaders = (): Record<string, string> => {
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	};
+
+	const token = authStorage.getToken();
+	if (token) {
+		headers.Authorization = `Bearer ${token}`;
+	}
+
+	return headers;
+};
+
+/**
+ * Fetcher chính - check token trước, refresh nếu cần
+ */
 export const fetcher = async <Res, Req>(
 	method: HttpMethod,
 	path: string,
 	query?: Record<string, string>,
 	body?: Req,
-) => {
+): Promise<BaseResponse<Res>> => {
+	// Bước 1: Kiểm tra token
+	// - Nếu không có token → logout
+	// - Nếu access token hết hạn → refresh
+	// - Nếu refresh token hết hạn → logout
+	const tokens = await TokenRefreshService.ensureToken();
+
+	if (!tokens) {
+		// Token không hợp lệ, logout
+		authStorage.clear();
+		window.location.href = '/auth/sign-in';
+		throw new ErrorResponse({
+			status: 401,
+			message: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
+		});
+	}
+
+	// Bước 2: Gửi request với token mới
 	const search = new URLSearchParams(query).toString();
 	const url = `${base}${path}${search ? '?' + search : ''}`;
 
 	const response = await fetch(url, {
 		method,
 		body: JSON.stringify(body),
-		headers: {
-			'Content-Type': 'application/json',
-		},
+		headers: getHeaders(),
 	});
 
 	const json = await response.json();

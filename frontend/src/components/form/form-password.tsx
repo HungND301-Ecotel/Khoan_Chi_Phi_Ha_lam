@@ -21,7 +21,9 @@ export type FormPasswordProps<T extends FieldValues> = FormControlProps<T> &
 	Omit<
 		ComponentProps<'input'>,
 		keyof FormControlProps<T> | keyof ControllerRenderProps<T, Path<T>> | 'id'
-	>;
+	>& {
+		disabled?: boolean;
+	};
 
 export function FormPassword<T extends FieldValues>({
 	control,
