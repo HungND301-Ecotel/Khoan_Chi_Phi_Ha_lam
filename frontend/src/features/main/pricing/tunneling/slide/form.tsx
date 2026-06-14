@@ -45,8 +45,17 @@ type PersistedSlideMaterialCost = {
 	materialId: string;
 	materialCode: string;
 	materialName: string;
+	unitOfMeasureName: string;
 	unitPrice: number;
 	amount: number;
+};
+
+type PersistedMaterialMetadata = {
+	assignmentCodeId: string;
+	materialId: string;
+	materialCode: string;
+	materialName: string;
+	unitOfMeasureName: string;
 };
 
 export type SlideDetail = {
@@ -182,7 +191,12 @@ const normalizeCostAmounts = (
 ) => {
 	const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 	return costs.map((cost) => {
-		const unitPrice = assetMap.get(cost.materialId)?.costAmount ?? 0;
+		const asset = assetMap.get(cost.materialId);
+		if (!asset) {
+			return cost;
+		}
+
+		const unitPrice = asset.costAmount ?? cost.amount ?? 0;
 		const amount = Number.isNaN(Number(cost.norm))
 			? unitPrice
 			: unitPrice * Number(cost.norm);
@@ -308,6 +322,9 @@ export function SlideForm({
 		SlideMaterialOption[]
 	>([]);
 	const persistedCostsRef = useRef<PersistedSlideMaterialCost[]>([]);
+	const persistedMaterialMetadataRef = useRef<
+		PersistedMaterialMetadata[]
+	>([]);
 
 	const form = useForm<SlideFormSchema>({
 		resolver: zodResolver(slideFormSchema),
@@ -343,6 +360,7 @@ export function SlideForm({
 		const effectiveStartMonth =
 			watchedStartMonth || form.getValues('startMonth') || '';
 		if (!effectiveStartMonth) return;
+		let cancelled = false;
 
 		Promise.all([
 			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
@@ -354,9 +372,14 @@ export function SlideForm({
 				date: effectiveStartMonth,
 			}),
 		]).then(([contractsRes, assetsRes]) => {
+			if (cancelled) return;
 			setContracts(contractsRes.result.data);
 			setAssets(assetsRes.result.data);
 		});
+
+		return () => {
+			cancelled = true;
+		};
 	}, [form, watchedStartMonth]);
 
 	useEffect(() => {
@@ -381,12 +404,24 @@ export function SlideForm({
 					materialId: cost.materialId,
 					materialCode: cost.materialCode,
 					materialName: cost.materialName,
+					unitOfMeasureName: cost.unitOfMeasureName,
 					unitPrice: cost.cost,
 					amount: cost.amount,
 				})),
 			);
+			const persistedMaterialMetadata = res.result.materialCost.flatMap(
+				(group) =>
+					group.costs.map((cost) => ({
+						assignmentCodeId: group.assignmentCodeId,
+						materialId: cost.materialId,
+						materialCode: cost.materialCode,
+						materialName: cost.materialName,
+						unitOfMeasureName: cost.unitOfMeasureName,
+					})),
+			);
 
 			persistedCostsRef.current = persistedCosts;
+			persistedMaterialMetadataRef.current = persistedMaterialMetadata;
 			setSelectedContracts(
 				Array.from(
 					new Map(
@@ -706,12 +741,13 @@ export function SlideForm({
 			/>
 
 			{watchedCosts.length > 0 && (
-				<GroupedMaterialCosts
-					contracts={contracts}
-					assets={assets}
-					onRemove={(assignmentCodeId, materialId) => {
-						setSelectedMaterials((currentValues) =>
-							currentValues.filter(
+			<GroupedMaterialCosts
+				contracts={contracts}
+				assets={assets}
+				persistedMetadata={persistedMaterialMetadataRef.current}
+				onRemove={(assignmentCodeId, materialId) => {
+					setSelectedMaterials((currentValues) =>
+						currentValues.filter(
 								(value) =>
 									value.value !==
 									buildMaterialSelectionValue(
@@ -747,10 +783,12 @@ export function SlideForm({
 function GroupedMaterialCosts({
 	contracts,
 	assets,
+	persistedMetadata,
 	onRemove,
 }: {
 	contracts: ContractCode[];
 	assets: Asset[];
+	persistedMetadata: PersistedMaterialMetadata[];
 	onRemove: (assignmentCodeId: string, materialId: string) => void;
 }) {
 	const { control } = useFormContext<SlideFormSchema>();
@@ -782,6 +820,12 @@ function GroupedMaterialCosts({
 							<PricingMaterialCosts
 								index={index}
 								assets={assets}
+								persistedMetadata={persistedMetadata.find(
+									(item) =>
+										item.assignmentCodeId ===
+											costs[index]?.assignmentCodeId &&
+										item.materialId === costs[index]?.materialId,
+								)}
 								onRemove={onRemove}
 							/>
 						</FormRow>
@@ -796,20 +840,28 @@ function GroupedMaterialCosts({
 function PricingMaterialCosts({
 	index,
 	assets,
+	persistedMetadata,
 	onRemove,
 }: {
 	index: number;
 	assets: Asset[];
+	persistedMetadata?: PersistedMaterialMetadata;
 	onRemove: (assignmentCodeId: string, materialId: string) => void;
 }) {
 	const { control, getValues } = useFormContext<SlideFormSchema>();
+	const currentCosts = useWatch({ control, name: 'costs' });
 
 	const assignmentCodeId = getValues(`costs.${index}.assignmentCodeId`);
 	const materialId = getValues(`costs.${index}.materialId`);
+	const cost = currentCosts[index];
 	const asset = assets.find((a) => a.id === materialId);
 	const norm = useWatch({ control, name: `costs.${index}.norm` });
 	const amount = useWatch({ control, name: `costs.${index}.amount` });
-	const unitPrice = asset?.costAmount ?? 0;
+	const unitPrice = asset?.costAmount ?? cost?.amount ?? 0;
+	const materialCode = asset?.code ?? persistedMetadata?.materialCode ?? '';
+	const materialName = asset?.name ?? persistedMetadata?.materialName ?? '';
+	const unitOfMeasureName =
+		asset?.unitOfMeasureName ?? persistedMetadata?.unitOfMeasureName ?? '';
 
 	return (
 		<>
@@ -817,7 +869,7 @@ function PricingMaterialCosts({
 				<Label>Mã vật tư</Label>
 				<Input
 					readOnly
-					value={asset?.code ?? ''}
+					value={materialCode}
 					className='read-only:bg-transparent'
 				/>
 			</div>
@@ -826,7 +878,7 @@ function PricingMaterialCosts({
 				<Label>Tên vật tư</Label>
 				<Input
 					readOnly
-					value={asset?.name ?? ''}
+					value={materialName}
 					className='read-only:bg-transparent'
 				/>
 			</div>
@@ -835,7 +887,7 @@ function PricingMaterialCosts({
 				<Label>Đơn vị tính</Label>
 				<Input
 					readOnly
-					value={asset?.unitOfMeasureName ?? ''}
+					value={unitOfMeasureName}
 					className='read-only:bg-transparent'
 				/>
 			</div>

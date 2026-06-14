@@ -461,7 +461,7 @@ export function ElectricityAndMaintainanceReportPage() {
 				},
 			);
 
-			popup.success(`Đã Tải xuống ${fileName}`);
+			popup.success(`Đã tải xuống ${fileName}`);
 		} catch (err) {
 			popup.error(err);
 		} finally {

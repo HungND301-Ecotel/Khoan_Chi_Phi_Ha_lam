@@ -30,7 +30,7 @@ export default function MainCatalogProcessStepPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.PROCESS.STEP.EXPORT);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

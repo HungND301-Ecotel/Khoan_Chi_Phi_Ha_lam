@@ -33,7 +33,7 @@ export function MainCatalogProductPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.PRODUCT.EXPORT);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

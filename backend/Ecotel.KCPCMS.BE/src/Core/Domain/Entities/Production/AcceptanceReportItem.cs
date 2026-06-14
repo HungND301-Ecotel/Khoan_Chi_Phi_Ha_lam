@@ -266,6 +266,22 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         return supportsLongTermTracking && isLongTermTracking;
     }
 
+    private static string? NormalizeDocumentNumber(string? documentNumber)
+    {
+        if (string.IsNullOrWhiteSpace(documentNumber))
+        {
+            return null;
+        }
+
+        var normalized = documentNumber.Trim();
+        if (normalized.Length > 255)
+        {
+            throw new ArgumentException("Số chứng từ không được vượt quá 255 ký tự");
+        }
+
+        return normalized;
+    }
+
     private void SetCategoryAssignmentCodeId(Guid? assignmentCodeId)
     {
         EquipmentId = assignmentCodeId;
@@ -352,9 +368,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
         {
             AcceptanceReportId = acceptanceReportId,
             SortOrder = sortOrder,
-            DocumentNumber = string.IsNullOrWhiteSpace(documentNumber)
-                ? null
-                : documentNumber.Trim(),
+            DocumentNumber = NormalizeDocumentNumber(documentNumber),
             PostingDate = postingDate,
             MaterialId = materialId,
             PartId = partId,
@@ -488,9 +502,7 @@ public class AcceptanceReportItem : AuditableEntity<Guid>
             materialsIncludedInContractRevenueQuantity, categoryAllocations);
 
         SortOrder = sortOrder;
-        DocumentNumber = string.IsNullOrWhiteSpace(documentNumber)
-            ? null
-            : documentNumber.Trim();
+        DocumentNumber = NormalizeDocumentNumber(documentNumber);
         PostingDate = postingDate;
         MaterialId = materialId;
         PartId = partId;

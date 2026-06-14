@@ -169,6 +169,23 @@ function buildAdditionalCostRows(params: {
 		const hasProductionOrder = orderKey !== 'no-order';
 		const ungroupedItems: AcceptanceReportItem[] = [];
 		let groupIndex = 0;
+		let fallbackOrderEmitted = false;
+
+		const emitFallbackOrderRow = () => {
+			if (hasProductionOrder || fallbackOrderEmitted) {
+				return;
+			}
+
+			orderIndex += 1;
+			rows.push({
+				id: `order-${type}-${orderKey}`,
+				stt: `${orderIndex}`,
+				rowType: 'order',
+				code: 'VTK',
+				name: DEFAULT_MISC_LABEL,
+			});
+			fallbackOrderEmitted = true;
+		};
 
 		if (hasProductionOrder) {
 			orderIndex += 1;
@@ -190,10 +207,11 @@ function buildAdditionalCostRows(params: {
 				return;
 			}
 
+			emitFallbackOrderRow();
 			groupIndex += 1;
 			rows.push({
 				id: `group-${type}-${orderKey}-${groupKey}`,
-				stt: hasProductionOrder ? `${orderIndex}.${groupIndex}` : `${groupIndex}`,
+				stt: `${orderIndex}.${groupIndex}`,
 				rowType: 'group',
 				code: group.groupCode,
 				name: group.groupName,
@@ -212,14 +230,7 @@ function buildAdditionalCostRows(params: {
 		});
 
 		if (!hasProductionOrder && ungroupedItems.length > 0) {
-			orderIndex += 1;
-			rows.push({
-				id: `order-${type}-${orderKey}-misc`,
-				stt: `${orderIndex}`,
-				rowType: 'order',
-				code: 'VTK',
-				name: DEFAULT_MISC_LABEL,
-			});
+			emitFallbackOrderRow();
 
 			ungroupedItems.forEach((item) => {
 				rows.push({

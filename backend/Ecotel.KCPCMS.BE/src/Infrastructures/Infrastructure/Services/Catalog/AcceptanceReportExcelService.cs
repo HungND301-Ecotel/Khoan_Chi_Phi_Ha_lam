@@ -58,6 +58,12 @@ public class AcceptanceReportExcelService : IAcceptanceReportExcelService
                 var quantityReceived = row.Cell(5).Value.ToString()?.Trim();
                 var quantityDispensed = row.Cell(6).Value.ToString()?.Trim();
 
+                if (!string.IsNullOrEmpty(documentNumber) && documentNumber.Length > 255)
+                {
+                    fatalErrors.Add($"Số chứng từ không được vượt quá 255 ký tự ở dòng {rowNumber}.");
+                    continue;
+                }
+
                 if (!TryParsePostingDate(postingDateCell, out var postingDate))
                 {
                     fatalErrors.Add($"Ngày vào sổ không đúng định dạng ở dòng {rowNumber}.");

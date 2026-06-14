@@ -776,7 +776,7 @@ export function AcceptanceReportEditor({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={showRowSelection ? 12 : 11}
+										colSpan={showRowSelection ? 14 : 13}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.

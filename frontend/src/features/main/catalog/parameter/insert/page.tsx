@@ -30,7 +30,7 @@ export function MainCatalogParameterInsertPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.CATALOG.PARAMETER.INSERT.EXPORT);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

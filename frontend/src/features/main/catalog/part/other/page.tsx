@@ -32,7 +32,7 @@ export function MainCatalogOtherPartPage() {
 			const filename = await api.export(API.CATALOG.PART.EXPORT, {
 				query: { partType: '2' },
 			});
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

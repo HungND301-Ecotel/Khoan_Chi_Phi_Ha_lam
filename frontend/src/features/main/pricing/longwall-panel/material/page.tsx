@@ -145,7 +145,7 @@ export function LongwallPanelMaterialPage() {
 			const filename = await api.export(
 				API.PRICING.MATERIAL.LONGWALL_PANEL.EXPORT,
 			);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

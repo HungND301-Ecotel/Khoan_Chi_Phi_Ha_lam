@@ -461,6 +461,10 @@ function buildShippedDetails(item: AcceptanceReportEditorRow): QuantityDetail[] 
 	});
 }
 
+function normalizeOptionalString(value: string | null | undefined) {
+	return typeof value === 'string' ? value.trim() || null : value ?? null;
+}
+
 function buildBasePayload(item: AcceptanceReportEditorRow) {
 	const materialsIncludedInContractRevenueType = item.showCategoryDropdown
 		? (item.categoryType ?? null)
@@ -587,7 +591,7 @@ export function buildAcceptanceReportRequest(
 				return {
 					acceptanceReportItemId: item.acceptanceReportItemId || null,
 					documentNumber: item.documentNumber?.trim() || null,
-					postingDate: item.postingDate || null,
+					postingDate: normalizeOptionalString(item.postingDate),
 					...trackedItemIds,
 					usageTime: item.usageTime ?? 0,
 					type: item.type || MaterialType.Material,
@@ -656,7 +660,7 @@ export function buildAcceptanceReportRequest(
 			return {
 				id: item.id || undefined,
 				documentNumber: item.documentNumber?.trim() || null,
-				postingDate: item.postingDate || null,
+				postingDate: normalizeOptionalString(item.postingDate),
 				...trackedItemIds,
 				usageTime: item.usageTime ?? 0,
 				type: item.type ?? MaterialType.Material,

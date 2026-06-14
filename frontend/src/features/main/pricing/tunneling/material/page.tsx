@@ -139,7 +139,7 @@ export function MainPricingMaterialPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.MATERIAL.TUNNELING.EXPORT);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}
@@ -187,7 +187,7 @@ export function MainPricingMaterialPage() {
 			const filename = await api.export(
 				API.PRICING.MATERIAL.SUPPORT_AND_DRILLING.EXPORT,
 			);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

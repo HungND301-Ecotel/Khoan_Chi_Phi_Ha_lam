@@ -34,7 +34,7 @@ export function MainCatalogParameterCuttingthicknessPage() {
 			const filename = await api.export(
 				API.CATALOG.PARAMETER.CUTTINGTHICKNESS.EXPORT,
 			);
-			popup.success(`Đã Tải xuống ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

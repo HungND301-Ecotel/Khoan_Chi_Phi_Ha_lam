@@ -179,11 +179,12 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		const selectedQuarter = watchedQuarter || defaultQuarter;
 		const selectedYear = watchedYear || defaultYear;
 		const quarterRoman = toRomanQuarter(selectedQuarter);
-		const months = monthBreakdowns
-			.map((x) => x.revenue?.month)
-			.filter((x): x is number => typeof x === 'number');
-		const monthBreakdownByMonth = new Map(
-			monthBreakdowns.map((x) => [x.revenue?.month ?? 0, x]),
+		const months = getMonthsForQuarter(selectedQuarter);
+		const monthBreakdownByMonth = new Map<number, LumpSumFinalSettlementMonthResponse>(
+			monthBreakdowns.map((x, index) => [
+				x.revenue?.month ?? months[index] ?? 0,
+				x,
+			]),
 		);
 
 		const customCostRowsByMonth = new Map<number, LumpSumFinalSettlement[]>();
@@ -750,6 +751,11 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 
 function quarterToStartMonth(quarter: string | number) {
 	return ((Number(quarter) || 1) - 1) * 3 + 1;
+}
+
+function getMonthsForQuarter(quarter: string | number) {
+	const startMonth = quarterToStartMonth(quarter);
+	return [startMonth, startMonth + 1, startMonth + 2];
 }
 
 function toRomanQuarter(quarter: string | number) {

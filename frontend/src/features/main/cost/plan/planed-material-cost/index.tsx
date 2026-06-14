@@ -285,7 +285,7 @@ function buildPlannedMaterialBreakdownRows(params: {
 				materialId: slideCost.materialId,
 				materialCode: slideCost.materialCode,
 				materialName: slideCost.materialName,
-				unitPrice: slideCost.amount,
+				unitPrice: slideCost.unitPrice,
 				originalQuantity: null,
 				coefficientValue: 1,
 				totalPrice: slideCost.totalPrice,
@@ -574,7 +574,7 @@ export function PlanedMaterialCost({
 
 				setPlannedMaterialPrice(result.totalPlannedMaterialPrice || 0);
 				setTotal(
-					result.totalPlannedMaterialPrice * (output?.productionMeters || 1),
+					result.totalPlannedMaterialPrice * (output?.productionMeters ?? 0),
 				);
 				setSummary([
 					{

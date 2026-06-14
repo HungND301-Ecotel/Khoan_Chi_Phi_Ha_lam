@@ -776,7 +776,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             return item.Material.AssignmentCode;
         }
 
-        return item.Material?.AssignmentCode;
+        return null;
     }
 
     // =========================================================================
