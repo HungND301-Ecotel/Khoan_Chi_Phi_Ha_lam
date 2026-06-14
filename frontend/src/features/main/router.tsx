@@ -6,10 +6,15 @@ import DashboardPage from '@/features/main/dashboard/page';
 import type { RouteObject } from 'react-router-dom';
 import { MainReportRouter } from './report/router';
 import { MainSystemRouter } from './system/router';
+import { ProtectedRoute } from '@/components/protected-route';
 
 const MainRouter: RouteObject = {
 	path: '/',
-	element: <MainLayout />,
+	element: (
+		<ProtectedRoute>
+			<MainLayout />
+		</ProtectedRoute>
+	),
 	children: [
 		{
 			index: true,
