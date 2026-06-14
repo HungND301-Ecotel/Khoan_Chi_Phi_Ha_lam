@@ -26,22 +26,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 	// Kiểm tra token khi component mount
 	useEffect(() => {
-    const initAuth = async () => {
-        try {
-            await TokenRefreshService.ensureToken();
+		const initAuth = async () => {
+			try {
+				const tokens = await TokenRefreshService.ensureToken();
 
-            setUser(true);
-        } catch {
-            authStorage.clear();
+				if (tokens) {
+					setUser(true);
+					return;
+				}
 
-            setUser(false);
-        } finally {
-            setLoading(false);
-        }
-    };
+				authStorage.clear();
+				setUser(false);
+			} catch {
+				authStorage.clear();
+				setUser(false);
+			} finally {
+				setLoading(false);
+			}
+		};
 
-    initAuth();
-}, []);
+		initAuth();
+	}, []);
 
 	const signIn = useCallback(
 		async (credentials: Credentials) => {
@@ -49,6 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 				const { result } = await api.post<TokenData, Credentials>(
 					API.AUTH.SIGN_IN,
 					credentials,
+					{ requiresAuth: false },
 				);
 
 				authStorage.set(result);

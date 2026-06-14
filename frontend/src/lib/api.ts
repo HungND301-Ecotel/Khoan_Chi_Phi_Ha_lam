@@ -18,6 +18,10 @@ type ErrorResponsePayload = {
 	message?: string;
 };
 
+type FetchOptions = {
+	requiresAuth?: boolean;
+};
+
 export class ErrorResponse {
 	readonly success = false;
 	type: string;
@@ -87,17 +91,26 @@ export const fetcher = async <Res, Req>(
 	path: string,
 	query?: Record<string, string>,
 	body?: Req,
+	options: FetchOptions = {},
 ): Promise<BaseResponse<Res>> => {
+	const { requiresAuth = true } = options;
+
 	// Bước 1: Kiểm tra token
 	// - Nếu không có token → logout
 	// - Nếu access token hết hạn → refresh
 	// - Nếu refresh token hết hạn → logout
-	const tokens = await TokenRefreshService.ensureToken();
+	const tokens = requiresAuth
+		? await TokenRefreshService.ensureToken()
+		: null;
 
-	if (!tokens) {
+	if (requiresAuth && !tokens) {
 		// Token không hợp lệ, logout
 		authStorage.clear();
-		window.location.href = '/auth/sign-in';
+
+		if (window.location.pathname !== '/auth/sign-in') {
+			window.location.replace('/auth/sign-in');
+		}
+
 		throw new ErrorResponse({
 			status: 401,
 			message: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
@@ -124,29 +137,52 @@ export const fetcher = async <Res, Req>(
 };
 
 export const api = {
-	get: async <Res>(path: string, query?: Record<string, string>) => {
-		return fetcher<Res, undefined>('GET', path, query);
+	get: async <Res>(
+		path: string,
+		query?: Record<string, string>,
+		options?: FetchOptions,
+	) => {
+		return fetcher<Res, undefined>('GET', path, query, undefined, options);
 	},
-	post: async <Res, Req>(path: string, body: Req) => {
-		return fetcher<Res, Req>('POST', path, undefined, body);
+	post: async <Res, Req>(
+		path: string,
+		body: Req,
+		options?: FetchOptions,
+	) => {
+		return fetcher<Res, Req>('POST', path, undefined, body, options);
 	},
-	put: async <Res, Req>(path: string, body: Req) => {
-		return fetcher<Res, Req>('PUT', path, undefined, body);
+	put: async <Res, Req>(
+		path: string,
+		body: Req,
+		options?: FetchOptions,
+	) => {
+		return fetcher<Res, Req>('PUT', path, undefined, body, options);
 	},
-	patch: async <Res, Req>(path: string, body: Req) => {
-		return fetcher<Res, Req>('PATCH', path, undefined, body);
+	patch: async <Res, Req>(
+		path: string,
+		body: Req,
+		options?: FetchOptions,
+	) => {
+		return fetcher<Res, Req>('PATCH', path, undefined, body, options);
 	},
-	delete: async <Res, Req>(path: string, body?: Req) => {
-		return fetcher<Res, Req>('DELETE', path, undefined, body);
+	delete: async <Res, Req>(
+		path: string,
+		body?: Req,
+		options?: FetchOptions,
+	) => {
+		return fetcher<Res, Req>('DELETE', path, undefined, body, options);
 	},
 	pagging: async <Res>(
 		path: string,
 		query: PaggingRequest = { ignorePagination: true },
+		options?: FetchOptions,
 	) => {
 		return fetcher<PaggingResponse<Res>, undefined>(
 			'GET',
 			path,
 			query as Record<string, string>,
+			undefined,
+			options,
 		);
 	},
 	export: async (
