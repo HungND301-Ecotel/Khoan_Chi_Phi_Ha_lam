@@ -718,6 +718,12 @@ export function AcceptanceReportEditor({
 								<TableCell className='w-[8%] min-w-28 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
 									Đơn vị tính
 								</TableCell>
+								<TableCell className='w-[12%] min-w-40 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+									Số chứng từ
+								</TableCell>
+								<TableCell className='w-[10%] min-w-36 border-b-2 border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700'>
+									Ngày vào sổ
+								</TableCell>
 								<TableCell className='border-b-2 border-slate-200 px-4 py-4 text-center text-sm font-semibold text-slate-700'>
 									Số lượng lĩnh
 								</TableCell>
@@ -770,7 +776,7 @@ export function AcceptanceReportEditor({
 							{visibleMaterialIndexes.length === 0 && (
 								<TableRow>
 									<TableCell
-										colSpan={showRowSelection ? 12 : 11}
+										colSpan={showRowSelection ? 14 : 13}
 										className='py-6 text-center text-sm text-slate-500'
 									>
 										Không có vật tư phù hợp với bộ lọc đã chọn.
@@ -961,6 +967,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const categoryEquipmentId =
 		row?.categoryAssignmentCodeId ?? row?.categoryEquipmentId;
 	const additionalCostCategory = row?.additionalCostCategory;
+	const additionalCostAssignmentCodeId = row?.additionalCostAssignmentCodeId;
 	const additionalCostProductionOrderId = row?.additionalCostProductionOrderId;
 	const otherMaterialDetailValue = row?.otherMaterialDetail;
 	const contractLimitCategoryValue = row?.contractLimitCategory;
@@ -981,6 +988,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const materialOrPartId = row?.materialOrPartId;
 	const resolutionStatus = row?.resolutionStatus;
 	const unresolvedReason = row?.unresolvedReason;
+	const documentNumber = row?.documentNumber ?? '';
+	const postingDate = row?.postingDate ?? null;
 	const receivedTypes = row?.receivedTypes as string[] | undefined;
 	const exportedTypes = row?.exportedTypes as string[] | undefined;
 	const receivedBreakdown = row?.receivedBreakdown as
@@ -1022,9 +1031,24 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			label: option.label,
 		}),
 	);
-	const additionalCostOrderOrAssignmentCodeOptions = isSparePartByAssignmentCode
-		? productionOrderOnlyOptions
-		: orderOrAssignmentCodeOptions;
+	const additionalCostAssignmentCodeOptions = [
+		{
+			value: '__none__',
+			label: '[Nhóm vật tư, tài sản] Không thuộc nhóm vật tư, tài sản',
+		},
+		...assignmentCodeOptions.map((option) => ({
+			value: parseAssignmentCodeOptionId(option.value),
+			label: option.label,
+		})),
+	];
+	const additionalCostProductionOrderOptions = (
+		isSparePartByAssignmentCode ? productionOrderOnlyOptions : orderOrAssignmentCodeOptions
+	)
+		.filter((option) => option.value.startsWith(PRODUCTION_ORDER_OPTION_PREFIX))
+		.map((option) => ({
+			value: parseProductionOrderOptionId(option.value),
+			label: option.label,
+		}));
 
 	const additionalCostOptionsByType = ADDITIONAL_COST_OPTIONS;
 
@@ -1034,6 +1058,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const categoryNeedsProductionOrder = categoryType != null;
 	const supportsRowLongTermTracking =
 		showCategoryDropdown && categoryType === MaterialType.SparePart;
+	const additionalCostNeedsAssignmentCode =
+		additionalCostCategory === AdditionalCost.Material ||
+		additionalCostCategory === AdditionalCost.Maintain;
 	const additionalCostNeedsProductionOrder =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -1116,6 +1143,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		categoryAssignmentCodeId: null as string | null | undefined,
 		categoryEquipmentId: null as string | null | undefined,
 		additionalCostCategory: null as number | null | undefined,
+		additionalCostAssignmentCodeId: null as string | null | undefined,
 		additionalCostProductionOrderId: null as string | null | undefined,
 		otherMaterialDetail: null as number | null | undefined,
 		contractLimitCategory: null as number | null | undefined,
@@ -1176,8 +1204,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				{
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
-					dropdownSecondary: 'additionalCostProductionOrderId',
-					dropdownTertiary: 'otherMaterialDetail',
+					dropdownSecondary: 'additionalCostAssignmentCodeId',
+					dropdownTertiary: 'additionalCostProductionOrderId',
+					dropdownQuaternary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{ checkbox: 'showAssetDropdown', quantity: 'assetQuantity' },
@@ -1195,8 +1224,9 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				{
 					checkbox: 'showAdditionalCostDropdown',
 					dropdown: 'additionalCostCategory',
-					dropdownSecondary: 'additionalCostProductionOrderId',
-					dropdownTertiary: 'otherMaterialDetail',
+					dropdownSecondary: 'additionalCostAssignmentCodeId',
+					dropdownTertiary: 'additionalCostProductionOrderId',
+					dropdownQuaternary: 'otherMaterialDetail',
 					quantity: 'additionalCostQuantity',
 				},
 				{
@@ -1250,15 +1280,26 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				additionalCostCategory === AdditionalCost.Material ||
 				additionalCostCategory === AdditionalCost.Maintain
 			) {
+				const hasValidAssignmentSelection =
+					additionalCostAssignmentCodeId != null &&
+					additionalCostAssignmentCodeOptions.some(
+						(option) => option.value === additionalCostAssignmentCodeId,
+					);
+				if (!hasValidAssignmentSelection) {
+					set(
+						'additionalCostAssignmentCodeId',
+						additionalCostAssignmentCodeOptions[0]?.value ?? null,
+					);
+				}
 				const hasValidSelection =
 					additionalCostProductionOrderId != null &&
-					additionalCostOrderOrAssignmentCodeOptions.some(
+					additionalCostProductionOrderOptions.some(
 						(option) => option.value === additionalCostProductionOrderId,
 					);
 				if (!hasValidSelection) {
 					set(
 						'additionalCostProductionOrderId',
-						additionalCostOrderOrAssignmentCodeOptions[0]?.value ?? null,
+						additionalCostProductionOrderOptions[0]?.value ?? null,
 					);
 				}
 			}
@@ -1280,6 +1321,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		}
 		if (justDisabledAdditional) {
 			set('additionalCostCategory', null);
+			set('additionalCostAssignmentCodeId', null);
 			set('additionalCostProductionOrderId', null);
 			set('otherMaterialDetail', null);
 			set('additionalCostQuantity', null);
@@ -1309,11 +1351,13 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
 		additionalCostCategory,
+		additionalCostAssignmentCodeId,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
 		categoryProductionOrderOptions,
 		categoryAssignmentCodeOptions,
-		additionalCostOrderOrAssignmentCodeOptions,
+		additionalCostAssignmentCodeOptions,
+		additionalCostProductionOrderOptions,
 		form,
 		basename,
 	]);
@@ -1364,21 +1408,41 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		const requiresProductionOrder =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
+		const requiresAssignmentCode =
+			additionalCostCategory === AdditionalCost.Material ||
+			additionalCostCategory === AdditionalCost.Maintain;
 		const requiresOtherMaterialDetail =
 			additionalCostCategory === AdditionalCost.OtherMaterial;
+		if (!requiresAssignmentCode) {
+			if (additionalCostAssignmentCodeId != null) {
+				set('additionalCostAssignmentCodeId', null);
+			}
+		} else {
+			const hasValidAssignmentSelection =
+				additionalCostAssignmentCodeId != null &&
+				additionalCostAssignmentCodeOptions.some(
+					(option) => option.value === additionalCostAssignmentCodeId,
+				);
+			if (!hasValidAssignmentSelection) {
+				set(
+					'additionalCostAssignmentCodeId',
+					additionalCostAssignmentCodeOptions[0]?.value ?? null,
+				);
+			}
+		}
 		if (!requiresProductionOrder) {
 			if (additionalCostProductionOrderId != null)
 				set('additionalCostProductionOrderId', null);
 		} else {
 			const hasValidSelection =
 				additionalCostProductionOrderId != null &&
-				additionalCostOrderOrAssignmentCodeOptions.some(
+				additionalCostProductionOrderOptions.some(
 					(option) => option.value === additionalCostProductionOrderId,
 				);
 			if (!hasValidSelection) {
 				set(
 					'additionalCostProductionOrderId',
-					additionalCostOrderOrAssignmentCodeOptions[0]?.value ?? null,
+					additionalCostProductionOrderOptions[0]?.value ?? null,
 				);
 			}
 		}
@@ -1397,15 +1461,20 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	}, [
 		showAdditionalCostDropdown,
 		additionalCostCategory,
+		additionalCostAssignmentCodeId,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
-		additionalCostOrderOrAssignmentCodeOptions,
+		additionalCostAssignmentCodeOptions,
+		additionalCostProductionOrderOptions,
 	]);
 
 	useEffect(() => {
 		const prev = prevDropdownState.current;
 		const categoryRequiresProductionOrder = categoryType != null;
 		const additionalRequiresProductionOrder =
+			additionalCostCategory === AdditionalCost.Material ||
+			additionalCostCategory === AdditionalCost.Maintain;
+		const additionalRequiresAssignmentCode =
 			additionalCostCategory === AdditionalCost.Material ||
 			additionalCostCategory === AdditionalCost.Maintain;
 		const additionalRequiresOtherDetail =
@@ -1419,6 +1488,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		const hasAdditionalCostActiveNow = Boolean(
 			showAdditionalCostDropdown &&
 			additionalCostCategory &&
+			(!additionalRequiresAssignmentCode ||
+				additionalCostAssignmentCodeId != null) &&
 			(!additionalRequiresProductionOrder ||
 				additionalCostProductionOrderId != null) &&
 			(!additionalRequiresOtherDetail || otherMaterialDetailValue != null),
@@ -1432,6 +1503,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
 			prev.additionalCostCategory &&
+			(prev.additionalCostCategory !== AdditionalCost.Material &&
+			prev.additionalCostCategory !== AdditionalCost.Maintain
+				? true
+				: prev.additionalCostAssignmentCodeId != null) &&
 			(prev.additionalCostCategory !== AdditionalCost.Material &&
 			prev.additionalCostCategory !== AdditionalCost.Maintain
 				? true
@@ -1468,6 +1543,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			categoryAssignmentCodeId,
 			categoryEquipmentId,
 			additionalCostCategory,
+			additionalCostAssignmentCodeId,
 			additionalCostProductionOrderId,
 			otherMaterialDetail: otherMaterialDetailValue,
 			contractLimitCategory: contractLimitCategoryValue,
@@ -1481,6 +1557,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
 		additionalCostCategory,
+		additionalCostAssignmentCodeId,
 		additionalCostProductionOrderId,
 		otherMaterialDetailValue,
 		contractLimitCategoryValue,
@@ -1741,6 +1818,23 @@ const MaterialImportRow = memo(function MaterialImportRow({
 							className={unresolvedInputClassName}
 						/>
 					</TableCell>
+					<TableCell className='w-[12%] min-w-40 border-b border-slate-200 px-4 py-4'>
+						<Input
+							value={documentNumber}
+							onChange={(event) => set('documentNumber', event.target.value)}
+							className='border-slate-300 bg-white'
+						/>
+					</TableCell>
+					<TableCell className='w-[10%] min-w-36 border-b border-slate-200 px-4 py-4'>
+						<Input
+							type='date'
+							value={postingDate ?? ''}
+							onChange={(event) =>
+								set('postingDate', event.target.value || null)
+							}
+							className='border-slate-300 bg-white'
+						/>
+					</TableCell>
 					<TableCell className='border-b border-slate-200 px-4 py-4'>
 						<div className='flex flex-col gap-2'>
 							<div className='flex flex-col gap-0.5'>
@@ -1843,6 +1937,27 @@ const MaterialImportRow = memo(function MaterialImportRow({
 							readOnly
 							value={unitOfMeasureName || ''}
 							className='border-slate-300 bg-slate-100 text-slate-500'
+						/>
+					</TableCell>
+
+					{/* Số chứng từ */}
+					<TableCell className='w-[12%] min-w-40 border-b border-slate-200 px-4 py-4'>
+						<Input
+							value={documentNumber}
+							onChange={(event) => set('documentNumber', event.target.value)}
+							className='border-slate-300 bg-white'
+						/>
+					</TableCell>
+
+					{/* Ngày vào sổ */}
+					<TableCell className='w-[10%] min-w-36 border-b border-slate-200 px-4 py-4'>
+						<Input
+							type='date'
+							value={postingDate ?? ''}
+							onChange={(event) =>
+								set('postingDate', event.target.value || null)
+							}
+							className='border-slate-300 bg-white'
 						/>
 					</TableCell>
 
@@ -2084,6 +2199,18 @@ const MaterialImportRow = memo(function MaterialImportRow({
 									</div>
 									{additionalCostCategory && (
 										<>
+											{additionalCostNeedsAssignmentCode && (
+												<div className='w-full'>
+													<FormComboBox
+														control={form.control}
+														name={
+															`${basename}.additionalCostAssignmentCodeId` as RowPath
+														}
+														options={additionalCostAssignmentCodeOptions}
+														placeholder='Chọn Nhóm vật tư, tài sản'
+													/>
+												</div>
+											)}
 											{additionalCostNeedsProductionOrder && (
 												<div className='w-full'>
 													<FormComboBox
@@ -2091,8 +2218,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 														name={
 															`${basename}.additionalCostProductionOrderId` as RowPath
 														}
-														options={additionalCostOrderOrAssignmentCodeOptions}
-														placeholder='Chọn quyết định, lệnh sản xuất'
+														options={additionalCostProductionOrderOptions}
+														placeholder='Chọn lệnh sản xuất'
 													/>
 												</div>
 											)}
@@ -2109,6 +2236,8 @@ const MaterialImportRow = memo(function MaterialImportRow({
 										</>
 									)}
 									{additionalCostCategory &&
+										(!additionalCostNeedsAssignmentCode ||
+											additionalCostAssignmentCodeId != null) &&
 										(!additionalCostNeedsProductionOrder ||
 											additionalCostProductionOrderId != null) &&
 										(!additionalCostNeedsOtherMaterialDetail ||

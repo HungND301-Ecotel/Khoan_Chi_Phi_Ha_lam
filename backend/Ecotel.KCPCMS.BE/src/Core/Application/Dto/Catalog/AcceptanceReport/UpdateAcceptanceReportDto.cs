@@ -24,6 +24,8 @@ public record UpdateAcceptanceReportItemDto
         get => _trackedMaterialId;
         init => _trackedMaterialId = value;
     }
+    public string? DocumentNumber { get; init; }
+    public DateOnly? PostingDate { get; init; }
     public required double UsageTime { get; init; }
     public required double IssuedQuantity { get; init; }
     public required double ShippedQuantity { get; init; }

@@ -8,6 +8,7 @@ import { ProductionOutputDto } from './api-types';
 import { HierarchicalAcceptanceReport } from './types';
 import {
 	applyProductionOrderNames,
+	ProductionOrderDisplayInfo,
 	transformApiResponseToHierarchical,
 } from './api-transformer';
 
@@ -56,15 +57,18 @@ export function useAcceptanceReportDetail(
 
 			if (response && response.result) {
 				const hierarchicData = transformApiResponseToHierarchical(response.result);
-				const productionOrderNameById = Object.fromEntries(
+				const productionOrderById = Object.fromEntries(
 					(productionOrderResponse.result.data ?? []).map((item) => [
 						item.id,
-						[item.code, item.name].filter(Boolean).join(' - ') || item.id,
+						{
+							code: item.code || item.id,
+							name: item.name || item.code || item.id,
+						} satisfies ProductionOrderDisplayInfo,
 					]),
 				);
 
 				setData(
-					applyProductionOrderNames(hierarchicData, productionOrderNameById),
+					applyProductionOrderNames(hierarchicData, productionOrderById),
 				);
 			}
 		} catch (err) {

@@ -15,6 +15,7 @@ import { Production } from '@/features/main/cost/producttion/production/columns'
 import { ProductionOutputDto } from '@/features/main/cost/producttion/production/acceptance-report/api-types';
 import {
 	applyProductionOrderNames,
+	type ProductionOrderDisplayInfo,
 	transformApiResponseToHierarchical,
 } from '@/features/main/cost/producttion/production/acceptance-report/api-transformer';
 import { AcceptanceReportDataTable as AcceptanceReportGrid } from '@/features/main/cost/producttion/production/acceptance-report/datatable';
@@ -234,7 +235,6 @@ export function AcceptanceReportDataTable({
 				return;
 			}
 
-
 			const [detailResponses, productionOrderResponse] = await Promise.all([
 				Promise.all(
 					outputsByPeriod.map((output) =>
@@ -249,10 +249,16 @@ export function AcceptanceReportDataTable({
 				),
 			]);
 
-			const productionOrderNameById = Object.fromEntries(
+			const productionOrderNameById: Record<
+				string,
+				ProductionOrderDisplayInfo
+			> = Object.fromEntries(
 				(productionOrderResponse.result.data ?? []).map((item) => [
 					item.id,
-					[item.code, item.name].filter(Boolean).join(' - ') || item.id,
+					{
+						code: item.code || item.id,
+						name: item.name || item.code || item.id,
+					},
 				]),
 			);
 
@@ -290,15 +296,17 @@ export function AcceptanceReportDataTable({
 	}, [fetchAcceptanceReport]);
 
 	const handleExport = async () => {
-
 		if (rows.length === 0) return;
 		setIsExporting(true);
 		try {
 			const exportFileName = `bang-nghiem-thu-vat-tu-su-dung-va-ket-chuyen-chi-phi-thang-${month}-nam-${year}.xlsx`;
-			await api.export(API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_PERIOD(month, year), {
-				fileName: exportFileName,
-				forceFileName: true,
-			});
+			await api.export(
+				API.PRODUCTION.ACCEPTANCE_REPORT.EXPORT_PERIOD(month, year),
+				{
+					fileName: exportFileName,
+					forceFileName: true,
+				},
+			);
 		} catch (err) {
 			console.error('Failed to export acceptance report:', err);
 		} finally {
@@ -375,7 +383,7 @@ export function AcceptanceReportDataTable({
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>

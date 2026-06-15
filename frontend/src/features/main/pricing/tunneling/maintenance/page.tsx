@@ -65,7 +65,7 @@ export function MainPricingMaintenanceTunnelingPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.MAINTENANCE.TUNNEL_EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

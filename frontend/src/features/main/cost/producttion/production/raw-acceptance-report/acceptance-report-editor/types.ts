@@ -36,6 +36,8 @@ export type AssignmentCodeOption = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
@@ -56,6 +58,8 @@ export type AcceptanceReportItemDto = {
 export type UnresolvedAcceptanceReportItemDto = {
 	rowNumber: number;
 	reportItemId: string | null;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	materialCode: string;
 	materialName?: string | null;
 	unitOfMeasureName: string;
@@ -167,6 +171,8 @@ export type QuotaBasedMaterialQuantityDetail = {
 
 export type CreateAcceptanceReportItem = {
 	acceptanceReportItemId: string | null;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
@@ -207,6 +213,8 @@ export type CreateAcceptanceReportRequest = {
 
 export type UpdateAcceptanceReportItem = {
 	id?: string;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	trackedMaterialId?: string | null;
 	materialId?: string | null;
 	partId?: string | null;
@@ -248,7 +256,7 @@ export type UpdateAcceptanceReportRequest = {
 
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialType.Material, label: 'Vật liệu' },
-	{ value: MaterialType.SparePart, label: 'Phụ tùng' },
+	{ value: MaterialType.SparePart, label: 'SCTX' },
 ];
 
 export const ADDITIONAL_COST_OPTIONS = [

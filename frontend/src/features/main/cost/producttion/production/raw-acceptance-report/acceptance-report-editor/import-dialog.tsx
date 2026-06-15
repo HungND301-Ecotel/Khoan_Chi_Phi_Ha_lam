@@ -378,6 +378,8 @@ export function MaterialImportDialog({
 						sourceRowNumber: uploadedRow.sourceRowNumber,
 						resolutionStatus: ImportResolutionStatus.Resolved,
 						partType: uploadedRow.partType ?? existingRow.partType,
+						documentNumber: uploadedRow.documentNumber,
+						postingDate: uploadedRow.postingDate,
 						materialCode: uploadedRow.materialCode,
 						materialName: uploadedRow.materialName,
 						unitOfMeasureName: uploadedRow.unitOfMeasureName,
@@ -475,6 +477,10 @@ export function MaterialImportDialog({
 				reportItemId:
 					form.getValues(`materials.${unresolvedIndex}.acceptanceReportItemId`) ??
 					null,
+				documentNumber:
+					form.getValues(`materials.${unresolvedIndex}.documentNumber`) ?? '',
+				postingDate:
+					form.getValues(`materials.${unresolvedIndex}.postingDate`) ?? null,
 				materialId: createdMaterial.id,
 				materialCode:
 					form.getValues(`materials.${unresolvedIndex}.materialCode`) ??

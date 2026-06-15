@@ -34,7 +34,8 @@ function buildGroupedExpandRows(
 
 	costItems.forEach((item) => {
 		const groupKey =
-			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+			item.assignmentCodeId ||
+			`${item.assignmentCode}-${item.assignmentCodeName}`;
 
 		if (!groupedRows.has(groupKey)) {
 			groupedRows.set(groupKey, {
@@ -87,7 +88,8 @@ function buildGroupedExpandRows(
 	}
 
 	const baseTotal = costItems.reduce((sum, item) => sum + item.totalPrice, 0);
-	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+	const otherMaterialTotal =
+		(baseTotal * (Number(otherMaterialValue) || 0)) / 100;
 
 	return [
 		...rows,
@@ -128,7 +130,7 @@ export function MainPricingTrimmingMaterialPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.MATERIAL.TRIMMING.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}
@@ -180,6 +182,7 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 
 	useEffect(() => {
 		if (!row) return;
+		let cancelled = false;
 
 		const promises = Promise.all([
 			api.get<Passport>(API.CATALOG.PARAMETER.PASSPORT.DETAIL(row.passportId)),
@@ -189,8 +192,10 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 			api.get<MaterialDetail>(API.PRICING.MATERIAL.TRIMMING.DETAIL(row.id)),
 		]);
 
-		promises.then(
-			([passport, strength, insert, step, materialDetail]) => {
+		promises
+			.then(([passport, strength, insert, step, materialDetail]) => {
+				if (cancelled) return;
+
 				setDetail({
 					passport: passport.result,
 					strength: strength.result,
@@ -203,8 +208,17 @@ function MaterialDetailExpand({ row }: ActionDialogProps<Material>) {
 						materialDetail.result.otherMaterialValue,
 					),
 				);
-			},
-		);
+			})
+			.catch(() => {
+				if (cancelled) return;
+
+				setDetail(undefined);
+				setCosts([]);
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, [row]);
 
 	const detailItems = useMemo(() => [detail ?? {}], [detail]);

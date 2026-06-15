@@ -160,8 +160,7 @@ export function LumpSumFinalSettlementReportTable({
 		String(Math.floor(now.getMonth() / 3) + 1),
 	);
 	const [year, setYear] = useState(String(currentYear));
-	const [selectedDepartment, setSelectedDepartment] =
-		useState(ALL_DEPARTMENT);
+	const [selectedDepartment, setSelectedDepartment] = useState(ALL_DEPARTMENT);
 	const [departmentOptions, setDepartmentOptions] = useState<
 		{ value: string; label: string }[]
 	>([{ value: ALL_DEPARTMENT, label: 'Tất cả đơn vị' }]);
@@ -298,9 +297,7 @@ export function LumpSumFinalSettlementReportTable({
 						? ''
 						: selectedProcessGroup,
 				departmentId:
-					selectedDepartment === ALL_DEPARTMENT
-						? ''
-						: selectedDepartment,
+					selectedDepartment === ALL_DEPARTMENT ? '' : selectedDepartment,
 			};
 
 			const response = await api.post<
@@ -360,10 +357,18 @@ export function LumpSumFinalSettlementReportTable({
 	const reportRows = useMemo(() => {
 		const quarterRoman = toRomanQuarter(quarter);
 		const months = quarterToMonthRange(quarter);
-		const revenueByMonthMap = new Map(revenuesByMonth.map((item) => [item.month, item]));
-		const costByMonthMap = new Map(costsByMonth.map((item) => [item.month, item]));
-		const savingByMonthMap = new Map(savingsByMonth.map((item) => [item.month, item]));
-		const monthBreakdownByMonth = new Map(monthBreakdowns.map((item) => [item.revenue?.month ?? 0, item]));
+		const revenueByMonthMap = new Map(
+			revenuesByMonth.map((item) => [item.month, item]),
+		);
+		const costByMonthMap = new Map(
+			costsByMonth.map((item) => [item.month, item]),
+		);
+		const savingByMonthMap = new Map(
+			savingsByMonth.map((item) => [item.month, item]),
+		);
+		const monthBreakdownByMonth = new Map(
+			monthBreakdowns.map((item) => [item.revenue?.month ?? 0, item]),
+		);
 
 		const revenueQuarter = sumRows(revenuesByMonth);
 		const costQuarter = sumRows(costsByMonth);
@@ -520,7 +525,8 @@ export function LumpSumFinalSettlementReportTable({
 				hideUnitPrice: true,
 			}),
 			...months.flatMap((monthNumber, idx) => {
-				const monthTransferred = monthBreakdownByMonth.get(monthNumber)?.transferredCost;
+				const monthTransferred =
+					monthBreakdownByMonth.get(monthNumber)?.transferredCost;
 				return [
 					makeZeroRow(`Tháng ${monthNumber}/${year}`, {
 						sttLabel: `II.${idx + 1}`,
@@ -610,8 +616,8 @@ export function LumpSumFinalSettlementReportTable({
 						hideUnitPrice: true,
 						isMergedValueRow: true,
 						mergedValue:
-							monthBreakdownByMonth.get(monthNumber)?.savingAddedToIncomeMonth ??
-							0,
+							monthBreakdownByMonth.get(monthNumber)
+								?.savingAddedToIncomeMonth ?? 0,
 					},
 				),
 			),
@@ -705,9 +711,7 @@ export function LumpSumFinalSettlementReportTable({
 							? ''
 							: selectedProcessGroup,
 					departmentId:
-						selectedDepartment === ALL_DEPARTMENT
-							? ''
-							: selectedDepartment,
+						selectedDepartment === ALL_DEPARTMENT ? '' : selectedDepartment,
 					search: searchQuery.trim(),
 				},
 			});
@@ -847,7 +851,7 @@ export function LumpSumFinalSettlementReportTable({
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>
@@ -887,9 +891,7 @@ export function LumpSumFinalSettlementReportTable({
 							</div>
 
 							<div className='mt-2 text-right font-["Times_New_Roman",Times,serif] text-sm italic'>
-								Tổng giá trị bảng:{' '}
-								{formatNumber(totalReportValue)}{' '}
-								Đồng
+								Tổng giá trị bảng: {formatNumber(totalReportValue)} Đồng
 							</div>
 
 							<ExcelReportFooter quarter={quarter} year={year} />

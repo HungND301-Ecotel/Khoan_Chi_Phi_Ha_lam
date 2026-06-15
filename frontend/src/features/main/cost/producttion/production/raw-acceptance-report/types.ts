@@ -11,6 +11,8 @@ export type RawAcceptanceReportItem = {
 	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
 	categoryAssignmentCodeLabel?: string | null;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;
@@ -65,6 +67,8 @@ export type AcceptanceReportItem = {
 	categoryProductionOrderLabel?: string | null;
 	categoryAssignmentCodeId?: string | null;
 	categoryAssignmentCodeLabel?: string | null;
+	documentNumber?: string | null;
+	postingDate?: string | null;
 	categoryEquipmentId?: string | null;
 	additionalCostProductionOrderId?: string | null;
 	additionalCostAssignmentCodeId?: string | null;
@@ -194,7 +198,7 @@ export type CategoryAllocation = {
 // Dropdown options
 export const CATEGORY_OPTIONS = [
 	{ value: MaterialType.Material, label: 'Vật liệu' },
-	{ value: MaterialType.SparePart, label: 'Phụ tùng' },
+	{ value: MaterialType.SparePart, label: 'SCTX' },
 ];
 
 export const ADDITIONAL_COST_OPTIONS = [

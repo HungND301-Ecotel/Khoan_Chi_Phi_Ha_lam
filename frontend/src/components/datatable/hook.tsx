@@ -1,8 +1,8 @@
 import { api, PaggingRequest } from '@/lib/api';
 import {
 	ColumnDef,
-	ColumnFiltersState,
 	ExpandedState,
+	FilterFn,
 	getCoreRowModel,
 	getExpandedRowModel,
 	getFilteredRowModel,
@@ -33,17 +33,52 @@ export function useDataTable<TData>(
 	items?: TData[],
 	transformData?: (rows: TData[]) => TData[],
 	customGetRowId?: (row: TData, index: number) => string,
+	searchableColumnIds?: string[],
 ): UseDataTable<TData> {
 	const [data, setData] = useState<TData[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [refreshVersion, setRefreshVersion] = useState(0);
 	const [sorting, setSorting] = useState<SortingState>([]);
-	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+	const [globalFilter, setGlobalFilter] = useState('');
 	const [expanded, setExpanded] = useState<ExpandedState>({});
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
 		pageSize: 10,
 	});
+
+	const globalSearchFilter: FilterFn<TData> = (row, _columnId, filterValue) => {
+		const normalizedFilter = String(filterValue ?? '').trim().toLowerCase();
+		if (!normalizedFilter) return true;
+
+		const normalizeValue = (value: unknown): string => {
+			if (value === null || value === undefined) return '';
+			if (
+				typeof value === 'string' ||
+				typeof value === 'number' ||
+				typeof value === 'boolean'
+			) {
+				return String(value).toLowerCase();
+			}
+			if (Array.isArray(value)) {
+				return value.map(normalizeValue).join(' ');
+			}
+			if (typeof value === 'object') {
+				return Object.values(value as Record<string, unknown>)
+					.map(normalizeValue)
+					.join(' ');
+			}
+			return '';
+		};
+
+		const valuesToSearch =
+			searchableColumnIds && searchableColumnIds.length > 0
+				? searchableColumnIds.map((columnId) => row.getValue(columnId))
+				: row.getVisibleCells().map((cell) => cell.getValue());
+
+		return valuesToSearch.some((value) =>
+			normalizeValue(value).includes(normalizedFilter),
+		);
+	};
 
 	const refresh = useCallback(async () => {
 		try {
@@ -90,7 +125,8 @@ export function useDataTable<TData>(
 			enableSortingRemoval: true,
 		}),
 		getFilteredRowModel: getFilteredRowModel(),
-		onColumnFiltersChange: setColumnFilters,
+		globalFilterFn: globalSearchFilter,
+		onGlobalFilterChange: setGlobalFilter,
 		getRowCanExpand: () => expandable,
 		getExpandedRowModel: getExpandedRowModel(),
 		onExpandedChange: setExpanded,
@@ -98,7 +134,7 @@ export function useDataTable<TData>(
 		autoResetExpanded: false,
 		state: {
 			sorting,
-			columnFilters,
+			globalFilter,
 			expanded,
 			...(hasPagination ? { pagination } : {}),
 		},

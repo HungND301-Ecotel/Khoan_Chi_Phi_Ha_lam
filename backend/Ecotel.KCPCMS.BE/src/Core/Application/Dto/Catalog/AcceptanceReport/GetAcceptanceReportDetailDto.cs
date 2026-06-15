@@ -27,6 +27,8 @@ public record AcceptanceReportDetailItemDto
     public string? CategoryProductionOrderLabel { get; init; }
     public Guid? CategoryAssignmentCodeId { get; init; }
     public string? CategoryAssignmentCodeLabel { get; init; }
+    public string? DocumentNumber { get; init; }
+    public DateOnly? PostingDate { get; init; }
     public Guid? CategoryEquipmentId => CategoryAssignmentCodeId;
     public Guid? AdditionalCostProductionOrderId { get; init; }
     public Guid? AdditionalCostAssignmentCodeId { get; init; }

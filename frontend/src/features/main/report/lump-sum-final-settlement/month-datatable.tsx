@@ -132,8 +132,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 
 	const [month, setMonth] = useState(String(now.getMonth() + 1));
 	const [year, setYear] = useState(String(currentYear));
-	const [selectedDepartment, setSelectedDepartment] =
-		useState(ALL_DEPARTMENT);
+	const [selectedDepartment, setSelectedDepartment] = useState(ALL_DEPARTMENT);
 	const [departmentOptions, setDepartmentOptions] = useState<
 		{ value: string; label: string }[]
 	>([{ value: ALL_DEPARTMENT, label: 'Tất cả đơn vị' }]);
@@ -162,7 +161,9 @@ export function LumpSumFinalSettlementMonthReportTable({
 		useState<LumpSumQuarterRevenueByMonth | null>(null);
 	const [transferredCostByMonth, setTransferredCostByMonth] =
 		useState<LumpSumQuarterTransferredCost | null>(null);
-	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>([]);
+	const [customCosts, setCustomCosts] = useState<LumpSumQuarterCustomCost[]>(
+		[],
+	);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
@@ -263,9 +264,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 						? ''
 						: selectedProcessGroup,
 				departmentId:
-					selectedDepartment === ALL_DEPARTMENT
-						? ''
-						: selectedDepartment,
+					selectedDepartment === ALL_DEPARTMENT ? '' : selectedDepartment,
 			};
 
 			const response = await api.post<
@@ -274,13 +273,14 @@ export function LumpSumFinalSettlementMonthReportTable({
 			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
 
 			const monthData = Array.isArray(response.result) ? null : response.result;
-			const items = monthData?.items ?? (Array.isArray(response.result) ? response.result : []);
+			const items =
+				monthData?.items ??
+				(Array.isArray(response.result) ? response.result : []);
 			setRows(groupByProcessGroup(items));
 			setQuarterSpecialQuantities({
 				coalExcavationActualQuantity:
 					monthData?.coalExcavationActualQuantity ?? 0,
-				coalCrosscutActualQuantity:
-					monthData?.coalCrosscutActualQuantity ?? 0,
+				coalCrosscutActualQuantity: monthData?.coalCrosscutActualQuantity ?? 0,
 				meterExcavationActualQuantity:
 					monthData?.meterExcavationActualQuantity ?? 0,
 				meterCrosscutActualQuantity:
@@ -464,20 +464,17 @@ export function LumpSumFinalSettlementMonthReportTable({
 				hideUnitPrice: true,
 			}),
 			...customCostRows,
-			makeZeroRow(
-				`Giá trị tiết kiệm(+)/bội chi(-) tháng ${month}/${year}`,
-				{
-					sttLabel: 'III',
-					isBold: true,
-					unitOfMeasureName: 'Đồng',
-					materialsTotalAmount: saving.materials,
-					maintainsTotalAmount: saving.maintains,
-					electricitiesTotalAmount: saving.electricities,
-					totalAmount: saving.total,
-					hidePlanActual: true,
-					hideUnitPrice: true,
-				},
-			),
+			makeZeroRow(`Giá trị tiết kiệm(+)/bội chi(-) tháng ${month}/${year}`, {
+				sttLabel: 'III',
+				isBold: true,
+				unitOfMeasureName: 'Đồng',
+				materialsTotalAmount: saving.materials,
+				maintainsTotalAmount: saving.maintains,
+				electricitiesTotalAmount: saving.electricities,
+				totalAmount: saving.total,
+				hidePlanActual: true,
+				hideUnitPrice: true,
+			}),
 			makeZeroRow(
 				`Tổng giá trị tiết kiệm được chấp nhận tháng ${month}/${year}`,
 				{
@@ -592,9 +589,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 							? ''
 							: selectedProcessGroup,
 					departmentId:
-						selectedDepartment === ALL_DEPARTMENT
-							? ''
-							: selectedDepartment,
+						selectedDepartment === ALL_DEPARTMENT ? '' : selectedDepartment,
 					search: searchQuery.trim(),
 				},
 			});
@@ -768,7 +763,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 					) : (
 						<>
 							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất file</span>
+							<span>Tải xuống</span>
 						</>
 					)}
 				</Button>
@@ -808,9 +803,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 							</div>
 
 							<div className='mt-2 text-right font-["Times_New_Roman",Times,serif] text-sm italic'>
-								Tổng giá trị bảng:{' '}
-								{formatNumber(totalReportValue)}{' '}
-								Đồng
+								Tổng giá trị bảng: {formatNumber(totalReportValue)} Đồng
 							</div>
 
 							<ExcelReportFooter month={month} year={year} />

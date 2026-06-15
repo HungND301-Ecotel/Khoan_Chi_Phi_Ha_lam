@@ -18,7 +18,10 @@ import {
 } from '@/features/main/pricing/longwall-panel/material/columns';
 import { api } from '@/lib/api';
 import { useEffect, useMemo, useState } from 'react';
-import type { LongwallMaterialDetail, LongwallMaterialDetailCost } from './type';
+import type {
+	LongwallMaterialDetail,
+	LongwallMaterialDetailCost,
+} from './type';
 
 function buildGroupedExpandRows(
 	costItems: LongwallMaterialDetailCost[],
@@ -36,7 +39,8 @@ function buildGroupedExpandRows(
 
 	costItems.forEach((item) => {
 		const groupKey =
-			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+			item.assignmentCodeId ||
+			`${item.assignmentCode}-${item.assignmentCodeName}`;
 
 		if (!groupedRows.has(groupKey)) {
 			groupedRows.set(groupKey, {
@@ -94,7 +98,8 @@ function buildGroupedExpandRows(
 		(sum, item) => sum + Number(item.totalPrice || 0),
 		0,
 	);
-	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+	const otherMaterialTotal =
+		(baseTotal * (Number(otherMaterialValue) || 0)) / 100;
 
 	return [
 		...rows,
@@ -140,7 +145,7 @@ export function LongwallPanelMaterialPage() {
 			const filename = await api.export(
 				API.PRICING.MATERIAL.LONGWALL_PANEL.EXPORT,
 			);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

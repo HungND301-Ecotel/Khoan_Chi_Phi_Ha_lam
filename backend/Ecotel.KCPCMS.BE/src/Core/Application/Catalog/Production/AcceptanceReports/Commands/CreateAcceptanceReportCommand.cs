@@ -138,6 +138,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
 
                         existingItem.UpdateForTrackedMaterial(
                         itemIndex,
+                        item.DocumentNumber,
+                        item.PostingDate,
                         processGroupId,
                         trackedMaterialId,
                         trackedItemType,
@@ -167,6 +169,8 @@ public class CreateAcceptanceReportCommandHandler(IUnitOfWork unitOfWork) : IReq
                     var reportItem = AcceptanceReportItem.CreateForTrackedMaterial(
                         acceptanceReport.Id,
                         itemIndex,
+                        item.DocumentNumber,
+                        item.PostingDate,
                         processGroupId,
                         trackedMaterialId,
                         trackedItemType,
