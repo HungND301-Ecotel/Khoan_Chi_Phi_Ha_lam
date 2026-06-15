@@ -28,11 +28,17 @@ export const slideFormSchema = z.object({
 				materialId: z
 					.string()
 					.nonempty({ error: 'ID vật liệu không được để trống' }),
-				amount: z
+				norm: z
 					.any()
 					.transform((val) => Number(val))
 					.refine((val) => !Number.isNaN(val), {
 						message: 'Định mức không được để trống',
+					}),
+				amount: z
+					.any()
+					.transform((val) => Number(val))
+					.refine((val) => !Number.isNaN(val) && val >= 0, {
+						message: 'Đơn giá máng trượt phải lớn hơn hoặc bằng 0',
 					}),
 			}),
 		)

@@ -36,6 +36,15 @@ interface RawAcceptanceReportDataTableProps {
 const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
 const DEFAULT_PRODUCTION_ORDER_LABEL = 'Không theo lệnh sản xuất';
 
+const formatPostingDate = (value?: string | null): string => {
+	if (!value) return '-';
+	const [year, month, day] = value.split('-');
+	if (year && month && day) {
+		return `${day}/${month}/${year}`;
+	}
+	return value;
+};
+
 // Helper functions to map enum values to display labels
 const getMaterialsIncludedTypeLabel = (
 	item: RawAcceptanceReportItem,
@@ -44,13 +53,13 @@ const getMaterialsIncludedTypeLabel = (
 		case MaterialType.Material:
 			return 'Vật liệu';
 		case MaterialType.SparePart:
-			return 'Phụ tùng';
+			return 'SCTX';
 		default:
 			switch (item.materialsIncludedInContractRevenue) {
 				case MaterialsIncludedInContractRevenue.Material:
 					return 'Vật liệu';
 				case MaterialsIncludedInContractRevenue.Maintain:
-					return 'Phụ tùng';
+					return 'SCTX';
 				default:
 					return '';
 			}
@@ -173,6 +182,24 @@ export function RawAcceptanceReportDataTable({
 
 					<TableHead
 						className='p-0 hover:bg-[#f0f0f0]'
+						style={{ minWidth: '140px' }}
+					>
+						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-center gap-2 px-4 py-2 font-bold'>
+							Số chứng từ
+						</div>
+					</TableHead>
+
+					<TableHead
+						className='p-0 hover:bg-[#f0f0f0]'
+						style={{ minWidth: '120px' }}
+					>
+						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-center gap-2 px-4 py-2 font-bold'>
+							Ngày vào sổ
+						</div>
+					</TableHead>
+
+					<TableHead
+						className='p-0 hover:bg-[#f0f0f0]'
 						style={{ minWidth: '90px' }}
 					>
 						<div className='inline-flex h-fit w-full flex-nowrap items-center justify-center gap-2 px-4 py-2 font-bold'>
@@ -280,6 +307,18 @@ export function RawAcceptanceReportDataTable({
 						>
 							<div className='flex items-center justify-center px-4 py-2'>
 								{item.unitOfMeasureName || '-'}
+							</div>
+						</TableCell>
+
+						<TableCell style={{ minWidth: '140px' }}>
+							<div className='flex items-center justify-center px-4 py-2'>
+								{item.documentNumber || '-'}
+							</div>
+						</TableCell>
+
+						<TableCell style={{ minWidth: '120px' }}>
+							<div className='flex items-center justify-center px-4 py-2'>
+								{formatPostingDate(item.postingDate)}
 							</div>
 						</TableCell>
 

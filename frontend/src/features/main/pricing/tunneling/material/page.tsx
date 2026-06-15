@@ -43,7 +43,8 @@ function buildGroupedExpandRows(
 
 	costItems.forEach((item) => {
 		const groupKey =
-			item.assignmentCodeId || `${item.assignmentCode}-${item.assignmentCodeName}`;
+			item.assignmentCodeId ||
+			`${item.assignmentCode}-${item.assignmentCodeName}`;
 
 		if (!groupedRows.has(groupKey)) {
 			groupedRows.set(groupKey, {
@@ -96,7 +97,8 @@ function buildGroupedExpandRows(
 	}
 
 	const baseTotal = costItems.reduce((sum, item) => sum + item.totalPrice, 0);
-	const otherMaterialTotal = (baseTotal * (Number(otherMaterialValue) || 0)) / 100;
+	const otherMaterialTotal =
+		(baseTotal * (Number(otherMaterialValue) || 0)) / 100;
 
 	return [
 		...rows,
@@ -137,7 +139,7 @@ export function MainPricingMaterialPage() {
 	const handleExport = async () => {
 		try {
 			const filename = await api.export(API.PRICING.MATERIAL.TUNNELING.EXPORT);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}
@@ -185,7 +187,7 @@ export function MainPricingMaterialPage() {
 			const filename = await api.export(
 				API.PRICING.MATERIAL.SUPPORT_AND_DRILLING.EXPORT,
 			);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

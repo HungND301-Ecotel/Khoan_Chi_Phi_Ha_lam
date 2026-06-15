@@ -21,6 +21,13 @@ import {
 } from './types';
 
 const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
+const DEFAULT_PRODUCTION_ORDER_LABEL = 'Không theo lệnh sản xuất';
+const DEFAULT_MISC_LABEL = 'Vật tư khác';
+
+export type ProductionOrderDisplayInfo = {
+	code: string;
+	name: string;
+};
 
 const ADDITIONAL_COST_TYPE_LABELS: Record<number, string> = {
 	2: 'Vật liệu',
@@ -30,8 +37,8 @@ const ADDITIONAL_COST_TYPE_LABELS: Record<number, string> = {
 
 const SECTION_A_TYPE_LABELS: Record<number, string> = {
 	1: 'Vật liệu',
-	2: 'Phụ tùng',
-	3: 'Phụ tùng',
+	2: 'SCTX',
+	3: 'SCTX',
 };
 
 const OTHER_MATERIAL_DETAIL_LABELS_BY_NUMBER: Record<number, string> = {
@@ -73,8 +80,12 @@ function resolveDisplayGroupCode(materialGroup: MaterialGroupDto): string {
 		return 'VTK';
 	}
 
-	if (trimText(materialGroup.productionOrderId).length > 0) {
+	if (normalizedGroupCode.toUpperCase() === 'NO_ORDER') {
 		return 'Lenh';
+	}
+
+	if (trimText(materialGroup.productionOrderId).length > 0) {
+		return normalizedGroupCode;
 	}
 
 	return normalizedGroupCode;
@@ -165,7 +176,7 @@ function normalizeGroupName(
 			);
 		}
 		if (groupCode.toUpperCase() === 'NO_ORDER') {
-			return groupName || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
+			return groupName || DEFAULT_PRODUCTION_ORDER_LABEL;
 		}
 		if (materialGroup.productionOrderId) {
 			return `${groupName || groupCode}`;
@@ -176,15 +187,25 @@ function normalizeGroupName(
 	return groupName || groupCode || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 }
 
-function shouldUseFlatItems(
-	materialGroup: MaterialGroupDto,
-	sectionKey: AcceptanceReportSectionKey,
-): boolean {
-	if (sectionKey !== 'sectionB') return false;
-	if (materialGroup.additionalCostType !== 2) return false;
+function isSectionBGroupedAdditionalCost(materialGroup: MaterialGroupDto): boolean {
+	return (
+		materialGroup.additionalCostType === 2 || materialGroup.additionalCostType === 3
+	);
+}
 
-	const groupCode = trimText(materialGroup.groupCode).toUpperCase();
-	return !materialGroup.productionOrderId && groupCode === 'NO_ORDER';
+function isDefaultAssignmentPlaceholder(
+	groupCode?: string | null,
+	groupName?: string | null,
+): boolean {
+	return (
+		trimText(groupCode).length === 0 &&
+		normalizeForCompare(groupName) ===
+			normalizeForCompare(DEFAULT_CATEGORY_ASSIGNMENT_LABEL)
+	);
+}
+
+function shouldUseFlatItems(): boolean {
+	return false;
 }
 
 /**
@@ -377,6 +398,51 @@ function groupMaterials(
 			),
 		) ?? [];
 
+	if (sectionKey === 'sectionB' && isSectionBGroupedAdditionalCost(materialGroup)) {
+		const isNoOrderGroup = normalizedGroupCode.toUpperCase() === 'NO_ORDER';
+		const hiddenAssignmentGroups = childGroups.filter((childGroup) =>
+			isDefaultAssignmentPlaceholder(childGroup.groupCode, childGroup.groupName),
+		);
+		const visibleChildGroups = childGroups.filter(
+			(childGroup) =>
+				!isDefaultAssignmentPlaceholder(childGroup.groupCode, childGroup.groupName),
+		);
+		const collapsedTopLevelItems = [
+			...topLevelItems,
+			...hiddenAssignmentGroups.flatMap((group) => group.items),
+		];
+
+		if (isNoOrderGroup) {
+			const promotedGroups = [...visibleChildGroups];
+
+			if (collapsedTopLevelItems.length > 0) {
+				promotedGroups.push({
+					groupCode: 'VTK',
+					groupName: DEFAULT_MISC_LABEL,
+					displayCode: 'VTK',
+					items: collapsedTopLevelItems,
+				});
+			}
+
+			return promotedGroups;
+		}
+
+		if (collapsedTopLevelItems.length === 0 && visibleChildGroups.length === 0) {
+			return [];
+		}
+
+		return [
+			{
+				groupCode: normalizedGroupCode,
+				groupName: normalizedGroupName,
+				displayCode: resolveDisplayGroupCode(materialGroup),
+				isProductionOrder,
+				items: collapsedTopLevelItems,
+				childGroups: visibleChildGroups.length > 0 ? visibleChildGroups : undefined,
+			},
+		];
+	}
+
 	if (topLevelItems.length === 0 && childGroups.length === 0) {
 		return [];
 	}
@@ -468,7 +534,7 @@ function createMaterialTypeGroups(
 			normalizeForCompare(grouped[0]?.groupName) ===
 				normalizeForCompare(matType);
 
-		if (shouldUseFlatItems(matGroup, sectionKey) || isRedundantQuotaGroup) {
+		if (shouldUseFlatItems() || isRedundantQuotaGroup) {
 			grouped.forEach((group) => {
 				target.flatItems.push(...group.items);
 			});
@@ -599,7 +665,7 @@ export function transformApiResponseToHierarchical(
 
 export function applyProductionOrderNames(
 	report: HierarchicalAcceptanceReport,
-	productionOrderNameById: Record<string, string>,
+	productionOrderById: Record<string, ProductionOrderDisplayInfo>,
 ): HierarchicalAcceptanceReport {
 	return {
 		...report,
@@ -608,13 +674,13 @@ export function applyProductionOrderNames(
 			types: category.types.map((type) => ({
 				...type,
 				groups: type.groups.map((group) => {
-					const productionOrderName = productionOrderNameById[group.groupCode];
-					if (!productionOrderName) return group;
+					const productionOrder = productionOrderById[group.groupCode];
+					if (!productionOrder) return group;
 
 					return {
 						...group,
-						groupName: `${productionOrderName}`,
-						displayCode: 'Lenh',
+						groupName: productionOrder.name || productionOrder.code,
+						displayCode: productionOrder.code || group.displayCode || group.groupCode,
 						isProductionOrder: true,
 					};
 				}),

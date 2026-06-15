@@ -32,7 +32,7 @@ export function MainCatalogParameterProductionOrderPage() {
 			const filename = await api.export(
 				API.CATALOG.PARAMETER.PRODUCTION_ORDER.EXPORT,
 			);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

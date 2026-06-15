@@ -1,6 +1,7 @@
 import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 import { ProcessGroupType } from '@/constants/process-group';
+import { UnifiedMaterial } from './type';
 
 export type PlanedMaterialCostItem = {
 	materialId: string;
@@ -60,6 +61,7 @@ export type FlatPlannedMaterialCost = {
 
 export type PlanedMaterialCostSummary = {
 	materialCode: string;
+	materialDetail: string;
 	materialUnitPriceCost: number;
 	slideUsage: string;
 	slideUnitPriceCost: number;
@@ -69,6 +71,48 @@ export type PlanedMaterialCostSummary = {
 	normFactorValue: string;
 };
 
+export function getPlannedMaterialDetail(
+	material?: UnifiedMaterial,
+	fixedKeyType?: number,
+) {
+	if (!material) return '-';
+
+	if (
+		fixedKeyType === ProcessGroupType.DL ||
+		fixedKeyType === ProcessGroupType.XL
+	) {
+		return (
+			[
+				material.hardnessName,
+				material.passportName,
+				material.insertItemName,
+				material.supportStepName,
+			]
+			.filter(Boolean)
+			.join(' | ') || '-'
+		);
+	}
+
+	if (fixedKeyType === ProcessGroupType.LC) {
+		const hardnessOrPowerText =
+			material.powerName?.trim() || material.hardnessName?.trim();
+
+		return (
+			[
+				material.technologyName,
+				hardnessOrPowerText,
+				material.seamFaceName,
+				material.longwallParametersName,
+				material.cuttingThicknessName,
+			]
+			.filter(Boolean)
+			.join(' | ') || '-'
+		);
+	}
+
+	return '-';
+}
+
 export const getPlanedMaterialCostSummaryColumns = (
 	fixedKeyType?: number,
 ): ColumnDef<PlanedMaterialCostSummary>[] => {
@@ -77,6 +121,22 @@ export const getPlanedMaterialCostSummaryColumns = (
 			accessorKey: 'materialCode',
 			header: () => (
 				<span className='whitespace-normal'>Mã định mức đơn giá vật liệu</span>
+			),
+		},
+		{
+			accessorKey: 'materialDetail',
+			header: () => <span className='whitespace-normal'>Thông số</span>,
+			cell: ({ row }) => (
+				<div className='flex min-w-90 flex-wrap items-center gap-x-2 text-sm'>
+					{String(row.original.materialDetail || '-')
+						.split(' | ')
+						.map((item, index, items) => (
+							<div key={`${item}-${index}`} className='contents'>
+								<span>{item}</span>
+								{index < items.length - 1 && <span>|</span>}
+							</div>
+						))}
+				</div>
 			),
 		},
 	];
@@ -137,3 +197,100 @@ export const getPlanedMaterialCostSummaryColumns = (
 
 	return columns;
 };
+
+export type PlannedMaterialBreakdownRow = {
+	rowType: 'group-summary' | 'material-item';
+	assignmentCodeId: string;
+	assignmentCode: string;
+	assignmentCodeName: string;
+	materialId?: string;
+	materialCode?: string;
+	materialName?: string;
+	unitPrice?: number | null;
+	originalQuantity?: number | null;
+	coefficientValue?: number | null;
+	totalPrice: number;
+};
+
+export const PLANNED_MATERIAL_BREAKDOWN_COLUMNS: ColumnDef<PlannedMaterialBreakdownRow>[] =
+	[
+		{
+			accessorKey: 'assignmentCode',
+			header: () => <span>Mã nhóm vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>{row.original.assignmentCode}</span>
+				) : (
+					''
+				),
+		},
+		{
+			accessorKey: 'assignmentCodeName',
+			header: () => <span>Tên nhóm vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? row.original.assignmentCodeName
+					: '',
+		},
+		{
+			accessorKey: 'materialCode',
+			header: () => <span>Mã vật tư, tài sản</span>,
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary'
+					? ''
+					: row.original.materialCode,
+		},
+		{
+			accessorKey: 'materialName',
+			header: () => <span>Tên vật tư, tài sản</span>,
+			cell: ({ row }) => (
+				<span className='whitespace-normal'>
+					{row.original.rowType === 'group-summary'
+						? ''
+						: row.original.materialName}
+				</span>
+			),
+		},
+		{
+			accessorKey: 'unitPrice',
+			header: 'Đơn giá gốc (đ)',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ||
+				row.original.unitPrice === null ||
+				row.original.unitPrice === undefined
+					? ''
+					: formatNumber(row.original.unitPrice),
+		},
+		{
+			accessorKey: 'originalQuantity',
+			header: 'Định mức gốc',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ||
+				row.original.originalQuantity === null ||
+				row.original.originalQuantity === undefined
+					? ''
+					: formatNumber(row.original.originalQuantity),
+		},
+		{
+			accessorKey: 'coefficientValue',
+			header: 'Hệ số ĐCĐM',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ||
+				row.original.coefficientValue === null ||
+				row.original.coefficientValue === undefined
+					? ''
+					: formatNumber(row.original.coefficientValue),
+		},
+		{
+			accessorKey: 'totalPrice',
+			header: 'Đơn giá vật liệu (đ/m)',
+			cell: ({ row }) =>
+				row.original.rowType === 'group-summary' ? (
+					<span className='font-semibold'>
+						{formatNumber(row.original.totalPrice)}
+					</span>
+				) : (
+					formatNumber(row.original.totalPrice)
+				),
+		},
+	];

@@ -14,6 +14,20 @@ export const RAW_ACCEPTANCE_REPORT_EXPAND_COLUMNS: ColumnDef<RawAcceptanceReport
 			header: () => <span className='whitespace-normal'>{'Tên vật tư'}</span>,
 		},
 		{
+			accessorKey: 'documentNumber',
+			header: () => (
+				<span className='whitespace-normal'>{'Số chứng từ'}</span>
+			),
+			cell: ({ row }) => row.original.documentNumber || '-',
+		},
+		{
+			accessorKey: 'postingDate',
+			header: () => (
+				<span className='whitespace-normal'>{'Ngày vào sổ'}</span>
+			),
+			cell: ({ row }) => row.original.postingDate || '-',
+		},
+		{
 			accessorKey: 'unit',
 			header: () => <span className='h-fit whitespace-normal'>{'ĐVT'}</span>,
 		},

@@ -33,7 +33,7 @@ export function MainPricingElectricityPage() {
 			const filename = await api.export(
 				API.PRICING.ELECTRICITY.TUNNELING.EXPORT,
 			);
-			popup.success(`Đã xuất file ${filename}`);
+			popup.success(`Đã tải xuống ${filename}`);
 		} catch (error) {
 			popup.error(error);
 		}

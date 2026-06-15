@@ -305,14 +305,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     // SECTION B — Quyết định bổ sung chi phí
     //
     //  AdditionalCost = Material:
-    //    Có ProductionOrderId → group theo ProductionOrderId
-    //    Không có             → group "NO_ORDER" (flat)
+    //    Group theo Lệnh sản xuất / "NO_ORDER"
+    //    và subgroup theo Nhóm vật tư, tài sản đã chọn trong BBNT
     //
     //  AdditionalCost = Maintain (SCTX):
-    //    Giống SectionA SCTX TH1:
-    //    PartType=OtherPart   → "VTK"
-    //    Có ProductionOrder   → group theo ProductionOrderId
-    //    Không có             → group theo AssignmentCode.Code
+    //    Group theo Lệnh sản xuất / "NO_ORDER"
+    //    và subgroup theo Nhóm vật tư, tài sản đã chọn trong BBNT
     //
     //  AdditionalCost = OtherMaterial:
     //    Group theo OtherMaterialDetail enum
@@ -333,22 +331,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .Where(i => i.AdditionalCost == AdditionalCost.Material
                      && i.IsMaterialItem && i.Material != null))
         {
-            string groupCode, groupName, groupKey;
-            Guid? productionOrderId = null;
-
-            if (item.AdditionalCostProductionOrderId.HasValue)
-            {
-                groupCode = item.AdditionalCostProductionOrderId.Value.ToString();
-                groupName = groupCode; // FE tự resolve tên từ ProductionOrderId
-                groupKey = $"BM_{groupCode}";
-                productionOrderId = item.AdditionalCostProductionOrderId;
-            }
-            else
-            {
-                groupCode = "NO_ORDER";
-                groupName = "";
-                groupKey = "BM_NO_ORDER";
-            }
+            var (groupKey, groupCode, groupName) = ResolveAdditionalCostOrderGroupKey("BM", item);
+            var productionOrderId = item.AdditionalCostProductionOrderId;
 
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
@@ -362,7 +346,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             });
 
             var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
-            group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice, true));
+            AddAdditionalMaterialDetailToGroup(
+                group,
+                item,
+                BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice, true));
         }
 
         // ── SCTX TH1 ─────────────────────────────────────────────────────────
@@ -371,7 +358,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                      && IsSctxItem(i)))
         {
             var material = GetSctxMaterial(item)!;
-            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item, true);
+            var (groupKey, groupCode, groupName) = ResolveAdditionalCostOrderGroupKey("BS", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
@@ -395,6 +382,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                         group,
                         item,
                         BuildSctxTh1Detail(item, material, plannedPrice, actualPrice, log, true),
+                        true,
                         true);
                 }
             }
@@ -404,6 +392,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     group,
                     item,
                     BuildSctxNoLogDetail(item, material, plannedPrice, actualPrice, true),
+                    true,
                     true);
             }
 
@@ -417,6 +406,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     group,
                     item,
                     BuildSctxTh2Detail(item, material, plannedPrice, actualPrice, oldLogs, productionOutput, true),
+                    true,
                     true);
             }
         }
@@ -432,7 +422,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             foreach (var item in prevItems)
             {
                 var material = GetSctxMaterial(item)!;
-                var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("BS", item, true);
+                var (groupKey, groupCode, groupName) = ResolveAdditionalCostOrderGroupKey("BS", item);
                 var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
                     GroupCode = groupCode,
@@ -458,6 +448,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     group,
                     item,
                     BuildSctxTh2Detail(item, material, plannedPrice, actualPrice, oldLogs, productionOutput, true),
+                    true,
                     true);
             }
         }
@@ -646,6 +637,19 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         return ($"{prefix}_EQ_{code}", code, name);
     }
 
+    private static (string key, string code, string name) ResolveAdditionalCostOrderGroupKey(
+        string prefix,
+        AcceptanceReportItem item)
+    {
+        if (item.AdditionalCostProductionOrderId.HasValue)
+        {
+            var id = item.AdditionalCostProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id);
+        }
+
+        return ($"{prefix}_NO_ORDER", "NO_ORDER", "Không theo lệnh sản xuất");
+    }
+
     private static (string key, string code, string name) ResolveAnchorSeedTh2GroupKey(
         string prefix,
         SctxMaterialContext material)
@@ -660,13 +664,14 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         MaterialGroupDto group,
         AcceptanceReportItem item,
         MaterialDetailDto detail,
-        bool useAdditionalCostReference = false)
+        bool useAdditionalCostReference = false,
+        bool forceAssignmentSubGroup = false)
     {
         var productionOrderId = useAdditionalCostReference
             ? item.AdditionalCostProductionOrderId
             : item.ProductionOrderId;
 
-        if (!productionOrderId.HasValue)
+        if (!productionOrderId.HasValue && !forceAssignmentSubGroup)
         {
             group.Materials.Add(detail);
             return;
@@ -675,12 +680,54 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var assignmentCode = ResolveAssignmentCodeForGrouping(item, useAdditionalCostReference);
         if (assignmentCode == null)
         {
+            if (forceAssignmentSubGroup)
+            {
+                var defaultSubGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == string.Empty);
+                if (defaultSubGroup == null)
+                {
+                    defaultSubGroup = new SubGroupDto
+                    {
+                        SubGroupCode = string.Empty,
+                        SubGroupName = "Không thuộc nhóm vật tư, tài sản",
+                        Materials = new()
+                    };
+                    group.SubGroups.Add(defaultSubGroup);
+                }
+
+                defaultSubGroup.Materials.Add(detail);
+                return;
+            }
+
             group.Materials.Add(detail);
             return;
         }
 
         var subGroupCode = assignmentCode.Code?.Value ?? assignmentCode.Id.ToString();
         var subGroupName = assignmentCode.Name ?? subGroupCode;
+        var subGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == subGroupCode);
+
+        if (subGroup == null)
+        {
+            subGroup = new SubGroupDto
+            {
+                SubGroupCode = subGroupCode,
+                SubGroupName = subGroupName,
+                Materials = new()
+            };
+            group.SubGroups.Add(subGroup);
+        }
+
+        subGroup.Materials.Add(detail);
+    }
+
+    private static void AddAdditionalMaterialDetailToGroup(
+        MaterialGroupDto group,
+        AcceptanceReportItem item,
+        MaterialDetailDto detail)
+    {
+        var assignmentCode = ResolveAdditionalMaterialAssignmentCode(item);
+        var subGroupCode = assignmentCode?.Code?.Value ?? string.Empty;
+        var subGroupName = assignmentCode?.Name ?? "Không thuộc nhóm vật tư, tài sản";
         var subGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == subGroupCode);
 
         if (subGroup == null)
@@ -715,6 +762,21 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         }
 
         return material?.AssignmentCodes?.FirstOrDefault();
+    }
+
+    private static AssignmentCode? ResolveAdditionalMaterialAssignmentCode(AcceptanceReportItem item)
+    {
+        if (!item.AdditionalCostAssignmentCodeId.HasValue)
+        {
+            return null;
+        }
+
+        if (item.Material?.AssignmentCode?.Id == item.AdditionalCostAssignmentCodeId.Value)
+        {
+            return item.Material.AssignmentCode;
+        }
+
+        return null;
     }
 
     // =========================================================================

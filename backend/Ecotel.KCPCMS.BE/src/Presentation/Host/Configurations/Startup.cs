@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
 using Application.Configurations;
 using Infrastructure.Cors;
 
@@ -14,6 +15,15 @@ internal static class Startup
         builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"{configurationsDirectory}/quartz.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
+
+        var dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        if (!string.IsNullOrWhiteSpace(dbConnectionString))
+        {
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DatabaseSettings:ConnectionString"] = dbConnectionString
+            });
+        }
 
         #region Loading Configurations
 

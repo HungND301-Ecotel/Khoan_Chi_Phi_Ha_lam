@@ -7,6 +7,7 @@ using Domain.Entities.Production;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
+using System.Globalization;
 
 namespace Application.Catalog.Production.AcceptanceReports.Queries;
 
@@ -57,6 +58,8 @@ public class DownloadAcceptanceReportExcelQueryHandler(IUnitOfWork unitOfWork, I
         var excelData = items.Select(item => new AcceptanceReportExcelTemplateDto
         {
             Id = item.Id,
+            DocumentNumber = item.DocumentNumber,
+            PostingDate = item.PostingDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             MaterialCode = ResolveTrackedMaterialCode(item),
             IssuedQuantity = item.IssuedQuantity,
             ShippedQuantity = item.ShippedQuantity
