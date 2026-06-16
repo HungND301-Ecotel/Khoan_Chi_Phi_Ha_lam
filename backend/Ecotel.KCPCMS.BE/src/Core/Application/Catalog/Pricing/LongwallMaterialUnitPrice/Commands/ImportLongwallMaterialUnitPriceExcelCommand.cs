@@ -169,14 +169,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 var endMonth = ParseMonthYear(row.EndMonth);
                 var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
 
-                var costDtos = row.AssignmentCosts
-                    .Select(c => new MaterialUnitPriceAssignmentCodeDto
-                    {
-                        AssignmentCodeId = c.AssignmentCodeId,
-                        TotalPrice = c.TotalPrice
-                    })
-                    .ToList();
-                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
+                var costs = row.AssignmentCosts
+                .Select(c => MaterialUnitPriceAssignmentCode.Create(c.AssignmentCodeId, c.TotalPrice))
+                .ToList();
 
                 if (dbCodeLookup.TryGetValue(code, out var existing))
                 {
