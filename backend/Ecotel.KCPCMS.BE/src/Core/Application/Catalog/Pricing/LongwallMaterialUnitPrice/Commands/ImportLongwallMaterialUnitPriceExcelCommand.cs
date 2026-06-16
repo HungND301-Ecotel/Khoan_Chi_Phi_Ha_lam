@@ -295,7 +295,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
-        if (lastRow < 3 || lastCol < seamFaceStartCol)
+        if (lastRow < 8 || lastCol < 7)
         {
             return [];
         }
@@ -317,45 +317,60 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var blocks = new List<BlockDef>();
         BlockDef? currentBlock = null;
 
-        for (var row = 3; row <= lastRow; row++)
+        // --- SỬA LẠI TỌA ĐỘ MA TRẬN TỪ CỘT 7 ---
+        for (int col = 7; col <= lastCol; col++)
         {
-            var assignmentText = worksheet.Cell(row, assignmentCol).GetString().Trim();
-            var materialText = worksheet.Cell(row, materialCol).GetString().Trim();
-            var startMonth = worksheet.Cell(row, startMonthCol).GetString().Trim();
-            var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
-            var processName = worksheet.Cell(row, processCol).GetString().Trim();
-            var technologyName = worksheet.Cell(row, technologyCol).GetString().Trim();
-            var hardnessName = worksheet.Cell(row, hardnessCol).GetString().Trim();
-            var powerName = worksheet.Cell(row, powerCol).GetString().Trim();
-            var longwallParametersName = worksheet.Cell(row, longwallParametersCol).GetString().Trim();
-            var cuttingThicknessName = worksheet.Cell(row, cuttingThicknessCol).GetString().Trim();
+            var row5Val = worksheet.Cell(5, col).GetString().Trim(); // Mã Nhóm
+            var row6Val = worksheet.Cell(6, col).GetString().Trim(); // Mã Vật Tư
 
             if (row5Val.Equals("Mã định mức", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var seamFace in seamFacePositions)
+                currentBlock = new BlockDef { CodeCol = col };
+
+                // Mặt vỉa gộp từ cột kế tiếp ở Dòng 7
+                if (col + 1 <= lastCol)
                 {
-                    var codeText = worksheet.Cell(row, seamFace.valueCol).GetString().Trim();
-                    if (!string.IsNullOrWhiteSpace(codeText))
-                    {
-                        seamFaceCodeByName[seamFace.name] = codeText;
-                    }
+                    var sfName = worksheet.Cell(7, col + 1).GetString().Trim();
+                    currentBlock.SeamFaceName = sfName;
                 }
+
+                blocks.Add(currentBlock);
+            }
+            else if (currentBlock != null)
+            {
+                // Dùng Row5Val (Mã nhóm) để tìm đúng AssignmentCode Id trong DB
+                var materialName = row5Val;
+                if (!string.IsNullOrWhiteSpace(materialName))
+                {
+                    currentBlock.MaterialCols.Add((col, materialName));
+                }
+            }
+        }
 
         var aggregates = new Dictionary<LongwallRowKey, ParsedLongwallMaterialUnitPriceRow>();
 
-                if (!hasBaseInfo)
+        // Dữ liệu bắt đầu từ dòng 8
+        for (var row = 8; row <= lastRow; row++)
+        {
+            var processName = worksheet.Cell(row, 1).GetString().Trim();
+            var technologyName = worksheet.Cell(row, 2).GetString().Trim();
+            var hardnessName = worksheet.Cell(row, 3).GetString().Trim();
+            var powerName = worksheet.Cell(row, 4).GetString().Trim();
+            var longwallParametersName = worksheet.Cell(row, 5).GetString().Trim();
+            var cuttingThicknessName = worksheet.Cell(row, 6).GetString().Trim();
+
+            // Form mới không còn tách lẻ Llc, Lkc, Mk nên ta đọc gộp luôn ở cột 5
+            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName))
+            {
+                continue;
+            }
+
+            foreach (var block in blocks)
+            {
+                var codesStr = worksheet.Cell(row, block.CodeCol).GetString().Trim();
+                if (string.IsNullOrWhiteSpace(codesStr))
                 {
                     continue;
-                }
-
-                if (string.IsNullOrWhiteSpace(startMonth))
-                {
-                    startMonth = currentMonth;
-                }
-
-                if (string.IsNullOrWhiteSpace(endMonth))
-                {
-                    endMonth = startMonth;
                 }
 
                 var codes = codesStr.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
@@ -391,90 +406,34 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                         aggregates[key] = aggregate;
                     }
 
-                continue;
-            }
+                    foreach (var mat in block.MaterialCols)
+                    {
+                        var priceCell = worksheet.Cell(row, mat.Col);
+                        if (priceCell.IsEmpty())
+                        {
+                            continue;
+                        }
 
-            if (currentContext is null)
-            {
-                continue;
-            }
-
-            var hasAnyTt = seamFacePositions.Any(p => !worksheet.Cell(row, p.valueCol).IsEmpty());
-            if (!hasAnyTt)
-            {
-                continue;
-            }
-
-            var isOtherMaterial = IsOtherMaterialAssignment(assignmentText);
-            AssignmentLookupItem? assignment = null;
-            MaterialLookupItem? material = null;
-
-            if (!isOtherMaterial)
-            {
-                var assignmentKey = NormalizeLookupValue(assignmentText);
-                if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
-                {
-                    importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không tồn tại ở dòng {row}.");
-                    continue;
-                }
-
-                var materialKey = NormalizeLookupValue(materialText);
-                if (!materialLookup.TryGetValue(materialKey, out material))
-                {
-                    importErrors.Add($"Vật tư tài sản '{materialText}' không tồn tại ở dòng {row}.");
-                    continue;
-                }
-
-                if (!material.AssignmentCodeIds.Contains(assignment.Id))
-                {
-                    importErrors.Add(
-                        $"Vật tư tài sản '{materialText}' không thuộc nhóm vật tư, tài sản '{assignmentText}' ở dòng {row}.");
-                    continue;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(materialText) &&
-                     NormalizeLookupValue(materialText) != NormalizeLookupValue(OtherMaterialDisplay) &&
-                     NormalizeLookupValue(materialText) != "VTK")
-            {
-                importErrors.Add($"Vật tư tài sản '{materialText}' không hợp lệ cho dòng VTK ở dòng {row}.");
-                continue;
-            }
-
-            foreach (var seamFace in seamFacePositions)
-            {
-                var ttCell = worksheet.Cell(row, seamFace.valueCol);
-                if (ttCell.IsEmpty())
-                {
-                    continue;
-                }
-
-                if (!TryParseDouble(ttCell, out var norm))
-                {
-                    importErrors.Add($"Giá trị định mức không hợp lệ tại dòng {row}, cột {seamFace.valueCol}.");
-                    continue;
-                }
-
-                if (!currentContext.SeamFaceCodeByName.TryGetValue(seamFace.name, out var materialCode)
-                    || string.IsNullOrWhiteSpace(materialCode))
-                {
-                    importErrors.Add(
-                        $"Thiếu mã định mức vật liệu cho mặt vỉa '{seamFace.name}' trước khi nhập TT (dòng {row}, cột {seamFace.valueCol}).");
-                    continue;
-                }
+                        if (!TryParseDouble(priceCell, out var totalPrice))
+                        {
+                            importErrors.Add($"Giá trị tiền không hợp lệ tại dòng {row}, cột {mat.Col} (Mã Lò: {code}).");
+                            continue;
+                        }
 
                         var isOtherMaterial = IsOtherMaterialAssignment(mat.MaterialName);
 
-                if (isOtherMaterial)
-                {
-                    aggregate.AddOtherMaterial(norm);
-                    continue;
-                }
-
-                if (assignment == null || material == null)
-                {
-                    importErrors.Add($"Dòng dữ liệu vật tư không hợp lệ ở dòng {row}.");
-                    continue;
-                }
+                        if (isOtherMaterial)
+                        {
+                            aggregate.AddOtherMaterial(totalPrice);
+                        }
+                        else
+                        {
+                            var assignmentKey = NormalizeLookupValue(mat.MaterialName);
+                            if (!assignmentLookup.TryGetValue(assignmentKey, out var assignment))
+                            {
+                                importErrors.Add($"Mã vật tư '{mat.MaterialName}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
+                                continue;
+                            }
 
                             try
                             {
@@ -715,17 +674,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         Guid SeamFaceId,
         Guid? PowerId,
         Guid? HardnessId);
-
-    private sealed record LongwallRowContext(
-        string StartMonth,
-        string EndMonth,
-        string ProcessName,
-        string TechnologyName,
-        string HardnessName,
-        string PowerName,
-        string LongwallParametersName,
-        string CuttingThicknessName,
-        IReadOnlyDictionary<string, string> SeamFaceCodeByName);
 
     private sealed record LongwallRowKey(
         string Code,
