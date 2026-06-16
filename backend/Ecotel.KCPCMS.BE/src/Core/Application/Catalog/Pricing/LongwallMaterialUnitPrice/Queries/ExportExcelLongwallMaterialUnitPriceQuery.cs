@@ -15,7 +15,7 @@ public record ExportExcelLongwallMaterialUnitPriceQuery() : IRequest<byte[]>;
 
 public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<ExportExcelLongwallMaterialUnitPriceQuery, byte[]>
 {
-    private const string OtherMaterialDisplay = "VTK"; 
+    private const string OtherMaterialDisplay = "VTK";
 
     private readonly IWriteRepository<LongwallMaterialUnitPriceEntity> _materialUnitPriceRepository = unitOfWork.GetRepository<LongwallMaterialUnitPriceEntity>();
     private readonly IWriteRepository<ProductionProcess> _processRepository = unitOfWork.GetRepository<ProductionProcess>();
@@ -92,7 +92,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         {
             foreach (var mac in entity.MaterialUnitPriceAssignmentCodes)
             {
-                var gName = GetAssignmentDisplayName(mac); 
+                var gName = GetAssignmentDisplayName(mac);
                 var mCode = mac.Material?.Code?.Value?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(gName) && !string.IsNullOrEmpty(mCode) && !columnDefs.Any(c => c.MatCode.Equals(mCode, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -242,7 +242,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 var entitiesForFace = group.Where(x => GetSeamFaceDisplayName(x).Equals(seamFace, StringComparison.OrdinalIgnoreCase)).ToList();
 
                 int codeColIndex = colDataIndex;
-                colDataIndex++; 
+                colDataIndex++;
 
                 if (entitiesForFace.Any())
                 {
@@ -320,7 +320,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static string GetSeamFaceDisplayName(LongwallMaterialUnitPriceEntity data) => data.SeamFace?.Value?.Trim() ?? string.Empty;
 
- 
+
     private static string GetAssignmentDisplayName(MaterialUnitPriceAssignmentCode item)
     {
         var code = item.AssignmentCode?.Code?.Value?.Trim() ?? string.Empty;
