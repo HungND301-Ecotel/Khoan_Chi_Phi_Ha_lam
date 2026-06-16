@@ -121,10 +121,10 @@ namespace Domain.Entities.Index
 
         public void AddMaterialCost(IList<Cost> materialCosts)
         {
-            if (!materialCosts.Any())
-            {
-                throw new ArgumentException(CustomResponseMessage.CostsCannotBeEmpty);
-            }
+            //if (!materialCosts.Any())
+            //{
+            //    throw new ArgumentException(CustomResponseMessage.CostsCannotBeEmpty);
+            //}
 
             foreach (var cost in materialCosts)
             {

@@ -125,7 +125,13 @@ export function FormComboBox<T extends FieldValues>(
 						style={{ width: 'var(--radix-popover-trigger-width)' }}
 						align='start'
 					>
-						<Command>
+						<Command
+							filter={(value, search) => {
+								const labelPart = value.split('-')[0];
+								if (labelPart.includes(search.toLowerCase())) return 1;
+								return 0;
+							}}
+						>
 							<CommandInput placeholder={'Tìm kiếm'} />
 							<CommandList
 								className='max-h-58'
@@ -226,7 +232,13 @@ export function FormComboBox<T extends FieldValues>(
 								style={{ width: 'var(--radix-popover-trigger-width)' }}
 								align='start'
 							>
-								<Command>
+								<Command
+									filter={(value, search) => {
+										const labelPart = value.split('-')[0];
+										if (labelPart.includes(search.toLowerCase())) return 1;
+										return 0;
+									}}
+								>
 									<CommandInput placeholder={'Tìm kiếm'} />
 									<CommandList
 										className='max-h-58'

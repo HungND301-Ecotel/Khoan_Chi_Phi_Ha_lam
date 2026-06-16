@@ -13,38 +13,34 @@ export const assetInternalFormSchema = z.object({
 		.transform((value) => (value === '' ? null : value))
 		.nullable(),
 	materialType: z.number(),
-	costs: z
-		.array(
-			z.object({
-				startMonth: z.iso
-					.date({
-						message: 'Tháng không hợp lệ.',
-					})
-					.nonempty('Không được để trống'),
-				endMonth: z.iso
-					.date({
-						message: 'Tháng không hợp lệ.',
-					})
-					.nonempty('Không được để trống'),
-				amount: z.coerce
-					.number<number>({
-						message: 'Giá trị phải là số.',
-					})
-					.gt(0, {
-						message: 'Giá trị phải lớn hơn 0.',
-					}),
-				actualAmount: z.coerce
-					.number<number>({
-						message: 'Giá trị phải là số.',
-					})
-					.gt(0, {
-						message: 'Giá trị phải lớn hơn 0.',
-					}),
-			}),
-		)
-		.nonempty({
-			message: 'Một mảng phải có ít nhất 1 mục.',
+	costs: z.array(
+		z.object({
+			startMonth: z.iso
+				.date({
+					message: 'Tháng không hợp lệ.',
+				})
+				.nonempty('Không được để trống'),
+			endMonth: z.iso
+				.date({
+					message: 'Tháng không hợp lệ.',
+				})
+				.nonempty('Không được để trống'),
+			amount: z.coerce
+				.number<number>({
+					message: 'Giá trị phải là số.',
+				})
+				.gt(0, {
+					message: 'Giá trị phải lớn hơn 0.',
+				}),
+			actualAmount: z.coerce
+				.number<number>({
+					message: 'Giá trị phải là số.',
+				})
+				.gt(0, {
+					message: 'Giá trị phải lớn hơn 0.',
+				}),
 		}),
+	),
 });
 
 export type AssetInternalFormSchema = z.infer<typeof assetInternalFormSchema>;
