@@ -21,7 +21,7 @@ public record ImportLongwallMaterialUnitPriceExcelCommand(IFormFile File) : IReq
 
 public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportLongwallMaterialUnitPriceExcelCommand, bool>
 {
-    private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string OtherMaterialDisplay = "VTK";
     private const string LegacyNoneOptionDisplay = "Không";
     private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
     private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
@@ -35,7 +35,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
-    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
 
     public async Task<bool> Handle(ImportLongwallMaterialUnitPriceExcelCommand request, CancellationToken cancellationToken)
@@ -57,19 +56,11 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var assignments = await _assignmentCodeRepository.GetAllAsync(
             include: a => a.Include(x => x.Code),
             disableTracking: true);
-        var materials = await _materialRepository.GetAllAsync(
-            include: m => m
-                .Include(x => x.Code)
-                .Include(x => x.Costs)
-                .Include(x => x.AssignmentCodeMaterials),
-            disableTracking: true);
 
         var assignmentLookup = BuildAssignmentLookup(assignments);
-        var materialLookup = BuildMaterialLookup(materials);
-        var materialById = materials.ToDictionary(m => m.Id);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, materialLookup, importErrors);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
         ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
@@ -92,8 +83,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         var processIdMap = processes
             .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
+
         var longwallParametersIdMap = longwallParametersList
             .ToDictionary(l => NormalizeLookupValue($"{l.Llc}-{l.Lkc}-{l.Mk}"), l => l.Id, StringComparer.OrdinalIgnoreCase);
+
         var cuttingThicknessIdMap = cuttingThicknesses
             .ToDictionary(c => NormalizeLookupValue(c.Value), c => c.Id, StringComparer.OrdinalIgnoreCase);
         var seamFaceIdMap = seamFaces
@@ -180,20 +173,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     .Select(c => new MaterialUnitPriceAssignmentCodeDto
                     {
                         AssignmentCodeId = c.AssignmentCodeId,
-                        MaterialId = c.MaterialId,
-                        Norm = c.Norm,
-                        TotalPrice = (materialById.TryGetValue(c.MaterialId, out var material)
-                                ? material.GetMaterialCost(startMonth)
-                                : 0) * c.Norm
+                        TotalPrice = c.TotalPrice
                     })
                     .ToList();
-                var costs = costDtos
-                    .Select(cost => MaterialUnitPriceAssignmentCode.Create(
-                        cost.AssignmentCodeId,
-                        cost.TotalPrice,
-                        cost.MaterialId,
-                        cost.Norm))
-                    .ToList();
+                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
 
                 if (dbCodeLookup.TryGetValue(code, out var existing))
                 {
@@ -304,115 +287,99 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private static List<ParsedLongwallMaterialUnitPriceRow> ParseFromCustomTemplate(
         Stream fileStream,
         IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
-        IReadOnlyDictionary<string, MaterialLookupItem> materialLookup,
         ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
         var worksheet = workbook.Worksheet(1);
 
-        const int startMonthCol = 1;
-        const int endMonthCol = 2;
-        const int processCol = 3;
-        const int technologyCol = 4;
-        const int hardnessCol = 5;
-        const int powerCol = 6;
-        const int longwallParametersCol = 7;
-        const int cuttingThicknessCol = 8;
-        const int assignmentCol = 9;
-        const int materialCol = 10;
-        const int seamFaceStartCol = 11;
-
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
-        if (lastRow < 3 || lastCol < seamFaceStartCol)
+        if (lastRow < 8 || lastCol < 7)
         {
             return [];
         }
 
-        var seamFacePositions = new List<(int valueCol, string name)>();
-        for (var col = seamFaceStartCol; col <= lastCol; col++)
+        var currentMonth = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("MM/yyyy");
+        var startMonth = worksheet.Cell(3, 2).GetString().Trim();
+        var endMonth = worksheet.Cell(3, 5).GetString().Trim();
+
+        if (string.IsNullOrWhiteSpace(startMonth))
         {
-            var seamFaceName = worksheet.Cell(1, col).GetString().Trim();
-            if (string.IsNullOrWhiteSpace(seamFaceName))
+            startMonth = currentMonth;
+        }
+
+        if (string.IsNullOrWhiteSpace(endMonth))
+        {
+            endMonth = startMonth;
+        }
+
+        var blocks = new List<BlockDef>();
+        BlockDef? currentBlock = null;
+
+        // --- SỬA LẠI TỌA ĐỘ MA TRẬN TỪ CỘT 7 ---
+        for (int col = 7; col <= lastCol; col++)
+        {
+            var row5Val = worksheet.Cell(5, col).GetString().Trim(); // Mã Nhóm
+            var row6Val = worksheet.Cell(6, col).GetString().Trim(); // Mã Vật Tư
+
+            if (row5Val.Equals("Mã định mức", StringComparison.OrdinalIgnoreCase))
+            {
+                currentBlock = new BlockDef { CodeCol = col };
+
+                // Mặt vỉa gộp từ cột kế tiếp ở Dòng 7
+                if (col + 1 <= lastCol)
+                {
+                    var sfName = worksheet.Cell(7, col + 1).GetString().Trim();
+                    currentBlock.SeamFaceName = sfName;
+                }
+
+                blocks.Add(currentBlock);
+            }
+            else if (currentBlock != null)
+            {
+                // Dùng Row5Val (Mã nhóm) để tìm đúng AssignmentCode Id trong DB
+                var materialName = row5Val;
+                if (!string.IsNullOrWhiteSpace(materialName))
+                {
+                    currentBlock.MaterialCols.Add((col, materialName));
+                }
+            }
+        }
+
+        var aggregates = new Dictionary<LongwallRowKey, ParsedLongwallMaterialUnitPriceRow>();
+
+        // Dữ liệu bắt đầu từ dòng 8
+        for (var row = 8; row <= lastRow; row++)
+        {
+            var processName = worksheet.Cell(row, 1).GetString().Trim();
+            var technologyName = worksheet.Cell(row, 2).GetString().Trim();
+            var hardnessName = worksheet.Cell(row, 3).GetString().Trim();
+            var powerName = worksheet.Cell(row, 4).GetString().Trim();
+            var longwallParametersName = worksheet.Cell(row, 5).GetString().Trim();
+            var cuttingThicknessName = worksheet.Cell(row, 6).GetString().Trim();
+
+            // Form mới không còn tách lẻ Llc, Lkc, Mk nên ta đọc gộp luôn ở cột 5
+            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName))
             {
                 continue;
             }
 
-            seamFacePositions.Add((col, seamFaceName));
-        }
-
-        var currentMonth = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("MM/yyyy");
-        var aggregates = new Dictionary<LongwallRowKey, ParsedLongwallMaterialUnitPriceRow>();
-        LongwallRowContext? currentContext = null;
-
-        for (var row = 3; row <= lastRow; row++)
-        {
-            var assignmentText = worksheet.Cell(row, assignmentCol).GetString().Trim();
-            var materialText = worksheet.Cell(row, materialCol).GetString().Trim();
-            var startMonth = worksheet.Cell(row, startMonthCol).GetString().Trim();
-            var endMonth = worksheet.Cell(row, endMonthCol).GetString().Trim();
-            var processName = worksheet.Cell(row, processCol).GetString().Trim();
-            var technologyName = worksheet.Cell(row, technologyCol).GetString().Trim();
-            var hardnessName = worksheet.Cell(row, hardnessCol).GetString().Trim();
-            var powerName = worksheet.Cell(row, powerCol).GetString().Trim();
-            var longwallParametersName = worksheet.Cell(row, longwallParametersCol).GetString().Trim();
-            var cuttingThicknessName = worksheet.Cell(row, cuttingThicknessCol).GetString().Trim();
-
-            var seamFaceCodeByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (string.IsNullOrWhiteSpace(assignmentText) && string.IsNullOrWhiteSpace(materialText))
+            foreach (var block in blocks)
             {
-                foreach (var seamFace in seamFacePositions)
-                {
-                    var codeText = worksheet.Cell(row, seamFace.valueCol).GetString().Trim();
-                    if (!string.IsNullOrWhiteSpace(codeText))
-                    {
-                        seamFaceCodeByName[seamFace.name] = codeText;
-                    }
-                }
-
-                var hasBaseInfo =
-                    !string.IsNullOrWhiteSpace(startMonth) ||
-                    !string.IsNullOrWhiteSpace(endMonth) ||
-                    !string.IsNullOrWhiteSpace(processName) ||
-                    !string.IsNullOrWhiteSpace(technologyName) ||
-                    !string.IsNullOrWhiteSpace(hardnessName) ||
-                    !string.IsNullOrWhiteSpace(powerName) ||
-                    !string.IsNullOrWhiteSpace(longwallParametersName) ||
-                    !string.IsNullOrWhiteSpace(cuttingThicknessName) ||
-                    seamFaceCodeByName.Any();
-
-                if (!hasBaseInfo)
+                var codesStr = worksheet.Cell(row, block.CodeCol).GetString().Trim();
+                if (string.IsNullOrWhiteSpace(codesStr))
                 {
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(startMonth))
-                {
-                    startMonth = currentMonth;
-                }
+                var codes = codesStr.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
-                if (string.IsNullOrWhiteSpace(endMonth))
-                {
-                    endMonth = startMonth;
-                }
-
-                currentContext = new LongwallRowContext(
-                    StartMonth: startMonth,
-                    EndMonth: endMonth,
-                    ProcessName: processName,
-                    TechnologyName: technologyName,
-                    HardnessName: hardnessName,
-                    PowerName: powerName,
-                    LongwallParametersName: longwallParametersName,
-                    CuttingThicknessName: cuttingThicknessName,
-                    SeamFaceCodeByName: seamFaceCodeByName);
-
-                foreach (var seamFace in seamFaceCodeByName)
+                foreach (var code in codes)
                 {
                     var key = new LongwallRowKey(
-                        Code: seamFace.Value,
-                        SeamFaceName: seamFace.Key,
+                        Code: code,
+                        SeamFaceName: block.SeamFaceName,
                         StartMonth: startMonth,
                         EndMonth: endMonth,
                         ProcessName: processName,
@@ -420,142 +387,64 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                         HardnessName: hardnessName,
                         PowerName: powerName,
                         LongwallParametersName: longwallParametersName,
-                        CuttingThicknessName: cuttingThicknessName);
+                        CuttingThicknessName: cuttingThicknessName
+                    );
 
-                    if (aggregates.ContainsKey(key))
+                    if (!aggregates.TryGetValue(key, out var aggregate))
                     {
-                        importErrors.Add(
-                            $"Dữ liệu bị trùng mã định mức vật liệu '{seamFace.Value}' trong cùng bộ thông số (dòng {row}).");
-                        continue;
+                        aggregate = new ParsedLongwallMaterialUnitPriceRow(
+                            code: code,
+                            processName: processName,
+                            technologyName: technologyName,
+                            hardnessName: hardnessName,
+                            powerName: powerName,
+                            longwallParametersName: longwallParametersName,
+                            cuttingThicknessName: cuttingThicknessName,
+                            seamFaceName: block.SeamFaceName,
+                            startMonth: startMonth,
+                            endMonth: endMonth);
+                        aggregates[key] = aggregate;
                     }
 
-                    aggregates[key] = new ParsedLongwallMaterialUnitPriceRow(
-                        code: seamFace.Value,
-                        processName: processName,
-                        technologyName: technologyName,
-                        hardnessName: hardnessName,
-                        powerName: powerName,
-                        longwallParametersName: longwallParametersName,
-                        cuttingThicknessName: cuttingThicknessName,
-                        seamFaceName: seamFace.Key,
-                        startMonth: startMonth,
-                        endMonth: endMonth);
-                }
+                    foreach (var mat in block.MaterialCols)
+                    {
+                        var priceCell = worksheet.Cell(row, mat.Col);
+                        if (priceCell.IsEmpty())
+                        {
+                            continue;
+                        }
 
-                continue;
-            }
+                        if (!TryParseDouble(priceCell, out var totalPrice))
+                        {
+                            importErrors.Add($"Giá trị tiền không hợp lệ tại dòng {row}, cột {mat.Col} (Mã Lò: {code}).");
+                            continue;
+                        }
 
-            if (currentContext is null)
-            {
-                continue;
-            }
+                        var isOtherMaterial = IsOtherMaterialAssignment(mat.MaterialName);
 
-            var hasAnyTt = seamFacePositions.Any(p => !worksheet.Cell(row, p.valueCol).IsEmpty());
-            if (!hasAnyTt)
-            {
-                continue;
-            }
+                        if (isOtherMaterial)
+                        {
+                            aggregate.AddOtherMaterial(totalPrice);
+                        }
+                        else
+                        {
+                            var assignmentKey = NormalizeLookupValue(mat.MaterialName);
+                            if (!assignmentLookup.TryGetValue(assignmentKey, out var assignment))
+                            {
+                                importErrors.Add($"Mã vật tư '{mat.MaterialName}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
+                                continue;
+                            }
 
-            var isOtherMaterial = IsOtherMaterialAssignment(assignmentText);
-            AssignmentLookupItem? assignment = null;
-            MaterialLookupItem? material = null;
-
-            if (!isOtherMaterial)
-            {
-                var assignmentKey = NormalizeLookupValue(assignmentText);
-                if (!assignmentLookup.TryGetValue(assignmentKey, out assignment))
-                {
-                    importErrors.Add($"Nhóm vật tư, tài sản '{assignmentText}' không tồn tại ở dòng {row}.");
-                    continue;
-                }
-
-                var materialKey = NormalizeLookupValue(materialText);
-                if (!materialLookup.TryGetValue(materialKey, out material))
-                {
-                    importErrors.Add($"Vật tư tài sản '{materialText}' không tồn tại ở dòng {row}.");
-                    continue;
-                }
-
-                if (!material.AssignmentCodeIds.Contains(assignment.Id))
-                {
-                    importErrors.Add(
-                        $"Vật tư tài sản '{materialText}' không thuộc nhóm vật tư, tài sản '{assignmentText}' ở dòng {row}.");
-                    continue;
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(materialText) &&
-                     NormalizeLookupValue(materialText) != NormalizeLookupValue(OtherMaterialDisplay) &&
-                     NormalizeLookupValue(materialText) != "VTK")
-            {
-                importErrors.Add($"Vật tư tài sản '{materialText}' không hợp lệ cho dòng VTK ở dòng {row}.");
-                continue;
-            }
-
-            foreach (var seamFace in seamFacePositions)
-            {
-                var ttCell = worksheet.Cell(row, seamFace.valueCol);
-                if (ttCell.IsEmpty())
-                {
-                    continue;
-                }
-
-                if (!TryParseDouble(ttCell, out var norm))
-                {
-                    importErrors.Add($"Giá trị định mức không hợp lệ tại dòng {row}, cột {seamFace.valueCol}.");
-                    continue;
-                }
-
-                if (!currentContext.SeamFaceCodeByName.TryGetValue(seamFace.name, out var materialCode)
-                    || string.IsNullOrWhiteSpace(materialCode))
-                {
-                    importErrors.Add(
-                        $"Thiếu mã định mức vật liệu cho mặt vỉa '{seamFace.name}' trước khi nhập TT (dòng {row}, cột {seamFace.valueCol}).");
-                    continue;
-                }
-
-                var key = new LongwallRowKey(
-                    Code: materialCode,
-                    SeamFaceName: seamFace.name,
-                    StartMonth: currentContext.StartMonth,
-                    EndMonth: currentContext.EndMonth,
-                    ProcessName: currentContext.ProcessName,
-                    TechnologyName: currentContext.TechnologyName,
-                    HardnessName: currentContext.HardnessName,
-                    PowerName: currentContext.PowerName,
-                    LongwallParametersName: currentContext.LongwallParametersName,
-                    CuttingThicknessName: currentContext.CuttingThicknessName);
-
-                if (!aggregates.TryGetValue(key, out var aggregate))
-                {
-                    importErrors.Add(
-                        $"Không tìm thấy dòng thông số cho mã định mức vật liệu '{materialCode}' trước dòng {row}.");
-                    continue;
-                }
-
-                if (isOtherMaterial)
-                {
-                    aggregate.AddOtherMaterial(norm);
-                    continue;
-                }
-
-                if (assignment == null || material == null)
-                {
-                    importErrors.Add($"Dòng dữ liệu vật tư không hợp lệ ở dòng {row}.");
-                    continue;
-                }
-
-                try
-                {
-                    aggregate.AddAssignmentCost(
-                        assignment.Id,
-                        material.Id,
-                        norm,
-                        assignment.Display,
-                        material.Display);
-                }
-                catch (BadRequestException ex)
-                {
-                    importErrors.Add(ex.Message);
+                            try
+                            {
+                                aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                            }
+                            catch (BadRequestException ex)
+                            {
+                                importErrors.Add(ex.Message);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -571,42 +460,19 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         {
             var code = assignment.Code?.Value?.Trim() ?? string.Empty;
             var name = assignment.Name?.Trim() ?? string.Empty;
+
             var display = BuildAssignmentDisplay(code, name);
             var item = new AssignmentLookupItem(assignment.Id, display);
 
+            // Vì Export Cấp 1 chỉ hiện "Mã", nên Lookup cũng phải map chuẩn xác theo "Mã"
             if (!string.IsNullOrWhiteSpace(code))
             {
                 lookup.TryAdd(NormalizeLookupValue(code), item);
             }
 
-            if (!string.IsNullOrWhiteSpace(display))
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                lookup.TryAdd(NormalizeLookupValue(display), item);
-            }
-        }
-
-        return lookup;
-    }
-
-    private static IReadOnlyDictionary<string, MaterialLookupItem> BuildMaterialLookup(
-        IEnumerable<Domain.Entities.Index.Material> materials)
-    {
-        var lookup = new Dictionary<string, MaterialLookupItem>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var material in materials)
-        {
-            var code = material.Code?.Value?.Trim() ?? string.Empty;
-            var name = material.Name?.Trim() ?? string.Empty;
-            var display = BuildMaterialDisplay(code, name);
-            var assignmentCodeIds = material.AssignmentCodeMaterials
-                .Select(link => link.AssignmentCodeId)
-                .Distinct()
-                .ToHashSet();
-            var item = new MaterialLookupItem(material.Id, display, assignmentCodeIds);
-
-            if (!string.IsNullOrWhiteSpace(code))
-            {
-                lookup.TryAdd(NormalizeLookupValue(code), item);
+                lookup.TryAdd(NormalizeLookupValue(name), item);
             }
 
             if (!string.IsNullOrWhiteSpace(display))
@@ -628,22 +494,13 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         return !string.IsNullOrWhiteSpace(code) ? code : name;
     }
 
-    private static string BuildMaterialDisplay(string code, string name)
-    {
-        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
-        {
-            return $"{code} - {name}";
-        }
-
-        return !string.IsNullOrWhiteSpace(code) ? code : name;
-    }
-
     private static bool IsOtherMaterialAssignment(string assignmentText)
     {
         var normalized = NormalizeLookupValue(assignmentText);
         return normalized == NormalizeLookupValue(OtherMaterialDisplay)
             || normalized == "VTK"
-            || normalized.StartsWith("VTK ", StringComparison.OrdinalIgnoreCase);
+            || normalized.StartsWith("VTK ", StringComparison.OrdinalIgnoreCase)
+            || normalized == NormalizeLookupValue("Vật tư khác");
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
@@ -802,8 +659,14 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         }
     }
 
+    private class BlockDef
+    {
+        public string SeamFaceName { get; set; } = string.Empty;
+        public int CodeCol { get; set; }
+        public List<(int Col, string MaterialName)> MaterialCols { get; set; } = new();
+    }
+
     private sealed record AssignmentLookupItem(Guid Id, string Display);
-    private sealed record MaterialLookupItem(Guid Id, string Display, HashSet<Guid> AssignmentCodeIds);
 
     private sealed record MonthRangeOverlapKey(
         Guid LongwallParametersId,
@@ -811,17 +674,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         Guid SeamFaceId,
         Guid? PowerId,
         Guid? HardnessId);
-
-    private sealed record LongwallRowContext(
-        string StartMonth,
-        string EndMonth,
-        string ProcessName,
-        string TechnologyName,
-        string HardnessName,
-        string PowerName,
-        string LongwallParametersName,
-        string CuttingThicknessName,
-        IReadOnlyDictionary<string, string> SeamFaceCodeByName);
 
     private sealed record LongwallRowKey(
         string Code,
@@ -847,8 +699,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         string startMonth,
         string endMonth)
     {
-        private readonly Dictionary<string, AssignmentCostImportItem> _assignmentCostMap = new(StringComparer.OrdinalIgnoreCase);
-        private bool _hasOtherMaterial;
+        private readonly Dictionary<Guid, AssignmentCostImportItem> _assignmentCostMap = new();
 
         public string Code { get; } = code;
         public string ProcessName { get; } = processName;
@@ -865,32 +716,20 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         public void AddOtherMaterial(double amount)
         {
-            if (_hasOtherMaterial)
-            {
-                throw new BadRequestException(
-                    $"VTK - Vật tư khác bị trùng cho mã định mức vật liệu '{Code}'.");
-            }
-            _hasOtherMaterial = true;
             OtherMaterialValue += amount;
         }
 
-        public void AddAssignmentCost(
-            Guid assignmentCodeId,
-            Guid materialId,
-            double norm,
-            string assignmentDisplay,
-            string materialDisplay)
+        public void AddAssignmentCost(Guid assignmentCodeId, double amount, string assignmentDisplay)
         {
-            var key = $"{assignmentCodeId}:{materialId}";
-            if (_assignmentCostMap.ContainsKey(key))
+            if (_assignmentCostMap.ContainsKey(assignmentCodeId))
             {
                 throw new BadRequestException(
-                    $"Dòng vật tư '{materialDisplay}' trong nhóm '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
+                    $"Nhóm vật tư, tài sản '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
             }
 
-            _assignmentCostMap[key] = new AssignmentCostImportItem(assignmentCodeId, materialId, norm);
+            _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, amount);
         }
     }
 
-    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, Guid MaterialId, double Norm);
+    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, double TotalPrice);
 }
