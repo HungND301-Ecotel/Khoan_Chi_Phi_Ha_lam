@@ -358,6 +358,11 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                                         }
                                     }
                                 }
+                                else
+                                {
+                                    importErrors.Add($"Vật tư chi tiết có mã '{rawMatCode}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
+                                    continue; 
+                                }
                             }
 
                             double calculatedTotalPrice = quantity * unitPrice;
