@@ -70,8 +70,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var assignments = await _assignmentCodeRepository.GetAllAsync(include: a => a.Include(x => x.Code), disableTracking: true);
         var materials = await _materialRepository.GetAllAsync(include: m => m.Include(x => x.Code), disableTracking: true);
 
-        var groupOptions = assignments.Select(a => a.Code?.Value?.Trim() ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var materialCodeOptions = materials.Select(m => m.Code?.Value?.Trim() ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         var groupDisplayList = assignments
             .Where(a => !string.IsNullOrWhiteSpace(a.Code?.Value))
