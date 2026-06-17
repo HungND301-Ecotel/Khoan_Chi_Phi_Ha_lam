@@ -36,6 +36,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private readonly IWriteRepository<Power> _powerRepository = unitOfWork.GetRepository<Power>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
     private readonly IWriteRepository<MaterialUnitPriceAssignmentCode> _materialUnitPriceAssignmentCodeRepository = unitOfWork.GetRepository<MaterialUnitPriceAssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
 
     public async Task<bool> Handle(ImportLongwallMaterialUnitPriceExcelCommand request, CancellationToken cancellationToken)
     {
@@ -57,10 +58,15 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             include: a => a.Include(x => x.Code),
             disableTracking: true);
 
+        var materials = await _materialRepository.GetAllAsync(
+            include: m => m.Include(x => x.Code).Include(x => x.Costs),
+            disableTracking: true);
+
         var assignmentLookup = BuildAssignmentLookup(assignments);
+        var materialLookup = BuildMaterialLookup(materials);
 
         using var stream = request.File.OpenReadStream();
-        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, importErrors);
+        var importRows = ParseFromCustomTemplate(stream, assignmentLookup, materialLookup, importErrors);
         ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
@@ -81,25 +87,13 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         ThrowIfImportErrors(importErrors);
 
-        var processIdMap = processes
-            .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
-
-        var longwallParametersIdMap = longwallParametersList
-            .ToDictionary(l => NormalizeLookupValue($"{l.Llc}-{l.Lkc}-{l.Mk}"), l => l.Id, StringComparer.OrdinalIgnoreCase);
-
-        var cuttingThicknessIdMap = cuttingThicknesses
-            .ToDictionary(c => NormalizeLookupValue(c.Value), c => c.Id, StringComparer.OrdinalIgnoreCase);
-        var seamFaceIdMap = seamFaces
-            .ToDictionary(s => NormalizeLookupValue(s.Value), s => s.Id, StringComparer.OrdinalIgnoreCase);
-        var technologyIdMap = technologies
-            .Where(t => !string.IsNullOrWhiteSpace(t.Value))
-            .ToDictionary(t => NormalizeLookupValue(t.Value), t => t.Id, StringComparer.OrdinalIgnoreCase);
-        var hardnessIdMap = hardnesses
-            .Where(h => !string.IsNullOrWhiteSpace(h.Value))
-            .ToDictionary(h => NormalizeLookupValue(h.Value), h => h.Id, StringComparer.OrdinalIgnoreCase);
-        var powerIdMap = powers
-            .Where(p => !string.IsNullOrWhiteSpace(p.Value))
-            .ToDictionary(p => NormalizeLookupValue(p.Value), p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var processIdMap = processes.ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
+        var longwallParametersIdMap = longwallParametersList.ToDictionary(l => NormalizeLookupValue($"{l.Llc}-{l.Lkc}-{l.Mk}"), l => l.Id, StringComparer.OrdinalIgnoreCase);
+        var cuttingThicknessIdMap = cuttingThicknesses.ToDictionary(c => NormalizeLookupValue(c.Value), c => c.Id, StringComparer.OrdinalIgnoreCase);
+        var seamFaceIdMap = seamFaces.ToDictionary(s => NormalizeLookupValue(s.Value), s => s.Id, StringComparer.OrdinalIgnoreCase);
+        var technologyIdMap = technologies.Where(t => !string.IsNullOrWhiteSpace(t.Value)).ToDictionary(t => NormalizeLookupValue(t.Value), t => t.Id, StringComparer.OrdinalIgnoreCase);
+        var hardnessIdMap = hardnesses.Where(h => !string.IsNullOrWhiteSpace(h.Value)).ToDictionary(h => NormalizeLookupValue(h.Value), h => h.Id, StringComparer.OrdinalIgnoreCase);
+        var powerIdMap = powers.Where(p => !string.IsNullOrWhiteSpace(p.Value)).ToDictionary(p => NormalizeLookupValue(p.Value), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
         var dbEntities = await _materialUnitPriceRepository.GetAllAsync(
             include: e => e
@@ -111,11 +105,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         foreach (var entity in dbEntities)
         {
             var code = entity.Code?.Value?.Trim();
-            if (string.IsNullOrWhiteSpace(code) || dbCodeLookup.ContainsKey(code))
-            {
-                continue;
-            }
-
+            if (string.IsNullOrWhiteSpace(code) || dbCodeLookup.ContainsKey(code)) continue;
             dbCodeLookup[code] = entity;
         }
 
@@ -131,26 +121,19 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             {
                 if (!processIdMap.TryGetValue(NormalizeLookupValue(row.ProcessName), out var processId))
                 {
-                    importErrors.Add($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'.");
-                    continue;
+                    importErrors.Add($"Công đoạn sản xuất '{row.ProcessName}' không tồn tại cho mã '{code}'."); continue;
                 }
-
                 if (!longwallParametersIdMap.TryGetValue(NormalizeLookupValue(row.LongwallParametersName), out var longwallParametersId))
                 {
-                    importErrors.Add($"Thông số lò chợ '{row.LongwallParametersName}' không tồn tại cho mã '{code}'.");
-                    continue;
+                    importErrors.Add($"Thông số lò chợ '{row.LongwallParametersName}' không tồn tại cho mã '{code}'."); continue;
                 }
-
                 if (!cuttingThicknessIdMap.TryGetValue(NormalizeLookupValue(row.CuttingThicknessName), out var cuttingThicknessId))
                 {
-                    importErrors.Add($"Chiều dày lớp khấu '{row.CuttingThicknessName}' không tồn tại cho mã '{code}'.");
-                    continue;
+                    importErrors.Add($"Chiều dày lớp khấu '{row.CuttingThicknessName}' không tồn tại cho mã '{code}'."); continue;
                 }
-
                 if (!seamFaceIdMap.TryGetValue(NormalizeLookupValue(row.SeamFaceName), out var seamFaceId))
                 {
-                    importErrors.Add($"Mặt vỉa '{row.SeamFaceName}' không tồn tại cho mã '{code}'.");
-                    continue;
+                    importErrors.Add($"Mặt vỉa '{row.SeamFaceName}' không tồn tại cho mã '{code}'."); continue;
                 }
 
                 Guid? technologyId = null;
@@ -158,10 +141,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 {
                     if (!technologyIdMap.TryGetValue(NormalizeLookupValue(row.TechnologyName), out var mappedTechnologyId))
                     {
-                        importErrors.Add($"Công nghệ khai thác '{row.TechnologyName}' không tồn tại cho mã '{code}'.");
-                        continue;
+                        importErrors.Add($"Công nghệ khai thác '{row.TechnologyName}' không tồn tại cho mã '{code}'."); continue;
                     }
-
                     technologyId = mappedTechnologyId;
                 }
 
@@ -170,8 +151,12 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
 
                 var costs = row.AssignmentCosts
-                .Select(c => MaterialUnitPriceAssignmentCode.Create(c.AssignmentCodeId, c.TotalPrice))
-                .ToList();
+                    .Select(c => MaterialUnitPriceAssignmentCode.Create(
+                        assignmentCodeId: c.AssignmentCodeId,
+                        totalPrice: c.TotalPrice,
+                        materialId: c.MaterialId,
+                        norm: c.Norm))
+                    .ToList();
 
                 if (dbCodeLookup.TryGetValue(code, out var existing))
                 {
@@ -181,38 +166,18 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     }
 
                     existing.Update(
-                        code,
-                        processId,
-                        longwallParametersId,
-                        cuttingThicknessId,
-                        seamFaceId,
-                        powerId,
-                        hardnessId,
-                        powerId.HasValue,
-                        technologyId,
-                        startMonth,
-                        endMonth,
-                        row.OtherMaterialValue,
-                        costs);
+                        code, processId, longwallParametersId, cuttingThicknessId, seamFaceId, powerId, hardnessId,
+                        powerId.HasValue, technologyId, startMonth, endMonth, row.OtherMaterialValue, costs);
+
                     updateList.Add(existing);
                     matchedCodes.Add(code);
                 }
                 else
                 {
                     var newEntity = LongwallMaterialUnitPriceEntity.Create(
-                        code,
-                        processId,
-                        longwallParametersId,
-                        cuttingThicknessId,
-                        seamFaceId,
-                        powerId,
-                        hardnessId,
-                        powerId.HasValue,
-                        technologyId,
-                        startMonth,
-                        endMonth,
-                        row.OtherMaterialValue,
-                        costs);
+                        code, processId, longwallParametersId, cuttingThicknessId, seamFaceId, powerId, hardnessId,
+                        powerId.HasValue, technologyId, startMonth, endMonth, row.OtherMaterialValue, costs);
+
                     addList.Add(newEntity);
                     matchedCodes.Add(code);
                 }
@@ -223,47 +188,23 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             }
         }
 
-        var deleteList = dbEntities
-            .Where(entity =>
-            {
-                var code = entity.Code?.Value?.Trim();
-                return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
-            })
-            .ToList();
+        var deleteList = dbEntities.Where(entity => {
+            var code = entity.Code?.Value?.Trim();
+            return !string.IsNullOrWhiteSpace(code) && !matchedCodes.Contains(code);
+        }).ToList();
 
-        try
-        {
-            ValidateMonthRangeOverlap(dbEntities, addList, deleteList);
-        }
-        catch (ConflictException ex)
-        {
-            importErrors.Add(ex.Message);
-        }
+        try { ValidateMonthRangeOverlap(dbEntities, addList, deleteList); }
+        catch (ConflictException ex) { importErrors.Add(ex.Message); }
 
         ThrowIfImportErrors(importErrors);
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            if (assignmentCostsToDelete.Any())
-            {
-                _materialUnitPriceAssignmentCodeRepository.Delete(assignmentCostsToDelete);
-            }
-
-            if (deleteList.Any())
-            {
-                _materialUnitPriceRepository.Delete(deleteList);
-            }
-
-            if (addList.Any())
-            {
-                await _materialUnitPriceRepository.InsertAsync(addList, cancellationToken);
-            }
-
-            if (updateList.Any())
-            {
-                _materialUnitPriceRepository.Update(updateList);
-            }
+            if (assignmentCostsToDelete.Any()) _materialUnitPriceAssignmentCodeRepository.Delete(assignmentCostsToDelete);
+            if (deleteList.Any()) _materialUnitPriceRepository.Delete(deleteList);
+            if (addList.Any()) await _materialUnitPriceRepository.InsertAsync(addList, cancellationToken);
+            if (updateList.Any()) _materialUnitPriceRepository.Update(updateList);
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
@@ -282,6 +223,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private static List<ParsedLongwallMaterialUnitPriceRow> ParseFromCustomTemplate(
         Stream fileStream,
         IReadOnlyDictionary<string, AssignmentLookupItem> assignmentLookup,
+        IReadOnlyDictionary<string, Domain.Entities.Index.Material> materialLookup,
         ICollection<string> importErrors)
     {
         using var workbook = new XLWorkbook(fileStream);
@@ -290,61 +232,44 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
-        if (lastRow < 8 || lastCol < 7)
-        {
-            return [];
-        }
+        if (lastRow < 8 || lastCol < 7) return [];
 
         var currentMonth = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("MM/yyyy");
         var startMonth = worksheet.Cell(3, 2).GetString().Trim();
         var endMonth = worksheet.Cell(3, 5).GetString().Trim();
 
-        if (string.IsNullOrWhiteSpace(startMonth))
-        {
-            startMonth = currentMonth;
-        }
-
-        if (string.IsNullOrWhiteSpace(endMonth))
-        {
-            endMonth = startMonth;
-        }
+        if (string.IsNullOrWhiteSpace(startMonth)) startMonth = currentMonth;
+        if (string.IsNullOrWhiteSpace(endMonth)) endMonth = startMonth;
 
         var blocks = new List<BlockDef>();
         BlockDef? currentBlock = null;
 
-        // --- SỬA LẠI TỌA ĐỘ MA TRẬN TỪ CỘT 7 ---
         for (int col = 7; col <= lastCol; col++)
         {
-            var row5Val = worksheet.Cell(5, col).GetString().Trim(); // Mã Nhóm
-            var row6Val = worksheet.Cell(6, col).GetString().Trim(); // Mã Vật Tư
+            var row5Val = worksheet.Cell(5, col).GetString().Trim();
+            var row6Val = worksheet.Cell(6, col).GetString().Trim();
 
             if (row5Val.Equals("Mã định mức", StringComparison.OrdinalIgnoreCase))
             {
                 currentBlock = new BlockDef { CodeCol = col };
-
-                // Mặt vỉa gộp từ cột kế tiếp ở Dòng 7
                 if (col + 1 <= lastCol)
                 {
                     var sfName = worksheet.Cell(7, col + 1).GetString().Trim();
                     currentBlock.SeamFaceName = sfName;
                 }
-
                 blocks.Add(currentBlock);
             }
             else if (currentBlock != null)
             {
-                // Dùng Row5Val (Mã nhóm) để tìm đúng AssignmentCode Id trong DB
-                var materialName = row5Val;
-                if (!string.IsNullOrWhiteSpace(materialName))
+                if (!string.IsNullOrWhiteSpace(row5Val))
                 {
-                    currentBlock.MaterialCols.Add((col, materialName));
+                    currentBlock.MaterialCols.Add((col, row5Val, row6Val));
                 }
             }
         }
 
         var aggregates = new Dictionary<LongwallRowKey, ParsedLongwallMaterialUnitPriceRow>();
 
-        // Dữ liệu bắt đầu từ dòng 8
         for (var row = 8; row <= lastRow; row++)
         {
             var processName = worksheet.Cell(row, 1).GetString().Trim();
@@ -354,85 +279,92 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var longwallParametersName = worksheet.Cell(row, 5).GetString().Trim();
             var cuttingThicknessName = worksheet.Cell(row, 6).GetString().Trim();
 
-            // Form mới không còn tách lẻ Llc, Lkc, Mk nên ta đọc gộp luôn ở cột 5
-            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName))
-            {
-                continue;
-            }
+            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName)) continue;
 
             foreach (var block in blocks)
             {
                 var codesStr = worksheet.Cell(row, block.CodeCol).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(codesStr))
-                {
-                    continue;
-                }
+                if (string.IsNullOrWhiteSpace(codesStr)) continue;
 
                 var codes = codesStr.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
                 foreach (var code in codes)
                 {
-                    var key = new LongwallRowKey(
-                        Code: code,
-                        SeamFaceName: block.SeamFaceName,
-                        StartMonth: startMonth,
-                        EndMonth: endMonth,
-                        ProcessName: processName,
-                        TechnologyName: technologyName,
-                        HardnessName: hardnessName,
-                        PowerName: powerName,
-                        LongwallParametersName: longwallParametersName,
-                        CuttingThicknessName: cuttingThicknessName
-                    );
+                    var key = new LongwallRowKey(code, block.SeamFaceName, startMonth, endMonth, processName, technologyName, hardnessName, powerName, longwallParametersName, cuttingThicknessName);
 
                     if (!aggregates.TryGetValue(key, out var aggregate))
                     {
-                        aggregate = new ParsedLongwallMaterialUnitPriceRow(
-                            code: code,
-                            processName: processName,
-                            technologyName: technologyName,
-                            hardnessName: hardnessName,
-                            powerName: powerName,
-                            longwallParametersName: longwallParametersName,
-                            cuttingThicknessName: cuttingThicknessName,
-                            seamFaceName: block.SeamFaceName,
-                            startMonth: startMonth,
-                            endMonth: endMonth);
+                        aggregate = new ParsedLongwallMaterialUnitPriceRow(code, processName, technologyName, hardnessName, powerName, longwallParametersName, cuttingThicknessName, block.SeamFaceName, startMonth, endMonth);
                         aggregates[key] = aggregate;
                     }
 
                     foreach (var mat in block.MaterialCols)
                     {
-                        var priceCell = worksheet.Cell(row, mat.Col);
-                        if (priceCell.IsEmpty())
+                        var cellValue = worksheet.Cell(row, mat.Col);
+                        if (cellValue.IsEmpty()) continue;
+
+                        if (!TryParseDouble(cellValue, out var quantity))
                         {
+                            importErrors.Add($"Giá trị định mức không hợp lệ tại dòng {row}, cột {mat.Col} (Mã Lò: {code}).");
                             continue;
                         }
 
-                        if (!TryParseDouble(priceCell, out var totalPrice))
-                        {
-                            importErrors.Add($"Giá trị tiền không hợp lệ tại dòng {row}, cột {mat.Col} (Mã Lò: {code}).");
-                            continue;
-                        }
+                        var rawGroupCode = mat.GroupName.Contains(" - ")
+                            ? mat.GroupName.Substring(0, mat.GroupName.IndexOf(" - ", StringComparison.Ordinal)).Trim()
+                            : mat.GroupName.Trim();
 
-                        var isOtherMaterial = IsOtherMaterialAssignment(mat.MaterialName);
+                        var rawMatCode = mat.MaterialName.Contains(" - ")
+                            ? mat.MaterialName.Substring(0, mat.MaterialName.IndexOf(" - ", StringComparison.Ordinal)).Trim()
+                            : mat.MaterialName.Trim();
+
+                        var isOtherMaterial = IsOtherMaterialAssignment(rawGroupCode);
 
                         if (isOtherMaterial)
                         {
-                            aggregate.AddOtherMaterial(totalPrice);
+                            aggregate.AddOtherMaterial(quantity);
                         }
                         else
                         {
-                            var assignmentKey = NormalizeLookupValue(mat.MaterialName);
+                            var assignmentKey = NormalizeLookupValue(rawGroupCode);
                             if (!assignmentLookup.TryGetValue(assignmentKey, out var assignment))
                             {
-                                importErrors.Add($"Mã vật tư '{mat.MaterialName}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
+                                importErrors.Add($"Nhóm vật tư '{rawGroupCode}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
                                 continue;
                             }
 
+                            Guid? materialId = null;
+                            double unitPrice = 0;
+
+                            if (!string.IsNullOrWhiteSpace(rawMatCode))
+                            {
+                                var mKey = NormalizeLookupValue(rawMatCode);
+                                if (materialLookup.TryGetValue(mKey, out var matData))
+                                {
+                                    materialId = matData.Id;
+
+                                    if (matData.Costs != null && matData.Costs.Any())
+                                    {
+                                        var excelStartMonth = ParseMonthYear(startMonth);
+                                        var activeCost = matData.Costs.FirstOrDefault(c =>
+                                            c.StartMonth <= excelStartMonth && c.EndMonth >= excelStartMonth);
+
+                                        if (activeCost != null)
+                                        {
+                                            unitPrice = activeCost.Amount;
+                                        }
+                                        else
+                                        {
+                                            unitPrice = matData.Costs.OrderByDescending(c => c.EndMonth).First().Amount;
+                                        }
+                                    }
+                                }
+                            }
+
+                            double calculatedTotalPrice = quantity * unitPrice;
+
                             try
                             {
-                                aggregate.AddAssignmentCost(assignment.Id, totalPrice, assignment.Display);
+                                aggregate.AddAssignmentCost(assignment.Id, materialId, quantity, calculatedTotalPrice, assignment.Display);
                             }
                             catch (BadRequestException ex)
                             {
@@ -450,124 +382,75 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private static IReadOnlyDictionary<string, AssignmentLookupItem> BuildAssignmentLookup(IEnumerable<AssignmentCode> assignments)
     {
         var lookup = new Dictionary<string, AssignmentLookupItem>(StringComparer.OrdinalIgnoreCase);
-
         foreach (var assignment in assignments)
         {
             var code = assignment.Code?.Value?.Trim() ?? string.Empty;
-            var name = assignment.Name?.Trim() ?? string.Empty;
-
-            var display = BuildAssignmentDisplay(code, name);
-            var item = new AssignmentLookupItem(assignment.Id, display);
-
-            // Vì Export Cấp 1 chỉ hiện "Mã", nên Lookup cũng phải map chuẩn xác theo "Mã"
             if (!string.IsNullOrWhiteSpace(code))
             {
-                lookup.TryAdd(NormalizeLookupValue(code), item);
-            }
-
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                lookup.TryAdd(NormalizeLookupValue(name), item);
-            }
-
-            if (!string.IsNullOrWhiteSpace(display))
-            {
-                lookup.TryAdd(NormalizeLookupValue(display), item);
+                var display = BuildAssignmentDisplay(code, assignment.Name?.Trim() ?? string.Empty);
+                lookup.TryAdd(NormalizeLookupValue(code), new AssignmentLookupItem(assignment.Id, display));
             }
         }
+        return lookup;
+    }
 
+    private static IReadOnlyDictionary<string, Domain.Entities.Index.Material> BuildMaterialLookup(IEnumerable<Domain.Entities.Index.Material> materials)
+    {
+        var lookup = new Dictionary<string, Domain.Entities.Index.Material>(StringComparer.OrdinalIgnoreCase);
+        foreach (var mat in materials)
+        {
+            var code = mat.Code?.Value?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(code))
+            {
+                lookup.TryAdd(NormalizeLookupValue(code), mat);
+            }
+        }
         return lookup;
     }
 
     private static string BuildAssignmentDisplay(string code, string name)
     {
-        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
-        {
-            return $"{code} - {name}";
-        }
-
+        if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name)) return $"{code} - {name}";
         return !string.IsNullOrWhiteSpace(code) ? code : name;
     }
 
     private static bool IsOtherMaterialAssignment(string assignmentText)
     {
         var normalized = NormalizeLookupValue(assignmentText);
-        return normalized == NormalizeLookupValue(OtherMaterialDisplay)
-            || normalized == "VTK"
-            || normalized.StartsWith("VTK ", StringComparison.OrdinalIgnoreCase)
-            || normalized == NormalizeLookupValue("Vật tư khác");
+        return normalized == "VTK"
+            || normalized == NormalizeLookupValue(OtherMaterialDisplay)
+            || normalized.StartsWith("VTK -", StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith("VTK-", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("VẬT TƯ KHÁC");
     }
 
     private static DateOnly ParseMonthYear(string monthYear)
     {
-        if (string.IsNullOrWhiteSpace(monthYear))
-        {
-            var now = DateTime.Now;
-            return new DateOnly(now.Year, now.Month, 1);
-        }
-
-        if (DateOnly.TryParseExact(monthYear, "MM/yyyy", null, DateTimeStyles.None, out var result))
-        {
-            return result;
-        }
-
-        if (DateOnly.TryParseExact(monthYear, "M/yyyy", null, DateTimeStyles.None, out result))
-        {
-            return result;
-        }
-
-        if (DateTime.TryParse(monthYear, out var dateTime))
-        {
-            return DateOnly.FromDateTime(dateTime);
-        }
-
+        if (string.IsNullOrWhiteSpace(monthYear)) return new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1);
+        if (DateOnly.TryParseExact(monthYear, "MM/yyyy", null, DateTimeStyles.None, out var result)) return result;
+        if (DateOnly.TryParseExact(monthYear, "M/yyyy", null, DateTimeStyles.None, out result)) return result;
+        if (DateTime.TryParse(monthYear, out var dateTime)) return DateOnly.FromDateTime(dateTime);
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
     }
 
     private static bool TryParseDouble(IXLCell cell, out double value)
     {
-        if (cell.DataType == XLDataType.Number)
-        {
-            value = cell.GetDouble();
-            return true;
-        }
-
+        if (cell.DataType == XLDataType.Number) { value = cell.GetDouble(); return true; }
         var text = cell.GetString().Trim();
         return double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out value)
             || double.TryParse(text, NumberStyles.Any, CultureInfo.CurrentCulture, out value);
     }
 
-    private static string NormalizeLookupValue(string input)
-    {
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return string.Empty;
-        }
-
-        return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
-    }
+    private static string NormalizeLookupValue(string input) => string.IsNullOrWhiteSpace(input) ? string.Empty : Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
 
     private static void ThrowIfImportErrors(List<string> importErrors)
     {
-        var errors = importErrors
-            .Where(error => !string.IsNullOrWhiteSpace(error))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        if (errors.Count == 0)
-        {
-            return;
-        }
-
+        var errors = importErrors.Where(error => !string.IsNullOrWhiteSpace(error)).Distinct(StringComparer.Ordinal).ToList();
+        if (errors.Count == 0) return;
         throw new ExcelImportException(errors);
     }
 
-    private static (Guid? powerId, Guid? hardnessId) ResolvePowerAndHardness(
-        string powerName,
-        string hardnessName,
-        IReadOnlyDictionary<string, Guid> powerIdMap,
-        IReadOnlyDictionary<string, Guid> hardnessIdMap,
-        string code)
+    private static (Guid? powerId, Guid? hardnessId) ResolvePowerAndHardness(string powerName, string hardnessName, IReadOnlyDictionary<string, Guid> powerIdMap, IReadOnlyDictionary<string, Guid> hardnessIdMap, string code)
     {
         var normalizedPower = NormalizeLookupValue(powerName);
         var normalizedHardness = NormalizeLookupValue(hardnessName);
@@ -576,80 +459,41 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var isPowerNone = string.IsNullOrWhiteSpace(normalizedPower) || normalizedPower == normalizedNone;
         var isHardnessNone = string.IsNullOrWhiteSpace(normalizedHardness) || normalizedHardness == normalizedNone;
 
-        if (isPowerNone == isHardnessNone)
-        {
-            throw new BadRequestException(
-                $"Mã '{code}': chỉ một trong hai cột 'Độ kiên cố than đá (f)' hoặc 'Công suất' được để trống.");
-        }
+        if (isPowerNone == isHardnessNone) throw new BadRequestException($"Mã '{code}': chỉ một trong hai cột 'Độ kiên cố than đá (f)' hoặc 'Công suất' được để trống.");
 
         Guid? powerId = null;
         if (!isPowerNone)
         {
-            if (!powerIdMap.TryGetValue(normalizedPower, out var mappedPowerId))
-            {
-                throw new BadRequestException($"Công suất '{powerName}' không tồn tại cho mã '{code}'.");
-            }
-
+            if (!powerIdMap.TryGetValue(normalizedPower, out var mappedPowerId)) throw new BadRequestException($"Công suất '{powerName}' không tồn tại cho mã '{code}'.");
             powerId = mappedPowerId;
         }
 
         Guid? hardnessId = null;
         if (!isHardnessNone)
         {
-            if (!hardnessIdMap.TryGetValue(normalizedHardness, out var mappedHardnessId))
-            {
-                throw new BadRequestException($"Độ kiên cố than đá (f) '{hardnessName}' không tồn tại cho mã '{code}'.");
-            }
-
+            if (!hardnessIdMap.TryGetValue(normalizedHardness, out var mappedHardnessId)) throw new BadRequestException($"Độ kiên cố than đá (f) '{hardnessName}' không tồn tại cho mã '{code}'.");
             hardnessId = mappedHardnessId;
         }
 
         return (powerId, hardnessId);
     }
 
-    private static void ValidateMonthRangeOverlap(
-        IEnumerable<LongwallMaterialUnitPriceEntity> existingEntities,
-        IEnumerable<LongwallMaterialUnitPriceEntity> addedEntities,
-        IEnumerable<LongwallMaterialUnitPriceEntity> deletedEntities)
+    private static void ValidateMonthRangeOverlap(IEnumerable<LongwallMaterialUnitPriceEntity> existingEntities, IEnumerable<LongwallMaterialUnitPriceEntity> addedEntities, IEnumerable<LongwallMaterialUnitPriceEntity> deletedEntities)
     {
-        var deletedIds = deletedEntities
-            .Select(entity => entity.Id)
-            .ToHashSet();
-
-        var finalEntities = existingEntities
-            .Where(entity => !deletedIds.Contains(entity.Id))
-            .Concat(addedEntities)
-            .ToList();
-
-        var groupedEntities = finalEntities
-            .GroupBy(entity => new MonthRangeOverlapKey(
-                entity.LongwallParametersId,
-                entity.CuttingThicknessId,
-                entity.SeamFaceId,
-                entity.PowerId,
-                entity.HardnessId));
+        var deletedIds = deletedEntities.Select(entity => entity.Id).ToHashSet();
+        var finalEntities = existingEntities.Where(entity => !deletedIds.Contains(entity.Id)).Concat(addedEntities).ToList();
+        var groupedEntities = finalEntities.GroupBy(entity => new MonthRangeOverlapKey(entity.LongwallParametersId, entity.CuttingThicknessId, entity.SeamFaceId, entity.PowerId, entity.HardnessId));
 
         foreach (var group in groupedEntities)
         {
-            var orderedEntities = group
-                .OrderBy(entity => entity.StartMonth)
-                .ThenBy(entity => entity.EndMonth)
-                .ToList();
-
+            var orderedEntities = group.OrderBy(entity => entity.StartMonth).ThenBy(entity => entity.EndMonth).ToList();
             var maxEndMonth = orderedEntities[0].EndMonth;
 
             for (var index = 1; index < orderedEntities.Count; index++)
             {
                 var currentEntity = orderedEntities[index];
-                if (maxEndMonth > currentEntity.StartMonth)
-                {
-                    throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
-                }
-
-                if (currentEntity.EndMonth > maxEndMonth)
-                {
-                    maxEndMonth = currentEntity.EndMonth;
-                }
+                if (maxEndMonth > currentEntity.StartMonth) throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+                if (currentEntity.EndMonth > maxEndMonth) maxEndMonth = currentEntity.EndMonth;
             }
         }
     }
@@ -658,41 +502,15 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     {
         public string SeamFaceName { get; set; } = string.Empty;
         public int CodeCol { get; set; }
-        public List<(int Col, string MaterialName)> MaterialCols { get; set; } = new();
+        public List<(int Col, string GroupName, string MaterialName)> MaterialCols { get; set; } = new();
     }
 
     private sealed record AssignmentLookupItem(Guid Id, string Display);
-
-    private sealed record MonthRangeOverlapKey(
-        Guid LongwallParametersId,
-        Guid CuttingThicknessId,
-        Guid SeamFaceId,
-        Guid? PowerId,
-        Guid? HardnessId);
-
-    private sealed record LongwallRowKey(
-        string Code,
-        string SeamFaceName,
-        string StartMonth,
-        string EndMonth,
-        string ProcessName,
-        string TechnologyName,
-        string HardnessName,
-        string PowerName,
-        string LongwallParametersName,
-        string CuttingThicknessName);
+    private sealed record MonthRangeOverlapKey(Guid LongwallParametersId, Guid CuttingThicknessId, Guid SeamFaceId, Guid? PowerId, Guid? HardnessId);
+    private sealed record LongwallRowKey(string Code, string SeamFaceName, string StartMonth, string EndMonth, string ProcessName, string TechnologyName, string HardnessName, string PowerName, string LongwallParametersName, string CuttingThicknessName);
 
     private sealed class ParsedLongwallMaterialUnitPriceRow(
-        string code,
-        string processName,
-        string technologyName,
-        string hardnessName,
-        string powerName,
-        string longwallParametersName,
-        string cuttingThicknessName,
-        string seamFaceName,
-        string startMonth,
-        string endMonth)
+        string code, string processName, string technologyName, string hardnessName, string powerName, string longwallParametersName, string cuttingThicknessName, string seamFaceName, string startMonth, string endMonth)
     {
         private readonly Dictionary<Guid, AssignmentCostImportItem> _assignmentCostMap = new();
 
@@ -714,17 +532,15 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             OtherMaterialValue += amount;
         }
 
-        public void AddAssignmentCost(Guid assignmentCodeId, double amount, string assignmentDisplay)
+        public void AddAssignmentCost(Guid assignmentCodeId, Guid? materialId, double norm, double totalPrice, string assignmentDisplay)
         {
             if (_assignmentCostMap.ContainsKey(assignmentCodeId))
             {
-                throw new BadRequestException(
-                    $"Nhóm vật tư, tài sản '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
+                throw new BadRequestException($"Nhóm vật tư, tài sản '{assignmentDisplay}' bị trùng cho mã định mức vật liệu '{Code}'.");
             }
-
-            _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, amount);
+            _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, materialId, norm, totalPrice);
         }
     }
 
-    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, double TotalPrice);
+    private sealed record AssignmentCostImportItem(Guid AssignmentCodeId, Guid? MaterialId, double Norm, double TotalPrice);
 }

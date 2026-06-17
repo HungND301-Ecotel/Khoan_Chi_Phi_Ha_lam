@@ -48,7 +48,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                         .ThenInclude(m => m.Code),
             disableTracking: true);
 
-        // --- LẤY DANH SÁCH CHO DROPDOWN ---
+        // --- LẤY DANH SÁCH CHO DROPDOWN CỐ ĐỊNH PHÍA TRƯỚC ---
         var processes = await _processRepository.GetAllAsync(selector: p => p.Name, disableTracking: true);
         var technologies = await _technologyRepository.GetAllAsync(selector: s => s.Value, disableTracking: true);
         var hardnessOptions = (await _hardnessRepository.GetAllAsync(selector: h => h.Value, disableTracking: true))
@@ -61,9 +61,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
         var longwallParams = await _longwallParametersRepository.GetAllAsync(disableTracking: true);
         var longwallParamsOptions = longwallParams
-            .Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}")
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            .Select(l => $"{l.Llc}-{l.Lkc}-{l.Mk}").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         var seamFaceEntities = await _seamFaceRepository.GetAllAsync(disableTracking: true);
         var seamFaceNames = seamFaceEntities.Select(s => s.Value)
@@ -72,33 +70,47 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var assignments = await _assignmentCodeRepository.GetAllAsync(include: a => a.Include(x => x.Code), disableTracking: true);
         var materials = await _materialRepository.GetAllAsync(include: m => m.Include(x => x.Code), disableTracking: true);
 
-        var groupOptions = assignments.Select(a => a.Code?.Value?.Trim() ?? string.Empty)
-            .Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+        var groupOptions = assignments.Select(a => a.Code?.Value?.Trim() ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var materialCodeOptions = materials.Select(m => m.Code?.Value?.Trim() ?? string.Empty).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-        var materialCodeOptions = materials.Select(m => m.Code?.Value?.Trim() ?? string.Empty)
-            .Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+        var groupDisplayList = assignments
+            .Where(a => !string.IsNullOrWhiteSpace(a.Code?.Value))
+            .Select(a => string.IsNullOrWhiteSpace(a.Name) ? a.Code!.Value.Trim() : $"{a.Code.Value.Trim()} - {a.Name.Trim()}")
+            .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
 
-        var defaultPrefixes = new[] { "CKT", "MKT", "TN", "KN", "DNH", "DB", "LT", "DT" };
-        var columnDefs = new List<(string GroupName, string MatCode)>();
+        var matDisplayList = materials
+            .Where(m => !string.IsNullOrWhiteSpace(m.Code?.Value))
+            .Select(m => string.IsNullOrWhiteSpace(m.Name) ? m.Code!.Value.Trim() : $"{m.Code.Value.Trim()} - {m.Name.Trim()}")
+            .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
 
-        foreach (var prefix in defaultPrefixes)
+        // --- KHỞI TẠO CẤU TRÚC ĐÚNG 8 CỘT MẶC ĐỊNH MAP TRỰC TIẾP TỪ DB ---
+        var defaultColumns = new List<(string GroupCode, string MatCode)>
         {
-            string groupName = groupOptions.FirstOrDefault(x => x.Equals(prefix, StringComparison.OrdinalIgnoreCase)) ?? prefix;
-            string matCode = materialCodeOptions.FirstOrDefault(x => x.Equals(prefix, StringComparison.OrdinalIgnoreCase)) ?? prefix;
-            columnDefs.Add((groupName, matCode));
-        }
+            ("CKT", "CKT-CKT"),
+            ("MKT", "MKT-MKT"),
+            ("TN", "TNLT-TNLT"),
+            ("KD-KVSAT", "KD-KD"),
+            ("DNH", "DNH-DNH"),
+            ("DB", "DB-DB"),
+            ("LT", "LT-LT"),
+            ("DT", "DT-DT")
+        };
 
-        foreach (var entity in list)
+        var columnDefs = new List<(string GroupName, string MatCode, string GroupDisplay, string MatDisplay)>();
+
+        foreach (var col in defaultColumns)
         {
-            foreach (var mac in entity.MaterialUnitPriceAssignmentCodes)
-            {
-                var gName = GetAssignmentDisplayName(mac);
-                var mCode = mac.Material?.Code?.Value?.Trim() ?? string.Empty;
-                if (!string.IsNullOrEmpty(gName) && !string.IsNullOrEmpty(mCode) && !columnDefs.Any(c => c.MatCode.Equals(mCode, StringComparison.OrdinalIgnoreCase)))
-                {
-                    columnDefs.Add((gName, mCode));
-                }
-            }
+            // Tìm nhóm chuẩn từ DB (Cấp 1)
+            var groupEntity = assignments.FirstOrDefault(a => a.Code?.Value?.Trim().Equals(col.GroupCode, StringComparison.OrdinalIgnoreCase) == true);
+            string groupName = groupEntity?.Code?.Value?.Trim() ?? col.GroupCode;
+            string groupDisplay = groupEntity != null && !string.IsNullOrWhiteSpace(groupEntity.Name) ? $"{groupName} - {groupEntity.Name.Trim()}" : groupName;
+
+            // Tìm vật tư chuẩn từ DB (Cấp 2)
+            var matEntity = materials.FirstOrDefault(m => m.Code?.Value?.Trim().Equals(col.MatCode, StringComparison.OrdinalIgnoreCase) == true);
+            string matCode = matEntity?.Code?.Value?.Trim() ?? col.MatCode;
+            string matDisplay = matEntity != null && !string.IsNullOrWhiteSpace(matEntity.Name) ? $"{matCode} - {matEntity.Name.Trim()}" : matCode;
+
+            columnDefs.Add((groupName, matCode, groupDisplay, matDisplay));
         }
 
         using var workbook = new XLWorkbook();
@@ -107,75 +119,33 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var dataSourceSheet = workbook.Worksheets.Add("DataSources");
         dataSourceSheet.Hide();
 
-        for (int i = 0; i < groupOptions.Count; i++)
-        {
-            dataSourceSheet.Cell(i + 1, 20).Value = groupOptions[i];
-        }
+        for (int i = 0; i < groupDisplayList.Count; i++) dataSourceSheet.Cell(i + 1, 20).Value = groupDisplayList[i];
+        var groupValidationRange = dataSourceSheet.Range(1, 20, Math.Max(1, groupDisplayList.Count), 20);
 
-        var groupValidationRange = dataSourceSheet.Range(1, 20, Math.Max(1, groupOptions.Count), 20);
+        for (int i = 0; i < matDisplayList.Count; i++) dataSourceSheet.Cell(i + 1, 21).Value = matDisplayList[i];
+        var nameValidationRange = dataSourceSheet.Range(1, 21, Math.Max(1, matDisplayList.Count), 21);
 
-        for (int i = 0; i < materialCodeOptions.Count; i++)
-        {
-            dataSourceSheet.Cell(i + 1, 21).Value = materialCodeOptions[i];
-        }
+        string startMonth = list.Any() ? list.Min(x => x.StartMonth).ToString("MM/yyyy") : string.Empty;
+        string endMonth = list.Any() ? list.Max(x => x.EndMonth).ToString("MM/yyyy") : string.Empty;
 
-        var nameValidationRange = dataSourceSheet.Range(1, 21, Math.Max(1, materialCodeOptions.Count), 21);
+        const int colProcess = 1, colTech = 2, colHardness = 3, colPower = 4, colLongwallParams = 5, colCuttingThickness = 6, startMatrixCol = 7;
+        const int headerRow1 = 5, headerRow2 = 6, headerRow3 = 7, startDataRow = 8;
 
-        string startMonth = string.Empty;
-        string endMonth = string.Empty;
-
-        if (list != null && list.Any())
-        {
-            startMonth = list.Min(x => x.StartMonth).ToString("MM/yyyy");
-            endMonth = list.Max(x => x.EndMonth).ToString("MM/yyyy");
-        }
-
-        const int colProcess = 1;
-        const int colTech = 2;
-        const int colHardness = 3;
-        const int colPower = 4;
-        const int colLongwallParams = 5;
-        const int colCuttingThickness = 6;
-        const int startMatrixCol = 7;
-
-        const int headerRow1 = 5; // Cấp 1: Mã Nhóm vật tư
-        const int headerRow2 = 6; // Cấp 2: Mã Vật tư chi tiết
-        const int headerRow3 = 7; // Cấp 3: Gộp Mặt vỉa (M=4m)
-        const int startDataRow = 8;
-
-        // --- 1. VẼ THÔNG TIN CHUNG ---
         worksheet.Cell("A1").Value = $"BẢNG ĐƠN GIÁ VÀ ĐỊNH MỨC VẬT LIỆU LÒ CHỢ NĂM {DateTime.Now.Year}";
         worksheet.Range("A1:G1").Merge().Style.Font.SetBold().Font.SetFontSize(14).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
 
-        worksheet.Cell("A3").Value = "Thời gian bắt đầu:";
-        worksheet.Cell("B3").Value = startMonth;
-        worksheet.Cell("D3").Value = "Thời gian kết thúc:";
-        worksheet.Cell("E3").Value = endMonth;
+        worksheet.Cell("A3").Value = "Thời gian bắt đầu:"; worksheet.Cell("B3").Value = startMonth;
+        worksheet.Cell("D3").Value = "Thời gian kết thúc:"; worksheet.Cell("E3").Value = endMonth;
         worksheet.Range("A3:E3").Style.Font.SetBold();
 
-        var fixedHeaders = new[]
-        {
-            (colProcess, "Công đoạn sản xuất"),
-            (colTech, "Công nghệ khai thác"),
-            (colHardness, "Hệ số kiên cố (f)"),
-            (colPower, "Công suất (tấn)"),
-            (colLongwallParams, "Thông số lò chợ"),
-            (colCuttingThickness, "Chiều dày lớp khấu (m)")
-        };
-
-        foreach (var (col, title) in fixedHeaders)
-        {
-            var range = worksheet.Range(headerRow1, col, headerRow3, col);
-            range.Merge().Value = title;
-            ApplyHeaderStyle(range);
-        }
+        var fixedHeaders = new[] { (colProcess, "Công đoạn sản xuất"), (colTech, "Công nghệ khai thác"), (colHardness, "Hệ số kiên cố (f)"), (colPower, "Công suất (tấn)"), (colLongwallParams, "Thông số lò chợ"), (colCuttingThickness, "Chiều dày lớp khấu (m)") };
+        foreach (var (col, title) in fixedHeaders) { var range = worksheet.Range(headerRow1, col, headerRow3, col); range.Merge().Value = title; ApplyHeaderStyle(range); }
 
         int currentMatrixCol = startMatrixCol;
 
         foreach (var seamFace in seamFaceNames)
         {
             int faceStartCol = currentMatrixCol;
-
             var codeRange = worksheet.Range(headerRow1, currentMatrixCol, headerRow3, currentMatrixCol);
             codeRange.Merge().Value = "Mã định mức";
             ApplyHeaderStyle(codeRange);
@@ -184,50 +154,33 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
             foreach (var colDef in columnDefs)
             {
-                // --- CẤP 1: Mã Nhóm vật tư ---
                 var cellLevel1 = worksheet.Cell(headerRow1, currentMatrixCol);
-                cellLevel1.Value = colDef.GroupName;
+                cellLevel1.Value = colDef.GroupDisplay;
                 ApplyHeaderStyle(worksheet.Range(headerRow1, currentMatrixCol, headerRow1, currentMatrixCol));
-                if (groupOptions.Any())
-                {
-                    cellLevel1.CreateDataValidation().List(groupValidationRange);
-                }
+                if (groupDisplayList.Any()) cellLevel1.CreateDataValidation().List(groupValidationRange);
 
                 var cellLevel2 = worksheet.Cell(headerRow2, currentMatrixCol);
-                cellLevel2.Value = colDef.MatCode;
+                cellLevel2.Value = colDef.MatDisplay;
                 ApplyHeaderStyle(worksheet.Range(headerRow2, currentMatrixCol, headerRow2, currentMatrixCol));
-                if (materialCodeOptions.Any())
-                {
-                    cellLevel2.CreateDataValidation().List(nameValidationRange);
-                }
+                if (matDisplayList.Any()) cellLevel2.CreateDataValidation().List(nameValidationRange);
 
-                worksheet.Column(currentMatrixCol).Width = 13;
+                worksheet.Column(currentMatrixCol).Width = 24; // Tăng width lên để chuỗi "Mã - Tên" không bị khuất chữ
                 currentMatrixCol++;
             }
 
-            int endMatCol = currentMatrixCol - 1;
-
-            var faceRange = worksheet.Range(headerRow3, faceStartCol + 1, headerRow3, endMatCol);
+            var faceRange = worksheet.Range(headerRow3, faceStartCol + 1, headerRow3, currentMatrixCol - 1);
             faceRange.Merge().Value = $"{seamFace}";
             ApplyHeaderStyle(faceRange);
         }
 
-        var lastHeaderCol = currentMatrixCol - 1;
-
-        var groupedData = list
-            .GroupBy(data => new
-            {
-                ProcessName = data.ProductionProcess?.Name?.Trim() ?? string.Empty,
-                TechnologyName = data.Technology?.Value?.Trim() ?? string.Empty,
-                HardnessName = data.Hardness?.Value?.Trim() ?? string.Empty,
-                PowerName = data.Power?.Value?.Trim() ?? string.Empty,
-                LongwallParamsName = data.LongwallParameters != null ? $"{data.LongwallParameters.Llc}-{data.LongwallParameters.Lkc}-{data.LongwallParameters.Mk}" : string.Empty,
-                CuttingThickness = data.CuttingThickness?.Value?.Trim() ?? string.Empty
-            })
-            .OrderBy(g => g.Key.ProcessName)
-            .ThenBy(g => g.Key.TechnologyName)
-            .ThenBy(g => ExtractLeadingNumber(g.Key.HardnessName))
-            .ToList();
+        var groupedData = list.GroupBy(data => new {
+            ProcessName = data.ProductionProcess?.Name?.Trim() ?? string.Empty,
+            TechnologyName = data.Technology?.Value?.Trim() ?? string.Empty,
+            HardnessName = data.Hardness?.Value?.Trim() ?? string.Empty,
+            PowerName = data.Power?.Value?.Trim() ?? string.Empty,
+            LongwallParamsName = data.LongwallParameters != null ? $"{data.LongwallParameters.Llc}-{data.LongwallParameters.Lkc}-{data.LongwallParameters.Mk}" : string.Empty,
+            CuttingThickness = data.CuttingThickness?.Value?.Trim() ?? string.Empty
+        }).OrderBy(g => g.Key.ProcessName).ThenBy(g => g.Key.TechnologyName).ThenBy(g => ExtractLeadingNumber(g.Key.HardnessName)).ToList();
 
         var rowIndex = startDataRow;
 
@@ -245,7 +198,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
             foreach (var seamFace in seamFaceNames)
             {
                 var entitiesForFace = group.Where(x => GetSeamFaceDisplayName(x).Equals(seamFace, StringComparison.OrdinalIgnoreCase)).ToList();
-
                 int codeColIndex = colDataIndex;
                 colDataIndex++;
 
@@ -254,8 +206,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                     var maLoList = entitiesForFace.Select(x => x.Code?.Value?.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList();
                     var codeCell = worksheet.Cell(rowIndex, codeColIndex);
                     codeCell.Value = string.Join(", ", maLoList);
-                    codeCell.Style.Font.SetBold();
-                    codeCell.Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+                    codeCell.Style.Font.SetBold().Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
                     codeCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#E9ECEF");
 
                     var costMap = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -263,17 +214,20 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                     {
                         foreach (var mac in entity.MaterialUnitPriceAssignmentCodes)
                         {
-                            var matCode = mac.Material?.Code?.Value?.Trim() ?? string.Empty;
-                            if (!string.IsNullOrWhiteSpace(matCode))
+                            var gName = GetAssignmentDisplayName(mac); 
+                            if (!string.IsNullOrWhiteSpace(gName))
                             {
-                                costMap[matCode] = mac.TotalPrice;
+                                if (costMap.ContainsKey(gName)) costMap[gName] += mac.Norm;
+                                else costMap[gName] = mac.Norm;
+
                             }
                         }
                     }
 
                     foreach (var colDef in columnDefs)
                     {
-                        if (costMap.TryGetValue(colDef.MatCode, out var amount))
+                        // Đối chiếu bằng Mã Thuần nội bộ để đổ tiền chính xác vào ô dưới cột tương ứng
+                        if (costMap.TryGetValue(colDef.GroupName, out var amount))
                         {
                             worksheet.Cell(rowIndex, colDataIndex).Value = amount;
                         }
@@ -289,7 +243,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         }
 
         var lastDataRow = Math.Max(rowIndex - 1, startDataRow + 100);
-
         AddDropdownValidation(workbook, worksheet, colProcess, processes.ToList(), lastDataRow, 1, startDataRow);
         AddDropdownValidation(workbook, worksheet, colTech, technologies.ToList(), lastDataRow, 2, startDataRow);
         AddDropdownValidation(workbook, worksheet, colHardness, hardnessOptions, lastDataRow, 3, startDataRow);
@@ -297,7 +250,7 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         AddDropdownValidation(workbook, worksheet, colLongwallParams, longwallParamsOptions, lastDataRow, 5, startDataRow);
         AddDropdownValidation(workbook, worksheet, colCuttingThickness, ctOptions, lastDataRow, 6, startDataRow);
 
-        var fullTableRange = worksheet.Range(headerRow1, colProcess, Math.Max(startDataRow, rowIndex - 1), lastHeaderCol);
+        var fullTableRange = worksheet.Range(headerRow1, colProcess, Math.Max(startDataRow, rowIndex - 1), currentMatrixCol - 1);
         fullTableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
         fullTableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
 
@@ -309,7 +262,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         workbook.SaveAs(stream);
         return stream.ToArray();
     }
-
 
     private static void ApplyHeaderStyle(IXLRange range)
     {
@@ -325,7 +277,6 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static string GetSeamFaceDisplayName(LongwallMaterialUnitPriceEntity data) => data.SeamFace?.Value?.Trim() ?? string.Empty;
 
-
     private static string GetAssignmentDisplayName(MaterialUnitPriceAssignmentCode item)
     {
         var code = item.AssignmentCode?.Code?.Value?.Trim() ?? string.Empty;
@@ -340,18 +291,13 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static void AddDropdownValidation(XLWorkbook workbook, IXLWorksheet worksheet, int targetColumn, List<string> options, int lastDataRow, int sourceColumn, int firstDataRow)
     {
-        if (!options.Any())
-        {
-            return;
-        }
+        if (!options.Any()) return;
 
         var dataSourceSheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "DataSources") ?? workbook.Worksheets.Add("DataSources");
         dataSourceSheet.Hide();
 
         for (var row = 0; row < options.Count; row++)
-        {
             dataSourceSheet.Cell(row + 1, sourceColumn).Value = options[row];
-        }
 
         var validation = worksheet.Range(firstDataRow, targetColumn, lastDataRow, targetColumn).CreateDataValidation();
         validation.List(dataSourceSheet.Range(1, sourceColumn, options.Count, sourceColumn));
@@ -363,18 +309,13 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static double ExtractLeadingNumber(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return double.MaxValue;
-        }
+        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
 
         var match = Regex.Match(value, @"\d+([.,]\d+)?");
         if (match.Success)
         {
             if (double.TryParse(match.Value.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
-            {
                 return val;
-            }
         }
         return double.MaxValue;
     }
