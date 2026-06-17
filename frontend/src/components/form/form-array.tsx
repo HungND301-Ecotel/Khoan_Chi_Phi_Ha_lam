@@ -30,7 +30,7 @@ export function FormArray<T extends FieldValues>({
 	hasCloseButton = true,
 	hasAddButton = true,
 	defaultValue = {} as FieldArray<T, ArrayPath<T>>,
-	canEmpty = false,
+	canEmpty = true,
 }: FormArrayProps<T>) {
 	const { fields, append, remove } = useFieldArray({
 		control,

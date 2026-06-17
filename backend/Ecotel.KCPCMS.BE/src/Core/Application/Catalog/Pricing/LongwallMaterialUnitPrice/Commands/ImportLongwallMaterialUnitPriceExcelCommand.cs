@@ -21,7 +21,7 @@ public record ImportLongwallMaterialUnitPriceExcelCommand(IFormFile File) : IReq
 
 public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unitOfWork, ICacheService cacheService) : IRequestHandler<ImportLongwallMaterialUnitPriceExcelCommand, bool>
 {
-    private const string OtherMaterialDisplay = "VTK - Vật tư khác";
+    private const string OtherMaterialDisplay = "VTK";
     private const string LegacyNoneOptionDisplay = "Không";
     private const string ProductUnitPriceCacheSignalKey = "ProductUnitPrice";
     private const string LongwallMaterialUnitPriceCacheSignalKey = "LongwallMaterialUnitPrice";
@@ -83,8 +83,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         var processIdMap = processes
             .ToDictionary(p => NormalizeLookupValue(p.Name), p => p.Id, StringComparer.OrdinalIgnoreCase);
+
         var longwallParametersIdMap = longwallParametersList
             .ToDictionary(l => NormalizeLookupValue($"{l.Llc}-{l.Lkc}-{l.Mk}"), l => l.Id, StringComparer.OrdinalIgnoreCase);
+
         var cuttingThicknessIdMap = cuttingThicknesses
             .ToDictionary(c => NormalizeLookupValue(c.Value), c => c.Id, StringComparer.OrdinalIgnoreCase);
         var seamFaceIdMap = seamFaces
@@ -167,14 +169,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 var endMonth = ParseMonthYear(row.EndMonth);
                 var (powerId, hardnessId) = ResolvePowerAndHardness(row.PowerName, row.HardnessName, powerIdMap, hardnessIdMap, code);
 
-                var costDtos = row.AssignmentCosts
-                    .Select(c => new MaterialUnitPriceAssignmentCodeDto
-                    {
-                        AssignmentCodeId = c.AssignmentCodeId,
-                        TotalPrice = c.TotalPrice
-                    })
-                    .ToList();
-                var costs = costDtos.Adapt<List<MaterialUnitPriceAssignmentCode>>();
+                var costs = row.AssignmentCosts
+                .Select(c => MaterialUnitPriceAssignmentCode.Create(c.AssignmentCodeId, c.TotalPrice))
+                .ToList();
 
                 if (dbCodeLookup.TryGetValue(code, out var existing))
                 {
@@ -293,7 +290,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
-        if (lastRow < 8 || lastCol < 10)
+        if (lastRow < 8 || lastCol < 7)
         {
             return [];
         }
@@ -315,15 +312,17 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var blocks = new List<BlockDef>();
         BlockDef? currentBlock = null;
 
-        for (int col = 10; col <= lastCol; col++)
+        // --- SỬA LẠI TỌA ĐỘ MA TRẬN TỪ CỘT 7 ---
+        for (int col = 7; col <= lastCol; col++)
         {
-            var row5Val = worksheet.Cell(5, col).GetString().Trim();
-            var row6Val = worksheet.Cell(6, col).GetString().Trim();
+            var row5Val = worksheet.Cell(5, col).GetString().Trim(); // Mã Nhóm
+            var row6Val = worksheet.Cell(6, col).GetString().Trim(); // Mã Vật Tư
 
             if (row5Val.Equals("Mã định mức", StringComparison.OrdinalIgnoreCase))
             {
                 currentBlock = new BlockDef { CodeCol = col };
 
+                // Mặt vỉa gộp từ cột kế tiếp ở Dòng 7
                 if (col + 1 <= lastCol)
                 {
                     var sfName = worksheet.Cell(7, col + 1).GetString().Trim();
@@ -334,7 +333,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             }
             else if (currentBlock != null)
             {
-                var materialName = row6Val;
+                // Dùng Row5Val (Mã nhóm) để tìm đúng AssignmentCode Id trong DB
+                var materialName = row5Val;
                 if (!string.IsNullOrWhiteSpace(materialName))
                 {
                     currentBlock.MaterialCols.Add((col, materialName));
@@ -344,23 +344,21 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         var aggregates = new Dictionary<LongwallRowKey, ParsedLongwallMaterialUnitPriceRow>();
 
+        // Dữ liệu bắt đầu từ dòng 8
         for (var row = 8; row <= lastRow; row++)
         {
-            var processName = worksheet.Cell(row, 2).GetString().Trim();
-            var technologyName = worksheet.Cell(row, 3).GetString().Trim();
-            var hardnessName = worksheet.Cell(row, 4).GetString().Trim();
-            var powerName = worksheet.Cell(row, 5).GetString().Trim();
+            var processName = worksheet.Cell(row, 1).GetString().Trim();
+            var technologyName = worksheet.Cell(row, 2).GetString().Trim();
+            var hardnessName = worksheet.Cell(row, 3).GetString().Trim();
+            var powerName = worksheet.Cell(row, 4).GetString().Trim();
+            var longwallParametersName = worksheet.Cell(row, 5).GetString().Trim();
             var cuttingThicknessName = worksheet.Cell(row, 6).GetString().Trim();
-            var llc = worksheet.Cell(row, 7).GetString().Trim();
-            var lkc = worksheet.Cell(row, 8).GetString().Trim();
-            var mk = worksheet.Cell(row, 9).GetString().Trim();
 
-            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(llc))
+            // Form mới không còn tách lẻ Llc, Lkc, Mk nên ta đọc gộp luôn ở cột 5
+            if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName))
             {
                 continue;
             }
-
-            var longwallParametersName = $"{llc}-{lkc}-{mk}";
 
             foreach (var block in blocks)
             {
@@ -428,7 +426,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                             var assignmentKey = NormalizeLookupValue(mat.MaterialName);
                             if (!assignmentLookup.TryGetValue(assignmentKey, out var assignment))
                             {
-                                importErrors.Add($"Tên vật tư '{mat.MaterialName}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
+                                importErrors.Add($"Mã vật tư '{mat.MaterialName}' không tồn tại trong hệ thống (dòng {row}, cột {mat.Col}).");
                                 continue;
                             }
 
@@ -461,6 +459,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var display = BuildAssignmentDisplay(code, name);
             var item = new AssignmentLookupItem(assignment.Id, display);
 
+            // Vì Export Cấp 1 chỉ hiện "Mã", nên Lookup cũng phải map chuẩn xác theo "Mã"
             if (!string.IsNullOrWhiteSpace(code))
             {
                 lookup.TryAdd(NormalizeLookupValue(code), item);
@@ -670,7 +669,6 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         Guid SeamFaceId,
         Guid? PowerId,
         Guid? HardnessId);
-
 
     private sealed record LongwallRowKey(
         string Code,
