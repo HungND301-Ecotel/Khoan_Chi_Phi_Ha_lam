@@ -125,8 +125,8 @@ namespace Domain.Entities.Index
             //{
             //    throw new ArgumentException(CustomResponseMessage.CostsCannotBeEmpty);
             //}
-
-            foreach (var cost in materialCosts)
+            
+            foreach (var cost in materialCosts ?? Enumerable.Empty<Cost>())
             {
                 _costs.Add(cost);
             }

@@ -121,9 +121,14 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
         var nameValidationRange = dataSourceSheet.Range(1, 21, Math.Max(1, materialCodeOptions.Count), 21);
 
-        var firstRecord = list.FirstOrDefault();
-        string startMonth = firstRecord != null ? firstRecord.StartMonth.ToString("MM/yyyy") : string.Empty;
-        string endMonth = firstRecord != null ? firstRecord.EndMonth.ToString("MM/yyyy") : string.Empty;
+        string startMonth = string.Empty;
+        string endMonth = string.Empty;
+
+        if (list != null && list.Any())
+        {
+            startMonth = list.Min(x => x.StartMonth).ToString("MM/yyyy");
+            endMonth = list.Max(x => x.EndMonth).ToString("MM/yyyy");
+        }
 
         const int colProcess = 1;
         const int colTech = 2;

@@ -127,8 +127,9 @@ export function FormComboBox<T extends FieldValues>(
 					>
 						<Command
 							filter={(value, search) => {
-								const labelPart = value.split('-')[0];
-								if (labelPart.includes(search.toLowerCase())) return 1;
+								const labelPart = value.split('-')[0].toLowerCase();
+								const normalizedSearch = search.toLowerCase();
+								if (labelPart.includes(normalizedSearch)) return 1;
 								return 0;
 							}}
 						>
@@ -234,8 +235,9 @@ export function FormComboBox<T extends FieldValues>(
 							>
 								<Command
 									filter={(value, search) => {
-										const labelPart = value.split('-')[0];
-										if (labelPart.includes(search.toLowerCase())) return 1;
+										const labelPart = value.split('-')[0].toLowerCase();
+										const normalizedSearch = search.toLowerCase();
+										if (labelPart.includes(normalizedSearch)) return 1;
 										return 0;
 									}}
 								>
