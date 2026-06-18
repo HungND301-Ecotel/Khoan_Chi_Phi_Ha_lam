@@ -623,6 +623,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         var groupedEntities = finalEntities
             .GroupBy(entity => new MonthRangeOverlapKey(
+                entity.ProcessId,        
+                entity.TechnologyId,
                 entity.LongwallParametersId,
                 entity.CuttingThicknessId,
                 entity.SeamFaceId,
@@ -664,6 +666,8 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private sealed record AssignmentLookupItem(Guid Id, string Display);
 
     private sealed record MonthRangeOverlapKey(
+        Guid ProcessId,        
+        Guid? TechnologyId,
         Guid LongwallParametersId,
         Guid CuttingThicknessId,
         Guid SeamFaceId,
