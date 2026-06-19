@@ -106,7 +106,7 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá vật liệu (đ/tấn)',
+		header: 'Đơn giá vật liệu (đ/1000 tấn)',
 		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
@@ -235,7 +235,7 @@ export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallM
 		},
 		{
 			accessorKey: 'totalPrice',
-			header: 'Đơn giá vật liệu (đ/tấn)',
+			header: 'Đơn giá vật liệu (đ/1000 tấn)',
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary' ? (
 					<span className='font-semibold'>
