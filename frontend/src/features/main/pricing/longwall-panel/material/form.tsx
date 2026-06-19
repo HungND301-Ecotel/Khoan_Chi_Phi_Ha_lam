@@ -161,7 +161,7 @@ const normalizeCostTotals = (
 	return costs.map((cost) => {
 		const unitPrice = assetMap.get(cost.materialId)?.costAmount ?? 0;
 		const totalPrice = Number.isNaN(Number(cost.norm))
-			? unitPrice
+			? 0
 			: (unitPrice * Number(cost.norm)) / 1000;
 
 		return {
