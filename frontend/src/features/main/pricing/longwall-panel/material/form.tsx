@@ -162,7 +162,7 @@ const normalizeCostTotals = (
 		const unitPrice = assetMap.get(cost.materialId)?.costAmount ?? 0;
 		const totalPrice = Number.isNaN(Number(cost.norm))
 			? unitPrice
-			: unitPrice * Number(cost.norm);
+			: (unitPrice * Number(cost.norm)) / 1000;
 
 		return {
 			...cost,
@@ -795,7 +795,7 @@ export function LongwallMaterialForm({
 			return {
 				...cost,
 				norm: interpolatedNorm,
-				totalPrice: unitPrice * interpolatedNorm,
+				totalPrice: (unitPrice * interpolatedNorm) / 1000,
 			};
 		});
 
