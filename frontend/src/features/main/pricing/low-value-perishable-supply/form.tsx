@@ -148,7 +148,7 @@ export function LowValuePerishableSupplyForm({
 			<FormNumber
 				control={form.control}
 				name='totalPrice'
-				label='Đơn giá (đ/m)'
+				label='Đơn giá (đ/tấn)'
 				placeholder='Nhập đơn giá'
 			/>
 
