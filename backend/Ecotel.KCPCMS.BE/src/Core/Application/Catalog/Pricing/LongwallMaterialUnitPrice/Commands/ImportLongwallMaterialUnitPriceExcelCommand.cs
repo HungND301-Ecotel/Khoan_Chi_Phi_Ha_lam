@@ -99,7 +99,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
         var costByMaterialId = allMaterialCosts
             .GroupBy(c => c.MaterialId!.Value)
-            .ToDictionary(g => g.Key, g => g.First().Amount);
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.StartMonth).First().Amount); 
 
         // Build lookup
         var assignmentLookup = BuildAssignmentLookup(assignments, materials);
@@ -407,9 +407,19 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                             }
 
                             // Tính TotalPrice = Norm * UnitPrice (lấy từ Cost)
-                            var unitPrice = assignment.MaterialId.HasValue &&
-                                            costByMaterialId.TryGetValue(assignment.MaterialId.Value, out var price)
-                                ? price : 0;
+                            double unitPrice = 0;
+                            if (assignment.MaterialId.HasValue)
+                            {
+                                if (costByMaterialId.TryGetValue(assignment.MaterialId.Value, out var price))
+                                {
+                                    unitPrice = price;
+                                }
+                                else
+                                {
+                                    importErrors.Add($"Vật tư '{mat.MaterialName}' chưa có đơn giá cho kỳ tháng {startMonth} (dòng {row}, cột {mat.Col}). Định mức sẽ được import với đơn giá = 0.");
+                                }
+                            }
+
                             var totalPrice = norm * unitPrice;
 
                             try
