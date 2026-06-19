@@ -420,7 +420,7 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                                 }
                             }
 
-                            var totalPrice = norm * unitPrice;
+                            var totalPrice = norm * unitPrice / 1000 ;
 
                             try
                             {
