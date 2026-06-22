@@ -416,9 +416,11 @@ export function NormFactorForm({
 						}
 
 						// Lọc Material theo AssignmentCode
-						const validMaterials = materials.filter((m) =>
-							m.assignmentCodeIds?.includes(rowItem.assignmentCodeId),
-						);
+						const validMaterials = materials.filter((m) => {
+							if (!m.assignmentCodeIds || m.assignmentCodeIds.length === 0)
+								return true;
+							return m.assignmentCodeIds.includes(rowItem.assignmentCodeId);
+						});
 						return (
 							<FormRow key={rowItem.assignmentCodeId}>
 								<div className='flex flex-1 flex-col gap-2'>

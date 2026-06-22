@@ -836,7 +836,10 @@ export function LongwallMaterialForm({
 		() => upperNorms.filter((item) => item.id !== selectedLowerNormId),
 		[selectedLowerNormId, upperNorms],
 	);
-
+	const lowerNormOptions = useMemo(
+		() => upperNorms.filter((item) => item.id !== selectedUpperNormId),
+		[selectedUpperNormId, upperNorms],
+	);
 	const interpolationMismatches = useMemo(
 		() =>
 			getInterpolationMismatchLabels(
@@ -1143,7 +1146,7 @@ export function LongwallMaterialForm({
 							placeholder='Chọn định mức cận dưới'
 							value={selectedLowerNormId}
 							onValueChange={setSelectedLowerNormId}
-							options={upperNormOptions.map((item) => {
+							options={lowerNormOptions.map((item) => {
 								const details = getLongwallMaterialDetail(item);
 								const labelText = [item.code, item.processName, details]
 									.filter(Boolean)

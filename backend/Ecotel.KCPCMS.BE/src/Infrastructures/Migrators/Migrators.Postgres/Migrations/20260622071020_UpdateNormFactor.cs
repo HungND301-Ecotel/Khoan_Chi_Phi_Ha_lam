@@ -5,12 +5,15 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Migrators.PostgreSQL.Migrations
 {
-    /// <inheritdoc />
     public partial class UpdateNormFactor : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_NormFactorAssignmentCode_NormFactorId_AssignmentCodeId",
+                schema: "Index",
+                table: "NormFactorAssignmentCode");
+
             migrationBuilder.AddColumn<Guid>(
                 name: "MaterialId",
                 schema: "Index",
@@ -36,11 +39,23 @@ namespace Migrators.PostgreSQL.Migrations
                 principalTable: "Material",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NormFactorAssignmentCode_NormFactorId_AssignmentCodeId_MaterialId",
+                schema: "Index",
+                table: "NormFactorAssignmentCode",
+                columns: new[] { "NormFactorId", "AssignmentCodeId", "MaterialId" },
+                unique: true,
+                filter: "\"DeletedOn\" IS NULL");
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_NormFactorAssignmentCode_NormFactorId_AssignmentCodeId_MaterialId",
+                schema: "Index",
+                table: "NormFactorAssignmentCode");
+
             migrationBuilder.DropForeignKey(
                 name: "FK_NormFactorAssignmentCode_Material_MaterialId",
                 schema: "Index",
@@ -55,6 +70,14 @@ namespace Migrators.PostgreSQL.Migrations
                 name: "MaterialId",
                 schema: "Index",
                 table: "NormFactorAssignmentCode");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NormFactorAssignmentCode_NormFactorId_AssignmentCodeId",
+                schema: "Index",
+                table: "NormFactorAssignmentCode",
+                columns: new[] { "NormFactorId", "AssignmentCodeId" },
+                unique: true,
+                filter: "\"DeletedOn\" IS NULL");
         }
     }
 }

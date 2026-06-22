@@ -249,7 +249,9 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 throw new BadRequestException($"Thông tin nền của NormFactor không đồng nhất ở dòng {row.RowNumber}.");
             }
 
-            if (aggregate.AssignmentCodes.Any(x => x.MaterialId == row.MaterialId))
+            if (aggregate.AssignmentCodes.Any(x =>
+                x.AssignmentCodeId == row.AssignmentCodeId &&
+                x.MaterialId == row.MaterialId))
             {
                 throw new BadRequestException($"Vật tư bị trùng lặp trong cùng một NormFactor ở dòng {row.RowNumber}.");
             }
@@ -277,9 +279,9 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         }
 
         var existingMap = existingEntity.NormFactorAssignmentCodes
-            .ToDictionary(x => x.MaterialId, x => (x.AssignmentCodeId, x.Value, x.TargetHardnessId));
+            .ToDictionary(x => (x.AssignmentCodeId, x.MaterialId), x => (x.Value, x.TargetHardnessId));
         var newMap = aggregate.AssignmentCodes
-            .ToDictionary(x => x.MaterialId, x => (x.AssignmentCodeId, x.Value, x.TargetHardnessId));
+            .ToDictionary(x => (x.AssignmentCodeId, x.MaterialId), x => (x.Value, x.TargetHardnessId));
 
         if (existingMap.Count != newMap.Count)
         {
@@ -293,8 +295,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 return true;
             }
 
-            if (oldValue.AssignmentCodeId != pair.Value.AssignmentCodeId ||
-                oldValue.Value != pair.Value.Value ||
+            if (oldValue.Value != pair.Value.Value ||
                 oldValue.TargetHardnessId != pair.Value.TargetHardnessId)
             {
                 return true;

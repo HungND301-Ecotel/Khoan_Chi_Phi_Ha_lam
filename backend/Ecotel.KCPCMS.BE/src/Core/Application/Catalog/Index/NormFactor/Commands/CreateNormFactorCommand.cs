@@ -26,12 +26,16 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         {
             throw new BadRequestException("Thành phần điều chỉnh định mức không được để trống.");
         }
-
-        var uniqueMaterials = assignmentConfigs.Select(a => a.MaterialId).Distinct().ToList();
-        if (uniqueMaterials.Count != assignmentConfigs.Count)
+        var uniqueConfigs = assignmentConfigs
+            .Select(a => new { a.AssignmentCodeId, a.MaterialId })
+            .Distinct()
+            .ToList();
+        if (uniqueConfigs.Count != assignmentConfigs.Count)
         {
             throw new BadRequestException("Vật tư bị trùng lặp trong thành phần điều chỉnh định mức.");
         }
+
+        var uniqueMaterials = assignmentConfigs.Select(a => a.MaterialId).Distinct().ToList();
 
         var checkProductionProcess = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProductionProcessId);
         if (!checkProductionProcess)
