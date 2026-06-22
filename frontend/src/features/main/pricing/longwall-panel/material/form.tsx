@@ -836,10 +836,7 @@ export function LongwallMaterialForm({
 		() => upperNorms.filter((item) => item.id !== selectedLowerNormId),
 		[selectedLowerNormId, upperNorms],
 	);
-	const lowerNormOptions = useMemo(
-		() => upperNorms.filter((item) => item.id !== selectedUpperNormId),
-		[selectedUpperNormId, upperNorms],
-	);
+
 	const interpolationMismatches = useMemo(
 		() =>
 			getInterpolationMismatchLabels(
