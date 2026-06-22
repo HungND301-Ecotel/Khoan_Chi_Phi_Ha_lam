@@ -4,6 +4,9 @@ const assignmentCodeConfigSchema = z.object({
 	assignmentCodeId: z.string().nonempty({
 		error: 'Nhóm vật tư, tài sản không được để trống',
 	}),
+	materialId: z.string().nonempty({
+		error: 'Vật tư chi tiết không được để trống.',
+	}),
 	value: z.coerce
 		.number<number>({
 			error: 'Hệ số điều chỉnh định mức không được để trống.',

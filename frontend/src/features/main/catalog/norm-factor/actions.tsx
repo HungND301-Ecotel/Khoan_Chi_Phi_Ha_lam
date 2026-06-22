@@ -31,6 +31,13 @@ const STEEL_MESH_TYPE_SINGLE_LAYER = 2;
 const STEEL_MESH_TYPE_DOUBLE_LAYER = 3;
 const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
+type MaterialCodeItem = {
+	id: string;
+	code: string;
+	name: string;
+	assignmentCodeIds?: string[];
+};
+
 type NormFactorFormProps = ActionDialogProps<NormFactor> & {
 	isDuplicate?: boolean;
 };
@@ -51,7 +58,7 @@ export function NormFactorForm({
 	const [stoneClampRatios, setStoneClampRatios] = useState<Clamp[]>([]);
 	const [assignmentCodes, setAssignmentCodes] = useState<ContractCode[]>([]);
 	const [targetHardnesses, setTargetHardnesses] = useState<Strength[]>([]);
-
+	const [materials, setMaterials] = useState<MaterialCodeItem[]>([]);
 	const form = useForm<NormFactorSchema>({
 		resolver: zodResolver(normFactorSchema),
 		mode: 'onSubmit',
@@ -70,6 +77,7 @@ export function NormFactorForm({
 					assignmentCodeConfigs:
 						row.assignmentCodes?.map((item) => ({
 							assignmentCodeId: item.assignmentCodeId,
+							materialId: item.materialId ?? '', // Map materialId từ backend
 							value: item.value ?? 0,
 							targetHardnessId:
 								item.targetHardnessId && item.targetHardnessId !== EMPTY_GUID
@@ -78,6 +86,7 @@ export function NormFactorForm({
 						})) ??
 						(row.affectAssignmentCodes ?? []).map((item) => ({
 							assignmentCodeId: item.id,
+							materialId: '', // Default rỗng cho case tạo mới
 							value: row.value ?? 0,
 							targetHardnessId:
 								row.targetHardnessId && row.targetHardnessId !== EMPTY_GUID
@@ -111,6 +120,13 @@ export function NormFactorForm({
 		api
 			.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST)
 			.then((res) => setAssignmentCodes(res.result.data ?? []));
+
+		api
+			.pagging<MaterialCodeItem>(API.CATALOG.ASSET.LIST, {
+				ignorePagination: true,
+				pageSize: 99999,
+			})
+			.then((res) => setMaterials(res.result?.data ?? []));
 	}, [row, form]);
 
 	const handleSubmit = async (values: NormFactorSchema) => {
@@ -138,6 +154,7 @@ export function NormFactorForm({
 				steelMeshType,
 				assignmentCodes: values.assignmentCodeConfigs.map((config) => ({
 					assignmentCodeId: config.assignmentCodeId,
+					materialId: config.materialId, // Gửi materialId đi
 					value: config.value,
 					targetHardnessId: config.targetHardnessId || null,
 				})),
@@ -214,6 +231,7 @@ export function NormFactorForm({
 
 			return {
 				assignmentCodeId,
+				materialId: '', // Default khi thêm mới
 				value:
 					isMechanizedLongwall &&
 					selectedSteelMeshType === STEEL_MESH_TYPE_SINGLE_LAYER
@@ -233,6 +251,7 @@ export function NormFactorForm({
 				return (
 					!currentConfig ||
 					currentConfig.assignmentCodeId !== config.assignmentCodeId ||
+					currentConfig.materialId !== config.materialId ||
 					currentConfig.value !== config.value ||
 					(currentConfig.targetHardnessId ?? '') !==
 						(config.targetHardnessId ?? '')
@@ -379,8 +398,8 @@ export function NormFactorForm({
 			<FormMultiSelect
 				control={form.control}
 				name='assignmentCodeIds'
-				label='Thành phần điều chỉnh định mức'
-				placeholder='Chọn thành phần điều chỉnh định mức'
+				label='Thành phần điều chỉnh định mức (Chọn Nhóm)'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					label: `${a.code} - ${a.name}`,
 					value: a.id,
@@ -396,6 +415,12 @@ export function NormFactorForm({
 							return null;
 						}
 
+						// Lọc Material theo AssignmentCode
+						const validMaterials = materials.filter((m) => {
+							if (!m.assignmentCodeIds || m.assignmentCodeIds.length === 0)
+								return true;
+							return m.assignmentCodeIds.includes(rowItem.assignmentCodeId);
+						});
 						return (
 							<FormRow key={rowItem.assignmentCodeId}>
 								<div className='flex flex-1 flex-col gap-2'>
@@ -407,18 +432,7 @@ export function NormFactorForm({
 												? `${rowItem.assignment.code} - ${rowItem.assignment.name}`
 												: ''
 										}
-										className='read-only:bg-transparent'
-									/>
-								</div>
-
-								<div className='flex flex-1 flex-col gap-2'>
-									<FormNumber
-										control={form.control}
-										name={
-											`assignmentCodeConfigs.${rowItem.configIndex}.value` as keyof NormFactorSchema
-										}
-										label='Hệ số điều chỉnh định mức'
-										placeholder='Nhập hệ số'
+										className='read-only:cursor-not-allowed read-only:bg-gray-100'
 									/>
 								</div>
 
@@ -426,10 +440,38 @@ export function NormFactorForm({
 									<FormComboBox
 										control={form.control}
 										name={
+											`assignmentCodeConfigs.${rowItem.configIndex}.materialId` as keyof NormFactorSchema
+										}
+										label='Vật tư, tài sản'
+										placeholder='Chọn vật tư'
+										options={[
+											...validMaterials.map((m) => ({
+												label: `${m.code} - ${m.name}`,
+												value: m.id,
+											})),
+										]}
+									/>
+								</div>
+
+								<div className='flex min-w-[120px] flex-1 flex-col gap-2'>
+									<FormNumber
+										control={form.control}
+										name={
+											`assignmentCodeConfigs.${rowItem.configIndex}.value` as keyof NormFactorSchema
+										}
+										label='Hệ số điều chỉnh'
+										placeholder='Nhập hệ số'
+									/>
+								</div>
+
+								<div className='flex min-w-[180px] flex-1 flex-col gap-2'>
+									<FormComboBox
+										control={form.control}
+										name={
 											`assignmentCodeConfigs.${rowItem.configIndex}.targetHardnessId` as keyof NormFactorSchema
 										}
 										label='Định mức tham chiếu'
-										placeholder='Chọn định mức tham chiếu'
+										placeholder='Định mức hiện tại'
 										options={[
 											{ label: 'Định mức hiện tại', value: '' },
 											...targetHardnesses

@@ -1,5 +1,4 @@
-﻿// File: Application/Catalog/AdjustmentFactor/Specifications/NormFactorsByPaginationSpec.cs
-using Application.Common.Models;
+﻿using Application.Common.Models;
 using Application.Common.Specification;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.NormFactor;
@@ -17,6 +16,7 @@ public class NormFactorsByPaginationSpec
 
         Query
             .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.AssignmentCode).ThenInclude(a => a.Code)
+            .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.Material).ThenInclude(m => m.Code)
             .Include(nf => nf.NormFactorAssignmentCodes).ThenInclude(nf => nf.TargetHardness)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.Code)
             .Include(nf => nf.ProductionProcess).ThenInclude(pp => pp.ProcessGroup).ThenInclude(pg => pg.FixedKey)
@@ -39,17 +39,25 @@ public class NormFactorsByPaginationSpec
                 HardnessName = nf.Hardness != null ? nf.Hardness.Value : string.Empty,
                 StoneClampRatioId = nf.StoneClampRatioId,
                 StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
-                AffectAssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new ShortAssignmentCodeDto
-                {
-                    Id = a.AssignmentCodeId,
-                    Code = a.AssignmentCode.Code!.Value,
-                    Name = a.AssignmentCode.Name
-                }).ToList(),
+                AffectAssignmentCodes = nf.NormFactorAssignmentCodes
+                    .Select(a => new ShortAssignmentCodeDto
+                    {
+                        Id = a.AssignmentCodeId,
+                        Code = a.AssignmentCode.Code!.Value,
+                        Name = a.AssignmentCode.Name
+                    })
+                    .DistinctBy(x => x.Id)
+                    .ToList(),
                 AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
                 {
                     AssignmentCodeId = a.AssignmentCodeId,
                     AssignmentCode = a.AssignmentCode.Code!.Value,
                     AssignmentCodeName = a.AssignmentCode.Name,
+
+                    MaterialId = a.MaterialId,
+                    MaterialCode = a.Material != null ? a.Material.Code!.Value : string.Empty,
+                    MaterialName = a.Material != null ? a.Material.Name : string.Empty,
+
                     Value = a.Value,
                     TargetHardnessId = a.TargetHardnessId,
                     TargetHardnessName = a.TargetHardness != null ? a.TargetHardness.Value : string.Empty

@@ -27,6 +27,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
                 .Include(x => x.Hardness)
                 .Include(x => x.StoneClampRatio)
                 .Include(x => x.NormFactorAssignmentCodes).ThenInclude(a => a.AssignmentCode).ThenInclude(c => c.Code)
+                .Include(x => x.NormFactorAssignmentCodes).ThenInclude(a => a.Material).ThenInclude(m => m.Code)
                 .Include(x => x.NormFactorAssignmentCodes).ThenInclude(a => a.TargetHardness),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -36,11 +37,17 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
                 AssignmentCodeId = a.AssignmentCodeId,
                 AssignmentCode = a.AssignmentCode?.Code?.Value ?? string.Empty,
                 AssignmentCodeName = a.AssignmentCode?.Name ?? string.Empty,
+
+                MaterialId = a.MaterialId,
+                MaterialCode = a.Material?.Code?.Value ?? string.Empty,
+                MaterialName = a.Material?.Name ?? string.Empty,
+
                 Value = a.Value,
                 TargetHardnessId = a.TargetHardnessId,
                 TargetHardnessName = a.TargetHardness?.Value ?? string.Empty
             })
             .OrderBy(x => x.AssignmentCode)
+            .ThenBy(x => x.MaterialCode)
             .ToList();
 
         var firstAssignment = assignmentDtos.FirstOrDefault();
@@ -58,12 +65,15 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             StoneClampRatioId = normFactor.StoneClampRatioId,
             StoneClampRatioName = normFactor.StoneClampRatio?.Value ?? string.Empty,
             SteelMeshType = normFactor.SteelMeshType,
-            AffectAssignmentCodes = assignmentDtos.Select(a => new ShortAssignmentCodeDto
-            {
-                Id = a.AssignmentCodeId,
-                Code = a.AssignmentCode,
-                Name = a.AssignmentCodeName
-            }).ToList(),
+            AffectAssignmentCodes = assignmentDtos
+                .Select(a => new ShortAssignmentCodeDto
+                {
+                    Id = a.AssignmentCodeId,
+                    Code = a.AssignmentCode,
+                    Name = a.AssignmentCodeName
+                })
+                .DistinctBy(x => x.Id) 
+                .ToList(),
             AssignmentCodes = assignmentDtos,
             Value = firstAssignment?.Value ?? 0,
             TargetHardnessId = firstAssignment?.TargetHardnessId,

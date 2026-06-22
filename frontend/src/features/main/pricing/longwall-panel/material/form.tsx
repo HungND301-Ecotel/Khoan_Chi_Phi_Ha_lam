@@ -43,6 +43,7 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
+import { getLongwallMaterialDetail } from '@/features/main/pricing/longwall-panel/material/columns';
 
 type MaterialOption = MultiSelectOption & {
 	assignmentCodeId: string;
@@ -1109,10 +1110,17 @@ export function LongwallMaterialForm({
 							placeholder='Chọn định mức cận trên'
 							value={selectedUpperNormId}
 							onValueChange={setSelectedUpperNormId}
-							options={upperNormOptions.map((item) => ({
-								label: item.code,
-								value: item.id,
-							}))}
+							options={upperNormOptions.map((item) => {
+								const details = getLongwallMaterialDetail(item);
+								const labelText = [item.code, item.processName, details]
+									.filter(Boolean)
+									.join(' - ');
+
+								return {
+									label: labelText,
+									value: item.id,
+								};
+							})}
 						/>
 
 						<div className='flex flex-col gap-2'>
@@ -1138,10 +1146,17 @@ export function LongwallMaterialForm({
 							placeholder='Chọn định mức cận dưới'
 							value={selectedLowerNormId}
 							onValueChange={setSelectedLowerNormId}
-							options={lowerNormOptions.map((item) => ({
-								label: item.code,
-								value: item.id,
-							}))}
+							options={lowerNormOptions.map((item) => {
+								const details = getLongwallMaterialDetail(item);
+								const labelText = [item.code, item.processName, details]
+									.filter(Boolean)
+									.join(' - ');
+
+								return {
+									label: labelText,
+									value: item.id,
+								};
+							})}
 						/>
 
 						<div className='flex flex-col gap-2'>
@@ -1289,7 +1304,7 @@ function GroupedMaterialCosts({
 			<FormSeparator />
 
 			<div className='flex flex-col gap-2'>
-				<Label>Tổng tiền (đ/tấn)</Label>
+				<Label>Tổng tiền (đ/1000 tấn)</Label>
 				<Input
 					readOnly
 					value={formatNumber(totalPrice)}

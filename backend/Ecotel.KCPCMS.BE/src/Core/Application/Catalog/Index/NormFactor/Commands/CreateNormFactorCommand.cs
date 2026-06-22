@@ -14,6 +14,7 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
 {
     private readonly IWriteRepository<NormFactor> _normFactorRepository = unitOfWork.GetRepository<NormFactor>();
     private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     private readonly IWriteRepository<Domain.Entities.Index.ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<Domain.Entities.Index.ProductionProcess>();
     private readonly IWriteRepository<Hardness> _hardnessRepository = unitOfWork.GetRepository<Hardness>();
     private readonly IWriteRepository<Domain.Entities.Index.StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<Domain.Entities.Index.StoneClampRatio>();
@@ -25,20 +26,27 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         {
             throw new BadRequestException("Thành phần điều chỉnh định mức không được để trống.");
         }
-
-        var uniqueAssignmentIds = assignmentConfigs.Select(a => a.AssignmentCodeId).Distinct().ToList();
-        if (uniqueAssignmentIds.Count != assignmentConfigs.Count)
+        var uniqueConfigs = assignmentConfigs
+            .Select(a => new { a.AssignmentCodeId, a.MaterialId })
+            .Distinct()
+            .ToList();
+        if (uniqueConfigs.Count != assignmentConfigs.Count)
         {
-            throw new BadRequestException("Nhóm vật tư, tài sản bị trùng trong thành phần điều chỉnh định mức.");
+            throw new BadRequestException("Vật tư bị trùng lặp trong thành phần điều chỉnh định mức.");
         }
 
-        var checkProductionProcess = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProductionProcessId);
-        var checkStoneClampRatio = await _stoneClampRatioRepository.AnyAsync(p => p.Id == request.CreateModel.StoneClampRatioId);
-        var assignmentCount = await _assignmentCodeRepository.CountAsync(predicate: a => uniqueAssignmentIds.Contains(a.Id));
+        var uniqueMaterials = assignmentConfigs.Select(a => a.MaterialId).Distinct().ToList();
 
+        var checkProductionProcess = await _productionProcessRepository.AnyAsync(p => p.Id == request.CreateModel.ProductionProcessId);
         if (!checkProductionProcess)
         {
             throw new NotFoundException(CustomResponseMessage.ProductionProcessNotFound);
+        }
+
+        var checkStoneClampRatio = await _stoneClampRatioRepository.AnyAsync(p => p.Id == request.CreateModel.StoneClampRatioId);
+        if (!checkStoneClampRatio)
+        {
+            throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
         }
 
         if (request.CreateModel.HardnessId.HasValue)
@@ -50,14 +58,17 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             }
         }
 
-        if (!checkStoneClampRatio)
-        {
-            throw new NotFoundException(CustomResponseMessage.StoneClampRatioNotFound);
-        }
-
+        var uniqueAssignmentIds = assignmentConfigs.Select(a => a.AssignmentCodeId).Distinct().ToList();
+        var assignmentCount = await _assignmentCodeRepository.CountAsync(predicate: a => uniqueAssignmentIds.Contains(a.Id));
         if (assignmentCount != uniqueAssignmentIds.Count)
         {
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
+        }
+
+        var materialCount = await _materialRepository.CountAsync(predicate: m => uniqueMaterials.Contains(m.Id));
+        if (materialCount != uniqueMaterials.Count)
+        {
+            throw new NotFoundException("Có vật tư không tồn tại trong hệ thống.");
         }
 
         var targetHardnessIds = assignmentConfigs
@@ -65,6 +76,7 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             .Select(x => x.TargetHardnessId!.Value)
             .Distinct()
             .ToList();
+
         if (targetHardnessIds.Count > 0)
         {
             var targetHardnessCount = await _hardnessRepository.CountAsync(predicate: h => targetHardnessIds.Contains(h.Id));
@@ -80,9 +92,16 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             request.CreateModel.StoneClampRatioId,
             request.CreateModel.SteelMeshType);
 
-        normFactor.AddNormFactorAssignmentCode(
-            assignmentConfigs.Select(a =>
-                NormFactorAssignmentCode.Create(a.AssignmentCodeId, Guid.Empty, a.Value, a.TargetHardnessId)).ToList());
+        var normFactorItems = assignmentConfigs.Select(a =>
+            NormFactorAssignmentCode.Create(
+                assignmentCodeId: a.AssignmentCodeId,
+                materialId: a.MaterialId, 
+                normFactorId: Guid.Empty, 
+                value: a.Value,
+                targetHardnessId: a.TargetHardnessId)
+        ).ToList();
+
+        normFactor.AddNormFactorAssignmentCode(normFactorItems);
 
         await _normFactorRepository.InsertAsync(normFactor, cancellationToken);
         await unitOfWork.SaveChangesAsync();

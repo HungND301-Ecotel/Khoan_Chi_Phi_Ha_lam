@@ -48,9 +48,9 @@ export type LongwallMaterial = {
 	otherMaterialValue?: number;
 };
 
-const getLongwallMaterialDetail = (material: LongwallMaterial) => {
+export const getLongwallMaterialDetail = (material: LongwallMaterial) => {
 	const longwallParameterText = material.longwallParameters
-		? `Llc ${material.longwallParameters.llc}; Lkc ${material.longwallParameters.lkc}; Mk ${material.longwallParameters.mk}`
+		? `${material.longwallParameters.llc}; ${material.longwallParameters.lkc}; ${material.longwallParameters.mk}`
 		: '-';
 	const cuttingThicknessText = material.cuttingThickness?.value ?? '-';
 	const hardnessOrPowerText =
