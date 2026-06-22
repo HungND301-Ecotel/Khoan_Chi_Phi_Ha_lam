@@ -46,7 +46,7 @@ public class NormFactorsByPaginationSpec
                         Code = a.AssignmentCode.Code!.Value,
                         Name = a.AssignmentCode.Name
                     })
-                    .DistinctBy(x => x.Id)
+                    .Distinct()
                     .ToList(),
                 AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
                 {

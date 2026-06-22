@@ -1,11 +1,11 @@
 import z from 'zod';
 
 const assignmentCodeConfigSchema = z.object({
-	assignmentCodeId: z.string().nonempty({
-		error: 'Nhóm vật tư, tài sản không được để trống',
+	assignmentCodeId: z.string().min(1, {
+		message: 'Nhóm vật tư, tài sản không được để trống',
 	}),
-	materialId: z.string().nonempty({
-		error: 'Vật tư chi tiết không được để trống.',
+	materialId: z.string().min(1, {
+		message: 'Vật tư chi tiết không được để trống.',
 	}),
 	value: z.coerce
 		.number<number>({
