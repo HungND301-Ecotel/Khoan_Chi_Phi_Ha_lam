@@ -103,11 +103,14 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
 
         if (await _materialUnitPriceRepository.AnyAsync(m =>
             m.Id != request.UpdateModel.Id &&
+            m.DeletedOn == null &&
             m.StartMonth < request.UpdateModel.EndMonth &&
             m.EndMonth > request.UpdateModel.StartMonth &&
+            m.ProcessId == request.UpdateModel.ProcessId &&
             m.LongwallParametersId == request.UpdateModel.LongwallParametersId &&
             m.CuttingThicknessId == request.UpdateModel.CuttingThicknessId &&
             m.SeamFaceId == resolvedSeamFaceId.Value &&
+            m.TechnologyId == request.UpdateModel.TechnologyId &&
             m.PowerId == request.UpdateModel.PowerId &&
             m.HardnessId == request.UpdateModel.HardnessId))
         {
@@ -266,3 +269,4 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
     }
 
 }
+

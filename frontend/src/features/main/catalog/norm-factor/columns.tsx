@@ -11,6 +11,9 @@ type NormFactorAssignmentCode = {
 	assignmentCodeId: string;
 	assignmentCode: string;
 	assignmentCodeName: string;
+	materialId: string;
+	materialCode: string;
+	materialName: string;
 	value: number;
 	targetHardnessId?: string;
 	targetHardnessName?: string;
@@ -86,11 +89,19 @@ export const CATALOG_NORM_FACTOR_EXPAND_COLUMNS: ColumnDef<NormFactorExpandItem>
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: 'Nhóm vật tư, tài sản',
+			header: 'Mã nhóm vật tư, tài sản',
 		},
 		{
 			accessorKey: 'assignmentCodeName',
 			header: 'Tên nhóm vật tư, tài sản',
+		},
+		{
+			accessorKey: 'materialCode',
+			header: 'Mã vật tư, tài sản',
+		},
+		{
+			accessorKey: 'materialName',
+			header: 'Tên vật tư, tài sản',
 		},
 		{
 			accessorKey: 'value',

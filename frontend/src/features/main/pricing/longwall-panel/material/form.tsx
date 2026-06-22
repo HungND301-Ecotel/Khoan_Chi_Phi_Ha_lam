@@ -32,7 +32,10 @@ import {
 	type LongwallMaterialFormSchema,
 } from '@/features/main/pricing/longwall-panel/material/schema';
 import type { LongwallMaterial } from '@/features/main/pricing/longwall-panel/material/columns';
-import type { LongwallMaterialDetail, LongwallMaterialDetailCost } from '@/features/main/pricing/longwall-panel/material/type';
+import type {
+	LongwallMaterialDetail,
+	LongwallMaterialDetailCost,
+} from '@/features/main/pricing/longwall-panel/material/type';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,6 +43,7 @@ import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useFormContext, useWatch } from 'react-hook-form';
 import { NumericFormat } from 'react-number-format';
+import { getLongwallMaterialDetail } from '@/features/main/pricing/longwall-panel/material/columns';
 
 type MaterialOption = MultiSelectOption & {
 	assignmentCodeId: string;
@@ -317,7 +321,9 @@ export function LongwallMaterialForm({
 	const [selectedAssignments, setSelectedAssignments] = useState<
 		MultiSelectOption[]
 	>([]);
-	const [selectedMaterials, setSelectedMaterials] = useState<MaterialOption[]>([]);
+	const [selectedMaterials, setSelectedMaterials] = useState<MaterialOption[]>(
+		[],
+	);
 	const [useInterpolation, setUseInterpolation] = useState(false);
 	const [interpolationPoint, setInterpolationPoint] = useState<
 		number | undefined
@@ -436,7 +442,8 @@ export function LongwallMaterialForm({
 			code: isDuplicate ? '' : row.code,
 			processId: row.processId,
 			longwallParametersId: row.longwallParametersId || '',
-			cuttingThicknessId: row.cuttingThicknessId || row.cuttingthicknessId || '',
+			cuttingThicknessId:
+				row.cuttingThicknessId || row.cuttingthicknessId || '',
 			seamFaceId: row.seamFaceId || '',
 			technologyId: row.technologyId || '',
 			powerId: row.powerId || '',
@@ -449,7 +456,9 @@ export function LongwallMaterialForm({
 		});
 
 		api
-			.get<LongwallMaterialDetail>(API.PRICING.MATERIAL.LONGWALL_PANEL.DETAIL(row.id))
+			.get<LongwallMaterialDetail>(
+				API.PRICING.MATERIAL.LONGWALL_PANEL.DETAIL(row.id),
+			)
 			.then((res) => {
 				const detail = res.result;
 				persistedCostsRef.current = detail.costs ?? [];
@@ -675,8 +684,12 @@ export function LongwallMaterialForm({
 			return;
 		}
 
-		const upperNorm = upperNorms.find((item) => item.id === selectedUpperNormId);
-		const lowerNorm = upperNorms.find((item) => item.id === selectedLowerNormId);
+		const upperNorm = upperNorms.find(
+			(item) => item.id === selectedUpperNormId,
+		);
+		const lowerNorm = upperNorms.find(
+			(item) => item.id === selectedLowerNormId,
+		);
 		if (!upperNorm || !lowerNorm) return;
 
 		const upperMap = buildInterpolationMaps(upperNorm.costs ?? []);
@@ -751,8 +764,12 @@ export function LongwallMaterialForm({
 		if (interpolationPoint === undefined) return;
 		if (upperPoint <= lowerPoint) return;
 
-		const upperNorm = upperNorms.find((item) => item.id === selectedUpperNormId);
-		const lowerNorm = upperNorms.find((item) => item.id === selectedLowerNormId);
+		const upperNorm = upperNorms.find(
+			(item) => item.id === selectedUpperNormId,
+		);
+		const lowerNorm = upperNorms.find(
+			(item) => item.id === selectedLowerNormId,
+		);
 		if (!upperNorm || !lowerNorm) return;
 
 		const ratio = (interpolationPoint - lowerPoint) / (upperPoint - lowerPoint);
@@ -761,7 +778,10 @@ export function LongwallMaterialForm({
 		const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 
 		const interpolatedCosts = form.getValues('costs').map((cost) => {
-			const key = buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId);
+			const key = buildMaterialSelectionValue(
+				cost.assignmentCodeId,
+				cost.materialId,
+			);
 			const upperCost = upperMap.get(key);
 			const lowerCost = lowerMap.get(key);
 			if (!upperCost || !lowerCost) {
@@ -781,13 +801,9 @@ export function LongwallMaterialForm({
 		});
 
 		interpolationAppliedRef.current = true;
-		form.setValue(
-			'costs',
-			sortCosts(interpolatedCosts, assignments, assets),
-			{
-				shouldValidate: false,
-			},
-		);
+		form.setValue('costs', sortCosts(interpolatedCosts, assignments, assets), {
+			shouldValidate: false,
+		});
 	}, [
 		assets,
 		assignments,
@@ -883,7 +899,10 @@ export function LongwallMaterialForm({
 					...processedValues,
 				});
 			} else {
-				await api.post(API.PRICING.MATERIAL.LONGWALL_PANEL.CREATE, processedValues);
+				await api.post(
+					API.PRICING.MATERIAL.LONGWALL_PANEL.CREATE,
+					processedValues,
+				);
 			}
 
 			setOpen(false);
@@ -1091,10 +1110,17 @@ export function LongwallMaterialForm({
 							placeholder='Chọn định mức cận trên'
 							value={selectedUpperNormId}
 							onValueChange={setSelectedUpperNormId}
-							options={upperNormOptions.map((item) => ({
-								label: item.code,
-								value: item.id,
-							}))}
+							options={upperNormOptions.map((item) => {
+								const details = getLongwallMaterialDetail(item);
+								const labelText = [item.code, item.processName, details]
+									.filter(Boolean)
+									.join(' - ');
+
+								return {
+									label: labelText,
+									value: item.id,
+								};
+							})}
 						/>
 
 						<div className='flex flex-col gap-2'>
@@ -1120,10 +1146,17 @@ export function LongwallMaterialForm({
 							placeholder='Chọn định mức cận dưới'
 							value={selectedLowerNormId}
 							onValueChange={setSelectedLowerNormId}
-							options={lowerNormOptions.map((item) => ({
-								label: item.code,
-								value: item.id,
-							}))}
+							options={upperNormOptions.map((item) => {
+								const details = getLongwallMaterialDetail(item);
+								const labelText = [item.code, item.processName, details]
+									.filter(Boolean)
+									.join(' - ');
+
+								return {
+									label: labelText,
+									value: item.id,
+								};
+							})}
 						/>
 
 						<div className='flex flex-col gap-2'>
@@ -1162,7 +1195,8 @@ export function LongwallMaterialForm({
 					{interpolationMismatches.length > 0 && (
 						<div className='bg-destructive/10 border-destructive/30 rounded-md border p-3'>
 							<p className='text-destructive text-xs font-medium'>
-								2 định mức có cặp Nhóm vật tư, tài sản và Vật tư tài sản không khớp:
+								2 định mức có cặp Nhóm vật tư, tài sản và Vật tư tài sản không
+								khớp:
 							</p>
 							<ul className='text-destructive mt-1 list-disc pl-4 text-xs'>
 								{interpolationMismatches.map((label) => (
@@ -1270,7 +1304,7 @@ function GroupedMaterialCosts({
 			<FormSeparator />
 
 			<div className='flex flex-col gap-2'>
-				<Label>Tổng tiền (đ/tấn)</Label>
+				<Label>Tổng tiền (đ/1000 tấn)</Label>
 				<Input
 					readOnly
 					value={formatNumber(totalPrice)}
@@ -1386,7 +1420,7 @@ function MaterialCostRow({
 			</div>
 
 			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá vật liệu (đ/tấn)</Label>
+				<Label>Đơn giá vật liệu (đ/1000 tấn)</Label>
 				<Input
 					readOnly
 					value={formatNumber(totalPrice || 0)}
@@ -1478,7 +1512,7 @@ function VtkRow({ materialTotal }: { materialTotal: number }) {
 			</div>
 
 			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá vật liệu (đ/tấn)</Label>
+				<Label>Đơn giá vật liệu (đ/1000 tấn)</Label>
 				<Input
 					readOnly
 					value={formatNumber(isNaN(otherMaterialCost) ? 0 : otherMaterialCost)}

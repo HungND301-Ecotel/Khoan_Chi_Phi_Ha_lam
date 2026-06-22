@@ -23,6 +23,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
         unitOfWork.GetRepository<Domain.Entities.Index.StoneClampRatio>();
     private readonly IWriteRepository<Domain.Entities.Index.AssignmentCode> _assignmentCodeRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.AssignmentCode>();
+    private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository =
+        unitOfWork.GetRepository<Domain.Entities.Index.Material>();
 
     public async Task<byte[]> Handle(ExportExcelNormFactorQuery request, CancellationToken cancellationToken)
     {
@@ -34,6 +36,7 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                 .Include(n => n.Hardness)
                 .Include(n => n.StoneClampRatio)
                 .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.AssignmentCode).ThenInclude(a => a.Code)
+                .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.Material).ThenInclude(m => m.Code)
                 .Include(n => n.NormFactorAssignmentCodes).ThenInclude(nfa => nfa.TargetHardness),
             disableTracking: true);
 
@@ -48,8 +51,13 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
         var stoneClampRatios = await _stoneClampRatioRepository.GetAllAsync(
             selector: s => s.Value,
             disableTracking: true);
+
         var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
             include: q => q.Include(a => a.Code),
+            disableTracking: true);
+
+        var materials = await _materialRepository.GetAllAsync(
+            include: q => q.Include(m => m.Code),
             disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -69,14 +77,12 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                     .Where(v => !string.IsNullOrWhiteSpace(v))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(v => v)
-                    .Prepend("Không có")
                     .ToList()
             },
             {
                 nameof(NormFactorExcelDto.SteelMeshTypeName),
                 new List<string>
                 {
-                    GetSteelMeshDisplayName(SteelMeshType.None),
                     GetSteelMeshDisplayName(SteelMeshType.SingleLayerSteelMesh),
                     GetSteelMeshDisplayName(SteelMeshType.DoubleLayerSteelMesh)
                 }
@@ -106,6 +112,15 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(v => v)
                     .ToList()
+            },
+            {
+                nameof(NormFactorExcelDto.MaterialCode),
+                materials
+                    .Where(m => m.Code != null && !string.IsNullOrWhiteSpace(m.Code!.Value))
+                    .Select(m => $"{m.Code!.Value.Trim()} - {m.Name}")
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(v => v)
+                    .ToList()
             }
         };
 
@@ -117,7 +132,7 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                 ProductionProcessName = n.ProductionProcess?.Code != null
                     ? $"{n.ProductionProcess.Code.Value} - {n.ProductionProcess.Name}"
                     : string.Empty,
-                HardnessName = n.Hardness?.Value ?? "Không có",
+                HardnessName = n.Hardness?.Value ?? string.Empty,
                 SteelMeshTypeName = GetSteelMeshDisplayName(n.SteelMeshType),
                 StoneClampRatioName = n.StoneClampRatio?.Value ?? string.Empty
             };
@@ -134,6 +149,7 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                         SteelMeshTypeName = baseDto.SteelMeshTypeName,
                         StoneClampRatioName = baseDto.StoneClampRatioName,
                         AssignmentCode = string.Empty,
+                        MaterialCode = string.Empty,
                         Value = 0,
                         TargetHardnessName = "Định mức hiện tại"
                     }
@@ -141,7 +157,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
             }
 
             return n.NormFactorAssignmentCodes
-                .OrderBy(a => a.AssignmentCode!.Code!.Value)
+                .OrderBy(a => a.AssignmentCode?.Code?.Value)
+                .ThenBy(a => a.Material?.Code?.Value)
                 .Select(a => new NormFactorExcelDto
                 {
                     Id = baseDto.Id,
@@ -150,6 +167,11 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                     SteelMeshTypeName = baseDto.SteelMeshTypeName,
                     StoneClampRatioName = baseDto.StoneClampRatioName,
                     AssignmentCode = a.AssignmentCode?.Code?.Value ?? string.Empty,
+
+                    MaterialCode = a.Material?.Code?.Value != null
+                        ? $"{a.Material.Code.Value} - {a.Material.Name}"
+                        : string.Empty,
+
                     Value = a.Value,
                     TargetHardnessName = a.TargetHardness?.Value ?? "Định mức hiện tại"
                 })
@@ -165,7 +187,7 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
         {
             SteelMeshType.SingleLayerSteelMesh => "Trải 1 lớp lưới thép",
             SteelMeshType.DoubleLayerSteelMesh => "Trải 2 lớp lưới thép",
-            _ => "Không áp dụng"
+            _ => string.Empty
         };
     }
 }

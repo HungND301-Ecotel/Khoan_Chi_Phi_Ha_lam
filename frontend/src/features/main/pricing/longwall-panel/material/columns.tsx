@@ -48,9 +48,9 @@ export type LongwallMaterial = {
 	otherMaterialValue?: number;
 };
 
-const getLongwallMaterialDetail = (material: LongwallMaterial) => {
+export const getLongwallMaterialDetail = (material: LongwallMaterial) => {
 	const longwallParameterText = material.longwallParameters
-		? `Llc ${material.longwallParameters.llc}; Lkc ${material.longwallParameters.lkc}; Mk ${material.longwallParameters.mk}`
+		? `${material.longwallParameters.llc}; ${material.longwallParameters.lkc}; ${material.longwallParameters.mk}`
 		: '-';
 	const cuttingThicknessText = material.cuttingThickness?.value ?? '-';
 	const hardnessOrPowerText =
@@ -106,7 +106,7 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 	},
 	{
 		accessorKey: 'totalPrice',
-		header: 'Đơn giá vật liệu (đ/tấn)',
+		header: 'Đơn giá vật liệu (đ/1000 tấn)',
 		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
@@ -235,7 +235,7 @@ export const LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS: ColumnDef<ExpandLongwallM
 		},
 		{
 			accessorKey: 'totalPrice',
-			header: 'Đơn giá vật liệu (đ/tấn)',
+			header: 'Đơn giá vật liệu (đ/1000 tấn)',
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary' ? (
 					<span className='font-semibold'>
