@@ -54,7 +54,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     public async Task<bool> Handle(ImportLongwallMaterialUnitPriceExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
+        {
             throw new BadRequestException("Vui lòng chọn file Excel.");
+        }
 
         var importErrors = new List<string>();
 
@@ -110,7 +112,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         ThrowIfImportErrors(importErrors);
 
         if (!importRows.Any())
+        {
             throw new BadRequestException("Không có dữ liệu hợp lệ để import.");
+        }
 
         var duplicateCodes = importRows
             .GroupBy(d => d.Code.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -119,7 +123,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             .ToList();
 
         if (duplicateCodes.Any())
+        {
             importErrors.Add($"File Excel có mã định mức vật liệu bị trùng: {string.Join("; ", duplicateCodes)}");
+        }
 
         ThrowIfImportErrors(importErrors);
 
@@ -153,7 +159,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         {
             var code = entity.Code?.Value?.Trim();
             if (string.IsNullOrWhiteSpace(code) || dbCodeLookup.ContainsKey(code))
+            {
                 continue;
+            }
+
             dbCodeLookup[code] = entity;
         }
 
@@ -217,7 +226,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                 if (dbCodeLookup.TryGetValue(code, out var existing))
                 {
                     if (existing.MaterialUnitPriceAssignmentCodes.Any())
+                    {
                         assignmentCostsToDelete.AddRange(existing.MaterialUnitPriceAssignmentCodes);
+                    }
 
                     existing.Update(code, processId, longwallParametersId, cuttingThicknessId, seamFaceId,
                         powerId, hardnessId, powerId.HasValue, technologyId, startMonth, endMonth,
@@ -263,16 +274,24 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         try
         {
             if (assignmentCostsToDelete.Any())
+            {
                 _materialUnitPriceAssignmentCodeRepository.Delete(assignmentCostsToDelete);
+            }
 
             if (deleteList.Any())
+            {
                 _materialUnitPriceRepository.Delete(deleteList);
+            }
 
             if (addList.Any())
+            {
                 await _materialUnitPriceRepository.InsertAsync(addList, cancellationToken);
+            }
 
             if (updateList.Any())
+            {
                 _materialUnitPriceRepository.Update(updateList);
+            }
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);
@@ -301,14 +320,23 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var lastCol = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
         if (lastRow < 8 || lastCol < 7)
+        {
             return [];
+        }
 
         var currentMonth = new DateOnly(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("MM/yyyy");
         var startMonth = worksheet.Cell(3, 2).GetString().Trim();
         var endMonth = worksheet.Cell(3, 5).GetString().Trim();
 
-        if (string.IsNullOrWhiteSpace(startMonth)) startMonth = currentMonth;
-        if (string.IsNullOrWhiteSpace(endMonth)) endMonth = startMonth;
+        if (string.IsNullOrWhiteSpace(startMonth))
+        {
+            startMonth = currentMonth;
+        }
+
+        if (string.IsNullOrWhiteSpace(endMonth))
+        {
+            endMonth = startMonth;
+        }
 
         var blocks = new List<BlockDef>();
         BlockDef? currentBlock = null;
@@ -334,7 +362,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             {
                 var materialName = !string.IsNullOrWhiteSpace(row6Val) ? row6Val : row5Val;
                 if (!string.IsNullOrWhiteSpace(materialName))
+                {
                     currentBlock.MaterialCols.Add((col, materialName));
+                }
             }
         }
 
@@ -350,12 +380,17 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var cuttingThicknessName = worksheet.Cell(row, 6).GetString().Trim();
 
             if (string.IsNullOrWhiteSpace(processName) && string.IsNullOrWhiteSpace(longwallParametersName))
+            {
                 continue;
+            }
 
             foreach (var block in blocks)
             {
                 var codesStr = worksheet.Cell(row, block.CodeCol).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(codesStr)) continue;
+                if (string.IsNullOrWhiteSpace(codesStr))
+                {
+                    continue;
+                }
 
                 var codes = codesStr.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
@@ -385,7 +420,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
                     foreach (var mat in block.MaterialCols)
                     {
                         var priceCell = worksheet.Cell(row, mat.Col);
-                        if (priceCell.IsEmpty()) continue;
+                        if (priceCell.IsEmpty())
+                        {
+                            continue;
+                        }
 
                         if (!TryParseDouble(priceCell, out var norm))
                         {
@@ -464,7 +502,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             var matDisplay = BuildAssignmentDisplay(matCode, matName);
 
             var matchedAssignment = material.AssignmentCode;
-            if (matchedAssignment == null) continue;
+            if (matchedAssignment == null)
+            {
+                continue;
+            }
 
             var item = new AssignmentLookupItem(matchedAssignment.Id, material.Id, matDisplay);
             lookup.TryAdd(NormalizeLookupValue(matDisplay), item);
@@ -477,7 +518,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
     private static string BuildAssignmentDisplay(string code, string name)
     {
         if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(name))
+        {
             return $"{code} - {name}";
+        }
+
         return !string.IsNullOrWhiteSpace(code) ? code : name;
     }
 
@@ -499,13 +543,19 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         }
 
         if (DateOnly.TryParseExact(monthYear, "MM/yyyy", null, DateTimeStyles.None, out var result))
+        {
             return result;
+        }
 
         if (DateOnly.TryParseExact(monthYear, "M/yyyy", null, DateTimeStyles.None, out result))
+        {
             return result;
+        }
 
         if (DateTime.TryParse(monthYear, out var dateTime))
+        {
             return DateOnly.FromDateTime(dateTime);
+        }
 
         throw new BadRequestException($"Không thể parse tháng năm: {monthYear}. Định dạng cần là MM/yyyy hoặc M/yyyy");
     }
@@ -525,7 +575,11 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
 
     private static string NormalizeLookupValue(string input)
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+
         return Regex.Replace(input.Trim(), @"\s+", " ").ToUpperInvariant();
     }
 
@@ -536,7 +590,11 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        if (errors.Count == 0) return;
+        if (errors.Count == 0)
+        {
+            return;
+        }
+
         throw new ExcelImportException(errors);
     }
 
@@ -555,13 +613,18 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         var isHardnessNone = string.IsNullOrWhiteSpace(normalizedHardness) || normalizedHardness == normalizedNone;
 
         if (isPowerNone == isHardnessNone)
+        {
             throw new BadRequestException($"Mã '{code}': chỉ một trong hai 'Hệ số kiên cố' hoặc 'Công suất' được để trống.");
+        }
 
         Guid? powerId = null;
         if (!isPowerNone)
         {
             if (!powerIdMap.TryGetValue(normalizedPower, out var mappedPowerId))
+            {
                 throw new BadRequestException($"Công suất '{powerName}' không tồn tại cho mã '{code}'.");
+            }
+
             powerId = mappedPowerId;
         }
 
@@ -569,7 +632,10 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         if (!isHardnessNone)
         {
             if (!hardnessIdMap.TryGetValue(normalizedHardness, out var mappedHardnessId))
+            {
                 throw new BadRequestException($"Hệ số kiên cố '{hardnessName}' không tồn tại cho mã '{code}'.");
+            }
+
             hardnessId = mappedHardnessId;
         }
 
@@ -600,9 +666,14 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
             for (var i = 1; i < ordered.Count; i++)
             {
                 if (maxEnd > ordered[i].StartMonth)
+                {
                     throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+                }
+
                 if (ordered[i].EndMonth > maxEnd)
+                {
                     maxEnd = ordered[i].EndMonth;
+                }
             }
         }
     }
@@ -654,7 +725,9 @@ public class ImportLongwallMaterialUnitPriceExcelCommandHandler(IUnitOfWork unit
         public void AddAssignmentCost(Guid assignmentCodeId, Guid? materialId, double norm, double totalPrice, string assignmentDisplay)
         {
             if (_assignmentCostMap.ContainsKey(assignmentCodeId))
+            {
                 throw new BadRequestException($"Nhóm vật tư '{assignmentDisplay}' bị trùng cho mã '{Code}'.");
+            }
 
             _assignmentCostMap[assignmentCodeId] = new AssignmentCostImportItem(assignmentCodeId, materialId, norm, totalPrice);
         }

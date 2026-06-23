@@ -66,18 +66,15 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             StoneClampRatioName = normFactor.StoneClampRatio?.Value ?? string.Empty,
             SteelMeshType = normFactor.SteelMeshType,
             AffectAssignmentCodes = assignmentDtos
-                .Select(a => new ShortAssignmentCodeDto
-                {
-                    Id = a.AssignmentCodeId,
-                    Code = a.AssignmentCode,
-                    Name = a.AssignmentCodeName
-                })
-                .DistinctBy(x => x.Id) 
-                .ToList(),
+        .Select(a => new ShortAssignmentCodeDto
+        {
+            Id = a.AssignmentCodeId,
+            Code = a.AssignmentCode,
+            Name = a.AssignmentCodeName
+        })
+        .DistinctBy(x => x.Id)
+        .ToList(),
             AssignmentCodes = assignmentDtos,
-            Value = firstAssignment?.Value ?? 0,
-            TargetHardnessId = firstAssignment?.TargetHardnessId,
-            TargetHardnessName = firstAssignment?.TargetHardnessName ?? string.Empty
         };
     }
 }

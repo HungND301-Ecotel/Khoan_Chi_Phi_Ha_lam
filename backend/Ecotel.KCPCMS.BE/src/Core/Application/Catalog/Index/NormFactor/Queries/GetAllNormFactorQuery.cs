@@ -2,6 +2,7 @@ using Application.Catalog.Index.AdjustmentFactor.Specifications;
 using Application.Common.Models;
 using Application.Common.Persistence;
 using Application.Common.Services;
+using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.NormFactor;
 using MediatR;
 
@@ -29,7 +30,26 @@ public class GetAllNormFactorQueryHandler(IPaginationService paginationService, 
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderByCodeNatural(d => d.ProcessGroupCode).ThenBy(d => d.HardnessName).ThenBy(d => d.StoneClampRatioName).ToList();
+
+        foreach (var item in result.Data)
+        {
+            item.AffectAssignmentCodes = item.AssignmentCodes
+                .Select(a => new ShortAssignmentCodeDto
+                {
+                    Id = a.AssignmentCodeId,
+                    Code = a.AssignmentCode,
+                    Name = a.AssignmentCodeName
+                })
+                .DistinctBy(x => x.Id)
+                .ToList();
+        }
+
+        result.Data = result.Data
+            .OrderByCodeNatural(d => d.ProcessGroupCode)
+            .ThenBy(d => d.HardnessName)
+            .ThenBy(d => d.StoneClampRatioName)
+            .ToList();
+
         return result;
     }
 }
