@@ -18,7 +18,7 @@ import {
 import UserMenu from '@/features/main/layout/user-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { DynamicIcon } from 'lucide-react/dynamic';
 import { ComponentProps } from 'react';
 import { Link, useLocation } from 'react-router-dom';
