@@ -39,6 +39,11 @@ namespace Migrators.PostgreSQL.Migrations
                 schema: "Index",
                 table: "NormFactorAssignmentCode");
 
+            migrationBuilder.Sql(@"
+                UPDATE ""Index"".""NormFactor""
+                SET ""StoneClampRatioId"" = '00000000-0000-0000-0000-000000000000'
+                WHERE ""StoneClampRatioId"" IS NULL;
+            ");
             migrationBuilder.AlterColumn<Guid>(
                 name: "StoneClampRatioId",
                 schema: "Index",

@@ -75,7 +75,16 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
-        var uniqueMaterialIds = assignmentConfigs.Select(a => a.MaterialId).Distinct().ToList();
+        var uniqueMaterialIds = assignmentConfigs
+            .Where(a => a.MaterialId.HasValue)
+            .Select(a => a.MaterialId!.Value)
+            .Distinct()
+            .ToList();
+        if (uniqueMaterialIds.Count != assignmentConfigs.Count)
+        {
+            throw new BadRequestException("Vật tư không được để trống.");
+        }
+
         var materialCount = await _materialRepository.CountAsync(predicate: m => uniqueMaterialIds.Contains(m.Id));
         if (materialCount != uniqueMaterialIds.Count)
         {
@@ -112,7 +121,7 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             assignmentConfigs.Select(a =>
                 NormFactorAssignmentCode.Create(
                     assignmentCodeId: a.AssignmentCodeId,
-                    materialId: a.MaterialId,
+                    materialId: a.MaterialId ?? Guid.Empty,
                     value: a.Value,
                     targetHardnessId: a.TargetHardnessId))
             .ToList());

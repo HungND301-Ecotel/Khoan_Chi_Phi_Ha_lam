@@ -67,8 +67,11 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             throw new NotFoundException(CustomResponseMessage.AssignmentCodeNotFound);
         }
 
-        var uniqueMaterialIds = assignmentConfigs.Select(a => a.MaterialId).Distinct().ToList();
-        var materialCount = await _materialRepository.CountAsync(predicate: m => uniqueMaterialIds.Contains(m.Id));
+        var uniqueMaterialIds = assignmentConfigs
+            .Where(a => a.MaterialId.HasValue)
+            .Select(a => a.MaterialId!.Value)
+            .Distinct()
+            .ToList(); var materialCount = await _materialRepository.CountAsync(predicate: m => uniqueMaterialIds.Contains(m.Id));
         if (materialCount != uniqueMaterialIds.Count)
         {
             throw new NotFoundException("Có vật tư không tồn tại trong hệ thống.");
@@ -97,10 +100,10 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
         normFactor.AddNormFactorAssignmentCode(
             assignmentConfigs.Select(a =>
                 NormFactorAssignmentCode.Create(
-                    assignmentCodeId: a.AssignmentCodeId,
-                    materialId: a.MaterialId,
-                    value: a.Value,
-                    targetHardnessId: a.TargetHardnessId))
+                assignmentCodeId: a.AssignmentCodeId,
+                materialId: a.MaterialId ?? Guid.Empty,
+                value: a.Value,
+                targetHardnessId: a.TargetHardnessId))
             .ToList());
 
         await _normFactorRepository.InsertAsync(normFactor, cancellationToken);

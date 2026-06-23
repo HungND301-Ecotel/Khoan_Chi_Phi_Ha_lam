@@ -147,6 +147,20 @@ export function NormFactorForm({
 				return;
 			}
 
+			const missingMaterialIndex = values.assignmentCodeConfigs.findIndex(
+				(config) => !config.materialId,
+			);
+			if (missingMaterialIndex !== -1) {
+				form.setError(
+					`assignmentCodeConfigs.${missingMaterialIndex}.materialId` as any,
+					{
+						type: 'manual',
+						message: 'Vật tư chi tiết không được để trống.',
+					},
+				);
+				return;
+			}
+
 			const payload = {
 				productionProcessId: values.productionProcessId,
 				hardnessId,
@@ -154,7 +168,7 @@ export function NormFactorForm({
 				steelMeshType,
 				assignmentCodes: values.assignmentCodeConfigs.map((config) => ({
 					assignmentCodeId: config.assignmentCodeId,
-					materialId: config.materialId || null,
+					materialId: config.materialId,
 					value: config.value,
 					targetHardnessId: config.targetHardnessId || null,
 				})),

@@ -26,7 +26,7 @@ public class UpdateNormFactorDto
 public class NormFactorAssignmentCodeUpsertDto
 {
     public Guid AssignmentCodeId { get; set; }
-    public Guid MaterialId { get; set; }
+    public Guid? MaterialId { get; set; }
     public double Value { get; set; }
     public Guid? TargetHardnessId { get; set; }
 }

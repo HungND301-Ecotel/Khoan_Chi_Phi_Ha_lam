@@ -163,7 +163,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 existingEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
                 .Select(x => NormFactorAssignmentCodeEntity.Create(
                     assignmentCodeId: x.AssignmentCodeId,
-                    materialId: x.MaterialId,
+                    materialId: x.MaterialId ?? Guid.Empty,
                     value: x.Value,
                     targetHardnessId: x.TargetHardnessId))
                 .ToList());
@@ -181,7 +181,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 newEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
                     .Select(x => NormFactorAssignmentCodeEntity.Create(
                         assignmentCodeId: x.AssignmentCodeId,
-                        materialId: x.MaterialId,
+                        materialId: x.MaterialId ?? Guid.Empty,
                         value: x.Value,
                         targetHardnessId: x.TargetHardnessId))
                     .ToList());
@@ -285,7 +285,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         var existingMap = existingEntity.NormFactorAssignmentCodes
             .ToDictionary(x => (x.AssignmentCodeId, x.MaterialId), x => (x.Value, x.TargetHardnessId));
         var newMap = aggregate.AssignmentCodes
-            .ToDictionary(x => (x.AssignmentCodeId, x.MaterialId), x => (x.Value, x.TargetHardnessId));
+            .ToDictionary(x => (x.AssignmentCodeId, x.MaterialId ?? Guid.Empty), x => (x.Value, x.TargetHardnessId));
 
         if (existingMap.Count != newMap.Count)
         {
