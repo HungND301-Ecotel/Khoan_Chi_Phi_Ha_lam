@@ -8,22 +8,24 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid ProductionProcessId { get; protected set; }
     public Guid? HardnessId { get; protected set; }
-    public Guid StoneClampRatioId { get; protected set; }
+    public Guid? StoneClampRatioId { get; protected set; }
     public SteelMeshType SteelMeshType { get; protected set; } = SteelMeshType.None;
 
-
-    //Navigation Properties
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
     public virtual Hardness? Hardness { get; protected set; }
     public virtual StoneClampRatio? StoneClampRatio { get; protected set; }
+
     private IList<PlannedMaterialCost> _plannedMaterialCosts = new List<PlannedMaterialCost>();
     public virtual IReadOnlyCollection<PlannedMaterialCost> PlannedMaterialCosts => _plannedMaterialCosts.AsReadOnly();
 
     private IList<NormFactorAssignmentCode> _normFactorAssignmentCodes = new List<NormFactorAssignmentCode>();
     public IReadOnlyList<NormFactorAssignmentCode> NormFactorAssignmentCodes => _normFactorAssignmentCodes.ToList();
 
-
-    public static NormFactor Create(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, SteelMeshType steelMeshType = SteelMeshType.None)
+    public static NormFactor Create(
+        Guid productionProcessId,
+        Guid? hardnessId,
+        Guid? stoneClampRatioId,
+        SteelMeshType steelMeshType = SteelMeshType.None)
     {
         return new NormFactor
         {
@@ -43,7 +45,11 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         }
     }
 
-    public void Update(Guid productionProcessId, Guid? hardnessId, Guid stoneClampRatioId, SteelMeshType steelMeshType = SteelMeshType.None)
+    public void Update(
+        Guid productionProcessId,
+        Guid? hardnessId,
+        Guid? stoneClampRatioId,
+        SteelMeshType steelMeshType = SteelMeshType.None)
     {
         ProductionProcessId = productionProcessId;
         HardnessId = hardnessId;

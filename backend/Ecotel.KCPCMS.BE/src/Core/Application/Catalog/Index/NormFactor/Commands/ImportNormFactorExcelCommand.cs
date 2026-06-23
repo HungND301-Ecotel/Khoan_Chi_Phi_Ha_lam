@@ -97,9 +97,15 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
             var steelMeshType = ResolveSteelMeshType(dto.SteelMeshTypeName, rowNumber);
 
             var stoneClampRatioName = dto.StoneClampRatioName?.Trim() ?? string.Empty;
-            if (!stoneClampByName.TryGetValue(stoneClampRatioName, out var stoneClampRatio))
+            Guid? stoneClampRatioId = null;
+            if (!string.IsNullOrWhiteSpace(stoneClampRatioName))
             {
-                throw new BadRequestException($"Giá trị tỷ lệ ngậm đá '{dto.StoneClampRatioName}' không tồn tại ở dòng {rowNumber}.");
+                if (!stoneClampByName.TryGetValue(stoneClampRatioName, out var stoneClampRatio))
+                {
+                    throw new BadRequestException($"Giá trị tỷ lệ ngậm đá '{dto.StoneClampRatioName}' không tồn tại ở dòng {rowNumber}.");
+                }
+
+                stoneClampRatioId = stoneClampRatio.Id;
             }
 
             var assignmentCodeId = ResolveAssignmentCodeId(dto.AssignmentCode, assignmentCodeByCode, rowNumber);
@@ -111,7 +117,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 rowNumber,
                 productionProcess.Id,
                 hardnessId,
-                stoneClampRatio.Id,
+                stoneClampRatioId,
                 steelMeshType,
                 assignmentCodeId,
                 materialId,
@@ -155,13 +161,12 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 }
 
                 existingEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
-                    .Select(x => NormFactorAssignmentCodeEntity.Create(
-                        assignmentCodeId: x.AssignmentCodeId,
-                        normFactorId: existingEntity.Id,
-                        materialId: x.MaterialId,
-                        value: x.Value,
-                        targetHardnessId: x.TargetHardnessId))
-                    .ToList());
+                .Select(x => NormFactorAssignmentCodeEntity.Create(
+                    assignmentCodeId: x.AssignmentCodeId,
+                    materialId: x.MaterialId,
+                    value: x.Value,
+                    targetHardnessId: x.TargetHardnessId))
+                .ToList());
 
                 updateList.Add(existingEntity);
             }
@@ -176,7 +181,6 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 newEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
                     .Select(x => NormFactorAssignmentCodeEntity.Create(
                         assignmentCodeId: x.AssignmentCodeId,
-                        normFactorId: Guid.Empty,
                         materialId: x.MaterialId,
                         value: x.Value,
                         targetHardnessId: x.TargetHardnessId))
@@ -228,7 +232,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         {
             var key = row.Id != Guid.Empty
                 ? $"ID:{row.Id:D}"
-                : $"NEW:{row.ProductionProcessId:D}:{row.HardnessId?.ToString("D") ?? "NULL"}:{row.StoneClampRatioId:D}:{(int)row.SteelMeshType}";
+                : $"NEW:{row.ProductionProcessId:D}:{row.HardnessId?.ToString("D") ?? "NULL"}:{row.StoneClampRatioId?.ToString("D") ?? "NULL"}:{(int)row.SteelMeshType}";
 
             if (!byGroup.TryGetValue(key, out var aggregate))
             {
@@ -456,7 +460,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         int RowNumber,
         Guid ProductionProcessId,
         Guid? HardnessId,
-        Guid StoneClampRatioId,
+        Guid? StoneClampRatioId,
         SteelMeshType SteelMeshType,
         Guid AssignmentCodeId,
         Guid MaterialId,
@@ -464,16 +468,16 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         Guid? TargetHardnessId);
 
     private sealed class MappedNormFactorAggregate(
-        Guid id,
-        Guid productionProcessId,
-        Guid? hardnessId,
-        Guid stoneClampRatioId,
-        SteelMeshType steelMeshType)
+    Guid id,
+    Guid productionProcessId,
+    Guid? hardnessId,
+    Guid? stoneClampRatioId,
+    SteelMeshType steelMeshType)
     {
         public Guid Id { get; } = id;
         public Guid ProductionProcessId { get; } = productionProcessId;
         public Guid? HardnessId { get; } = hardnessId;
-        public Guid StoneClampRatioId { get; } = stoneClampRatioId;
+        public Guid? StoneClampRatioId { get; } = stoneClampRatioId;
         public SteelMeshType SteelMeshType { get; } = steelMeshType;
         public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; } = [];
     }

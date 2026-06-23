@@ -154,7 +154,7 @@ export function NormFactorForm({
 				steelMeshType,
 				assignmentCodes: values.assignmentCodeConfigs.map((config) => ({
 					assignmentCodeId: config.assignmentCodeId,
-					materialId: config.materialId, // Gửi materialId đi
+					materialId: config.materialId || null,
 					value: config.value,
 					targetHardnessId: config.targetHardnessId || null,
 				})),

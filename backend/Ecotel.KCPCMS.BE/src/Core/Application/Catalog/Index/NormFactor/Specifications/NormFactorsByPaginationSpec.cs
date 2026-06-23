@@ -25,50 +25,32 @@ public class NormFactorsByPaginationSpec
             .Where(nf => string.IsNullOrWhiteSpace(searchTerm) ||
                          nf.ProductionProcess != null && (nf.ProductionProcess.Name.ToLower().Contains(searchTerm) || nf.ProductionProcess.Code.Value.ToLower().Contains(searchTerm)));
 
-        Query
-            .Select(nf => new NormFactorDto
+        Query.Select(nf => new NormFactorDto
+        {
+            Id = nf.Id,
+            ProcessGroupId = nf.ProductionProcess!.ProcessGroupId,
+            ProcessGroupCode = nf.ProductionProcess.ProcessGroup!.FixedKey!.Key,
+            ProcessGroupName = nf.ProductionProcess.ProcessGroup.Name,
+            ProductionProcessId = nf.ProductionProcessId,
+            ProductionProcessCode = nf.ProductionProcess != null ? nf.ProductionProcess.Code.Value : string.Empty,
+            ProductionProcessName = nf.ProductionProcess != null ? nf.ProductionProcess.Name : string.Empty,
+            HardnessId = nf.HardnessId,
+            HardnessName = nf.Hardness != null ? nf.Hardness.Value : string.Empty,
+            StoneClampRatioId = nf.StoneClampRatioId,
+            StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
+            SteelMeshType = nf.SteelMeshType,
+            AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
             {
-                Id = nf.Id,
-                ProcessGroupId = nf.ProductionProcess!.ProcessGroupId,
-                ProcessGroupCode = nf.ProductionProcess.ProcessGroup!.FixedKey!.Key,
-                ProcessGroupName = nf.ProductionProcess.ProcessGroup.Name,
-                ProductionProcessId = nf.ProductionProcessId,
-                ProductionProcessCode = nf.ProductionProcess != null ? nf.ProductionProcess.Code.Value : string.Empty,
-                ProductionProcessName = nf.ProductionProcess != null ? nf.ProductionProcess.Name : string.Empty,
-                HardnessId = nf.HardnessId,
-                HardnessName = nf.Hardness != null ? nf.Hardness.Value : string.Empty,
-                StoneClampRatioId = nf.StoneClampRatioId,
-                StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
-                AffectAssignmentCodes = nf.NormFactorAssignmentCodes
-                    .Select(a => new ShortAssignmentCodeDto
-                    {
-                        Id = a.AssignmentCodeId,
-                        Code = a.AssignmentCode.Code!.Value,
-                        Name = a.AssignmentCode.Name
-                    })
-                    .Distinct()
-                    .ToList(),
-                AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
-                {
-                    AssignmentCodeId = a.AssignmentCodeId,
-                    AssignmentCode = a.AssignmentCode.Code!.Value,
-                    AssignmentCodeName = a.AssignmentCode.Name,
-
-                    MaterialId = a.MaterialId,
-                    MaterialCode = a.Material != null ? a.Material.Code!.Value : string.Empty,
-                    MaterialName = a.Material != null ? a.Material.Name : string.Empty,
-
-                    Value = a.Value,
-                    TargetHardnessId = a.TargetHardnessId,
-                    TargetHardnessName = a.TargetHardness != null ? a.TargetHardness.Value : string.Empty
-                }).ToList(),
-                Value = nf.NormFactorAssignmentCodes.Select(a => a.Value).FirstOrDefault(),
-                TargetHardnessId = nf.NormFactorAssignmentCodes.Select(a => a.TargetHardnessId).FirstOrDefault(),
-                SteelMeshType = nf.SteelMeshType,
-                TargetHardnessName = nf.NormFactorAssignmentCodes
-                    .Select(a => a.TargetHardness != null ? a.TargetHardness.Value : string.Empty)
-                    .FirstOrDefault() ?? string.Empty
-            });
-
+                AssignmentCodeId = a.AssignmentCodeId,
+                AssignmentCode = a.AssignmentCode.Code!.Value,
+                AssignmentCodeName = a.AssignmentCode.Name,
+                MaterialId = a.MaterialId,
+                MaterialCode = a.Material != null ? a.Material.Code!.Value : string.Empty,
+                MaterialName = a.Material != null ? a.Material.Name : string.Empty,
+                Value = a.Value,
+                TargetHardnessId = a.TargetHardnessId,
+                TargetHardnessName = a.TargetHardness != null ? a.TargetHardness.Value : string.Empty
+            }).ToList(),
+        });
     }
 }

@@ -117,10 +117,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
         var dataSourceSheet = workbook.Worksheets.Add("DataSources");
         dataSourceSheet.Hide();
 
-        for (int i = 0; i < groupDisplayList.Count; i++) dataSourceSheet.Cell(i + 1, 20).Value = groupDisplayList[i];
+        for (int i = 0; i < groupDisplayList.Count; i++)
+        {
+            dataSourceSheet.Cell(i + 1, 20).Value = groupDisplayList[i];
+        }
+
         var groupValidationRange = dataSourceSheet.Range(1, 20, Math.Max(1, groupDisplayList.Count), 20);
 
-        for (int i = 0; i < matDisplayList.Count; i++) dataSourceSheet.Cell(i + 1, 21).Value = matDisplayList[i];
+        for (int i = 0; i < matDisplayList.Count; i++)
+        {
+            dataSourceSheet.Cell(i + 1, 21).Value = matDisplayList[i];
+        }
+
         var nameValidationRange = dataSourceSheet.Range(1, 21, Math.Max(1, matDisplayList.Count), 21);
 
         string startMonth = list.Any() ? list.Min(x => x.StartMonth).ToString("MM/yyyy") : string.Empty;
@@ -155,12 +163,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                 var cellLevel1 = worksheet.Cell(headerRow1, currentMatrixCol);
                 cellLevel1.Value = colDef.GroupDisplay;
                 ApplyHeaderStyle(worksheet.Range(headerRow1, currentMatrixCol, headerRow1, currentMatrixCol));
-                if (groupDisplayList.Any()) cellLevel1.CreateDataValidation().List(groupValidationRange);
+                if (groupDisplayList.Any())
+                {
+                    cellLevel1.CreateDataValidation().List(groupValidationRange);
+                }
 
                 var cellLevel2 = worksheet.Cell(headerRow2, currentMatrixCol);
                 cellLevel2.Value = colDef.MatDisplay;
                 ApplyHeaderStyle(worksheet.Range(headerRow2, currentMatrixCol, headerRow2, currentMatrixCol));
-                if (matDisplayList.Any()) cellLevel2.CreateDataValidation().List(nameValidationRange);
+                if (matDisplayList.Any())
+                {
+                    cellLevel2.CreateDataValidation().List(nameValidationRange);
+                }
 
                 worksheet.Column(currentMatrixCol).Width = 24; // Tăng width lên để chuỗi "Mã - Tên" không bị khuất chữ
                 currentMatrixCol++;
@@ -215,9 +229,14 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
                             var gName = GetAssignmentDisplayName(mac); 
                             if (!string.IsNullOrWhiteSpace(gName))
                             {
-                                if (costMap.ContainsKey(gName)) costMap[gName] += mac.Norm;
-                                else costMap[gName] = mac.Norm;
-
+                                if (costMap.ContainsKey(gName))
+                                {
+                                    costMap[gName] += mac.Norm;
+                                }
+                                else
+                                {
+                                    costMap[gName] = mac.Norm;
+                                }
                             }
                         }
                     }
@@ -289,13 +308,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static void AddDropdownValidation(XLWorkbook workbook, IXLWorksheet worksheet, int targetColumn, List<string> options, int lastDataRow, int sourceColumn, int firstDataRow)
     {
-        if (!options.Any()) return;
+        if (!options.Any())
+        {
+            return;
+        }
 
         var dataSourceSheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "DataSources") ?? workbook.Worksheets.Add("DataSources");
         dataSourceSheet.Hide();
 
         for (var row = 0; row < options.Count; row++)
+        {
             dataSourceSheet.Cell(row + 1, sourceColumn).Value = options[row];
+        }
 
         var validation = worksheet.Range(firstDataRow, targetColumn, lastDataRow, targetColumn).CreateDataValidation();
         validation.List(dataSourceSheet.Range(1, sourceColumn, options.Count, sourceColumn));
@@ -307,13 +331,18 @@ public class ExportExcelLongwallMaterialUnitPriceQueryHandler(IUnitOfWork unitOf
 
     private static double ExtractLeadingNumber(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return double.MaxValue;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return double.MaxValue;
+        }
 
         var match = Regex.Match(value, @"\d+([.,]\d+)?");
         if (match.Success)
         {
             if (double.TryParse(match.Value.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            {
                 return val;
+            }
         }
         return double.MaxValue;
     }

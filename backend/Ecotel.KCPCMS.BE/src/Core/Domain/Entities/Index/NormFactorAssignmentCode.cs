@@ -15,23 +15,25 @@ public class NormFactorAssignmentCode : AuditableEntity<Guid>
     public virtual Material? Material { get; protected set; }
     public virtual AssignmentCode AssignmentCode { get; protected set; }
 
-    public static NormFactorAssignmentCode Create(Guid assignmentCodeId, Guid normFactorId,Guid materialId, double value, Guid? targetHardnessId)
+    public static NormFactorAssignmentCode Create(
+        Guid assignmentCodeId,
+        Guid materialId,
+        double value,
+        Guid? targetHardnessId)
     {
         return new NormFactorAssignmentCode
         {
-            NormFactorId = normFactorId,
             AssignmentCodeId = assignmentCodeId,
-            MaterialId=materialId,
+            MaterialId = materialId,
             Value = value,
             TargetHardnessId = targetHardnessId
-
         };
     }
 
-    public void Update(double value, Guid? targetHardnessId,Guid materialId)
+    public void Update(Guid materialId, double value, Guid? targetHardnessId)
     {
+        MaterialId = materialId;
         Value = value;
         TargetHardnessId = targetHardnessId;
-        MaterialId = materialId;
     }
 }
