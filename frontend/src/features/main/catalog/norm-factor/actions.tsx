@@ -327,6 +327,8 @@ export function NormFactorForm({
 							}
 							form.setValue('hardnessId', '');
 							form.clearErrors('hardnessId');
+							form.setValue('stoneClampRatioId', '');
+							form.clearErrors('stoneClampRatioId');
 							previousSteelMeshTypeRef.current = STEEL_MESH_TYPE_NONE;
 						} else {
 							form.setValue('steelMeshType', STEEL_MESH_TYPE_NONE);
@@ -368,13 +370,18 @@ export function NormFactorForm({
 				/>
 			)}
 
-			<FormComboBox
-				control={form.control}
-				name='stoneClampRatioId'
-				label='Tỷ lệ đá kẹp (Ckẹp)'
-				placeholder='Chọn tỷ lệ đá kẹp (Ckẹp)'
-				options={stoneClampRatios.map((s) => ({ label: s.value, value: s.id }))}
-			/>
+			{!isMechanizedLongwall && (
+				<FormComboBox
+					control={form.control}
+					name='stoneClampRatioId'
+					label='Tỷ lệ đá kẹp (Ckẹp)'
+					placeholder='Chọn tỷ lệ đá kẹp (Ckẹp)'
+					options={stoneClampRatios.map((s) => ({
+						label: s.value,
+						value: s.id,
+					}))}
+				/>
+			)}
 
 			<FormMultiSelect
 				control={form.control}

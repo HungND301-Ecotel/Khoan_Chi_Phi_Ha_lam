@@ -23,16 +23,12 @@ export const NAVIGATIONS: Navigation[] = [
 		type: 'link',
 		name: 'dash board',
 		href: '/',
-		icon: () => (
-			<FileChartColumnIcon className='size-5 text-[#9114cc]' strokeWidth={2} />
-		),
+		icon: () => <FileChartColumnIcon className='size-5' strokeWidth={2} />,
 	},
 	{
 		type: 'dropdown',
 		name: 'danh mục',
-		icon: () => (
-			<ClipboardListIcon className='size-5 text-[#4caf50]' strokeWidth={2} />
-		),
+		icon: () => <ClipboardListIcon className='size-5' strokeWidth={2} />,
 		items: [
 			{ type: 'link', name: 'Đơn vị tính', href: '/catalogs/units' },
 			{ type: 'link', name: 'Đơn vị', href: '/catalogs/departments' },
@@ -84,12 +80,7 @@ export const NAVIGATIONS: Navigation[] = [
 	{
 		type: 'dropdown',
 		name: 'đơn giá và định mức',
-		icon: () => (
-			<BadgeRussianRubleIcon
-				className='size-5 text-[#cc146c]'
-				strokeWidth={2}
-			/>
-		),
+		icon: () => <BadgeRussianRubleIcon className='size-5' strokeWidth={2} />,
 		items: [
 			{
 				type: 'sub-menu',
@@ -175,7 +166,7 @@ export const NAVIGATIONS: Navigation[] = [
 	{
 		type: 'dropdown',
 		name: 'thống kê vận hành',
-		icon: () => <BoxesIcon className='size-5 text-[#f3d016]' strokeWidth={2} />,
+		icon: () => <BoxesIcon className='size-5' strokeWidth={2} />,
 		items: [
 			{ type: 'link', name: 'Kế hoạch sản xuất', href: '/cost/plan' },
 			{ type: 'link', name: 'Vận hành sản xuất', href: '/cost/production' },
@@ -190,16 +181,12 @@ export const NAVIGATIONS: Navigation[] = [
 		type: 'link',
 		name: 'Báo cáo',
 		href: '/report',
-		icon: () => (
-			<FileBarChart2Icon className='size-5 text-blue-500' strokeWidth={2} />
-		),
+		icon: () => <FileBarChart2Icon className='size-5' strokeWidth={2} />,
 	},
 	{
 		type: 'dropdown',
 		name: 'hệ thống',
-		icon: () => (
-			<Settings2Icon className='size-5 text-slate-500' strokeWidth={2} />
-		),
+		icon: () => <Settings2Icon className='size-5' strokeWidth={2} />,
 		items: [
 			{ type: 'link', name: 'Khóa cấu hình', href: '/system/fixed-keys' },
 		],
