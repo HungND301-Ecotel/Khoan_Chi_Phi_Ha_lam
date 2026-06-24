@@ -61,27 +61,30 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 	{
 		accessorKey: 'hardnessName',
 		header: 'Độ kiên cố than đá (f)',
+		cell: ({ row }) => (
+			<span className='whitespace-normal'>
+				{row.original.hardnessName || ''}
+			</span>
+		),
+	},
+	{
+		accessorKey: 'stoneClampRatioName',
+		header: 'Thông số',
 		cell: ({ row }) => {
-			const { hardnessName, steelMeshType } = row.original;
+			const { stoneClampRatioName, steelMeshType } = row.original;
 
-			if (!hardnessName && steelMeshType !== 1) {
+			if (steelMeshType !== 1) {
 				return (
 					<span className='whitespace-normal'>
-						{STEEL_MESH_TYPE_LABEL[steelMeshType] ?? 'Không xác định'}
+						{STEEL_MESH_TYPE_LABEL[steelMeshType] ?? ''}
 					</span>
 				);
 			}
 
 			return (
-				<span className='whitespace-normal'>
-					{hardnessName || 'Không áp dụng'}
-				</span>
+				<span className='whitespace-normal'>{stoneClampRatioName || ''}</span>
 			);
 		},
-	},
-	{
-		accessorKey: 'stoneClampRatioName',
-		header: 'Tỷ lệ đá kẹp (Ckẹp)',
 	},
 ];
 
