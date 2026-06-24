@@ -16,6 +16,7 @@ export type FormArrayProps<T extends FieldValues> = {
 	name: string;
 	label?: string;
 	children: (index: number) => JSX.Element;
+	renderIndexes?: number[];
 	hasCloseButton?: boolean;
 	hasAddButton?: boolean;
 	defaultValue?: any;
@@ -27,6 +28,7 @@ export function FormArray<T extends FieldValues>({
 	name,
 	label,
 	children,
+	renderIndexes,
 	hasCloseButton = true,
 	hasAddButton = true,
 	defaultValue = {} as FieldArray<T, ArrayPath<T>>,
@@ -47,7 +49,12 @@ export function FormArray<T extends FieldValues>({
 	return (
 		<div className='flex w-full flex-col gap-4'>
 			{label && <Label>{label}</Label>}
-			{fields.map((field, index) => {
+			{(renderIndexes ?? fields.map((_, index) => index)).map((index) => {
+				const field = fields[index];
+				if (!field) {
+					return null;
+				}
+
 				return (
 					<FormRow key={field.id}>
 						{children(index)}

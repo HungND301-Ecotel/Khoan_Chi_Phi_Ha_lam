@@ -27,7 +27,7 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
     {
         var hiddenProperties = new List<string>
         {
-            nameof(LongTermAnchorSeedExcelRowDto.Id)
+            nameof(LongTermAnchorSeedExcelRowDto.Id),
         };
 
         var department = await _departmentRepository.GetFirstOrDefaultAsync(
@@ -70,9 +70,9 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                 UsageTime = x.UsageTime,
                 AllocatedTime = x.AllocatedTime,
                 AllocationRatio = x.AllocationRatio,
-                PlannedOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out var metric) ? metric.PlannedOutput : null,
-                StandardOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out metric) ? metric.StandardOutput : null,
-                Note = x.Note
+                PlannedOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out var metric) ? metric.PlannedOutput : 0,
+                StandardOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out metric) ? metric.StandardOutput : 0,
+                Note = x.Note ?? string.Empty
             })
             .ToList() ?? [];
 
@@ -89,15 +89,6 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
         {
             {
                 nameof(LongTermAnchorSeedExcelRowDto.MaterialCode),
-                materials
-                    .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Distinct()
-                    .OrderBy(x => x)
-                    .ToList()
-            },
-            {
-                nameof(LongTermAnchorSeedExcelRowDto.PartCode),
                 materials
                     .Select(x => BuildCodeName(GetMaterialCode(x), GetMaterialName(x)))
                     .Where(x => !string.IsNullOrWhiteSpace(x))

@@ -77,24 +77,6 @@ internal static class LongTermAnchorSeedTrackingHelper
             var currentAllocatedTime = seedItem.AllocatedTime;
             TrackingSnapshot? currentSnapshot = null;
 
-            if (processGroupMetrics.TryGetValue(seedItem.ProcessGroupId, out var seedMetric))
-            {
-                var seedPeriodState = AdvancePeriod(
-                    totalValueToAccount: seedItem.TotalValueToAccount,
-                    usageTime: seedItem.UsageTime,
-                    allocatedTime: currentAllocatedTime,
-                    plannedOutput: seedMetric.PlannedOutput,
-                    standardOutput: seedMetric.StandardOutput,
-                    allocationRatio: seedItem.AllocationRatio);
-
-                currentPendingStart = seedPeriodState.PendingValueEndPeriod;
-                currentAllocatedTime = seedPeriodState.AllocatedTime;
-            }
-            else
-            {
-                currentPendingStart = seedItem.TotalValueToAccount;
-            }
-
             for (var index = 0; index < reportsToEvaluate.Count; index++)
             {
                 var report = reportsToEvaluate[index];

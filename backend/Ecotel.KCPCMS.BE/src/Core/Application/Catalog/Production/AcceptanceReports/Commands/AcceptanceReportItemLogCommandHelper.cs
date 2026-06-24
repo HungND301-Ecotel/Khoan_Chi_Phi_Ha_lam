@@ -31,12 +31,10 @@ internal static class AcceptanceReportItemLogCommandHelper
         Guid currentAcceptanceReportId,
         double requestedUsageTime)
     {
-        var isNewItemInCurrentPeriod = IsNewItemInCurrentPeriod(log, currentAcceptanceReportId);
-        if (!isNewItemInCurrentPeriod &&
-            Math.Abs(requestedUsageTime - log.AcceptanceReportItem.UsageTime) > 0.0001)
+        if (requestedUsageTime < 0)
         {
             throw new Application.Common.Exceptions.BadRequestException(
-                "Chỉ vật tư dài kỳ mới của kỳ hiện tại mới được cập nhật thời gian sử dụng");
+                "Thời gian sử dụng không được âm");
         }
     }
 
@@ -59,6 +57,7 @@ internal static class AcceptanceReportItemLogCommandHelper
         Guid acceptanceReportId,
         ProductionOutput productionOutput,
         IReadOnlyDictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> outputByProcessGroup,
+        double usageTime,
         double allocationRatio,
         bool isFullAccounting,
         string note,
@@ -85,7 +84,7 @@ internal static class AcceptanceReportItemLogCommandHelper
             pendingValueStartPeriod: sourceLog.PendingValueEndPeriod,
             issuedQuantity: 0,
             unitPrice: 0,
-            usageTime: sourceLog.AcceptanceReportItem.UsageTime,
+            usageTime: usageTime,
             allocatedTime: totalAllocatedTime,
             actualOutput: actualOutput,
             plannedOutput: plannedOutput,

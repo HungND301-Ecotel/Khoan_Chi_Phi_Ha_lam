@@ -73,6 +73,10 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                     log.AcceptanceReportItem.UpdateUsageTime(requestedUsageTime);
                     log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
                 }
+                else
+                {
+                    log.UpdateUsageTime(requestedUsageTime, updateModel.Note);
+                }
 
                 AcceptanceReportItemLogCommandHelper.RefreshLogOutputMetrics(log, outputByProcessGroup, updateModel.Note);
                 log.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
@@ -82,6 +86,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                     log.AcceptanceReportItemId,
                     log.AcceptanceReportItemCategoryAllocationId,
                     log.PeriodStartMonth,
+                    log.UsageTime,
                     log.PendingValueEndPeriod,
                     cancellationToken);
 
@@ -116,6 +121,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         updateModel.AcceptanceReportId,
                         requestedUsageTime);
 
+                    existingOverrideLog.UpdateUsageTime(requestedUsageTime, updateModel.Note);
                     AcceptanceReportItemLogCommandHelper.RefreshLogOutputMetrics(existingOverrideLog, outputByProcessGroup, updateModel.Note);
                     existingOverrideLog.UpdateAllocationRatio(updateModel.AllocationRatio, updateModel.IsFullAccounting, updateModel.Note);
                     _logRepository.Update(existingOverrideLog);
@@ -124,6 +130,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         existingOverrideLog.AcceptanceReportItemId,
                         existingOverrideLog.AcceptanceReportItemCategoryAllocationId,
                         existingOverrideLog.PeriodStartMonth,
+                        existingOverrideLog.UsageTime,
                         existingOverrideLog.PendingValueEndPeriod,
                         cancellationToken);
 
@@ -162,6 +169,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         updateModel.AcceptanceReportId,
                         productionOutput,
                         outputByProcessGroup,
+                        requestedUsageTime,
                         finalAllocationRatio,
                         updateModel.IsFullAccounting,
                         updateModel.Note,
@@ -173,6 +181,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
                         newLog.AcceptanceReportItemId,
                         newLog.AcceptanceReportItemCategoryAllocationId,
                         newLog.PeriodStartMonth,
+                        newLog.UsageTime,
                         newLog.PendingValueEndPeriod,
                         cancellationToken);
 
@@ -201,6 +210,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
         Guid acceptanceReportItemId,
         Guid? acceptanceReportItemCategoryAllocationId,
         DateOnly fromPeriodStartMonth,
+        double usageTime,
         decimal newPendingValueEnd,
         CancellationToken cancellationToken)
     {
@@ -223,6 +233,7 @@ public class UpdateAcceptanceReportItemLogCommandHandler(IUnitOfWork unitOfWork)
 
         foreach (var futureLog in orderedLogs)
         {
+            futureLog.UpdateUsageTime(usageTime, futureLog.Note);
             futureLog.UpdatePendingValueStartPeriod(currentPendingValue);
             _logRepository.Update(futureLog);
             currentPendingValue = futureLog.PendingValueEndPeriod;

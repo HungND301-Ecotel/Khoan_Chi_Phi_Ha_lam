@@ -29,6 +29,7 @@ import {
 } from '@/features/main/cost/producttion/production/longterm-material-cost/types';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
+import { usePopup } from '@/components/popup';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/FileUpload';
 import CreateIcon from '@mui/icons-material/Create';
@@ -50,6 +51,7 @@ function formatMonthLabel(value?: string) {
 export function LongtermAnchorSeedSection({
 	departmentId,
 }: LongtermAnchorSeedSectionProps) {
+	const popup = usePopup();
 	const [detail, setDetail] = useState<LongTermAnchorSeedDetail>();
 	const [loading, setLoading] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -105,20 +107,28 @@ export function LongtermAnchorSeedSection({
 	const handleExport = async () => {
 		setIsExporting(true);
 		try {
-			await api.export(
+			const filename = await api.export(
 				API.PRODUCTION.LONG_TERM_ANCHOR_SEED.EXPORT(departmentId),
 			);
+			popup.success(`Đã tải xuống ${filename}`);
+		} catch (error) {
+			popup.error(error);
 		} finally {
 			setIsExporting(false);
 		}
 	};
 
 	const handleImport = async (file: File) => {
-		await api.uploadFile<boolean>(
-			API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPLOAD_FILE(departmentId),
-			file,
-		);
-		setRefreshKey((prev) => prev + 1);
+		try {
+			await api.uploadFile<boolean>(
+				API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPLOAD_FILE(departmentId),
+				file,
+			);
+			popup.success(`Nhập dữ liệu thành công`);
+			setRefreshKey((prev) => prev + 1);
+		} catch (error) {
+			popup.error(error);
+		}
 	};
 
 	return (

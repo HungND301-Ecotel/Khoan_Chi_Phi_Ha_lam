@@ -91,9 +91,6 @@ public record LongTermAnchorSeedExcelRowDto
     [Display(Name = "Mã vật tư")]
     public string MaterialCode { get; init; } = string.Empty;
 
-    [Display(Name = "Mã vật tư")]
-    public string? PartCode => MaterialCode;
-
     [Display(Name = "Mã nhóm công đoạn")]
     public string ProcessGroupCode { get; init; } = string.Empty;
 
