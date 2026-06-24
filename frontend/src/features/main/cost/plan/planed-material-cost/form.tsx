@@ -17,7 +17,6 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import { Clamp } from '@/features/main/catalog/parameter/clamp/columns';
-import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { NormFactor } from '@/features/main/catalog/norm-factor/columns';
 import { PlanedMaterialCostType } from '@/features/main/cost/plan/planed-material-cost/columns';
 import {
@@ -97,7 +96,6 @@ export function PlanMaterialCostForm({
 }: ProductCostFormProps) {
 	const [allNormFactors, setAllNormFactors] = useState<NormFactor[]>([]);
 	const [stoneClampRatios, setStoneClampRatios] = useState<Clamp[]>([]);
-	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [materials, setMaterials] = useState<UnifiedMaterial[]>([]);
 	const [assets, setAssets] = useState<Asset[]>([]);
 	const [contracts, setContracts] = useState<ContractCode[]>([]);
@@ -131,7 +129,6 @@ export function PlanMaterialCostForm({
 	const watchedStoneClampRatioReferenceId = form.watch(
 		'stoneClampRatioReferenceId',
 	);
-	const watchedNormFactorId = form.watch('normFactorId');
 	const watchedMaterialUnitPriceId = form.watch('materialUnitPriceId');
 	const watchedMaterialReferenceId = form.watch('materialReferenceId');
 
@@ -156,7 +153,6 @@ export function PlanMaterialCostForm({
 		const promises = Promise.all([
 			api.pagging<NormFactor>(API.CATALOG.NORM_FACTOR.LIST),
 			api.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST),
-			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
 			api.pagging<UnifiedMaterial>(API.PRICING.MATERIAL.ALL),
 			api.pagging<Asset>(API.CATALOG.ASSET.LIST, { ignorePagination: true }),
 			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
@@ -171,7 +167,6 @@ export function PlanMaterialCostForm({
 			([
 				normFactors,
 				stoneClampRatios,
-				strengths,
 				materials,
 				assets,
 				contracts,
@@ -180,8 +175,6 @@ export function PlanMaterialCostForm({
 				const normFactorsData = normFactors.result.data;
 				setAllNormFactors(normFactorsData);
 				setStoneClampRatios(stoneClampRatios.result.data);
-				const strengthsData = strengths.result.data;
-				setStrengths(strengthsData);
 				setMaterials(materials.result.data);
 				const assetData = assets.result.data;
 				setAssets(assetData);
@@ -424,31 +417,6 @@ export function PlanMaterialCostForm({
 		}
 	};
 
-	const selectedNormFactor = allNormFactors.find(
-		(normFactor) => normFactor.id === watchedNormFactorId,
-	);
-	const selectedMaterial = materials.find(
-		(material) => material.id === watchedMaterialUnitPriceId,
-	);
-	const referenceHardnessValue = (() => {
-		if (!selectedMaterial) return '';
-
-		const targetHardnessId = selectedNormFactor?.targetHardnessId;
-		const isCurrentHardness =
-			!targetHardnessId ||
-			targetHardnessId === '00000000-0000-0000-0000-000000000000';
-
-		if (isCurrentHardness) {
-			return selectedMaterial.hardnessName || '';
-		}
-
-		return (
-			strengths.find((strength) => strength.id === targetHardnessId)?.value ||
-			selectedMaterial.hardnessName ||
-			''
-		);
-	})();
-
 	return (
 		<FormProvider context={form} onSubmit={handleMaterialCostSubmit}>
 			<FormRow>
@@ -579,28 +547,16 @@ export function PlanMaterialCostForm({
 				</FormRow>
 			)}
 
-			<FormRow>
-				<FormComboBox
-					control={form.control}
-					name='stoneClampRatioReferenceId'
-					label='Tỷ lệ đá kẹp (Ckep)'
-					placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
-					options={stoneClampRatios.map((clamp) => ({
-						label: clamp.value,
-						value: clamp.id,
-					}))}
-				/>
-
-				<div className='flex-1 space-y-2'>
-					<Label>Hệ số điều chỉnh định mức</Label>
-					<Input readOnly value={selectedNormFactor?.value ?? ''} />
-				</div>
-
-				<div className='flex-1 space-y-2'>
-					<Label>Định mức tham chiếu</Label>
-					<Input readOnly value={referenceHardnessValue} />
-				</div>
-			</FormRow>
+			<FormComboBox
+				control={form.control}
+				name='stoneClampRatioReferenceId'
+				label='Tỷ lệ đá kẹp (Ckep)'
+				placeholder='Chọn tỷ lệ đá kẹp (Ckep)'
+				options={stoneClampRatios.map((clamp) => ({
+					label: clamp.value,
+					value: clamp.id,
+				}))}
+			/>
 			<DataTableEditConfirm />
 		</FormProvider>
 	);

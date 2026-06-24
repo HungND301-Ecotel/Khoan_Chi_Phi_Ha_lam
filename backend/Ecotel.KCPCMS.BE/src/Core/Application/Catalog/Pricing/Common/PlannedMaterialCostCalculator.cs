@@ -35,9 +35,9 @@ public static class PlannedMaterialCostCalculator
     }
 
     private static PlannedMaterialCostCalculationResult CalculateUnitPrice(
-        Domain.Entities.Pricing.PlannedMaterialCost plannedMaterialCost,
-        IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterialUnitPrices,
-        IReadOnlyCollection<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> lowValuePerishableSupplyUnitPrices)
+    Domain.Entities.Pricing.PlannedMaterialCost plannedMaterialCost,
+    IReadOnlyCollection<TunnelExcavationMaterialUnitPrice> tunnelMaterialUnitPrices,
+    IReadOnlyCollection<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> lowValuePerishableSupplyUnitPrices)
     {
         var currentMaterialUnitPrice = plannedMaterialCost.MaterialUnitPrice;
         if (currentMaterialUnitPrice == null)
@@ -48,9 +48,11 @@ public static class PlannedMaterialCostCalculator
         var effectiveMonth = plannedMaterialCost.Output?.StartMonth ?? DateOnly.MinValue;
         var slideCost = plannedMaterialCost.SlideUnitPriceAssignmentCode?.Amount ?? 0;
         var lowValueCost = ResolveLowValuePerishableSupplyCost(plannedMaterialCost, effectiveMonth, lowValuePerishableSupplyUnitPrices);
+
         var currentAssignmentTotals = currentMaterialUnitPrice.MaterialUnitPriceAssignmentCodes
-            .GroupBy(a => a.AssignmentCodeId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalPrice));
+            .ToDictionary(
+                a => (a.AssignmentCodeId, a.MaterialId ?? Guid.Empty),
+                a => a.TotalPrice);
 
         if (plannedMaterialCost.NormFactor == null)
         {
@@ -64,17 +66,20 @@ public static class PlannedMaterialCostCalculator
 
         var normFactor = plannedMaterialCost.NormFactor;
         var affectedAssignments = normFactor.NormFactorAssignmentCodes.ToList();
-        var affectedAssignmentCodeIds = affectedAssignments.Select(x => x.AssignmentCodeId).ToHashSet();
 
-        var unaffectedTotal = currentAssignmentTotals
-            .Where(x => !affectedAssignmentCodeIds.Contains(x.Key))
-            .Sum(x => x.Value);
+        var affectedAssignmentKeys = affectedAssignments
+            .Select(x => (x.AssignmentCodeId, x.MaterialId))
+            .ToHashSet();
+
+        var unaffectedTotal = currentMaterialUnitPrice.MaterialUnitPriceAssignmentCodes
+            .Where(x => !affectedAssignmentKeys.Contains((x.AssignmentCodeId, x.MaterialId ?? Guid.Empty)))
+            .Sum(x => x.TotalPrice);
 
         var affectedTotal = 0d;
         foreach (var affectedAssignment in affectedAssignments)
         {
-            var assignmentCodeId = affectedAssignment.AssignmentCodeId;
-            var assignmentAmount = currentAssignmentTotals.GetValueOrDefault(assignmentCodeId, 0);
+            var key = (affectedAssignment.AssignmentCodeId, affectedAssignment.MaterialId);
+            var assignmentAmount = currentAssignmentTotals.GetValueOrDefault(key, 0);
 
             if (affectedAssignment.TargetHardnessId.HasValue &&
                 currentMaterialUnitPrice is TunnelExcavationMaterialUnitPrice currentTunnelMaterialUnitPrice)
@@ -86,11 +91,12 @@ public static class PlannedMaterialCostCalculator
                     tunnelMaterialUnitPrices);
 
                 var targetAssignmentTotals = targetMaterialUnitPrice?.MaterialUnitPriceAssignmentCodes
-                    .GroupBy(a => a.AssignmentCodeId)
-                    .ToDictionary(g => g.Key, g => g.Sum(x => x.TotalPrice))
-                    ?? new Dictionary<Guid, double>();
+                    .ToDictionary(
+                        a => (a.AssignmentCodeId, a.MaterialId ?? Guid.Empty),
+                        a => a.TotalPrice)
+                    ?? new Dictionary<(Guid, Guid), double>();
 
-                assignmentAmount = targetAssignmentTotals.GetValueOrDefault(assignmentCodeId, assignmentAmount);
+                assignmentAmount = targetAssignmentTotals.GetValueOrDefault(key, assignmentAmount);
             }
 
             affectedTotal += assignmentAmount * affectedAssignment.Value;
