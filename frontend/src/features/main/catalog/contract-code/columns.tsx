@@ -48,7 +48,7 @@ function renderOverflowTooltipText({
 			<TooltipContent
 				side='top'
 				align='start'
-				className='max-w-96 break-words whitespace-pre-wrap'
+				className='max-w-96 wrap-break-word whitespace-pre-wrap'
 			>
 				{text}
 			</TooltipContent>

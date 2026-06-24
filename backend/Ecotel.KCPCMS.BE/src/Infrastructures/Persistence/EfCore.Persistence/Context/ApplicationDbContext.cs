@@ -1119,7 +1119,6 @@ public class ApplicationDbContext(
             .HasFilter("\"DeletedOn\" IS NULL AND \"AnchorSeedRowId\" IS NOT NULL");
         modelBuilder.Entity<LongTermAnchorSeedItem>()
             .HasIndex(i => new { i.LongTermAnchorSeedId, i.ProcessGroupId, i.PartId })
-            .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL");
 
         modelBuilder.Entity<LongTermAnchorSeedProcessGroupMetric>()
