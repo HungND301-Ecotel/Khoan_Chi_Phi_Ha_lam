@@ -41,6 +41,7 @@ export type CostProductDetail = {
 export type CostProductDetailOutput = {
 	id: string;
 	acceptanceReportId?: string;
+	departmentId?: string;
 	productionMeters: number;
 	standardProductionMeters?: number;
 	plannedMaterialCostId?: string;

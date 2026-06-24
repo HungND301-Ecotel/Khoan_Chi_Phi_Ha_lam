@@ -3,6 +3,7 @@ export type LongtermMaterialDetailItem = {
 	acceptanceReportItemId: string;
 	materialId?: string;
 	trackedMaterialId?: string;
+	partId?: string;
 	processGroupId?: string;
 	processGroupCode?: string;
 	processGroupName?: string;

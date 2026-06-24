@@ -20,6 +20,7 @@ type ProductionExpandProps = ActionDialogProps<Production> & {
 type ProductionOutputExpandData = {
 	id: string;
 	acceptanceReportId?: string;
+	departmentId?: string;
 	productionMeters: number;
 	standardProductionMeters: number;
 	outputType: number;
@@ -45,6 +46,7 @@ function mapRowToOutput(
 	return {
 		id: row.id,
 		acceptanceReportId: row.acceptanceReportId ?? undefined,
+		departmentId: row.departmentId,
 		productionMeters: row.productionMeters ?? 0,
 		standardProductionMeters: row.standardProductionMeters ?? 0,
 		outputType: 1,
@@ -71,12 +73,13 @@ export function ProductionExpand({
 			API.PRODUCTION.PRODUCTION_OUTPUT.RAW_DETAIL(row.id),
 		);
 
-		setOutput((current) => ({
-			...(current ?? mapRowToOutput(row)!),
-			id: res.result.id,
-			acceptanceReportId: res.result.acceptanceReportId ?? undefined,
-			productionMeters: res.result.productionMeters ?? 0,
-			standardProductionMeters: res.result.standardProductionMeters ?? 0,
+			setOutput((current) => ({
+				...(current ?? mapRowToOutput(row)!),
+				id: res.result.id,
+				acceptanceReportId: res.result.acceptanceReportId ?? undefined,
+				departmentId: row.departmentId,
+				productionMeters: res.result.productionMeters ?? 0,
+				standardProductionMeters: res.result.standardProductionMeters ?? 0,
 			startMonth: res.result.startMonth ?? row.startMonth ?? '',
 			endMonth: res.result.endMonth ?? row.endMonth ?? '',
 			outputType: 1,

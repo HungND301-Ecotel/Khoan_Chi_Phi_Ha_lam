@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/incompatible-library */
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import { ClientPagination } from '@/components/datatable/client-pagination';
 import { FormArray } from '@/components/form/form-array';
 import { FormInput } from '@/components/form/form-input';
 import { FormNumber } from '@/components/form/form-number';
@@ -7,6 +8,7 @@ import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -24,11 +26,13 @@ import {
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 
 export function LongtermMaterialCostForm({
 	id,
+	plan,
+	output,
 	callback,
 }: ProductCostFormProps) {
 	const { setOpen } = useDialog();
@@ -39,6 +43,9 @@ export function LongtermMaterialCostForm({
 		[],
 	);
 	const [acceptanceReportId, setAcceptanceReportId] = useState<string>('');
+	const [loading, setLoading] = useState(false);
+	const [pageIndex, setPageIndex] = useState(0);
+	const [pageSize, setPageSize] = useState(10);
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
 
 	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
@@ -52,12 +59,17 @@ export function LongtermMaterialCostForm({
 		mode: 'onSubmit',
 		defaultValues: LONGTERM_MATERIAL_COST_DEFAULT,
 	});
+	const watchedItems = useWatch({
+		control: form.control,
+		name: 'items',
+	});
 
 	useEffect(() => {
 		if (!id) return;
 
 		const fetchDetail = async () => {
 			try {
+				setLoading(true);
 				const response = await api.get<LongtermMaterialCostDetail>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.LONG_TERM_TRACKING_DETAIL(id),
 				);
@@ -97,13 +109,28 @@ export function LongtermMaterialCostForm({
 						};
 					}),
 				});
+				setPageIndex(0);
 			} catch (err) {
 				error(err);
+			} finally {
+				setLoading(false);
 			}
 		};
 
 		fetchDetail();
 	}, [form, id]);
+
+	const totalItems = watchedItems?.length ?? detailItems.length ?? 0;
+	const pageCount = Math.ceil(totalItems / pageSize);
+	const safePageIndex =
+		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
+	const paginatedIndexes = useMemo(() => {
+		const start = safePageIndex * pageSize;
+		return Array.from(
+			{ length: Math.min(pageSize, Math.max(totalItems - start, 0)) },
+			(_, index) => start + index,
+		);
+	}, [pageSize, safePageIndex, totalItems]);
 
 	const handleFullAccountingChange = (index: number, checked: boolean) => {
 		const currentAllocationRate = form.getValues(
@@ -131,7 +158,7 @@ export function LongtermMaterialCostForm({
 
 	const handleSubmit = async (values: LongtermMaterialCostSchema) => {
 		try {
-			const body = values.items
+			const logBody = values.items
 				.map((item, index) => ({ item, source: detailItems[index] }))
 				.filter(({ source }) => !source?.isAnchorSeed)
 				.map(({ item }) => ({
@@ -142,16 +169,51 @@ export function LongtermMaterialCostForm({
 					isFullAccounting: item.isFullAccounting,
 					note: item.note ?? '',
 				}));
+			const departmentId = output?.departmentId ?? plan?.departmentId ?? '';
+			const anchorSeedBody = values.items
+				.map((item, index) => ({ item, source: detailItems[index] }))
+				.filter(({ source }) => source?.isAnchorSeed)
+				.map(({ item, source }) => ({
+					id: item.id,
+					departmentId,
+					trackedMaterialId: source?.trackedMaterialId ?? source?.materialId,
+					materialId: source?.materialId,
+					partId: source?.partId ?? source?.materialId,
+					processGroupId: source?.processGroupId ?? '',
+					issuedQuantity: source?.issuedQuantity ?? 0,
+					unitPrice: source?.unitPrice ?? 0,
+					pendingValueStartPeriod: source?.pendingValueStartPeriod ?? 0,
+					usageTime: item.usageTime,
+					allocatedTime: source?.allocatedTime ?? 0,
+					allocationRatio: item.allocationRate,
+					note: item.note ?? '',
+				}));
 
-			if (!body.length) {
+			if (!logBody.length && !anchorSeedBody.length) {
 				setOpen(false);
 				return;
 			}
 
-			await api.put(
-				API.PRODUCTION.ACCEPTANCE_REPORT.UPDATE_LONG_TERM_TRACKING,
-				body,
-			);
+			if (logBody.length) {
+				await api.put(
+					API.PRODUCTION.ACCEPTANCE_REPORT.UPDATE_LONG_TERM_TRACKING,
+					logBody,
+				);
+			}
+
+			if (anchorSeedBody.length) {
+				if (!departmentId) {
+					throw new Error(
+						'Không xác định được đơn vị để cập nhật mốc gốc hạch toán dài kỳ.',
+					);
+				}
+
+				await api.put(API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPDATE, {
+					departmentId,
+					items: anchorSeedBody,
+					processGroupMetrics: [],
+				});
+			}
 
 			success(`${breadcrumb} đã được cập nhật thành công.`);
 			await callback?.();
@@ -163,14 +225,26 @@ export function LongtermMaterialCostForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<div className='scrollbar-sm max-h-100 overflow-auto'>
-				<FormArray
-					control={form.control}
-					name='items'
-					hasAddButton={false}
-					hasCloseButton={false}
-				>
-					{(index) => {
+			<div className='flex max-h-[70vh] flex-col'>
+				<div className='scrollbar-sm overflow-auto'>
+				{loading ? (
+					<div className='flex h-60 items-center justify-center'>
+						<div className='flex flex-col items-center gap-3 text-sm text-slate-500'>
+							<Spinner />
+							<span>Đang tải dữ liệu...</span>
+						</div>
+					</div>
+				) : (
+					<>
+				<div className='inline-flex min-w-max flex-col gap-4 pr-4'>
+					<FormArray
+						control={form.control}
+						name='items'
+						renderIndexes={paginatedIndexes}
+						hasAddButton={false}
+						hasCloseButton={false}
+					>
+						{(index) => {
 						const item = detailItems[index];
 						const isFullAccounting =
 							form.watch(`items.${index}.isFullAccounting`) ?? false;
@@ -179,7 +253,7 @@ export function LongtermMaterialCostForm({
 						const watchedAllocationRate = form.watch(
 							`items.${index}.allocationRate`,
 						);
-						const isUsageTimeEditable = item?.isNewItem === true;
+						const isUsageTimeEditable = true;
 						const isAnchorSeed = item?.isAnchorSeed === true;
 
 						const remainingPeriod =
@@ -325,7 +399,7 @@ export function LongtermMaterialCostForm({
 										name={`items.${index}.allocationRate`}
 										label='Tỷ lệ phân bổ'
 										placeholder='Nhập tỷ lệ phân bổ'
-										disabled={isFullAccounting || isAnchorSeed}
+										disabled={isFullAccounting}
 									/>
 								</div>
 
@@ -338,7 +412,6 @@ export function LongtermMaterialCostForm({
 										<Switch
 											checked={isFullAccounting}
 											className='cursor-pointer data-[state=checked]:bg-blue-600'
-											disabled={isAnchorSeed}
 											onCheckedChange={(checked) =>
 												handleFullAccountingChange(index, checked)
 											}
@@ -379,8 +452,25 @@ export function LongtermMaterialCostForm({
 								</div>
 							</>
 						);
-					}}
-				</FormArray>
+						}}
+					</FormArray>
+					{totalItems > 0 && (
+						<ClientPagination
+							totalItems={totalItems}
+							pageIndex={safePageIndex}
+							pageSize={pageSize}
+							onPageIndexChange={setPageIndex}
+							onPageSizeChange={(nextPageSize) => {
+								setPageSize(nextPageSize);
+								setPageIndex(0);
+							}}
+							className='px-0'
+						/>
+					)}
+				</div>
+					</>
+				)}
+				</div>
 			</div>
 
 			<DataTableEditConfirm isEdit={!!id} />
