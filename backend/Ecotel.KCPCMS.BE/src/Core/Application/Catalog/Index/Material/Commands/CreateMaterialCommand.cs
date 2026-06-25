@@ -18,6 +18,8 @@ namespace Application.Catalog.Index.Material.Commands
         private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
         private readonly IWriteRepository<UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<UnitOfMeasure>();
         private readonly IWriteRepository<Cost> _costRepository = unitOfWork.GetRepository<Cost>();
+        // TODO: REMOVE after data migration is complete - used only for orphan Code recovery
+        private readonly IWriteRepository<Code> _codeRepository = unitOfWork.GetRepository<Code>();
 
         public async Task<bool> Handle(CreateMaterialCommand request, CancellationToken cancellationToken)
         {
@@ -78,21 +80,43 @@ namespace Application.Catalog.Index.Material.Commands
                     }
 
                     deletedMaterial.AddMaterialCost(costList);
-                    //_materialRepository.Update(deletedMaterial);
                 }
                 else
                 {
-                    if (await codeService.IsCodeExisted(request.CreateModel.Code))
+                    // TODO: REMOVE block below after data migration is complete - orphan Code recovery
+                    var orphanCode = await _codeRepository.GetFirstOrDefaultAsync(
+                        predicate: c => c.Value == request.CreateModel.Code.ToUpper() && c.Material == null,
+                        disableTracking: false,
+                        ignoreQueryFilters: true);
+
+                    if (orphanCode == null && await codeService.IsCodeExisted(request.CreateModel.Code))
                     {
                         throw new ConflictException(CustomResponseMessage.MaterialCodeAlreadyExists);
                     }
 
-                    var newMaterial = Domain.Entities.Index.Material.Create(
-                        request.CreateModel.Code,
-                        request.CreateModel.Name,
-                        request.CreateModel.UnitOfMeasureId,
-                        request.CreateModel.AssigmentCodeId,
-                        normalizedMaterialType);
+                    Domain.Entities.Index.Material newMaterial;
+
+                    if (orphanCode != null)
+                    {
+#pragma warning disable CS0618
+                        newMaterial = Domain.Entities.Index.Material.CreateWithExistingCode(
+                            orphanCode.Id,
+                            request.CreateModel.Name,
+                            request.CreateModel.UnitOfMeasureId,
+                            request.CreateModel.AssigmentCodeId,
+                            normalizedMaterialType);
+#pragma warning restore CS0618
+                    }
+                    // TODO: END REMOVE
+                    else
+                    {
+                        newMaterial = Domain.Entities.Index.Material.Create(
+                            request.CreateModel.Code,
+                            request.CreateModel.Name,
+                            request.CreateModel.UnitOfMeasureId,
+                            request.CreateModel.AssigmentCodeId,
+                            normalizedMaterialType);
+                    }
 
                     var costList = new List<Cost>();
                     foreach (var cost in request.CreateModel.Costs)
