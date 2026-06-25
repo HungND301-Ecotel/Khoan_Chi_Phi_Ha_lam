@@ -78,7 +78,7 @@ namespace Application.Catalog.Index.Material.Commands
                     }
 
                     deletedMaterial.AddMaterialCost(costList);
-                    _materialRepository.Update(deletedMaterial);
+                    //_materialRepository.Update(deletedMaterial);
                 }
                 else
                 {
