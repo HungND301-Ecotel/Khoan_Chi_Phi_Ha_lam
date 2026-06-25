@@ -19,4 +19,10 @@ public abstract class AuditableEntity<T> : BaseEntity<T>, IAuditableEntity, ISof
     public DateTimeOffset? LastModifiedOn { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedOn { get; set; }
     public long? DeletedBy { get; set; }
+
+    public void Restore()
+    {
+        DeletedOn = null;
+        DeletedBy = null;
+    }
 }
