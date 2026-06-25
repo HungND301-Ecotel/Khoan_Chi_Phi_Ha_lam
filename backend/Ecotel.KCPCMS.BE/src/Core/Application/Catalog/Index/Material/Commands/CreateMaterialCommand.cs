@@ -98,6 +98,7 @@ namespace Application.Catalog.Index.Material.Commands
 
                     if (orphanCode != null)
                     {
+                        orphanCode.Restore();
 #pragma warning disable CS0618
                         newMaterial = Domain.Entities.Index.Material.CreateWithExistingCode(
                             orphanCode.Id,
