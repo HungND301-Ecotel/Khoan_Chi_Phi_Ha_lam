@@ -103,6 +103,21 @@ const getQuotaBasedMaterialTypeLabel = (value: number): string => {
 	}
 };
 
+const getQuotaBasedMaterialQuantityTotal = (item: RawAcceptanceReportItem) => {
+	const details = (item.quotaBasedMaterialQuantities ?? []).filter(
+		(detail) => detail.quantity != null,
+	);
+
+	if (details.length > 0) {
+		return details.reduce(
+			(total, detail) => total + (Number(detail.quantity) || 0),
+			0,
+		);
+	}
+
+	return item.quotaBasedMaterialQuantity || 0;
+};
+
 export function RawAcceptanceReportDataTable({
 	items,
 	largeText = false,
@@ -393,7 +408,7 @@ export function RawAcceptanceReportDataTable({
 						{/* Vật tư theo hạn mức */}
 						<TableCell style={{ minWidth: '120px' }}>
 							<div className='flex flex-col items-center justify-center gap-1 px-4 py-2'>
-								{item.quotaBasedMaterial !== QuotaBasedMaterial.None && (
+										{item.quotaBasedMaterial !== QuotaBasedMaterial.None && (
 									<>
 										<Badge variant='secondary' className='text-xs'>
 											{getQuotaBasedMaterialLabel(item.quotaBasedMaterial)}
@@ -409,7 +424,7 @@ export function RawAcceptanceReportDataTable({
 											</Badge>
 										)}
 										<span className='text-xs text-slate-600'>
-											SL: {formatNumber(item.quotaBasedMaterialQuantity || 0)}
+											SL: {formatNumber(getQuotaBasedMaterialQuantityTotal(item))}
 										</span>
 									</>
 								)}
