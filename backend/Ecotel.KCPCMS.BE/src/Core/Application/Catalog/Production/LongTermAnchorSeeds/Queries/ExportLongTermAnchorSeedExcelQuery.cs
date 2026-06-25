@@ -69,7 +69,6 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                 PendingValueStartPeriod = x.PendingValueStartPeriod,
                 UsageTime = x.UsageTime,
                 AllocatedTime = x.AllocatedTime,
-                AllocationRatio = x.AllocationRatio,
                 PlannedOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out var metric) ? metric.PlannedOutput : 0,
                 StandardOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out metric) ? metric.StandardOutput : 0,
                 Note = x.Note ?? string.Empty

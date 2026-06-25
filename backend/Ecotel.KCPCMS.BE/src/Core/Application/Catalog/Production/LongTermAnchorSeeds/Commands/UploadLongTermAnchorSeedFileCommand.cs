@@ -119,6 +119,9 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 .Distinct()
                 .ToHashSet();
 
+            var allocationRatioByExistingItemId = seedItems
+                .ToDictionary(x => x.Id, x => x.AllocationRatio);
+
             var missingRowIds = retainedExistingItemIds
                 .Where(id => !existingItemsById.ContainsKey(id))
                 .ToList();
@@ -224,7 +227,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         normalizedValues.PendingValueStartPeriod,
                         normalizedValues.UsageTime,
                         normalizedValues.AllocatedTime,
-                        normalizedValues.AllocationRatio,
+                        0,
                         normalizedValues.Note,
                         null);
 
@@ -241,7 +244,7 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     normalizedValues.PendingValueStartPeriod,
                     normalizedValues.UsageTime,
                     normalizedValues.AllocatedTime,
-                    normalizedValues.AllocationRatio,
+                    allocationRatioByExistingItemId.GetValueOrDefault(existingItem.Id, existingItem.AllocationRatio),
                     normalizedValues.Note);
 
                 _seedItemRepository.Update(existingItem);
@@ -345,7 +348,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             && !row.PendingValueStartPeriod.HasValue
             && !row.UsageTime.HasValue
             && !row.AllocatedTime.HasValue
-            && !row.AllocationRatio.HasValue
             && string.IsNullOrWhiteSpace(row.Note);
     }
 
@@ -357,7 +359,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             row.PendingValueStartPeriod ?? 0,
             row.UsageTime ?? 0,
             row.AllocatedTime ?? 0,
-            row.AllocationRatio ?? 0,
             row.Note ?? string.Empty);
     }
 
@@ -367,7 +368,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         decimal PendingValueStartPeriod,
         double UsageTime,
         double AllocatedTime,
-        double AllocationRatio,
         string Note);
 
     private static string? ValidateRowBusinessRule(
@@ -381,8 +381,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         var pendingValueStartPeriod = row.PendingValueStartPeriod ?? 0;
         var usageTime = row.UsageTime ?? 0;
         var allocatedTime = row.AllocatedTime ?? 0;
-        var allocationRatio = row.AllocationRatio ?? 0;
-
         if (issuedQuantity < 0)
         {
             return $"Dòng {rowNumber}: Số lượng của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
@@ -406,11 +404,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         if (allocatedTime < 0)
         {
             return $"Dòng {rowNumber}: Thời gian đã phân bổ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
-        }
-
-        if (allocationRatio < 0)
-        {
-            return $"Dòng {rowNumber}: Tỷ lệ phân bổ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
         }
 
         var hasPendingValueStartPeriod = pendingValueStartPeriod > 0;
