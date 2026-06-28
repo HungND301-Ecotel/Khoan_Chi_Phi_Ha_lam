@@ -1167,8 +1167,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		showAdditionalCostDropdown: false,
 		showAssetDropdown: false,
 	});
-	const hasInitializedLongTermTrackingRef = useRef(false);
-	const prevSupportsLongTermTrackingRef = useRef(false);
 
 	useEffect(() => {
 		if (!supportsRowLongTermTracking) {
@@ -1176,9 +1174,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				set('isLongTermTracking', false);
 			}
 		}
-
-		prevSupportsLongTermTrackingRef.current = supportsRowLongTermTracking;
-		hasInitializedLongTermTrackingRef.current = true;
 	}, [supportsRowLongTermTracking, isLongTermTracking]);
 
 	useEffect(() => {
@@ -1510,19 +1505,26 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			prev.categoryAssignmentCodeId != null &&
 			prev.categoryProductionOrderId != null,
 		);
+		const prevAdditionalRequiresProductionOrder =
+			prev.additionalCostCategory === AdditionalCost.Material ||
+			prev.additionalCostCategory === AdditionalCost.Maintain ||
+			prev.additionalCostCategory === AdditionalCost.OtherMaterial;
+
+		const prevAdditionalRequiresAssignmentCode =
+			prev.additionalCostCategory === AdditionalCost.Material ||
+			prev.additionalCostCategory === AdditionalCost.Maintain;
+
+		const prevAdditionalRequiresOtherDetail =
+			prev.additionalCostCategory === AdditionalCost.OtherMaterial;
+
 		const hasAdditionalCostActiveBefore = Boolean(
 			prev.showAdditionalCostDropdown &&
 			prev.additionalCostCategory &&
-			(prev.additionalCostCategory !== AdditionalCost.Material &&
-			prev.additionalCostCategory !== AdditionalCost.Maintain
-				? true
-				: prev.additionalCostAssignmentCodeId != null) &&
-			(prev.additionalCostCategory !== AdditionalCost.Material &&
-			prev.additionalCostCategory !== AdditionalCost.Maintain
-				? true
-				: prev.additionalCostProductionOrderId != null) &&
-			(prev.additionalCostCategory !== AdditionalCost.OtherMaterial ||
-				prev.otherMaterialDetail != null),
+			(!prevAdditionalRequiresAssignmentCode ||
+				prev.additionalCostAssignmentCodeId != null) &&
+			(!prevAdditionalRequiresProductionOrder ||
+				prev.additionalCostProductionOrderId != null) &&
+			(!prevAdditionalRequiresOtherDetail || prev.otherMaterialDetail != null),
 		);
 		const categoryJustReady = !hasCategoryActiveBefore && hasCategoryActiveNow;
 		const additionalCostJustSelected =
