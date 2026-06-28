@@ -37,6 +37,12 @@ export function ComboBox({
 	const [open, setOpen] = useState(false);
 	const [title, setTitle] = useState('');
 	const [value, setValue] = useState('');
+	const filterOptions = (optionValue: string, search: string) => {
+		const normalizedOptionValue = optionValue.toLowerCase();
+		const normalizedSearch = search.trim().toLowerCase();
+		if (!normalizedSearch) return 1;
+		return normalizedOptionValue.includes(normalizedSearch) ? 1 : 0;
+	};
 
 	useEffect(() => {
 		onChange?.(value);
@@ -70,7 +76,7 @@ export function ComboBox({
 					style={{ width: 'var(--radix-popover-trigger-width)' }}
 					align='start'
 				>
-					<Command>
+					<Command filter={filterOptions}>
 						<CommandInput placeholder={'Tìm kiếm'} />
 						<CommandList
 							className='max-h-58'
