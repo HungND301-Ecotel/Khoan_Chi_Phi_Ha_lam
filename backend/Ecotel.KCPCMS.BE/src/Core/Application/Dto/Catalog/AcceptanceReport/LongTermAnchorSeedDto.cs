@@ -110,13 +110,7 @@ public record LongTermAnchorSeedExcelRowDto
     [Display(Name = "Lệnh sản xuất")]
     public string CategoryProductionOrderCode { get; init; } = string.Empty;
 
-    [Display(Name = "Số lượng")]
-    public double? IssuedQuantity { get; init; }
-
-    [Display(Name = "Đơn giá")]
-    public decimal? UnitPrice { get; init; }
-
-    [Display(Name = "Giá trị chờ hạch toán đầu kỳ (đ)")]
+    [Display(Name = "Tổng giá trị cần hạch toán (đ)")]
     public decimal? PendingValueStartPeriod { get; init; }
 
     [Display(Name = "Thời gian sử dụng (Ti)")]
@@ -124,12 +118,6 @@ public record LongTermAnchorSeedExcelRowDto
 
     [Display(Name = "Thời gian đã phân bổ")]
     public double? AllocatedTime { get; init; }
-
-    [Display(Name = "Sản lượng kế hoạch nhóm công đoạn")]
-    public double? PlannedOutput { get; init; }
-
-    [Display(Name = "Sản lượng định mức nhóm công đoạn")]
-    public double? StandardOutput { get; init; }
 
     [Display(Name = "Ghi chú")]
     public string Note { get; init; } = string.Empty;

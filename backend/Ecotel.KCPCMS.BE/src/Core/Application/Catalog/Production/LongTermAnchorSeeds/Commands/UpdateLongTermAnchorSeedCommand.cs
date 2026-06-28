@@ -134,31 +134,12 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                 _seedItemRepository.Update(entity);
             }
 
-            var metricRequests = request.Request.ProcessGroupMetrics
-                .GroupBy(x => x.ProcessGroupId)
-                .Select(x => x.First())
-                .ToList();
             var existingMetrics = await _processGroupMetricRepository.GetAllAsync(
                 predicate: x => x.LongTermAnchorSeedId == seed.Id,
                 disableTracking: false);
-
-            foreach (var metricRequest in metricRequests)
+            if (existingMetrics.Count > 0)
             {
-                var existingMetric = existingMetrics.FirstOrDefault(x => x.ProcessGroupId == metricRequest.ProcessGroupId);
-                if (existingMetric == null)
-                {
-                    var newMetric = LongTermAnchorSeedProcessGroupMetric.Create(
-                        seed.Id,
-                        metricRequest.ProcessGroupId,
-                        metricRequest.PlannedOutput,
-                        metricRequest.StandardOutput);
-
-                    await _processGroupMetricRepository.InsertAsync(newMetric, cancellationToken);
-                    continue;
-                }
-
-                existingMetric.Update(metricRequest.PlannedOutput, metricRequest.StandardOutput);
-                _processGroupMetricRepository.Update(existingMetric);
+                _processGroupMetricRepository.Delete(existingMetrics);
             }
 
             await unitOfWork.SaveChangesAsync();

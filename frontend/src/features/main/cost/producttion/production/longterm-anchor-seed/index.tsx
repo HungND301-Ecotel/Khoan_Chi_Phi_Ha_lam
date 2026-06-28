@@ -19,7 +19,6 @@ import { DialogProvider } from '@/data/dialog/dialog-provider';
 import {
 	LongTermAnchorSeedDetail,
 	LongTermAnchorSeedItem,
-	LongTermAnchorSeedProcessGroupMetric,
 } from '@/features/main/cost/producttion/production/longterm-anchor-seed/anchor-seed-types';
 import { LongtermAnchorSeedForm } from '@/features/main/cost/producttion/production/longterm-anchor-seed/form';
 import { FixedColumnDataTable } from '@/features/main/cost/producttion/production/longterm-material-cost/datatable';
@@ -84,7 +83,7 @@ export function LongtermAnchorSeedSection({
 
 					if (existingGroup) {
 						existingGroup.items.push(
-							mapSeedItemToTableItem(item, detail?.processGroupMetrics ?? []),
+							mapSeedItemToTableItem(item),
 						);
 						return groups;
 					}
@@ -93,15 +92,13 @@ export function LongtermAnchorSeedSection({
 						processGroupId,
 						processGroupCode: item.processGroupCode,
 						processGroupName: item.processGroupName,
-						items: [
-							mapSeedItemToTableItem(item, detail?.processGroupMetrics ?? []),
-						],
+						items: [mapSeedItemToTableItem(item)],
 					});
 					return groups;
 				},
 				[],
 			),
-		[detail?.items, detail?.processGroupMetrics],
+		[detail?.items],
 	);
 
 	const handleExport = async () => {
@@ -276,24 +273,7 @@ export function LongtermAnchorSeedSection({
 
 function mapSeedItemToTableItem(
 	item: LongTermAnchorSeedItem,
-	processGroupMetrics: LongTermAnchorSeedProcessGroupMetric[],
 ): LongtermMaterialDetailItem {
-	const metric = processGroupMetrics.find(
-		(processGroupMetric) => processGroupMetric.processGroupId === item.processGroupId,
-	);
-	const plannedOutput = metric?.plannedOutput ?? 0;
-	const standardOutput = metric?.standardOutput ?? 0;
-	const valueByStandard =
-		item.usageTime > 0 && standardOutput > 0
-			? (item.totalValueToAccount / item.usageTime) *
-				(plannedOutput / standardOutput)
-			: 0;
-	const accountedValueThisPeriod =
-		Math.abs(item.remainingTime) < 0.0001
-			? item.totalValueToAccount
-			: Math.min(item.totalValueToAccount, valueByStandard * item.allocationRatio);
-	const pendingValueEndPeriod = item.totalValueToAccount - accountedValueThisPeriod;
-
 	return {
 		id: item.id,
 		acceptanceReportItemId: item.id,
@@ -315,13 +295,13 @@ function mapSeedItemToTableItem(
 		usageTime: item.usageTime,
 		allocatedTime: item.allocatedTime,
 		remainingTime: item.remainingTime,
-		plannedOutput,
-		standardOutput,
-		valueByStandard,
+		plannedOutput: 0,
+		standardOutput: 0,
+		valueByStandard: 0,
 		allocationRatio: item.allocationRatio,
 		isFullAccounting: false,
-		accountedValueThisPeriod,
-		pendingValueEndPeriod,
+		accountedValueThisPeriod: 0,
+		pendingValueEndPeriod: item.totalValueToAccount,
 		isAnchorSeed: true,
 		note: item.note,
 	};

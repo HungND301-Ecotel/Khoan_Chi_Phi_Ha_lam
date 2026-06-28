@@ -202,23 +202,9 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
             throw new ArgumentException("Tỷ lệ phân bổ không được âm");
         }
 
-        var hasPendingValueStartPeriod = pendingValueStartPeriod > 0;
-        var hasIssuedQuantity = issuedQuantity > 0;
-        var hasUnitPrice = unitPrice > 0;
-
-        if (!hasPendingValueStartPeriod && hasIssuedQuantity != hasUnitPrice)
+        if (pendingValueStartPeriod <= 0)
         {
-            throw new ArgumentException("Phải nhập đồng thời số lượng và đơn giá khi không nhập giá trị chờ hạch toán đầu kỳ");
-        }
-
-        if (hasPendingValueStartPeriod && (hasIssuedQuantity || hasUnitPrice))
-        {
-            throw new ArgumentException("Không được nhập đồng thời giá trị chờ hạch toán đầu kỳ với số lượng hoặc đơn giá");
-        }
-
-        if (!hasPendingValueStartPeriod && !hasIssuedQuantity && !hasUnitPrice)
-        {
-            throw new ArgumentException("Phải nhập giá trị chờ hạch toán đầu kỳ hoặc đồng thời số lượng và đơn giá");
+            throw new ArgumentException("Phải nhập tổng giá trị cần hạch toán lớn hơn 0");
         }
     }
 }

@@ -51,17 +51,8 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                         .ThenInclude(ac => ac!.Code)
                 .Include(s => s.Items)
                     .ThenInclude(i => i.ProductionOrder)
-                        .ThenInclude(po => po!.Code)
-                .Include(s => s.ProcessGroupMetrics),
+                        .ThenInclude(po => po!.Code),
             disableTracking: true);
-
-        var processGroupMetrics = seed?.ProcessGroupMetrics
-            .GroupBy(x => x.ProcessGroupId)
-            .ToDictionary(
-                x => x.Key,
-                x => (
-                    PlannedOutput: x.First().PlannedOutput,
-                    StandardOutput: x.First().StandardOutput)) ?? [];
 
         var rows = seed?.Items
             .OrderBy(x => x.SortOrder)
@@ -74,13 +65,9 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                 ProcessGroupCode = BuildCodeName(x.ProcessGroup.Code?.Value, x.ProcessGroup.Name),
                 CategoryAssignmentCode = BuildCodeName(x.AssignmentCode?.Code?.Value, x.AssignmentCode?.Name),
                 CategoryProductionOrderCode = BuildCodeName(x.ProductionOrder?.Code?.Value, x.ProductionOrder?.Name),
-                IssuedQuantity = x.IssuedQuantity,
-                UnitPrice = x.UnitPrice,
                 PendingValueStartPeriod = x.PendingValueStartPeriod,
                 UsageTime = x.UsageTime,
                 AllocatedTime = x.AllocatedTime,
-                PlannedOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out var metric) ? metric.PlannedOutput : 0,
-                StandardOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out metric) ? metric.StandardOutput : 0,
                 Note = x.Note ?? string.Empty
             })
             .ToList() ?? [];

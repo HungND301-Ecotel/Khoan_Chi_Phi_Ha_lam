@@ -94,8 +94,8 @@ export function LongtermAnchorSeedForm({
 						categoryAssignmentCodeId:
 							item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
 						categoryProductionOrderId: item.categoryProductionOrderId ?? null,
-						issuedQuantity: item.issuedQuantity,
-						unitPrice: item.unitPrice,
+						issuedQuantity: 0,
+						unitPrice: 0,
 						pendingValueStartPeriod: item.pendingValueStartPeriod,
 						usageTime: item.usageTime,
 						allocatedTime: item.allocatedTime,
@@ -216,57 +216,7 @@ export function LongtermAnchorSeedForm({
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<div className='flex max-h-[70vh] flex-col overflow-hidden bg-transparent'>
-				<div className='sticky top-0 z-20 shrink-0 pb-4'>
-					<div className='border-border/60 space-y-4 rounded-sm border bg-transparent p-4'>
-						<div className='text-sm font-semibold'>
-							Sản lượng nhóm công đoạn
-						</div>
-						<FormArray
-							control={form.control}
-							name='processGroupMetrics'
-							hasAddButton={false}
-							hasCloseButton={false}
-						>
-							{(index) => {
-								const metric = detailItems?.processGroupMetrics[index];
-
-								return (
-									<>
-										<div className='min-w-48 flex-1 space-y-2'>
-											<Label>Nhóm công đoạn</Label>
-											<Input
-												readOnly
-												value={
-													metric?.processGroupCode
-														? `${metric.processGroupCode} - ${metric.processGroupName}`
-														: (metric?.processGroupName ?? '')
-												}
-											/>
-										</div>
-
-										<div className='min-w-40 flex-1'>
-											<FormNumber
-												control={form.control}
-												name={`processGroupMetrics.${index}.plannedOutput`}
-												label='Sản lượng kế hoạch'
-											/>
-										</div>
-
-										<div className='min-w-40 flex-1'>
-											<FormNumber
-												control={form.control}
-												name={`processGroupMetrics.${index}.standardOutput`}
-												label='Sản lượng định mức'
-											/>
-										</div>
-									</>
-								);
-							}}
-						</FormArray>
-					</div>
-				</div>
-
-				<div className='scrollbar-sm min-h-0 flex-1 overflow-auto pt-4'>
+				<div className='scrollbar-sm min-h-0 flex-1 overflow-auto'>
 					{loading ? (
 						<div className='flex h-60 items-center justify-center'>
 							<div className='flex flex-col items-center gap-3 text-sm text-slate-500'>
@@ -345,27 +295,11 @@ export function LongtermAnchorSeedForm({
 													/>
 												</div>
 
-												<div className='min-w-32 flex-1'>
-													<FormNumber
-														control={form.control}
-														name={`items.${index}.issuedQuantity`}
-														label='Số lượng'
-													/>
-												</div>
-
-												<div className='min-w-32 flex-1'>
-													<FormNumber
-														control={form.control}
-														name={`items.${index}.unitPrice`}
-														label='Đơn giá'
-													/>
-												</div>
-
 												<div className='min-w-56 flex-1'>
 													<FormNumber
 														control={form.control}
 														name={`items.${index}.pendingValueStartPeriod`}
-														label='Giá trị chờ hạch toán đầu kỳ'
+														label='Tổng giá trị cần hạch toán (đ)'
 													/>
 												</div>
 
@@ -393,18 +327,6 @@ export function LongtermAnchorSeedForm({
 															(form.watch(`items.${index}.usageTime`) ?? 0) -
 																(form.watch(`items.${index}.allocatedTime`) ??
 																	0),
-														)}
-													/>
-												</div>
-
-												<div className='min-w-40 flex-1 space-y-2'>
-													<Label>Thành tiền</Label>
-													<Input
-														readOnly
-														value={formatNumber(
-															(form.watch(`items.${index}.issuedQuantity`) ??
-																0) *
-																(form.watch(`items.${index}.unitPrice`) ?? 0),
 														)}
 													/>
 												</div>

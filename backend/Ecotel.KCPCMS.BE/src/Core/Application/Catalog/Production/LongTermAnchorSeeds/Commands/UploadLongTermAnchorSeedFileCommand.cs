@@ -221,12 +221,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 }
             }
 
-            var metricValidationErrors = ValidateProcessGroupMetrics(rows);
-            if (metricValidationErrors.Count > 0)
-            {
-                importErrors.AddRange(metricValidationErrors);
-            }
-
             ThrowIfImportErrors(importErrors);
 
             var itemsToDelete = seedItems
@@ -290,8 +284,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         assignmentCode?.Id,
                         productionOrder?.Id,
                         index,
-                        normalizedValues.IssuedQuantity,
-                        normalizedValues.UnitPrice,
+                        0,
+                        0,
                         normalizedValues.PendingValueStartPeriod,
                         normalizedValues.UsageTime,
                         normalizedValues.AllocatedTime,
@@ -309,8 +303,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     assignmentCode?.Id,
                     productionOrder?.Id,
                     index,
-                    normalizedValues.IssuedQuantity,
-                    normalizedValues.UnitPrice,
+                    0,
+                    0,
                     normalizedValues.PendingValueStartPeriod,
                     normalizedValues.UsageTime,
                     normalizedValues.AllocatedTime,
@@ -320,55 +314,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 _seedItemRepository.Update(existingItem);
             }
 
-            var metricByProcessGroup = new Dictionary<Guid, (double PlannedOutput, double StandardOutput)>();
-            foreach (var row in rows)
-            {
-                var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
-                if (string.IsNullOrWhiteSpace(processGroupCode))
-                {
-                    continue;
-                }
-
-                if (!row.PlannedOutput.HasValue && !row.StandardOutput.HasValue)
-                {
-                    continue;
-                }
-
-                var processGroup = processGroupByCode[processGroupCode];
-                var currentMetric = (
-                    PlannedOutput: row.PlannedOutput ?? 0,
-                    StandardOutput: row.StandardOutput ?? 0);
-
-                if (metricByProcessGroup.TryGetValue(processGroup.Id, out var existingMetric)
-                    && (existingMetric.PlannedOutput != currentMetric.PlannedOutput
-                        || existingMetric.StandardOutput != currentMetric.StandardOutput))
-                {
-                    throw new BadRequestException($"Nhóm công đoạn '{processGroupCode}' có sản lượng kế hoạch/định mức không nhất quán giữa các dòng.");
-                }
-
-                metricByProcessGroup[processGroup.Id] = currentMetric;
-            }
-
             var existingMetrics = await _processGroupMetricRepository.GetAllAsync(
                 predicate: x => x.LongTermAnchorSeedId == seed.Id,
                 disableTracking: false);
-
-            foreach (var metric in metricByProcessGroup)
+            if (existingMetrics.Count > 0)
             {
-                var existingMetric = existingMetrics.FirstOrDefault(x => x.ProcessGroupId == metric.Key);
-                if (existingMetric == null)
-                {
-                    var newMetric = LongTermAnchorSeedProcessGroupMetric.Create(
-                        seed.Id,
-                        metric.Key,
-                        metric.Value.PlannedOutput,
-                        metric.Value.StandardOutput);
-                    await _processGroupMetricRepository.InsertAsync(newMetric, cancellationToken);
-                    continue;
-                }
-
-                existingMetric.Update(metric.Value.PlannedOutput, metric.Value.StandardOutput);
-                _processGroupMetricRepository.Update(existingMetric);
+                _processGroupMetricRepository.Delete(existingMetrics);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -415,8 +366,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             && string.IsNullOrWhiteSpace(row.ProcessGroupCode)
             && string.IsNullOrWhiteSpace(row.CategoryAssignmentCode)
             && string.IsNullOrWhiteSpace(row.CategoryProductionOrderCode)
-            && !row.IssuedQuantity.HasValue
-            && !row.UnitPrice.HasValue
             && !row.PendingValueStartPeriod.HasValue
             && !row.UsageTime.HasValue
             && !row.AllocatedTime.HasValue
@@ -426,8 +375,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private static NormalizedRowValues NormalizeRowValues(LongTermAnchorSeedExcelRowDto row)
     {
         return new NormalizedRowValues(
-            row.IssuedQuantity ?? 0,
-            row.UnitPrice ?? 0,
             row.PendingValueStartPeriod ?? 0,
             row.UsageTime ?? 0,
             row.AllocatedTime ?? 0,
@@ -435,8 +382,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     }
 
     private sealed record NormalizedRowValues(
-        double IssuedQuantity,
-        decimal UnitPrice,
         decimal PendingValueStartPeriod,
         double UsageTime,
         double AllocatedTime,
@@ -448,24 +393,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         string processGroupCode,
         int rowNumber)
     {
-        var issuedQuantity = row.IssuedQuantity ?? 0;
-        var unitPrice = row.UnitPrice ?? 0;
         var pendingValueStartPeriod = row.PendingValueStartPeriod ?? 0;
         var usageTime = row.UsageTime ?? 0;
         var allocatedTime = row.AllocatedTime ?? 0;
-        if (issuedQuantity < 0)
-        {
-            return $"Dòng {rowNumber}: Số lượng của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
-        }
-
-        if (unitPrice < 0)
-        {
-            return $"Dòng {rowNumber}: Đơn giá của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
-        }
-
         if (pendingValueStartPeriod < 0)
         {
-            return $"Dòng {rowNumber}: Giá trị chờ hạch toán đầu kỳ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
+            return $"Dòng {rowNumber}: Tổng giá trị cần hạch toán của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
         }
 
         if (usageTime < 0)
@@ -478,65 +411,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             return $"Dòng {rowNumber}: Thời gian đã phân bổ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
         }
 
-        var hasPendingValueStartPeriod = pendingValueStartPeriod > 0;
-        var hasIssuedQuantity = issuedQuantity > 0;
-        var hasUnitPrice = unitPrice > 0;
-
-        if (!hasPendingValueStartPeriod && hasIssuedQuantity != hasUnitPrice)
+        if (pendingValueStartPeriod <= 0)
         {
-            return $"Dòng {rowNumber}: Phải nhập đồng thời số lượng và đơn giá khi không nhập giá trị chờ hạch toán đầu kỳ cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
-        }
-
-        if (hasPendingValueStartPeriod && (hasIssuedQuantity || hasUnitPrice))
-        {
-            return $"Dòng {rowNumber}: Không được nhập đồng thời giá trị chờ hạch toán đầu kỳ với số lượng hoặc đơn giá cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
-        }
-
-        if (!hasPendingValueStartPeriod && !hasIssuedQuantity && !hasUnitPrice)
-        {
-            return $"Dòng {rowNumber}: Phải nhập giá trị chờ hạch toán đầu kỳ hoặc đồng thời số lượng và đơn giá cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
+            return $"Dòng {rowNumber}: Phải nhập tổng giá trị cần hạch toán lớn hơn 0 cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
         }
 
         return null;
-    }
-
-    private static List<string> ValidateProcessGroupMetrics(IReadOnlyList<LongTermAnchorSeedExcelRowDto> rows)
-    {
-        var errors = new List<string>();
-        var metricByProcessGroup = new Dictionary<string, (double PlannedOutput, double StandardOutput)>(StringComparer.OrdinalIgnoreCase);
-
-        for (var index = 0; index < rows.Count; index++)
-        {
-            var row = rows[index];
-            var rowNumber = index + 2;
-            var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
-
-            if (string.IsNullOrWhiteSpace(processGroupCode))
-            {
-                continue;
-            }
-
-            if (!row.PlannedOutput.HasValue && !row.StandardOutput.HasValue)
-            {
-                continue;
-            }
-
-            var currentMetric = (
-                PlannedOutput: row.PlannedOutput ?? 0,
-                StandardOutput: row.StandardOutput ?? 0);
-
-            if (metricByProcessGroup.TryGetValue(processGroupCode, out var existingMetric)
-                && (existingMetric.PlannedOutput != currentMetric.PlannedOutput
-                    || existingMetric.StandardOutput != currentMetric.StandardOutput))
-            {
-                errors.Add($"Dòng {rowNumber}: Nhóm công đoạn '{processGroupCode}' có sản lượng kế hoạch/định mức không nhất quán giữa các dòng.");
-                continue;
-            }
-
-            metricByProcessGroup[processGroupCode] = currentMetric;
-        }
-
-        return errors;
     }
 
     private static void ThrowIfImportErrors(List<string> importErrors)
