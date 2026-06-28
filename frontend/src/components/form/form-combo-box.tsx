@@ -62,6 +62,12 @@ export function FormComboBox<T extends FieldValues>(
 	const [open, setOpen] = React.useState(false);
 
 	const { label, placeholder = '', options = [], readonly, disabled } = props;
+	const filterOptions = React.useCallback((value: string, search: string) => {
+		const normalizedValue = value.toLowerCase();
+		const normalizedSearch = search.trim().toLowerCase();
+		if (!normalizedSearch) return 1;
+		return normalizedValue.includes(normalizedSearch) ? 1 : 0;
+	}, []);
 
 	// Uncontrolled mode
 	if (props.control === undefined || props.control === null) {
@@ -125,15 +131,7 @@ export function FormComboBox<T extends FieldValues>(
 						style={{ width: 'var(--radix-popover-trigger-width)' }}
 						align='start'
 					>
-						<Command
-							filter={(value, search) => {
-								const normalizedValue = value.toLowerCase();
-								const normalizedSearch = search.toLowerCase();
-								if (normalizedValue.startsWith(normalizedSearch)) return 1;
-
-								return 0;
-							}}
-						>
+						<Command filter={filterOptions}>
 							<CommandInput placeholder={'Tìm kiếm'} />
 							<CommandList
 								className='max-h-58'
@@ -234,14 +232,7 @@ export function FormComboBox<T extends FieldValues>(
 								style={{ width: 'var(--radix-popover-trigger-width)' }}
 								align='start'
 							>
-								<Command
-									filter={(value, search) => {
-										const normalizedValue = value.toLowerCase();
-										const normalizedSearch = search.toLowerCase();
-										if (normalizedValue.startsWith(normalizedSearch)) return 1;
-										return 0;
-									}}
-								>
+								<Command filter={filterOptions}>
 									<CommandInput placeholder={'Tìm kiếm'} />
 									<CommandList
 										className='max-h-58'

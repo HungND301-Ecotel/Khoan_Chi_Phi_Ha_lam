@@ -109,9 +109,6 @@ public record LongTermAnchorSeedExcelRowDto
     [Display(Name = "Thời gian đã phân bổ")]
     public double? AllocatedTime { get; init; }
 
-    [Display(Name = "Tỷ lệ phân bổ")]
-    public double? AllocationRatio { get; init; }
-
     [Display(Name = "Sản lượng kế hoạch nhóm công đoạn")]
     public double? PlannedOutput { get; init; }
 

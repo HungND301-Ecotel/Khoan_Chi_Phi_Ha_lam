@@ -3,6 +3,17 @@ import { Badge } from '@/components/ui/badge';
 import { ColumnDef } from '@tanstack/react-table';
 import { RawAcceptanceReportItem } from './types';
 
+const getQuotaBasedMaterialTypeLabel = (value: number): string => {
+	switch (value) {
+		case 1:
+			return 'Lĩnh mới';
+		case 2:
+			return 'Tái sử dụng';
+		default:
+			return '';
+	}
+};
+
 export const RAW_ACCEPTANCE_REPORT_EXPAND_COLUMNS: ColumnDef<RawAcceptanceReportItem>[] =
 	[
 		{
@@ -15,16 +26,12 @@ export const RAW_ACCEPTANCE_REPORT_EXPAND_COLUMNS: ColumnDef<RawAcceptanceReport
 		},
 		{
 			accessorKey: 'documentNumber',
-			header: () => (
-				<span className='whitespace-normal'>{'Số chứng từ'}</span>
-			),
+			header: () => <span className='whitespace-normal'>{'Số chứng từ'}</span>,
 			cell: ({ row }) => row.original.documentNumber || '-',
 		},
 		{
 			accessorKey: 'postingDate',
-			header: () => (
-				<span className='whitespace-normal'>{'Ngày vào sổ'}</span>
-			),
+			header: () => <span className='whitespace-normal'>{'Ngày vào sổ'}</span>,
 			cell: ({ row }) => row.original.postingDate || '-',
 		},
 		{
@@ -91,10 +98,32 @@ export const RAW_ACCEPTANCE_REPORT_EXPAND_COLUMNS: ColumnDef<RawAcceptanceReport
 					{'SL vật tư theo hạn mức'}
 				</span>
 			),
-			cell: ({ row }) =>
-				row.original.quotaBasedMaterialQuantity
-					? formatNumber(row.original.quotaBasedMaterialQuantity)
-					: '-',
+			cell: ({ row }) => {
+				const total = row.original.quotaBasedMaterialQuantity;
+				const details = (
+					row.original.quotaBasedMaterialQuantities ?? []
+				).filter(
+					(detail) => detail.quantity != null && Number(detail.quantity) !== 0,
+				);
+
+				if (details.length === 0) {
+					return total ? formatNumber(total) : '-';
+				}
+
+				return (
+					<div className='flex flex-col items-center gap-1'>
+						<div>{total ? formatNumber(total) : '-'}</div>
+						<div className='text-muted-foreground flex flex-col gap-0.5 text-xs'>
+							{details.map((detail) => (
+								<div key={detail.type} className='whitespace-nowrap'>
+									{getQuotaBasedMaterialTypeLabel(detail.type)}:{' '}
+									{formatNumber(detail.quantity)}
+								</div>
+							))}
+						</div>
+					</div>
+				);
+			},
 		},
 		{
 			id: 'asset',

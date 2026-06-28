@@ -89,6 +89,23 @@ namespace Domain.Entities.Index
                 MaterialType = materialType
             };
         }
+        [Obsolete("Temporary method to recover orphan Code records. Remove after data migration is complete.")]
+        public static Material CreateWithExistingCode(Guid codeId, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
+            }
+
+            return new Material
+            {
+                CodeId = codeId,
+                Name = name,
+                UnitOfMeasureId = unitOfMeasureId,
+                AssigmentCodeId = assigmentCodeId,
+                MaterialType = materialType
+            };
+        }
 
         public void Update(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
         {

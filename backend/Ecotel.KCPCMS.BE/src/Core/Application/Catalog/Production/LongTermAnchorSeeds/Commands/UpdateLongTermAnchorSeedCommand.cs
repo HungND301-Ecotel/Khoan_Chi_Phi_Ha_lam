@@ -89,7 +89,7 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                     item.PendingValueStartPeriod,
                     item.UsageTime,
                     item.AllocatedTime,
-                    item.AllocationRatio,
+                    entity.AllocationRatio,
                     item.Note);
 
                 _seedItemRepository.Update(entity);
