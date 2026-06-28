@@ -56,7 +56,7 @@ export function mapResolvedImportItem(
 		item.itemType === ItemType.QuotaMaterials;
 	const defaultAdditionalCost = isSafetyAndWelfareMaterial
 		? AdditionalCost.OtherMaterial
-		: getDefaultAdditionalCostByMaterialType(item.type);
+		: null;
 
 	return {
 		...MATERIAL_FORM_DEFAULT,
@@ -72,7 +72,10 @@ export function mapResolvedImportItem(
 		materialCode:
 			item.type === MaterialType.Material
 				? (item.materialCode ?? item.trackedMaterialCode ?? '')
-				: (item.trackedMaterialCode ?? item.partCode ?? item.materialCode ?? ''),
+				: (item.trackedMaterialCode ??
+					item.partCode ??
+					item.materialCode ??
+					''),
 		materialName:
 			item.type === MaterialType.Material
 				? (item.materialName ?? item.trackedMaterialName ?? '')
@@ -219,21 +222,19 @@ export function mapRawAcceptanceItemToEditorRow(
 		showAdditionalCostDropdown,
 		showContractLimitDropdown,
 		showAssetDropdown,
-		categoryType:
-			showCategoryDropdown
-				? (item.materialsIncludedInContractRevenueType ??
-					(item.materialsIncludedInContractRevenue ===
-					MaterialsIncludedInContractRevenue.Maintain
-						? MaterialType.SparePart
-						: item.materialsIncludedInContractRevenue ===
-							  MaterialsIncludedInContractRevenue.Material
-							? MaterialType.Material
-							: null))
-				: null,
-		category:
-			showCategoryDropdown
-				? item.materialsIncludedInContractRevenue || null
-				: null,
+		categoryType: showCategoryDropdown
+			? (item.materialsIncludedInContractRevenueType ??
+				(item.materialsIncludedInContractRevenue ===
+				MaterialsIncludedInContractRevenue.Maintain
+					? MaterialType.SparePart
+					: item.materialsIncludedInContractRevenue ===
+						  MaterialsIncludedInContractRevenue.Material
+						? MaterialType.Material
+						: null))
+			: null,
+		category: showCategoryDropdown
+			? item.materialsIncludedInContractRevenue || null
+			: null,
 		isLongTermTracking: supportsLongTermTracking(
 			item.materialsIncludedInContractRevenueType ??
 				(item.materialsIncludedInContractRevenue ===
@@ -248,10 +249,12 @@ export function mapRawAcceptanceItemToEditorRow(
 			? (item.isLongTermTracking ?? true)
 			: false,
 		categoryProcessGroup: item.processGroupId ?? null,
-		categoryProcessGroupIds: categoryAllocations.map(
-			(allocation: { processGroupId: string | null }) =>
-				allocation.processGroupId ?? '',
-		).filter(Boolean),
+		categoryProcessGroupIds: categoryAllocations
+			.map(
+				(allocation: { processGroupId: string | null }) =>
+					allocation.processGroupId ?? '',
+			)
+			.filter(Boolean),
 		categoryProductionOrderId: item.categoryProductionOrderId ?? null,
 		categoryAssignmentCodeId:
 			item.categoryAssignmentCodeId ??
@@ -265,24 +268,37 @@ export function mapRawAcceptanceItemToEditorRow(
 			categoryAllocations[0]?.assignmentCodeIds?.[0] ??
 			categoryAllocations[0]?.equipmentIds?.[0] ??
 			null,
-		categoryAssignmentCodeIds: categoryAllocations.map(
-			(allocation: { assignmentCodeIds?: string[]; equipmentIds: string[] }) =>
-				allocation.assignmentCodeIds?.[0] ?? allocation.equipmentIds?.[0] ?? '',
-		).filter(Boolean),
-		categoryEquipmentIds: categoryAllocations.map(
-			(allocation: { assignmentCodeIds?: string[]; equipmentIds: string[] }) =>
-				allocation.assignmentCodeIds?.[0] ?? allocation.equipmentIds?.[0] ?? '',
-		).filter(Boolean),
+		categoryAssignmentCodeIds: categoryAllocations
+			.map(
+				(allocation: {
+					assignmentCodeIds?: string[];
+					equipmentIds: string[];
+				}) =>
+					allocation.assignmentCodeIds?.[0] ??
+					allocation.equipmentIds?.[0] ??
+					'',
+			)
+			.filter(Boolean),
+		categoryEquipmentIds: categoryAllocations
+			.map(
+				(allocation: {
+					assignmentCodeIds?: string[];
+					equipmentIds: string[];
+				}) =>
+					allocation.assignmentCodeIds?.[0] ??
+					allocation.equipmentIds?.[0] ??
+					'',
+			)
+			.filter(Boolean),
 		categoryAllocations,
-		categoryQuantity:
-			showCategoryDropdown
-				? (item.materialsIncludedInContractRevenueQuantity ?? 0)
-				: null,
-		additionalCostCategory:
-			showAdditionalCostDropdown
-				? (item.additionalCostClassification ?? item.additionalCost ?? null)
-				: null,
-		additionalCostProductionOrderId: item.additionalCostProductionOrderId ?? null,
+		categoryQuantity: showCategoryDropdown
+			? (item.materialsIncludedInContractRevenueQuantity ?? 0)
+			: null,
+		additionalCostCategory: showAdditionalCostDropdown
+			? (item.additionalCostClassification ?? item.additionalCost ?? null)
+			: null,
+		additionalCostProductionOrderId:
+			item.additionalCostProductionOrderId ?? null,
 		additionalCostAssignmentCodeId:
 			item.additionalCostAssignmentCodeId ??
 			item.additionalCostEquipmentId ??
@@ -292,18 +308,21 @@ export function mapRawAcceptanceItemToEditorRow(
 			item.additionalCost === AdditionalCost.OtherMaterial
 				? (item.otherMaterialDetail ?? DEFAULT_OTHER_MATERIAL_DETAIL_VALUE)
 				: null,
-		additionalCostQuantity:
-			showAdditionalCostDropdown ? (item.additionalCostQuantity ?? 0) : null,
-		contractLimitCategory:
-			showContractLimitDropdown ? item.quotaBasedMaterial || null : null,
+		additionalCostQuantity: showAdditionalCostDropdown
+			? (item.additionalCostQuantity ?? 0)
+			: null,
+		contractLimitCategory: showContractLimitDropdown
+			? item.quotaBasedMaterial || null
+			: null,
 		contractLimitSubCategory:
 			contractLimitSubCategories.length > 0
 				? Number(contractLimitSubCategories[0])
 				: null,
 		contractLimitSubCategories,
 		contractLimitBreakdown,
-		contractLimitQuantity:
-			showContractLimitDropdown ? contractLimitQuantityFromDetails : null,
+		contractLimitQuantity: showContractLimitDropdown
+			? contractLimitQuantityFromDetails
+			: null,
 		assetCategory: showAssetDropdown ? Asset.True : null,
 		assetQuantity: showAssetDropdown ? (item.assetMaterialQuantity ?? 0) : null,
 		resolutionStatus: ImportResolutionStatus.Resolved,
@@ -372,9 +391,7 @@ type BuildRequestContext = {
 	reportId?: string;
 };
 
-function buildQuotaBasedMaterialPayload(
-	item: AcceptanceReportEditorRow,
-): {
+function buildQuotaBasedMaterialPayload(item: AcceptanceReportEditorRow): {
 	quotaBasedMaterial: number;
 	quotaBasedMaterialType: number;
 	quotaBasedMaterialQuantity: number;
@@ -388,7 +405,8 @@ function buildQuotaBasedMaterialPayload(
 	if (item.showContractLimitDropdown && item.contractLimitCategory) {
 		quotaBasedMaterial = item.contractLimitCategory;
 		const selectedSubCategories =
-			item.contractLimitSubCategories && item.contractLimitSubCategories.length > 0
+			item.contractLimitSubCategories &&
+			item.contractLimitSubCategories.length > 0
 				? item.contractLimitSubCategories.map((type) => Number(type))
 				: item.contractLimitSubCategory != null
 					? [item.contractLimitSubCategory]
@@ -439,7 +457,9 @@ function buildIssuedDetails(item: AcceptanceReportEditorRow): QuantityDetail[] {
 	});
 }
 
-function buildShippedDetails(item: AcceptanceReportEditorRow): QuantityDetail[] {
+function buildShippedDetails(
+	item: AcceptanceReportEditorRow,
+): QuantityDetail[] {
 	const exportedTypes =
 		item.exportedTypes && item.exportedTypes.length > 0
 			? item.exportedTypes
@@ -462,7 +482,7 @@ function buildShippedDetails(item: AcceptanceReportEditorRow): QuantityDetail[] 
 }
 
 function normalizeOptionalString(value: string | null | undefined) {
-	return typeof value === 'string' ? value.trim() || null : value ?? null;
+	return typeof value === 'string' ? value.trim() || null : (value ?? null);
 }
 
 function buildBasePayload(item: AcceptanceReportEditorRow) {
@@ -521,22 +541,28 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
 			? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 			: OtherMaterialDetail.None;
-	const additionalSelection =
-		item.showAdditionalCostDropdown &&
-		(resolvedAdditionalCostCategory === AdditionalCost.Material ||
-			resolvedAdditionalCostCategory === AdditionalCost.Maintain)
-			? {
-					productionOrderId: normalizeProductionOrderId(
-						item.additionalCostProductionOrderId,
-					),
-					assignmentCodeId: normalizeAssignmentCodeId(
-						item.additionalCostAssignmentCodeId,
-					),
-				}
-			: {
-					productionOrderId: null,
-					assignmentCodeId: null,
-				};
+	const additionalRequiresProductionOrder =
+		resolvedAdditionalCostCategory === AdditionalCost.Material ||
+		resolvedAdditionalCostCategory === AdditionalCost.Maintain ||
+		resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial;
+
+	const additionalRequiresAssignmentCode =
+		resolvedAdditionalCostCategory === AdditionalCost.Material ||
+		resolvedAdditionalCostCategory === AdditionalCost.Maintain;
+
+	const additionalSelection = item.showAdditionalCostDropdown
+		? {
+				productionOrderId: additionalRequiresProductionOrder
+					? normalizeProductionOrderId(item.additionalCostProductionOrderId)
+					: null,
+				assignmentCodeId: additionalRequiresAssignmentCode
+					? normalizeAssignmentCodeId(item.additionalCostAssignmentCodeId)
+					: null,
+			}
+		: {
+				productionOrderId: null,
+				assignmentCodeId: null,
+			};
 	const quotaPayload = buildQuotaBasedMaterialPayload(item);
 
 	return {
@@ -603,8 +629,7 @@ export function buildAcceptanceReportRequest(
 						base.additionalSelection.productionOrderId,
 					additionalCostAssignmentCodeId:
 						base.additionalSelection.assignmentCodeId,
-					additionalCostEquipmentId:
-						base.additionalSelection.assignmentCodeId,
+					additionalCostEquipmentId: base.additionalSelection.assignmentCodeId,
 					issuedDetails: base.issuedDetails,
 					shippedDetails: base.shippedDetails,
 					materialsIncludedInContractRevenueType:
@@ -667,14 +692,13 @@ export function buildAcceptanceReportRequest(
 				itemType: item.itemType ?? 0,
 				categoryAllocations: base.categoryAllocations,
 				categoryProductionOrderId: base.categoryProductionOrderId,
-					categoryAssignmentCodeId: base.categoryAssignmentCodeId,
-					categoryEquipmentId: base.categoryAssignmentCodeId,
+				categoryAssignmentCodeId: base.categoryAssignmentCodeId,
+				categoryEquipmentId: base.categoryAssignmentCodeId,
 				additionalCostProductionOrderId:
 					base.additionalSelection.productionOrderId,
 				additionalCostAssignmentCodeId:
 					base.additionalSelection.assignmentCodeId,
-				additionalCostEquipmentId:
-					base.additionalSelection.assignmentCodeId,
+				additionalCostEquipmentId: base.additionalSelection.assignmentCodeId,
 				issuedQuantity: parseQuantity(item.quantityReceived),
 				shippedQuantity: parseQuantity(item.quantityExported),
 				issuedDetails: base.issuedDetails,
