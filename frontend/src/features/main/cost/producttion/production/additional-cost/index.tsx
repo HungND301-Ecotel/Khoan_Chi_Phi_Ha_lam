@@ -41,7 +41,8 @@ type ProductionOrderDisplayInfo = {
 };
 
 const DEFAULT_GROUP_NAME = 'Không thuộc nhóm vật tư, tài sản';
-const DEFAULT_MISC_LABEL = 'Vật tư khác';
+const DEFAULT_MISC_LABEL =
+	'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão';
 
 const OTHER_MATERIAL_DETAIL_LABELS: Record<number, string> = {
 	[OtherMaterialDetail.BaoHoLaoDong]: 'Bảo hộ lao động',
@@ -200,7 +201,8 @@ function buildAdditionalCostRows(params: {
 
 		orderGroup.groups.forEach((group, groupKey) => {
 			const hasAssignmentGroup =
-				group.groupCode.trim().length > 0 || group.groupName !== DEFAULT_GROUP_NAME;
+				group.groupCode.trim().length > 0 ||
+				group.groupName !== DEFAULT_GROUP_NAME;
 
 			if (!hasAssignmentGroup) {
 				ungroupedItems.push(...group.items);
@@ -452,7 +454,9 @@ export function AdditionalCost({
 								<div className='flex flex-col gap-2'>
 									{displayedOtherMaterials.length > 0 && (
 										<>
-											<h4 className='text-sm font-semibold'>Vật tư khác</h4>
+											<h4 className='text-sm font-semibold'>
+												{DEFAULT_MISC_LABEL}
+											</h4>
 											<DataTable
 												columns={ADDITIONAL_COST_COLUMNS}
 												items={displayedOtherMaterials}

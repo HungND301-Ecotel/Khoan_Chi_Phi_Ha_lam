@@ -22,7 +22,8 @@ import {
 
 const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
 const DEFAULT_PRODUCTION_ORDER_LABEL = 'Không theo lệnh sản xuất';
-const DEFAULT_MISC_LABEL = 'Vật tư khác';
+const DEFAULT_MISC_LABEL =
+	'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão';
 
 export type ProductionOrderDisplayInfo = {
 	code: string;
