@@ -250,10 +250,12 @@ export function LongtermMaterialCostForm({
 											form.watch(`items.${index}.isFullAccounting`) ?? false;
 										const watchedUsageTime =
 											form.watch(`items.${index}.usageTime`) ?? 0;
-										const watchedAllocationRate = form.watch(
-											`items.${index}.allocationRate`,
-										);
-										const isUsageTimeEditable = true;
+								const watchedAllocationRate = form.watch(
+									`items.${index}.allocationRate`,
+								);
+								const isUsageTimeEditable = true;
+								const isAnchorSeed = item?.isAnchorSeed === true;
+
 										const remainingPeriod =
 											watchedUsageTime - (item?.allocatedTime ?? 0);
 
@@ -445,12 +447,22 @@ export function LongtermMaterialCostForm({
 												</div>
 
 												<div className='min-w-60 flex-1 space-y-2'>
-													<FormInput
-														control={form.control}
-														name={`items.${index}.note`}
-														label='Ghi chú'
-														placeholder='Nhập ghi chú'
-													/>
+													{isAnchorSeed ? (
+														<>
+															<Label>Ghi chú</Label>
+															<Input
+																readOnly
+																value={form.watch(`items.${index}.note`) ?? ''}
+															/>
+														</>
+													) : (
+														<FormInput
+															control={form.control}
+															name={`items.${index}.note`}
+															label='Ghi chú'
+															placeholder='Nhập ghi chú'
+														/>
+													)}
 												</div>
 											</>
 										);
