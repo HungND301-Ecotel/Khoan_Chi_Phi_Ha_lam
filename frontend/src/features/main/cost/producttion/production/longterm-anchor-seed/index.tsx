@@ -20,12 +20,8 @@ import {
 	LongTermAnchorSeedDetail,
 	LongTermAnchorSeedItem,
 } from '@/features/main/cost/producttion/production/longterm-anchor-seed/anchor-seed-types';
+import { LongTermAnchorSeedDataTable } from '@/features/main/cost/producttion/production/longterm-anchor-seed/datatable';
 import { LongtermAnchorSeedForm } from '@/features/main/cost/producttion/production/longterm-anchor-seed/form';
-import { FixedColumnDataTable } from '@/features/main/cost/producttion/production/longterm-material-cost/datatable';
-import {
-	LongtermMaterialDetailItem,
-	LongTermTrackingProcessGroup,
-} from '@/features/main/cost/producttion/production/longterm-material-cost/types';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { usePopup } from '@/components/popup';
@@ -56,43 +52,57 @@ export function LongtermAnchorSeedSection({
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [isExporting, setIsExporting] = useState(false);
 
-	const fetchDetail = async () => {
-		setLoading(true);
-		try {
-			const response = await api.get<LongTermAnchorSeedDetail>(
-				API.PRODUCTION.LONG_TERM_ANCHOR_SEED.DETAIL(departmentId),
-			);
-			setDetail(response.result);
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	useEffect(() => {
-		fetchDetail();
+		let isMounted = true;
+
+		const loadDetail = async () => {
+			setLoading(true);
+			try {
+				const response = await api.get<LongTermAnchorSeedDetail>(
+					API.PRODUCTION.LONG_TERM_ANCHOR_SEED.DETAIL(departmentId),
+				);
+
+				if (!isMounted) return;
+				setDetail(response.result);
+			} finally {
+				if (isMounted) {
+					setLoading(false);
+				}
+			}
+		};
+
+		void loadDetail();
+
+		return () => {
+			isMounted = false;
+		};
 	}, [departmentId, refreshKey]);
 
-	const groupedItems = useMemo<LongTermTrackingProcessGroup[]>(
+	type LongTermAnchorSeedGroup = {
+		processGroupId: string;
+		processGroupCode: string;
+		processGroupName: string;
+		items: LongTermAnchorSeedItem[];
+	};
+
+	const groupedItems = useMemo<LongTermAnchorSeedGroup[]>(
 		() =>
-			(detail?.items ?? []).reduce<LongTermTrackingProcessGroup[]>(
+			(detail?.items ?? []).reduce<LongTermAnchorSeedGroup[]>(
 				(groups, item) => {
-					const processGroupId = item.processGroupId;
 					const existingGroup = groups.find(
-						(group) => group.processGroupId === processGroupId,
+						(group) => group.processGroupId === item.processGroupId,
 					);
 
 					if (existingGroup) {
-						existingGroup.items.push(
-							mapSeedItemToTableItem(item),
-						);
+						existingGroup.items.push(item);
 						return groups;
 					}
 
 					groups.push({
-						processGroupId,
+						processGroupId: item.processGroupId,
 						processGroupCode: item.processGroupCode,
 						processGroupName: item.processGroupName,
-						items: [mapSeedItemToTableItem(item)],
+						items: [item],
 					});
 					return groups;
 				},
@@ -215,7 +225,7 @@ export function LongtermAnchorSeedSection({
 					) : (
 						groupedItems.map((group) => {
 							const totalGroupValue = group.items.reduce(
-								(total, item) => total + (item.totalValueToAccount ?? 0),
+								(total, item) => total + (item.pendingValueStartPeriod ?? 0),
 								0,
 							);
 
@@ -254,7 +264,7 @@ export function LongtermAnchorSeedSection({
 									</Item>
 									<AccordionContent className='p-0 pt-2'>
 										<div className='w-full min-w-0 overflow-x-auto'>
-											<FixedColumnDataTable
+											<LongTermAnchorSeedDataTable
 												items={group.items}
 												compact={true}
 												loading={loading}
@@ -269,40 +279,4 @@ export function LongtermAnchorSeedSection({
 			</AccordionContent>
 		</AccordionItem>
 	);
-}
-
-function mapSeedItemToTableItem(
-	item: LongTermAnchorSeedItem,
-): LongtermMaterialDetailItem {
-	return {
-		id: item.id,
-		acceptanceReportItemId: item.id,
-		materialId: item.materialId,
-		processGroupId: item.processGroupId,
-		processGroupCode: item.processGroupCode,
-		processGroupName: item.processGroupName,
-		materialCode: item.materialCode || item.partCode,
-		materialName: item.materialName || item.partName,
-		partCode: item.partCode || item.materialCode,
-		partName: item.partName || item.materialName,
-		unitOfMeasureName: item.unitOfMeasureName,
-		pendingValueStartPeriod: item.pendingValueStartPeriod,
-		issuedQuantity: item.issuedQuantity,
-		unitPrice: item.unitPrice,
-		totalAmount: item.totalAmount,
-		originAmount: item.originAmount,
-		totalValueToAccount: item.totalValueToAccount,
-		usageTime: item.usageTime,
-		allocatedTime: item.allocatedTime,
-		remainingTime: item.remainingTime,
-		plannedOutput: 0,
-		standardOutput: 0,
-		valueByStandard: 0,
-		allocationRatio: item.allocationRatio,
-		isFullAccounting: false,
-		accountedValueThisPeriod: 0,
-		pendingValueEndPeriod: item.totalValueToAccount,
-		isAnchorSeed: true,
-		note: item.note,
-	};
 }

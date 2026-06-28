@@ -25,16 +25,11 @@ public record LongTermAnchorSeedItemDto
     public string UnitOfMeasureName { get; init; } = string.Empty;
     public string ProcessGroupCode { get; init; } = string.Empty;
     public string ProcessGroupName { get; init; } = string.Empty;
-    public double IssuedQuantity { get; init; }
-    public decimal UnitPrice { get; init; }
     public decimal PendingValueStartPeriod { get; init; }
     public double UsageTime { get; init; }
     public double AllocatedTime { get; init; }
     public double RemainingTime { get; init; }
     public double AllocationRatio { get; init; }
-    public decimal OriginAmount { get; init; }
-    public decimal TotalAmount { get; init; }
-    public decimal TotalValueToAccount { get; init; }
     public string Note { get; init; } = string.Empty;
 }
 

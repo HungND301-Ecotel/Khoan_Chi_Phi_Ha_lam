@@ -107,16 +107,11 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                     UnitOfMeasureName = item.Material.UnitOfMeasure?.Name ?? string.Empty,
                     ProcessGroupCode = item.ProcessGroup.Code?.Value ?? string.Empty,
                     ProcessGroupName = item.ProcessGroup.Name,
-                    IssuedQuantity = item.IssuedQuantity,
-                    UnitPrice = item.UnitPrice,
                     PendingValueStartPeriod = item.PendingValueStartPeriod,
                     UsageTime = item.UsageTime,
                     AllocatedTime = item.AllocatedTime,
                     RemainingTime = item.RemainingTime,
                     AllocationRatio = item.AllocationRatio,
-                    OriginAmount = item.OriginAmount,
-                    TotalAmount = item.TotalAmount,
-                    TotalValueToAccount = item.TotalValueToAccount,
                     Note = item.Note
                 })
                 .ToList() ?? []

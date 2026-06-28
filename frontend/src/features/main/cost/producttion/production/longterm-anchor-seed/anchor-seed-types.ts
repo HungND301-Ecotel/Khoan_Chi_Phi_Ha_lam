@@ -16,16 +16,15 @@ export type LongTermAnchorSeedItem = {
 	unitOfMeasureName: string;
 	processGroupCode: string;
 	processGroupName: string;
-	issuedQuantity: number;
-	unitPrice: number;
+	categoryAssignmentCode?: string;
+	categoryAssignmentCodeName?: string;
+	categoryProductionOrderCode?: string;
+	categoryProductionOrderName?: string;
 	pendingValueStartPeriod: number;
 	usageTime: number;
 	allocatedTime: number;
 	remainingTime: number;
 	allocationRatio: number;
-	originAmount: number;
-	totalAmount: number;
-	totalValueToAccount: number;
 	note?: string;
 };
 
