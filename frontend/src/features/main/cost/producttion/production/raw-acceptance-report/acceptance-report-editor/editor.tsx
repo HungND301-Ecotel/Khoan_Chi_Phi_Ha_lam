@@ -989,7 +989,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const resolutionStatus = row?.resolutionStatus;
 	const unresolvedReason = row?.unresolvedReason;
 	const documentNumber = row?.documentNumber ?? '';
-	const postingDate = row?.postingDate ?? null;
 	const receivedTypes = row?.receivedTypes as string[] | undefined;
 	const exportedTypes = row?.exportedTypes as string[] | undefined;
 	const receivedBreakdown = row?.receivedBreakdown as

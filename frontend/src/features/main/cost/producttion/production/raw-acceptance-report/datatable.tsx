@@ -551,7 +551,7 @@ export function RawAcceptanceReportDataTable({
 					{renderTableContent()}
 				</div>
 			</div>
-			{items.length > pageSize && (
+			{items.length > 0 && (
 				<ClientPagination
 					totalItems={items.length}
 					pageIndex={safePageIndex}
@@ -591,7 +591,7 @@ export function RawAcceptanceReportDataTable({
 							{renderTableContent()}
 						</div>
 					</div>
-					{items.length > pageSize && (
+					{items.length > 0 && (
 						<div className='shrink-0 border-t bg-white py-2'>
 							<ClientPagination
 								totalItems={items.length}
@@ -602,6 +602,7 @@ export function RawAcceptanceReportDataTable({
 									setPageSize(nextPageSize);
 									setPageIndex(0);
 								}}
+								className='py-2'
 							/>
 						</div>
 					)}

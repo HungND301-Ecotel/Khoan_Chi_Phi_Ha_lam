@@ -541,22 +541,28 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial
 			? (item.otherMaterialDetail ?? OtherMaterialDetail.None)
 			: OtherMaterialDetail.None;
-	const additionalSelection =
-		item.showAdditionalCostDropdown &&
-		(resolvedAdditionalCostCategory === AdditionalCost.Material ||
-			resolvedAdditionalCostCategory === AdditionalCost.Maintain)
-			? {
-					productionOrderId: normalizeProductionOrderId(
-						item.additionalCostProductionOrderId,
-					),
-					assignmentCodeId: normalizeAssignmentCodeId(
-						item.additionalCostAssignmentCodeId,
-					),
-				}
-			: {
-					productionOrderId: null,
-					assignmentCodeId: null,
-				};
+	const additionalRequiresProductionOrder =
+		resolvedAdditionalCostCategory === AdditionalCost.Material ||
+		resolvedAdditionalCostCategory === AdditionalCost.Maintain ||
+		resolvedAdditionalCostCategory === AdditionalCost.OtherMaterial;
+
+	const additionalRequiresAssignmentCode =
+		resolvedAdditionalCostCategory === AdditionalCost.Material ||
+		resolvedAdditionalCostCategory === AdditionalCost.Maintain;
+
+	const additionalSelection = item.showAdditionalCostDropdown
+		? {
+				productionOrderId: additionalRequiresProductionOrder
+					? normalizeProductionOrderId(item.additionalCostProductionOrderId)
+					: null,
+				assignmentCodeId: additionalRequiresAssignmentCode
+					? normalizeAssignmentCodeId(item.additionalCostAssignmentCodeId)
+					: null,
+			}
+		: {
+				productionOrderId: null,
+				assignmentCodeId: null,
+			};
 	const quotaPayload = buildQuotaBasedMaterialPayload(item);
 
 	return {
