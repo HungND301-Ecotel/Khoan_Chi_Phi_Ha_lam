@@ -2,6 +2,7 @@
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { ClientPagination } from '@/components/datatable/client-pagination';
 import { FormArray } from '@/components/form/form-array';
+import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -22,6 +23,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+type LookupOption = {
+	value: string;
+	label: string;
+};
+
+type CodeNameLookupItem = {
+	id: string;
+	code: string;
+	name: string;
+};
+
 type LongtermAnchorSeedFormProps = {
 	departmentId: string;
 	callback?: () => Promise<void> | void;
@@ -37,6 +49,12 @@ export function LongtermAnchorSeedForm({
 	const [loading, setLoading] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [assignmentCodeOptions, setAssignmentCodeOptions] = useState<
+		LookupOption[]
+	>([]);
+	const [productionOrderOptions, setProductionOrderOptions] = useState<
+		LookupOption[]
+	>([]);
 
 	const form = useForm<LongTermAnchorSeedSchema>({
 		resolver: zodResolver(longTermAnchorSeedSchema),
@@ -73,8 +91,11 @@ export function LongtermAnchorSeedForm({
 						materialId: item.materialId || item.partId,
 						partId: item.partId,
 						processGroupId: item.processGroupId,
-						issuedQuantity: item.issuedQuantity,
-						unitPrice: item.unitPrice,
+						categoryAssignmentCodeId:
+							item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
+						categoryProductionOrderId: item.categoryProductionOrderId ?? null,
+						issuedQuantity: 0,
+						unitPrice: 0,
 						pendingValueStartPeriod: item.pendingValueStartPeriod,
 						usageTime: item.usageTime,
 						allocatedTime: item.allocatedTime,
@@ -91,6 +112,80 @@ export function LongtermAnchorSeedForm({
 
 		fetchDetail();
 	}, [departmentId, error, form]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchAssignmentCodes = async () => {
+			try {
+				const response = await api.pagging<CodeNameLookupItem>(
+					API.CATALOG.CONTRACT_CODE.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				setAssignmentCodeOptions(
+					(response.result.data ?? [])
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((item) => ({
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						})),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setAssignmentCodeOptions([]);
+				error(err);
+			}
+		};
+
+		fetchAssignmentCodes();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [error]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchProductionOrders = async () => {
+			try {
+				const response = await api.pagging<CodeNameLookupItem>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				setProductionOrderOptions(
+					(response.result.data ?? [])
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((item) => ({
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						})),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setProductionOrderOptions([]);
+				error(err);
+			}
+		};
+
+		fetchProductionOrders();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [error]);
 
 	const handleSubmit = async (values: LongTermAnchorSeedSchema) => {
 		try {
@@ -121,57 +216,7 @@ export function LongtermAnchorSeedForm({
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<div className='flex max-h-[70vh] flex-col overflow-hidden bg-transparent'>
-				<div className='sticky top-0 z-20 shrink-0 pb-4'>
-					<div className='border-border/60 space-y-4 rounded-sm border bg-transparent p-4'>
-						<div className='text-sm font-semibold'>
-							Sản lượng nhóm công đoạn
-						</div>
-						<FormArray
-							control={form.control}
-							name='processGroupMetrics'
-							hasAddButton={false}
-							hasCloseButton={false}
-						>
-							{(index) => {
-								const metric = detailItems?.processGroupMetrics[index];
-
-								return (
-									<>
-										<div className='min-w-48 flex-1 space-y-2'>
-											<Label>Nhóm công đoạn</Label>
-											<Input
-												readOnly
-												value={
-													metric?.processGroupCode
-														? `${metric.processGroupCode} - ${metric.processGroupName}`
-														: (metric?.processGroupName ?? '')
-												}
-											/>
-										</div>
-
-										<div className='min-w-40 flex-1'>
-											<FormNumber
-												control={form.control}
-												name={`processGroupMetrics.${index}.plannedOutput`}
-												label='Sản lượng kế hoạch'
-											/>
-										</div>
-
-										<div className='min-w-40 flex-1'>
-											<FormNumber
-												control={form.control}
-												name={`processGroupMetrics.${index}.standardOutput`}
-												label='Sản lượng định mức'
-											/>
-										</div>
-									</>
-								);
-							}}
-						</FormArray>
-					</div>
-				</div>
-
-				<div className='scrollbar-sm min-h-0 flex-1 overflow-auto pt-4'>
+				<div className='scrollbar-sm min-h-0 flex-1 overflow-auto'>
 					{loading ? (
 						<div className='flex h-60 items-center justify-center'>
 							<div className='flex flex-col items-center gap-3 text-sm text-slate-500'>
@@ -203,6 +248,26 @@ export function LongtermAnchorSeedForm({
 																? `${item.processGroupCode} - ${item.processGroupName}`
 																: (item?.processGroupName ?? '')
 														}
+														/>
+												</div>
+
+												<div className='min-w-64 flex-1 space-y-2'>
+													<FormComboBox
+														control={form.control}
+														name={`items.${index}.categoryAssignmentCodeId`}
+														label='Nhóm vật tư, tài sản'
+														options={assignmentCodeOptions}
+														placeholder='Chọn nhóm vật tư, tài sản'
+													/>
+												</div>
+
+												<div className='min-w-64 flex-1 space-y-2'>
+													<FormComboBox
+														control={form.control}
+														name={`items.${index}.categoryProductionOrderId`}
+														label='Lệnh sản xuất'
+														options={productionOrderOptions}
+														placeholder='Chọn lệnh sản xuất'
 													/>
 												</div>
 
@@ -230,27 +295,11 @@ export function LongtermAnchorSeedForm({
 													/>
 												</div>
 
-												<div className='min-w-32 flex-1'>
-													<FormNumber
-														control={form.control}
-														name={`items.${index}.issuedQuantity`}
-														label='Số lượng'
-													/>
-												</div>
-
-												<div className='min-w-32 flex-1'>
-													<FormNumber
-														control={form.control}
-														name={`items.${index}.unitPrice`}
-														label='Đơn giá'
-													/>
-												</div>
-
 												<div className='min-w-56 flex-1'>
 													<FormNumber
 														control={form.control}
 														name={`items.${index}.pendingValueStartPeriod`}
-														label='Giá trị chờ hạch toán đầu kỳ'
+														label='Tổng giá trị cần hạch toán (đ)'
 													/>
 												</div>
 
@@ -278,18 +327,6 @@ export function LongtermAnchorSeedForm({
 															(form.watch(`items.${index}.usageTime`) ?? 0) -
 																(form.watch(`items.${index}.allocatedTime`) ??
 																	0),
-														)}
-													/>
-												</div>
-
-												<div className='min-w-40 flex-1 space-y-2'>
-													<Label>Thành tiền</Label>
-													<Input
-														readOnly
-														value={formatNumber(
-															(form.watch(`items.${index}.issuedQuantity`) ??
-																0) *
-																(form.watch(`items.${index}.unitPrice`) ?? 0),
 														)}
 													/>
 												</div>

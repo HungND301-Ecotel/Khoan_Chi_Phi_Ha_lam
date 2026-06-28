@@ -20,6 +20,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrder>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
     private readonly IWriteRepository<LongTermAnchorSeedProcessGroupMetric> _processGroupMetricRepository = unitOfWork.GetRepository<LongTermAnchorSeedProcessGroupMetric>();
@@ -56,6 +58,16 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var assignmentCodes = rows
+            .Select(x => NormalizeCode(ExtractCode(x.CategoryAssignmentCode)))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var productionOrderCodes = rows
+            .Select(x => NormalizeCode(ExtractCode(x.CategoryProductionOrderCode)))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var materials = await _materialRepository.GetAllAsync(
             predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
@@ -65,12 +77,28 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
             include: q => q.Include(x => x.Code),
             disableTracking: true);
+        var assignmentCodeEntities = await _assignmentCodeRepository.GetAllAsync(
+            predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
+        var productionOrders = await _productionOrderRepository.GetAllAsync(
+            predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
 
         var materialByCode = materials
             .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
             .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         var processGroupByCode = processGroups
+            .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
+            .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var assignmentCodeByCode = assignmentCodeEntities
+            .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
+            .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var productionOrderByCode = productionOrders
             .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
             .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
@@ -89,6 +117,22 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         if (missingProcessGroupCodes.Count > 0)
         {
             importErrors.Add($"Không tìm thấy nhóm công đoạn với mã: {string.Join(", ", missingProcessGroupCodes)}.");
+        }
+
+        var missingAssignmentCodes = assignmentCodes
+            .Where(code => !assignmentCodeByCode.ContainsKey(code))
+            .ToList();
+        if (missingAssignmentCodes.Count > 0)
+        {
+            importErrors.Add($"Không tìm thấy nhóm vật tư, tài sản với mã: {string.Join(", ", missingAssignmentCodes)}.");
+        }
+
+        var missingProductionOrderCodes = productionOrderCodes
+            .Where(code => !productionOrderByCode.ContainsKey(code))
+            .ToList();
+        if (missingProductionOrderCodes.Count > 0)
+        {
+            importErrors.Add($"Không tìm thấy lệnh sản xuất với mã: {string.Join(", ", missingProductionOrderCodes)}.");
         }
 
         var seed = await _seedRepository.GetFirstOrDefaultAsync(
@@ -141,6 +185,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 var materialCode = NormalizeCode(ExtractCode(row.MaterialCode));
                 var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
+                var categoryAssignmentCode = NormalizeCode(ExtractCode(row.CategoryAssignmentCode));
+                var categoryProductionOrderCode = NormalizeCode(ExtractCode(row.CategoryProductionOrderCode));
 
                 if (string.IsNullOrWhiteSpace(materialCode) || string.IsNullOrWhiteSpace(processGroupCode))
                 {
@@ -158,17 +204,21 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     importErrors.Add($"Dòng {rowNumber}: Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
                 }
 
+                if (!string.IsNullOrWhiteSpace(categoryAssignmentCode) && !assignmentCodeByCode.ContainsKey(categoryAssignmentCode))
+                {
+                    importErrors.Add($"Dòng {rowNumber}: Không tìm thấy nhóm vật tư, tài sản với mã '{categoryAssignmentCode}'.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(categoryProductionOrderCode) && !productionOrderByCode.ContainsKey(categoryProductionOrderCode))
+                {
+                    importErrors.Add($"Dòng {rowNumber}: Không tìm thấy lệnh sản xuất với mã '{categoryProductionOrderCode}'.");
+                }
+
                 var businessRuleError = ValidateRowBusinessRule(row, materialCode, processGroupCode, rowNumber);
                 if (!string.IsNullOrWhiteSpace(businessRuleError))
                 {
                     importErrors.Add(businessRuleError);
                 }
-            }
-
-            var metricValidationErrors = ValidateProcessGroupMetrics(rows);
-            if (metricValidationErrors.Count > 0)
-            {
-                importErrors.AddRange(metricValidationErrors);
             }
 
             ThrowIfImportErrors(importErrors);
@@ -203,6 +253,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 var materialCode = NormalizeCode(ExtractCode(row.MaterialCode));
                 var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
+                var categoryAssignmentCode = NormalizeCode(ExtractCode(row.CategoryAssignmentCode));
+                var categoryProductionOrderCode = NormalizeCode(ExtractCode(row.CategoryProductionOrderCode));
                 if (string.IsNullOrWhiteSpace(materialCode) || string.IsNullOrWhiteSpace(processGroupCode))
                 {
                     throw new BadRequestException("Mã vật tư và mã nhóm công đoạn không được để trống");
@@ -212,6 +264,14 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     ?? throw new BadRequestException($"Không tìm thấy vật tư với mã '{materialCode}'.");
                 var processGroup = processGroupByCode.GetValueOrDefault(processGroupCode)
                     ?? throw new BadRequestException($"Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
+                var assignmentCode = string.IsNullOrWhiteSpace(categoryAssignmentCode)
+                    ? null
+                    : assignmentCodeByCode.GetValueOrDefault(categoryAssignmentCode)
+                        ?? throw new BadRequestException($"Không tìm thấy nhóm vật tư, tài sản với mã '{categoryAssignmentCode}'.");
+                var productionOrder = string.IsNullOrWhiteSpace(categoryProductionOrderCode)
+                    ? null
+                    : productionOrderByCode.GetValueOrDefault(categoryProductionOrderCode)
+                        ?? throw new BadRequestException($"Không tìm thấy lệnh sản xuất với mã '{categoryProductionOrderCode}'.");
 
                 var normalizedValues = NormalizeRowValues(row);
 
@@ -221,9 +281,11 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         seed.Id,
                         processGroup.Id,
                         material.Id,
+                        assignmentCode?.Id,
+                        productionOrder?.Id,
                         index,
-                        normalizedValues.IssuedQuantity,
-                        normalizedValues.UnitPrice,
+                        0,
+                        0,
                         normalizedValues.PendingValueStartPeriod,
                         normalizedValues.UsageTime,
                         normalizedValues.AllocatedTime,
@@ -238,9 +300,11 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 existingItem.UpdateForMaterial(
                     processGroup.Id,
                     material.Id,
+                    assignmentCode?.Id,
+                    productionOrder?.Id,
                     index,
-                    normalizedValues.IssuedQuantity,
-                    normalizedValues.UnitPrice,
+                    0,
+                    0,
                     normalizedValues.PendingValueStartPeriod,
                     normalizedValues.UsageTime,
                     normalizedValues.AllocatedTime,
@@ -250,55 +314,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 _seedItemRepository.Update(existingItem);
             }
 
-            var metricByProcessGroup = new Dictionary<Guid, (double PlannedOutput, double StandardOutput)>();
-            foreach (var row in rows)
-            {
-                var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
-                if (string.IsNullOrWhiteSpace(processGroupCode))
-                {
-                    continue;
-                }
-
-                if (!row.PlannedOutput.HasValue && !row.StandardOutput.HasValue)
-                {
-                    continue;
-                }
-
-                var processGroup = processGroupByCode[processGroupCode];
-                var currentMetric = (
-                    PlannedOutput: row.PlannedOutput ?? 0,
-                    StandardOutput: row.StandardOutput ?? 0);
-
-                if (metricByProcessGroup.TryGetValue(processGroup.Id, out var existingMetric)
-                    && (existingMetric.PlannedOutput != currentMetric.PlannedOutput
-                        || existingMetric.StandardOutput != currentMetric.StandardOutput))
-                {
-                    throw new BadRequestException($"Nhóm công đoạn '{processGroupCode}' có sản lượng kế hoạch/định mức không nhất quán giữa các dòng.");
-                }
-
-                metricByProcessGroup[processGroup.Id] = currentMetric;
-            }
-
             var existingMetrics = await _processGroupMetricRepository.GetAllAsync(
                 predicate: x => x.LongTermAnchorSeedId == seed.Id,
                 disableTracking: false);
-
-            foreach (var metric in metricByProcessGroup)
+            if (existingMetrics.Count > 0)
             {
-                var existingMetric = existingMetrics.FirstOrDefault(x => x.ProcessGroupId == metric.Key);
-                if (existingMetric == null)
-                {
-                    var newMetric = LongTermAnchorSeedProcessGroupMetric.Create(
-                        seed.Id,
-                        metric.Key,
-                        metric.Value.PlannedOutput,
-                        metric.Value.StandardOutput);
-                    await _processGroupMetricRepository.InsertAsync(newMetric, cancellationToken);
-                    continue;
-                }
-
-                existingMetric.Update(metric.Value.PlannedOutput, metric.Value.StandardOutput);
-                _processGroupMetricRepository.Update(existingMetric);
+                _processGroupMetricRepository.Delete(existingMetrics);
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -343,8 +364,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         return row.Id.HasValue
             && string.IsNullOrWhiteSpace(row.MaterialCode)
             && string.IsNullOrWhiteSpace(row.ProcessGroupCode)
-            && !row.IssuedQuantity.HasValue
-            && !row.UnitPrice.HasValue
+            && string.IsNullOrWhiteSpace(row.CategoryAssignmentCode)
+            && string.IsNullOrWhiteSpace(row.CategoryProductionOrderCode)
             && !row.PendingValueStartPeriod.HasValue
             && !row.UsageTime.HasValue
             && !row.AllocatedTime.HasValue
@@ -354,8 +375,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private static NormalizedRowValues NormalizeRowValues(LongTermAnchorSeedExcelRowDto row)
     {
         return new NormalizedRowValues(
-            row.IssuedQuantity ?? 0,
-            row.UnitPrice ?? 0,
             row.PendingValueStartPeriod ?? 0,
             row.UsageTime ?? 0,
             row.AllocatedTime ?? 0,
@@ -363,8 +382,6 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     }
 
     private sealed record NormalizedRowValues(
-        double IssuedQuantity,
-        decimal UnitPrice,
         decimal PendingValueStartPeriod,
         double UsageTime,
         double AllocatedTime,
@@ -376,24 +393,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         string processGroupCode,
         int rowNumber)
     {
-        var issuedQuantity = row.IssuedQuantity ?? 0;
-        var unitPrice = row.UnitPrice ?? 0;
         var pendingValueStartPeriod = row.PendingValueStartPeriod ?? 0;
         var usageTime = row.UsageTime ?? 0;
         var allocatedTime = row.AllocatedTime ?? 0;
-        if (issuedQuantity < 0)
-        {
-            return $"Dòng {rowNumber}: Số lượng của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
-        }
-
-        if (unitPrice < 0)
-        {
-            return $"Dòng {rowNumber}: Đơn giá của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
-        }
-
         if (pendingValueStartPeriod < 0)
         {
-            return $"Dòng {rowNumber}: Giá trị chờ hạch toán đầu kỳ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
+            return $"Dòng {rowNumber}: Tổng giá trị cần hạch toán của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
         }
 
         if (usageTime < 0)
@@ -406,65 +411,12 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             return $"Dòng {rowNumber}: Thời gian đã phân bổ của vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}' không được âm.";
         }
 
-        var hasPendingValueStartPeriod = pendingValueStartPeriod > 0;
-        var hasIssuedQuantity = issuedQuantity > 0;
-        var hasUnitPrice = unitPrice > 0;
-
-        if (!hasPendingValueStartPeriod && hasIssuedQuantity != hasUnitPrice)
+        if (pendingValueStartPeriod <= 0)
         {
-            return $"Dòng {rowNumber}: Phải nhập đồng thời số lượng và đơn giá khi không nhập giá trị chờ hạch toán đầu kỳ cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
-        }
-
-        if (hasPendingValueStartPeriod && (hasIssuedQuantity || hasUnitPrice))
-        {
-            return $"Dòng {rowNumber}: Không được nhập đồng thời giá trị chờ hạch toán đầu kỳ với số lượng hoặc đơn giá cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
-        }
-
-        if (!hasPendingValueStartPeriod && !hasIssuedQuantity && !hasUnitPrice)
-        {
-            return $"Dòng {rowNumber}: Phải nhập giá trị chờ hạch toán đầu kỳ hoặc đồng thời số lượng và đơn giá cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
+            return $"Dòng {rowNumber}: Phải nhập tổng giá trị cần hạch toán lớn hơn 0 cho vật tư '{materialCode}' và nhóm công đoạn '{processGroupCode}'.";
         }
 
         return null;
-    }
-
-    private static List<string> ValidateProcessGroupMetrics(IReadOnlyList<LongTermAnchorSeedExcelRowDto> rows)
-    {
-        var errors = new List<string>();
-        var metricByProcessGroup = new Dictionary<string, (double PlannedOutput, double StandardOutput)>(StringComparer.OrdinalIgnoreCase);
-
-        for (var index = 0; index < rows.Count; index++)
-        {
-            var row = rows[index];
-            var rowNumber = index + 2;
-            var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
-
-            if (string.IsNullOrWhiteSpace(processGroupCode))
-            {
-                continue;
-            }
-
-            if (!row.PlannedOutput.HasValue && !row.StandardOutput.HasValue)
-            {
-                continue;
-            }
-
-            var currentMetric = (
-                PlannedOutput: row.PlannedOutput ?? 0,
-                StandardOutput: row.StandardOutput ?? 0);
-
-            if (metricByProcessGroup.TryGetValue(processGroupCode, out var existingMetric)
-                && (existingMetric.PlannedOutput != currentMetric.PlannedOutput
-                    || existingMetric.StandardOutput != currentMetric.StandardOutput))
-            {
-                errors.Add($"Dòng {rowNumber}: Nhóm công đoạn '{processGroupCode}' có sản lượng kế hoạch/định mức không nhất quán giữa các dòng.");
-                continue;
-            }
-
-            metricByProcessGroup[processGroupCode] = currentMetric;
-        }
-
-        return errors;
     }
 
     private static void ThrowIfImportErrors(List<string> importErrors)

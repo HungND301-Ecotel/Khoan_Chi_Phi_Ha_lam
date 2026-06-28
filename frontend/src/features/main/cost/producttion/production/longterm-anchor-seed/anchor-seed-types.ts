@@ -4,6 +4,9 @@ export type LongTermAnchorSeedItem = {
 	trackedMaterialId?: string;
 	partId?: string;
 	processGroupId: string;
+	categoryAssignmentCodeId?: string | null;
+	categoryEquipmentId?: string | null;
+	categoryProductionOrderId?: string | null;
 	materialCode: string;
 	materialName: string;
 	trackedMaterialCode?: string;
@@ -13,16 +16,15 @@ export type LongTermAnchorSeedItem = {
 	unitOfMeasureName: string;
 	processGroupCode: string;
 	processGroupName: string;
-	issuedQuantity: number;
-	unitPrice: number;
+	categoryAssignmentCode?: string;
+	categoryAssignmentCodeName?: string;
+	categoryProductionOrderCode?: string;
+	categoryProductionOrderName?: string;
 	pendingValueStartPeriod: number;
 	usageTime: number;
 	allocatedTime: number;
 	remainingTime: number;
 	allocationRatio: number;
-	originAmount: number;
-	totalAmount: number;
-	totalValueToAccount: number;
 	note?: string;
 };
 

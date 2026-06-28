@@ -16,6 +16,8 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<UpdateLongTermAnchorSeedCommand, bool>
 {
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrder>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
     private readonly IWriteRepository<LongTermAnchorSeedProcessGroupMetric> _processGroupMetricRepository = unitOfWork.GetRepository<LongTermAnchorSeedProcessGroupMetric>();
@@ -37,6 +39,41 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
         if (!departmentExists)
         {
             throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+        }
+
+        var assignmentCodeIds = request.Request.Items
+            .Select(x => x.CategoryAssignmentCodeId ?? x.CategoryEquipmentId)
+            .Where(x => x.HasValue && x.Value != Guid.Empty)
+            .Select(x => x!.Value)
+            .Distinct()
+            .ToList();
+        var productionOrderIds = request.Request.Items
+            .Select(x => x.CategoryProductionOrderId)
+            .Where(x => x.HasValue && x.Value != Guid.Empty)
+            .Select(x => x!.Value)
+            .Distinct()
+            .ToList();
+
+        if (assignmentCodeIds.Count > 0)
+        {
+            var existingAssignmentCodeIds = await _assignmentCodeRepository.GetAllAsync(
+                predicate: x => assignmentCodeIds.Contains(x.Id),
+                disableTracking: true);
+            if (existingAssignmentCodeIds.Count != assignmentCodeIds.Count)
+            {
+                throw new NotFoundException("Nhóm vật tư, tài sản không tồn tại");
+            }
+        }
+
+        if (productionOrderIds.Count > 0)
+        {
+            var existingProductionOrderIds = await _productionOrderRepository.GetAllAsync(
+                predicate: x => productionOrderIds.Contains(x.Id),
+                disableTracking: true);
+            if (existingProductionOrderIds.Count != productionOrderIds.Count)
+            {
+                throw new NotFoundException("Lệnh sản xuất không tồn tại");
+            }
         }
 
         var seed = await _seedRepository.GetFirstOrDefaultAsync(
@@ -83,6 +120,8 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                 entity.UpdateForMaterial(
                     item.ProcessGroupId,
                     trackedMaterialId.Value,
+                    item.CategoryAssignmentCodeId ?? item.CategoryEquipmentId,
+                    item.CategoryProductionOrderId,
                     index,
                     item.IssuedQuantity,
                     item.UnitPrice,
@@ -95,31 +134,12 @@ public class UpdateLongTermAnchorSeedCommandHandler(IUnitOfWork unitOfWork)
                 _seedItemRepository.Update(entity);
             }
 
-            var metricRequests = request.Request.ProcessGroupMetrics
-                .GroupBy(x => x.ProcessGroupId)
-                .Select(x => x.First())
-                .ToList();
             var existingMetrics = await _processGroupMetricRepository.GetAllAsync(
                 predicate: x => x.LongTermAnchorSeedId == seed.Id,
                 disableTracking: false);
-
-            foreach (var metricRequest in metricRequests)
+            if (existingMetrics.Count > 0)
             {
-                var existingMetric = existingMetrics.FirstOrDefault(x => x.ProcessGroupId == metricRequest.ProcessGroupId);
-                if (existingMetric == null)
-                {
-                    var newMetric = LongTermAnchorSeedProcessGroupMetric.Create(
-                        seed.Id,
-                        metricRequest.ProcessGroupId,
-                        metricRequest.PlannedOutput,
-                        metricRequest.StandardOutput);
-
-                    await _processGroupMetricRepository.InsertAsync(newMetric, cancellationToken);
-                    continue;
-                }
-
-                existingMetric.Update(metricRequest.PlannedOutput, metricRequest.StandardOutput);
-                _processGroupMetricRepository.Update(existingMetric);
+                _processGroupMetricRepository.Delete(existingMetrics);
             }
 
             await unitOfWork.SaveChangesAsync();

@@ -69,20 +69,39 @@ export function LongTermMaterialCosts({
 		fetchLongTermTracking();
 	}, [isOpen, output?.acceptanceReportId, reloadKey]);
 
-	const groupedItems: LongTermTrackingProcessGroup[] =
-		additionalCostData?.processGroups &&
-		additionalCostData.processGroups.length > 0
-			? additionalCostData.processGroups
-			: additionalCostData?.items && additionalCostData.items.length > 0
-				? [
-						{
-							processGroupId: 'all',
-							processGroupCode: '',
-							processGroupName: 'Tất cả nhóm công đoạn',
-							items: additionalCostData.items,
-						},
-					]
-				: [];
+	const groupedItems: LongTermTrackingProcessGroup[] = (() => {
+		if (!additionalCostData?.items?.length) {
+			return [];
+		}
+
+		const processGroups = additionalCostData.processGroups ?? [];
+		if (!processGroups.length) {
+			return [
+				{
+					processGroupId: 'all',
+					processGroupCode: '',
+					processGroupName: 'Tất cả nhóm công đoạn',
+					items: additionalCostData.items,
+				},
+			];
+		}
+
+		const ungroupedItems = additionalCostData.items.filter(
+			(item) => !item.processGroupId,
+		);
+
+		return ungroupedItems.length
+			? [
+					...processGroups,
+					{
+						processGroupId: 'ungrouped',
+						processGroupCode: '',
+						processGroupName: 'Chưa có nhóm công đoạn',
+						items: ungroupedItems,
+					},
+				]
+			: processGroups;
+	})();
 
 	return (
 		<AccordionItem

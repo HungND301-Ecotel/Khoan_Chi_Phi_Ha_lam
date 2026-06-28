@@ -22,6 +22,8 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrder>();
 
     public async Task<ExportLongTermAnchorSeedExcelResponse> Handle(ExportLongTermAnchorSeedExcelQuery request, CancellationToken cancellationToken)
     {
@@ -44,16 +46,13 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                 .Include(s => s.Items)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
-                .Include(s => s.ProcessGroupMetrics),
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.AssignmentCode)
+                        .ThenInclude(ac => ac!.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.ProductionOrder)
+                        .ThenInclude(po => po!.Code),
             disableTracking: true);
-
-        var processGroupMetrics = seed?.ProcessGroupMetrics
-            .GroupBy(x => x.ProcessGroupId)
-            .ToDictionary(
-                x => x.Key,
-                x => (
-                    PlannedOutput: x.First().PlannedOutput,
-                    StandardOutput: x.First().StandardOutput)) ?? [];
 
         var rows = seed?.Items
             .OrderBy(x => x.SortOrder)
@@ -64,13 +63,11 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
                 Id = x.Id,
                 MaterialCode = BuildCodeName(GetTrackedMaterialCode(x), GetTrackedMaterialName(x)),
                 ProcessGroupCode = BuildCodeName(x.ProcessGroup.Code?.Value, x.ProcessGroup.Name),
-                IssuedQuantity = x.IssuedQuantity,
-                UnitPrice = x.UnitPrice,
+                CategoryAssignmentCode = BuildCodeName(x.AssignmentCode?.Code?.Value, x.AssignmentCode?.Name),
+                CategoryProductionOrderCode = BuildCodeName(x.ProductionOrder?.Code?.Value, x.ProductionOrder?.Name),
                 PendingValueStartPeriod = x.PendingValueStartPeriod,
                 UsageTime = x.UsageTime,
                 AllocatedTime = x.AllocatedTime,
-                PlannedOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out var metric) ? metric.PlannedOutput : 0,
-                StandardOutput = processGroupMetrics.TryGetValue(x.ProcessGroupId, out metric) ? metric.StandardOutput : 0,
                 Note = x.Note ?? string.Empty
             })
             .ToList() ?? [];
@@ -80,6 +77,14 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
             include: q => q.Include(x => x.Code),
             disableTracking: true);
         var processGroups = await _processGroupRepository.GetAllAsync(
+            predicate: x => x.Code != null,
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
+        var assignmentCodes = await _assignmentCodeRepository.GetAllAsync(
+            predicate: x => x.Code != null,
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
+        var productionOrders = await _productionOrderRepository.GetAllAsync(
             predicate: x => x.Code != null,
             include: q => q.Include(x => x.Code),
             disableTracking: true);
@@ -98,6 +103,24 @@ public class ExportLongTermAnchorSeedExcelQueryHandler(IExcelService excelServic
             {
                 nameof(LongTermAnchorSeedExcelRowDto.ProcessGroupCode),
                 processGroups
+                    .Select(x => BuildCodeName(x.Code?.Value, x.Name))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList()
+            },
+            {
+                nameof(LongTermAnchorSeedExcelRowDto.CategoryAssignmentCode),
+                assignmentCodes
+                    .Select(x => BuildCodeName(x.Code?.Value, x.Name))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList()
+            },
+            {
+                nameof(LongTermAnchorSeedExcelRowDto.CategoryProductionOrderCode),
+                productionOrders
                     .Select(x => BuildCodeName(x.Code?.Value, x.Name))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()

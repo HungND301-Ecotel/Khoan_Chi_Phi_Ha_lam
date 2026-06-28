@@ -520,7 +520,10 @@ function buildBasePayload(item: AcceptanceReportEditorRow) {
 		item.categoryAllocations,
 		materialsIncludedInContractRevenue,
 	);
-	const processGroupId = null;
+	const processGroupId =
+		item.showCategoryDropdown && item.isLongTermTracking
+			? item.categoryProcessGroup ?? null
+			: null;
 	const isSafetyAndWelfareMaterial =
 		item.type === MaterialType.Material &&
 		item.itemType === ItemType.SafetyAndWelfare;

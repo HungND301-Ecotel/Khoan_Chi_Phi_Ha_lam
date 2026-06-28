@@ -250,11 +250,11 @@ export function LongtermMaterialCostForm({
 											form.watch(`items.${index}.isFullAccounting`) ?? false;
 										const watchedUsageTime =
 											form.watch(`items.${index}.usageTime`) ?? 0;
-										const watchedAllocationRate = form.watch(
-											`items.${index}.allocationRate`,
-										);
-										const isUsageTimeEditable = true;
-										const isAnchorSeed = item?.isAnchorSeed === true;
+								const watchedAllocationRate = form.watch(
+									`items.${index}.allocationRate`,
+								);
+								const isUsageTimeEditable = true;
+								const isAnchorSeed = item?.isAnchorSeed === true;
 
 										const remainingPeriod =
 											watchedUsageTime - (item?.allocatedTime ?? 0);

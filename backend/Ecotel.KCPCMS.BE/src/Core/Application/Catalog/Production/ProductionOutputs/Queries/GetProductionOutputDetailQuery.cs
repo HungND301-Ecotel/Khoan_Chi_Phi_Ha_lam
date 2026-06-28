@@ -280,19 +280,29 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             var material = anchorSeedSnapshot.Material;
             var snapshot = anchorSeedSnapshot.Snapshot;
-            var (groupKey, groupCode, groupName) = ResolveAnchorSeedTh2GroupKey("A3", material);
+            var seedItem = anchorSeedSnapshot.SeedItem;
+            var (groupKey, groupCode, groupName) = ResolveAnchorSeedTh2GroupKey("A3", seedItem, material);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
                 GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
                 SectionAType = SecAType.SctxTh2,
+                ProductionOrderId = seedItem.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
             });
 
             var (plannedPrice, actualPrice) = GetUnitPrices(material.Costs, productionOutput.StartMonth);
-            group.Materials.Add(BuildAnchorSeedTh2Detail(snapshot, material, plannedPrice, actualPrice));
+            AddAnchorSeedDetailToGroup(
+                group,
+                seedItem,
+                BuildAnchorSeedTh2Detail(
+                    snapshot,
+                    material,
+                    plannedPrice,
+                    actualPrice,
+                    seedItem.ProductionOrderId.HasValue));
         }
 
         return groups.Values
@@ -458,13 +468,17 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .Where(i => i.AdditionalCost == AdditionalCost.SafeAndWelfare
                      && i.IsMaterialItem && i.Material != null))
         {
-            var groupKey = $"BO_{item.OtherMaterialDetail}";
+            var productionOrderId = item.AdditionalCostProductionOrderId;
+            var groupKey = productionOrderId.HasValue
+                ? $"BO_{item.OtherMaterialDetail}_{productionOrderId.Value:N}"
+                : $"BO_{item.OtherMaterialDetail}_NO_ORDER";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = item.OtherMaterialDetail.ToString()!,
                 GroupName = "",
                 MaterialType = MatTypeLabel.VatLieu,
                 AdditionalCostType = AdditionalCost.SafeAndWelfare,
+                ProductionOrderId = productionOrderId,
                 OtherMaterialDetail = item.OtherMaterialDetail,
                 Materials = new(),
                 SubGroups = new()
@@ -492,11 +506,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         var sectionItems = report.AcceptanceReportItems
             .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None
-                     && i.IsMaterialItem && i.Material != null)
+                     && GetTrackedCatalogMaterial(i) != null)
             .ToList();
 
         foreach (var item in sectionItems)
         {
+            var trackedMaterial = GetTrackedCatalogMaterial(item)!;
             var (groupKey, groupName, hasSubGroup) = item.QuotaBasedMaterial switch
             {
                 QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
@@ -514,8 +529,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 SubGroups = new()
             });
 
-            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
-            var detail = BuildQuotaBasedDetail(item, item.Material, plannedPrice, actualPrice);
+            var (plannedPrice, actualPrice) = GetUnitPrices(trackedMaterial.Costs, productionOutput.StartMonth);
+            var detail = BuildQuotaBasedDetail(item, trackedMaterial, plannedPrice, actualPrice);
 
             if (hasSubGroup)
             {
@@ -558,7 +573,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReport report, ProductionOutput productionOutput)
     {
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.Asset != Asset.None && i.IsMaterialItem && i.Material != null)
+            .Where(i => i.Asset != Asset.None && GetTrackedCatalogMaterial(i) != null)
             .ToList();
 
         if (sectionItems.Any())
@@ -574,8 +589,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
             foreach (var item in sectionItems)
             {
-                var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
-                group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
+                var trackedMaterial = GetTrackedCatalogMaterial(item)!;
+                var (plannedPrice, actualPrice) = GetUnitPrices(trackedMaterial.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildVatLieuDetail(item, trackedMaterial, plannedPrice, actualPrice));
             }
 
             return new() { group };
@@ -652,12 +668,69 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
     private static (string key, string code, string name) ResolveAnchorSeedTh2GroupKey(
         string prefix,
+        LongTermAnchorSeedItem item,
         SctxMaterialContext material)
     {
-        var assignmentCode = material.AssignmentCodes?.FirstOrDefault();
+        if (item.ProductionOrderId.HasValue)
+        {
+            var id = item.ProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id);
+        }
+
+        var assignmentCode = item.AssignmentCode
+            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId)
+            ?? material.AssignmentCodes?.FirstOrDefault();
         var code = assignmentCode?.Code?.Value ?? "VTK";
         var name = assignmentCode?.Name ?? "Vật tư khác";
         return ($"{prefix}_EQ_{code}", code, name);
+    }
+
+    private static void AddAnchorSeedDetailToGroup(
+        MaterialGroupDto group,
+        LongTermAnchorSeedItem item,
+        MaterialDetailDto detail)
+    {
+        if (!item.ProductionOrderId.HasValue)
+        {
+            group.Materials.Add(detail);
+            return;
+        }
+
+        var assignmentCode = item.AssignmentCode;
+        if (assignmentCode == null)
+        {
+            var defaultSubGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == string.Empty);
+            if (defaultSubGroup == null)
+            {
+                defaultSubGroup = new SubGroupDto
+                {
+                    SubGroupCode = string.Empty,
+                    SubGroupName = "Không thuộc nhóm vật tư, tài sản",
+                    Materials = new()
+                };
+                group.SubGroups.Add(defaultSubGroup);
+            }
+
+            defaultSubGroup.Materials.Add(detail);
+            return;
+        }
+
+        var subGroupCode = assignmentCode.Code?.Value ?? assignmentCode.Id.ToString();
+        var subGroupName = assignmentCode.Name ?? subGroupCode;
+        var subGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == subGroupCode);
+
+        if (subGroup == null)
+        {
+            subGroup = new SubGroupDto
+            {
+                SubGroupCode = subGroupCode,
+                SubGroupName = subGroupName,
+                Materials = new()
+            };
+            group.SubGroups.Add(subGroup);
+        }
+
+        subGroup.Materials.Add(detail);
     }
 
     private static void AddSctxDetailToGroup(
@@ -1030,7 +1103,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         LongTermAnchorSeedTrackingHelper.TrackingSnapshot snapshot,
         SctxMaterialContext material,
         decimal plannedPrice,
-        decimal actualPrice)
+        decimal actualPrice,
+        bool hasProductionOrder)
     {
         return new MaterialDetailDto
         {
@@ -1042,11 +1116,20 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ActualUnitPrice = actualPrice,
             BeginningInventory = new BeginningInventoryDto
             {
-                RemainingAtSite = new InventoryQuantityDto
-                {
-                    Quantity = 0,
-                    Amount = snapshot.PendingValueStartPeriod
-                },
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto
+                    {
+                        Quantity = 0,
+                        Amount = snapshot.PendingValueStartPeriod
+                    }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto
+                    {
+                        Quantity = 0,
+                        Amount = snapshot.PendingValueStartPeriod
+                    }
+                    : null,
                 PendingValue = snapshot.PendingValueStartPeriod,
                 Total = new TotalDto
                 {
@@ -1079,11 +1162,20 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             },
             EndingInventory = new EndingInventoryDto
             {
-                RemainingAtSite = new InventoryQuantityDto
-                {
-                    Quantity = 0,
-                    Amount = snapshot.PendingValueEndPeriod
-                },
+                RemainingAtSite = !hasProductionOrder
+                    ? new InventoryQuantityDto
+                    {
+                        Quantity = 0,
+                        Amount = snapshot.PendingValueEndPeriod
+                    }
+                    : null,
+                RemainingByOrder = hasProductionOrder
+                    ? new InventoryQuantityDto
+                    {
+                        Quantity = 0,
+                        Amount = snapshot.PendingValueEndPeriod
+                    }
+                    : null,
                 PendingValue = snapshot.PendingValueEndPeriod,
                 Total = new TotalDto
                 {
@@ -1192,6 +1284,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                             .ThenInclude(link => link.AssignmentCode)
                                 .ThenInclude(ac => ac.Code)
                 .Include(s => s.Items)
+                    .ThenInclude(i => i.AssignmentCode)
+                        .ThenInclude(ac => ac!.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.ProductionOrder)
+                        .ThenInclude(po => po!.Code)
+                .Include(s => s.Items)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
                 .Include(s => s.ProcessGroupMetrics),
@@ -1241,7 +1339,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .Where(snapshot => itemById.ContainsKey(snapshot.SeedItemId))
             .Select(snapshot => new AnchorSeedSnapshotContext(
                 snapshot,
-                BuildSctxMaterial(itemById[snapshot.SeedItemId].Part)))
+                BuildSctxMaterial(itemById[snapshot.SeedItemId].Part),
+                itemById[snapshot.SeedItemId]))
             .ToList();
     }
 
@@ -1361,6 +1460,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private static bool IsSctxItem(AcceptanceReportItem item)
         => item.IsTrackedSctxItem && GetSctxMaterial(item) != null;
 
+    private static Material? GetTrackedCatalogMaterial(AcceptanceReportItem item)
+        => item.Material ?? item.Part;
+
     private static SctxMaterialContext? GetSctxMaterial(AcceptanceReportItem item)
         => !item.IsTrackedSctxItem || item.Part == null ? null : BuildSctxMaterial(item.Part);
 
@@ -1401,6 +1503,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
     private sealed record AnchorSeedSnapshotContext(
         LongTermAnchorSeedTrackingHelper.TrackingSnapshot Snapshot,
-        SctxMaterialContext Material);
+        SctxMaterialContext Material,
+        LongTermAnchorSeedItem SeedItem);
 }
 

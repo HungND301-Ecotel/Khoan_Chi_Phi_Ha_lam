@@ -101,8 +101,8 @@ const getAdditionalCostLabel = (value: number): string => {
 			return 'Vật liệu';
 		case AdditionalCost.Maintain:
 			return 'Chi phí SCTX';
-		case AdditionalCost.OtherMaterial:
-			return 'Vật tư khác';
+	case AdditionalCost.OtherMaterial:
+		return 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão';
 		default:
 			return '';
 	}

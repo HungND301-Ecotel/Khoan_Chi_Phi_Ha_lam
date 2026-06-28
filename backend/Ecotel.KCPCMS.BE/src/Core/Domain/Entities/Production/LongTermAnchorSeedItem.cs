@@ -9,6 +9,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public Guid? AnchorSeedRowId { get; protected set; }
     public Guid ProcessGroupId { get; protected set; }
     public Guid PartId { get; protected set; }
+    public Guid? AssignmentCodeId { get; protected set; }
+    public Guid? ProductionOrderId { get; protected set; }
     public Guid MaterialId => PartId;
     public Guid TrackedMaterialId => MaterialId;
     public int SortOrder { get; protected set; }
@@ -23,6 +25,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public virtual LongTermAnchorSeed LongTermAnchorSeed { get; protected set; } = default!;
     public virtual ProcessGroup ProcessGroup { get; protected set; } = default!;
     public virtual Material Part { get; protected set; } = default!;
+    public virtual AssignmentCode? AssignmentCode { get; protected set; }
+    public virtual ProductionOrder? ProductionOrder { get; protected set; }
     public Material Material => Part;
 
     public decimal TotalAmount => (decimal)IssuedQuantity * UnitPrice;
@@ -34,6 +38,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
         Guid longTermAnchorSeedId,
         Guid processGroupId,
         Guid partId,
+        Guid? assignmentCodeId,
+        Guid? productionOrderId,
         int sortOrder,
         double issuedQuantity,
         decimal unitPrice,
@@ -52,6 +58,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
             AnchorSeedRowId = anchorSeedRowId ?? Guid.NewGuid(),
             ProcessGroupId = processGroupId,
             PartId = partId,
+            AssignmentCodeId = assignmentCodeId,
+            ProductionOrderId = productionOrderId,
             SortOrder = sortOrder,
             IssuedQuantity = issuedQuantity,
             UnitPrice = unitPrice,
@@ -67,6 +75,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
         Guid longTermAnchorSeedId,
         Guid processGroupId,
         Guid materialId,
+        Guid? assignmentCodeId,
+        Guid? productionOrderId,
         int sortOrder,
         double issuedQuantity,
         decimal unitPrice,
@@ -80,6 +90,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
             longTermAnchorSeedId,
             processGroupId,
             materialId,
+            assignmentCodeId,
+            productionOrderId,
             sortOrder,
             issuedQuantity,
             unitPrice,
@@ -93,6 +105,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public void Update(
         Guid processGroupId,
         Guid partId,
+        Guid? assignmentCodeId,
+        Guid? productionOrderId,
         int sortOrder,
         double issuedQuantity,
         decimal unitPrice,
@@ -106,6 +120,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
 
         ProcessGroupId = processGroupId;
         PartId = partId;
+        AssignmentCodeId = assignmentCodeId;
+        ProductionOrderId = productionOrderId;
         SortOrder = sortOrder;
         IssuedQuantity = issuedQuantity;
         UnitPrice = unitPrice;
@@ -124,6 +140,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public void UpdateForMaterial(
         Guid processGroupId,
         Guid materialId,
+        Guid? assignmentCodeId,
+        Guid? productionOrderId,
         int sortOrder,
         double issuedQuantity,
         decimal unitPrice,
@@ -135,6 +153,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
         => Update(
             processGroupId,
             materialId,
+            assignmentCodeId,
+            productionOrderId,
             sortOrder,
             issuedQuantity,
             unitPrice,
@@ -182,23 +202,9 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
             throw new ArgumentException("Tỷ lệ phân bổ không được âm");
         }
 
-        var hasPendingValueStartPeriod = pendingValueStartPeriod > 0;
-        var hasIssuedQuantity = issuedQuantity > 0;
-        var hasUnitPrice = unitPrice > 0;
-
-        if (!hasPendingValueStartPeriod && hasIssuedQuantity != hasUnitPrice)
+        if (pendingValueStartPeriod <= 0)
         {
-            throw new ArgumentException("Phải nhập đồng thời số lượng và đơn giá khi không nhập giá trị chờ hạch toán đầu kỳ");
-        }
-
-        if (hasPendingValueStartPeriod && (hasIssuedQuantity || hasUnitPrice))
-        {
-            throw new ArgumentException("Không được nhập đồng thời giá trị chờ hạch toán đầu kỳ với số lượng hoặc đơn giá");
-        }
-
-        if (!hasPendingValueStartPeriod && !hasIssuedQuantity && !hasUnitPrice)
-        {
-            throw new ArgumentException("Phải nhập giá trị chờ hạch toán đầu kỳ hoặc đồng thời số lượng và đơn giá");
+            throw new ArgumentException("Phải nhập tổng giá trị cần hạch toán lớn hơn 0");
         }
     }
 }

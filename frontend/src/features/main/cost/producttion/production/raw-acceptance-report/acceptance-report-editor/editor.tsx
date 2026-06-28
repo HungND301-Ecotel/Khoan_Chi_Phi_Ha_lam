@@ -325,6 +325,7 @@ function CreateMaterialDialogContent({
 export function AcceptanceReportEditor({
 	mode,
 	onCancel,
+	processGroupOptions,
 	productionOrderOptions,
 	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
@@ -755,6 +756,7 @@ export function AcceptanceReportEditor({
 									index={index}
 									displayIndex={safePageIndex * pageSize + displayIndex + 1}
 									mode={mode}
+									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									assignmentCodeOptions={assignmentCodeOptions}
 									orderOrAssignmentCodeOptionsByItemId={
@@ -933,6 +935,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
 	mode,
+	processGroupOptions,
 	productionOrderOptions,
 	assignmentCodeOptions,
 	orderOrAssignmentCodeOptionsByItemId,
@@ -944,6 +947,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index: number;
 	displayIndex?: number;
 	mode: AcceptanceReportEditorMode;
+	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	assignmentCodeOptions: ProductionOrderOption[];
 	orderOrAssignmentCodeOptionsByItemId: Record<string, ProductionOrderOption[]>;
@@ -962,6 +966,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const showContractLimitDropdown = row?.showContractLimitDropdown ?? false;
 	const showAssetDropdown = row?.showAssetDropdown ?? false;
 	const categoryType = row?.categoryType;
+	const categoryProcessGroup = row?.categoryProcessGroup;
 	const categoryProductionOrderId = row?.categoryProductionOrderId;
 	const categoryAssignmentCodeId = row?.categoryAssignmentCodeId;
 	const categoryEquipmentId =
@@ -1073,6 +1078,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	const categoryNeedsProductionOrder = categoryType != null;
 	const supportsRowLongTermTracking =
 		showCategoryDropdown && categoryType === MaterialType.SparePart;
+	const categoryProcessGroupOptions = processGroupOptions;
 	const additionalCostNeedsAssignmentCode =
 		additionalCostCategory === AdditionalCost.Material ||
 		additionalCostCategory === AdditionalCost.Maintain;
@@ -1317,6 +1323,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 
 		if (justDisabledCategory) {
 			set('categoryType', null);
+			set('categoryProcessGroup', null);
 			set('categoryProductionOrderId', null);
 			set('categoryAssignmentCodeId', null);
 			set('categoryEquipmentId', null);
@@ -1368,6 +1375,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	useEffect(() => {
 		if (!showCategoryDropdown) return;
 		if (categoryType == null) {
+			if (categoryProcessGroup != null) set('categoryProcessGroup', null);
 			if (categoryAssignmentCodeId != null)
 				set('categoryAssignmentCodeId', null);
 			if (categoryEquipmentId != null) set('categoryEquipmentId', null);
@@ -1399,11 +1407,47 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	}, [
 		showCategoryDropdown,
 		categoryType,
+		categoryProcessGroup,
 		categoryProductionOrderId,
 		categoryAssignmentCodeId,
 		categoryEquipmentId,
 		categoryProductionOrderOptions,
 		categoryAssignmentCodeOptions,
+	]);
+
+	useEffect(() => {
+		if (!showCategoryDropdown || !supportsRowLongTermTracking) {
+			if (categoryProcessGroup != null) {
+				set('categoryProcessGroup', null);
+			}
+			return;
+		}
+
+		if (!isLongTermTracking) {
+			if (categoryProcessGroup != null) {
+				set('categoryProcessGroup', null);
+			}
+			return;
+		}
+
+		const hasValidProcessGroupSelection =
+			categoryProcessGroup != null &&
+			categoryProcessGroupOptions.some(
+				(option: ProcessGroupOption) => option.value === categoryProcessGroup,
+			);
+
+		if (!hasValidProcessGroupSelection) {
+			set(
+				'categoryProcessGroup',
+				categoryProcessGroupOptions[0]?.value ?? null,
+			);
+		}
+	}, [
+		showCategoryDropdown,
+		supportsRowLongTermTracking,
+		isLongTermTracking,
+		categoryProcessGroup,
+		categoryProcessGroupOptions,
 	]);
 
 	useEffect(() => {
@@ -2127,6 +2171,18 @@ const MaterialImportRow = memo(function MaterialImportRow({
 											placeholder='Chọn loại vật tư'
 										/>
 									</div>
+									{showCategoryDropdown &&
+										supportsRowLongTermTracking &&
+										isLongTermTracking && (
+											<div className='w-full'>
+												<FormComboBox
+													control={form.control}
+													name={`${basename}.categoryProcessGroup` as RowPath}
+													options={categoryProcessGroupOptions}
+													placeholder='Chọn nhóm công đoạn sản xuất'
+												/>
+											</div>
+										)}
 									{categoryType != null && (
 										<>
 											<div className='w-full'>
