@@ -102,6 +102,23 @@ export const materialFormSchema = z
 	)
 	.refine(
 		(data) => {
+			if (isUnresolvedRow(data)) return true;
+			if (
+				!data.showCategoryDropdown ||
+				!data.isLongTermTracking ||
+				data.categoryType == null
+			) {
+				return true;
+			}
+			return data.categoryProcessGroup != null;
+		},
+		{
+			message: 'Phải chọn nhóm công đoạn sản xuất',
+			path: ['categoryProcessGroup'],
+		},
+	)
+	.refine(
+		(data) => {
 			if (isUnresolvedRow(data) || !data.showAdditionalCostDropdown) return true;
 			return data.additionalCostCategory != null;
 		},

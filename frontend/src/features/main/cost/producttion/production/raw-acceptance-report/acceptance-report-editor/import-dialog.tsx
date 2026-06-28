@@ -1,13 +1,14 @@
 import { DataTableImport } from '@/components/datatable/import';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
+import { popup as globalPopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { Resolver, useForm } from 'react-hook-form';
+import { FieldErrors, Resolver, useForm } from 'react-hook-form';
 import { UnresolvedCatalogCreateDialog } from '../unresolved/unresolved-catalog-create-dialog';
 import type { UnresolvedCatalogCreateSelection } from '../unresolved/unresolved-catalog-create-dialog';
 import { UnresolvedCreateDialog } from '../unresolved/unresolved-create-dialog';
@@ -70,6 +71,55 @@ const NONE_PRODUCTION_ORDER_OPTION: ProductionOrderOption = {
 	value: toProductionOrderOptionValue(NONE_PRODUCTION_ORDER_ID),
 	label: '[Lệnh sản xuất] Không theo lệnh sản xuất',
 };
+
+function collectFormErrorMessages(
+	errors: FieldErrors<AcceptanceReportEditorFormInput>,
+	materials: AcceptanceReportEditorFormInput['materials'],
+): string[] {
+	const result = new Set<string>();
+
+	const getMaterialPrefix = (path: Array<string | number>) => {
+		const materialsIndex = path.findIndex((segment) => segment === 'materials');
+		if (materialsIndex < 0) return '';
+
+		const rowIndex = path[materialsIndex + 1];
+		if (typeof rowIndex !== 'number') return '';
+
+		const materialCode = materials[rowIndex]?.materialCode?.trim();
+		return materialCode ? `[${materialCode}] ` : '';
+	};
+
+	const walk = (value: unknown, path: Array<string | number> = []) => {
+		if (!value) return;
+		if (Array.isArray(value)) {
+			for (const [index, item] of value.entries()) {
+				walk(item, [...path, index]);
+			}
+			return;
+		}
+		if (typeof value !== 'object') return;
+
+		const maybeError = value as { message?: unknown; types?: unknown };
+		const prefix = getMaterialPrefix(path);
+		if (typeof maybeError.message === 'string' && maybeError.message.trim()) {
+			result.add(`${prefix}${maybeError.message.trim()}`);
+		}
+		if (maybeError.types && typeof maybeError.types === 'object') {
+			for (const message of Object.values(maybeError.types)) {
+				if (typeof message === 'string' && message.trim()) {
+					result.add(`${prefix}${message.trim()}`);
+				}
+			}
+		}
+		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+			if (key === 'message' || key === 'types') continue;
+			walk(nested, [...path, key]);
+		}
+	};
+
+	walk(errors);
+	return [...result];
+}
 
 export function MaterialImportDialog({
 	onSave,
@@ -544,6 +594,20 @@ export function MaterialImportDialog({
 		}
 	};
 
+	const handleInvalidSubmit = (
+		errors: FieldErrors<AcceptanceReportEditorFormInput>,
+	) => {
+		const messages = collectFormErrorMessages(errors, form.getValues('materials'));
+		if (messages.length === 0) {
+			globalPopup.error('Dữ liệu chưa hợp lệ. Vui lòng kiểm tra lại.');
+			return;
+		}
+
+		globalPopup.error(messages[0], {
+			errorList: messages.slice(1),
+		});
+	};
+
 	const unresolvedCount = form
 		.watch('materials')
 		.filter(
@@ -557,7 +621,11 @@ export function MaterialImportDialog({
 					<DataTableImport onImport={handleImport} isLoading={isLoading} />
 				</div>
 			) : (
-				<FormProvider context={form} onSubmit={handleSubmit}>
+				<FormProvider
+					context={form}
+					onSubmit={handleSubmit}
+					onInvalid={handleInvalidSubmit}
+				>
 					<AcceptanceReportEditor
 						mode='import'
 						onCancel={() => setShowForm(false)}
