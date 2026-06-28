@@ -38,6 +38,12 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Include(s => s.Items)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.AssignmentCode)
+                        .ThenInclude(ac => ac!.Code)
+                .Include(s => s.Items)
+                    .ThenInclude(i => i.ProductionOrder)
+                        .ThenInclude(po => po!.Code)
                 .Include(s => s.ProcessGroupMetrics)
                     .ThenInclude(m => m.ProcessGroup)
                         .ThenInclude(pg => pg.Code),
@@ -88,6 +94,12 @@ public class GetLongTermAnchorSeedDetailQueryHandler(IUnitOfWork unitOfWork)
                     MaterialId = item.MaterialId,
                     TrackedMaterialId = item.MaterialId,
                     ProcessGroupId = item.ProcessGroupId,
+                    CategoryAssignmentCodeId = item.AssignmentCodeId,
+                    CategoryAssignmentCode = item.AssignmentCode?.Code?.Value,
+                    CategoryAssignmentCodeName = item.AssignmentCode?.Name,
+                    CategoryProductionOrderId = item.ProductionOrderId,
+                    CategoryProductionOrderCode = item.ProductionOrder?.Code?.Value,
+                    CategoryProductionOrderName = item.ProductionOrder?.Name,
                     MaterialCode = GetMaterialCode(item.Material),
                     MaterialName = GetMaterialName(item.Material),
                     TrackedMaterialCode = GetMaterialCode(item.Material),

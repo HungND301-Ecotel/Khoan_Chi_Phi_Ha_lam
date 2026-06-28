@@ -5,6 +5,8 @@ export const longTermAnchorSeedItemSchema = z.object({
 	materialId: z.string(),
 	partId: z.string().optional(),
 	processGroupId: z.string(),
+	categoryAssignmentCodeId: z.string().nullable().optional(),
+	categoryProductionOrderId: z.string().nullable().optional(),
 	issuedQuantity: z.number().min(0, 'Số lượng phải >= 0'),
 	unitPrice: z.number().min(0, 'Đơn giá phải >= 0'),
 	pendingValueStartPeriod: z

@@ -1114,6 +1114,16 @@ public class ApplicationDbContext(
             .HasForeignKey(i => i.PartId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasOne(i => i.AssignmentCode)
+            .WithMany()
+            .HasForeignKey(i => i.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
+            .HasOne(i => i.ProductionOrder)
+            .WithMany()
+            .HasForeignKey(i => i.ProductionOrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<LongTermAnchorSeedItem>()
             .HasIndex(i => i.AnchorSeedRowId)
             .IsUnique()
             .HasFilter("\"DeletedOn\" IS NULL AND \"AnchorSeedRowId\" IS NOT NULL");

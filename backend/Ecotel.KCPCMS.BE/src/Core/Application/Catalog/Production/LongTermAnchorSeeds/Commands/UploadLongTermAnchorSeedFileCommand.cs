@@ -20,6 +20,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<Material> _materialRepository = unitOfWork.GetRepository<Material>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<AssignmentCode> _assignmentCodeRepository = unitOfWork.GetRepository<AssignmentCode>();
+    private readonly IWriteRepository<ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrder>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
     private readonly IWriteRepository<LongTermAnchorSeedProcessGroupMetric> _processGroupMetricRepository = unitOfWork.GetRepository<LongTermAnchorSeedProcessGroupMetric>();
@@ -56,6 +58,16 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var assignmentCodes = rows
+            .Select(x => NormalizeCode(ExtractCode(x.CategoryAssignmentCode)))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var productionOrderCodes = rows
+            .Select(x => NormalizeCode(ExtractCode(x.CategoryProductionOrderCode)))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var materials = await _materialRepository.GetAllAsync(
             predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
@@ -65,12 +77,28 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
             include: q => q.Include(x => x.Code),
             disableTracking: true);
+        var assignmentCodeEntities = await _assignmentCodeRepository.GetAllAsync(
+            predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
+        var productionOrders = await _productionOrderRepository.GetAllAsync(
+            predicate: x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value),
+            include: q => q.Include(x => x.Code),
+            disableTracking: true);
 
         var materialByCode = materials
             .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
             .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         var processGroupByCode = processGroups
+            .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
+            .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var assignmentCodeByCode = assignmentCodeEntities
+            .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
+            .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var productionOrderByCode = productionOrders
             .Where(x => x.Code != null && !string.IsNullOrWhiteSpace(x.Code.Value))
             .GroupBy(x => NormalizeCode(x.Code!.Value), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
@@ -89,6 +117,22 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         if (missingProcessGroupCodes.Count > 0)
         {
             importErrors.Add($"Không tìm thấy nhóm công đoạn với mã: {string.Join(", ", missingProcessGroupCodes)}.");
+        }
+
+        var missingAssignmentCodes = assignmentCodes
+            .Where(code => !assignmentCodeByCode.ContainsKey(code))
+            .ToList();
+        if (missingAssignmentCodes.Count > 0)
+        {
+            importErrors.Add($"Không tìm thấy nhóm vật tư, tài sản với mã: {string.Join(", ", missingAssignmentCodes)}.");
+        }
+
+        var missingProductionOrderCodes = productionOrderCodes
+            .Where(code => !productionOrderByCode.ContainsKey(code))
+            .ToList();
+        if (missingProductionOrderCodes.Count > 0)
+        {
+            importErrors.Add($"Không tìm thấy lệnh sản xuất với mã: {string.Join(", ", missingProductionOrderCodes)}.");
         }
 
         var seed = await _seedRepository.GetFirstOrDefaultAsync(
@@ -141,6 +185,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 var materialCode = NormalizeCode(ExtractCode(row.MaterialCode));
                 var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
+                var categoryAssignmentCode = NormalizeCode(ExtractCode(row.CategoryAssignmentCode));
+                var categoryProductionOrderCode = NormalizeCode(ExtractCode(row.CategoryProductionOrderCode));
 
                 if (string.IsNullOrWhiteSpace(materialCode) || string.IsNullOrWhiteSpace(processGroupCode))
                 {
@@ -156,6 +202,16 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 if (!processGroupByCode.ContainsKey(processGroupCode))
                 {
                     importErrors.Add($"Dòng {rowNumber}: Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(categoryAssignmentCode) && !assignmentCodeByCode.ContainsKey(categoryAssignmentCode))
+                {
+                    importErrors.Add($"Dòng {rowNumber}: Không tìm thấy nhóm vật tư, tài sản với mã '{categoryAssignmentCode}'.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(categoryProductionOrderCode) && !productionOrderByCode.ContainsKey(categoryProductionOrderCode))
+                {
+                    importErrors.Add($"Dòng {rowNumber}: Không tìm thấy lệnh sản xuất với mã '{categoryProductionOrderCode}'.");
                 }
 
                 var businessRuleError = ValidateRowBusinessRule(row, materialCode, processGroupCode, rowNumber);
@@ -203,6 +259,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
 
                 var materialCode = NormalizeCode(ExtractCode(row.MaterialCode));
                 var processGroupCode = NormalizeCode(ExtractCode(row.ProcessGroupCode));
+                var categoryAssignmentCode = NormalizeCode(ExtractCode(row.CategoryAssignmentCode));
+                var categoryProductionOrderCode = NormalizeCode(ExtractCode(row.CategoryProductionOrderCode));
                 if (string.IsNullOrWhiteSpace(materialCode) || string.IsNullOrWhiteSpace(processGroupCode))
                 {
                     throw new BadRequestException("Mã vật tư và mã nhóm công đoạn không được để trống");
@@ -212,6 +270,14 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                     ?? throw new BadRequestException($"Không tìm thấy vật tư với mã '{materialCode}'.");
                 var processGroup = processGroupByCode.GetValueOrDefault(processGroupCode)
                     ?? throw new BadRequestException($"Không tìm thấy nhóm công đoạn với mã '{processGroupCode}'.");
+                var assignmentCode = string.IsNullOrWhiteSpace(categoryAssignmentCode)
+                    ? null
+                    : assignmentCodeByCode.GetValueOrDefault(categoryAssignmentCode)
+                        ?? throw new BadRequestException($"Không tìm thấy nhóm vật tư, tài sản với mã '{categoryAssignmentCode}'.");
+                var productionOrder = string.IsNullOrWhiteSpace(categoryProductionOrderCode)
+                    ? null
+                    : productionOrderByCode.GetValueOrDefault(categoryProductionOrderCode)
+                        ?? throw new BadRequestException($"Không tìm thấy lệnh sản xuất với mã '{categoryProductionOrderCode}'.");
 
                 var normalizedValues = NormalizeRowValues(row);
 
@@ -221,6 +287,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                         seed.Id,
                         processGroup.Id,
                         material.Id,
+                        assignmentCode?.Id,
+                        productionOrder?.Id,
                         index,
                         normalizedValues.IssuedQuantity,
                         normalizedValues.UnitPrice,
@@ -238,6 +306,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
                 existingItem.UpdateForMaterial(
                     processGroup.Id,
                     material.Id,
+                    assignmentCode?.Id,
+                    productionOrder?.Id,
                     index,
                     normalizedValues.IssuedQuantity,
                     normalizedValues.UnitPrice,
@@ -343,6 +413,8 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
         return row.Id.HasValue
             && string.IsNullOrWhiteSpace(row.MaterialCode)
             && string.IsNullOrWhiteSpace(row.ProcessGroupCode)
+            && string.IsNullOrWhiteSpace(row.CategoryAssignmentCode)
+            && string.IsNullOrWhiteSpace(row.CategoryProductionOrderCode)
             && !row.IssuedQuantity.HasValue
             && !row.UnitPrice.HasValue
             && !row.PendingValueStartPeriod.HasValue

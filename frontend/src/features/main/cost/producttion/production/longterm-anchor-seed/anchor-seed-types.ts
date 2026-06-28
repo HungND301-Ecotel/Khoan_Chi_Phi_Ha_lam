@@ -4,6 +4,9 @@ export type LongTermAnchorSeedItem = {
 	trackedMaterialId?: string;
 	partId?: string;
 	processGroupId: string;
+	categoryAssignmentCodeId?: string | null;
+	categoryEquipmentId?: string | null;
+	categoryProductionOrderId?: string | null;
 	materialCode: string;
 	materialName: string;
 	trackedMaterialCode?: string;

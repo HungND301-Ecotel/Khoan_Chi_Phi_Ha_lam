@@ -9,6 +9,13 @@ public record LongTermAnchorSeedItemDto
     public Guid? PartId => MaterialId;
     public Guid TrackedMaterialId { get; init; }
     public Guid ProcessGroupId { get; init; }
+    public Guid? CategoryAssignmentCodeId { get; init; }
+    public Guid? CategoryEquipmentId => CategoryAssignmentCodeId;
+    public string? CategoryAssignmentCode { get; init; }
+    public string? CategoryAssignmentCodeName { get; init; }
+    public Guid? CategoryProductionOrderId { get; init; }
+    public string? CategoryProductionOrderCode { get; init; }
+    public string? CategoryProductionOrderName { get; init; }
     public string MaterialCode { get; init; } = string.Empty;
     public string MaterialName { get; init; } = string.Empty;
     public string? PartCode => TrackedMaterialCode;
@@ -59,6 +66,9 @@ public record UpdateLongTermAnchorSeedItemDto
     public Guid? MaterialId { get; init; }
     public Guid? PartId { get; init; }
     public Guid ProcessGroupId { get; init; }
+    public Guid? CategoryAssignmentCodeId { get; init; }
+    public Guid? CategoryEquipmentId => CategoryAssignmentCodeId;
+    public Guid? CategoryProductionOrderId { get; init; }
     public double IssuedQuantity { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal PendingValueStartPeriod { get; init; }
@@ -93,6 +103,12 @@ public record LongTermAnchorSeedExcelRowDto
 
     [Display(Name = "Mã nhóm công đoạn")]
     public string ProcessGroupCode { get; init; } = string.Empty;
+
+    [Display(Name = "Nhóm vật tư, tài sản")]
+    public string CategoryAssignmentCode { get; init; } = string.Empty;
+
+    [Display(Name = "Lệnh sản xuất")]
+    public string CategoryProductionOrderCode { get; init; } = string.Empty;
 
     [Display(Name = "Số lượng")]
     public double? IssuedQuantity { get; init; }

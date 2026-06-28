@@ -2,6 +2,7 @@
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { ClientPagination } from '@/components/datatable/client-pagination';
 import { FormArray } from '@/components/form/form-array';
+import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -22,6 +23,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+type LookupOption = {
+	value: string;
+	label: string;
+};
+
+type CodeNameLookupItem = {
+	id: string;
+	code: string;
+	name: string;
+};
+
 type LongtermAnchorSeedFormProps = {
 	departmentId: string;
 	callback?: () => Promise<void> | void;
@@ -37,6 +49,12 @@ export function LongtermAnchorSeedForm({
 	const [loading, setLoading] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [assignmentCodeOptions, setAssignmentCodeOptions] = useState<
+		LookupOption[]
+	>([]);
+	const [productionOrderOptions, setProductionOrderOptions] = useState<
+		LookupOption[]
+	>([]);
 
 	const form = useForm<LongTermAnchorSeedSchema>({
 		resolver: zodResolver(longTermAnchorSeedSchema),
@@ -73,6 +91,9 @@ export function LongtermAnchorSeedForm({
 						materialId: item.materialId || item.partId,
 						partId: item.partId,
 						processGroupId: item.processGroupId,
+						categoryAssignmentCodeId:
+							item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
+						categoryProductionOrderId: item.categoryProductionOrderId ?? null,
 						issuedQuantity: item.issuedQuantity,
 						unitPrice: item.unitPrice,
 						pendingValueStartPeriod: item.pendingValueStartPeriod,
@@ -91,6 +112,80 @@ export function LongtermAnchorSeedForm({
 
 		fetchDetail();
 	}, [departmentId, error, form]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchAssignmentCodes = async () => {
+			try {
+				const response = await api.pagging<CodeNameLookupItem>(
+					API.CATALOG.CONTRACT_CODE.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				setAssignmentCodeOptions(
+					(response.result.data ?? [])
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((item) => ({
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						})),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setAssignmentCodeOptions([]);
+				error(err);
+			}
+		};
+
+		fetchAssignmentCodes();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [error]);
+
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchProductionOrders = async () => {
+			try {
+				const response = await api.pagging<CodeNameLookupItem>(
+					API.CATALOG.PARAMETER.PRODUCTION_ORDER.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				setProductionOrderOptions(
+					(response.result.data ?? [])
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((item) => ({
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						})),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setProductionOrderOptions([]);
+				error(err);
+			}
+		};
+
+		fetchProductionOrders();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [error]);
 
 	const handleSubmit = async (values: LongTermAnchorSeedSchema) => {
 		try {
@@ -203,6 +298,26 @@ export function LongtermAnchorSeedForm({
 																? `${item.processGroupCode} - ${item.processGroupName}`
 																: (item?.processGroupName ?? '')
 														}
+														/>
+												</div>
+
+												<div className='min-w-64 flex-1 space-y-2'>
+													<FormComboBox
+														control={form.control}
+														name={`items.${index}.categoryAssignmentCodeId`}
+														label='Nhóm vật tư, tài sản'
+														options={assignmentCodeOptions}
+														placeholder='Chọn nhóm vật tư, tài sản'
+													/>
+												</div>
+
+												<div className='min-w-64 flex-1 space-y-2'>
+													<FormComboBox
+														control={form.control}
+														name={`items.${index}.categoryProductionOrderId`}
+														label='Lệnh sản xuất'
+														options={productionOrderOptions}
+														placeholder='Chọn lệnh sản xuất'
 													/>
 												</div>
 
