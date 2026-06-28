@@ -132,21 +132,6 @@ const getQuotaBasedMaterialTypeLabel = (value: number): string => {
 	}
 };
 
-const getQuotaBasedMaterialQuantityTotal = (item: RawAcceptanceReportItem) => {
-	const details = (item.quotaBasedMaterialQuantities ?? []).filter(
-		(detail) => detail.quantity != null,
-	);
-
-	if (details.length > 0) {
-		return details.reduce(
-			(total, detail) => total + (Number(detail.quantity) || 0),
-			0,
-		);
-	}
-
-	return item.quotaBasedMaterialQuantity || 0;
-};
-
 export function RawAcceptanceReportDataTable({
 	items,
 	largeText = false,
