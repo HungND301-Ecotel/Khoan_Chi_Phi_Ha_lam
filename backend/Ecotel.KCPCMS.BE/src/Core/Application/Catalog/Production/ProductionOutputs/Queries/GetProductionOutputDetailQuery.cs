@@ -492,11 +492,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         var sectionItems = report.AcceptanceReportItems
             .Where(i => i.QuotaBasedMaterial != QuotaBasedMaterial.None
-                     && i.IsMaterialItem && i.Material != null)
+                     && GetTrackedCatalogMaterial(i) != null)
             .ToList();
 
         foreach (var item in sectionItems)
         {
+            var trackedMaterial = GetTrackedCatalogMaterial(item)!;
             var (groupKey, groupName, hasSubGroup) = item.QuotaBasedMaterial switch
             {
                 QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
@@ -514,8 +515,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 SubGroups = new()
             });
 
-            var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
-            var detail = BuildQuotaBasedDetail(item, item.Material, plannedPrice, actualPrice);
+            var (plannedPrice, actualPrice) = GetUnitPrices(trackedMaterial.Costs, productionOutput.StartMonth);
+            var detail = BuildQuotaBasedDetail(item, trackedMaterial, plannedPrice, actualPrice);
 
             if (hasSubGroup)
             {
@@ -558,7 +559,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReport report, ProductionOutput productionOutput)
     {
         var sectionItems = report.AcceptanceReportItems
-            .Where(i => i.Asset != Asset.None && i.IsMaterialItem && i.Material != null)
+            .Where(i => i.Asset != Asset.None && GetTrackedCatalogMaterial(i) != null)
             .ToList();
 
         if (sectionItems.Any())
@@ -574,8 +575,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
             foreach (var item in sectionItems)
             {
-                var (plannedPrice, actualPrice) = GetUnitPrices(item.Material!.Costs, productionOutput.StartMonth);
-                group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
+                var trackedMaterial = GetTrackedCatalogMaterial(item)!;
+                var (plannedPrice, actualPrice) = GetUnitPrices(trackedMaterial.Costs, productionOutput.StartMonth);
+                group.Materials.Add(BuildVatLieuDetail(item, trackedMaterial, plannedPrice, actualPrice));
             }
 
             return new() { group };
@@ -1360,6 +1362,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
     private static bool IsSctxItem(AcceptanceReportItem item)
         => item.IsTrackedSctxItem && GetSctxMaterial(item) != null;
+
+    private static Material? GetTrackedCatalogMaterial(AcceptanceReportItem item)
+        => item.Material ?? item.Part;
 
     private static SctxMaterialContext? GetSctxMaterial(AcceptanceReportItem item)
         => !item.IsTrackedSctxItem || item.Part == null ? null : BuildSctxMaterial(item.Part);
