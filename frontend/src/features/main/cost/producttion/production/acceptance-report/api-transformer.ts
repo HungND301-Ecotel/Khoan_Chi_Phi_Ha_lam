@@ -188,9 +188,12 @@ function normalizeGroupName(
 	return groupName || groupCode || DEFAULT_CATEGORY_ASSIGNMENT_LABEL;
 }
 
-function isSectionBGroupedAdditionalCost(materialGroup: MaterialGroupDto): boolean {
+function isSectionBGroupedAdditionalCost(
+	materialGroup: MaterialGroupDto,
+): boolean {
 	return (
-		materialGroup.additionalCostType === 2 || materialGroup.additionalCostType === 3
+		materialGroup.additionalCostType === 2 ||
+		materialGroup.additionalCostType === 3
 	);
 }
 
@@ -360,6 +363,7 @@ function groupMaterials(
 	const isProductionOrder =
 		trimText(materialGroup.productionOrderId).length > 0;
 	const childGroups: GroupCodeGroup[] = [];
+	const productionOrderId = trimText(materialGroup.productionOrderId);
 
 	if (materialGroup.subGroups && materialGroup.subGroups.length > 0) {
 		materialGroup.subGroups.forEach((subGroup) => {
@@ -399,14 +403,23 @@ function groupMaterials(
 			),
 		) ?? [];
 
-	if (sectionKey === 'sectionB' && isSectionBGroupedAdditionalCost(materialGroup)) {
+	if (
+		sectionKey === 'sectionB' &&
+		isSectionBGroupedAdditionalCost(materialGroup)
+	) {
 		const isNoOrderGroup = normalizedGroupCode.toUpperCase() === 'NO_ORDER';
 		const hiddenAssignmentGroups = childGroups.filter((childGroup) =>
-			isDefaultAssignmentPlaceholder(childGroup.groupCode, childGroup.groupName),
+			isDefaultAssignmentPlaceholder(
+				childGroup.groupCode,
+				childGroup.groupName,
+			),
 		);
 		const visibleChildGroups = childGroups.filter(
 			(childGroup) =>
-				!isDefaultAssignmentPlaceholder(childGroup.groupCode, childGroup.groupName),
+				!isDefaultAssignmentPlaceholder(
+					childGroup.groupCode,
+					childGroup.groupName,
+				),
 		);
 		const collapsedTopLevelItems = [
 			...topLevelItems,
@@ -428,7 +441,10 @@ function groupMaterials(
 			return promotedGroups;
 		}
 
-		if (collapsedTopLevelItems.length === 0 && visibleChildGroups.length === 0) {
+		if (
+			collapsedTopLevelItems.length === 0 &&
+			visibleChildGroups.length === 0
+		) {
 			return [];
 		}
 
@@ -439,9 +455,37 @@ function groupMaterials(
 				displayCode: resolveDisplayGroupCode(materialGroup),
 				isProductionOrder,
 				items: collapsedTopLevelItems,
-				childGroups: visibleChildGroups.length > 0 ? visibleChildGroups : undefined,
+				childGroups:
+					visibleChildGroups.length > 0 ? visibleChildGroups : undefined,
 			},
 		];
+	}
+
+	if (sectionKey === 'sectionB' && materialGroup.additionalCostType === 4) {
+		const detailGroup: GroupCodeGroup = {
+			groupCode: normalizedGroupCode,
+			groupName: normalizedGroupName,
+			displayCode: resolveDisplayGroupCode(materialGroup),
+			items: [],
+		};
+
+		if (productionOrderId.length > 0) {
+			const orderGroup: GroupCodeGroup = {
+				groupCode: productionOrderId,
+				groupName: productionOrderId,
+				displayCode: productionOrderId,
+				isProductionOrder: true,
+				items: topLevelItems,
+				childGroups: childGroups.length > 0 ? childGroups : undefined,
+			};
+
+			if (orderGroup.items.length === 0 && !orderGroup.childGroups?.length) {
+				return [];
+			}
+
+			detailGroup.childGroups = [orderGroup];
+			return [detailGroup];
+		}
 	}
 
 	if (topLevelItems.length === 0 && childGroups.length === 0) {
@@ -668,23 +712,33 @@ export function applyProductionOrderNames(
 	report: HierarchicalAcceptanceReport,
 	productionOrderById: Record<string, ProductionOrderDisplayInfo>,
 ): HierarchicalAcceptanceReport {
+	const applyToGroup = (group: GroupCodeGroup): GroupCodeGroup => {
+		const productionOrder = productionOrderById[group.groupCode];
+		const renamedGroup = productionOrder
+			? {
+					...group,
+					groupName: productionOrder.name || productionOrder.code,
+					displayCode:
+						productionOrder.code || group.displayCode || group.groupCode,
+					isProductionOrder: true,
+				}
+			: group;
+
+		return {
+			...renamedGroup,
+			childGroups: renamedGroup.childGroups?.map((childGroup) =>
+				applyToGroup(childGroup),
+			),
+		};
+	};
+
 	return {
 		...report,
 		categories: report.categories.map((category) => ({
 			...category,
 			types: category.types.map((type) => ({
 				...type,
-				groups: type.groups.map((group) => {
-					const productionOrder = productionOrderById[group.groupCode];
-					if (!productionOrder) return group;
-
-					return {
-						...group,
-						groupName: productionOrder.name || productionOrder.code,
-						displayCode: productionOrder.code || group.displayCode || group.groupCode,
-						isProductionOrder: true,
-					};
-				}),
+				groups: type.groups.map((group) => applyToGroup(group)),
 			})),
 		})),
 	};

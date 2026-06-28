@@ -468,13 +468,17 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             .Where(i => i.AdditionalCost == AdditionalCost.SafeAndWelfare
                      && i.IsMaterialItem && i.Material != null))
         {
-            var groupKey = $"BO_{item.OtherMaterialDetail}";
+            var productionOrderId = item.AdditionalCostProductionOrderId;
+            var groupKey = productionOrderId.HasValue
+                ? $"BO_{item.OtherMaterialDetail}_{productionOrderId.Value:N}"
+                : $"BO_{item.OtherMaterialDetail}_NO_ORDER";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = item.OtherMaterialDetail.ToString()!,
                 GroupName = "",
                 MaterialType = MatTypeLabel.VatLieu,
                 AdditionalCostType = AdditionalCost.SafeAndWelfare,
+                ProductionOrderId = productionOrderId,
                 OtherMaterialDetail = item.OtherMaterialDetail,
                 Materials = new(),
                 SubGroups = new()
