@@ -2,7 +2,6 @@ using Application.Common.Exceptions;
 using Application.Common.Models;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Production.LongTermAnchorSeeds;
 using Application.Dto.Catalog.AcceptanceReport;
 using Domain.Common.Enums;
 using Domain.Entities.Production;
@@ -18,7 +17,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
 {
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _logRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
-    private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
+    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _anchorSeedLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
 
     public async Task<GetAllAcceptanceReportItemLogResponseDto> Handle(GetAllAcceptanceReportItemLogQuery request, CancellationToken cancellationToken)
     {
@@ -44,7 +43,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             ?? throw new NotFoundException("ProductionOutput not found");
 
         var outputByProcessGroup = BuildOutputByProcessGroup(productionOutput);
-        var seedSnapshots = await BuildAnchorSeedSnapshots(acceptanceReport, cancellationToken);
+        var anchorSeedLogs = await BuildAnchorSeedLogs(request.AcceptanceReportId, cancellationToken);
 
         var th1Logs = await _logRepository.GetAllAsync(
             predicate: l => l.AcceptanceReportId == request.AcceptanceReportId,
@@ -319,24 +318,26 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             });
         }
 
-        foreach (var snapshot in seedSnapshots)
+        foreach (var anchorSeedLog in anchorSeedLogs)
         {
+            var snapshot = anchorSeedLog.Log;
+            var seedItem = anchorSeedLog.SeedItem;
             logDtos.Add(new AcceptanceReportItemLogDto
             {
-                Id = snapshot.SeedItemId,
+                Id = snapshot.Id,
                 AcceptanceReportItemId = Guid.Empty,
-                MaterialId = snapshot.MaterialId,
-                TrackedMaterialId = snapshot.TrackedMaterialId,
-                ProcessGroupId = snapshot.ProcessGroupId,
-                ProcessGroupCode = snapshot.ProcessGroupCode,
-                ProcessGroupName = snapshot.ProcessGroupName,
-                PartCode = snapshot.PartCode,
-                PartName = snapshot.PartName,
-                MaterialCode = snapshot.MaterialCode,
-                MaterialName = snapshot.MaterialName,
-                TrackedMaterialCode = snapshot.TrackedMaterialCode,
-                TrackedMaterialName = snapshot.TrackedMaterialName,
-                UnitOfMeasureName = snapshot.UnitOfMeasureName,
+                MaterialId = seedItem.MaterialId,
+                TrackedMaterialId = seedItem.TrackedMaterialId,
+                ProcessGroupId = seedItem.ProcessGroupId,
+                ProcessGroupCode = seedItem.ProcessGroup.Code?.Value ?? string.Empty,
+                ProcessGroupName = seedItem.ProcessGroup.Name,
+                PartCode = seedItem.Part.Code?.Value ?? string.Empty,
+                PartName = seedItem.Part.Name,
+                MaterialCode = seedItem.Material.Code?.Value ?? string.Empty,
+                MaterialName = seedItem.Material.Name,
+                TrackedMaterialCode = seedItem.Material.Code?.Value ?? string.Empty,
+                TrackedMaterialName = seedItem.Material.Name,
+                UnitOfMeasureName = seedItem.Material.UnitOfMeasure?.Name ?? string.Empty,
                 PendingValueStartPeriod = snapshot.PendingValueStartPeriod,
                 IssuedQuantity = snapshot.IssuedQuantity,
                 UnitPrice = snapshot.UnitPrice,
@@ -472,63 +473,33 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
         return result;
     }
 
-    private async Task<List<LongTermAnchorSeedTrackingHelper.TrackingSnapshot>> BuildAnchorSeedSnapshots(
-        AcceptanceReport acceptanceReport,
+    private async Task<List<AnchorSeedLogContext>> BuildAnchorSeedLogs(
+        Guid acceptanceReportId,
         CancellationToken cancellationToken)
     {
-        var departmentId = acceptanceReport.ProductionOutput?.DepartmentId;
-        if (!departmentId.HasValue)
-        {
-            return [];
-        }
-
-        var seed = await _seedRepository.GetFirstOrDefaultAsync(
-            predicate: s => s.DepartmentId == departmentId.Value,
+        var logs = await _anchorSeedLogRepository.GetAllAsync(
+            predicate: x => x.AcceptanceReportId == acceptanceReportId,
             include: q => q
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.Code)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.UnitOfMeasure)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.ProcessGroup)
                         .ThenInclude(pg => pg.Code)
-                .Include(s => s.ProcessGroupMetrics),
+                .Include(x => x.LongTermAnchorSeedItem)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(p => p.Costs),
             disableTracking: true);
 
-        if (seed == null || !seed.Items.Any())
-        {
-            return [];
-        }
-
-        var processGroupMetrics = seed.ProcessGroupMetrics
-            .GroupBy(x => x.ProcessGroupId)
-            .ToDictionary(
-                x => x.Key,
-                x => (
-                    PlannedOutput: x.First().PlannedOutput,
-                    StandardOutput: x.First().StandardOutput));
-
-        var reports = await _acceptanceReportRepository.GetAllAsync(
-            predicate: a => a.ProductionOutput.DepartmentId == departmentId.Value,
-            include: q => q
-                .Include(a => a.ProductionOutput)
-                    .ThenInclude(p => p.ProductionOutputProcessGroups)
-                        .ThenInclude(pg => pg.ProductionOutputProducts),
-            disableTracking: true);
-
-        var orderedReports = reports
-            .Where(a => a.ProductionOutput != null)
-            .OrderBy(a => a.ProductionOutput!.StartMonth)
-            .Select(a => new LongTermAnchorSeedTrackingHelper.ReportContext(
-                a.Id,
-                a.ProductionOutput!.StartMonth,
-                a.ProductionOutput.ProductionMeters,
-                a.ProductionOutput.StandardProductionMeters,
-                BuildOutputByProcessGroup(a.ProductionOutput)))
+        return logs
+            .Select(log => new AnchorSeedLogContext(log, log.LongTermAnchorSeedItem))
             .ToList();
-
-        return LongTermAnchorSeedTrackingHelper.BuildSnapshots(seed.Items, processGroupMetrics, orderedReports, acceptanceReport.Id);
     }
+
+    private sealed record AnchorSeedLogContext(
+        LongTermAnchorSeedItemLog Log,
+        LongTermAnchorSeedItem SeedItem);
 }

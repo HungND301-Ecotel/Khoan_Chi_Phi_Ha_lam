@@ -1,7 +1,6 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
-using Application.Catalog.Production.LongTermAnchorSeeds;
 using Application.Dto.Catalog.ProductionOutput;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
@@ -23,8 +22,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository =
         unitOfWork.GetRepository<AcceptanceReport>();
 
-    private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository =
-        unitOfWork.GetRepository<LongTermAnchorSeed>();
+    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _anchorSeedLogRepository =
+        unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
 
     public async Task<ProductionOutputDetailResponseDto> Handle(
         GetProductionOutputDetailQuery request, CancellationToken cancellationToken)
@@ -77,9 +76,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         if (acceptanceReport != null)
         {
             var previousReports = await GetPreviousReportsAsync(productionOutput);
-            var anchorSeedSnapshots = await BuildAnchorSeedSnapshots(acceptanceReport, cancellationToken);
+            var anchorSeedLogs = await BuildAnchorSeedLogContexts(acceptanceReport.Id, cancellationToken);
 
-            sectionA = BuildSectionA(acceptanceReport, previousReports, productionOutput, anchorSeedSnapshots);
+            sectionA = BuildSectionA(acceptanceReport, previousReports, productionOutput, anchorSeedLogs);
             sectionB = BuildSectionB(acceptanceReport, previousReports, productionOutput);
             sectionC = BuildSectionC(acceptanceReport, productionOutput);
             sectionD = BuildSectionD(acceptanceReport, productionOutput);
@@ -121,7 +120,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReport report,
         List<AcceptanceReport> previousReports,
         ProductionOutput productionOutput,
-        List<AnchorSeedSnapshotContext> anchorSeedSnapshots)
+        List<AnchorSeedLogContext> anchorSeedLogs)
     {
         var groups = new Dictionary<string, MaterialGroupDto>();
 
@@ -276,11 +275,11 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             }
         }
 
-        foreach (var anchorSeedSnapshot in anchorSeedSnapshots)
+        foreach (var anchorSeedLog in anchorSeedLogs)
         {
-            var material = anchorSeedSnapshot.Material;
-            var snapshot = anchorSeedSnapshot.Snapshot;
-            var seedItem = anchorSeedSnapshot.SeedItem;
+            var material = anchorSeedLog.Material;
+            var log = anchorSeedLog.Log;
+            var seedItem = anchorSeedLog.SeedItem;
             var (groupKey, groupCode, groupName) = ResolveAnchorSeedTh2GroupKey("A3", seedItem, material);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
@@ -298,7 +297,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 group,
                 seedItem,
                 BuildAnchorSeedTh2Detail(
-                    snapshot,
+                    log,
                     material,
                     plannedPrice,
                     actualPrice,
@@ -1100,7 +1099,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     }
 
     private static MaterialDetailDto BuildAnchorSeedTh2Detail(
-        LongTermAnchorSeedTrackingHelper.TrackingSnapshot snapshot,
+        LongTermAnchorSeedItemLog log,
         SctxMaterialContext material,
         decimal plannedPrice,
         decimal actualPrice,
@@ -1120,21 +1119,21 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     ? new InventoryQuantityDto
                     {
                         Quantity = 0,
-                        Amount = snapshot.PendingValueStartPeriod
+                        Amount = log.PendingValueStartPeriod
                     }
                     : null,
                 RemainingByOrder = hasProductionOrder
                     ? new InventoryQuantityDto
                     {
                         Quantity = 0,
-                        Amount = snapshot.PendingValueStartPeriod
+                        Amount = log.PendingValueStartPeriod
                     }
                     : null,
-                PendingValue = snapshot.PendingValueStartPeriod,
+                PendingValue = log.PendingValueStartPeriod,
                 Total = new TotalDto
                 {
                     Quantity = 0,
-                    Amount = snapshot.PendingValueStartPeriod
+                    Amount = log.PendingValueStartPeriod
                 }
             },
             IssuedInPeriod = new IssuedInPeriodDto
@@ -1152,12 +1151,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 ContractSettlement = new QuantityAmountDto(),
                 LongTermExpense = new LongTermExpenseDto
                 {
-                    Amount = snapshot.AccountedValueThisPeriod
+                    Amount = log.AccountedValueThisPeriod
                 },
                 Total = new TotalDto
                 {
                     Quantity = 0,
-                    Amount = snapshot.AccountedValueThisPeriod
+                    Amount = log.AccountedValueThisPeriod
                 }
             },
             EndingInventory = new EndingInventoryDto
@@ -1166,21 +1165,21 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     ? new InventoryQuantityDto
                     {
                         Quantity = 0,
-                        Amount = snapshot.PendingValueEndPeriod
+                        Amount = log.PendingValueEndPeriod
                     }
                     : null,
                 RemainingByOrder = hasProductionOrder
                     ? new InventoryQuantityDto
                     {
                         Quantity = 0,
-                        Amount = snapshot.PendingValueEndPeriod
+                        Amount = log.PendingValueEndPeriod
                     }
                     : null,
-                PendingValue = snapshot.PendingValueEndPeriod,
+                PendingValue = log.PendingValueEndPeriod,
                 Total = new TotalDto
                 {
                     Quantity = 0,
-                    Amount = snapshot.PendingValueEndPeriod
+                    Amount = log.PendingValueEndPeriod
                 }
             }
         };
@@ -1256,108 +1255,44 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         }
     }
 
-    private async Task<List<AnchorSeedSnapshotContext>> BuildAnchorSeedSnapshots(
-        AcceptanceReport acceptanceReport,
+    private async Task<List<AnchorSeedLogContext>> BuildAnchorSeedLogContexts(
+        Guid acceptanceReportId,
         CancellationToken cancellationToken)
     {
-        var departmentId = acceptanceReport.ProductionOutput?.DepartmentId;
-        if (!departmentId.HasValue)
-        {
-            return [];
-        }
-
-        var seed = await _seedRepository.GetFirstOrDefaultAsync(
-            predicate: s => s.DepartmentId == departmentId.Value,
+        var logs = await _anchorSeedLogRepository.GetAllAsync(
+            predicate: x => x.AcceptanceReportId == acceptanceReportId,
             include: q => q
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.Code)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.UnitOfMeasure)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.Costs)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.Part)
                         .ThenInclude(p => p.AssignmentCodeMaterials)
                             .ThenInclude(link => link.AssignmentCode)
                                 .ThenInclude(ac => ac.Code)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.AssignmentCode)
                         .ThenInclude(ac => ac!.Code)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.ProductionOrder)
                         .ThenInclude(po => po!.Code)
-                .Include(s => s.Items)
+                .Include(x => x.LongTermAnchorSeedItem)
                     .ThenInclude(i => i.ProcessGroup)
-                        .ThenInclude(pg => pg.Code)
-                .Include(s => s.ProcessGroupMetrics),
+                        .ThenInclude(pg => pg.Code),
             disableTracking: true);
 
-        if (seed == null || !seed.Items.Any())
-        {
-            return [];
-        }
-
-        var processGroupMetrics = seed.ProcessGroupMetrics
-            .GroupBy(x => x.ProcessGroupId)
-            .ToDictionary(
-                x => x.Key,
-                x => (
-                    PlannedOutput: x.First().PlannedOutput,
-                    StandardOutput: x.First().StandardOutput));
-
-        var reports = await _acceptanceReportRepository.GetAllAsync(
-            predicate: a => a.ProductionOutput.DepartmentId == departmentId.Value,
-            include: q => q
-                .Include(a => a.ProductionOutput)
-                    .ThenInclude(p => p.ProductionOutputProcessGroups)
-                        .ThenInclude(pg => pg.ProductionOutputProducts),
-            disableTracking: true);
-
-        var orderedReports = reports
-            .Where(a => a.ProductionOutput != null)
-            .OrderBy(a => a.ProductionOutput!.StartMonth)
-            .Select(a => new LongTermAnchorSeedTrackingHelper.ReportContext(
-                a.Id,
-                a.ProductionOutput!.StartMonth,
-                a.ProductionOutput.ProductionMeters,
-                a.ProductionOutput.StandardProductionMeters,
-                BuildOutputByProcessGroup(a.ProductionOutput)))
+        return logs
+            .Select(log => new AnchorSeedLogContext(
+                log,
+                BuildSctxMaterial(log.LongTermAnchorSeedItem.Part),
+                log.LongTermAnchorSeedItem))
             .ToList();
-
-        var snapshots = LongTermAnchorSeedTrackingHelper.BuildSnapshots(
-            seed.Items,
-            processGroupMetrics,
-            orderedReports,
-            acceptanceReport.Id);
-
-        var itemById = seed.Items.ToDictionary(x => x.Id);
-
-        return snapshots
-            .Where(snapshot => itemById.ContainsKey(snapshot.SeedItemId))
-            .Select(snapshot => new AnchorSeedSnapshotContext(
-                snapshot,
-                BuildSctxMaterial(itemById[snapshot.SeedItemId].Part),
-                itemById[snapshot.SeedItemId]))
-            .ToList();
-    }
-
-    private static Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)> BuildOutputByProcessGroup(
-        ProductionOutput productionOutput)
-    {
-        var result = new Dictionary<Guid, (double ActualOutput, double PlannedOutput, double StandardOutput)>();
-
-        foreach (var processGroup in productionOutput.ProductionOutputProcessGroups)
-        {
-            result[processGroup.ProcessGroupId] = (
-                processGroup.ProductionMeters,
-                processGroup.PlanProductionMeters,
-                processGroup.StandardProductionMeters);
-        }
-
-        return result;
     }
 
     private static MaterialGroupDto GetOrAddGroup(
@@ -1501,8 +1436,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         IReadOnlyCollection<AssignmentCodeMaterial> AssignmentCodeMaterials,
         IReadOnlyCollection<AssignmentCode> AssignmentCodes);
 
-    private sealed record AnchorSeedSnapshotContext(
-        LongTermAnchorSeedTrackingHelper.TrackingSnapshot Snapshot,
+    private sealed record AnchorSeedLogContext(
+        LongTermAnchorSeedItemLog Log,
         SctxMaterialContext Material,
         LongTermAnchorSeedItem SeedItem);
 }

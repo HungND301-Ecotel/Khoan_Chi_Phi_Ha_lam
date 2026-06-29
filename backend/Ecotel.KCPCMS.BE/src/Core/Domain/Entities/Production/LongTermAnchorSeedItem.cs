@@ -27,6 +27,8 @@ public class LongTermAnchorSeedItem : AuditableEntity<Guid>
     public virtual Material Part { get; protected set; } = default!;
     public virtual AssignmentCode? AssignmentCode { get; protected set; }
     public virtual ProductionOrder? ProductionOrder { get; protected set; }
+    private readonly IList<LongTermAnchorSeedItemLog> _logs = new List<LongTermAnchorSeedItemLog>();
+    public virtual IReadOnlyCollection<LongTermAnchorSeedItemLog> Logs => _logs.AsReadOnly();
     public Material Material => Part;
 
     public decimal TotalAmount => (decimal)IssuedQuantity * UnitPrice;

@@ -24,7 +24,9 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
     private readonly IWriteRepository<ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<ProductionOrder>();
     private readonly IWriteRepository<LongTermAnchorSeed> _seedRepository = unitOfWork.GetRepository<LongTermAnchorSeed>();
     private readonly IWriteRepository<LongTermAnchorSeedItem> _seedItemRepository = unitOfWork.GetRepository<LongTermAnchorSeedItem>();
+    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _seedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
     private readonly IWriteRepository<LongTermAnchorSeedProcessGroupMetric> _processGroupMetricRepository = unitOfWork.GetRepository<LongTermAnchorSeedProcessGroupMetric>();
+    private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
 
     public async Task<bool> Handle(UploadLongTermAnchorSeedFileCommand request, CancellationToken cancellationToken)
     {
@@ -320,6 +322,72 @@ public class UploadLongTermAnchorSeedFileCommandHandler(IExcelService excelServi
             if (existingMetrics.Count > 0)
             {
                 _processGroupMetricRepository.Delete(existingMetrics);
+            }
+
+            var metricsToInsert = rows
+                .Where(row => !IsDeleteRow(row))
+                .Select(row => NormalizeCode(ExtractCode(row.ProcessGroupCode)))
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(code =>
+                {
+                    var processGroup = processGroupByCode[code];
+                    return LongTermAnchorSeedProcessGroupMetric.Create(
+                        seed.Id,
+                        processGroup.Id,
+                        0,
+                        0);
+                })
+                .ToList();
+
+            if (metricsToInsert.Count > 0)
+            {
+                foreach (var metric in metricsToInsert)
+                {
+                    await _processGroupMetricRepository.InsertAsync(metric, cancellationToken);
+                }
+            }
+
+            await unitOfWork.SaveChangesAsync();
+
+            var refreshedSeed = await _seedRepository.GetFirstOrDefaultAsync(
+                predicate: s => s.Id == seed.Id,
+                include: q => q
+                    .Include(s => s.Items)
+                        .ThenInclude(i => i.Part)
+                            .ThenInclude(p => p.Code)
+                    .Include(s => s.Items)
+                        .ThenInclude(i => i.Part)
+                            .ThenInclude(p => p.UnitOfMeasure)
+                    .Include(s => s.Items)
+                        .ThenInclude(i => i.ProcessGroup)
+                            .ThenInclude(pg => pg.Code)
+                    .Include(s => s.ProcessGroupMetrics),
+                disableTracking: true)
+                ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+
+            var acceptanceReports = await _acceptanceReportRepository.GetAllAsync(
+                predicate: a => a.ProductionOutput.DepartmentId == request.DepartmentId,
+                include: q => q
+                    .Include(a => a.ProductionOutput)
+                        .ThenInclude(p => p.ProductionOutputProcessGroups)
+                            .ThenInclude(pg => pg.ProductionOutputProducts),
+                disableTracking: true);
+
+            var existingLogs = await _seedItemLogRepository.GetAllAsync(
+                predicate: x => x.LongTermAnchorSeedItem.LongTermAnchorSeedId == seed.Id,
+                disableTracking: false);
+            if (existingLogs.Count > 0)
+            {
+                _seedItemLogRepository.Delete(existingLogs);
+            }
+
+            var rebuiltLogs = LongTermAnchorSeedLogPersistenceHelper.BuildLogs(
+                refreshedSeed,
+                acceptanceReports);
+            foreach (var log in rebuiltLogs)
+            {
+                await _seedItemLogRepository.InsertAsync(log, cancellationToken);
             }
 
             await unitOfWork.SaveChangesAsync();

@@ -18,6 +18,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
+    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
     private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
     private readonly IWriteRepository<SavingsRateConfig> _savingsRateConfigRepository = unitOfWork.GetRepository<SavingsRateConfig>();
     private readonly IWriteRepository<RevenueCostAdjustmentConfig> _revenueCostAdjustmentConfigRepository = unitOfWork.GetRepository<RevenueCostAdjustmentConfig>();
@@ -280,6 +281,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 
         var transferredMaterial = 0m;
         var transferredMaintain = 0m;
+        var anchorTransferredMaintainByReportId = await BuildAnchorTransferredMaintainByReportIdAsync(
+            outputsWithAcceptanceReport,
+            processGroupId,
+            cancellationToken);
         foreach (var output in outputsWithAcceptanceReport)
         {
             if (hasProcessGroupFilter && !output.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId))
@@ -313,6 +318,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                     .Where(l => l.AcceptanceReportId == report.Id);
                 transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
             }
+
+            transferredMaintain += anchorTransferredMaintainByReportId.GetValueOrDefault(report.Id, 0m);
         }
 
         var customCosts = await _customCostRepository.GetAllAsync(
@@ -557,6 +564,33 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     {
         var normalized = NormalizeText(unitName);
         return normalized is "met" or "m";
+    }
+
+    private async Task<Dictionary<Guid, decimal>> BuildAnchorTransferredMaintainByReportIdAsync(
+        IReadOnlyCollection<ProductionOutput> outputsWithAcceptanceReport,
+        Guid? processGroupId,
+        CancellationToken cancellationToken)
+    {
+        var reportIds = outputsWithAcceptanceReport
+            .Where(po => po.AcceptanceReport != null)
+            .Select(po => po.AcceptanceReport!.Id)
+            .Distinct()
+            .ToList();
+
+        if (reportIds.Count == 0)
+        {
+            return [];
+        }
+
+        var logs = await _longTermAnchorSeedItemLogRepository.GetAllAsync(
+            predicate: x => reportIds.Contains(x.AcceptanceReportId),
+            include: q => q.Include(x => x.LongTermAnchorSeedItem),
+            disableTracking: true);
+
+        return logs
+            .Where(x => !processGroupId.HasValue || x.LongTermAnchorSeedItem.ProcessGroupId == processGroupId.Value)
+            .GroupBy(x => x.AcceptanceReportId)
+            .ToDictionary(x => x.Key, x => x.Sum(log => log.AccountedValueThisPeriod));
     }
 
     private static string NormalizeText(string input)
