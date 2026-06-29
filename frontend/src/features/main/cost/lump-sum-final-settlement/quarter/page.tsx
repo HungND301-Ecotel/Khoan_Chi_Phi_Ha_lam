@@ -180,7 +180,10 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		const selectedYear = watchedYear || defaultYear;
 		const quarterRoman = toRomanQuarter(selectedQuarter);
 		const months = getMonthsForQuarter(selectedQuarter);
-		const monthBreakdownByMonth = new Map<number, LumpSumFinalSettlementMonthResponse>(
+		const monthBreakdownByMonth = new Map<
+			number,
+			LumpSumFinalSettlementMonthResponse
+		>(
 			monthBreakdowns.map((x, index) => [
 				x.revenue?.month ?? months[index] ?? 0,
 				x,
@@ -538,7 +541,15 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 						payload,
 					);
 				}
+				const tempRowsBeforeReload = customCosts.filter(
+					(x) => x.id !== row.id && x.id.startsWith('temp-'),
+				);
+
 				await reloadCurrentQuarter();
+
+				if (tempRowsBeforeReload.length > 0) {
+					setCustomCosts((prev) => [...prev, ...tempRowsBeforeReload]);
+				}
 			} catch (error) {
 				console.error('Error saving custom cost:', error);
 			}
