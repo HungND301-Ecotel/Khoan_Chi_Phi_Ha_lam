@@ -154,7 +154,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         foreach (var item in sectionItems.Where(IsSctxItem))
         {
             var material = GetSctxMaterial(item)!;
-            var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
+            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
@@ -218,13 +218,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 continue;
             }
 
-            var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
+            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
                 GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
-                SectionAType = SecAType.SctxTh1,
+                SectionAType = SecAType.SctxTh2,
                 ProductionOrderId = item.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
@@ -259,13 +259,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     continue;
                 }
 
-                var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
+                var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
                 var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
                     GroupCode = groupCode,
                     GroupName = groupName,
                     MaterialType = MatTypeLabel.Sctx,
-                    SectionAType = SecAType.SctxTh1,
+                    SectionAType = SecAType.SctxTh2,
                     ProductionOrderId = item.ProductionOrderId,
                     Materials = new(),
                     SubGroups = new()
@@ -290,7 +290,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 GroupCode = groupCode,
                 GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
-                SectionAType = SecAType.SctxTh1,
+                SectionAType = SecAType.SctxTh2,
                 ProductionOrderId = seedItem.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
@@ -634,19 +634,6 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     }
 
     /// <summary>
-    /// TH2 grouping rule:
-    /// - Nếu có ProductionOrderId (chi phí kéo dài từ kỳ trước theo lệnh/quyết định) thì group theo ProductionOrderId.
-    /// - Nếu không thì group theo Equipment.Code (fallback "VTK").
-    /// </summary>
-    private static (string key, string code, string name) ResolveSctxTopLevelGroupKey(
-        string prefix, AcceptanceReportItem item, bool useAdditionalCostReference = false)
-    {
-        var assignmentCode = ResolveAssignmentCodeForGrouping(item, useAdditionalCostReference);
-        var code = assignmentCode?.Code?.Value ?? "VTK";
-        var name = assignmentCode?.Name ?? "Vật tư khác";
-        return ($"{prefix}_EQ_{code}", code, name);
-    }
-
     private static (string key, string code, string name) ResolveAdditionalCostOrderGroupKey(
         string prefix,
         AcceptanceReportItem item)
@@ -709,8 +696,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             {
                 defaultSubGroup = new SubGroupDto
                 {
-                    SubGroupCode = string.Empty,
-                    SubGroupName = "Không thuộc nhóm vật tư, tài sản",
+                    SubGroupCode = group.GroupCode,
+                    SubGroupName = group.GroupName,
                     Materials = new()
                 };
                 group.SubGroups.Add(defaultSubGroup);
@@ -749,7 +736,15 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ? item.AdditionalCostProductionOrderId
             : item.ProductionOrderId;
 
-        if (!productionOrderId.HasValue && !forceAssignmentSubGroup)
+        if (!useAdditionalCostReference)
+        {
+            if (!productionOrderId.HasValue && !forceAssignmentSubGroup)
+            {
+                group.Materials.Add(detail);
+                return;
+            }
+        }
+        else if (!productionOrderId.HasValue && !forceAssignmentSubGroup)
         {
             group.Materials.Add(detail);
             return;
@@ -760,13 +755,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         {
             if (forceAssignmentSubGroup)
             {
-                var defaultSubGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == string.Empty);
+                var defaultSubGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == group.GroupCode);
                 if (defaultSubGroup == null)
                 {
                     defaultSubGroup = new SubGroupDto
                     {
-                        SubGroupCode = string.Empty,
-                        SubGroupName = "Không thuộc nhóm vật tư, tài sản",
+                        SubGroupCode = group.GroupCode,
+                        SubGroupName = group.GroupName,
                         Materials = new()
                     };
                     group.SubGroups.Add(defaultSubGroup);

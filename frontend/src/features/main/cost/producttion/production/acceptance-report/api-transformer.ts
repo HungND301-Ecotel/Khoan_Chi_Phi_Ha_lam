@@ -362,7 +362,7 @@ function groupMaterials(
 	const normalizedGroupName = normalizeGroupName(materialGroup, sectionKey);
 	const isProductionOrder =
 		trimText(materialGroup.productionOrderId).length > 0;
-	const childGroups: GroupCodeGroup[] = [];
+	let childGroups: GroupCodeGroup[] = [];
 	const productionOrderId = trimText(materialGroup.productionOrderId);
 
 	if (materialGroup.subGroups && materialGroup.subGroups.length > 0) {
@@ -402,6 +402,32 @@ function groupMaterials(
 				categoryType,
 			),
 		) ?? [];
+
+	if (sectionKey === 'sectionA' && childGroups.length > 0) {
+		const sameAsParentGroups = childGroups.filter(
+			(childGroup) =>
+				normalizeForCompare(childGroup.groupCode) ===
+					normalizeForCompare(normalizedGroupCode) &&
+				normalizeForCompare(childGroup.groupName) ===
+					normalizeForCompare(normalizedGroupName),
+		);
+
+		if (sameAsParentGroups.length > 0) {
+			topLevelItems.push(
+				...sameAsParentGroups.flatMap((group) => group.items),
+			);
+			childGroups = childGroups.filter(
+				(childGroup) =>
+					!sameAsParentGroups.some(
+						(parentGroup) =>
+							normalizeForCompare(parentGroup.groupCode) ===
+								normalizeForCompare(childGroup.groupCode) &&
+							normalizeForCompare(parentGroup.groupName) ===
+								normalizeForCompare(childGroup.groupName),
+					),
+			);
+		}
+	}
 
 	if (
 		sectionKey === 'sectionB' &&
