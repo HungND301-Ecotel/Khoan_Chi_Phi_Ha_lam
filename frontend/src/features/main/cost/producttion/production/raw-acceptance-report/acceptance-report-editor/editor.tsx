@@ -2271,6 +2271,16 @@ const MaterialImportRow = memo(function MaterialImportRow({
 													/>
 												</div>
 											)}
+											{additionalCostNeedsOtherMaterialDetail && (
+												<div className='w-full'>
+													<FormComboBox
+														control={form.control}
+														name={`${basename}.otherMaterialDetail` as RowPath}
+														options={OTHER_MATERIAL_DETAIL_OPTIONS}
+														placeholder='Chọn loại vật tư'
+													/>
+												</div>
+											)}
 											{additionalCostNeedsProductionOrder && (
 												<div className='w-full'>
 													<FormComboBox
@@ -2280,16 +2290,6 @@ const MaterialImportRow = memo(function MaterialImportRow({
 														}
 														options={additionalCostProductionOrderOptions}
 														placeholder='Chọn lệnh sản xuất'
-													/>
-												</div>
-											)}
-											{additionalCostNeedsOtherMaterialDetail && (
-												<div className='w-full'>
-													<FormComboBox
-														control={form.control}
-														name={`${basename}.otherMaterialDetail` as RowPath}
-														options={OTHER_MATERIAL_DETAIL_OPTIONS}
-														placeholder='Chọn loại vật tư'
 													/>
 												</div>
 											)}
