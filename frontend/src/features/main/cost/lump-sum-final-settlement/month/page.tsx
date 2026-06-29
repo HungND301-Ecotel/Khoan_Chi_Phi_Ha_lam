@@ -357,19 +357,19 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					mergedValue: savingAddedToIncomeMonth,
 				},
 			),
-			...savingCarryForwardByMonths.map((item) =>
-				makeZeroRow(
-					`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${item.month}`,
-					{
-						sttLabel: '*',
-						isBold: true,
-						unitOfMeasureName: 'Đồng',
-						hidePlanActual: true,
-						hideUnitPrice: true,
-						isMergedValueRow: true,
-						mergedValue: item.value ?? 0,
-					},
-				),
+			makeZeroRow(
+				`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${selectedMonth}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: savingCarryForwardByMonths
+						.filter((x) => x.month < Number(selectedMonth))
+						.reduce((acc, x) => acc + (x.value ?? 0), 0),
+				},
 			),
 			makeZeroRow(
 				'Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo',
@@ -535,7 +535,18 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 						payload,
 					);
 				}
+				// Giữ lại các temp rows chưa được lưu
+				const tempRowsBeforeReload = customCosts.filter(
+					(x) => x.id !== row.id && x.id.startsWith('temp-'),
+				);
+
 				await reloadCurrentMonth();
+
+				// hiện lên
+				if (tempRowsBeforeReload.length > 0) {
+					setCustomCosts((prev) => [...prev, ...tempRowsBeforeReload]);
+				}
+
 				setEditingSnapshot((prev) => {
 					if (!row.id) return prev;
 					const next = { ...prev };
