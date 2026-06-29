@@ -34,6 +34,23 @@ type CodeNameLookupItem = {
 	name: string;
 };
 
+const NONE_ASSIGNMENT_CODE_VALUE = '__none_assignment_code__';
+const NONE_PRODUCTION_ORDER_VALUE = '__none_production_order__';
+
+function normalizeNullableLookupValue(value?: string | null) {
+	if (!value) return null;
+
+	const normalizedValue = value.trim();
+	if (
+		normalizedValue === NONE_ASSIGNMENT_CODE_VALUE ||
+		normalizedValue === NONE_PRODUCTION_ORDER_VALUE
+	) {
+		return null;
+	}
+
+	return normalizedValue.length > 0 ? normalizedValue : null;
+}
+
 type LongtermAnchorSeedFormProps = {
 	departmentId: string;
 	callback?: () => Promise<void> | void;
@@ -53,6 +70,9 @@ export function LongtermAnchorSeedForm({
 		LookupOption[]
 	>([]);
 	const [productionOrderOptions, setProductionOrderOptions] = useState<
+		LookupOption[]
+	>([]);
+	const [processGroupOptions, setProcessGroupOptions] = useState<
 		LookupOption[]
 	>([]);
 
@@ -92,8 +112,11 @@ export function LongtermAnchorSeedForm({
 						partId: item.partId,
 						processGroupId: item.processGroupId,
 						categoryAssignmentCodeId:
-							item.categoryAssignmentCodeId ?? item.categoryEquipmentId ?? null,
-						categoryProductionOrderId: item.categoryProductionOrderId ?? null,
+							item.categoryAssignmentCodeId ??
+							item.categoryEquipmentId ??
+							NONE_ASSIGNMENT_CODE_VALUE,
+						categoryProductionOrderId:
+							item.categoryProductionOrderId ?? NONE_PRODUCTION_ORDER_VALUE,
 						issuedQuantity: 0,
 						unitPrice: 0,
 						pendingValueStartPeriod: item.pendingValueStartPeriod,
@@ -187,10 +210,60 @@ export function LongtermAnchorSeedForm({
 		};
 	}, [error]);
 
+	useEffect(() => {
+		let isMounted = true;
+
+		const fetchProcessGroups = async () => {
+			try {
+				const response = await api.pagging<CodeNameLookupItem>(
+					API.CATALOG.PROCESS.GROUP.LIST,
+					{
+						ignorePagination: true,
+					},
+				);
+
+				if (!isMounted) return;
+
+				setProcessGroupOptions(
+					(response.result.data ?? [])
+						.slice()
+						.sort((a, b) => a.code.localeCompare(b.code))
+						.map((item) => ({
+							value: item.id,
+							label: `${item.code} - ${item.name}`,
+						})),
+				);
+			} catch (err) {
+				if (!isMounted) return;
+				setProcessGroupOptions([]);
+				error(err);
+			}
+		};
+
+		fetchProcessGroups();
+
+		return () => {
+			isMounted = false;
+		};
+	}, [error]);
+
 	const handleSubmit = async (values: LongTermAnchorSeedSchema) => {
 		try {
-			await api.put(API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPDATE, {
+			const payload = {
 				...values,
+				items: values.items.map((item) => ({
+					...item,
+					categoryAssignmentCodeId: normalizeNullableLookupValue(
+						item.categoryAssignmentCodeId,
+					),
+					categoryProductionOrderId: normalizeNullableLookupValue(
+						item.categoryProductionOrderId,
+					),
+				})),
+			};
+
+			await api.put(API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPDATE, {
+				...payload,
 				departmentId,
 			});
 			success('Mốc gốc hạch toán dài kỳ đã được cập nhật thành công.');
@@ -240,15 +313,13 @@ export function LongtermAnchorSeedForm({
 										return (
 											<>
 												<div className='min-w-48 flex-1 space-y-2'>
-													<Label>Nhóm công đoạn</Label>
-													<Input
-														readOnly
-														value={
-															item?.processGroupCode
-																? `${item.processGroupCode} - ${item.processGroupName}`
-																: (item?.processGroupName ?? '')
-														}
-														/>
+													<FormComboBox
+														control={form.control}
+														name={`items.${index}.processGroupId`}
+														label='Nhóm công đoạn'
+														options={processGroupOptions}
+														placeholder='Chọn nhóm công đoạn'
+													/>
 												</div>
 
 												<div className='min-w-64 flex-1 space-y-2'>
@@ -256,7 +327,13 @@ export function LongtermAnchorSeedForm({
 														control={form.control}
 														name={`items.${index}.categoryAssignmentCodeId`}
 														label='Nhóm vật tư, tài sản'
-														options={assignmentCodeOptions}
+														options={[
+															{
+																value: NONE_ASSIGNMENT_CODE_VALUE,
+																label: 'Không thuộc nhóm vật tư, tài sản',
+															},
+															...assignmentCodeOptions,
+														]}
 														placeholder='Chọn nhóm vật tư, tài sản'
 													/>
 												</div>
@@ -266,7 +343,13 @@ export function LongtermAnchorSeedForm({
 														control={form.control}
 														name={`items.${index}.categoryProductionOrderId`}
 														label='Lệnh sản xuất'
-														options={productionOrderOptions}
+														options={[
+															{
+																value: NONE_PRODUCTION_ORDER_VALUE,
+																label: 'Không thuộc Lệnh sản xuất',
+															},
+															...productionOrderOptions,
+														]}
 														placeholder='Chọn lệnh sản xuất'
 													/>
 												</div>
