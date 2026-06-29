@@ -45,6 +45,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Material).ThenInclude(m => m.AssignmentCode).ThenInclude(ac => ac.Code)
                 .Include(a => a.AcceptanceReportItems)
+                    .ThenInclude(i => i.Material).ThenInclude(m => m.AssignmentCodeMaterials)
+                    .ThenInclude(link => link.AssignmentCode).ThenInclude(ac => ac.Code)
+                .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Material).ThenInclude(m => m.UnitOfMeasure)
                 .Include(a => a.AcceptanceReportItems)
                     .ThenInclude(i => i.Material).ThenInclude(m => m.Costs)
@@ -131,11 +134,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         // ── Sub-section 1: Vật liệu ──────────────────────────────────────────
         foreach (var item in sectionItems.Where(i => i.IsMaterialItem && i.Material != null))
         {
-            var groupKey = $"A1_{item.Material!.AssignmentCode?.Code?.Value ?? "VTK"}";
+            var assignmentCode = ResolveVatLieuAssignmentCode(item);
+            var groupKey = $"A1_{assignmentCode?.Code?.Value ?? "VTK"}";
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
-                GroupCode = item.Material.AssignmentCode?.Code?.Value ?? "VTK",
-                GroupName = item.Material.AssignmentCode?.Name ?? "Vật liệu khác",
+                GroupCode = assignmentCode?.Code?.Value ?? "VTK",
+                GroupName = assignmentCode?.Name ?? "Vật liệu khác",
                 MaterialType = MatTypeLabel.VatLieu,
                 SectionAType = SecAType.VatLieu,
                 Materials = new(),
@@ -146,11 +150,11 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             group.Materials.Add(BuildVatLieuDetail(item, item.Material, plannedPrice, actualPrice));
         }
 
-        // ── Sub-section 2: SCTX TH1 ──────────────────────────────────────────
+        // ── Sub-section 2: SCTX ─────────────────────────────────────────────
         foreach (var item in sectionItems.Where(IsSctxItem))
         {
             var material = GetSctxMaterial(item)!;
-            var (groupKey, groupCode, groupName) = ResolveSctxGroupKey("A2", item);
+            var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
@@ -214,13 +218,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 continue;
             }
 
-            var (groupKey, groupCode, groupName) = ResolveSctxTh2GroupKey("A3", item);
+            var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
                 GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
-                SectionAType = SecAType.SctxTh2,
+                SectionAType = SecAType.SctxTh1,
                 ProductionOrderId = item.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
@@ -255,13 +259,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     continue;
                 }
 
-                var (groupKey, groupCode, groupName) = ResolveSctxTh2GroupKey("A3", item);
+                var (groupKey, groupCode, groupName) = ResolveSctxTopLevelGroupKey("A2", item);
                 var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
                 {
                     GroupCode = groupCode,
                     GroupName = groupName,
                     MaterialType = MatTypeLabel.Sctx,
-                    SectionAType = SecAType.SctxTh2,
+                    SectionAType = SecAType.SctxTh1,
                     ProductionOrderId = item.ProductionOrderId,
                     Materials = new(),
                     SubGroups = new()
@@ -280,13 +284,13 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             var material = anchorSeedLog.Material;
             var log = anchorSeedLog.Log;
             var seedItem = anchorSeedLog.SeedItem;
-            var (groupKey, groupCode, groupName) = ResolveAnchorSeedTh2GroupKey("A3", seedItem, material);
+            var (groupKey, groupCode, groupName) = ResolveAnchorSeedTopLevelGroupKey("A2", seedItem, material);
             var group = GetOrAddGroup(groups, groupKey, new MaterialGroupDto
             {
                 GroupCode = groupCode,
                 GroupName = groupName,
                 MaterialType = MatTypeLabel.Sctx,
-                SectionAType = SecAType.SctxTh2,
+                SectionAType = SecAType.SctxTh1,
                 ProductionOrderId = seedItem.ProductionOrderId,
                 Materials = new(),
                 SubGroups = new()
@@ -634,18 +638,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     /// - Nếu có ProductionOrderId (chi phí kéo dài từ kỳ trước theo lệnh/quyết định) thì group theo ProductionOrderId.
     /// - Nếu không thì group theo Equipment.Code (fallback "VTK").
     /// </summary>
-    private static (string key, string code, string name) ResolveSctxTh2GroupKey(
+    private static (string key, string code, string name) ResolveSctxTopLevelGroupKey(
         string prefix, AcceptanceReportItem item, bool useAdditionalCostReference = false)
     {
-        var productionOrderId = useAdditionalCostReference
-            ? item.AdditionalCostProductionOrderId
-            : item.ProductionOrderId;
-        if (productionOrderId.HasValue)
-        {
-            var id = productionOrderId.Value.ToString();
-            return ($"{prefix}_PO_{id}", id, id); // FE resolve tên từ id
-        }
-
         var assignmentCode = ResolveAssignmentCodeForGrouping(item, useAdditionalCostReference);
         var code = assignmentCode?.Code?.Value ?? "VTK";
         var name = assignmentCode?.Name ?? "Vật tư khác";
@@ -665,23 +660,34 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         return ($"{prefix}_NO_ORDER", "NO_ORDER", "Không theo lệnh sản xuất");
     }
 
-    private static (string key, string code, string name) ResolveAnchorSeedTh2GroupKey(
+    private static (string key, string code, string name) ResolveAnchorSeedTopLevelGroupKey(
         string prefix,
         LongTermAnchorSeedItem item,
         SctxMaterialContext material)
     {
-        if (item.ProductionOrderId.HasValue)
-        {
-            var id = item.ProductionOrderId.Value.ToString();
-            return ($"{prefix}_PO_{id}", id, id);
-        }
-
         var assignmentCode = item.AssignmentCode
             ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId)
             ?? material.AssignmentCodes?.FirstOrDefault();
         var code = assignmentCode?.Code?.Value ?? "VTK";
         var name = assignmentCode?.Name ?? "Vật tư khác";
         return ($"{prefix}_EQ_{code}", code, name);
+    }
+
+    private static AssignmentCode? ResolveVatLieuAssignmentCode(AcceptanceReportItem item)
+    {
+        if (item.Equipment != null)
+        {
+            return item.Equipment;
+        }
+
+        if (item.Material?.AssignmentCode != null)
+        {
+            return item.Material.AssignmentCode;
+        }
+
+        return item.Material?.AssignmentCodeMaterials?
+            .Select(link => link.AssignmentCode)
+            .FirstOrDefault(code => code != null);
     }
 
     private static void AddAnchorSeedDetailToGroup(
@@ -848,7 +854,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             return item.Material.AssignmentCode;
         }
 
-        return null;
+        return item.Material?.AssignmentCodeMaterials?
+            .Select(link => link.AssignmentCode)
+            .FirstOrDefault(code => code?.Id == item.AdditionalCostAssignmentCodeId.Value);
     }
 
     // =========================================================================
