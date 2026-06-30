@@ -276,6 +276,12 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
 		);
 
+		// ĐÂY LÀ ĐOẠN TỚ THÊM VÀO: Tính tổng quyetToanSavingsLimit của 3 tháng
+		const quyetToanSavingsLimitQuarter = monthBreakdowns.reduce(
+			(acc, month) => acc + (month.quyetToanSavingsLimit ?? 0),
+			0,
+		);
+
 		const defaultRows: LumpSumFinalSettlement[] = [
 			makeZeroRow(`Doanh thu quý ${quarterRoman}/${selectedYear}`, {
 				sttLabel: 'I',
@@ -376,6 +382,21 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					hideUnitPrice: true,
 				}),
 			),
+
+			// ĐÂY LÀ ĐOẠN TỚ THÊM VÀO: Row hiển thị mức tiết kiệm thanh quyết toán của Quý
+			makeZeroRow(
+				`Mức tiết kiệm theo quy định thanh quyết toán quý ${quarterRoman}/${selectedYear}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: quyetToanSavingsLimitQuarter,
+				},
+			),
+
 			makeZeroRow(
 				`Tổng giá trị tiết kiệm được chấp nhận quý ${quarterRoman}/${selectedYear}`,
 				{

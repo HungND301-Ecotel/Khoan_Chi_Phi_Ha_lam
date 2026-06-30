@@ -60,6 +60,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	const [transferredCostByMonth, setTransferredCostByMonth] =
 		useState<LumpSumQuarterTransferredCost | null>(null);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
+	const [quyetToanSavingsLimit, setQuyetToanSavingsLimit] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
 	const [savingCarryForwardByMonths, setSavingCarryForwardByMonths] = useState<
 		{ month: number; value: number }[]
@@ -144,6 +145,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setSavingByMonth(monthRes.result.saving ?? null);
 				setTransferredCostByMonth(monthRes.result.transferredCost ?? null);
 				setAcceptedSavingMonth(monthRes.result.acceptedSavingMonth ?? 0);
+				setQuyetToanSavingsLimit(monthRes.result.quyetToanSavingsLimit ?? 0);
 				setSavingAddedToIncomeMonth(
 					monthRes.result.savingAddedToIncomeMonth ?? 0,
 				);
@@ -178,6 +180,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setSavingByMonth(null);
 				setTransferredCostByMonth(null);
 				setAcceptedSavingMonth(0);
+				setQuyetToanSavingsLimit(0);
 				setSavingAddedToIncomeMonth(0);
 				setSavingCarryForwardByMonths([]);
 				setSavingCarryForwardToNextMonths(0);
@@ -334,6 +337,18 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				},
 			),
 			makeZeroRow(
+				`Mức tiết kiệm theo quy định thanh quyết toán tháng ${selectedMonth}/${selectedYear}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: quyetToanSavingsLimit,
+				},
+			),
+			makeZeroRow(
 				`Tổng giá trị tiết kiệm được chấp nhận tháng ${selectedMonth}/${selectedYear}`,
 				{
 					sttLabel: '*',
@@ -458,6 +473,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		specialQuantityDraft,
 		specialQuantityEditingField,
 		transferredCostByMonth,
+		quyetToanSavingsLimit,
 	]);
 
 	useEffect(() => {

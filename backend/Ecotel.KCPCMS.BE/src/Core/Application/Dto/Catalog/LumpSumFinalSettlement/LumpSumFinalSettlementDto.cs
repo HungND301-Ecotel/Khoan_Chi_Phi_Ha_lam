@@ -13,9 +13,18 @@ public class LumpSumFinalSettlementDto
     public double PlannedQuantity { get; set; }
     public double ActualQuantity { get; set; }
 
+    public double PlanAshContent { get; set; }
+    public double ActualAshContent { get; set; }
+    public double AshContentDeltaPercent { get; set; }
+
     public LumpSumCostDetailDto Materials { get; set; } = new();
     public LumpSumCostDetailDto Maintains { get; set; } = new();
     public LumpSumCostDetailDto Electricities { get; set; } = new();
+
+    public LumpSumCostDetailDto AshContentMaterials { get; set; } = new();
+    public LumpSumCostDetailDto AshContentMaintains { get; set; } = new();
+    public LumpSumCostDetailDto AshContentElectricities { get; set; } = new();
+    public double AshContentTotalAmount { get; set; }
 
     public double TotalAmount { get; set; }
 }
@@ -63,6 +72,7 @@ public class LumpSumFinalSettlementMonthResponseDto
     public double MeterCrosscutActualQuantity { get; set; }
     public double TotalSavingMonth { get; set; }
     public double SavingsValue { get; set; }
+    public double QuyetToanSavingsLimit { get; set; }
     public double AcceptedSavingMonth { get; set; }
     public double RevenueAdjustmentRate { get; set; }
     public double SavingAddedToIncomeMonth { get; set; }
