@@ -6,6 +6,7 @@ public record DetailLongTermTrackingItemDto
     private string? _trackedMaterialName;
 
     public Guid Id { get; init; }
+    public Guid? AnchorSeedItemId { get; init; }
     public Guid AcceptanceReportItemId { get; init; }
     public Guid? MaterialId { get; init; }
     public Guid? TrackedMaterialId { get; init; }

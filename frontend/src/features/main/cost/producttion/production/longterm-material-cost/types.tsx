@@ -1,5 +1,6 @@
 export type LongtermMaterialDetailItem = {
 	id: string;
+	anchorSeedItemId?: string;
 	acceptanceReportItemId: string;
 	materialId?: string;
 	trackedMaterialId?: string;
