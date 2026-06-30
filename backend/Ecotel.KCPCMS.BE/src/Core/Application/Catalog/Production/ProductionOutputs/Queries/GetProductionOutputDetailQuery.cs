@@ -867,9 +867,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
         var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
-        var hasProductionOrder = useAdditionalCostReference
-            ? item.AdditionalCostProductionOrderId.HasValue
-            : item.ProductionOrderId.HasValue;
+        var useRemainingByOrder = ShouldUseRemainingByOrder(item, useAdditionalCostReference);
 
         return new MaterialDetailDto
         {
@@ -883,10 +881,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ExportedInPeriod = exported,
             EndingInventory = new EndingInventoryDto
             {
-                RemainingAtSite = !hasProductionOrder
+                RemainingAtSite = !useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
-                RemainingByOrder = hasProductionOrder
+                RemainingByOrder = useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
                 Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
@@ -946,9 +944,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
         var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
-        var hasProductionOrder = useAdditionalCostReference
-            ? item.AdditionalCostProductionOrderId.HasValue
-            : item.ProductionOrderId.HasValue;
+        var useRemainingByOrder = ShouldUseRemainingByOrder(item, useAdditionalCostReference);
 
         return new MaterialDetailDto
         {
@@ -962,10 +958,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ExportedInPeriod = exported,
             EndingInventory = new EndingInventoryDto
             {
-                RemainingAtSite = !hasProductionOrder
+                RemainingAtSite = !useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
-                RemainingByOrder = hasProductionOrder
+                RemainingByOrder = useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
                 Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
@@ -1003,31 +999,27 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
         var pendingEnd = pendingStart - accountedThisPeriod;
         var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
-        var hasProductionOrder = useAdditionalCostReference
-            ? item.AdditionalCostProductionOrderId.HasValue
-            : item.ProductionOrderId.HasValue;
+        var useRemainingByOrder = ShouldUseRemainingByOrder(item, useAdditionalCostReference);
 
-        // BeginningInventory: carry-forward từ tồn cuối kỳ tháng trước
-        // Tách RemainingAtSite vs RemainingByOrder theo ProductionOrderId
+        // Carry-forward must stay on-site unless the row actually ships via contract settlement.
         var beginningInventory = new BeginningInventoryDto
         {
-            RemainingAtSite = !hasProductionOrder
+            RemainingAtSite = !useRemainingByOrder
                 ? new InventoryQuantityDto { Quantity = 0, Amount = pendingStart }
                 : null,
-            RemainingByOrder = hasProductionOrder
+            RemainingByOrder = useRemainingByOrder
                 ? new InventoryQuantityDto { Quantity = 0, Amount = pendingStart }
                 : null,
             PendingValue = pendingStart,
             Total = new TotalDto { Quantity = 0, Amount = pendingStart }
         };
 
-        // EndingInventory: tách tương tự
         var endingInventory = new EndingInventoryDto
         {
-            RemainingAtSite = !hasProductionOrder
+            RemainingAtSite = !useRemainingByOrder
                 ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                 : null,
-            RemainingByOrder = hasProductionOrder
+            RemainingByOrder = useRemainingByOrder
                 ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                 : null,
             PendingValue = pendingEnd,
@@ -1139,7 +1131,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         AcceptanceReportItem item, Material material, decimal plannedPrice, decimal actualPrice)
     {
         var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
-        var hasProductionOrder = item.ProductionOrderId.HasValue;
+        var useRemainingByOrder = ShouldUseRemainingByOrder(item);
 
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
@@ -1156,10 +1148,10 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ExportedInPeriod = exported,
             EndingInventory = new EndingInventoryDto
             {
-                RemainingAtSite = !hasProductionOrder
+                RemainingAtSite = !useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
-                RemainingByOrder = hasProductionOrder
+                RemainingByOrder = useRemainingByOrder
                     ? new InventoryQuantityDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
                     : null,
                 Total = new TotalDto { Quantity = endingQty, Amount = (decimal)endingQty * plannedPrice }
@@ -1341,6 +1333,22 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         => item.ShippedDetails
             .Where(d => d.Type == type)
             .Sum(d => d.Quantity);
+
+    private static bool ShouldUseRemainingByOrder(
+        AcceptanceReportItem item,
+        bool useAdditionalCostReference = false)
+    {
+        var hasProductionOrder = useAdditionalCostReference
+            ? item.AdditionalCostProductionOrderId.HasValue
+            : item.ProductionOrderId.HasValue;
+
+        if (!hasProductionOrder)
+        {
+            return false;
+        }
+
+        return GetShippedQuantity(item, ShippedQuantityType.QuyetToanGiaoKhoan) > 0;
+    }
 
     private static bool IsSctxItem(AcceptanceReportItem item)
         => item.IsTrackedSctxItem && GetSctxMaterial(item) != null;

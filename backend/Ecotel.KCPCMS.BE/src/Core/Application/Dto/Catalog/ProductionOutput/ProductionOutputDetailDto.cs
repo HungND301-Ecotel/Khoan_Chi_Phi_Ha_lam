@@ -141,11 +141,11 @@ public record MaterialDetailDto
 public record BeginningInventoryDto
 {
     /// Tồn tại khai trường đầu kỳ — carry-forward từ EndingInventory.RemainingAtSite tháng trước
-    /// (item không có ProductionOrderId)
+    /// (mặc định dùng khi dòng không phát sinh quyết toán/giao khoán)
     public InventoryQuantityDto? RemainingAtSite { get; set; }
 
     /// Quyết định, giao khoán công trình đầu kỳ — carry-forward từ EndingInventory.RemainingByOrder tháng trước
-    /// (item có ProductionOrderId)
+    /// (chỉ dùng khi dòng có phát sinh xuất quyết toán/giao khoán)
     public InventoryQuantityDto? RemainingByOrder { get; set; }
 
     /// Chi phí chờ hạch toán đầu kỳ — chỉ có ở SCTX TH2
@@ -175,10 +175,10 @@ public record ExportedInPeriodDto
 
 public record EndingInventoryDto
 {
-    /// Tồn tại khai trường — item KHÔNG có ProductionOrderId
+    /// Tồn tại khai trường — dùng mặc định khi chưa phát sinh xuất quyết toán/giao khoán
     public InventoryQuantityDto? RemainingAtSite { get; set; }
 
-    /// Quyết định, giao khoán công trình — item CÓ ProductionOrderId
+    /// Quyết định, giao khoán công trình — chỉ dùng khi dòng có phát sinh xuất quyết toán/giao khoán
     public InventoryQuantityDto? RemainingByOrder { get; set; }
 
     /// Chi phí chờ hạch toán cuối kỳ — chỉ có ở SCTX TH2
