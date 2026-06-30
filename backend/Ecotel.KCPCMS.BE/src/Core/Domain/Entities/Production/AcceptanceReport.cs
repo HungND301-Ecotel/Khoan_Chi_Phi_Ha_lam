@@ -18,6 +18,9 @@ public class AcceptanceReport : AuditableEntity<Guid>
     private IList<AcceptanceReportItemLog> _acceptanceReportItemLogs = new List<AcceptanceReportItemLog>();
     public virtual IReadOnlyCollection<AcceptanceReportItemLog> AcceptanceReportItemLogs => _acceptanceReportItemLogs.AsReadOnly();
 
+    private IList<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogs = new List<LongTermAnchorSeedItemLog>();
+    public virtual IReadOnlyCollection<LongTermAnchorSeedItemLog> LongTermAnchorSeedItemLogs => _longTermAnchorSeedItemLogs.AsReadOnly();
+
     public static AcceptanceReport Create(Guid productionOutputId, string filePath)
     {
         return new AcceptanceReport
