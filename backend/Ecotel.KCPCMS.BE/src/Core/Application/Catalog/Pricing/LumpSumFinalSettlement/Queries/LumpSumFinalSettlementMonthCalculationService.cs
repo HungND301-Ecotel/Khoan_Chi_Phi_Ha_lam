@@ -18,10 +18,11 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
-    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
     private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
     private readonly IWriteRepository<SavingsRateConfig> _savingsRateConfigRepository = unitOfWork.GetRepository<SavingsRateConfig>();
     private readonly IWriteRepository<RevenueCostAdjustmentConfig> _revenueCostAdjustmentConfigRepository = unitOfWork.GetRepository<RevenueCostAdjustmentConfig>();
+    private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
+    private readonly IWriteRepository<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
 
     public async Task<LumpSumFinalSettlementMonthResponseDto> CalculateAsync(
         int month,
@@ -50,6 +51,15 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .SelectMany(pg => pg.ProductionOutputProducts)
             .GroupBy(p => new { p.ProductionOutputProcessGroup!.ProcessGroupId, p.ProductId })
             .ToDictionary(g => (g.Key.ProcessGroupId, g.Key.ProductId), g => g.Sum(x => x.ProductionMeters));
+
+        var actualAshContentByProduct = productionOutputs
+            .SelectMany(po => po.ProductionOutputProcessGroups)
+            .Where(pg => !hasProcessGroupFilter || pg.ProcessGroupId == processGroupId)
+            .SelectMany(pg => pg.ProductionOutputProducts)
+            .GroupBy(p => new { p.ProductionOutputProcessGroup!.ProcessGroupId, p.ProductId })
+            .ToDictionary(
+                g => (g.Key.ProcessGroupId, g.Key.ProductId),
+                g => g.Select(x => x.ActualAshContent).FirstOrDefault(v => v != 0));
 
         var productUnitPrices = await _productUnitPriceRepository.GetAllAsync(
             predicate: p => p.ScenarioType == ProductUnitPriceScenarioType.Plan
@@ -133,6 +143,14 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 
         var items = new List<LumpSumFinalSettlementDto>();
 
+        var akFactorConfigs = await _akFactorConfigRepository.GetAll()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var akFactorConfigsByProcessGroup = akFactorConfigs
+            .GroupBy(x => x.ProcessGroupId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+
         foreach (var processGroup in groupedProductUnitPrices)
         {
             foreach (var productUnitPrice in processGroup)
@@ -191,6 +209,27 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                     electricityTotalAmount = electricityUnitPrice * actualQuantity;
                 }
 
+                var planAshContent = filteredOutputs
+                    .Select(o => o.PlanAshContent)
+                    .FirstOrDefault(v => v != 0);
+                var actualAshContent = productUnitPrice.ProductId != Guid.Empty && actualAshContentByProduct.TryGetValue(key, out var productActualAshContent)
+                    ? productActualAshContent
+                    : 0d;
+
+                var ashContentDeltaPercent = 0.0;
+                var ashContentAdjustmentRate = 0.0;
+                if (planAshContent != 0 && actualAshContent != 0)
+                {
+                    ashContentDeltaPercent = planAshContent - actualAshContent;
+                    var processGroupAkConfigs = akFactorConfigsByProcessGroup.GetValueOrDefault(processGroup.Key.Id, []);
+                    var resolvedRate = AkFactorConfig.ResolveRate(processGroupAkConfigs, (decimal)ashContentDeltaPercent);
+                    ashContentAdjustmentRate = ashContentDeltaPercent * (double)resolvedRate;
+                }
+
+                var ashContentMaterialAmount = materialTotalAmount * ashContentAdjustmentRate;
+                var ashContentMaintainAmount = maintainTotalAmount * ashContentAdjustmentRate;
+                var ashContentElectricityAmount = electricityTotalAmount * ashContentAdjustmentRate;
+
                 items.Add(new LumpSumFinalSettlementDto
                 {
                     Id = productUnitPrice.Id,
@@ -203,9 +242,16 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                     UnitOfMeasureName = productUnitPrice.UnitOfMeasure?.Name ?? string.Empty,
                     PlannedQuantity = plannedQuantity,
                     ActualQuantity = actualQuantity,
+                    PlanAshContent = planAshContent,
+                    ActualAshContent = actualAshContent,
+                    AshContentDeltaPercent = ashContentDeltaPercent,
                     Materials = new() { UnitPrice = materialUnitPrice, TotalAmount = materialTotalAmount },
                     Maintains = new() { UnitPrice = maintainUnitPrice, TotalAmount = maintainTotalAmount },
                     Electricities = new() { UnitPrice = electricityUnitPrice, TotalAmount = electricityTotalAmount },
+                    AshContentMaterials = new() { TotalAmount = ashContentMaterialAmount },
+                    AshContentMaintains = new() { TotalAmount = ashContentMaintainAmount },
+                    AshContentElectricities = new() { TotalAmount = ashContentElectricityAmount },
+                    AshContentTotalAmount = ashContentMaterialAmount + ashContentMaintainAmount + ashContentElectricityAmount,
                     TotalAmount = materialTotalAmount + maintainTotalAmount + electricityTotalAmount
                 });
             }
@@ -255,6 +301,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }
         }
 
+        revenueMaterialTotal += items.Sum(x => x.AshContentMaterials.TotalAmount);
+        revenueMaintainTotal += items.Sum(x => x.AshContentMaintains.TotalAmount);
+        revenueElectricityTotal += items.Sum(x => x.AshContentElectricities.TotalAmount);
+
         var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
             .Where(po => po.StartMonth.Year == year
                 && po.StartMonth.Month == month
@@ -281,6 +331,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 
         var transferredMaterial = 0m;
         var transferredMaintain = 0m;
+        var maintainExportedToProduction = 0m;
         var anchorTransferredMaintainByReportId = await BuildAnchorTransferredMaintainByReportIdAsync(
             outputsWithAcceptanceReport,
             processGroupId,
@@ -314,6 +365,12 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 
             foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
             {
+                var maintainUnitPrice = GetPlannedUnitPrice(item.Part!.Costs, output.StartMonth);
+                var exportedToProductionQty = item.ShippedDetails
+                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                    .Sum(d => d.Quantity);
+                maintainExportedToProduction += (decimal)exportedToProductionQty * maintainUnitPrice;
+
                 var logsOfCurrentReport = item.AcceptanceReportItemLogs
                     .Where(l => l.AcceptanceReportId == report.Id);
                 transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
@@ -384,13 +441,14 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         var transferredMaterialTotal = (double)transferredMaterial;
         var transferredMaintainTotal = (double)transferredMaintain;
         var transferredElectricityTotal = 0d;
+        var maintainExportedToProductionTotal = (double)maintainExportedToProduction;
 
         var customMaterialTotal = customCosts.Sum(x => x.ActualQuantity * x.MaterialUnitPrice);
         var customMaintainTotal = customCosts.Sum(x => x.ActualQuantity * x.MaintainUnitPrice);
         var customElectricityTotal = customCosts.Sum(x => x.ActualQuantity * x.ElectricityUnitPrice);
 
         var costMaterialTotal = transferredMaterialTotal + customMaterialTotal;
-        var costMaintainTotal = transferredMaintainTotal + customMaintainTotal;
+        var costMaintainTotal = maintainExportedToProductionTotal + transferredMaintainTotal + customMaintainTotal;
         var costElectricityTotal = transferredElectricityTotal + customElectricityTotal;
         var costTotal = costMaterialTotal + costMaintainTotal + costElectricityTotal;
 
@@ -402,8 +460,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         var savingsRateConfigs = await _savingsRateConfigRepository.GetAll()
             .AsNoTracking()
             .ToListAsync(cancellationToken);
-        var savingsValue = ResolveSavingsValue(savingTotal, savingsRateConfigs);
-        var acceptedSavingMonth = savingTotal * savingsValue;
+        var revenueTotal = revenueMaterialTotal + revenueMaintainTotal + revenueElectricityTotal;
+        var savingsValue = ResolveSavingsValue(revenueTotal, savingsRateConfigs);
+        var quyetToanSavingsLimit = revenueTotal * savingsValue;
+        var acceptedSavingMonth = savingTotal;
 
         var revenueCostAdjustmentConfigs = await _revenueCostAdjustmentConfigRepository.GetAll()
             .AsNoTracking()
@@ -442,9 +502,9 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             {
                 Month = month,
                 Materials = new LumpSumCostDetailDto { TotalAmount = transferredMaterialTotal },
-                Maintains = new LumpSumCostDetailDto { TotalAmount = transferredMaintainTotal },
-                Electricities = new LumpSumCostDetailDto { TotalAmount = transferredElectricityTotal },
-                TotalAmount = transferredMaterialTotal + transferredMaintainTotal + transferredElectricityTotal
+                Maintains = new LumpSumCostDetailDto { TotalAmount = costMaintainTotal },
+                Electricities = new LumpSumCostDetailDto { TotalAmount = costElectricityTotal },
+                TotalAmount = transferredMaterialTotal + costMaintainTotal + costElectricityTotal
             },
             CoalExcavationActualQuantity = coalExcavationActualQuantity,
             CoalCrosscutActualQuantity = coalCrosscutActualQuantity,
@@ -452,6 +512,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             MeterCrosscutActualQuantity = meterCrosscutActualQuantity,
             TotalSavingMonth = savingTotal,
             SavingsValue = savingsValue,
+            QuyetToanSavingsLimit = quyetToanSavingsLimit,
             AcceptedSavingMonth = acceptedSavingMonth,
             RevenueAdjustmentRate = revenueAdjustmentRate,
             SavingAddedToIncomeMonth = savingAddedToIncomeMonth,
@@ -534,6 +595,33 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         return minMatch && maxMatch;
     }
 
+    private async Task<Dictionary<Guid, decimal>> BuildAnchorTransferredMaintainByReportIdAsync(
+        IReadOnlyCollection<ProductionOutput> outputsWithAcceptanceReport,
+        Guid? processGroupId,
+        CancellationToken cancellationToken)
+    {
+        var reportIds = outputsWithAcceptanceReport
+            .Where(po => po.AcceptanceReport != null)
+            .Select(po => po.AcceptanceReport!.Id)
+            .Distinct()
+            .ToList();
+
+        if (reportIds.Count == 0)
+        {
+            return [];
+        }
+
+        var logs = await _longTermAnchorSeedItemLogRepository.GetAllAsync(
+            predicate: x => reportIds.Contains(x.AcceptanceReportId),
+            include: q => q.Include(x => x.LongTermAnchorSeedItem),
+            disableTracking: true);
+
+        return logs
+            .Where(x => !processGroupId.HasValue || x.LongTermAnchorSeedItem.ProcessGroupId == processGroupId.Value)
+            .GroupBy(x => x.AcceptanceReportId)
+            .ToDictionary(x => x.Key, x => x.Sum(log => log.AccountedValueThisPeriod));
+    }
+
     private static decimal GetPlannedUnitPrice(IReadOnlyCollection<Cost> costs, DateOnly month)
     {
         var cost = costs.FirstOrDefault(c => c.StartMonth <= month && c.EndMonth >= month);
@@ -564,33 +652,6 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     {
         var normalized = NormalizeText(unitName);
         return normalized is "met" or "m";
-    }
-
-    private async Task<Dictionary<Guid, decimal>> BuildAnchorTransferredMaintainByReportIdAsync(
-        IReadOnlyCollection<ProductionOutput> outputsWithAcceptanceReport,
-        Guid? processGroupId,
-        CancellationToken cancellationToken)
-    {
-        var reportIds = outputsWithAcceptanceReport
-            .Where(po => po.AcceptanceReport != null)
-            .Select(po => po.AcceptanceReport!.Id)
-            .Distinct()
-            .ToList();
-
-        if (reportIds.Count == 0)
-        {
-            return [];
-        }
-
-        var logs = await _longTermAnchorSeedItemLogRepository.GetAllAsync(
-            predicate: x => reportIds.Contains(x.AcceptanceReportId),
-            include: q => q.Include(x => x.LongTermAnchorSeedItem),
-            disableTracking: true);
-
-        return logs
-            .Where(x => !processGroupId.HasValue || x.LongTermAnchorSeedItem.ProcessGroupId == processGroupId.Value)
-            .GroupBy(x => x.AcceptanceReportId)
-            .ToDictionary(x => x.Key, x => x.Sum(log => log.AccountedValueThisPeriod));
     }
 
     private static string NormalizeText(string input)

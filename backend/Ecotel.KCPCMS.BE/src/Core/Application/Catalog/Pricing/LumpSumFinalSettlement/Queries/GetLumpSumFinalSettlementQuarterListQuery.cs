@@ -139,9 +139,9 @@ public class GetLumpSumFinalSettlementQuarterListQueryHandler(IUnitOfWork unitOf
             {
                 var plannedQuantity = group.Sum(x => x.PlannedQuantity);
                 var actualQuantity = group.Sum(x => x.ActualQuantity);
-                var materialTotal = group.Sum(x => x.Materials?.TotalAmount ?? 0);
-                var maintainTotal = group.Sum(x => x.Maintains?.TotalAmount ?? 0);
-                var electricityTotal = group.Sum(x => x.Electricities?.TotalAmount ?? 0);
+                var materialTotal = group.Sum(x => (x.Materials?.TotalAmount ?? 0) + (x.AshContentMaterials?.TotalAmount ?? 0));
+                var maintainTotal = group.Sum(x => (x.Maintains?.TotalAmount ?? 0) + (x.AshContentMaintains?.TotalAmount ?? 0));
+                var electricityTotal = group.Sum(x => (x.Electricities?.TotalAmount ?? 0) + (x.AshContentElectricities?.TotalAmount ?? 0));
 
                 return new LumpSumFinalSettlementDto
                 {
