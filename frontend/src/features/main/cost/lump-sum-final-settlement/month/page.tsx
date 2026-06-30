@@ -234,7 +234,6 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		const selectedYear = form.watch('year') || defaultYear;
 		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
 
-		// ĐÂY LÀ ĐOẠN TÍNH TOÁN THÁNG/NĂM TRƯỚC ĐÓ
 		const currentMonthNum = Number(selectedMonth);
 		const currentYearNum = Number(selectedYear);
 		const prevMonthNum = currentMonthNum === 1 ? 12 : currentMonthNum - 1;
@@ -368,7 +367,6 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				},
 			),
 
-			// ĐÂY LÀ DÒNG TỚ ĐÃ SỬA LẠI LOGIC THÁNG/NĂM
 			makeZeroRow(
 				`Giá trị tiết kiệm luân chuyển từ tháng ${prevMonthNum}/${prevYearNum} cộng/trừ vào thu nhập tháng ${selectedMonth}/${selectedYear}`,
 				{
