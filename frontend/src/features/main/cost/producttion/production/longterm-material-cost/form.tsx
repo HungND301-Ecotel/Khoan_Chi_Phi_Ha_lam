@@ -74,6 +74,8 @@ export function LongtermMaterialCostForm({
 	const [pageSize, setPageSize] = useState(10);
 	const [searchKeyword, setSearchKeyword] = useState('');
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
+	const previousNoteRef = useRef<Record<number, string>>({});
+	const FULL_ACCOUNTING_NOTE = 'Hạch toán hết';
 
 	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
 		item?.materialCode || item?.partCode || '';
@@ -161,14 +163,13 @@ export function LongtermMaterialCostForm({
 									? 1
 									: item.allocationRatio;
 						previousAllocationRateRef.current[index] = normalizedRate;
+						previousNoteRef.current[index] = item.note ?? '';
 
 						return {
 							id: item.id,
 							usageTime: item.usageTime ?? 0,
-							// Khi isFullAccounting = true thì để trống tỷ lệ phân bổ
-							allocationRate: item.isFullAccounting
-								? undefined
-								: normalizedRate,
+							// Luôn giữ allocationRate là number để submit không bị chặn bởi schema
+							allocationRate: normalizedRate,
 							isFullAccounting: item.isFullAccounting ?? false,
 							note: item.note ?? '',
 						};
@@ -215,9 +216,11 @@ export function LongtermMaterialCostForm({
 		const remainingPeriod = usageTime - (item.allocatedTime ?? 0);
 
 		if (remainingPeriod > 0) {
-			return (((item.totalValueToAccount ?? 0) / (usageTime || 1)) *
-				(item.plannedOutput || 0)) /
-				(item.standardOutput || 1);
+			return (
+				(((item.totalValueToAccount ?? 0) / (usageTime || 1)) *
+					(item.plannedOutput || 0)) /
+				(item.standardOutput || 1)
+			);
 		}
 
 		if (remainingPeriod === 0) {
@@ -240,6 +243,8 @@ export function LongtermMaterialCostForm({
 			if (typeof currentAllocationRate === 'number') {
 				previousAllocationRateRef.current[index] = currentAllocationRate;
 			}
+			previousNoteRef.current[index] =
+				form.getValues(`items.${index}.note`) ?? '';
 			const quotaAccountingValue = calculateQuotaAccountingValue(
 				currentItem,
 				currentUsageTime,
@@ -250,6 +255,7 @@ export function LongtermMaterialCostForm({
 					? accountedValueThisPeriod / quotaAccountingValue
 					: 0;
 			form.setValue(`items.${index}.allocationRate`, fullAccountingRate);
+			form.setValue(`items.${index}.note`, FULL_ACCOUNTING_NOTE);
 		} else {
 			// Khôi phục tỷ lệ phân bổ trước đó
 			const previousAllocationRate = previousAllocationRateRef.current[index];
@@ -257,6 +263,13 @@ export function LongtermMaterialCostForm({
 				form.setValue(`items.${index}.allocationRate`, previousAllocationRate);
 			} else if (currentUsageTime <= 0) {
 				form.setValue(`items.${index}.allocationRate`, 0);
+			}
+			const currentNote = form.getValues(`items.${index}.note`) ?? '';
+			if (currentNote === FULL_ACCOUNTING_NOTE) {
+				form.setValue(
+					`items.${index}.note`,
+					previousNoteRef.current[index] ?? '',
+				);
 			}
 		}
 	};
@@ -279,7 +292,7 @@ export function LongtermMaterialCostForm({
 				.map((item, index) => ({ item, source: detailItems[index] }))
 				.filter(({ source }) => source?.isAnchorSeed)
 				.map(({ item, source }) => ({
-					id: item.id,
+					id: source?.anchorSeedItemId ?? item.id,
 					departmentId,
 					trackedMaterialId: source?.trackedMaterialId ?? source?.materialId,
 					materialId: source?.materialId,
@@ -332,7 +345,7 @@ export function LongtermMaterialCostForm({
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<div className='flex max-h-[70vh] flex-col'>
 				<div className='scrollbar-sm overflow-auto'>
-				{loading ? (
+					{loading ? (
 						<div className='flex h-60 items-center justify-center'>
 							<div className='flex flex-col items-center gap-3 text-sm text-slate-500'>
 								<Spinner />
@@ -341,7 +354,7 @@ export function LongtermMaterialCostForm({
 						</div>
 					) : (
 						<>
-							<div className='sticky left-0 top-0 z-20 mb-4 w-full bg-slate-50/95 pb-2 backdrop-blur-sm'>
+							<div className='sticky top-0 left-0 z-20 mb-4 w-full bg-slate-50/95 pb-2 backdrop-blur-sm'>
 								<div className='relative w-full'>
 									<SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400' />
 									<Input
@@ -391,7 +404,6 @@ export function LongtermMaterialCostForm({
 																? 0
 																: (watchedAllocationRate ?? 1);
 														const isUsageTimeEditable = true;
-														const isAnchorSeed = item?.isAnchorSeed === true;
 														const remainingPeriod =
 															watchedUsageTime - (item?.allocatedTime ?? 0);
 														const displayAllocatedTime = isFullAccounting
@@ -601,25 +613,12 @@ export function LongtermMaterialCostForm({
 																</div>
 
 																<div className='min-w-60 flex-1 space-y-2'>
-																	{isAnchorSeed ? (
-																		<>
-																			<Label>Ghi chú</Label>
-																			<Input
-																				readOnly
-																				value={
-																					form.watch(`items.${index}.note`) ??
-																					''
-																				}
-																			/>
-																		</>
-																	) : (
-																		<FormInput
-																			control={form.control}
-																			name={`items.${index}.note`}
-																			label='Ghi chú'
-																			placeholder='Nhập ghi chú'
-																		/>
-																	)}
+																	<FormInput
+																		control={form.control}
+																		name={`items.${index}.note`}
+																		label='Ghi chú'
+																		placeholder='Nhập ghi chú'
+																	/>
 																</div>
 															</>
 														);
@@ -650,7 +649,6 @@ export function LongtermMaterialCostForm({
 													? 0
 													: (watchedAllocationRate ?? 1);
 											const isUsageTimeEditable = true;
-											const isAnchorSeed = item?.isAnchorSeed === true;
 											const remainingPeriod =
 												watchedUsageTime - (item?.allocatedTime ?? 0);
 											const displayAllocatedTime = isFullAccounting
@@ -660,10 +658,7 @@ export function LongtermMaterialCostForm({
 												? 0
 												: remainingPeriod;
 											const quotaAccountingValue =
-												calculateQuotaAccountingValue(
-													item,
-													watchedUsageTime,
-												);
+												calculateQuotaAccountingValue(item, watchedUsageTime);
 											const amount =
 												(item?.issuedQuantity ?? 0) * (item?.unitPrice ?? 0);
 											const totalAccountingValue =
@@ -840,24 +835,12 @@ export function LongtermMaterialCostForm({
 													</div>
 
 													<div className='min-w-60 flex-1 space-y-2'>
-														{isAnchorSeed ? (
-															<>
-																<Label>Ghi chú</Label>
-																<Input
-																	readOnly
-																	value={
-																		form.watch(`items.${index}.note`) ?? ''
-																	}
-																/>
-															</>
-														) : (
-															<FormInput
-																control={form.control}
-																name={`items.${index}.note`}
-																label='Ghi chú'
-																placeholder='Nhập ghi chú'
-															/>
-														)}
+														<FormInput
+															control={form.control}
+															name={`items.${index}.note`}
+															label='Ghi chú'
+															placeholder='Nhập ghi chú'
+														/>
 													</div>
 												</>
 											);

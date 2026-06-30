@@ -14,6 +14,7 @@ public record GetDetailLongTermTrackingQuery(Guid AcceptanceReportId) : IRequest
 
 public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetDetailLongTermTrackingQuery, GetDetailLongTermTrackingResponseDto>
 {
+    private const decimal FullAccountingEpsilon = 0.0001m;
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _logRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<LongTermAnchorSeedItemLog> _anchorSeedLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
@@ -355,6 +356,7 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             items.Add(new DetailLongTermTrackingItemDto
             {
                 Id = snapshot.Id,
+                AnchorSeedItemId = seedItem.Id,
                 AcceptanceReportItemId = Guid.Empty,
                 MaterialId = seedItem.MaterialId,
                 TrackedMaterialId = seedItem.TrackedMaterialId,
@@ -386,7 +388,8 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 PendingValueEndPeriod = dynamicValues.PendingValueEndPeriod,
                 Note = snapshot.Note,
                 IsNewItem = false,
-                IsFullAccounting = false,
+                IsFullAccounting = dynamicValues.PendingValueEndPeriod <= FullAccountingEpsilon
+                    && dynamicValues.AccountedValueThisPeriod >= snapshot.TotalValueToAccount - FullAccountingEpsilon,
                 IsAnchorSeed = true
             });
         }
