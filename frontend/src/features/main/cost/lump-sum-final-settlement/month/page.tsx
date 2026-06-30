@@ -234,6 +234,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		const selectedYear = form.watch('year') || defaultYear;
 		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
 
+		const currentMonthNum = Number(selectedMonth);
+		const currentYearNum = Number(selectedYear);
+		const prevMonthNum = currentMonthNum === 1 ? 12 : currentMonthNum - 1;
+		const prevYearNum =
+			currentMonthNum === 1 ? currentYearNum - 1 : currentYearNum;
+
 		const makeZeroRow = (
 			productName: string,
 			options?: {
@@ -360,8 +366,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					mergedValue: acceptedSavingMonth,
 				},
 			),
+
 			makeZeroRow(
-				`Giá trị tiết kiệm được cộng vào thu nhập tháng ${selectedMonth}/${selectedYear}`,
+				`Giá trị tiết kiệm luân chuyển từ tháng ${prevMonthNum}/${prevYearNum} cộng/trừ vào thu nhập tháng ${selectedMonth}/${selectedYear}`,
 				{
 					sttLabel: '*',
 					isBold: true,
@@ -369,23 +376,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					hidePlanActual: true,
 					hideUnitPrice: true,
 					isMergedValueRow: true,
-					mergedValue: savingAddedToIncomeMonth,
+					mergedValue:
+						savingCarryForwardByMonths.find((x) => x.month === prevMonthNum)
+							?.value ?? 0,
 				},
 			),
-			makeZeroRow(
-				`Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển tháng ${selectedMonth}`,
-				{
-					sttLabel: '*',
-					isBold: true,
-					unitOfMeasureName: 'Đồng',
-					hidePlanActual: true,
-					hideUnitPrice: true,
-					isMergedValueRow: true,
-					mergedValue: savingCarryForwardByMonths
-						.filter((x) => x.month < Number(selectedMonth))
-						.reduce((acc, x) => acc + (x.value ?? 0), 0),
-				},
-			),
+
 			makeZeroRow(
 				'Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo',
 				{
