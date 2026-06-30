@@ -19,7 +19,6 @@ import {
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import {
-	PlanedMaintainCostDetail,
 	PlanedMaintainCostItem,
 } from '@/features/main/cost/plan/planed-maintain-cost/columns';
 import { PlanedElectricityCostDetailCost } from '@/features/main/cost/plan/planed-electricity-cost/types';
@@ -302,11 +301,11 @@ export function ElectricityAndMaintainanceReportPage() {
 								const [maintainRes, electricityRes] = await Promise.all([
 									maintainId
 										? api
-												.get<PlanedMaintainCostDetail>(
+												.get<{ costs: PlanedMaintainCostItem[] }>(
 													API.COST.PLANNED_MAINTAIN.DETAIL(maintainId),
 												)
-												.catch(() => ({ result: { costs: [] } as PlanedMaintainCostDetail }))
-										: Promise.resolve({ result: { costs: [] } as PlanedMaintainCostDetail }),
+												.catch(() => ({ result: { costs: [] } }))
+										: Promise.resolve({ result: { costs: [] } }),
 									electricityId
 										? api
 												.get<{ costs: PlanedElectricityCostDetailCost[] }>(
