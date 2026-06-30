@@ -165,7 +165,13 @@ export function LumpSumFinalSettlementMonthReportTable({
 		[],
 	);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
+	const [quyetToanSavingsLimit, setQuyetToanSavingsLimit] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
+	const [savingCarryForwardByMonths, setSavingCarryForwardByMonths] = useState<
+		{ month: number; value: number }[]
+	>([]);
+	const [savingCarryForwardToNextMonths, setSavingCarryForwardToNextMonths] =
+		useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
@@ -291,7 +297,14 @@ export function LumpSumFinalSettlementMonthReportTable({
 			setSavingByMonth(monthData?.saving ?? null);
 			setTransferredCostByMonth(monthData?.transferredCost ?? null);
 			setAcceptedSavingMonth(monthData?.acceptedSavingMonth ?? 0);
+			setQuyetToanSavingsLimit(monthData?.quyetToanSavingsLimit ?? 0);
 			setSavingAddedToIncomeMonth(monthData?.savingAddedToIncomeMonth ?? 0);
+			setSavingCarryForwardByMonths(
+				monthData?.savingCarryForwardByMonths ?? [],
+			);
+			setSavingCarryForwardToNextMonths(
+				monthData?.savingCarryForwardToNextMonths ?? 0,
+			);
 			setCustomCosts(monthData?.customCosts ?? []);
 		} catch (err) {
 			setRows([]);
@@ -306,7 +319,10 @@ export function LumpSumFinalSettlementMonthReportTable({
 			setSavingByMonth(null);
 			setTransferredCostByMonth(null);
 			setAcceptedSavingMonth(0);
+			setQuyetToanSavingsLimit(0);
 			setSavingAddedToIncomeMonth(0);
+			setSavingCarryForwardByMonths([]);
+			setSavingCarryForwardToNextMonths(0);
 			setCustomCosts([]);
 			setError(
 				err instanceof Error
@@ -323,6 +339,12 @@ export function LumpSumFinalSettlementMonthReportTable({
 	}, [fetchLumpSumFinalSettlementMonth]);
 
 	const reportRows = useMemo(() => {
+		const currentMonthNum = Number(month);
+		const currentYearNum = Number(year);
+		const prevMonthNum = currentMonthNum === 1 ? 12 : currentMonthNum - 1;
+		const prevYearNum =
+			currentMonthNum === 1 ? currentYearNum - 1 : currentYearNum;
+
 		const revenue = {
 			materials: revenueByMonth?.materials?.totalAmount ?? 0,
 			maintains: revenueByMonth?.maintains?.totalAmount ?? 0,
@@ -476,6 +498,18 @@ export function LumpSumFinalSettlementMonthReportTable({
 				hideUnitPrice: true,
 			}),
 			makeZeroRow(
+				`Mức tiết kiệm theo quy định thanh quyết toán tháng ${month}/${year}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: quyetToanSavingsLimit,
+				},
+			),
+			makeZeroRow(
 				`Tổng giá trị tiết kiệm được chấp nhận tháng ${month}/${year}`,
 				{
 					sttLabel: '*',
@@ -488,7 +522,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 				},
 			),
 			makeZeroRow(
-				`Giá trị tiết kiệm được cộng vào thu nhập tháng ${month}/${year}`,
+				`Giá trị tiết kiệm luân chuyển từ tháng ${prevMonthNum}/${prevYearNum} cộng/trừ vào thu nhập tháng ${month}/${year}`,
 				{
 					sttLabel: '*',
 					isBold: true,
@@ -496,7 +530,21 @@ export function LumpSumFinalSettlementMonthReportTable({
 					hidePlanActual: true,
 					hideUnitPrice: true,
 					isMergedValueRow: true,
-					mergedValue: savingAddedToIncomeMonth,
+					mergedValue:
+						savingCarryForwardByMonths.find((x) => x.month === prevMonthNum)
+							?.value ?? 0,
+				},
+			),
+			makeZeroRow(
+				'Giá trị tiết kiệm được cộng/trừ vào thu nhập luân chuyển sang các tháng tiếp theo',
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: savingCarryForwardToNextMonths,
 				},
 			),
 		];
@@ -552,6 +600,9 @@ export function LumpSumFinalSettlementMonthReportTable({
 		savingAddedToIncomeMonth,
 		savingByMonth,
 		transferredCostByMonth,
+		quyetToanSavingsLimit,
+		savingCarryForwardByMonths,
+		savingCarryForwardToNextMonths,
 		year,
 	]);
 

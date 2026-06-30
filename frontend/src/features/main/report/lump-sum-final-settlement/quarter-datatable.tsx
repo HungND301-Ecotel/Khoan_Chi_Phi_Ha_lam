@@ -374,6 +374,12 @@ export function LumpSumFinalSettlementReportTable({
 		const costQuarter = sumRows(costsByMonth);
 		const savingQuarter = sumRows(savingsByMonth);
 
+		// Tính tổng quyetToanSavingsLimit của 3 tháng
+		const quyetToanSavingsLimitQuarter = monthBreakdowns.reduce(
+			(acc, month) => acc + (month.quyetToanSavingsLimit ?? 0),
+			0,
+		);
+
 		const buildCustomCostRow = (
 			item: LumpSumQuarterCustomCost,
 		): LumpSumFinalSettlement => {
@@ -581,6 +587,18 @@ export function LumpSumFinalSettlementReportTable({
 					hidePlanActual: true,
 					hideUnitPrice: true,
 				}),
+			),
+			makeZeroRow(
+				`Mức tiết kiệm theo quy định thanh quyết toán quý ${quarterRoman}/${year}`,
+				{
+					sttLabel: '*',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					hidePlanActual: true,
+					hideUnitPrice: true,
+					isMergedValueRow: true,
+					mergedValue: quyetToanSavingsLimitQuarter,
+				},
 			),
 			makeZeroRow(
 				`Tổng giá trị tiết kiệm được chấp nhận quý ${quarterRoman}/${year}`,
