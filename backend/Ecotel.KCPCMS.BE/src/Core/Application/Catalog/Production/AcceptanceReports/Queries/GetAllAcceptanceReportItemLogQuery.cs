@@ -247,15 +247,22 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             if (Math.Abs(remainingTime) < 0.0001)
             {
                 // Tỉ lệ phân bổ mặc định = 1 (nếu không có override)
-                allocationRatio = overrideLog?.AllocationRatio ?? 1.0;
+                allocationRatio = usageTime <= 0
+                    ? 0
+                    : overrideLog?.AllocationRatio ?? 1.0;
                 logIdToDisplay = overrideLog?.Id ?? latestLog.Id;
 
-                // Kỳ cuối: đồng bộ theo rule business, hiển thị hạch toán hết tại kỳ này
-                valueByStandard = totalValueToAccount;
-
-                // Hạch toán hết giá trị còn lại
-                accountedValueThisPeriod = totalValueToAccount;
-                pendingValueEnd = 0;
+                if (usageTime <= 0)
+                {
+                    accountedValueThisPeriod = 0;
+                    pendingValueEnd = totalValueToAccount;
+                }
+                else
+                {
+                    // Hạch toán hết giá trị còn lại
+                    accountedValueThisPeriod = totalValueToAccount;
+                    pendingValueEnd = 0;
+                }
             }
             else
             {
@@ -322,6 +329,14 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
         {
             var snapshot = anchorSeedLog.Log;
             var seedItem = anchorSeedLog.SeedItem;
+            var dynamicValues = CalculateCurrentPeriodValues(
+                totalValueToAccount: snapshot.TotalValueToAccount,
+                usageTime: snapshot.UsageTime,
+                remainingTime: snapshot.RemainingTime,
+                plannedOutput: snapshot.PlannedOutput,
+                standardOutput: snapshot.StandardOutput,
+                allocationRatio: snapshot.UsageTime <= 0 ? 0 : snapshot.AllocationRatio,
+                isFullAccounting: false);
             logDtos.Add(new AcceptanceReportItemLogDto
             {
                 Id = snapshot.Id,
@@ -350,10 +365,10 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 ActualOutput = snapshot.ActualOutput,
                 PlannedOutput = snapshot.PlannedOutput,
                 StandardOutput = snapshot.StandardOutput,
-                ValueByStandard = snapshot.ValueByStandard,
-                AllocationRatio = snapshot.AllocationRatio,
-                AccountedValueThisPeriod = snapshot.AccountedValueThisPeriod,
-                PendingValueEndPeriod = snapshot.PendingValueEndPeriod,
+                ValueByStandard = dynamicValues.ValueByStandard,
+                AllocationRatio = snapshot.UsageTime <= 0 ? 0 : snapshot.AllocationRatio,
+                AccountedValueThisPeriod = dynamicValues.AccountedValueThisPeriod,
+                PendingValueEndPeriod = dynamicValues.PendingValueEndPeriod,
                 Note = snapshot.Note,
                 IsNewItem = false,
                 IsFullAccounting = false,
@@ -447,9 +462,16 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 * ((decimal)plannedOutput / (decimal)standardOutput);
         }
 
+        if (usageTime <= 0)
+        {
+            return isFullAccounting
+                ? (0, totalValueToAccount, 0)
+                : (0, 0, totalValueToAccount);
+        }
+
         if (Math.Abs(remainingTime) < 0.0001 || isFullAccounting)
         {
-            return (totalValueToAccount, totalValueToAccount, 0);
+            return (valueByStandard, totalValueToAccount, 0);
         }
 
         var accountedValueThisPeriod = Math.Min(totalValueToAccount, valueByStandard * (decimal)allocationRatio);

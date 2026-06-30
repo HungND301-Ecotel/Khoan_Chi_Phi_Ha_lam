@@ -1106,6 +1106,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         decimal plannedPrice,
         decimal actualPrice)
     {
+        var accountedValueThisPeriod = CalculateAnchorSeedAccountedValueThisPeriod(log);
+
         return new MaterialDetailDto
         {
             MaterialId = material.Id,
@@ -1138,24 +1140,42 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 ContractSettlement = new QuantityAmountDto(),
                 LongTermExpense = new LongTermExpenseDto
                 {
-                    Amount = log.AccountedValueThisPeriod
+                    Amount = accountedValueThisPeriod
                 },
                 Total = new TotalDto
                 {
                     Quantity = 0,
-                    Amount = log.AccountedValueThisPeriod
+                    Amount = accountedValueThisPeriod
                 }
             },
             EndingInventory = new EndingInventoryDto
             {
-                PendingValue = log.PendingValueEndPeriod,
+                PendingValue = log.TotalValueToAccount - accountedValueThisPeriod,
                 Total = new TotalDto
                 {
                     Quantity = 0,
-                    Amount = log.PendingValueEndPeriod
+                    Amount = log.TotalValueToAccount - accountedValueThisPeriod
                 }
             }
         };
+    }
+
+    private static decimal CalculateAnchorSeedAccountedValueThisPeriod(LongTermAnchorSeedItemLog log)
+    {
+        if (log.UsageTime <= 0 || log.StandardOutput <= 0)
+        {
+            return 0;
+        }
+
+        if (Math.Abs(log.RemainingTime) < 0.0001)
+        {
+            return log.TotalValueToAccount;
+        }
+
+        var valueByStandard = (log.TotalValueToAccount / (decimal)log.UsageTime)
+            * ((decimal)log.PlannedOutput / (decimal)log.StandardOutput);
+
+        return Math.Min(log.TotalValueToAccount, valueByStandard * (decimal)log.AllocationRatio);
     }
 
     private static MaterialDetailDto BuildQuotaBasedDetail(
