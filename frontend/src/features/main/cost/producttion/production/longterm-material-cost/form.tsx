@@ -206,11 +206,33 @@ export function LongtermMaterialCostForm({
 		});
 	}, [form, watchedItems]);
 
+	const calculateQuotaAccountingValue = (
+		item: LongtermMaterialDetailItem | undefined,
+		usageTime: number,
+	) => {
+		if (!item || usageTime <= 0) return 0;
+
+		const remainingPeriod = usageTime - (item.allocatedTime ?? 0);
+
+		if (remainingPeriod > 0) {
+			return (((item.totalValueToAccount ?? 0) / (usageTime || 1)) *
+				(item.plannedOutput || 0)) /
+				(item.standardOutput || 1);
+		}
+
+		if (remainingPeriod === 0) {
+			return item.totalValueToAccount ?? 0;
+		}
+
+		return 0;
+	};
+
 	const handleFullAccountingChange = (index: number, checked: boolean) => {
 		const currentAllocationRate = form.getValues(
 			`items.${index}.allocationRate`,
 		);
 		const currentUsageTime = form.getValues(`items.${index}.usageTime`) ?? 0;
+		const currentItem = detailItems[index];
 		form.setValue(`items.${index}.isFullAccounting`, checked);
 
 		if (checked) {
@@ -218,9 +240,16 @@ export function LongtermMaterialCostForm({
 			if (typeof currentAllocationRate === 'number') {
 				previousAllocationRateRef.current[index] = currentAllocationRate;
 			}
-			// Bỏ trống tỷ lệ phân bổ khi hạch toán hết
-			form.setValue(`items.${index}.allocationRate`, 1);
-			form.setValue(`items.${index}.note`, 'Hạch toán hết');
+			const quotaAccountingValue = calculateQuotaAccountingValue(
+				currentItem,
+				currentUsageTime,
+			);
+			const accountedValueThisPeriod = currentItem?.totalValueToAccount ?? 0;
+			const fullAccountingRate =
+				quotaAccountingValue > 0
+					? accountedValueThisPeriod / quotaAccountingValue
+					: 0;
+			form.setValue(`items.${index}.allocationRate`, fullAccountingRate);
 		} else {
 			// Khôi phục tỷ lệ phân bổ trước đó
 			const previousAllocationRate = previousAllocationRateRef.current[index];
@@ -229,7 +258,6 @@ export function LongtermMaterialCostForm({
 			} else if (currentUsageTime <= 0) {
 				form.setValue(`items.${index}.allocationRate`, 0);
 			}
-			form.setValue(`items.${index}.note`, '');
 		}
 	};
 
@@ -373,16 +401,10 @@ export function LongtermMaterialCostForm({
 															? 0
 															: remainingPeriod;
 														const quotaAccountingValue =
-															watchedUsageTime <= 0
-																? 0
-																: remainingPeriod > 0
-																	? (((item?.totalValueToAccount ?? 0) /
-																			(watchedUsageTime || 1)) *
-																			(item?.actualOutput || 0)) /
-																		(item?.standardOutput || 1)
-																	: remainingPeriod === 0
-																		? (item?.totalValueToAccount ?? 0)
-																		: 0;
+															calculateQuotaAccountingValue(
+																item,
+																watchedUsageTime,
+															);
 														const amount =
 															(item?.issuedQuantity ?? 0) *
 															(item?.unitPrice ?? 0);
@@ -638,16 +660,10 @@ export function LongtermMaterialCostForm({
 												? 0
 												: remainingPeriod;
 											const quotaAccountingValue =
-												watchedUsageTime <= 0
-													? 0
-													: remainingPeriod > 0
-														? (((item?.totalValueToAccount ?? 0) /
-																(watchedUsageTime || 1)) *
-																(item?.actualOutput || 0)) /
-															(item?.standardOutput || 1)
-														: remainingPeriod === 0
-															? (item?.totalValueToAccount ?? 0)
-															: 0;
+												calculateQuotaAccountingValue(
+													item,
+													watchedUsageTime,
+												);
 											const amount =
 												(item?.issuedQuantity ?? 0) * (item?.unitPrice ?? 0);
 											const totalAccountingValue =

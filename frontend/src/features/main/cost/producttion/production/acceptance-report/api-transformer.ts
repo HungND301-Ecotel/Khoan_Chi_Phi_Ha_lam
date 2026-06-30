@@ -212,6 +212,37 @@ function shouldUseFlatItems(): boolean {
 	return false;
 }
 
+function splitRedundantChildGroups(
+	parentCode: string,
+	parentName: string,
+	childGroups: GroupCodeGroup[],
+): {
+	redundantGroups: GroupCodeGroup[];
+	remainingGroups: GroupCodeGroup[];
+} {
+	const redundantGroups = childGroups.filter(
+		(childGroup) =>
+			normalizeForCompare(childGroup.groupCode) ===
+				normalizeForCompare(parentCode) &&
+			normalizeForCompare(childGroup.groupName) ===
+				normalizeForCompare(parentName),
+	);
+
+	return {
+		redundantGroups,
+		remainingGroups: childGroups.filter(
+			(childGroup) =>
+				!redundantGroups.some(
+					(redundantGroup) =>
+						normalizeForCompare(redundantGroup.groupCode) ===
+							normalizeForCompare(childGroup.groupCode) &&
+						normalizeForCompare(redundantGroup.groupName) ===
+							normalizeForCompare(childGroup.groupName),
+				),
+		),
+	};
+}
+
 /**
  * Transform material detail from API to UnifiedItem format
  */
@@ -404,28 +435,18 @@ function groupMaterials(
 		) ?? [];
 
 	if (sectionKey === 'sectionA' && childGroups.length > 0) {
-		const sameAsParentGroups = childGroups.filter(
-			(childGroup) =>
-				normalizeForCompare(childGroup.groupCode) ===
-					normalizeForCompare(normalizedGroupCode) &&
-				normalizeForCompare(childGroup.groupName) ===
-					normalizeForCompare(normalizedGroupName),
-		);
+		const { redundantGroups: sameAsParentGroups, remainingGroups } =
+			splitRedundantChildGroups(
+				normalizedGroupCode,
+				normalizedGroupName,
+				childGroups,
+			);
 
 		if (sameAsParentGroups.length > 0) {
 			topLevelItems.push(
 				...sameAsParentGroups.flatMap((group) => group.items),
 			);
-			childGroups = childGroups.filter(
-				(childGroup) =>
-					!sameAsParentGroups.some(
-						(parentGroup) =>
-							normalizeForCompare(parentGroup.groupCode) ===
-								normalizeForCompare(childGroup.groupCode) &&
-							normalizeForCompare(parentGroup.groupName) ===
-								normalizeForCompare(childGroup.groupName),
-					),
-			);
+			childGroups = remainingGroups;
 		}
 	}
 
@@ -433,14 +454,22 @@ function groupMaterials(
 		sectionKey === 'sectionB' &&
 		isSectionBGroupedAdditionalCost(materialGroup)
 	) {
+		const {
+			redundantGroups: duplicatedParentChildGroups,
+			remainingGroups: deduplicatedChildGroups,
+		} = splitRedundantChildGroups(
+			normalizedGroupCode,
+			normalizedGroupName,
+			childGroups,
+		);
 		const isNoOrderGroup = normalizedGroupCode.toUpperCase() === 'NO_ORDER';
-		const hiddenAssignmentGroups = childGroups.filter((childGroup) =>
+		const hiddenAssignmentGroups = deduplicatedChildGroups.filter((childGroup) =>
 			isDefaultAssignmentPlaceholder(
 				childGroup.groupCode,
 				childGroup.groupName,
 			),
 		);
-		const visibleChildGroups = childGroups.filter(
+		const visibleChildGroups = deduplicatedChildGroups.filter(
 			(childGroup) =>
 				!isDefaultAssignmentPlaceholder(
 					childGroup.groupCode,
@@ -449,6 +478,7 @@ function groupMaterials(
 		);
 		const collapsedTopLevelItems = [
 			...topLevelItems,
+			...duplicatedParentChildGroups.flatMap((group) => group.items),
 			...hiddenAssignmentGroups.flatMap((group) => group.items),
 		];
 

@@ -979,50 +979,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         decimal plannedPrice,
         decimal actualPrice)
     {
-        if (item.ShippedQuantity >= item.IssuedQuantity)
-        {
-            return BuildSctxNoLogDetail(item, material, plannedPrice, actualPrice);
-        }
-
-        var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
-        var exportedAmount = (decimal)item.IssuedQuantity * plannedPrice;
-        var hasProductionOrder = item.ProductionOrderId.HasValue;
-
-        return new MaterialDetailDto
-        {
-            MaterialId = material.Id,
-            MaterialCode = material.Code,
-            MaterialName = material.Name,
-            UnitOfMeasureName = material.UnitOfMeasureName,
-            PlannedUnitPrice = plannedPrice,
-            ActualUnitPrice = actualPrice,
-            IssuedInPeriod = issued,
-            ExportedInPeriod = new ExportedInPeriodDto
-            {
-                ExportedToProduction = new ExportedToProductionDto
-                {
-                    Quantity = item.IssuedQuantity,
-                    Amount = exportedAmount
-                },
-                OtherExport = new QuantityAmountDto(),
-                ContractSettlement = new QuantityAmountDto(),
-                Total = new TotalDto
-                {
-                    Quantity = item.IssuedQuantity,
-                    Amount = exportedAmount
-                }
-            },
-            EndingInventory = new EndingInventoryDto
-            {
-                RemainingAtSite = !hasProductionOrder
-                    ? new InventoryQuantityDto { Quantity = 0, Amount = 0 }
-                    : null,
-                RemainingByOrder = hasProductionOrder
-                    ? new InventoryQuantityDto { Quantity = 0, Amount = 0 }
-                    : null,
-                Total = new TotalDto { Quantity = 0, Amount = 0 }
-            }
-        };
+        return BuildSctxNoLogDetail(item, material, plannedPrice, actualPrice);
     }
 
     private static MaterialDetailDto BuildSctxTh2Detail(
