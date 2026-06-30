@@ -18,17 +18,16 @@ import {
 } from '@/components/ui/table';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
-import { ProductionAdjustment } from '@/features/main/cost/producttion/adjustment/columns';
 import {
-	AdjustmentMaintainCostDetail,
-	AdjustmentMaintainCostItem,
-} from '@/features/main/cost/producttion/adjustment/adjustment-maintain-cost/columns';
-import { AdjustmentElectricityCostDetailCost } from '@/features/main/cost/producttion/adjustment/adjustment-electricity-cost/types';
+	PlanedMaintainCostDetail,
+	PlanedMaintainCostItem,
+} from '@/features/main/cost/plan/planed-maintain-cost/columns';
+import { PlanedElectricityCostDetailCost } from '@/features/main/cost/plan/planed-electricity-cost/types';
 import {
-	AdjustmentCostProductDetail,
-	AdjustmentOutput,
-	AdjustmentProductionOutput,
-} from '@/features/main/cost/producttion/adjustment/type';
+	CostProduct,
+	CostProductDetail,
+	CostProductDetailOutput,
+} from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -97,7 +96,7 @@ const isMonthWithinRange = (
 	return targetIndex >= startIndex && targetIndex <= endIndex;
 };
 
-const extractMaintainFactors = (item?: AdjustmentMaintainCostItem) => {
+const extractMaintainFactors = (item?: PlanedMaintainCostItem) => {
 	if (!item) return undefined;
 	const sortedDescriptions = [
 		...(item.adjustmentFactorDescriptions ?? []),
@@ -117,7 +116,7 @@ const extractMaintainFactors = (item?: AdjustmentMaintainCostItem) => {
 };
 
 const extractElectricityFactors = (
-	item?: AdjustmentElectricityCostDetailCost,
+	item?: PlanedElectricityCostDetailCost,
 ) => {
 	if (!item) return undefined;
 	const sortedDescriptions = [
@@ -159,7 +158,7 @@ export function ElectricityAndMaintainanceReportPage() {
 	);
 	const [year, setYear] = useState(String(currentYear));
 	const [selectedProcessGroup, setSelectedProcessGroup] = useState('all');
-	const [items, setItems] = useState<ProductionAdjustment[]>([]);
+	const [items, setItems] = useState<CostProduct[]>([]);
 	const [reportBlocks, setReportBlocks] = useState<ProductReportBlock[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [loadingDetails, setLoadingDetails] = useState(false);
@@ -194,11 +193,11 @@ export function ElectricityAndMaintainanceReportPage() {
 		setError(null);
 
 		try {
-			const response = await api.pagging<ProductionAdjustment>(
+			const response = await api.pagging<CostProduct>(
 				API.COST.PRODUCT.LIST,
 				{
 					ignorePagination: true,
-					scenarioType: 2,
+					scenarioType: 1,
 				},
 			);
 
@@ -208,7 +207,7 @@ export function ElectricityAndMaintainanceReportPage() {
 			setError(
 				err instanceof Error
 					? err.message
-					: 'Không thể tải dữ liệu doanh thu SCTX và điện năng điều chỉnh',
+					: 'Không thể tải dữ liệu doanh thu SCTX và điện năng kế hoạch ban đầu',
 			);
 		} finally {
 			setLoading(false);
@@ -231,9 +230,7 @@ export function ElectricityAndMaintainanceReportPage() {
 		periodFilteredItems.forEach((item) => {
 			const value = item.processGroupId || UNGROUPED_PROCESS_GROUP;
 			const label =
-				[item.processGroupCode, item.processGroupName]
-					.filter(Boolean)
-					.join(' - ') || 'Không có nhóm công đoạn';
+				item.processGroupCode || 'Không có nhóm công đoạn';
 
 			if (!groups.has(value)) {
 				groups.set(value, label);
@@ -279,83 +276,75 @@ export function ElectricityAndMaintainanceReportPage() {
 			try {
 				const blocks = await Promise.all(
 					filteredItems.map(async (item) => {
-						const detail = await api.get<AdjustmentCostProductDetail>(
-							API.COST.PRODUCT.DETAIL_ADJUSTMENT(item.id),
+						const detail = await api.get<CostProductDetail>(
+							API.COST.PRODUCT.DETAIL_PLANNED(item.id),
 						);
 						const detailData = detail.result;
-						const hasOutputs =
-							detailData.outputs && detailData.outputs.length > 0;
-						const displayItems = hasOutputs
-							? detailData.outputs
-							: detailData.productionOutputs;
-						const matchedItems =
-							displayItems?.filter((output) =>
+						const matchedOutputs: CostProductDetailOutput[] =
+							(detailData.outputs ?? []).filter((output) =>
 								isMonthWithinRange(
 									output.startMonth,
 									output.endMonth,
 									year,
 									month,
 								),
-							) ?? [];
+							);
 
-						if (!matchedItems.length) {
+						if (!matchedOutputs.length) {
 							return [] as ProductReportBlock[];
 						}
 
 						const outputBlocks = await Promise.all(
-							matchedItems.map(async (matchedOutput) => {
-								const outputId = matchedOutput.id;
+							matchedOutputs.map(async (matchedOutput) => {
+								const maintainId = matchedOutput.plannedMaintainCostId;
+								const electricityId = matchedOutput.plannedElectricityCostId;
+
 								const [maintainRes, electricityRes] = await Promise.all([
-									api
-										.get<AdjustmentMaintainCostDetail>(
-											API.COST.ADJUSTMENT_MAINTAIN.DETAIL(outputId),
-										)
-										.catch(() => ({
-											result: {
-												id: '',
-												productUnitPriceId: '',
-												outputId,
-												akRate: 0,
-												akRatePercent: 0,
-												costs: [],
-											} satisfies AdjustmentMaintainCostDetail,
-										})),
-									api
-										.get<{
-											costs: AdjustmentElectricityCostDetailCost[];
-										}>(API.COST.ADJUSTMENT_ELECTRICITY.DETAIL(outputId))
-										.catch(() => ({ result: { costs: [] } })),
+									maintainId
+										? api
+												.get<PlanedMaintainCostDetail>(
+													API.COST.PLANNED_MAINTAIN.DETAIL(maintainId),
+												)
+												.catch(() => ({ result: { costs: [] } as PlanedMaintainCostDetail }))
+										: Promise.resolve({ result: { costs: [] } as PlanedMaintainCostDetail }),
+									electricityId
+										? api
+												.get<{ costs: PlanedElectricityCostDetailCost[] }>(
+													API.COST.PLANNED_ELECTRICITY.DETAIL(electricityId),
+												)
+												.catch(() => ({ result: { costs: [] } }))
+										: Promise.resolve({ result: { costs: [] } }),
 								]);
 
 								const maintainCosts = maintainRes.result?.costs ?? [];
 								const electricityCosts = electricityRes.result?.costs ?? [];
 
-								const maintainByAssignmentCode = new Map(
+								const maintainByEquipmentId = new Map(
 									maintainCosts.map((cost) => [cost.equipmentId, cost]),
 								);
-								const electricityByAssignmentCode = new Map(
+								const electricityByEquipmentId = new Map(
 									electricityCosts.map((cost) => [cost.equipmentId, cost]),
 								);
-								const assignmentCodeIds = Array.from(
+								const equipmentIds = Array.from(
 									new Set([
-										...maintainByAssignmentCode.keys(),
-										...electricityByAssignmentCode.keys(),
+										...maintainByEquipmentId.keys(),
+										...electricityByEquipmentId.keys(),
 									]),
 								);
 
-								const rows: AssignmentCodeReportRow[] = assignmentCodeIds.map(
-									(assignmentCodeId) => {
+								const rows: AssignmentCodeReportRow[] = equipmentIds.map(
+									(equipmentId) => {
 										const maintainCost =
-											maintainByAssignmentCode.get(assignmentCodeId);
+											maintainByEquipmentId.get(equipmentId);
 										const electricityCost =
-											electricityByAssignmentCode.get(assignmentCodeId);
+											electricityByEquipmentId.get(equipmentId);
 										const maintainFactors =
 											extractMaintainFactors(maintainCost);
 										const electricityFactors =
 											extractElectricityFactors(electricityCost);
 
 										return {
-											key: `${outputId}-${assignmentCodeId}`,
+											key: `${matchedOutput.id}-${equipmentId}`,
 											assignmentCodeName:
 												maintainCost?.equipmentName ||
 												electricityCost?.equipmentName ||
@@ -365,7 +354,8 @@ export function ElectricityAndMaintainanceReportPage() {
 												maintainCost?.quantity ??
 												electricityCost?.quantity ??
 												0,
-											kValues: maintainFactors ??
+											kValues:
+												maintainFactors ??
 												electricityFactors ?? [1, 1, 1, 1, 1, 1, 1],
 											maintainUnitPrice: maintainCost?.maintainUnitPrice,
 											maintainTotalPrice: maintainCost?.totalPrice,
@@ -376,26 +366,14 @@ export function ElectricityAndMaintainanceReportPage() {
 									},
 								);
 
-								const matchedProductionOutput = hasOutputs
-									? detailData.productionOutputs.find(
-											(po) =>
-												po.startMonth === matchedOutput.startMonth &&
-												po.endMonth === matchedOutput.endMonth,
-										)
-									: (matchedOutput as AdjustmentProductionOutput);
-
 								const productionMeters =
-									(matchedOutput as AdjustmentOutput).productionMeters ??
-									matchedProductionOutput?.productionMeters ??
+									matchedOutput.productionMeters ??
 									item.totalProductionMeters ??
 									0;
 
 								return {
-									key: `${item.id}-${outputId}`,
-									processGroupLabel:
-										[item.processGroupCode, item.processGroupName]
-											.filter(Boolean)
-											.join(' - ') || 'Chưa phân nhóm',
+									key: `${item.id}-${matchedOutput.id}`,
+									processGroupLabel: item.processGroupCode || 'Chưa phân nhóm',
 									productName: item.productName,
 									productUnitLabel:
 										item.fixedKeyType === 1
@@ -451,7 +429,7 @@ export function ElectricityAndMaintainanceReportPage() {
 					Object.entries({
 						month,
 						year,
-						scenarioType: '2',
+						scenarioType: '1',
 						...(processGroupId ? { processGroupId } : {}),
 					}) as [string, string][],
 				).toString()}`,
