@@ -253,12 +253,22 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
             if (Math.Abs(remainingTime) < 0.0001)
             {
                 // Tỉ lệ phân bổ mặc định = 1 (nếu không có override)
-                allocationRatio = overrideLog?.AllocationRatio ?? 1.0;
+                allocationRatio = usageTime <= 0
+                    ? 0
+                    : overrideLog?.AllocationRatio ?? 1.0;
                 logIdToDisplay = overrideLog?.Id ?? latestLog.Id;
 
-                // Hạch toán hết giá trị còn lại
-                accountedValueThisPeriod = totalValueToAccount;
-                pendingValueEnd = 0;
+                if (usageTime <= 0)
+                {
+                    accountedValueThisPeriod = 0;
+                    pendingValueEnd = totalValueToAccount;
+                }
+                else
+                {
+                    // Hạch toán hết giá trị còn lại
+                    accountedValueThisPeriod = totalValueToAccount;
+                    pendingValueEnd = 0;
+                }
             }
             else
             {
@@ -334,6 +344,14 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
         {
             var snapshot = anchorSeedLog.Log;
             var seedItem = anchorSeedLog.SeedItem;
+            var dynamicValues = CalculateCurrentPeriodValues(
+                totalValueToAccount: snapshot.TotalValueToAccount,
+                usageTime: snapshot.UsageTime,
+                remainingTime: snapshot.RemainingTime,
+                plannedOutput: snapshot.PlannedOutput,
+                standardOutput: snapshot.StandardOutput,
+                allocationRatio: snapshot.UsageTime <= 0 ? 0 : snapshot.AllocationRatio,
+                isFullAccounting: false);
             items.Add(new DetailLongTermTrackingItemDto
             {
                 Id = snapshot.Id,
@@ -362,10 +380,10 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 ActualOutput = snapshot.ActualOutput,
                 PlannedOutput = snapshot.PlannedOutput,
                 StandardOutput = snapshot.StandardOutput,
-                ValueByStandard = snapshot.ValueByStandard,
-                AllocationRatio = snapshot.AllocationRatio,
-                AccountedValueThisPeriod = snapshot.AccountedValueThisPeriod,
-                PendingValueEndPeriod = snapshot.PendingValueEndPeriod,
+                ValueByStandard = dynamicValues.ValueByStandard,
+                AllocationRatio = snapshot.UsageTime <= 0 ? 0 : snapshot.AllocationRatio,
+                AccountedValueThisPeriod = dynamicValues.AccountedValueThisPeriod,
+                PendingValueEndPeriod = dynamicValues.PendingValueEndPeriod,
                 Note = snapshot.Note,
                 IsNewItem = false,
                 IsFullAccounting = false,
@@ -464,9 +482,16 @@ public class GetDetailLongTermTrackingQueryHandler(IUnitOfWork unitOfWork) : IRe
                 * ((decimal)plannedOutput / (decimal)standardOutput);
         }
 
+        if (usageTime <= 0)
+        {
+            return isFullAccounting
+                ? (0, totalValueToAccount, 0)
+                : (0, 0, totalValueToAccount);
+        }
+
         if (Math.Abs(remainingTime) < 0.0001 || isFullAccounting)
         {
-            return (totalValueToAccount, totalValueToAccount, 0);
+            return (valueByStandard, totalValueToAccount, 0);
         }
 
         var accountedValueThisPeriod = Math.Min(totalValueToAccount, valueByStandard * (decimal)allocationRatio);

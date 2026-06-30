@@ -182,6 +182,11 @@ internal static class LongTermAnchorSeedTrackingHelper
         double standardOutput,
         double allocationRatio)
     {
+        if (usageTime <= Epsilon)
+        {
+            return (0, 0, 0, totalValueToAccount, 0, 0);
+        }
+
         var remainingTime = usageTime - allocatedTime;
         if (remainingTime < -Epsilon)
         {
@@ -201,7 +206,6 @@ internal static class LongTermAnchorSeedTrackingHelper
         if (Math.Abs(remainingTime) < Epsilon)
         {
             normalizedAllocationRatio = normalizedAllocationRatio == 0 ? 1 : normalizedAllocationRatio;
-            valueByStandard = totalValueToAccount;
             accountedValueThisPeriod = totalValueToAccount;
             pendingValueEndPeriod = 0;
             displayAllocatedTime = usageTime;

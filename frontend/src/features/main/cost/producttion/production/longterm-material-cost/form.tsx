@@ -28,6 +28,7 @@ import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import SearchIcon from '@mui/icons-material/Search';
 
 export function LongtermMaterialCostForm({
 	id,
@@ -71,6 +72,7 @@ export function LongtermMaterialCostForm({
 	const [loading, setLoading] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [searchKeyword, setSearchKeyword] = useState('');
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
 
 	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
@@ -78,6 +80,13 @@ export function LongtermMaterialCostForm({
 
 	const getMaterialName = (item?: LongtermMaterialDetailItem) =>
 		item?.materialName || item?.partName || '';
+
+	const normalizeText = (text: string) =>
+		text
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.trim();
 
 	const form = useForm<LongtermMaterialCostSchema>({
 		resolver: zodResolver(longtermMaterialCostSchema),
@@ -88,6 +97,35 @@ export function LongtermMaterialCostForm({
 		control: form.control,
 		name: 'items',
 	});
+
+	const visibleItemIndexes = useMemo(() => {
+		const normalizedSearch = normalizeText(searchKeyword);
+		const sourceItems = watchedItems ?? [];
+
+		return detailItems
+			.map((item, index) => ({ item, index, formItem: sourceItems[index] }))
+			.filter(({ item, formItem }) => {
+				if (!normalizedSearch) return true;
+
+				const keywords = [
+					item.processGroupCode,
+					item.processGroupName,
+					item.materialCode,
+					item.materialName,
+					item.trackedMaterialCode,
+					item.trackedMaterialName,
+					item.partCode,
+					item.partName,
+					item.unitOfMeasureName,
+					formItem?.note,
+				]
+					.filter(Boolean)
+					.map((value) => normalizeText(String(value)));
+
+				return keywords.some((value) => value.includes(normalizedSearch));
+			})
+			.map(({ index }) => index);
+	}, [detailItems, searchKeyword, watchedItems]);
 
 	useEffect(() => {
 		if (!id) return;
@@ -116,10 +154,12 @@ export function LongtermMaterialCostForm({
 				form.reset({
 					items: resolvedItems.map((item, index) => {
 						const normalizedRate =
-							item.isFullAccounting &&
-							(!item.allocationRatio || item.allocationRatio <= 0)
-								? 1
-								: item.allocationRatio;
+							(item.usageTime ?? 0) <= 0
+								? 0
+								: item.isFullAccounting &&
+									  (!item.allocationRatio || item.allocationRatio <= 0)
+									? 1
+									: item.allocationRatio;
 						previousAllocationRateRef.current[index] = normalizedRate;
 
 						return {
@@ -143,24 +183,34 @@ export function LongtermMaterialCostForm({
 		};
 
 		fetchDetail();
-	}, [form, id]);
+	}, [error, form, id]);
 
-	const totalItems = watchedItems?.length ?? detailItems.length ?? 0;
-	const pageCount = Math.ceil(totalItems / pageSize);
+	const pageCount = Math.ceil(visibleItemIndexes.length / pageSize);
 	const safePageIndex =
 		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
 	const paginatedIndexes = useMemo(() => {
 		const start = safePageIndex * pageSize;
-		return Array.from(
-			{ length: Math.min(pageSize, Math.max(totalItems - start, 0)) },
-			(_, index) => start + index,
-		);
-	}, [pageSize, safePageIndex, totalItems]);
+		return visibleItemIndexes.slice(start, start + pageSize);
+	}, [pageSize, safePageIndex, visibleItemIndexes]);
+
+	useEffect(() => {
+		setPageIndex(0);
+	}, [searchKeyword]);
+
+	useEffect(() => {
+		watchedItems?.forEach((item, index) => {
+			if (!item) return;
+			if ((item.usageTime ?? 0) <= 0 && (item.allocationRate ?? 0) !== 0) {
+				form.setValue(`items.${index}.allocationRate`, 0);
+			}
+		});
+	}, [form, watchedItems]);
 
 	const handleFullAccountingChange = (index: number, checked: boolean) => {
 		const currentAllocationRate = form.getValues(
 			`items.${index}.allocationRate`,
 		);
+		const currentUsageTime = form.getValues(`items.${index}.usageTime`) ?? 0;
 		form.setValue(`items.${index}.isFullAccounting`, checked);
 
 		if (checked) {
@@ -176,6 +226,8 @@ export function LongtermMaterialCostForm({
 			const previousAllocationRate = previousAllocationRateRef.current[index];
 			if (typeof previousAllocationRate === 'number') {
 				form.setValue(`items.${index}.allocationRate`, previousAllocationRate);
+			} else if (currentUsageTime <= 0) {
+				form.setValue(`items.${index}.allocationRate`, 0);
 			}
 			form.setValue(`items.${index}.note`, '');
 		}
@@ -252,7 +304,7 @@ export function LongtermMaterialCostForm({
 		<FormProvider context={form} onSubmit={handleSubmit}>
 			<div className='flex max-h-[70vh] flex-col'>
 				<div className='scrollbar-sm overflow-auto'>
-					{loading ? (
+				{loading ? (
 						<div className='flex h-60 items-center justify-center'>
 							<div className='flex flex-col items-center gap-3 text-sm text-slate-500'>
 								<Spinner />
@@ -261,6 +313,17 @@ export function LongtermMaterialCostForm({
 						</div>
 					) : (
 						<>
+							<div className='sticky left-0 top-0 z-20 mb-4 w-full bg-slate-50/95 pb-2 backdrop-blur-sm'>
+								<div className='relative w-full'>
+									<SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400' />
+									<Input
+										className='h-11 w-full rounded-md border-slate-300 bg-white pl-10'
+										value={searchKeyword}
+										placeholder='Tìm theo mã, tên vật tư, nhóm công đoạn...'
+										onChange={(event) => setSearchKeyword(event.target.value)}
+									/>
+								</div>
+							</div>
 							<div className='inline-flex min-w-max flex-col gap-4 pr-4'>
 								{groupedByProcessGroup.length > 1 ? (
 									groupedByProcessGroup.map((group) => {
@@ -295,6 +358,10 @@ export function LongtermMaterialCostForm({
 														const watchedAllocationRate = form.watch(
 															`items.${index}.allocationRate`,
 														);
+														const effectiveAllocationRate =
+															watchedUsageTime <= 0
+																? 0
+																: (watchedAllocationRate ?? 1);
 														const isUsageTimeEditable = true;
 														const isAnchorSeed = item?.isAnchorSeed === true;
 														const remainingPeriod =
@@ -306,14 +373,16 @@ export function LongtermMaterialCostForm({
 															? 0
 															: remainingPeriod;
 														const quotaAccountingValue =
-															remainingPeriod > 0
-																? (((item?.totalValueToAccount ?? 0) /
-																		(watchedUsageTime || 1)) *
-																		(item?.actualOutput || 0)) /
-																	(item?.standardOutput || 1)
-																: remainingPeriod === 0
-																	? (item?.totalValueToAccount ?? 0)
-																	: 0;
+															watchedUsageTime <= 0
+																? 0
+																: remainingPeriod > 0
+																	? (((item?.totalValueToAccount ?? 0) /
+																			(watchedUsageTime || 1)) *
+																			(item?.actualOutput || 0)) /
+																		(item?.standardOutput || 1)
+																	: remainingPeriod === 0
+																		? (item?.totalValueToAccount ?? 0)
+																		: 0;
 														const amount =
 															(item?.issuedQuantity ?? 0) *
 															(item?.unitPrice ?? 0);
@@ -324,7 +393,7 @@ export function LongtermMaterialCostForm({
 															: Math.min(
 																	item?.totalValueToAccount ?? 0,
 																	quotaAccountingValue *
-																		(watchedAllocationRate ?? 1),
+																		effectiveAllocationRate,
 																);
 														const endingBalance = isFullAccounting
 															? 0
@@ -554,6 +623,10 @@ export function LongtermMaterialCostForm({
 											const watchedAllocationRate = form.watch(
 												`items.${index}.allocationRate`,
 											);
+											const effectiveAllocationRate =
+												watchedUsageTime <= 0
+													? 0
+													: (watchedAllocationRate ?? 1);
 											const isUsageTimeEditable = true;
 											const isAnchorSeed = item?.isAnchorSeed === true;
 											const remainingPeriod =
@@ -565,14 +638,16 @@ export function LongtermMaterialCostForm({
 												? 0
 												: remainingPeriod;
 											const quotaAccountingValue =
-												remainingPeriod > 0
-													? (((item?.totalValueToAccount ?? 0) /
-															(watchedUsageTime || 1)) *
-															(item?.actualOutput || 0)) /
-														(item?.standardOutput || 1)
-													: remainingPeriod === 0
-														? (item?.totalValueToAccount ?? 0)
-														: 0;
+												watchedUsageTime <= 0
+													? 0
+													: remainingPeriod > 0
+														? (((item?.totalValueToAccount ?? 0) /
+																(watchedUsageTime || 1)) *
+																(item?.actualOutput || 0)) /
+															(item?.standardOutput || 1)
+														: remainingPeriod === 0
+															? (item?.totalValueToAccount ?? 0)
+															: 0;
 											const amount =
 												(item?.issuedQuantity ?? 0) * (item?.unitPrice ?? 0);
 											const totalAccountingValue =
@@ -581,7 +656,7 @@ export function LongtermMaterialCostForm({
 												? (item?.totalValueToAccount ?? 0)
 												: Math.min(
 														item?.totalValueToAccount ?? 0,
-														quotaAccountingValue * (watchedAllocationRate ?? 1),
+														quotaAccountingValue * effectiveAllocationRate,
 													);
 											const endingBalance = isFullAccounting
 												? 0
@@ -773,9 +848,9 @@ export function LongtermMaterialCostForm({
 										}}
 									</FormArray>
 								)}
-								{totalItems > 0 && (
+								{visibleItemIndexes.length > 0 && (
 									<ClientPagination
-										totalItems={totalItems}
+										totalItems={visibleItemIndexes.length}
 										pageIndex={safePageIndex}
 										pageSize={pageSize}
 										onPageIndexChange={setPageIndex}

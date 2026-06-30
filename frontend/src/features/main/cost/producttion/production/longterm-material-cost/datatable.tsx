@@ -82,6 +82,10 @@ export function FixedColumnDataTable({
 		(sum, item) => sum + (item.valueByStandard ?? 0),
 		0,
 	);
+	const totalAccountedValueThisPeriod = items.reduce(
+		(sum, item) => sum + (item.accountedValueThisPeriod ?? 0),
+		0,
+	);
 	const totalEndingBalance = items.reduce(
 		(sum, item) => sum + (item.pendingValueEndPeriod ?? 0),
 		0,
@@ -345,7 +349,9 @@ export function FixedColumnDataTable({
 						{formatNumber(totalQuotaAccountingValue)}
 					</TableCell>
 					<TableCell style={{ minWidth: '100px' }}></TableCell>
-					<TableCell style={{ minWidth: '180px' }}></TableCell>
+					<TableCell style={{ minWidth: '180px' }}>
+						{formatNumber(totalAccountedValueThisPeriod)}
+					</TableCell>
 					<TableCell style={{ minWidth: '180px' }}>
 						{formatNumber(totalEndingBalance)}
 					</TableCell>
