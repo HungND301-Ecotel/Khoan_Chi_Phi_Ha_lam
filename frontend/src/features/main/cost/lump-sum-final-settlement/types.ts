@@ -48,6 +48,7 @@ export interface LumpSumFinalSettlementMonthResponse {
 	meterCrosscutActualQuantity?: number;
 	totalSavingMonth?: number;
 	savingsValue?: number;
+	quyetToanSavingsLimit?: number;
 	acceptedSavingMonth?: number;
 	revenueAdjustmentRate?: number;
 	savingAddedToIncomeMonth?: number;
@@ -150,9 +151,16 @@ export interface LumpSumFinalSettlement {
 	unitOfMeasureName?: string;
 	plannedQuantity?: number;
 	actualQuantity?: number;
+	planAshContent?: number;
+	actualAshContent?: number;
+	ashContentDeltaPercent?: number;
 	materials?: { unitPrice?: number; totalAmount?: number } | null;
 	maintains?: { unitPrice?: number; totalAmount?: number } | null;
 	electricities?: { unitPrice?: number; totalAmount?: number } | null;
+	ashContentMaterials?: { unitPrice?: number; totalAmount?: number } | null;
+	ashContentMaintains?: { unitPrice?: number; totalAmount?: number } | null;
+	ashContentElectricities?: { unitPrice?: number; totalAmount?: number } | null;
+	ashContentTotalAmount?: number;
 	totalAmount?: number;
 }
 
