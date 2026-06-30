@@ -304,8 +304,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                     log,
                     material,
                     plannedPrice,
-                    actualPrice,
-                    seedItem.ProductionOrderId.HasValue));
+                    actualPrice));
         }
 
         return groups.Values
@@ -867,7 +866,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
-        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
         var hasProductionOrder = useAdditionalCostReference
             ? item.AdditionalCostProductionOrderId.HasValue
             : item.ProductionOrderId.HasValue;
@@ -905,7 +904,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
-        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
         var hasProductionOrder = useAdditionalCostReference
             ? item.AdditionalCostProductionOrderId.HasValue
             : item.ProductionOrderId.HasValue;
@@ -946,7 +945,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     {
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
         var exported = BuildExportedInPeriod(item, plannedPrice);
-        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
         var hasProductionOrder = useAdditionalCostReference
             ? item.AdditionalCostProductionOrderId.HasValue
             : item.ProductionOrderId.HasValue;
@@ -1046,7 +1045,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         }
 
         var pendingEnd = pendingStart - accountedThisPeriod;
-        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
         var hasProductionOrder = useAdditionalCostReference
             ? item.AdditionalCostProductionOrderId.HasValue
             : item.ProductionOrderId.HasValue;
@@ -1105,8 +1104,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         LongTermAnchorSeedItemLog log,
         SctxMaterialContext material,
         decimal plannedPrice,
-        decimal actualPrice,
-        bool hasProductionOrder)
+        decimal actualPrice)
     {
         return new MaterialDetailDto
         {
@@ -1118,20 +1116,6 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             ActualUnitPrice = actualPrice,
             BeginningInventory = new BeginningInventoryDto
             {
-                RemainingAtSite = !hasProductionOrder
-                    ? new InventoryQuantityDto
-                    {
-                        Quantity = 0,
-                        Amount = log.PendingValueStartPeriod
-                    }
-                    : null,
-                RemainingByOrder = hasProductionOrder
-                    ? new InventoryQuantityDto
-                    {
-                        Quantity = 0,
-                        Amount = log.PendingValueStartPeriod
-                    }
-                    : null,
                 PendingValue = log.PendingValueStartPeriod,
                 Total = new TotalDto
                 {
@@ -1164,20 +1148,6 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             },
             EndingInventory = new EndingInventoryDto
             {
-                RemainingAtSite = !hasProductionOrder
-                    ? new InventoryQuantityDto
-                    {
-                        Quantity = 0,
-                        Amount = log.PendingValueEndPeriod
-                    }
-                    : null,
-                RemainingByOrder = hasProductionOrder
-                    ? new InventoryQuantityDto
-                    {
-                        Quantity = 0,
-                        Amount = log.PendingValueEndPeriod
-                    }
-                    : null,
                 PendingValue = log.PendingValueEndPeriod,
                 Total = new TotalDto
                 {
@@ -1191,7 +1161,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private static MaterialDetailDto BuildQuotaBasedDetail(
         AcceptanceReportItem item, Material material, decimal plannedPrice, decimal actualPrice)
     {
-        var endingQty = item.IssuedQuantity - item.ShippedQuantity;
+        var endingQty = Math.Max(0, item.IssuedQuantity - item.ShippedQuantity);
         var hasProductionOrder = item.ProductionOrderId.HasValue;
 
         var issued = BuildIssuedInPeriod(item, plannedPrice, actualPrice);
