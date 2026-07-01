@@ -428,28 +428,12 @@ export function LongtermMaterialCostForm({
 													<FormArray
 														control={form.control}
 														name='items'
-														renderIndexes={paginatedIndexes}
+														renderIndexes={indexes}
 														hasAddButton={false}
 														hasCloseButton={false}
 													>
 														{(index) => {
-															const arrayIndex =
-																paginatedIndexes.indexOf(index);
 															const item = detailItems[index];
-															const prevIndex =
-																paginatedIndexes[arrayIndex - 1];
-															const prevItem =
-																prevIndex !== undefined
-																	? detailItems[prevIndex]
-																	: undefined;
-															const isNewGroup =
-																item?.processGroupId !==
-																prevItem?.processGroupId;
-															const showGroupHeader =
-																filterProcessGroup === '__all__' &&
-																isNewGroup &&
-																Boolean(item?.processGroupId);
-
 															const isFullAccounting =
 																form.watch(`items.${index}.isFullAccounting`) ??
 																false;
