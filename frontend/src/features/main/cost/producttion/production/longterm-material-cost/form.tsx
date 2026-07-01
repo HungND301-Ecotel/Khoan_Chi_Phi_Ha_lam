@@ -50,40 +50,28 @@ export function LongtermMaterialCostForm({
 	const [detailItems, setDetailItems] = useState<LongtermMaterialDetailItem[]>(
 		[],
 	);
-	const groupedByProcessGroup = useMemo(() => {
-		if (detailItems.length === 0) return [];
-		const groupMap = new Map<
-			string,
-			{
-				processGroupId: string;
-				processGroupCode: string;
-				processGroupName: string;
-				indexes: number[];
-			}
-		>();
-		detailItems.forEach((item, index) => {
-			const key = item.processGroupId ?? 'ungrouped';
-			if (!groupMap.has(key)) {
-				groupMap.set(key, {
-					processGroupId: key,
-					processGroupCode: item.processGroupCode ?? '',
-					processGroupName: item.processGroupName ?? 'Chưa có nhóm công đoạn',
-					indexes: [],
-				});
-			}
-			groupMap.get(key)!.indexes.push(index);
-		});
-		return Array.from(groupMap.values());
-	}, [detailItems]);
 	const [acceptanceReportId, setAcceptanceReportId] = useState<string>('');
 	const [loading, setLoading] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
 	const [searchKeyword, setSearchKeyword] = useState('');
+	const [filterProcessGroup, setFilterProcessGroup] = useState('__all__');
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
 	const previousNoteRef = useRef<Record<number, string>>({});
 	const FULL_ACCOUNTING_NOTE = 'Hạch toán hết';
-	const [filterProcessGroup, setFilterProcessGroup] = useState('__all__');
+
+	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
+		item?.materialCode || item?.partCode || '';
+
+	const getMaterialName = (item?: LongtermMaterialDetailItem) =>
+		item?.materialName || item?.partName || '';
+
+	const normalizeText = (text: string) =>
+		text
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toLowerCase()
+			.trim();
 
 	const processGroupOptions = useMemo(() => {
 		const seen = new Set<string>();
@@ -103,24 +91,12 @@ export function LongtermMaterialCostForm({
 		return options;
 	}, [detailItems]);
 
-	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
-		item?.materialCode || item?.partCode || '';
-
-	const getMaterialName = (item?: LongtermMaterialDetailItem) =>
-		item?.materialName || item?.partName || '';
-
-	const normalizeText = (text: string) =>
-		text
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.toLowerCase()
-			.trim();
-
 	const form = useForm<LongtermMaterialCostSchema>({
 		resolver: zodResolver(longtermMaterialCostSchema),
 		mode: 'onSubmit',
 		defaultValues: LONGTERM_MATERIAL_COST_DEFAULT,
 	});
+
 	const watchedItems = useWatch({
 		control: form.control,
 		name: 'items',
@@ -132,27 +108,33 @@ export function LongtermMaterialCostForm({
 
 		return detailItems
 			.map((item, index) => ({ item, index, formItem: sourceItems[index] }))
-			.filter(({ item }) => {
+			.filter(({ item, formItem }) => {
 				const matchesProcessGroup =
 					filterProcessGroup === '__all__' ||
 					item.processGroupId === filterProcessGroup;
 
 				if (!matchesProcessGroup) return false;
-
 				if (!normalizedSearch) return true;
 
 				const keywords = [
 					item.materialCode,
 					item.materialName,
+					item.trackedMaterialCode,
 					item.trackedMaterialName,
 					item.partCode,
 					item.partName,
 					item.unitOfMeasureName,
+					formItem?.note,
 				]
 					.filter(Boolean)
 					.map((value) => normalizeText(String(value)));
 
 				return keywords.some((value) => value.includes(normalizedSearch));
+			})
+			.sort((a, b) => {
+				const keyA = a.item.processGroupId ?? '';
+				const keyB = b.item.processGroupId ?? '';
+				return keyA.localeCompare(keyB);
 			})
 			.map(({ index }) => index);
 	}, [detailItems, searchKeyword, watchedItems, filterProcessGroup]);
@@ -163,6 +145,7 @@ export function LongtermMaterialCostForm({
 		const fetchDetail = async () => {
 			try {
 				setLoading(true);
+				setFilterProcessGroup('__all__');
 				const response = await api.get<LongtermMaterialCostDetail>(
 					API.PRODUCTION.ACCEPTANCE_REPORT.LONG_TERM_TRACKING_DETAIL(id),
 				);
@@ -196,7 +179,6 @@ export function LongtermMaterialCostForm({
 						return {
 							id: item.id,
 							usageTime: item.usageTime ?? 0,
-							// Luôn giữ allocationRate là number để submit không bị chặn bởi schema
 							allocationRate: normalizedRate,
 							isFullAccounting: item.isFullAccounting ?? false,
 							note: item.note ?? '',
@@ -217,6 +199,7 @@ export function LongtermMaterialCostForm({
 	const pageCount = Math.ceil(visibleItemIndexes.length / pageSize);
 	const safePageIndex =
 		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
+
 	const paginatedIndexes = useMemo(() => {
 		const start = safePageIndex * pageSize;
 		return visibleItemIndexes.slice(start, start + pageSize);
@@ -267,7 +250,6 @@ export function LongtermMaterialCostForm({
 		form.setValue(`items.${index}.isFullAccounting`, checked);
 
 		if (checked) {
-			// Lưu lại tỷ lệ hiện tại trước khi xóa
 			if (typeof currentAllocationRate === 'number') {
 				previousAllocationRateRef.current[index] = currentAllocationRate;
 			}
@@ -285,7 +267,6 @@ export function LongtermMaterialCostForm({
 			form.setValue(`items.${index}.allocationRate`, fullAccountingRate);
 			form.setValue(`items.${index}.note`, FULL_ACCOUNTING_NOTE);
 		} else {
-			// Khôi phục tỷ lệ phân bổ trước đó
 			const previousAllocationRate = previousAllocationRateRef.current[index];
 			if (typeof previousAllocationRate === 'number') {
 				form.setValue(`items.${index}.allocationRate`, previousAllocationRate);
@@ -315,6 +296,7 @@ export function LongtermMaterialCostForm({
 					isFullAccounting: item.isFullAccounting,
 					note: item.note ?? '',
 				}));
+
 			const departmentId = output?.departmentId ?? plan?.departmentId ?? '';
 			const anchorSeedBody = values.items
 				.map((item, index) => ({ item, source: detailItems[index] }))
@@ -353,7 +335,6 @@ export function LongtermMaterialCostForm({
 						'Không xác định được đơn vị để cập nhật mốc gốc hạch toán dài kỳ.',
 					);
 				}
-
 				await api.put(API.PRODUCTION.LONG_TERM_ANCHOR_SEED.UPDATE, {
 					departmentId,
 					items: anchorSeedBody,
@@ -389,11 +370,10 @@ export function LongtermMaterialCostForm({
 										<Input
 											className='h-11 w-full rounded-md border-slate-300 bg-white pl-10'
 											value={searchKeyword}
-											placeholder='Tìm theo mã, tên vật tư...'
+											placeholder='Tìm theo mã, tên vật tư, ghi chú...'
 											onChange={(event) => setSearchKeyword(event.target.value)}
 										/>
 									</div>
-
 									{processGroupOptions.length > 1 && (
 										<Select
 											value={filterProcessGroup}
@@ -416,483 +396,299 @@ export function LongtermMaterialCostForm({
 									)}
 								</div>
 							</div>
+
 							<div className='inline-flex min-w-max flex-col gap-4 pr-4'>
-								{groupedByProcessGroup.length > 1 ? (
-									groupedByProcessGroup.map((group) => {
-										const paginatedInGroup = paginatedIndexes.filter((i) =>
-											group.indexes.includes(i),
-										);
-										if (paginatedInGroup.length === 0) return null;
-										return (
-											<div
-												key={group.processGroupId}
-												className='flex flex-col gap-4'
-											>
-												<FormArray
-													control={form.control}
-													name='items'
-													renderIndexes={paginatedInGroup}
-													hasAddButton={false}
-													hasCloseButton={false}
-												>
-													{(index) => {
-														const item = detailItems[index];
-														const isFullAccounting =
-															form.watch(`items.${index}.isFullAccounting`) ??
-															false;
-														const watchedUsageTime =
-															form.watch(`items.${index}.usageTime`) ?? 0;
-														const watchedAllocationRate = form.watch(
-															`items.${index}.allocationRate`,
-														);
-														const effectiveAllocationRate =
-															watchedUsageTime <= 0
-																? 0
-																: (watchedAllocationRate ?? 1);
-														const isUsageTimeEditable = true;
-														const remainingPeriod =
-															watchedUsageTime - (item?.allocatedTime ?? 0);
-														const displayAllocatedTime = isFullAccounting
-															? watchedUsageTime
-															: (item?.allocatedTime ?? 0);
-														const displayRemainingPeriod = isFullAccounting
-															? 0
-															: remainingPeriod;
-														const quotaAccountingValue =
-															calculateQuotaAccountingValue(
-																item,
-																watchedUsageTime,
-															);
-														const amount =
-															(item?.issuedQuantity ?? 0) *
-															(item?.unitPrice ?? 0);
-														const totalAccountingValue =
-															(item?.pendingValueStartPeriod ?? 0) + amount;
-														const currentPeriodValue = isFullAccounting
-															? (item?.totalValueToAccount ?? 0)
-															: Math.min(
-																	item?.totalValueToAccount ?? 0,
-																	quotaAccountingValue *
-																		effectiveAllocationRate,
-																);
-														const endingBalance = isFullAccounting
-															? 0
-															: Math.max(
-																	0,
-																	totalAccountingValue - currentPeriodValue,
-																);
+								{(() => {
+									const groups = new Map<string, number[]>();
+									for (const idx of paginatedIndexes) {
+										const item = detailItems[idx];
+										const key = item?.processGroupId ?? '__none__';
+										if (!groups.has(key)) groups.set(key, []);
+										groups.get(key)!.push(idx);
+									}
 
-														return (
-															<>
-																<div className='min-w-40 flex-1 space-y-2'>
-																	<Label>Mã vật tư</Label>
-																	<Input
-																		readOnly
-																		value={getMaterialCode(item)}
-																	/>
-																</div>
-
-																<div className='min-w-48 flex-1 space-y-2'>
-																	<Label>Tên vật tư</Label>
-																	<Input
-																		readOnly
-																		value={getMaterialName(item)}
-																	/>
-																</div>
-
-																<div className='min-w-24 flex-1 space-y-2'>
-																	<Label>ĐVT</Label>
-																	<Input
-																		readOnly
-																		value={item?.unitOfMeasureName ?? ''}
-																	/>
-																</div>
-
-																<div className='min-w-56 flex-1 space-y-2'>
-																	<Label>
-																		Giá trị chờ hạch toán đầu kỳ (đ)
-																	</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(
-																			item?.pendingValueStartPeriod ?? 0,
-																		)}
-																	/>
-																</div>
-
-																<div className='min-w-32 flex-1 space-y-2'>
-																	<Label>Số lượng</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(
-																			item?.issuedQuantity ?? 0,
-																		)}
-																	/>
-																</div>
-
-																<div className='min-w-32 flex-1 space-y-2'>
-																	<Label>Đơn giá</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(item?.unitPrice ?? 0)}
-																	/>
-																</div>
-
-																<div className='min-w-32 flex-1 space-y-2'>
-																	<Label>Thành tiền</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(amount)}
-																	/>
-																</div>
-
-																<div className='min-w-56 flex-1 space-y-2'>
-																	<Label>Tổng giá trị cần hạch toán (đ)</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(totalAccountingValue)}
-																	/>
-																</div>
-
-																<div className='min-w-40 flex-1 space-y-2'>
-																	<Label>Nguyên giá (đ)</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(
-																			item?.originAmount ?? 0,
-																		)}
-																	/>
-																</div>
-
-																<div className='min-w-44 flex-1 space-y-2'>
-																	{isUsageTimeEditable ? (
-																		<FormNumber
-																			control={form.control}
-																			name={`items.${index}.usageTime`}
-																			label='Thời gian sử dụng (Ti)'
-																			placeholder='Nhập thời gian sử dụng'
-																		/>
-																	) : (
-																		<>
-																			<Label>Thời gian sử dụng (Ti)</Label>
-																			<Input
-																				readOnly
-																				value={formatNumber(watchedUsageTime)}
-																			/>
-																		</>
-																	)}
-																</div>
-
-																{/* Thời gian đã phân bổ: hiển thị = usageTime khi hạch toán hết */}
-																<div className='min-w-44 flex-1 space-y-2'>
-																	<Label>Thời gian đã phân bổ</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(displayAllocatedTime)}
-																	/>
-																</div>
-
-																{/* Thời gian còn lại: hiển thị = 0 khi hạch toán hết */}
-																<div className='min-w-40 flex-1 space-y-2'>
-																	<Label>Thời gian còn lại</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(displayRemainingPeriod)}
-																	/>
-																</div>
-
-																<div className='min-w-60 flex-1 space-y-2'>
-																	<Label>
-																		Giá trị cần hạch toán theo định mức (đ)
-																	</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(quotaAccountingValue)}
-																	/>
-																</div>
-
-																<div className='min-w-32 flex-1'>
-																	<FormNumber
-																		control={form.control}
-																		name={`items.${index}.allocationRate`}
-																		label='Tỷ lệ phân bổ'
-																		placeholder='Nhập tỷ lệ phân bổ'
-																		disabled={isFullAccounting}
-																	/>
-																</div>
-
-																{/* Checkbox Hạch toán hết */}
-																<div className='min-w-fit flex-1 space-y-2'>
-																	<Label htmlFor={`full-accounting-${index}`}>
-																		Hạch toán hết
-																	</Label>
-																	<div className='flex h-9 items-center'>
-																		<Switch
-																			checked={isFullAccounting}
-																			className='cursor-pointer data-[state=checked]:bg-blue-600'
-																			onCheckedChange={(checked) =>
-																				handleFullAccountingChange(
-																					index,
-																					checked,
-																				)
-																			}
-																		/>
-																	</div>
-																</div>
-
-																<div className='min-w-56 flex-1 space-y-2'>
-																	<Label>Giá trị hạch toán kỳ này (đ)</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(currentPeriodValue)}
-																	/>
-																</div>
-
-																<div className='min-w-60 flex-1 space-y-2'>
-																	<Label>
-																		Giá trị cuối kỳ chờ hạch toán kỳ sau (đ)
-																	</Label>
-																	<Input
-																		readOnly
-																		value={formatNumber(endingBalance)}
-																	/>
-																</div>
-
-																<div className='min-w-60 flex-1 space-y-2'>
-																	<FormInput
-																		control={form.control}
-																		name={`items.${index}.note`}
-																		label='Ghi chú'
-																		placeholder='Nhập ghi chú'
-																	/>
-																</div>
-															</>
-														);
-													}}
-												</FormArray>
-											</div>
-										);
-									})
-								) : (
-									<FormArray
-										control={form.control}
-										name='items'
-										renderIndexes={paginatedIndexes}
-										hasAddButton={false}
-										hasCloseButton={false}
-									>
-										{(index) => {
-											const item = detailItems[index];
-											const isFullAccounting =
-												form.watch(`items.${index}.isFullAccounting`) ?? false;
-											const watchedUsageTime =
-												form.watch(`items.${index}.usageTime`) ?? 0;
-											const watchedAllocationRate = form.watch(
-												`items.${index}.allocationRate`,
-											);
-											const effectiveAllocationRate =
-												watchedUsageTime <= 0
-													? 0
-													: (watchedAllocationRate ?? 1);
-											const isUsageTimeEditable = true;
-											const remainingPeriod =
-												watchedUsageTime - (item?.allocatedTime ?? 0);
-											const displayAllocatedTime = isFullAccounting
-												? watchedUsageTime
-												: (item?.allocatedTime ?? 0);
-											const displayRemainingPeriod = isFullAccounting
-												? 0
-												: remainingPeriod;
-											const quotaAccountingValue =
-												calculateQuotaAccountingValue(item, watchedUsageTime);
-											const amount =
-												(item?.issuedQuantity ?? 0) * (item?.unitPrice ?? 0);
-											const totalAccountingValue =
-												(item?.pendingValueStartPeriod ?? 0) + amount;
-											const currentPeriodValue = isFullAccounting
-												? (item?.totalValueToAccount ?? 0)
-												: Math.min(
-														item?.totalValueToAccount ?? 0,
-														quotaAccountingValue * effectiveAllocationRate,
-													);
-											const endingBalance = isFullAccounting
-												? 0
-												: Math.max(
-														0,
-														totalAccountingValue - currentPeriodValue,
-													);
+									return Array.from(groups.entries()).map(
+										([groupKey, indexes]) => {
+											const firstItem = detailItems[indexes[0]];
+											const showHeader =
+												filterProcessGroup === '__all__' &&
+												Boolean(firstItem?.processGroupId);
 
 											return (
-												<>
-													<div className='min-w-40 flex-1 space-y-2'>
-														<Label>Mã vật tư</Label>
-														<Input readOnly value={getMaterialCode(item)} />
-													</div>
-
-													<div className='min-w-48 flex-1 space-y-2'>
-														<Label>Tên vật tư</Label>
-														<Input readOnly value={getMaterialName(item)} />
-													</div>
-
-													<div className='min-w-24 flex-1 space-y-2'>
-														<Label>ĐVT</Label>
-														<Input
-															readOnly
-															value={item?.unitOfMeasureName ?? ''}
-														/>
-													</div>
-
-													<div className='min-w-56 flex-1 space-y-2'>
-														<Label>Giá trị chờ hạch toán đầu kỳ (đ)</Label>
-														<Input
-															readOnly
-															value={formatNumber(
-																item?.pendingValueStartPeriod ?? 0,
-															)}
-														/>
-													</div>
-
-													<div className='min-w-32 flex-1 space-y-2'>
-														<Label>Số lượng</Label>
-														<Input
-															readOnly
-															value={formatNumber(item?.issuedQuantity ?? 0)}
-														/>
-													</div>
-
-													<div className='min-w-32 flex-1 space-y-2'>
-														<Label>Đơn giá</Label>
-														<Input
-															readOnly
-															value={formatNumber(item?.unitPrice ?? 0)}
-														/>
-													</div>
-
-													<div className='min-w-32 flex-1 space-y-2'>
-														<Label>Thành tiền</Label>
-														<Input readOnly value={formatNumber(amount)} />
-													</div>
-
-													<div className='min-w-56 flex-1 space-y-2'>
-														<Label>Tổng giá trị cần hạch toán (đ)</Label>
-														<Input
-															readOnly
-															value={formatNumber(totalAccountingValue)}
-														/>
-													</div>
-
-													<div className='min-w-40 flex-1 space-y-2'>
-														<Label>Nguyên giá (đ)</Label>
-														<Input
-															readOnly
-															value={formatNumber(item?.originAmount ?? 0)}
-														/>
-													</div>
-
-													<div className='min-w-44 flex-1 space-y-2'>
-														{isUsageTimeEditable ? (
-															<FormNumber
-																control={form.control}
-																name={`items.${index}.usageTime`}
-																label='Thời gian sử dụng (Ti)'
-																placeholder='Nhập thời gian sử dụng'
-															/>
-														) : (
-															<>
-																<Label>Thời gian sử dụng (Ti)</Label>
-																<Input
-																	readOnly
-																	value={formatNumber(watchedUsageTime)}
-																/>
-															</>
-														)}
-													</div>
-
-													{/* Thời gian đã phân bổ: hiển thị = usageTime khi hạch toán hết */}
-													<div className='min-w-44 flex-1 space-y-2'>
-														<Label>Thời gian đã phân bổ</Label>
-														<Input
-															readOnly
-															value={formatNumber(displayAllocatedTime)}
-														/>
-													</div>
-
-													{/* Thời gian còn lại: hiển thị = 0 khi hạch toán hết */}
-													<div className='min-w-40 flex-1 space-y-2'>
-														<Label>Thời gian còn lại</Label>
-														<Input
-															readOnly
-															value={formatNumber(displayRemainingPeriod)}
-														/>
-													</div>
-
-													<div className='min-w-60 flex-1 space-y-2'>
-														<Label>
-															Giá trị cần hạch toán theo định mức (đ)
-														</Label>
-														<Input
-															readOnly
-															value={formatNumber(quotaAccountingValue)}
-														/>
-													</div>
-
-													<div className='min-w-32 flex-1'>
-														<FormNumber
-															control={form.control}
-															name={`items.${index}.allocationRate`}
-															label='Tỷ lệ phân bổ'
-															placeholder='Nhập tỷ lệ phân bổ'
-															disabled={isFullAccounting}
-														/>
-													</div>
-
-													{/* Checkbox Hạch toán hết */}
-													<div className='min-w-fit flex-1 space-y-2'>
-														<Label htmlFor={`full-accounting-${index}`}>
-															Hạch toán hết
-														</Label>
-														<div className='flex h-9 items-center'>
-															<Switch
-																checked={isFullAccounting}
-																className='cursor-pointer data-[state=checked]:bg-blue-600'
-																onCheckedChange={(checked) =>
-																	handleFullAccountingChange(index, checked)
-																}
-															/>
+												<div key={groupKey} className='flex flex-col gap-4'>
+													{showHeader && (
+														<div className='sticky left-0 w-full rounded bg-slate-200 px-4 py-1.5'>
+															<span className='text-xs font-semibold text-slate-600'>
+																{firstItem?.processGroupCode
+																	? `${firstItem.processGroupCode} - ${firstItem.processGroupName}`
+																	: (firstItem?.processGroupName ?? '')}
+															</span>
 														</div>
-													</div>
+													)}
+													<FormArray
+														control={form.control}
+														name='items'
+														renderIndexes={paginatedIndexes}
+														hasAddButton={false}
+														hasCloseButton={false}
+													>
+														{(index) => {
+															const arrayIndex =
+																paginatedIndexes.indexOf(index);
+															const item = detailItems[index];
+															const prevIndex =
+																paginatedIndexes[arrayIndex - 1];
+															const prevItem =
+																prevIndex !== undefined
+																	? detailItems[prevIndex]
+																	: undefined;
+															const isNewGroup =
+																item?.processGroupId !==
+																prevItem?.processGroupId;
+															const showGroupHeader =
+																filterProcessGroup === '__all__' &&
+																isNewGroup &&
+																Boolean(item?.processGroupId);
 
-													<div className='min-w-56 flex-1 space-y-2'>
-														<Label>Giá trị hạch toán kỳ này (đ)</Label>
-														<Input
-															readOnly
-															value={formatNumber(currentPeriodValue)}
-														/>
-													</div>
+															const isFullAccounting =
+																form.watch(`items.${index}.isFullAccounting`) ??
+																false;
+															const watchedUsageTime =
+																form.watch(`items.${index}.usageTime`) ?? 0;
+															const watchedAllocationRate = form.watch(
+																`items.${index}.allocationRate`,
+															);
+															const effectiveAllocationRate =
+																watchedUsageTime <= 0
+																	? 0
+																	: (watchedAllocationRate ?? 1);
+															const isUsageTimeEditable = true;
+															const remainingPeriod =
+																watchedUsageTime - (item?.allocatedTime ?? 0);
+															const displayAllocatedTime = isFullAccounting
+																? watchedUsageTime
+																: (item?.allocatedTime ?? 0);
+															const displayRemainingPeriod = isFullAccounting
+																? 0
+																: remainingPeriod;
+															const quotaAccountingValue =
+																calculateQuotaAccountingValue(
+																	item,
+																	watchedUsageTime,
+																);
+															const amount =
+																(item?.issuedQuantity ?? 0) *
+																(item?.unitPrice ?? 0);
+															const totalAccountingValue =
+																(item?.pendingValueStartPeriod ?? 0) + amount;
+															const currentPeriodValue = isFullAccounting
+																? (item?.totalValueToAccount ?? 0)
+																: Math.min(
+																		item?.totalValueToAccount ?? 0,
+																		quotaAccountingValue *
+																			effectiveAllocationRate,
+																	);
+															const endingBalance = isFullAccounting
+																? 0
+																: Math.max(
+																		0,
+																		totalAccountingValue - currentPeriodValue,
+																	);
 
-													<div className='min-w-60 flex-1 space-y-2'>
-														<Label>
-															Giá trị cuối kỳ chờ hạch toán kỳ sau (đ)
-														</Label>
-														<Input
-															readOnly
-															value={formatNumber(endingBalance)}
-														/>
-													</div>
+															return (
+																<>
+																	<div className='min-w-40 flex-1 space-y-2'>
+																		<Label>Mã vật tư</Label>
+																		<Input
+																			readOnly
+																			value={getMaterialCode(item)}
+																		/>
+																	</div>
 
-													<div className='min-w-60 flex-1 space-y-2'>
-														<FormInput
-															control={form.control}
-															name={`items.${index}.note`}
-															label='Ghi chú'
-															placeholder='Nhập ghi chú'
-														/>
-													</div>
-												</>
+																	<div className='min-w-48 flex-1 space-y-2'>
+																		<Label>Tên vật tư</Label>
+																		<Input
+																			readOnly
+																			value={getMaterialName(item)}
+																		/>
+																	</div>
+
+																	<div className='min-w-24 flex-1 space-y-2'>
+																		<Label>ĐVT</Label>
+																		<Input
+																			readOnly
+																			value={item?.unitOfMeasureName ?? ''}
+																		/>
+																	</div>
+
+																	<div className='min-w-56 flex-1 space-y-2'>
+																		<Label>
+																			Giá trị chờ hạch toán đầu kỳ (đ)
+																		</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(
+																				item?.pendingValueStartPeriod ?? 0,
+																			)}
+																		/>
+																	</div>
+
+																	<div className='min-w-32 flex-1 space-y-2'>
+																		<Label>Số lượng</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(
+																				item?.issuedQuantity ?? 0,
+																			)}
+																		/>
+																	</div>
+
+																	<div className='min-w-32 flex-1 space-y-2'>
+																		<Label>Đơn giá</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(item?.unitPrice ?? 0)}
+																		/>
+																	</div>
+
+																	<div className='min-w-32 flex-1 space-y-2'>
+																		<Label>Thành tiền</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(amount)}
+																		/>
+																	</div>
+
+																	<div className='min-w-56 flex-1 space-y-2'>
+																		<Label>
+																			Tổng giá trị cần hạch toán (đ)
+																		</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(totalAccountingValue)}
+																		/>
+																	</div>
+
+																	<div className='min-w-40 flex-1 space-y-2'>
+																		<Label>Nguyên giá (đ)</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(
+																				item?.originAmount ?? 0,
+																			)}
+																		/>
+																	</div>
+
+																	<div className='min-w-44 flex-1 space-y-2'>
+																		{isUsageTimeEditable ? (
+																			<FormNumber
+																				control={form.control}
+																				name={`items.${index}.usageTime`}
+																				label='Thời gian sử dụng (Ti)'
+																				placeholder='Nhập thời gian sử dụng'
+																			/>
+																		) : (
+																			<>
+																				<Label>Thời gian sử dụng (Ti)</Label>
+																				<Input
+																					readOnly
+																					value={formatNumber(watchedUsageTime)}
+																				/>
+																			</>
+																		)}
+																	</div>
+
+																	<div className='min-w-44 flex-1 space-y-2'>
+																		<Label>Thời gian đã phân bổ</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(displayAllocatedTime)}
+																		/>
+																	</div>
+
+																	<div className='min-w-40 flex-1 space-y-2'>
+																		<Label>Thời gian còn lại</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(
+																				displayRemainingPeriod,
+																			)}
+																		/>
+																	</div>
+
+																	<div className='min-w-60 flex-1 space-y-2'>
+																		<Label>
+																			Giá trị cần hạch toán theo định mức (đ)
+																		</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(quotaAccountingValue)}
+																		/>
+																	</div>
+
+																	<div className='min-w-32 flex-1'>
+																		<FormNumber
+																			control={form.control}
+																			name={`items.${index}.allocationRate`}
+																			label='Tỷ lệ phân bổ'
+																			placeholder='Nhập tỷ lệ phân bổ'
+																			disabled={isFullAccounting}
+																		/>
+																	</div>
+
+																	<div className='min-w-fit flex-1 space-y-2'>
+																		<Label htmlFor={`full-accounting-${index}`}>
+																			Hạch toán hết
+																		</Label>
+																		<div className='flex h-9 items-center'>
+																			<Switch
+																				checked={isFullAccounting}
+																				className='cursor-pointer data-[state=checked]:bg-blue-600'
+																				onCheckedChange={(checked) =>
+																					handleFullAccountingChange(
+																						index,
+																						checked,
+																					)
+																				}
+																			/>
+																		</div>
+																	</div>
+
+																	<div className='min-w-56 flex-1 space-y-2'>
+																		<Label>Giá trị hạch toán kỳ này (đ)</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(currentPeriodValue)}
+																		/>
+																	</div>
+
+																	<div className='min-w-60 flex-1 space-y-2'>
+																		<Label>
+																			Giá trị cuối kỳ chờ hạch toán kỳ sau (đ)
+																		</Label>
+																		<Input
+																			readOnly
+																			value={formatNumber(endingBalance)}
+																		/>
+																	</div>
+
+																	<div className='min-w-60 flex-1 space-y-2'>
+																		<FormInput
+																			control={form.control}
+																			name={`items.${index}.note`}
+																			label='Ghi chú'
+																			placeholder='Nhập ghi chú'
+																		/>
+																	</div>
+																</>
+															);
+														}}
+													</FormArray>
+												</div>
 											);
-										}}
-									</FormArray>
-								)}
+										},
+									);
+								})()}
 								{visibleItemIndexes.length > 0 && (
 									<ClientPagination
 										totalItems={visibleItemIndexes.length}
