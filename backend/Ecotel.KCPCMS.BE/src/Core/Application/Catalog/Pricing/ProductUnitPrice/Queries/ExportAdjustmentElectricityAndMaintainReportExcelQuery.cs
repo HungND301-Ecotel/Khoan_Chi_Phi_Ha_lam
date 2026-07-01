@@ -1,8 +1,12 @@
 using Application.Catalog.Pricing.AdjustmentElectricityCost.Queries;
 using Application.Catalog.Pricing.AdjustmnetMaintainCost.Queries;
+using Application.Catalog.Pricing.PlannedElectricityCost.Queries;
+using Application.Catalog.Pricing.PlannedMaintainCost.Queries;
 using Application.Common.Exceptions;
 using Application.Dto.Catalog.AdjustmentElectricityCost;
 using Application.Dto.Catalog.AdjustmentMaintainCost;
+using Application.Dto.Catalog.PlannedElectricityCost;
+using Application.Dto.Catalog.PlannedMaintainCost;
 using Application.Dto.Catalog.ProductUnitPrice;
 using ClosedXML.Excel;
 using Domain.Common.Enums;
@@ -27,15 +31,10 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
         ExportAdjustmentElectricityAndMaintainReportExcelQuery request,
         CancellationToken cancellationToken)
     {
-        if (request.ScenarioType != ProductUnitPriceScenarioType.Adjustment)
-        {
-            throw new BadRequestException("ScenarioType must be Adjustment for this export.");
-        }
-
         var (resolvedMonth, resolvedYear) = ResolveMonthYear(request.Month, request.Year);
 
         var products = await mediator.Send(
-            new GetAllProductUnitPriceQuery(1, int.MaxValue, string.Empty, true, ProductUnitPriceScenarioType.Adjustment),
+            new GetAllProductUnitPriceQuery(1, int.MaxValue, string.Empty, true, request.ScenarioType),
             cancellationToken);
 
         var periodFilteredProducts = products.Data
@@ -44,54 +43,167 @@ public class ExportAdjustmentElectricityAndMaintainReportExcelQueryHandler(IMedi
             .ToList();
 
         var reportBlocks = new List<ReportBlock>();
-        foreach (var product in periodFilteredProducts)
-        {
-            var detail = await mediator.Send(new GetAdjustmentProductUnitPriceByIdQuery(product.Id), cancellationToken);
 
-            var hasOutputs = detail.Outputs is { Count: > 0 };
-            var periodItems = hasOutputs
-                ? detail.Outputs
+        if (request.ScenarioType == ProductUnitPriceScenarioType.Plan)
+        {
+            foreach (var product in periodFilteredProducts)
+            {
+                var detail = await mediator.Send(new GetPlannedProductUnitPriceByIdQuery(product.Id), cancellationToken);
+
+                var periodItems = detail.Outputs
                     .Where(o => IsMonthWithinRange(o.StartMonth, o.EndMonth, resolvedYear, resolvedMonth))
-                    .Select(o => new PeriodItem(
+                    .Select(o => new {
                         o.Id,
                         o.StartMonth,
                         o.EndMonth,
                         o.ProductionMeters,
-                        null))
-                    .ToList()
-                : detail.ProductionOutputs
-                    .Where(o => IsMonthWithinRange(o.StartMonth, o.EndMonth, resolvedYear, resolvedMonth))
-                    .Select(o => new PeriodItem(
-                        o.Id,
-                        o.StartMonth,
-                        o.EndMonth,
-                        o.ProductionMeters,
-                        o.StandardProductionMeters))
+                        o.PlannedMaintainCostId,
+                        o.PlannedElectricityCostId
+                    })
                     .ToList();
 
-            foreach (var periodItem in periodItems)
-            {
-                var maintain = await TryGetMaintainCost(periodItem.OutputId, cancellationToken);
-                var electricity = await TryGetElectricityCost(periodItem.OutputId, cancellationToken);
-
-                var rows = BuildRows(periodItem.OutputId, maintain?.Costs, electricity?.Costs);
-                if (!rows.Any())
+                foreach (var periodItem in periodItems)
                 {
-                    continue;
-                }
+                    var maintainCosts = new List<AdjustmentMaintainCostAdjDto>();
+                    if (periodItem.PlannedMaintainCostId.HasValue)
+                    {
+                        var maintain = await TryGetPlannedMaintainCost(periodItem.PlannedMaintainCostId.Value, cancellationToken);
+                        if (maintain != null)
+                        {
+                            maintainCosts = maintain.Costs.Select(c => new AdjustmentMaintainCostAdjDto
+                            {
+                                MaintainUnitPriceId = c.MaintainUnitPriceId,
+                                MaintainUnitPrice = c.MaintainUnitPrice,
+                                EquipmentId = c.EquipmentId,
+                                EquipmentCode = c.EquipmentCode,
+                                EquipmentName = c.EquipmentName,
+                                Quantity = c.Quantity,
+                                K6AdjustmentFactorValue = c.K6AdjustmentFactorValue,
+                                TotalPrice = c.TotalPrice,
+                                AdjustmentFactorDescriptions = c.AdjustmentFactorDescriptions
+                            }).ToList();
+                        }
+                    }
 
-                reportBlocks.Add(new ReportBlock(
-                    ProcessGroupLabel: BuildProcessGroupLabel(detail),
-                    ProductName: detail.ProductName,
-                    ProductUnitLabel: ResolveProductUnitLabel(detail.ProcessGroupType),
-                    ProductionMeters: periodItem.ProductionMeters ?? 0,
-                    Rows: rows));
+                    var electricityCosts = new List<AdjustmentElectricityCostAdjDto>();
+                    if (periodItem.PlannedElectricityCostId.HasValue)
+                    {
+                        var electricity = await TryGetPlannedElectricityCost(periodItem.PlannedElectricityCostId.Value, cancellationToken);
+                        if (electricity != null)
+                        {
+                            electricityCosts = electricity.Costs.Select(c => new AdjustmentElectricityCostAdjDto
+                            {
+                                ElectricityUnitPriceEquipmentId = c.ElectricityUnitPriceEquipmentId,
+                                ElectricityUnitPrice = c.ElectricityUnitPrice,
+                                EquipmentId = c.EquipmentId,
+                                EquipmentCode = c.EquipmentCode,
+                                EquipmentName = c.EquipmentName,
+                                Quantity = c.Quantity,
+                                TotalPrice = c.TotalPrice,
+                                AdjustmentFactorDescriptions = c.AdjustmentFactorDescriptions
+                            }).ToList();
+                        }
+                    }
+
+                    var rows = BuildRows(periodItem.Id, maintainCosts, electricityCosts);
+                    if (!rows.Any())
+                    {
+                        continue;
+                    }
+
+                    reportBlocks.Add(new ReportBlock(
+                        ProcessGroupLabel: BuildProcessGroupLabelPlanned(detail),
+                        ProductName: detail.ProductName,
+                        ProductUnitLabel: ResolveProductUnitLabel(detail.ProcessGroupType),
+                        ProductionMeters: periodItem.ProductionMeters,
+                        Rows: rows));
+                }
+            }
+        }
+        else
+        {
+            foreach (var product in periodFilteredProducts)
+            {
+                var detail = await mediator.Send(new GetAdjustmentProductUnitPriceByIdQuery(product.Id), cancellationToken);
+
+                var hasOutputs = detail.Outputs is { Count: > 0 };
+                var periodItems = hasOutputs
+                    ? detail.Outputs
+                        .Where(o => IsMonthWithinRange(o.StartMonth, o.EndMonth, resolvedYear, resolvedMonth))
+                        .Select(o => new PeriodItem(
+                            o.Id,
+                            o.StartMonth,
+                            o.EndMonth,
+                            o.ProductionMeters,
+                            null))
+                        .ToList()
+                    : detail.ProductionOutputs
+                        .Where(o => IsMonthWithinRange(o.StartMonth, o.EndMonth, resolvedYear, resolvedMonth))
+                        .Select(o => new PeriodItem(
+                            o.Id,
+                            o.StartMonth,
+                            o.EndMonth,
+                            o.ProductionMeters,
+                            o.StandardProductionMeters))
+                        .ToList();
+
+                foreach (var periodItem in periodItems)
+                {
+                    var maintain = await TryGetMaintainCost(periodItem.OutputId, cancellationToken);
+                    var electricity = await TryGetElectricityCost(periodItem.OutputId, cancellationToken);
+
+                    var rows = BuildRows(periodItem.OutputId, maintain?.Costs, electricity?.Costs);
+                    if (!rows.Any())
+                    {
+                        continue;
+                    }
+
+                    reportBlocks.Add(new ReportBlock(
+                        ProcessGroupLabel: BuildProcessGroupLabel(detail),
+                        ProductName: detail.ProductName,
+                        ProductUnitLabel: ResolveProductUnitLabel(detail.ProcessGroupType),
+                        ProductionMeters: periodItem.ProductionMeters ?? 0,
+                        Rows: rows));
+                }
             }
         }
 
         var fileBytes = BuildWorkbook(reportBlocks, resolvedMonth, resolvedYear);
         var fileName = $"bang-tinh-don-gia-sctx-va-dien-nang-thang-{resolvedMonth:D2}-nam-{resolvedYear}.xlsx";
         return new ExportAdjustmentElectricityAndMaintainReportExcelResponse(fileBytes, fileName);
+    }
+
+    private async Task<PlannedMaintainCostDetailDto?> TryGetPlannedMaintainCost(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await mediator.Send(new GetPlannedMaintainCostByIdQuery(id), cancellationToken);
+        }
+        catch (NotFoundException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<PlannedElectricityCostDetailDto?> TryGetPlannedElectricityCost(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await mediator.Send(new GetPlannedElectricityCostByIdQuery(id), cancellationToken);
+        }
+        catch (NotFoundException)
+        {
+            return null;
+        }
+    }
+
+    private static string BuildProcessGroupLabelPlanned(PlannedProductUnitPriceDetailDto detail)
+    {
+        var parts = new[] { detail.ProcessGroupCode, detail.ProcessGroupName }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+
+        return parts.Count > 0 ? string.Join(" - ", parts) : "Chưa phân nhóm";
     }
 
     private async Task<AdjustmentMaintainCostDetailDto?> TryGetMaintainCost(Guid outputId, CancellationToken cancellationToken)
