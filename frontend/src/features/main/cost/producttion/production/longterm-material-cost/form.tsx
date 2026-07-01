@@ -29,6 +29,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import SearchIcon from '@mui/icons-material/Search';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
 
 export function LongtermMaterialCostForm({
 	id,
@@ -76,6 +83,25 @@ export function LongtermMaterialCostForm({
 	const previousAllocationRateRef = useRef<Record<number, number>>({});
 	const previousNoteRef = useRef<Record<number, string>>({});
 	const FULL_ACCOUNTING_NOTE = 'Hạch toán hết';
+	const [filterProcessGroup, setFilterProcessGroup] = useState('__all__');
+
+	const processGroupOptions = useMemo(() => {
+		const seen = new Set<string>();
+		const options = [{ value: '__all__', label: 'Tất cả nhóm công đoạn' }];
+		for (const item of detailItems) {
+			const key = item.processGroupId ?? '';
+			if (key && !seen.has(key)) {
+				seen.add(key);
+				options.push({
+					value: key,
+					label: item.processGroupCode
+						? `${item.processGroupCode} - ${item.processGroupName}`
+						: (item.processGroupName ?? ''),
+				});
+			}
+		}
+		return options;
+	}, [detailItems]);
 
 	const getMaterialCode = (item?: LongtermMaterialDetailItem) =>
 		item?.materialCode || item?.partCode || '';
@@ -106,20 +132,22 @@ export function LongtermMaterialCostForm({
 
 		return detailItems
 			.map((item, index) => ({ item, index, formItem: sourceItems[index] }))
-			.filter(({ item, formItem }) => {
+			.filter(({ item }) => {
+				const matchesProcessGroup =
+					filterProcessGroup === '__all__' ||
+					item.processGroupId === filterProcessGroup;
+
+				if (!matchesProcessGroup) return false;
+
 				if (!normalizedSearch) return true;
 
 				const keywords = [
-					item.processGroupCode,
-					item.processGroupName,
 					item.materialCode,
 					item.materialName,
-					item.trackedMaterialCode,
 					item.trackedMaterialName,
 					item.partCode,
 					item.partName,
 					item.unitOfMeasureName,
-					formItem?.note,
 				]
 					.filter(Boolean)
 					.map((value) => normalizeText(String(value)));
@@ -127,7 +155,7 @@ export function LongtermMaterialCostForm({
 				return keywords.some((value) => value.includes(normalizedSearch));
 			})
 			.map(({ index }) => index);
-	}, [detailItems, searchKeyword, watchedItems]);
+	}, [detailItems, searchKeyword, watchedItems, filterProcessGroup]);
 
 	useEffect(() => {
 		if (!id) return;
@@ -196,7 +224,7 @@ export function LongtermMaterialCostForm({
 
 	useEffect(() => {
 		setPageIndex(0);
-	}, [searchKeyword]);
+	}, [searchKeyword, filterProcessGroup]);
 
 	useEffect(() => {
 		watchedItems?.forEach((item, index) => {
@@ -355,14 +383,37 @@ export function LongtermMaterialCostForm({
 					) : (
 						<>
 							<div className='sticky top-0 left-0 z-20 mb-4 w-full bg-slate-50/95 pb-2 backdrop-blur-sm'>
-								<div className='relative w-full'>
-									<SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400' />
-									<Input
-										className='h-11 w-full rounded-md border-slate-300 bg-white pl-10'
-										value={searchKeyword}
-										placeholder='Tìm theo mã, tên vật tư, nhóm công đoạn...'
-										onChange={(event) => setSearchKeyword(event.target.value)}
-									/>
+								<div className='flex w-full items-center gap-3'>
+									<div className='relative flex-1'>
+										<SearchIcon className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400' />
+										<Input
+											className='h-11 w-full rounded-md border-slate-300 bg-white pl-10'
+											value={searchKeyword}
+											placeholder='Tìm theo mã, tên vật tư...'
+											onChange={(event) => setSearchKeyword(event.target.value)}
+										/>
+									</div>
+
+									{processGroupOptions.length > 1 && (
+										<Select
+											value={filterProcessGroup}
+											onValueChange={(value) => {
+												setFilterProcessGroup(value);
+												setPageIndex(0);
+											}}
+										>
+											<SelectTrigger className='h-11 w-56 flex-shrink-0 border-slate-300 bg-white'>
+												<SelectValue placeholder='Nhóm công đoạn' />
+											</SelectTrigger>
+											<SelectContent>
+												{processGroupOptions.map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									)}
 								</div>
 							</div>
 							<div className='inline-flex min-w-max flex-col gap-4 pr-4'>
@@ -377,11 +428,6 @@ export function LongtermMaterialCostForm({
 												key={group.processGroupId}
 												className='flex flex-col gap-4'
 											>
-												<div className='sticky left-0 rounded bg-gray-200 px-4 py-2 text-sm font-semibold text-slate-700'>
-													{group.processGroupCode
-														? `${group.processGroupCode} - ${group.processGroupName}`
-														: group.processGroupName}
-												</div>
 												<FormArray
 													control={form.control}
 													name='items'
