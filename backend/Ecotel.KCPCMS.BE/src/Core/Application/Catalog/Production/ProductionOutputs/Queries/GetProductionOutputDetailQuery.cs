@@ -298,8 +298,9 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
 
             var (plannedPrice, actualPrice) = GetUnitPrices(material.Costs, productionOutput.StartMonth);
             AddAnchorSeedDetailToGroup(
-                group,
-                seedItem,
+            group,
+            seedItem,
+            material,
                 BuildAnchorSeedTh2Detail(
                     log,
                     material,
@@ -647,13 +648,18 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     }
 
     private static (string key, string code, string name) ResolveAnchorSeedTopLevelGroupKey(
-        string prefix,
-        LongTermAnchorSeedItem item,
-        SctxMaterialContext material)
+    string prefix,
+    LongTermAnchorSeedItem item,
+    SctxMaterialContext material)
     {
+        if (item.ProductionOrderId.HasValue)
+        {
+            var id = item.ProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id);
+        }
+
         var assignmentCode = item.AssignmentCode
-            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId)
-            ?? material.AssignmentCodes?.FirstOrDefault();
+            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId);
         var code = assignmentCode?.Code?.Value ?? "VTK";
         var name = assignmentCode?.Name ?? "Vật tư khác";
         return ($"{prefix}_EQ_{code}", code, name);
@@ -679,6 +685,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     private static void AddAnchorSeedDetailToGroup(
         MaterialGroupDto group,
         LongTermAnchorSeedItem item,
+        SctxMaterialContext material,
         MaterialDetailDto detail)
     {
         if (!item.ProductionOrderId.HasValue)
@@ -687,22 +694,12 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
             return;
         }
 
-        var assignmentCode = item.AssignmentCode;
+        var assignmentCode = item.AssignmentCode
+            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId);
+
         if (assignmentCode == null)
         {
-            var defaultSubGroup = group.SubGroups.FirstOrDefault(s => s.SubGroupCode == string.Empty);
-            if (defaultSubGroup == null)
-            {
-                defaultSubGroup = new SubGroupDto
-                {
-                    SubGroupCode = group.GroupCode,
-                    SubGroupName = group.GroupName,
-                    Materials = new()
-                };
-                group.SubGroups.Add(defaultSubGroup);
-            }
-
-            defaultSubGroup.Materials.Add(detail);
+            group.Materials.Add(detail);
             return;
         }
 
@@ -817,23 +814,22 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     }
 
     private static AssignmentCode? ResolveAssignmentCodeForGrouping(
-        AcceptanceReportItem item,
-        bool useAdditionalCostReference)
+     AcceptanceReportItem item,
+     bool useAdditionalCostReference)
     {
-        var material = GetSctxMaterial(item);
-
         if (!useAdditionalCostReference)
         {
-            return item.Equipment ?? material?.AssignmentCodes?.FirstOrDefault();
+            return item.Equipment;
         }
 
-        if (item.AdditionalCostAssignmentCodeId.HasValue)
+        if (!item.AdditionalCostAssignmentCodeId.HasValue)
         {
-            return material?.AssignmentCodes?
-                .FirstOrDefault(ac => ac.Id == item.AdditionalCostAssignmentCodeId.Value);
+            return null;
         }
 
-        return material?.AssignmentCodes?.FirstOrDefault();
+        var material = GetSctxMaterial(item);
+        return material?.AssignmentCodes?
+            .FirstOrDefault(ac => ac.Id == item.AdditionalCostAssignmentCodeId.Value);
     }
 
     private static AssignmentCode? ResolveAdditionalMaterialAssignmentCode(AcceptanceReportItem item)
