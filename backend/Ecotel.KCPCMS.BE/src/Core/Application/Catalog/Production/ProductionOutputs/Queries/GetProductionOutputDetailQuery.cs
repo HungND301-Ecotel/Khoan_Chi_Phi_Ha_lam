@@ -647,13 +647,18 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
     }
 
     private static (string key, string code, string name) ResolveAnchorSeedTopLevelGroupKey(
-        string prefix,
-        LongTermAnchorSeedItem item,
-        SctxMaterialContext material)
+    string prefix,
+    LongTermAnchorSeedItem item,
+    SctxMaterialContext material)
     {
+        if (item.ProductionOrderId.HasValue)
+        {
+            var id = item.ProductionOrderId.Value.ToString();
+            return ($"{prefix}_PO_{id}", id, id);
+        }
+
         var assignmentCode = item.AssignmentCode
-            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId)
-            ?? material.AssignmentCodes?.FirstOrDefault();
+            ?? material.AssignmentCodes?.FirstOrDefault(ac => ac.Id == item.AssignmentCodeId);
         var code = assignmentCode?.Code?.Value ?? "VTK";
         var name = assignmentCode?.Name ?? "Vật tư khác";
         return ($"{prefix}_EQ_{code}", code, name);
