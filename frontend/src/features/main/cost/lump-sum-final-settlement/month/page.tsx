@@ -22,6 +22,7 @@ import {
 	YearFilterForm,
 } from '@/features/main/cost/lump-sum-final-settlement/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { cn } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
@@ -34,6 +35,7 @@ const shadow = cn(
 );
 
 export function MainCostLumpSumFinalSettlementMonthPage() {
+	const { hasPermission } = usePermission();
 	const [filteredData, setFilteredData] = useState<LumpSumFinalSettlement[]>(
 		[],
 	);
@@ -860,10 +862,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 							/>
 						</div>
 						<div className='flex shrink-0 gap-4'>
-							<Button variant={'ghost'} className={shadow}>
-								<DownloadIcon fontSize='small' />
-								<span className='hidden xl:block'>Tải xuống</span>
-							</Button>
+							{hasPermission('report.lumpsumfinalsettlement.export') && (
+								<Button variant={'ghost'} className={shadow}>
+									<DownloadIcon fontSize='small' />
+									<span className='hidden xl:block'>Tải xuống</span>
+								</Button>
+							)}
 							<Button variant={'ghost'} className={shadow}>
 								<PrintIcon fontSize='small' />
 								<span className='hidden xl:block'>In</span>
@@ -881,19 +885,19 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
 					data={monthDisplayData}
 					isLoading={isLoading}
-					onAddCustomCost={addCustomCostRow}
-					onEditCustomCost={editCustomCost}
+					onAddCustomCost={hasPermission('production.lumpsumfinalsettlement.create') ? addCustomCostRow : undefined}
+					onEditCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? editCustomCost : undefined}
 					onCancelCustomCost={cancelCustomCost}
-					onSaveCustomCost={saveCustomCost}
-					onDeleteCustomCost={deleteCustomCost}
+					onSaveCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? saveCustomCost : undefined}
+					onDeleteCustomCost={hasPermission('production.lumpsumfinalsettlement.delete') ? deleteCustomCost : undefined}
 					onCustomCostChange={changeCustomCostValue}
-					onEditSpecialQuantity={editSpecialQuantity}
+					onEditSpecialQuantity={hasPermission('production.lumpsumfinalsettlement.update') ? editSpecialQuantity : undefined}
 					onCancelSpecialQuantity={cancelSpecialQuantity}
-					onSaveSpecialQuantity={saveSpecialQuantity}
+					onSaveSpecialQuantity={hasPermission('production.lumpsumfinalsettlement.update') ? saveSpecialQuantity : undefined}
 					onSpecialQuantityChange={changeSpecialQuantityValue}
 					onSavingCarryForwardChange={changeSavingCarryForwardValue}
-					onSaveSavingCarryForward={saveSavingCarryForwardValue}
-					onEditSavingCarryForward={editSavingCarryForwardValue}
+					onSaveSavingCarryForward={hasPermission('production.lumpsumfinalsettlement.update') ? saveSavingCarryForwardValue : undefined}
+					onEditSavingCarryForward={hasPermission('production.lumpsumfinalsettlement.update') ? editSavingCarryForwardValue : undefined}
 					onCancelSavingCarryForward={cancelSavingCarryForwardValue}
 				/>
 			</CardContent>

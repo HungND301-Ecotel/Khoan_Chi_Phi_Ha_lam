@@ -8,8 +8,11 @@ import {
 	Clamp,
 } from '@/features/main/catalog/parameter/clamp/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterClampPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -58,12 +61,12 @@ export function MainCatalogParameterClampPage() {
 			url={API.CATALOG.PARAMETER.CLAMP.LIST}
 			columns={CATALOG_PARAMETER_CLAMP_COLUMNS}
 			filters={[{ key: 'value', label: 'Tỷ lệ đá kẹp' }]}
-			onCreate={(props) => <ClampForm {...props} />}
-			onDuplicate={(props) => <ClampForm {...props} isDuplicate />}
-			onUpdate={(props) => <ClampForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.CREATE) ? (props) => <ClampForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.CREATE) ? (props) => <ClampForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.UPDATE) ? (props) => <ClampForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STONE_CLAMP_RATIO.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

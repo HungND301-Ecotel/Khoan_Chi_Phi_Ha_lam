@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const isSameMonthAndYear = (
 	dateValue: string | undefined,
@@ -161,6 +163,7 @@ export function AcceptanceReportDataTable({
 }: AcceptanceReportDataTableProps) {
 	const now = new Date();
 	const currentYear = now.getFullYear();
+	const { hasPermission } = usePermission();
 	const [month, setMonth] = useState(
 		String(now.getMonth() + 1).padStart(2, '0'),
 	);
@@ -371,22 +374,24 @@ export function AcceptanceReportDataTable({
 					)}
 				</div>
 
-				<Button
-					variant='outline'
-					size='sm'
-					disabled={rows.length === 0 || isLoading || isExporting}
-					onClick={handleExport}
-					className='h-10 gap-1.5'
-				>
-					{isExporting ? (
-						<Spinner />
-					) : (
-						<>
-							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Tải xuống</span>
-						</>
-					)}
-				</Button>
+				{hasPermission(PERMISSIONS.REPORT.ACCEPTANCE_REPORT.EXPORT) && (
+					<Button
+						variant='outline'
+						size='sm'
+						disabled={rows.length === 0 || isLoading || isExporting}
+						onClick={handleExport}
+						className='h-10 gap-1.5'
+					>
+						{isExporting ? (
+							<Spinner />
+						) : (
+							<>
+								<DownloadIcon style={{ fontSize: 18 }} />
+								<span>Tải xuống</span>
+							</>
+						)}
+					</Button>
+				)}
 			</div>
 
 			{error ? (

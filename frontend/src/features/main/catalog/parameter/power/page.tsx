@@ -5,8 +5,11 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { PowerForm } from './actions';
 import { CATALOG_PARAMETER_POWER_COLUMNS, Power } from './columns';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterPowerPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -55,12 +58,12 @@ export function MainCatalogParameterPowerPage() {
 			url={API.CATALOG.PARAMETER.POWER.LIST}
 			columns={CATALOG_PARAMETER_POWER_COLUMNS}
 			filters={[{ key: 'value', label: 'Công suất' }]}
-			onCreate={(props) => <PowerForm {...props} />}
-			onDuplicate={(props) => <PowerForm {...props} isDuplicate />}
-			onUpdate={(props) => <PowerForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.CREATE) ? (props) => <PowerForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.CREATE) ? (props) => <PowerForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.UPDATE) ? (props) => <PowerForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_POWER.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

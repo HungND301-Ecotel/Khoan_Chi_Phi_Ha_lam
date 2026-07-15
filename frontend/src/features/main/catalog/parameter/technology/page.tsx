@@ -8,8 +8,11 @@ import {
 	Technology,
 } from '@/features/main/catalog/parameter/technology/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterTechnologyPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -63,12 +66,12 @@ export function MainCatalogParameterTechnologyPage() {
 			url={API.CATALOG.PARAMETER.TECHNOLOGY.LIST}
 			columns={CATALOG_PARAMETER_TECHNOLOGY_COLUMNS}
 			filters={[{ key: 'value', label: 'Công nghệ khai thác' }]}
-			onCreate={(props) => <TechnologyForm {...props} />}
-			onDuplicate={(props) => <TechnologyForm {...props} isDuplicate />}
-			onUpdate={(props) => <TechnologyForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.CREATE) ? (props) => <TechnologyForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.CREATE) ? (props) => <TechnologyForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.UPDATE) ? (props) => <TechnologyForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_TECHNOLOGY.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

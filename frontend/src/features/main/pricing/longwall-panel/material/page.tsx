@@ -17,6 +17,7 @@ import {
 	type LongwallMaterial,
 } from '@/features/main/pricing/longwall-panel/material/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useMemo, useState } from 'react';
 import type {
 	LongwallMaterialDetail,
@@ -120,6 +121,7 @@ function buildGroupedExpandRows(
 }
 
 export function LongwallPanelMaterialPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -180,12 +182,12 @@ export function LongwallPanelMaterialPage() {
 				{ key: 'processName', label: 'Công đoạn sản xuất' },
 				{ key: 'materialDetail', label: 'Thông số' },
 			]}
-			onCreate={(props) => <LongwallMaterialForm {...props} />}
-			onDuplicate={(props) => <LongwallMaterialForm {...props} isDuplicate />}
-			onUpdate={(props) => <LongwallMaterialForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission('pricing.longwallmaterialunitprice.create') ? hasPermission('pricing.longwallmaterialunitprice.create') ? (props) => <LongwallMaterialForm {...props} /> : undefined : undefined}
+			onDuplicate={hasPermission('pricing.longwallmaterialunitprice.create') ? hasPermission('pricing.longwallmaterialunitprice.create') ? (props) => <LongwallMaterialForm {...props} isDuplicate /> : undefined : undefined}
+			onUpdate={hasPermission('pricing.longwallmaterialunitprice.update') ? hasPermission('pricing.longwallmaterialunitprice.update') ? (props) => <LongwallMaterialForm {...props} /> : undefined : undefined}
+			onDelete={hasPermission('pricing.longwallmaterialunitprice.delete') ? handleDelete : undefined}
+			onExport={hasPermission('pricing.longwallmaterialunitprice.export') ? handleExport : undefined}
+			onImport={hasPermission('pricing.longwallmaterialunitprice.import') ? handleImport : undefined}
 			onExpand={(props) => <LongwallMaterialExpand {...props} />}
 		/>
 	);

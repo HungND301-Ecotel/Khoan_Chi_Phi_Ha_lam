@@ -8,8 +8,11 @@ import {
 	ProcessStep,
 } from '@/features/main/catalog/process/step/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export default function MainCatalogProcessStepPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -62,12 +65,12 @@ export default function MainCatalogProcessStepPage() {
 				{ key: 'code', label: 'Mã công đoạn sản xuất' },
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },
 			]}
-			onCreate={(props) => <ProcessStepForm {...props} />}
-			onDuplicate={(props) => <ProcessStepForm {...props} isDuplicate />}
-			onUpdate={(props) => <ProcessStepForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.CREATE) ? (props) => <ProcessStepForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.CREATE) ? (props) => <ProcessStepForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.UPDATE) ? (props) => <ProcessStepForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PROCESS_STEP.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

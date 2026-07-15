@@ -260,3 +260,23 @@ public enum TunnelExcavationTrimingUnitPriceType
     TunnelExcavation = 1,
     Trimming = 2,
 }
+public enum SignatureType
+{
+    Initial = 1,   // ký nháy
+    Normal = 2,  //ký thường 
+    Digital = 3    //ký số
+
+}
+
+/// <summary>
+/// Mã quyền hành động
+/// </summary>
+public enum PermissionCode
+{
+    Create,
+    Read,
+    Update,
+    Delete,
+    Import,
+    Export
+}

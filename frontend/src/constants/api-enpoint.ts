@@ -1,5 +1,25 @@
 export const API = {
 	CATALOG: {
+		POSITION: {
+			LIST: '/v1/catalog/position',
+			CREATE: '/v1/catalog/position',
+			UPDATE: '/v1/catalog/position',
+			DELETES: '/v1/catalog/position',
+			DELETE: (id: string) => `/v1/catalog/position/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/position/${id}`,
+			IMPORT: '/v1/catalog/position/import',
+			EXPORT: '/v1/catalog/position/export',
+		},
+		EMPLOYEE: {
+			LIST: '/v1/user/employee',
+			CREATE: '/v1/user/employee',
+			UPDATE: '/v1/user/employee',
+			DELETES: '/v1/user/employee',
+			DELETE: (id: string) => `/v1/user/employee/${id}`,
+			DETAIL: (id: string) => `/v1/user/employee/${id}`,
+			IMPORT: '/v1/user/employee/import',
+			EXPORT: '/v1/user/employee/export',
+		},
 		UNIT: {
 			LIST: '/v1/catalog/unitofmeasure',
 			CREATE: '/v1/catalog/unitofmeasure',
@@ -350,18 +370,21 @@ export const API = {
 			EXPORT: '/v1/pricing/slideunitprice/export',
 		},
 		MAINTENANCE: {
+			// Endpoint dùng chung (lấy tất cả loại lò, không filter type)
+			// Được sử dụng bởi form Doanh thu SCTX kế hoạch để load danh sách đơn giá tổng hợp
 			LIST: '/v1/pricing/maintainunitpriceequipment',
-			CREATE: '/v1/pricing/maintainunitpriceequipment',
-			UPDATE: '/v1/pricing/maintainunitpriceequipment',
-			DELETES: '/v1/pricing/maintainunitpriceequipment',
-			DELETE: (id: string) => `/v1/pricing/maintainunitpriceequipment/${id}`,
-			DETAIL: (id: string) => `/v1/pricing/maintainunitpriceequipment/${id}`,
 			EQUIPMENTS_BY_MAINTAIN_IDS:
 				'/v1/pricing/maintainunitpriceequipment/equipments',
 			EQUIPMENTS_BY_PART_IDS:
 				'/v1/pricing/maintainunitpriceequipment/parts/equipments',
 			MAINTAIN_UNIT_PRICE_EQUIPMENTS_BY_PART_IDS:
 				'/v1/pricing/maintainunitpriceequipment/parts/maintain-unit-price-equipments',
+			TUNNEL_LIST: '/v1/pricing/tunnelmaintainunitpriceequipment',
+			TUNNEL_CREATE: '/v1/pricing/tunnelmaintainunitpriceequipment',
+			TUNNEL_UPDATE: '/v1/pricing/tunnelmaintainunitpriceequipment',
+			TUNNEL_DELETES: '/v1/pricing/tunnelmaintainunitpriceequipment',
+			TUNNEL_DELETE: (id: string) => `/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
+			TUNNEL_DETAIL: (id: string) => `/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
 			TRIMMING_IMPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/import',
@@ -369,10 +392,17 @@ export const API = {
 			TRIMMING_LIST: '/v1/pricing/trimmingmaintainunitpriceequipment',
 			TRIMMING_CREATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
 			TRIMMING_UPDATE: '/v1/pricing/trimmingmaintainunitpriceequipment',
+			TRIMMING_DELETES: '/v1/pricing/trimmingmaintainunitpriceequipment',
 			TRIMMING_DELETE: (id: string) =>
 				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
 			TRIMMING_DETAIL: (id: string) =>
 				`/v1/pricing/trimmingmaintainunitpriceequipment/${id}`,
+			LONGWALL_LIST: '/v1/pricing/longwallmaintainunitpriceequipment',
+			LONGWALL_CREATE: '/v1/pricing/longwallmaintainunitpriceequipment',
+			LONGWALL_UPDATE: '/v1/pricing/longwallmaintainunitpriceequipment',
+			LONGWALL_DELETES: '/v1/pricing/longwallmaintainunitpriceequipment',
+			LONGWALL_DELETE: (id: string) => `/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
+			LONGWALL_DETAIL: (id: string) => `/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
 			LONGWALL_IMPORT: '/v1/pricing/longwallmaintainunitpriceequipment/import',
 			LONGWALL_EXPORT: '/v1/pricing/longwallmaintainunitpriceequipment/export',
 		},
@@ -582,5 +612,6 @@ export const API = {
 	AUTH: {
 		SIGN_IN: '/v1/tokens',
 		REFRESH: '/v1/tokens/refresh',
+		PERMISSIONS: '/v1/system/permission',
 	},
 } as const;

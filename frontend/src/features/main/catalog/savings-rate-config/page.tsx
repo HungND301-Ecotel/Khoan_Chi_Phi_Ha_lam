@@ -4,12 +4,15 @@ import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { SavingsRateConfigForm } from './actions';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
 	CATALOG_SAVINGS_RATE_CONFIG_COLUMNS,
 	SavingsRateConfig,
 } from './columns';
 
 export function MainCatalogSavingsRateConfigPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -67,12 +70,12 @@ export function MainCatalogSavingsRateConfigPage() {
 				{ key: 'savingsRateDisplay', label: 'Giá trị tiết kiệm' },
 				{ key: 'description', label: 'Mô tả' },
 			]}
-			onCreate={(props) => <SavingsRateConfigForm {...props} />}
-			onDuplicate={(props) => <SavingsRateConfigForm {...props} isDuplicate />}
-			onUpdate={(props) => <SavingsRateConfigForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.CREATE) ? (props) => <SavingsRateConfigForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.CREATE) ? (props) => <SavingsRateConfigForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.UPDATE) ? (props) => <SavingsRateConfigForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

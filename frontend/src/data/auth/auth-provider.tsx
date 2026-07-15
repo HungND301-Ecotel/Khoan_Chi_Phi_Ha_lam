@@ -20,9 +20,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
 	const navigate = useNavigate();
 
 	const [user, setUser] = useState<boolean>(false);
+	const [role, setRole] = useState<string | null>(null);
+	const [userId, setUserId] = useState<number | null>(null);
+	const [employeeId, setEmployeeId] = useState<number | null>(null);
+	const [permissions, setPermissions] = useState<string[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	const popup = usePopup();
+
+	const loadPermissions = useCallback(async () => {
+		try {
+			const res = await api.get<{ permissions: string[]; employeeId?: number }>(API.AUTH.PERMISSIONS);
+			if (res.success && res.result) {
+				if (res.result.permissions) {
+					setPermissions(res.result.permissions);
+				}
+				if (res.result.employeeId) {
+					setEmployeeId(res.result.employeeId);
+				}
+			}
+		} catch (error) {
+			console.error('Failed to load permissions:', error);
+		}
+	}, []);
+
+	const refreshProfile = useCallback(async () => {
+		const uId = authStorage.getUserId();
+		if (uId) {
+			await loadPermissions();
+		}
+	}, [loadPermissions]);
 
 	// Kiểm tra token khi component mount
 	useEffect(() => {
@@ -32,21 +59,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 				if (tokens) {
 					setUser(true);
+					const userRole = authStorage.getRole();
+					setRole(userRole);
+					const uId = authStorage.getUserId();
+					setUserId(uId);
+					if (uId) {
+						await loadPermissions();
+					}
 					return;
 				}
 
 				authStorage.clear();
 				setUser(false);
+				setRole(null);
+				setUserId(null);
+				setEmployeeId(null);
+				setPermissions([]);
 			} catch {
 				authStorage.clear();
 				setUser(false);
+				setRole(null);
+				setUserId(null);
+				setEmployeeId(null);
+				setPermissions([]);
 			} finally {
 				setLoading(false);
 			}
 		};
 
 		initAuth();
-	}, []);
+	}, [loadPermissions]);
 
 	const signIn = useCallback(
 		async (credentials: Credentials) => {
@@ -58,7 +100,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 				);
 
 				authStorage.set(result);
+				const userRole = authStorage.getRole();
+				const uId = authStorage.getUserId();
 				setUser(true);
+				setRole(userRole);
+				setUserId(uId);
+				if (uId) {
+					await loadPermissions();
+				}
 				popup.success('Đăng nhập thành công');
 				navigate('/');
 			} catch (error) {
@@ -66,12 +115,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 				throw error;
 			}
 		},
-		[navigate, popup],
+		[navigate, popup, loadPermissions],
 	);
 
 	const signOut = useCallback(() => {
 		authStorage.clear();
 		setUser(false);
+		setRole(null);
+		setUserId(null);
+		setEmployeeId(null);
+		setPermissions([]);
 		popup.success('Đăng xuất thành công');
 		navigate('/auth/sign-in', { replace: true });
 	}, [navigate, popup]);
@@ -80,10 +133,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 		() => ({
 			loading,
 			user,
+			role,
+			userId,
+			employeeId,
+			permissions,
+			refreshProfile,
 			signIn,
 			signOut,
 		}),
-		[loading, user, signIn, signOut],
+		[loading, user, role, userId, employeeId, permissions, refreshProfile, signIn, signOut],
 	);
 
 	return <AuthContext.Provider value={value} children={children} />;

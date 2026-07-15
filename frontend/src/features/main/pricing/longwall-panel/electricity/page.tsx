@@ -8,9 +8,11 @@ import {
 } from '@/features/main/pricing/longwall-panel/electricity/columns';
 import { ElectricityForm } from '@/features/main/pricing/longwall-panel/electricity/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useState } from 'react';
 
 export function MainPricingLongwallElectricityPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 	const [items, setItems] = useState<LongwallElectricity[]>([]);
@@ -91,14 +93,14 @@ export function MainPricingLongwallElectricityPage() {
 				{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'equipmentName', label: 'Tên nhóm vật tư, tài sản' },
 			]}
-			onCreate={(props) => <ElectricityForm {...props} onSuccess={fetchData} />}
-			onDuplicate={(props) => (
+			onCreate={hasPermission('pricing.longwallelectricityunitprice.create') ? (props) => <ElectricityForm {...props} onSuccess={fetchData} /> : undefined}
+			onDuplicate={hasPermission('pricing.longwallelectricityunitprice.create') ? (props) => (
 				<ElectricityForm {...props} onSuccess={fetchData} isDuplicate />
-			)}
-			onUpdate={(props) => <ElectricityForm {...props} onSuccess={fetchData} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			) : undefined}
+			onUpdate={hasPermission('pricing.longwallelectricityunitprice.update') ? (props) => <ElectricityForm {...props} onSuccess={fetchData} /> : undefined}
+			onDelete={hasPermission('pricing.longwallelectricityunitprice.delete') ? handleDelete : undefined}
+			onExport={hasPermission('pricing.longwallelectricityunitprice.export') ? handleExport : undefined}
+			onImport={hasPermission('pricing.longwallelectricityunitprice.import') ? handleImport : undefined}
 		/>
 	);
 }

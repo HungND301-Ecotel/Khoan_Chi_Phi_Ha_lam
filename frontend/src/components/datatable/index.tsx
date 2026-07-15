@@ -291,28 +291,30 @@ export function DataTable<TData>({
 									/>
 								</DialogProvider>
 							)}
-							<Button
-								variant={'ghost'}
-								className={cn(shadow, 'min-w-24')}
-								disabled={exportLoading}
-								onClick={async () => {
-									setExportLoading(true);
-									try {
-										await onExport?.({ data: datatable });
-									} finally {
-										setExportLoading(false);
-									}
-								}}
-							>
-								{exportLoading ? (
-									<Spinner />
-								) : (
-									<>
-										<DownloadIcon fontSize='small' />
-										<span className='hidden xl:block'>Tải xuống</span>
-									</>
-								)}
-							</Button>
+							{onExport && (
+								<Button
+									variant={'ghost'}
+									className={cn(shadow, 'min-w-24')}
+									disabled={exportLoading}
+									onClick={async () => {
+										setExportLoading(true);
+										try {
+											await onExport({ data: datatable });
+										} finally {
+											setExportLoading(false);
+										}
+									}}
+								>
+									{exportLoading ? (
+										<Spinner />
+									) : (
+										<>
+											<DownloadIcon fontSize='small' />
+											<span className='hidden xl:block'>Tải xuống</span>
+										</>
+									)}
+								</Button>
+							)}
 							<Button variant={'ghost'} className={shadow}>
 								<PrintIcon fontSize='small' />
 								<span className='hidden xl:block'>In</span>

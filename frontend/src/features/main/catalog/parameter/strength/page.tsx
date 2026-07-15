@@ -8,8 +8,11 @@ import {
 	Strength,
 } from '@/features/main/catalog/parameter/strength/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterStrengthPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -61,12 +64,12 @@ export function MainCatalogParameterStrengthPage() {
 			url={API.CATALOG.PARAMETER.STRENGTH.LIST}
 			columns={CATALOG_PARAMETER_STRENGTH_COLUMNS}
 			filters={[{ key: 'value', label: 'Độ kiên cố than/đá' }]}
-			onCreate={(props) => <StrengthForm {...props} />}
-			onDuplicate={(props) => <StrengthForm {...props} isDuplicate />}
-			onUpdate={(props) => <StrengthForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.CREATE) ? (props) => <StrengthForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.CREATE) ? (props) => <StrengthForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.UPDATE) ? (props) => <StrengthForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_HARDNESS.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

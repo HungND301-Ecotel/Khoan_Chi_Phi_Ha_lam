@@ -4,12 +4,15 @@ import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { RevenueCostAdjustmentConfigForm } from './actions';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
 	CATALOG_REVENUE_COST_ADJUSTMENT_CONFIG_COLUMNS,
 	RevenueCostAdjustmentConfig,
 } from './columns';
 
 export function MainCatalogRevenueCostAdjustmentConfigPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -69,14 +72,14 @@ export function MainCatalogRevenueCostAdjustmentConfigPage() {
 				{ key: 'rateDisplay', label: 'Tỷ lệ điều chỉnh' },
 				{ key: 'description', label: 'Mô tả' },
 			]}
-			onCreate={(props) => <RevenueCostAdjustmentConfigForm {...props} />}
-			onDuplicate={(props) => (
+			onCreate={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.CREATE) ? (props) => <RevenueCostAdjustmentConfigForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.CREATE) ? (props) => (
 				<RevenueCostAdjustmentConfigForm {...props} isDuplicate />
-			)}
-			onUpdate={(props) => <RevenueCostAdjustmentConfigForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			) : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.UPDATE) ? (props) => <RevenueCostAdjustmentConfigForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

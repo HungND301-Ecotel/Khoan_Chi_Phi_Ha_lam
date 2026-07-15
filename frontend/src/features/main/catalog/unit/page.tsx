@@ -8,8 +8,11 @@ import {
 	Unit,
 } from '@/features/main/catalog/unit/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export default function MainCatalogUnitPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -58,12 +61,12 @@ export default function MainCatalogUnitPage() {
 			url={API.CATALOG.UNIT.LIST}
 			columns={CATALOG_UNIT_COLUMNS}
 			filters={[{ key: 'name', label: 'Đơn vị tính' }]}
-			onCreate={(props) => <UnitForm {...props} />}
-			onDuplicate={(props) => <UnitForm {...props} isDuplicate />}
-			onUpdate={(props) => <UnitForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.UNIT.CREATE) ? (props) => <UnitForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.UNIT.CREATE) ? (props) => <UnitForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.UNIT.UPDATE) ? (props) => <UnitForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.UNIT.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.UNIT.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.UNIT.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

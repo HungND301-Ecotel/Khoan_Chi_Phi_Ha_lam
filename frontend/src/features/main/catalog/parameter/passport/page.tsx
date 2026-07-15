@@ -8,8 +8,11 @@ import {
 	Passport,
 } from '@/features/main/catalog/parameter/passport/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterPassportPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -65,12 +68,12 @@ export function MainCatalogParameterPassportPage() {
 				{ key: 'sd', label: 'Sđ' },
 				{ key: 'sc', label: 'Sc' },
 			]}
-			onCreate={(props) => <PassportForm {...props} />}
-			onDuplicate={(props) => <PassportForm {...props} isDuplicate />}
-			onUpdate={(props) => <PassportForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.CREATE) ? (props) => <PassportForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.CREATE) ? (props) => <PassportForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.UPDATE) ? (props) => <PassportForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_PASSPORT.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

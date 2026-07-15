@@ -150,8 +150,8 @@ public class VerificationService(
                         Code = userVerification.VerificationCode,
                         Token = token,
                         Link = userVerification.Link,
-                        Email = input.Email,
-                        UserName = userInfo!.Fullname
+                        Email = input.Email
+                        //UserName = userInfo!.Fullname
                     };
                     await emailService.SendVerificationEmailVerifyLinkOnly(deliverData, input.Locale);
                     break;

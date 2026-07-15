@@ -8,8 +8,11 @@ import {
 	Factor,
 } from '@/features/main/catalog/adjustment/factor/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogAdjustmentFactorPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -64,12 +67,12 @@ export function MainCatalogAdjustmentFactorPage() {
 				{ key: 'fixedKeyKey', label: 'Hệ số điều chỉnh' },
 				{ key: 'name', label: 'Tên hệ số điều chỉnh' },
 			]}
-			onCreate={(props) => <FactorForm {...props} />}
-			onDuplicate={(props) => <FactorForm {...props} isDuplicate />}
-			onUpdate={(props) => <FactorForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.CREATE) ? (props) => <FactorForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.CREATE) ? (props) => <FactorForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.UPDATE) ? (props) => <FactorForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

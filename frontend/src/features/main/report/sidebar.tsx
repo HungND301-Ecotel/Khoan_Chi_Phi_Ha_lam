@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import SearchIcon from '@mui/icons-material/Search';
 import { useMemo, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
 import {
 	REPORT_CATEGORIES,
 	REPORT_CATEGORY_GROUPS,
@@ -21,11 +22,14 @@ export function ReportSidebar({
 }: ReportSidebarProps) {
 	const [searchQuery, setSearchQuery] = useState('');
 
+	const { hasPermission } = usePermission();
+
 	const filteredCategories = useMemo(() => {
-		if (!searchQuery.trim()) return REPORT_CATEGORIES;
+		const authorizedCategories = REPORT_CATEGORIES.filter(c => !c.permission || hasPermission(c.permission));
+		if (!searchQuery.trim()) return authorizedCategories;
 		const q = searchQuery.toLowerCase();
-		return REPORT_CATEGORIES.filter((c) => c.label.toLowerCase().includes(q));
-	}, [searchQuery]);
+		return authorizedCategories.filter((c) => c.label.toLowerCase().includes(q));
+	}, [searchQuery, hasPermission]);
 
 	const groupedCategories = useMemo(() => {
 		const groups = new Map<string, ReportCategory[]>();

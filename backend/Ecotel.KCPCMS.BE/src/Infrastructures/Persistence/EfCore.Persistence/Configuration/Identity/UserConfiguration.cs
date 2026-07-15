@@ -16,8 +16,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.NormalizedEmail).IsRequired().HasMaxLength(256);
         builder.Property(u => u.PasswordHash).IsRequired().HasMaxLength(500);
         builder.Property(u => u.PhoneNumber).HasMaxLength(15);
-        builder.Property(u => u.Fullname).HasMaxLength(120);
-        builder.Property(u => u.Avatar).HasMaxLength(256);
         builder.Property(u => u.PasswordResetToken).HasMaxLength(256);
         builder.Property(u => u.RegisterProvider).HasMaxLength(50);
     }

@@ -23,6 +23,7 @@ import {
 import { PlanMaintainCostForm } from '@/features/main/cost/plan/planed-maintain-cost/form';
 import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { formatNumber } from '@/lib/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CreateIcon from '@mui/icons-material/Create';
@@ -38,6 +39,7 @@ export function PlanedMaintainCost({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [planedMaintainCost, setPlanedMaintainCost] =
 		useState<PlanedMaintainCostDetail>();
 	const [total, setTotal] = useState<number>(0);
@@ -96,7 +98,7 @@ export function PlanedMaintainCost({
 				</ItemContent>
 
 				<ItemActions className='gap-1'>
-					<DialogProvider>
+					{hasPermission('production.plannedmaintaincost.create') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
 							crumb='Doanh thu SCTX kế hoạch ban đầu'
@@ -117,9 +119,9 @@ export function PlanedMaintainCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 
-					<AccordionTrigger
+					{hasPermission('production.plannedmaintaincost.read') && (<AccordionTrigger
 						disabled={!id}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -129,8 +131,8 @@ export function PlanedMaintainCost({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
-					<DialogProvider>
+					</AccordionTrigger>)}
+					{hasPermission('production.plannedmaintaincost.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Doanh thu SCTX kế hoạch ban đầu'
@@ -152,7 +154,7 @@ export function PlanedMaintainCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 				</ItemActions>
 			</Item>
 

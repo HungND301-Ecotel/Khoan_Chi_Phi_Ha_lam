@@ -8,8 +8,11 @@ import {
 	Insert,
 } from '@/features/main/catalog/parameter/insert/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterInsertPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -61,12 +64,12 @@ export function MainCatalogParameterInsertPage() {
 			url={API.CATALOG.PARAMETER.INSERT.LIST}
 			columns={CATALOG_PARAMETER_INSERT_COLUMNS}
 			filters={[{ key: 'value', label: 'Chèn' }]}
-			onCreate={(props) => <InsertForm {...props} />}
-			onDuplicate={(props) => <InsertForm {...props} isDuplicate />}
-			onUpdate={(props) => <InsertForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.CREATE) ? (props) => <InsertForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.CREATE) ? (props) => <InsertForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.UPDATE) ? (props) => <InsertForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_INSERT_ITEM.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

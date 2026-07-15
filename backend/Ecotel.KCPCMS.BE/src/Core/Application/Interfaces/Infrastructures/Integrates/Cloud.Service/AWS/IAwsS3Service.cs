@@ -11,6 +11,8 @@ public interface IAwsS3Service
 
     Task<AwsUploadedOutputModel> UploadFileAsync(byte[] fileData, AwsInputModel input);
 
+    Task<string> GeneratePresignedUrlAsync(string key, BucketType bucketType, TimeSpan expiry);
+
     Task CopyObjectAsync(string srcBucket, string srcKey, string destBucket, string destKey);
 
     Task MoveObjectAsync(string srcBucket, string srcKey, string destBucket, string destKey);

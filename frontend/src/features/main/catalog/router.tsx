@@ -13,6 +13,8 @@ import { MainCatalogNormFactorPage } from './norm-factor/page';
 import { MainCatalogRevenueCostAdjustmentConfigPage } from './revenue-cost-adjustment-config/page';
 import { MainCatalogSavingsRateConfigPage } from './savings-rate-config/page';
 import { MainCatalogAkFactorConfigPage } from './ak-factor-config/page';
+import { MainCatalogEmployeePage } from '@/features/main/catalog/employee/page';
+import { MainCatalogPositionPage } from '@/features/main/catalog/position/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -24,6 +26,16 @@ const MainCatalogRouter: RouteObject = {
 		MainCatalogProcessRouter,
 		MainCatalogParameterRouter,
 		MainCatalogAdjustmentRouter,
+		{
+			path: 'positions',
+			element: <MainCatalogPositionPage />,
+			handle: { breadcrumb: 'Chức vụ', title: 'Chức vụ' },
+		},
+		{
+			path: 'employees',
+			element: <MainCatalogEmployeePage />,
+			handle: { breadcrumb: 'Cán bộ, nhân viên', title: 'Cán bộ, nhân viên' },
+		},
 		{
 			path: 'units',
 			element: <MainCatalogUnitPage />,

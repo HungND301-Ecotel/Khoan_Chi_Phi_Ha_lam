@@ -51,6 +51,8 @@ public class ApplicationDbContext(
     public DbSet<Cost> Costs => Set<Cost>();
     public DbSet<Material> Materials => Set<Material>();
     public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Position> Positions => Set<Position>();
     public DbSet<FixedKey> FixedKeys => Set<FixedKey>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
@@ -136,6 +138,8 @@ public class ApplicationDbContext(
         modelBuilder.Entity<Cost>().ToTable(nameof(Cost), "Index");
         modelBuilder.Entity<Material>().ToTable(nameof(Material), "Index");
         modelBuilder.Entity<Department>().ToTable(nameof(Department), "Index");
+        modelBuilder.Entity<Employee>().ToTable(nameof(Employee), "Index");
+        modelBuilder.Entity<Position>().ToTable(nameof(Position), "Index");
         modelBuilder.Entity<FixedKey>().ToTable(nameof(FixedKey), "Index");
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
         modelBuilder.Entity<ProcessGroup>().ToTable(nameof(ProcessGroup), "Index");
@@ -259,7 +263,8 @@ public class ApplicationDbContext(
 
         modelBuilder.Entity<AssignmentCodeMaterial>()
             .Property(e => e.Role)
-            .HasDefaultValue(AssignmentCodeMaterialRole.Material);
+            .HasDefaultValue(AssignmentCodeMaterialRole.Material)
+            .HasSentinel(AssignmentCodeMaterialRole.Material);
 
         modelBuilder.Entity<AssignmentCodeMaterial>()
             .HasIndex(e => new { e.AssignmentCodeId, e.MaterialId })

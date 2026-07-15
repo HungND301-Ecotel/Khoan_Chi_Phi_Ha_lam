@@ -11,8 +11,11 @@ import {
 	NormFactorExpandItem,
 } from './columns';
 import { NormFactorForm } from './actions';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogNormFactorPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -66,13 +69,13 @@ export function MainCatalogNormFactorPage() {
 				{ key: 'stoneClampRatioName', label: 'Tỷ lệ đá kẹp (Ckẹp)' },
 				{ key: 'value', label: 'Hệ số điều chỉnh định mức' },
 			]}
-			onCreate={(props) => <NormFactorForm {...props} />}
-			onDuplicate={(props) => <NormFactorForm {...props} isDuplicate />}
-			onUpdate={(props) => <NormFactorForm {...props} />}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.CREATE) ? (props) => <NormFactorForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.CREATE) ? (props) => <NormFactorForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.UPDATE) ? (props) => <NormFactorForm {...props} /> : undefined}
 			onExpand={(props) => <NormFactorExpand {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.NORM_FACTOR.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

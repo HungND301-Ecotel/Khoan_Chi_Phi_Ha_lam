@@ -5,8 +5,11 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { CATALOG_OTHER_PART_COLUMNS, OtherPart } from './columns';
 import { OtherPartForm } from './actions';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogOtherPartPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -68,12 +71,12 @@ export function MainCatalogOtherPartPage() {
 				{ key: 'name', label: 'Tên phụ tùng' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
-			onCreate={(props) => <OtherPartForm {...props} />}
-			onDuplicate={(props) => <OtherPartForm {...props} isDuplicate />}
-			onUpdate={(props) => <OtherPartForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.CREATE) ? (props) => <OtherPartForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.CREATE) ? (props) => <OtherPartForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.UPDATE) ? (props) => <OtherPartForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PART_OTHER.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

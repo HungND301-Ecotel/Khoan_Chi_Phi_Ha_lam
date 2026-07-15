@@ -1,4 +1,4 @@
-﻿using Application.Catalog.Production.AcceptanceReports.Commands;
+using Application.Catalog.Production.AcceptanceReports.Commands;
 using Application.Catalog.Production.AcceptanceReports.Queries;
 using Application.Catalog.Production.LongTermAnchorSeeds.Commands;
 using Application.Catalog.Production.LongTermAnchorSeeds.Queries;
@@ -7,18 +7,20 @@ using Application.Catalog.Production.ProductionOutputs.Queries;
 using Application.Dto.Catalog.AcceptanceReport;
 using Application.Dto.Catalog.ProductionOutput;
 using Host.Controllers.Base;
+using Infrastructure.Auth.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
 using Shared.Constants;
 
 namespace Host.Controllers.Catalog;
 
-public class ProductionController : BaseNoAuthController
+public class ProductionController : BaseAuthController  
 {
     #region ProductionOutput
 
     [HttpGet("ProductionOutput")]
     [OpenApiOperation("Get All ProductionOutput", "")]
+    [HasPermission("production.productionoutput.read", "Thống kê vận hành", "Vận hành sản xuất")]
     public async Task<IActionResult> GetAllProductionOutput([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllProductionOutputsQuery(pageIndex, pageSize, ignorePagination));
@@ -27,6 +29,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("ProductionOutput/{id:guid}")]
     [OpenApiOperation("Get ProductionOutput By Id", "")]
+    [HasPermission("production.productionoutput.read", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> GetProductionOutputById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProductionOutputByIdQuery(id));
@@ -35,6 +39,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("ProductionOutput/{id:guid}/detail")]
     [OpenApiOperation("Get ProductionOutput Detail", "Get production output with all acceptance report items grouped by category and material group")]
+    [HasPermission("production.productionoutput.read", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> GetProductionOutputDetail([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProductionOutputDetailQuery(id));
@@ -43,6 +49,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("ProductionOutput")]
     [OpenApiOperation("Create New ProductionOutput", "")]
+    [HasPermission("production.productionoutput.create", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> CreateProductionOutput([FromBody] CreateProductionOutputDto createModel)
     {
         var result = await Mediator.Send(new CreateProductionOutputCommand(createModel));
@@ -51,6 +59,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("ProductionOutput")]
     [OpenApiOperation("Update ProductionOutput", "")]
+    [HasPermission("production.productionoutput.update", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> UpdateProductionOutput([FromBody] ProductionOutputDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductionOutputCommand(updateModel));
@@ -59,6 +69,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("ProductionOutputList")]
     [OpenApiOperation("Create ProductionOutput List", "")]
+    [HasPermission("production.productionoutput.create", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> CreateProductionOutputList([FromBody] IList<CreateProductionOutputDto> createModels)
     {
         var result = await Mediator.Send(new CreateProductionOutputListCommand(createModels));
@@ -67,6 +79,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("ProductionOutputList")]
     [OpenApiOperation("Update ProductionOutput List", "")]
+    [HasPermission("production.productionoutput.update", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> UpdateProductionOutputList([FromBody] IList<ProductionOutputDto> updateModels)
     {
         var result = await Mediator.Send(new UpdateProductionOutputListCommand(updateModels));
@@ -75,6 +89,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpDelete("ProductionOutput/{deleteId:guid}")]
     [OpenApiOperation("Delete ProductionOutput", "")]
+    [HasPermission("production.productionoutput.delete", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> DeleteProductionOutput([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteProductionOutputCommand(deleteId));
@@ -84,6 +100,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpDelete("ProductionOutput")]
     [OpenApiOperation("Delete ProductionOutput List", "")]
+    [HasPermission("production.productionoutput.delete", "Thống kê vận hành", "Vận hành sản xuất")]
+
     public async Task<IActionResult> DeleteProductionOutputList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductionOutputListCommand(deleteIds));
@@ -95,6 +113,7 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("AcceptanceReport/UploadFile/{productionOutputId}")]
     [OpenApiOperation("Upload AcceptanceReport File", "Upload Excel file to process acceptance report items")]
+    [HasPermission("production.acceptancereport.import","Thống kê vận hành","Biên bản nghiệm thu")]
     [DisableRequestSizeLimit]
     public async Task<IActionResult> UploadAcceptanceReportFile([FromForm] IFormFile file, [FromRoute] Guid productionOutputId)
     {
@@ -109,6 +128,7 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{id:guid}")]
     [OpenApiOperation("Get AcceptanceReport By Id", "Get detail of acceptance report with items")]
+    [HasPermission("production.acceptancereport.read","Thống kê vận hành","Biên bản nghiệm thu")]
     public async Task<IActionResult> GetAcceptanceReportById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAcceptanceReportByIdQuery(id));
@@ -117,6 +137,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("AcceptanceReport")]
     [OpenApiOperation("Create AcceptanceReport", "Create new acceptance report with items")]
+    [HasPermission("production.acceptancereport.create", "Thống kê vận hành", "Biên bản nghiệm thu")]
+
     public async Task<IActionResult> CreateAcceptanceReport([FromBody] CreateAcceptanceReportDto createModel)
     {
         var result = await Mediator.Send(new CreateAcceptanceReportCommand(createModel));
@@ -125,6 +147,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("AcceptanceReport")]
     [OpenApiOperation("Update AcceptanceReport", "Update new acceptance report with items")]
+    [HasPermission("production.acceptancereport.update", "Thống kê vận hành", "Biên bản nghiệm thu")]
+
     public async Task<IActionResult> UpdateAcceptanceReport([FromBody] UpdateAcceptanceReportDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAcceptanceReportCommand(updateModel));
@@ -133,6 +157,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{id:guid}/download")]
     [OpenApiOperation("Download AcceptanceReport Excel", "Download excel file for acceptance report")]
+    [HasPermission("production.acceptancereport.export", "Thống kê vận hành", "Biên bản nghiệm thu")]
+
     public async Task<IActionResult> DownloadAcceptanceReportExcel([FromRoute] Guid id)
     {
         var excelBytes = await Mediator.Send(new DownloadAcceptanceReportExcelQuery(id));
@@ -141,6 +167,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{id:guid}/additional-cost")]
     [OpenApiOperation("Get All Additional Costs", "Get all additional cost items grouped by type")]
+    [HasPermission("production.additional-cost.read", "Thống kê vận hành", "Bổ sung chi phí")]
+
     public async Task<IActionResult> GetAllAcceptanceReportAdditionalCost([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAllAcceptanceReportAdditionalCostQuery(id));
@@ -148,6 +176,8 @@ public class ProductionController : BaseNoAuthController
     }
     [HttpGet("AcceptanceReport/export")]
     [OpenApiOperation("Export AcceptanceReport By Period", "Export acceptance report excel by month and year")]
+    [HasPermission("report.acceptancereport.export", "Báo cáo", "Bảng nghiệm thu vật tư và kết chuyển chi phí")]
+
     public async Task<IActionResult> ExportAcceptanceReportByPeriod([FromQuery] string? month, [FromQuery] string? year)
     {
         var result = await Mediator.Send(new ExportAcceptanceReportByPeriodExcelQuery(month, year));
@@ -157,6 +187,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking")]
     [OpenApiOperation("Get Long-term Item Tracking", "Get all long-term items with tracking logs (TH1 & TH2)")]
+    [HasPermission("production.long-term-tracking.read", "Thống kê vận hành", "Bảng hạch toán chi phí vật tư dài kỳ")]
+
     public async Task<IActionResult> GetAllAcceptanceReportItemLog([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAllAcceptanceReportItemLogQuery(id));
@@ -165,6 +197,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{id:guid}/long-term-tracking/detail")]
     [OpenApiOperation("Get Detail Long-term Material Cost", "Get detail long-term material cost with latest tracking information")]
+    [HasPermission("production.long-term-tracking.read", "Thống kê vận hành", "Bảng hạch toán chi phí vật tư dài kỳ")]
+
     public async Task<IActionResult> GetDetailLongTermTracking([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetDetailLongTermTrackingQuery(id));
@@ -173,6 +207,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("AcceptanceReport/{acceptanceReportId:guid}/export-longterm-material-cost")]
     [OpenApiOperation("Export Long-term Material Cost Excel", "Export long-term material cost accounting report in Excel format")]
+    [HasPermission("report.long-term-tracking.export", "Báo cáo", "Bảng hạch toán chi phí vật tư dài kỳ")]
+
     public async Task<IActionResult> ExportLongTermMaterialCostExcel(
         [FromRoute] Guid acceptanceReportId,
         [FromQuery] string? month,
@@ -185,6 +221,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("AcceptanceReport/long-term-tracking")]
     [OpenApiOperation("Update Allocation Ratio", "Update allocation ratio and recalculate log values")]
+    [HasPermission("production.long-term-tracking.update", "Thống kê vận hành", "Bảng hạch toán chi phí vật tư dài kỳ")]
+
     public async Task<IActionResult> UpdateAcceptanceReportItemLog([FromBody] UpdateAcceptanceReportItemLogDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAcceptanceReportItemLogCommand(updateModel));
@@ -193,6 +231,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("AcceptanceReport/long-term-tracking/list")]
     [OpenApiOperation("Update Allocation Ratio List", "Update allocation ratio for multiple items and recalculate log values")]
+    [HasPermission("production.long-term-tracking.update", "Thống kê vận hành", "Bảng hạch toán chi phí vật tư dài kỳ")]
+
     public async Task<IActionResult> UpdateAcceptanceReportItemLogList([FromBody] IList<UpdateAcceptanceReportItemLogDto> updateModels)
     {
         var result = await Mediator.Send(new UpdateAcceptanceReportItemLogListCommand(updateModels));
@@ -201,6 +241,7 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("AcceptanceReport/sctx-revenue-by-assignment-code")]
     [OpenApiOperation("Get SCTX Revenue By AssignmentCode", "Get monthly SCTX revenue for one assignment code")]
+    [HasPermission("report.sctx-revenue-by-assignment-code.export","Báo cáo","Báo cáo doanh thu SCTX")]
     public async Task<IActionResult> GetSctxRevenueByEquipment([FromBody] GetSctxEquipmentRevenueRequest request)
     {
         var assignmentCodeId = request.AssignmentCodeId ?? request.EquipmentId
@@ -217,6 +258,7 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("Department/{departmentId:guid}/long-term-anchor-seed")]
     [OpenApiOperation("Get Long-term Anchor Seed Detail", "Get department long-term anchor seed detail")]
+    [HasPermission("production.long-term-anchor-seed.read","Thống kê vận hành","Chi phí")]
     public async Task<IActionResult> GetLongTermAnchorSeedDetail([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetLongTermAnchorSeedDetailQuery(departmentId));
@@ -225,6 +267,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPut("Department/long-term-anchor-seed")]
     [OpenApiOperation("Update Long-term Anchor Seed", "Update department long-term anchor seed items")]
+    [HasPermission("production.long-term-anchor-seed.update", "Thống kê vận hành", "Chi phí")]
+
     public async Task<IActionResult> UpdateLongTermAnchorSeed([FromBody] UpdateLongTermAnchorSeedRequestDto request)
     {
         var result = await Mediator.Send(new UpdateLongTermAnchorSeedCommand(request));
@@ -233,6 +277,8 @@ public class ProductionController : BaseNoAuthController
 
     [HttpPost("Department/{departmentId:guid}/long-term-anchor-seed/upload-file")]
     [OpenApiOperation("Upload Long-term Anchor Seed File", "Upload department long-term anchor seed excel file")]
+    [HasPermission("production.long-term-anchor-seed.import", "Thống kê vận hành", "Chi phí")]
+
     [DisableRequestSizeLimit]
     public async Task<IActionResult> UploadLongTermAnchorSeedFile([FromForm] IFormFile file, [FromRoute] Guid departmentId)
     {
@@ -247,6 +293,7 @@ public class ProductionController : BaseNoAuthController
 
     [HttpGet("Department/{departmentId:guid}/long-term-anchor-seed/export")]
     [OpenApiOperation("Export Long-term Anchor Seed File", "Export department long-term anchor seed excel file")]
+    [HasPermission("production.long-term-anchor-seed.export", "Thống kê vận hành", "Chi phí")]
     public async Task<IActionResult> ExportLongTermAnchorSeedFile([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new ExportLongTermAnchorSeedExcelQuery(departmentId));

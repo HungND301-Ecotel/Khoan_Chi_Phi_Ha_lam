@@ -17,6 +17,7 @@ import {
 } from '@/features/main/layout/constant';
 import UserMenu from '@/features/main/layout/user-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePermission } from '@/hooks/use-permission';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import { DynamicIcon } from 'lucide-react/dynamic';
@@ -34,6 +35,38 @@ const isMenuActive = (item: Navigation, pathname: string): boolean => {
 };
 
 function MainHeader({ className, ...props }: ComponentProps<'header'>) {
+	const { hasPermission } = usePermission();
+
+	const filterNavigations = (items: readonly Navigation[]): Navigation[] => {
+		return items
+			.map((item) => {
+				if (item.type === 'link') {
+					if (item.permission) {
+						if (Array.isArray(item.permission)) {
+							if (!item.permission.some((p) => hasPermission(p))) {
+								return null;
+							}
+						} else {
+							if (!hasPermission(item.permission)) {
+								return null;
+							}
+						}
+					}
+					return item;
+				}
+				if (item.type === 'dropdown' || item.type === 'sub-menu') {
+					if (!item.items) return null;
+					const filteredItems = filterNavigations(item.items);
+					if (filteredItems.length === 0) return null;
+					return { ...item, items: filteredItems };
+				}
+				return item;
+			})
+			.filter(Boolean) as Navigation[];
+	};
+
+	const filteredNavigations = filterNavigations(NAVIGATIONS);
+
 	return (
 		<header
 			className={cn(
@@ -110,7 +143,7 @@ function MainHeader({ className, ...props }: ComponentProps<'header'>) {
 
 			<div className='flex w-full justify-between gap-8 bg-[#e4d6b4] px-4 text-slate-800 xl:px-6'>
 				<nav className='flex h-16 flex-1 items-center gap-0 md:gap-8'>
-					{NAVIGATIONS.map((navigation, index) => {
+					{filteredNavigations.map((navigation, index) => {
 						const { type } = navigation;
 						return type === 'link' ? (
 							<NavLink {...navigation} key={navigation.name + type + index} />

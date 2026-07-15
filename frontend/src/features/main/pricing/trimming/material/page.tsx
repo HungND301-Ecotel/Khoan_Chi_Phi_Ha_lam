@@ -15,6 +15,7 @@ import {
 	MAIN_PRICING_MATERIAL_EXPAND_COLUMNS,
 } from '@/features/main/pricing/trimming/material/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useMemo, useState } from 'react';
 import { Material, MaterialDetail, MaterialDetailCost } from './type';
 
@@ -109,6 +110,7 @@ function buildGroupedExpandRows(
 }
 
 export function MainPricingTrimmingMaterialPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -165,12 +167,12 @@ export function MainPricingTrimmingMaterialPage() {
 				{ key: 'processName', label: 'Công đoạn sản xuất' },
 				{ key: 'materialDetail', label: 'Thông số' },
 			]}
-			onCreate={(props) => <MaterialForm {...props} />}
-			onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}
-			onUpdate={(props) => <MaterialForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission('pricing.trimmingmaterialunitpricing.create') ? (props) => <MaterialForm {...props} /> : undefined}
+			onDuplicate={hasPermission('pricing.trimmingmaterialunitpricing.create') ? (props) => <MaterialForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission('pricing.trimmingmaterialunitpricing.update') ? (props) => <MaterialForm {...props} /> : undefined}
+			onDelete={hasPermission('pricing.trimmingmaterialunitpricing.delete') ? handleDelete : undefined}
+			onExport={hasPermission('pricing.trimmingmaterialunitpricing.export') ? handleExport : undefined}
+			onImport={hasPermission('pricing.trimmingmaterialunitpricing.import') ? handleImport : undefined}
 			onExpand={(props) => <MaterialDetailExpand {...props} />}
 		/>
 	);

@@ -10,11 +10,11 @@ namespace Domain.Entities.Identity;
 public class User : AuditableEntity<int>, IAggregateRoot
 {
     // Main constructor with required fields
-    public User(string userName, string email, string? fullname)
+    public User(string userName, string email,string phoneNumber)
     {
         SetUserName(userName);
         SetEmail(email);
-        Fullname = fullname ?? string.Empty;
+        SetPhoneNumber(phoneNumber);
         JoinDate = DateTimeOffset.UtcNow;
         LockoutEnabled = true;
         AccessFailedCount = 0;
@@ -38,9 +38,6 @@ public class User : AuditableEntity<int>, IAggregateRoot
     public string Email { get; private set; } = string.Empty;
 
     [MaxLength(256)]
-    public string Avatar { get; private set; } = string.Empty;
-
-    [MaxLength(256)]
     public string NormalizedEmail { get; private set; } = string.Empty;
 
     [MaxLength(500)]
@@ -57,9 +54,6 @@ public class User : AuditableEntity<int>, IAggregateRoot
 
     public DateTimeOffset JoinDate { get; private set; }
 
-    [MaxLength(50)]
-    public string Fullname { get; private set; }
-
     public bool? IsVerifiedPhone { get; private set; }
 
     public bool? IsVerifiedEmail { get; private set; }
@@ -72,45 +66,23 @@ public class User : AuditableEntity<int>, IAggregateRoot
     [MaxLength(50)]
     public string? RegisterProvider { get; private set; }
 
-    [MaxLength(255)]
-    public string? Province { get; private set; }
-
-    [MaxLength(255)]
-    public string? District { get; private set; }
-
-    [MaxLength(255)]
-    public string? Ward { get; private set; }
-
-    [MaxLength(255)]
-    public string? StreetAddress { get; private set; }
-
-    public DateOnly? Dob { get; private set; }
-    public bool? Gender { get; private set; }
-    [MaxLength(255)]
-    public string? Cccd { get; private set; }
+    
 
     // Navigation properties
 
     private readonly IList<UserRole> _userRoles = new List<UserRole>();
     public virtual IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
 
+    private readonly IList<UserSignature> _userSignatures = new List<UserSignature>();
+    public virtual IReadOnlyCollection<UserSignature> UserSignatures => _userSignatures.AsReadOnly();
+
     // Domain methods - all state changes go through these methods
-    public void Update(string fullname, string phonenumber,
-                        string email, string avatarUrl, DateOnly? dob,
-                        bool? gender, string cccd, string province, string? district,
-                        string ward, string streetAddress)
+    public void Update(string phonenumber,string email)
     {
-        UpdateName(fullname);
+       
         SetPhoneNumber(phonenumber);
         SetEmail(email);
-        SetAvatar(avatarUrl);
-        SetDob(dob);
-        SetGender(gender);
-        SetCccd(cccd);
-        SetProvince(province);
-        SetDistrict(district ?? string.Empty);
-        SetWard(ward);
-        SetStreetAddress(streetAddress);
+       
     }
 
     public void DeleteUser(int deleteBy = 0)
@@ -202,19 +174,7 @@ public class User : AuditableEntity<int>, IAggregateRoot
         IsVerifiedPhone = false;
     }
 
-    public void SetAvatar(string? avatarUrl)
-    {
-        Avatar = avatarUrl ?? string.Empty;
-    }
-
-    public void UpdateName(string? fullname)
-    {
-        Fullname = fullname ?? string.Empty;
-
-        // Add domain event for profile update
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-        DomainEvents.Add(new SyncUserInfoEvent(Id));
-    }
+    
 
     public void VerifyEmail()
     {
@@ -285,46 +245,6 @@ public class User : AuditableEntity<int>, IAggregateRoot
         RegisterProvider = provider;
     }
 
-    public void SetDob(DateOnly? dob)
-    {
-        Dob = dob;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetGender(bool? gender)
-    {
-        Gender = gender;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetCccd(string cccd)
-    {
-        Cccd = cccd;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetProvince(string province)
-    {
-        Province = province;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetDistrict(string district)
-    {
-        District = district;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetWard(string ward)
-    {
-        Ward = ward;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetStreetAddress(string streetAddress)
-    {
-        StreetAddress = streetAddress;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
+    
     #endregion
 }

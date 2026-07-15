@@ -6,7 +6,7 @@ using Shared.Constants;
 
 namespace Host.Controllers.Catalog;
 
-public class DashboardController : BaseNoAuthController
+public class DashboardController : BaseAuthController
 {
     [HttpGet("cost-summary")]
     [OpenApiOperation("Get cost summary", "")]

@@ -9,6 +9,7 @@ import {
 } from '@/features/main/pricing/longwall-panel/maintenance/columns';
 import { LongwallPanelForm } from '@/features/main/pricing/longwall-panel/maintenance/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useMemo, useState } from 'react';
 
 // Mock data for detail expand
@@ -41,6 +42,7 @@ export type LongwallPanelDetail = {
 };
 
 export function MainPricingMaintenanceLongwallPanelPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 	const query = useMemo(
@@ -53,7 +55,7 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const ids = selected.rows.map((row) => row.original.id);
 
-			await api.delete(API.PRICING.MAINTENANCE.DELETES, ids);
+			await api.delete(API.PRICING.MAINTENANCE.LONGWALL_DELETES, ids);
 
 			popup.success(`Đã xoá thành công ${ids.length} ${breadcrumb}.`);
 			await data.refresh();
@@ -102,13 +104,13 @@ export function MainPricingMaintenanceLongwallPanelPage() {
 				query={query}
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' }]}
-				onCreate={(props) => <LongwallPanelForm {...props} />}
-				onDuplicate={(props) => <LongwallPanelForm {...props} isDuplicate />}
-				onUpdate={(props) => <LongwallPanelForm {...props} />}
+				onCreate={hasPermission('pricing.longwallmaintainunitprice.create') ? (props) => <LongwallPanelForm {...props} /> : undefined}
+				onDuplicate={hasPermission('pricing.longwallmaintainunitprice.create') ? (props) => <LongwallPanelForm {...props} isDuplicate /> : undefined}
+				onUpdate={hasPermission('pricing.longwallmaintainunitprice.update') ? (props) => <LongwallPanelForm {...props} /> : undefined}
 				onExpand={(props) => <LongwallPanelExpand {...props} />}
-				onDelete={handleDelete}
-				onExport={handleExport}
-				onImport={handleImport}
+				onDelete={hasPermission('pricing.longwallmaintainunitprice.delete') ? handleDelete : undefined}
+				onExport={hasPermission('pricing.longwallmaintainunitprice.export') ? handleExport : undefined}
+				onImport={hasPermission('pricing.longwallmaintainunitprice.import') ? handleImport : undefined}
 			/>
 		</>
 	);
@@ -120,7 +122,7 @@ export function LongwallPanelExpand({ row }: ActionDialogProps<LongwallPanel>) {
 	useEffect(() => {
 		if (!row) return;
 		api
-			.get<LongwallPanelDetail>(API.PRICING.MAINTENANCE.DETAIL(row.id))
+			.get<LongwallPanelDetail>(API.PRICING.MAINTENANCE.LONGWALL_DETAIL(row.id))
 			.then((res) => {
 				setDetail(res.result);
 			});

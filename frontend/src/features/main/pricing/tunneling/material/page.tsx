@@ -18,6 +18,7 @@ import {
 import { MAIN_PRICING_SUPPORT_AND_DRILLING_COLUMNS } from '@/features/main/pricing/tunneling/material/support-and-drilling-columns';
 import { SupportAndDrillingForm } from '@/features/main/pricing/tunneling/material/support-and-drilling-form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useMemo, useState } from 'react';
 import {
 	Material,
@@ -118,6 +119,7 @@ function buildGroupedExpandRows(
 }
 
 export function MainPricingMaterialPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -213,18 +215,29 @@ export function MainPricingMaterialPage() {
 		}
 	};
 
+	const canReadMaterial = hasPermission('pricing.materialunitprice.read');
+	const canReadSupportAndDrilling = hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.read');
+	const defaultTab = canReadMaterial ? 'material' : canReadSupportAndDrilling ? 'support-and-drilling' : '';
+
+	if (!defaultTab) return null;
+
 	return (
-		<Tabs defaultValue='material' className='w-full'>
+		<Tabs defaultValue={defaultTab} className='w-full'>
 			<TabsList className='mb-4'>
-				<TabsTrigger value='material'>
-					Đơn giá và định mức vật liệu đào lò
-				</TabsTrigger>
-				<TabsTrigger value='support-and-drilling'>
-					Đơn giá và định mức lò neo bê tông phun
-				</TabsTrigger>
+				{canReadMaterial && (
+					<TabsTrigger value='material'>
+						Đơn giá và định mức vật liệu đào lò
+					</TabsTrigger>
+				)}
+				{canReadSupportAndDrilling && (
+					<TabsTrigger value='support-and-drilling'>
+						Đơn giá và định mức lò neo bê tông phun
+					</TabsTrigger>
+				)}
 			</TabsList>
 
-			<TabsContent value='material' className='mt-0'>
+			{canReadMaterial && (
+				<TabsContent value='material' className='mt-0'>
 				<DataTable
 					url={API.PRICING.MATERIAL.TUNNELING.LIST}
 					columns={MAIN_PRICING_MATERIAL_COLUMNS}
@@ -233,17 +246,19 @@ export function MainPricingMaterialPage() {
 						{ key: 'processName', label: 'Công đoạn sản xuất' },
 						{ key: 'materialDetail', label: 'Thông số' },
 					]}
-					onCreate={(props) => <MaterialForm {...props} />}
-					onDuplicate={(props) => <MaterialForm {...props} isDuplicate />}
-					onUpdate={(props) => <MaterialForm {...props} />}
-					onDelete={handleDelete}
-					onExport={handleExport}
-					onImport={handleImport}
+					onCreate={hasPermission('pricing.materialunitprice.create') ? (props) => <MaterialForm {...props} /> : undefined}
+					onDuplicate={hasPermission('pricing.materialunitprice.create') ? (props) => <MaterialForm {...props} isDuplicate /> : undefined}
+					onUpdate={hasPermission('pricing.materialunitprice.update') ? (props) => <MaterialForm {...props} /> : undefined}
+					onDelete={hasPermission('pricing.materialunitprice.delete') ? handleDelete : undefined}
+					onExport={hasPermission('pricing.materialunitprice.export') ? handleExport : undefined}
+					onImport={hasPermission('pricing.materialunitprice.import') ? handleImport : undefined}
 					onExpand={(props) => <MaterialDetailExpand {...props} />}
 				/>
 			</TabsContent>
+			)}
 
-			<TabsContent value='support-and-drilling' className='mt-0'>
+			{canReadSupportAndDrilling && (
+				<TabsContent value='support-and-drilling' className='mt-0'>
 				<DataTable
 					url={API.PRICING.MATERIAL.SUPPORT_AND_DRILLING.LIST}
 					columns={MAIN_PRICING_SUPPORT_AND_DRILLING_COLUMNS}
@@ -254,17 +269,18 @@ export function MainPricingMaterialPage() {
 						{ key: 'passportName', label: 'Hộ chiếu' },
 						{ key: 'hardnessName', label: 'Độ kiên cố than đá' },
 					]}
-					onCreate={(props) => <SupportAndDrillingForm {...props} />}
-					onDuplicate={(props) => (
+					onCreate={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.create') ? (props) => <SupportAndDrillingForm {...props} /> : undefined}
+					onDuplicate={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.create') ? (props) => (
 						<SupportAndDrillingForm {...props} isDuplicate />
-					)}
-					onUpdate={(props) => <SupportAndDrillingForm {...props} />}
-					onDelete={handleDeleteSupportAndDrilling}
-					onExport={handleExportSupportAndDrilling}
-					onImport={handleImportSupportAndDrilling}
+					) : undefined}
+					onUpdate={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.update') ? (props) => <SupportAndDrillingForm {...props} /> : undefined}
+					onDelete={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.delete') ? handleDeleteSupportAndDrilling : undefined}
+					onExport={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.export') ? handleExportSupportAndDrilling : undefined}
+					onImport={hasPermission('pricing.tunnelsupportanddrillingmaterialunitprice.import') ? handleImportSupportAndDrilling : undefined}
 					onExpand={(props) => <SupportAndDrillingDetailExpand {...props} />}
 				/>
 			</TabsContent>
+			)}
 		</Tabs>
 	);
 }

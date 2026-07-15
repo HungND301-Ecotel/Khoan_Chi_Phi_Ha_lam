@@ -9,8 +9,11 @@ import {
 	Product,
 } from '@/features/main/catalog/product/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogProductPage() {
+	const { hasPermission } = usePermission();
 	const { setOpen } = useDialog();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
@@ -65,12 +68,12 @@ export function MainCatalogProductPage() {
 				{ key: 'name', label: 'Tên sản phẩm' },
 				{ key: 'processGroupCode', label: 'Mã nhóm CĐSX' },
 			]}
-			onCreate={(props) => <ProductForm {...props} />}
-			onDuplicate={(props) => <ProductForm {...props} isDuplicate />}
-			onUpdate={(props) => <ProductForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PRODUCT.CREATE) ? (props) => <ProductForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PRODUCT.CREATE) ? (props) => <ProductForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PRODUCT.UPDATE) ? (props) => <ProductForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PRODUCT.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PRODUCT.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PRODUCT.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

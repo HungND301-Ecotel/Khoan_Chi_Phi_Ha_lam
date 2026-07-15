@@ -8,8 +8,11 @@ import {
 	ProcessGroup,
 } from '@/features/main/catalog/process/group/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export default function MainCatalogProcessGroupPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -38,10 +41,10 @@ export default function MainCatalogProcessGroupPage() {
 				{ key: 'name', label: 'Tên nhóm công đoạn sản xuất' },
 				{ key: 'code', label: 'Mã nhóm công đoạn sản xuất' },
 			]}
-			onCreate={(props) => <ProcessGroupForm {...props} />}
-			onDuplicate={(props) => <ProcessGroupForm {...props} isDuplicate />}
-			onUpdate={(props) => <ProcessGroupForm {...props} />}
-			onDelete={handleDelete}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PROCESS_GROUP.CREATE) ? (props) => <ProcessGroupForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PROCESS_GROUP.CREATE) ? (props) => <ProcessGroupForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PROCESS_GROUP.UPDATE) ? (props) => <ProcessGroupForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PROCESS_GROUP.DELETE) ? handleDelete : undefined}
 		/>
 	);
 }

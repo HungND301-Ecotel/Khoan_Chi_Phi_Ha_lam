@@ -23,6 +23,7 @@ import {
 import { LongTermAnchorSeedDataTable } from '@/features/main/cost/producttion/production/longterm-anchor-seed/datatable';
 import { LongtermAnchorSeedForm } from '@/features/main/cost/producttion/production/longterm-anchor-seed/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { formatNumber } from '@/lib/utils';
 import { usePopup } from '@/components/popup';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -46,6 +47,7 @@ function formatMonthLabel(value?: string) {
 export function LongtermAnchorSeedSection({
 	departmentId,
 }: LongtermAnchorSeedSectionProps) {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const [detail, setDetail] = useState<LongTermAnchorSeedDetail>();
 	const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ export function LongtermAnchorSeedSection({
 					</div>
 				</ItemContent>
 				<ItemActions>
-					<DialogProvider>
+					{hasPermission('production.long-term-anchor-seed.import') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tải lên'
 							crumb='Mốc gốc hạch toán dài kỳ'
@@ -167,8 +169,8 @@ export function LongtermAnchorSeedSection({
 						>
 							<DataTableImport onImport={handleImport} />
 						</DataTableEditDialog>
-					</DialogProvider>
-					<Button
+					</DialogProvider>)}
+					{hasPermission('production.long-term-anchor-seed.export') && (<Button
 						variant='ghost'
 						size='icon-sm'
 						className='size-5 rounded-full bg-transparent'
@@ -176,8 +178,8 @@ export function LongtermAnchorSeedSection({
 						onClick={handleExport}
 					>
 						{isExporting ? <Spinner /> : <DownloadIcon />}
-					</Button>
-					<DialogProvider>
+					</Button>)}
+					{hasPermission('production.long-term-anchor-seed.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Mốc gốc hạch toán dài kỳ'
@@ -196,8 +198,8 @@ export function LongtermAnchorSeedSection({
 								callback={async () => setRefreshKey((prev) => prev + 1)}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
-					<AccordionTrigger
+					</DialogProvider>)}
+					{hasPermission('production.long-term-anchor-seed.read') && (<AccordionTrigger
 						className='group p-0'
 					>
 						<div className='group-data-[state=open]:hidden'>
@@ -206,7 +208,7 @@ export function LongtermAnchorSeedSection({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
+					</AccordionTrigger>)}
 				</ItemActions>
 			</Item>
 
@@ -251,14 +253,14 @@ export function LongtermAnchorSeedSection({
 												{formatNumber(totalGroupValue)}
 											</div>
 											<ItemActions>
-												<AccordionTrigger className='group p-0'>
+												{hasPermission('production.long-term-anchor-seed.read') && (<AccordionTrigger className='group p-0'>
 													<div className='group-data-[state=open]:hidden'>
 														<VisibilityIcon />
 													</div>
 													<div className='hidden group-data-[state=open]:block'>
 														<VisibilityOffIcon />
 													</div>
-												</AccordionTrigger>
+												</AccordionTrigger>)}
 											</ItemActions>
 										</div>
 									</Item>

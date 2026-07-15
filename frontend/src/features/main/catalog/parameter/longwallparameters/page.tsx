@@ -8,8 +8,11 @@ import {
 	Longwallparameters,
 } from '@/features/main/catalog/parameter/longwallparameters/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterLongwallparametersPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -69,12 +72,12 @@ export function MainCatalogParameterLongwallparametersPage() {
 				{ key: 'lkc', label: 'LKC' },
 				{ key: 'mk', label: 'MK' },
 			]}
-			onCreate={(props) => <LongwallparametersForm {...props} />}
-			onDuplicate={(props) => <LongwallparametersForm {...props} isDuplicate />}
-			onUpdate={(props) => <LongwallparametersForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.CREATE) ? (props) => <LongwallparametersForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.CREATE) ? (props) => <LongwallparametersForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.UPDATE) ? (props) => <LongwallparametersForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_LONGWALL.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

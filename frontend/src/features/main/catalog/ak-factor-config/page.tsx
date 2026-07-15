@@ -5,8 +5,11 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { AkFactorConfigForm } from './actions';
 import { CATALOG_AK_FACTOR_CONFIG_COLUMNS, AkFactorConfig } from './columns';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogAkFactorConfigPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -64,12 +67,12 @@ export function MainCatalogAkFactorConfigPage() {
 				{ key: 'adjustmentRateDisplay', label: 'Tỷ lệ điều chỉnh doanh thu' },
 				{ key: 'description', label: 'Mô tả' },
 			]}
-			onCreate={(props) => <AkFactorConfigForm {...props} />}
-			onDuplicate={(props) => <AkFactorConfigForm {...props} isDuplicate />}
-			onUpdate={(props) => <AkFactorConfigForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.CREATE) ? (props) => <AkFactorConfigForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.CREATE) ? (props) => <AkFactorConfigForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.UPDATE) ? (props) => <AkFactorConfigForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }
