@@ -8,28 +8,46 @@ namespace Migrators.PostgreSQL.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(name: "Avatar", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Cccd", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "District", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Dob", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Fullname", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Gender", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Province", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "StreetAddress", schema: "Identity", table: "Users");
-            migrationBuilder.DropColumn(name: "Ward", schema: "Identity", table: "Users");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Avatar\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Cccd\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"District\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Dob\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Fullname\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Gender\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Province\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"StreetAddress\";");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" DROP COLUMN IF EXISTS \"Ward\";");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(name: "Avatar", schema: "Identity", table: "Users", type: "character varying(256)", maxLength: 256, nullable: false, defaultValue: "");
-            migrationBuilder.AddColumn<string>(name: "Cccd", schema: "Identity", table: "Users", type: "character varying(255)", maxLength: 255, nullable: true);
-            migrationBuilder.AddColumn<string>(name: "District", schema: "Identity", table: "Users", type: "character varying(255)", maxLength: 255, nullable: true);
-            migrationBuilder.AddColumn<DateOnly>(name: "Dob", schema: "Identity", table: "Users", type: "date", nullable: true);
-            migrationBuilder.AddColumn<string>(name: "Fullname", schema: "Identity", table: "Users", type: "character varying(120)", maxLength: 120, nullable: false, defaultValue: "");
-            migrationBuilder.AddColumn<bool>(name: "Gender", schema: "Identity", table: "Users", type: "boolean", nullable: true);
-            migrationBuilder.AddColumn<string>(name: "Province", schema: "Identity", table: "Users", type: "character varying(255)", maxLength: 255, nullable: true);
-            migrationBuilder.AddColumn<string>(name: "StreetAddress", schema: "Identity", table: "Users", type: "character varying(255)", maxLength: 255, nullable: true);
-            migrationBuilder.AddColumn<string>(name: "Ward", schema: "Identity", table: "Users", type: "character varying(255)", maxLength: 255, nullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Avatar\" character varying(256) NOT NULL DEFAULT '';");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Cccd\" character varying(255);");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"District\" character varying(255);");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Dob\" date;");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Fullname\" character varying(120) NOT NULL DEFAULT '';");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Gender\" boolean;");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Province\" character varying(255);");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"StreetAddress\" character varying(255);");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Identity\".\"Users\" ADD COLUMN IF NOT EXISTS \"Ward\" character varying(255);");
         }
     }
 }
