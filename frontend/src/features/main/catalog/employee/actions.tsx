@@ -88,8 +88,10 @@ export function EmployeeForm({
 		form.reset({
 			fullName: row.fullName,
 			userName: row.userName || '',
-			positionId: row.positionId ? String(row.positionId).toLowerCase() : '',
-			departmentId: row.departmentId ? String(row.departmentId).toLowerCase() : '',
+			positionId: row.positionId ?? 0,
+			departmentId: row.departmentId
+				? String(row.departmentId).toLowerCase()
+				: '',
 			email: row.email || '',
 			phoneNumber: row.phoneNumber || '',
 			cccd: row.cccd || '',
