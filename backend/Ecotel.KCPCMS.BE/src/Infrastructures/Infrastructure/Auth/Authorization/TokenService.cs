@@ -120,7 +120,6 @@ internal class TokenService : ITokenService
             new(SystemClaims.Email, user.Email),
             new(SystemClaims.Fullname, $"{user.Fullname}".Trim()),
             new(SystemClaims.IpAddress, ipAddress),
-            new(SystemClaims.Avatar, user.AvatarUrl),
             new(SystemClaims.MobilePhone, user.PhoneNumber)
         };
 
