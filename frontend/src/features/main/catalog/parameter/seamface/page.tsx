@@ -8,8 +8,11 @@ import {
 	Seamface,
 } from '@/features/main/catalog/parameter/seamface/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterSeamfacePage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -61,12 +64,12 @@ export function MainCatalogParameterSeamfacePage() {
 			url={API.CATALOG.PARAMETER.SEAMFACE.LIST}
 			columns={CATALOG_PARAMETER_SEAMFACE_COLUMNS}
 			filters={[{ key: 'value', label: 'Mặt vỉa (M)' }]}
-			onCreate={(props) => <SeamfaceForm {...props} />}
-			onDuplicate={(props) => <SeamfaceForm {...props} isDuplicate />}
-			onUpdate={(props) => <SeamfaceForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.CREATE) ? (props) => <SeamfaceForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.CREATE) ? (props) => <SeamfaceForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.UPDATE) ? (props) => <SeamfaceForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_SEAM_FACE.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

@@ -8,10 +8,13 @@ import {
 	Department,
 } from '@/features/main/catalog/department/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogDepartmentPage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
+	const { hasPermission } = usePermission();
 
 	const handleDelete = async ({ data }: ActionDialogProps<Department>) => {
 		try {
@@ -61,12 +64,12 @@ export function MainCatalogDepartmentPage() {
 				{ key: 'code', label: 'Mã đơn vị' },
 				{ key: 'name', label: 'Tên đơn vị' },
 			]}
-			onCreate={(props) => <DepartmentForm {...props} />}
-			onDuplicate={(props) => <DepartmentForm {...props} isDuplicate />}
-			onUpdate={(props) => <DepartmentForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.CREATE) ? (props) => <DepartmentForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.CREATE) ? (props) => <DepartmentForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.UPDATE) ? (props) => <DepartmentForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.DEPARTMENT.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

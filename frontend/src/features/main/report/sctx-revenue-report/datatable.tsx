@@ -18,6 +18,8 @@ import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 type AssignmentCodeLookup = {
 	id: string;
@@ -104,6 +106,7 @@ export function SctxRevenueReportDataTable() {
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+	const { hasPermission } = usePermission();
 	const [fromMonth, setFromMonth] = useState(
 		buildMonthValue(String(currentYear - 1), currentMonth),
 	);
@@ -495,22 +498,24 @@ export function SctxRevenueReportDataTable() {
 					</div>
 				</div>
 
-				<Button
-					variant='outline'
-					size='sm'
-					onClick={handleExport}
-					disabled={isExporting || isLoadingRows || yearRows.length === 0}
-					className='h-10 gap-1.5'
-				>
-					{isExporting ? (
-						<Spinner />
-					) : (
-						<>
-							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Xuất Excel</span>
-						</>
-					)}
-				</Button>
+				{hasPermission(PERMISSIONS.REPORT.SCTX_REVENUE_BY_ASSIGNMENT_CODE.EXPORT) && (
+					<Button
+						variant='outline'
+						size='sm'
+						onClick={handleExport}
+						disabled={isExporting || isLoadingRows || yearRows.length === 0}
+						className='h-10 gap-1.5'
+					>
+						{isExporting ? (
+							<Spinner />
+						) : (
+							<>
+								<DownloadIcon style={{ fontSize: 18 }} />
+								<span>Xuất Excel</span>
+							</>
+						)}
+					</Button>
+				)}
 			</div>
 
 			<div className='rounded-md border bg-[#e6e6e6] p-3 md:p-4'>

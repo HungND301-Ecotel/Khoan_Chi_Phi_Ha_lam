@@ -1,3 +1,4 @@
+import { usePermission } from '@/hooks/use-permission';
 import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { Accordion } from '@/components/ui/accordion';
 import { usePopup } from '@/components/popup';
@@ -30,6 +31,7 @@ function DepartmentProductionOutputsTable({
 	onSelectedRowsChange,
 	onRefresh,
 }: DepartmentProductionOutputsTableProps) {
+	const { hasPermission } = usePermission();
 	const departmentProductions = useMemo(
 		() => productions.filter((item) => item.departmentId === departmentId),
 		[productions, departmentId],
@@ -46,12 +48,12 @@ function DepartmentProductionOutputsTable({
 					onRefresh={onRefresh}
 				/>
 			)}
-			onUpdate={(props) => (
+			onUpdate={hasPermission('production.production.update') ? (props) => (
 				<ProductionForm
 					{...(props as unknown as ActionDialogProps<Production>)}
 					onSuccess={onRefresh}
 				/>
-			)}
+			) : undefined}
 			onDelete={async () => undefined}
 			showCreateAction={false}
 			showFilterAction={false}
@@ -156,6 +158,7 @@ function groupByDepartment(
 export function MainCostProductionCostPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
+	const { hasPermission } = usePermission();
 	const [allProductions, setAllProductions] = useState<Production[]>([]);
 	const [departmentGroups, setDepartmentGroups] = useState<
 		DepartmentProductionGroup[]
@@ -255,15 +258,15 @@ export function MainCostProductionCostPage() {
 				{ key: 'code', label: 'Mã đơn vị' },
 				{ key: 'name', label: 'Tên đơn vị' },
 			]}
-			onCreate={(props) => (
+			onCreate={hasPermission('production.productionoutput.create') ? (props) => (
 				<ProductionForm
 					{...(props as unknown as ActionDialogProps<Production>)}
 					onSuccess={() => setReloadKey((prev) => prev + 1)}
 				/>
-			)}
+			) : undefined}
 			onDelete={handleDeleteProduction}
 			deleteCountOverride={selectedOutputIds.length}
-			deleteDisabledOverride={!selectedOutputIds.length}
+			deleteDisabledOverride={!hasPermission('production.productionoutput.delete') || !selectedOutputIds.length}
 			onSelectedRowsChange={(rows) =>
 				handleDepartmentSelectionChange(rows as DepartmentProductionGroup[])
 			}

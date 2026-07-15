@@ -82,7 +82,7 @@ public class AwsS3Service : IAwsS3Service
         _logger.LogInformation("Uploaded");
         return response;
     }
-
+    
     public async Task<AwsUploadedOutputModel> UploadFileAsync(byte[] fileData, AwsInputModel input)
     {
         if (fileData.Length > _awsS3Configuration.MaxSizeUploadByte)
@@ -119,6 +119,24 @@ public class AwsS3Service : IAwsS3Service
         };
 
         return response;
+    }
+    // lấy file cho fe 
+    public Task<string> GeneratePresignedUrlAsync(string key, BucketType bucketType, TimeSpan expiry)
+    {
+        if (string.IsNullOrEmpty(key))
+        {
+            throw new BadRequestException("S3 key is required.");
+        }
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = GetBucketName(bucketType),
+            Key = key,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.Add(expiry)
+        };
+
+        return _s3Client.GetPreSignedURLAsync(request);
     }
 
     #region Chunked Upload

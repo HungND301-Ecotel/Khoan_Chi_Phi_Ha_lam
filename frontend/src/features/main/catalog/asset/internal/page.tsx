@@ -6,8 +6,11 @@ import { CATALOG_ASSET_INTERNAL_COLUMNS } from '@/features/main/catalog/asset/in
 import { AssetInternalForm } from '@/features/main/catalog/asset/internal/form';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 function MainCatalogAssetInternalPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -60,12 +63,12 @@ function MainCatalogAssetInternalPage() {
 				{ key: 'name', label: 'Tên vật tư, tài sản' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
-			onCreate={(props) => <AssetInternalForm {...props} />}
-			onDuplicate={(props) => <AssetInternalForm {...props} isDuplicate />}
-			onUpdate={(props) => <AssetInternalForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.ASSET.CREATE) ? (props) => <AssetInternalForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.ASSET.CREATE) ? (props) => <AssetInternalForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.ASSET.UPDATE) ? (props) => <AssetInternalForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.ASSET.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.ASSET.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.ASSET.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

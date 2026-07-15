@@ -27,6 +27,7 @@ import {
 	type DepartmentPlannedDetail,
 	mapDepartmentPlannedDetail,
 } from '@/features/main/cost/plan/types';
+import { usePermission } from '@/hooks/use-permission';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -338,6 +339,7 @@ function groupByDepartment(products: CostProduct[]): DepartmentPlanGroup[] {
 export function MainCostPlanPage() {
 	const { success, error } = usePopup();
 	const { breadcrumb } = useMeta();
+	const { hasPermission } = usePermission();
 	const [reloadKey, setReloadKey] = useState(0);
 	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>(
 		[],
@@ -431,21 +433,21 @@ export function MainCostPlanPage() {
 				{ key: 'code', label: 'Mã đơn vị' },
 				{ key: 'name', label: 'Tên đơn vị' },
 			]}
-			onCreate={(props) => (
+			onCreate={hasPermission('production.productunitprice.create') ? (props) => (
 				<PlanForm
 					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
 					onSuccess={() => setReloadKey((prev) => prev + 1)}
 				/>
-			)}
-			onUpdate={(props) => (
+			) : undefined}
+			onUpdate={hasPermission('production.productunitprice.update') ? (props) => (
 				<PlanForm
 					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
 					onSuccess={() => setReloadKey((prev) => prev + 1)}
 				/>
-			)}
+			) : undefined}
 			onDelete={handleDeleteDepartment}
 			deleteCountOverride={selectedProductIds.length}
-			deleteDisabledOverride={!selectedProductIds.length}
+			deleteDisabledOverride={!hasPermission('production.productunitprice.delete') || !selectedProductIds.length}
 			onSelectedRowsChange={handleDepartmentSelectionChange}
 			hasPagination={false}
 			onExpand={({ row }) => (

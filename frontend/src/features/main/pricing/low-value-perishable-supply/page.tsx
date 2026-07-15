@@ -9,6 +9,7 @@ import {
 } from '@/features/main/pricing/low-value-perishable-supply/columns';
 import { LowValuePerishableSupplyForm } from '@/features/main/pricing/low-value-perishable-supply/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 
 type LowValuePerishableSupplyPageProps = {
 	type: LowValuePerishableSupplyType;
@@ -19,6 +20,12 @@ export function LowValuePerishableSupplyPage({
 }: LowValuePerishableSupplyPageProps) {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
+	const { hasPermission } = usePermission();
+
+	const permPrefix =
+		type === LowValuePerishableSupplyType.TunnelExcavation
+			? 'pricing.tunnellowvalueperishablesupplyunitprice'
+			: 'pricing.longwalllowvalueperishablesupplyunitprice';
 
 	const apiConfig =
 		type === LowValuePerishableSupplyType.TunnelExcavation
@@ -78,18 +85,18 @@ export function LowValuePerishableSupplyPage({
 				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn' },
 				{ key: 'processGroupName', label: 'Tên nhóm công đoạn' },
 			]}
-			onCreate={(props) => (
+			onCreate={hasPermission(`${permPrefix}.create`) ? (props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} />
-			)}
-			onDuplicate={(props) => (
+			) : undefined}
+			onDuplicate={hasPermission(`${permPrefix}.create`) ? (props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} isDuplicate />
-			)}
-			onUpdate={(props) => (
+			) : undefined}
+			onUpdate={hasPermission(`${permPrefix}.update`) ? (props) => (
 				<LowValuePerishableSupplyForm {...props} type={type} />
-			)}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			) : undefined}
+			onDelete={hasPermission(`${permPrefix}.delete`) ? handleDelete : undefined}
+			onExport={hasPermission(`${permPrefix}.export`) ? handleExport : undefined}
+			onImport={hasPermission(`${permPrefix}.import`) ? handleImport : undefined}
 		/>
 	);
 }

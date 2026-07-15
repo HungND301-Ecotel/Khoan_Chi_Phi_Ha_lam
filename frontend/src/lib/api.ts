@@ -99,9 +99,7 @@ export const fetcher = async <Res, Req>(
 	// - Nếu không có token → logout
 	// - Nếu access token hết hạn → refresh
 	// - Nếu refresh token hết hạn → logout
-	const tokens = requiresAuth
-		? await TokenRefreshService.ensureToken()
-		: null;
+	const tokens = requiresAuth ? await TokenRefreshService.ensureToken() : null;
 
 	if (requiresAuth && !tokens) {
 		// Token không hợp lệ, logout
@@ -144,25 +142,13 @@ export const api = {
 	) => {
 		return fetcher<Res, undefined>('GET', path, query, undefined, options);
 	},
-	post: async <Res, Req>(
-		path: string,
-		body: Req,
-		options?: FetchOptions,
-	) => {
+	post: async <Res, Req>(path: string, body: Req, options?: FetchOptions) => {
 		return fetcher<Res, Req>('POST', path, undefined, body, options);
 	},
-	put: async <Res, Req>(
-		path: string,
-		body: Req,
-		options?: FetchOptions,
-	) => {
+	put: async <Res, Req>(path: string, body: Req, options?: FetchOptions) => {
 		return fetcher<Res, Req>('PUT', path, undefined, body, options);
 	},
-	patch: async <Res, Req>(
-		path: string,
-		body: Req,
-		options?: FetchOptions,
-	) => {
+	patch: async <Res, Req>(path: string, body: Req, options?: FetchOptions) => {
 		return fetcher<Res, Req>('PATCH', path, undefined, body, options);
 	},
 	delete: async <Res, Req>(

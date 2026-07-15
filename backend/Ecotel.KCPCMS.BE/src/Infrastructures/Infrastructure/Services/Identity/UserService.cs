@@ -1,4 +1,5 @@
-﻿using Application.Catalog.Users.Commands;
+﻿using Amazon.S3;
+using Application.Catalog.Users.Commands;
 using Application.Common.Exceptions;
 using Application.Common.Interfaces;
 using Application.Common.Repositories;
@@ -7,6 +8,7 @@ using Application.Dto.Authorization.Accounts;
 using Application.Dto.Authorization.Role;
 using Application.Dto.Authorization.Verification;
 using Application.Dto.Persistence.Catalog.User;
+using Application.Interfaces.Infrastructures.Integrates.Cloud.Service.AWS;
 using Application.Interfaces.Infrastructures.Integrates.External.Service.Email;
 using Application.Interfaces.Services;
 using Application.Utility;
@@ -26,7 +28,8 @@ public class UserService(
     IUnitOfWork unitOfWork,
     IVerificationService verificationService,
     IEmailService emailService,
-    ICurrentUser currentUser) : IUserService
+    ICurrentUser currentUser,
+    IAwsS3Service awsS3Service) : IUserService
 {
     private readonly IWriteRepository<User> _userRepository = unitOfWork.GetRepository<User>();
     private readonly IWriteRepository<Role> _roleRepository = unitOfWork.GetRepository<Role>();
@@ -39,24 +42,47 @@ public class UserService(
         }
 
         string normalizedUsername = Utils.NormalizeUserName(username);
-
-        string passwordHash = Utils.ComputeHash(password);
-
+        string inputPasswordHash = Utils.ComputeHash(password);
         string defaultPasswordHash = Utils.ComputeHash(AppConsts.DefaultPassword);
-        bool allowDefaultPassword = passwordHash == defaultPasswordHash;
+        bool allowDefaultPassword = inputPasswordHash == defaultPasswordHash;
 
         var user = await _userRepository.GetFirstOrDefaultAsync(
-            predicate: u => (u.NormalizedUserName == normalizedUsername || u.NormalizedEmail == normalizedUsername) &&
-                            (u.PasswordHash == passwordHash || allowDefaultPassword),
-            disableTracking: true
-        );
+            predicate: u => u.NormalizedUserName == normalizedUsername || u.NormalizedEmail == normalizedUsername,
+            include: x => x.Include(u => u.UserRoles).ThenInclude(r => r.Role),
+            disableTracking: false);
 
         if (user == null)
         {
             throw new NotFoundException(CustomResponseMessage.InvalidUserNameOrPassword);
         }
 
-        return user.Adapt<UserDto>();
+        if (user.IsLockedOut())
+        {
+            throw new BadRequestException($"Tài khoản đang bị khóa đến {user.LockoutEnd:HH:mm dd/MM/yyyy}");
+        }
+
+        if (!(user.PasswordHash == inputPasswordHash || allowDefaultPassword))
+        {
+            user.IncrementAccessFailedCount();
+
+            if (user.AccessFailedCount >= 5)
+            {
+                user.LockAccount(TimeSpan.FromMinutes(15));
+                user.ResetAccessFailedCount();
+                await unitOfWork.SaveChangesAsync();
+                throw new BadRequestException("Sai mật khẩu quá 5 lần, tài khoản bị khóa 15 phút");
+            }
+
+            await unitOfWork.SaveChangesAsync();
+            throw new NotFoundException(CustomResponseMessage.InvalidUserNameOrPassword);
+        }
+
+        user.ResetAccessFailedCount();
+        await unitOfWork.SaveChangesAsync();
+
+        var result = user.Adapt<UserDto>();
+        result.Role = user.UserRoles.FirstOrDefault()?.Role?.Adapt<ShortRoleDto>();
+        return result;
     }
     public async Task<UserDto> GetUserByIdAsync(int userId)
     {
@@ -95,9 +121,7 @@ public class UserService(
 
         try
         {
-            user.Update(updateUser.Fullname, updateUser.PhoneNumber, updateUser.Email,
-                        updateUser.AvatarUrl, updateUser.Dob, updateUser.Gender, updateUser.Cccd, updateUser.Province,
-                        null, updateUser.Ward, updateUser.StreetAddress);
+            user.Update( updateUser.PhoneNumber, updateUser.Email);
             _userRepository.Update(user);
             await unitOfWork.SaveChangesAsync();
         }
@@ -134,12 +158,12 @@ public class UserService(
             throw new BadRequestException(CustomResponseMessage.PhoneAlreadyExists);
         }
 
-        var checCccdExisted = await CheckCccdExisted(account.Cccd.Trim());
+        //var checCccdExisted = await CheckCccdExisted(account.Cccd.Trim());
 
-        if (checCccdExisted.Existed)
-        {
-            throw new BadRequestException(CustomResponseMessage.CccdAlreadyExists);
-        }
+        //if (checCccdExisted.Existed)
+        //{
+        //    throw new BadRequestException(CustomResponseMessage.CccdAlreadyExists);
+        //}
 
         var userRole = await _roleRepository.GetFirstOrDefaultAsync(
             predicate: u => u.RoleType == account.RoleType,
@@ -155,15 +179,13 @@ public class UserService(
             account.Email = "DefaultEmail@gmail.com";
         }
 
-        var newAccount = new User(account.Email, account.Email.Trim(), account.Fullname);
+        var newAccount = new User(account.Email, account.Email.Trim(),account.PhoneNumber);
         newAccount.SetPassword(Utils.ComputeHash(account.Password));
         newAccount.AddRole(userRole.Id, userRole.RoleType);
 
         var insertUser = (await _userRepository.InsertAsync(newAccount)).Entity;
 
-        newAccount.Update(account.Fullname, account.PhoneNumber, account.Email,
-            account.AvatarUrl, account.Dob, account.Gender, account.Cccd, account.Province,
-            null, account.Ward, account.StreetAddress);
+        newAccount.Update(account.PhoneNumber, account.Email);
 
         await unitOfWork.SaveChangesAsync();
         return insertUser.Adapt<UserDto>();
@@ -232,7 +254,7 @@ public class UserService(
             throw new NotFoundException(CustomResponseMessage.RoleDoesNotExist);
         }
 
-        var userRegister = new User(input.Email, input.Email.Trim(), input.FullName);
+        var userRegister = new User(input.Email, input.Email.Trim(),input.PhoneNumber.Trim());
         userRegister.SetPassword(Utils.ComputeHash(input.Password));
         userRegister.AddRole(userRole.Id, RoleType.User);
 
@@ -298,14 +320,14 @@ public class UserService(
         return new CheckingItemExistModel(user != null, user?.IsVerifiedPhone ?? false, phoneNumber.Trim());
     }
 
-    public async Task<CheckingItemExistModel> CheckCccdExisted(string cccd)
-    {
-        var user = await _userRepository.GetFirstOrDefaultAsync(
-            predicate: u => u.Cccd == cccd,
-            disableTracking: true);
+    //public async Task<CheckingItemExistModel> CheckCccdExisted(string cccd)
+    //{
+    //    var user = await _userRepository.GetFirstOrDefaultAsync(
+            
+    //        disableTracking: true);
 
-        return new CheckingItemExistModel(user != null, user?.IsVerifiedPhone ?? false, cccd.Trim());
-    }
+    //    return new CheckingItemExistModel(user != null, user?.IsVerifiedPhone ?? false);
+    //}
     public async Task<UserDto> GetUserEmailExisted(string email)
     {
         if (!Utils.CheckEmailIsValid(email))
@@ -475,7 +497,7 @@ public class UserService(
         }
 
         await ChangePasswordAsync(user.Id, input.NewPassword);
-        await emailService.ChangePasswordSuccessfullyAsync(input.Email, user.Fullname, EmailSupportLanguageConst.Vietnamese);
+        await emailService.ChangePasswordSuccessfullyAsync(input.Email,user.UserName, EmailSupportLanguageConst.Vietnamese);
 
         return user.Email;
     }
@@ -532,11 +554,26 @@ public class UserService(
             return;
         }
 
+
         await verificationService.SaveAndSendVerificationByEmail(new SendVerificationEmailModel
         {
             Email = user.Email,
             Locale = EmailSupportLanguageConst.Vietnamese,
             Mode = UserVerificationMode.VerifyCurrentUserEmailByLinkOnly
         }, user.Id);
+    }
+
+    private static readonly TimeSpan Lifetime = TimeSpan.FromDays(1);
+    public async Task<string?> ResolveAsync(string? avatarKey)
+    {
+        if (string.IsNullOrEmpty(avatarKey))
+        {
+            return null;
+        }
+
+        return await awsS3Service.GeneratePresignedUrlAsync(
+            avatarKey,
+            Application.Dto.Cloud.AWS.BucketType.SourceDefault,
+            Lifetime);
     }
 }

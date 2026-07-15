@@ -8,8 +8,11 @@ import {
 	Step,
 } from '@/features/main/catalog/parameter/step/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterStepPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -57,12 +60,12 @@ export function MainCatalogParameterStepPage() {
 			url={API.CATALOG.PARAMETER.STEP.LIST}
 			columns={CATALOG_PARAMETER_STEP_COLUMNS}
 			filters={[{ key: 'value', label: 'Bước chống' }]}
-			onCreate={(props) => <StepForm {...props} />}
-			onDuplicate={(props) => <StepForm {...props} isDuplicate />}
-			onUpdate={(props) => <StepForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.CREATE) ? (props) => <StepForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.CREATE) ? (props) => <StepForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.UPDATE) ? (props) => <StepForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_STEP.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

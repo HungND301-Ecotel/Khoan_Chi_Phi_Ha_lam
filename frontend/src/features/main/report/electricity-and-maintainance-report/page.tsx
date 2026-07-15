@@ -37,6 +37,8 @@ import {
 	useState,
 	type ReactNode,
 } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const UNGROUPED_PROCESS_GROUP = '__ungrouped';
 
@@ -152,6 +154,7 @@ const formatDateString = (date: Date) => {
 export function ElectricityAndMaintainanceReportPage() {
 	const now = new Date();
 	const currentYear = now.getFullYear();
+	const { hasPermission } = usePermission();
 	const [month, setMonth] = useState(
 		String(now.getMonth() + 1).padStart(2, '0'),
 	);
@@ -514,22 +517,24 @@ export function ElectricityAndMaintainanceReportPage() {
 					</div>
 				</div>
 
-				<Button
-					variant='outline'
-					size='sm'
-					className='h-10 gap-1.5'
-					disabled={loading || loadingDetails || isExporting}
-					onClick={handleExport}
-				>
-					{isExporting ? (
-						<Spinner />
-					) : (
-						<>
-							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Tải xuống</span>
-						</>
-					)}
-				</Button>
+				{hasPermission(PERMISSIONS.REPORT.PRODUCT_UNIT_PRICE.EXPORT) && (
+					<Button
+						variant='outline'
+						size='sm'
+						className='h-10 gap-1.5'
+						disabled={loading || loadingDetails || isExporting}
+						onClick={handleExport}
+					>
+						{isExporting ? (
+							<Spinner />
+						) : (
+							<>
+								<DownloadIcon style={{ fontSize: 18 }} />
+								<span>Tải xuống</span>
+							</>
+						)}
+					</Button>
+				)}
 			</div>
 
 			{error ? (

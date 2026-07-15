@@ -10,8 +10,11 @@ import {
 } from '@/features/main/catalog/equipment/columns';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 function MainCatalogEquipmentPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 
 	const handleDelete = async ({ data }: ActionDialogProps<Equipment>) => {
@@ -64,13 +67,13 @@ function MainCatalogEquipmentPage() {
 				{ key: 'code', label: 'Mã thiết bị' },
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 			]}
-			onCreate={(props) => <EquipmentForm {...props} />}
-			onDuplicate={(props) => <EquipmentForm {...props} isDuplicate />}
-			onUpdate={(props) => <EquipmentForm {...props} />}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.CREATE) ? (props) => <EquipmentForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.CREATE) ? (props) => <EquipmentForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.UPDATE) ? (props) => <EquipmentForm {...props} /> : undefined}
 			onExpand={(props) => <EquipmentExpand {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.EQUIPMENT.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

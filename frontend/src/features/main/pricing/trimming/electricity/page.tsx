@@ -8,8 +8,10 @@ import {
 } from '@/features/main/pricing/trimming/electricity/columns';
 import { ElectricityForm } from '@/features/main/pricing/trimming/electricity/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 
 export function MainPricingTrimmingElectricityPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -67,12 +69,12 @@ export function MainPricingTrimmingElectricityPage() {
 				{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'equipmentName', label: 'Tên nhóm vật tư, tài sản' },
 			]}
-			onCreate={(props) => <ElectricityForm {...props} />}
-			onDuplicate={(props) => <ElectricityForm {...props} isDuplicate />}
-			onUpdate={(props) => <ElectricityForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission('pricing.trimmingelectricityunitprice.create') ? (props) => <ElectricityForm {...props} /> : undefined}
+			onDuplicate={hasPermission('pricing.trimmingelectricityunitprice.create') ? (props) => <ElectricityForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission('pricing.trimmingelectricityunitprice.update') ? (props) => <ElectricityForm {...props} /> : undefined}
+			onDelete={hasPermission('pricing.trimmingelectricityunitprice.delete') ? handleDelete : undefined}
+			onExport={hasPermission('pricing.trimmingelectricityunitprice.export') ? handleExport : undefined}
+			onImport={hasPermission('pricing.trimmingelectricityunitprice.import') ? handleImport : undefined}
 		/>
 	);
 }

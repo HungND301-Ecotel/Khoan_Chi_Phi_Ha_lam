@@ -98,7 +98,7 @@ export function LongwallPanelForm({
 			if (!row) return;
 
 			api
-				.get<LongwallPanelDetail>(API.PRICING.MAINTENANCE.DETAIL(row.id))
+				.get<LongwallPanelDetail>(API.PRICING.MAINTENANCE.LONGWALL_DETAIL(row.id))
 				.then((res) => {
 					const {
 						startMonth,
@@ -242,7 +242,7 @@ export function LongwallPanelForm({
 					),
 				};
 
-				await api.put(API.PRICING.MAINTENANCE.UPDATE, body);
+				await api.put(API.PRICING.MAINTENANCE.LONGWALL_UPDATE, body);
 			} else {
 				const body = equipmentIds.map((equipmentId: string) => {
 					const parts = costs
@@ -280,7 +280,7 @@ export function LongwallPanelForm({
 						costs: parts,
 					};
 				});
-				await api.post(API.PRICING.MAINTENANCE.CREATE, body);
+				await api.post(API.PRICING.MAINTENANCE.LONGWALL_CREATE, body);
 			}
 
 			setOpen(false);

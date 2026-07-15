@@ -9,6 +9,7 @@ import {
 } from '@/features/main/pricing/trimming/maintenance/columns';
 import { TunnelingForm } from '@/features/main/pricing/trimming/maintenance/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useMemo, useState } from 'react';
 
 export type MaintainUnitPriceEquipment = {
@@ -40,6 +41,7 @@ export type TunnelingDetail = {
 };
 
 export function MainPricingMaintenanceTrimmingPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 	const query = useMemo(
@@ -52,7 +54,7 @@ export function MainPricingMaintenanceTrimmingPage() {
 			const selected = data.table.getFilteredSelectedRowModel();
 			const ids = selected.rows.map((row) => row.original.id);
 
-			await api.delete(API.PRICING.MAINTENANCE.DELETES, ids);
+			await api.delete(API.PRICING.MAINTENANCE.TRIMMING_DELETES, ids);
 
 			popup.success(`Đã xoá thành công ${ids.length} ${breadcrumb}.`);
 			await data.refresh();
@@ -101,13 +103,13 @@ export function MainPricingMaintenanceTrimmingPage() {
 				query={query}
 				getRowId={(row) => row.id}
 				filters={[{ key: 'equipmentCode', label: 'Nhóm vật tư, tài sản' }]}
-				onCreate={(props) => <TunnelingForm {...props} />}
-				onDuplicate={(props) => <TunnelingForm {...props} isDuplicate />}
-				onUpdate={(props) => <TunnelingForm {...props} />}
+				onCreate={hasPermission('pricing.trimmingmaintainunitprice.create') ? (props) => <TunnelingForm {...props} /> : undefined}
+				onDuplicate={hasPermission('pricing.trimmingmaintainunitprice.create') ? (props) => <TunnelingForm {...props} isDuplicate /> : undefined}
+				onUpdate={hasPermission('pricing.trimmingmaintainunitprice.update') ? (props) => <TunnelingForm {...props} /> : undefined}
 				onExpand={(props) => <TunnelingExpand {...props} />}
-				onDelete={handleDelete}
-				onExport={handleExport}
-				onImport={handleImport}
+				onDelete={hasPermission('pricing.trimmingmaintainunitprice.delete') ? handleDelete : undefined}
+				onExport={hasPermission('pricing.trimmingmaintainunitprice.export') ? handleExport : undefined}
+				onImport={hasPermission('pricing.trimmingmaintainunitprice.import') ? handleImport : undefined}
 			/>
 		</>
 	);

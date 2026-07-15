@@ -28,4 +28,6 @@ public interface IUserService
     Task ValidateVerifyEmail(VerifyEmailInput input);
     Task SetVerificationEmail(string email);
     Task ResendVerificationEmail(int userId);
+
+    Task<string?> ResolveAsync(string? avatarKey);
 }

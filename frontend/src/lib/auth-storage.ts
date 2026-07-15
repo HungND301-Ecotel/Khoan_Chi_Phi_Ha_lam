@@ -15,7 +15,7 @@ export const authStorage = {
 	set: (tokens: TokenData) => {
 		localStorage.setItem('token', tokens.token);
 		localStorage.setItem('refreshToken', tokens.refreshToken);
-		localStorage.setItem('refreshTokenExpiryTime', tokens.refreshTokenExpiryTime);
+		localStorage.setItem('refreshTokenExpiryTime',tokens.refreshTokenExpiryTime);
 	},
 
 	/**
@@ -78,5 +78,62 @@ export const authStorage = {
 		const fiveMinutes = 5 * 60 * 1000;
 
 		return expiryTime - currentTime < fiveMinutes;
+	},
+
+	/**
+	 * Parse JWT token để lấy payload
+	 */
+	parseJwt: (token: string): Record<string, any> => {
+		try {
+			const base64Url = token.split('.')[1];
+			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+			const jsonPayload = decodeURIComponent(
+				atob(base64)
+					.split('')
+					.map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+					.join(''),
+			);
+			return JSON.parse(jsonPayload);
+		} catch (error) {
+			console.error('Failed to parse JWT:', error);
+			return {};
+		}
+	},
+
+	/**
+	 * Lấy role từ token
+	 */
+	getRole: (): string | null => {
+		const token = localStorage.getItem('token');
+		if (!token) return null;
+
+		try {
+			const payload = authStorage.parseJwt(token);
+			return (
+				payload.role ||
+				payload.userRole ||
+				payload[
+					'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+				] ||
+				null
+			);
+		} catch {
+			return null;
+		}
+	},
+
+	/**
+	 * Lấy UserId từ token
+	 */
+	getUserId: (): number | null => {
+		const token = localStorage.getItem('token');
+		if (!token) return null;
+
+		try {
+			const payload = authStorage.parseJwt(token);
+			return payload.nameidentifier ? Number(payload.nameidentifier) : null;
+		} catch {
+			return null;
+		}
 	},
 };

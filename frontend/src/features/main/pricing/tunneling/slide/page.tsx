@@ -16,6 +16,7 @@ import {
 	SlideForm,
 } from '@/features/main/pricing/tunneling/slide/form';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { useEffect, useState } from 'react';
 
 const deriveNormFromAmount = (amount: number, unitPrice: number) => {
@@ -68,6 +69,7 @@ function buildGroupedExpandRows(
 }
 
 export function MainPricingSlidePage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -122,12 +124,12 @@ export function MainPricingSlidePage() {
 				{ key: 'processGroupName', label: 'Nhóm công đoạn sản xuất' },
 				{ key: 'materialDetail', label: 'Thông số' },
 			]}
-			onCreate={(props) => <SlideForm {...props} />}
-			onDuplicate={(props) => <SlideForm {...props} isDuplicate />}
-			onUpdate={(props) => <SlideForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission('pricing.slideunitprice.create') ? (props) => <SlideForm {...props} /> : undefined}
+			onDuplicate={hasPermission('pricing.slideunitprice.create') ? (props) => <SlideForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission('pricing.slideunitprice.update') ? (props) => <SlideForm {...props} /> : undefined}
+			onDelete={hasPermission('pricing.slideunitprice.delete') ? handleDelete : undefined}
+			onExport={hasPermission('pricing.slideunitprice.export') ? handleExport : undefined}
+			onImport={hasPermission('pricing.tunnelslideunitprice.import') ? handleImport : undefined}
 			onExpand={(props) => <SlideDetailExpand {...props} />}
 		/>
 	);

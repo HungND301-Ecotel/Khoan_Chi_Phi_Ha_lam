@@ -8,8 +8,11 @@ import {
 	Cuttingthickness,
 } from '@/features/main/catalog/parameter/cuttingthickness/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterCuttingthicknessPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -65,12 +68,12 @@ export function MainCatalogParameterCuttingthicknessPage() {
 			url={API.CATALOG.PARAMETER.CUTTINGTHICKNESS.LIST}
 			columns={CATALOG_PARAMETER_CUTTINGTHICKNESS_COLUMNS}
 			filters={[{ key: 'value', label: 'Chiều dày lớp khấu' }]}
-			onCreate={(props) => <CuttingthicknessForm {...props} />}
-			onDuplicate={(props) => <CuttingthicknessForm {...props} isDuplicate />}
-			onUpdate={(props) => <CuttingthicknessForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.CREATE) ? (props) => <CuttingthicknessForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.CREATE) ? (props) => <CuttingthicknessForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.UPDATE) ? (props) => <CuttingthicknessForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PARAMETER_CUTTING_THICKNESS.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

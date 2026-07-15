@@ -10,8 +10,11 @@ import {
 } from '@/features/main/catalog/contract-code/columns';
 import { api } from '@/lib/api';
 import { useEffect, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 function MainCatalogContractCodePage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const handleDelete = async ({ data }: ActionDialogProps<ContractCode>) => {
 		try {
@@ -63,13 +66,13 @@ function MainCatalogContractCodePage() {
 				{ key: 'unitOfMeasureName', label: 'Đơn vị tính' },
 				{ key: 'currentPrice', label: 'Đơn giá điện năng' },
 			]}
-			onCreate={(props) => <ContractCodeForm {...props} />}
-			onDuplicate={(props) => <ContractCodeForm {...props} isDuplicate />}
-			onUpdate={(props) => <ContractCodeForm {...props} />}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.CREATE) ? (props) => <ContractCodeForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.CREATE) ? (props) => <ContractCodeForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.UPDATE) ? (props) => <ContractCodeForm {...props} /> : undefined}
 			onExpand={(props) => <ContractCodeExpand {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.CONTRACT_CODE.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

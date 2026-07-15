@@ -80,7 +80,7 @@ export function TunnelingForm({
 			if (!row) return;
 
 			api
-				.get<TunnelingDetail>(API.PRICING.MAINTENANCE.DETAIL(row.id))
+				.get<TunnelingDetail>(API.PRICING.MAINTENANCE.TUNNEL_DETAIL(row.id))
 				.then((res) => {
 					const {
 						startMonth,
@@ -229,7 +229,7 @@ export function TunnelingForm({
 					),
 				};
 
-				await api.put(API.PRICING.MAINTENANCE.UPDATE, body);
+				await api.put(API.PRICING.MAINTENANCE.TUNNEL_UPDATE, body);
 			} else {
 				const body = equipmentIds.map((equipmentId: string) => {
 					const parts = costs
@@ -267,7 +267,7 @@ export function TunnelingForm({
 						costs: parts,
 					};
 				});
-				await api.post(API.PRICING.MAINTENANCE.CREATE, body);
+				await api.post(API.PRICING.MAINTENANCE.TUNNEL_CREATE, body);
 			}
 
 			setOpen(false);

@@ -124,6 +124,10 @@ internal class TokenService : ITokenService
             new(SystemClaims.MobilePhone, user.PhoneNumber)
         };
 
+        if (user.Role != null)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, user.Role.RoleType.ToString()));
+        }
 
         var token = new JwtSecurityToken(
             issuer: JwtAuthConstants.Issuer,

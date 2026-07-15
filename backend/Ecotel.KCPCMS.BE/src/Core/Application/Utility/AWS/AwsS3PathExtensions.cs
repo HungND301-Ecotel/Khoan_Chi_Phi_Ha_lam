@@ -43,7 +43,7 @@ public static class AwsS3Extension
 
         return bucketType switch
         {
-            BucketType.SourceDefault => configuration.Uri.SourceDefault + filePath,
+            BucketType.SourceDefault => configuration.Uri.SourceDefault +"/"+ filePath,
             _ => filePath
         };
     }

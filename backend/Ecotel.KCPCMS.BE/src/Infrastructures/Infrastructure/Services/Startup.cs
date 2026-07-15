@@ -31,6 +31,8 @@ internal static class Startup
         services.AddTransient<ITokenService, TokenService>();
         services.AddTransient<IUserService, UserService>();
         services.AddTransient<IVerificationService, VerificationService>();
+        services.AddHttpClient();
+        services.AddScoped<IFileStorageService, FileStorageService>();
 
         services.AddTransient<ICodeService, CodeService>();
         services.AddTransient<ICostService, CostService>();

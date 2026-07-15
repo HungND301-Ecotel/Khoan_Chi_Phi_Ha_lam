@@ -8,6 +8,11 @@ export type Credentials = {
 export type AuthContextValue = {
 	loading: boolean;
 	user: boolean;
+	role: string | null;
+	userId: number | null;
+	employeeId: number | null;
+	permissions: string[];
+	refreshProfile: () => Promise<void>;
 	signIn: (credentials: Credentials) => Promise<void>;
 	signOut: () => void;
 };

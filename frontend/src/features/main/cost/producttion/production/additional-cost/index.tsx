@@ -25,6 +25,7 @@ import {
 	OtherMaterialDetail,
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
@@ -268,6 +269,7 @@ export function AdditionalCost({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [materials, setMaterials] = useState<AdditionalCostRow[]>([]);
 	const [maintainMaterials, setMaintainMaterials] = useState<
 		AdditionalCostRow[]
@@ -390,7 +392,7 @@ export function AdditionalCost({
 					<div className='size-5'></div>
 					<div className='size-5'></div>
 					<div className='size-5'></div>
-					<AccordionTrigger
+					{hasPermission('production.additional-cost.read') && (<AccordionTrigger
 						disabled={false}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -400,7 +402,7 @@ export function AdditionalCost({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
+					</AccordionTrigger>)}
 				</ItemActions>
 			</Item>
 

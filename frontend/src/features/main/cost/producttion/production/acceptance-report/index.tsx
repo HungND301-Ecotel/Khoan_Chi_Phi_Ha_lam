@@ -1,3 +1,4 @@
+import { usePermission } from '@/hooks/use-permission';
 import {
 	AccordionContent,
 	AccordionItem,
@@ -24,6 +25,7 @@ export function AcceptanceReport({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	// Fetch data from API
 	const {
 		data: hierarchicalData,
@@ -94,7 +96,7 @@ export function AcceptanceReport({
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions>
-					<AccordionTrigger
+					{hasPermission('production.acceptancereport.read') && (<AccordionTrigger
 						disabled={false}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -104,7 +106,7 @@ export function AcceptanceReport({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
+					</AccordionTrigger>)}
 				</ItemActions>
 			</Item>
 

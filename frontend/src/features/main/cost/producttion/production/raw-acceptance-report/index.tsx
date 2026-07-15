@@ -25,6 +25,7 @@ import {
 	RawAcceptanceReportItem,
 } from '@/features/main/cost/producttion/production/raw-acceptance-report/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import CreateIcon from '@mui/icons-material/Create';
 import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/FileUpload';
@@ -47,6 +48,7 @@ export function RawAcceptanceReport({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [rawAcceptanceData, setRawAcceptanceData] = useState<
 		RawAcceptanceReportItem[]
 	>([]);
@@ -121,7 +123,7 @@ export function RawAcceptanceReport({
 				</ItemContent>
 				<ItemActions>
 					{/* Import Button */}
-					<DialogProvider>
+					{hasPermission('report.acceptancereport.import') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tải lên'
 							crumb='Biên bản nghiệm thu'
@@ -151,10 +153,10 @@ export function RawAcceptanceReport({
 								}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 
 					{/* Export Button */}
-					<Button
+					{hasPermission('report.acceptancereport.export') && (<Button
 						variant={'ghost'}
 						size={'icon-sm'}
 						className='size-5 rounded-full bg-transparent disabled:opacity-50'
@@ -163,9 +165,9 @@ export function RawAcceptanceReport({
 						title='Export'
 					>
 						{isExporting ? <Spinner /> : <DownloadIcon />}
-					</Button>
+					</Button>)}
 
-					<AccordionTrigger
+					{hasPermission('report.acceptancereport.read') && (<AccordionTrigger
 						disabled={!output?.acceptanceReportId}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -175,10 +177,10 @@ export function RawAcceptanceReport({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
+					</AccordionTrigger>)}
 
 					{/* Update Button */}
-					<DialogProvider>
+					{hasPermission('report.acceptancereport.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Biên bản nghiệm thu'
@@ -200,7 +202,7 @@ export function RawAcceptanceReport({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 				</ItemActions>
 			</Item>
 

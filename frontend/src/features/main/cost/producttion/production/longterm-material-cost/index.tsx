@@ -22,6 +22,7 @@ import {
 	LongTermTrackingResponse,
 } from '@/features/main/cost/producttion/production/longterm-material-cost/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { formatNumber } from '@/lib/utils';
 import CreateIcon from '@mui/icons-material/Create';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -37,6 +38,7 @@ export function LongTermMaterialCosts({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [additionalCostData, setAdditionalCostData] =
 		useState<LongtermMaterialCostDetail>();
 	const [loading, setLoading] = useState<boolean>(false);
@@ -115,7 +117,7 @@ export function LongTermMaterialCosts({
 				<ItemActions>
 					<div className='size-5'></div>
 					<div className='size-5'></div>
-					<AccordionTrigger
+					{hasPermission('production.long-term-tracking.read') && (<AccordionTrigger
 						disabled={false}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -125,8 +127,8 @@ export function LongTermMaterialCosts({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
-					<DialogProvider>
+					</AccordionTrigger>)}
+					{hasPermission('production.long-term-tracking.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Bảng hạch toán chi phí vật tư dài kỳ'
@@ -148,7 +150,7 @@ export function LongTermMaterialCosts({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 				</ItemActions>
 			</Item>
 
@@ -186,14 +188,14 @@ export function LongTermMaterialCosts({
 												{formatNumber(totalAccountedValueThisPeriod)}
 											</div>
 											<ItemActions>
-												<AccordionTrigger className='group p-0'>
+												{hasPermission('production.long-term-tracking.read') && (<AccordionTrigger className='group p-0'>
 													<div className='group-data-[state=open]:hidden'>
 														<VisibilityIcon />
 													</div>
 													<div className='hidden group-data-[state=open]:block'>
 														<VisibilityOffIcon />
 													</div>
-												</AccordionTrigger>
+												</AccordionTrigger>)}
 											</ItemActions>
 										</div>
 									</Item>

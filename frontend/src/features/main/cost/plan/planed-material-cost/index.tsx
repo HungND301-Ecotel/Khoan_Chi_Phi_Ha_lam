@@ -41,6 +41,7 @@ import {
 	SlideDetailMaterialCost,
 } from '@/features/main/pricing/tunneling/slide/columns';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { formatNumber } from '@/lib/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CreateIcon from '@mui/icons-material/Create';
@@ -372,6 +373,7 @@ export function PlanedMaterialCost({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [summary, setSummary] = useState<PlanedMaterialCostSummary[]>([]);
 	const [breakdownRows, setBreakdownRows] = useState<
 		PlannedMaterialBreakdownRow[]
@@ -651,7 +653,7 @@ export function PlanedMaterialCost({
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions className='gap-1'>
-					<DialogProvider>
+					{hasPermission('production.plannedmaterialcost.create') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
 							crumb='Doanh thu vật liệu kế hoạch ban đầu'
@@ -672,8 +674,8 @@ export function PlanedMaterialCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
-					<AccordionTrigger
+					</DialogProvider>)}
+					{hasPermission('production.plannedmaterialcost.read') && (<AccordionTrigger
 						disabled={!id}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -683,8 +685,8 @@ export function PlanedMaterialCost({
 						<div className='group-data-[state=open]:hidden'>
 							<VisibilityIcon />
 						</div>
-					</AccordionTrigger>
-					<DialogProvider>
+					</AccordionTrigger>)}
+					{hasPermission('production.plannedmaterialcost.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Doanh thu vật liệu kế hoạch ban đầu'
@@ -706,7 +708,7 @@ export function PlanedMaterialCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 				</ItemActions>
 			</Item>
 

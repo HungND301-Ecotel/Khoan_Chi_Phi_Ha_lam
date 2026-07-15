@@ -29,6 +29,8 @@ import { cn, formatNumber } from '@/lib/utils';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const ALL_DEPARTMENT = '__all_department__';
 const ALL_PROCESS_GROUP = '__all_process_group__';
@@ -155,6 +157,7 @@ export function LumpSumFinalSettlementReportTable({
 }: LumpSumFinalSettlementReportTableProps) {
 	const now = new Date();
 	const currentYear = now.getFullYear();
+	const { hasPermission } = usePermission();
 
 	const [quarter, setQuarter] = useState(
 		String(Math.floor(now.getMonth() / 3) + 1),
@@ -857,22 +860,24 @@ export function LumpSumFinalSettlementReportTable({
 					)}
 				</div>
 
-				<Button
-					variant='outline'
-					size='sm'
-					onClick={handleExport}
-					disabled={filteredRows.length === 0 || isLoading || isExporting}
-					className='h-10 gap-1.5'
-				>
-					{isExporting ? (
-						<Spinner />
-					) : (
-						<>
-							<DownloadIcon style={{ fontSize: 18 }} />
-							<span>Tải xuống</span>
-						</>
-					)}
-				</Button>
+				{hasPermission(PERMISSIONS.REPORT.LUMP_SUM_FINAL_SETTLEMENT.EXPORT) && (
+					<Button
+						variant='outline'
+						size='sm'
+						onClick={handleExport}
+						disabled={filteredRows.length === 0 || isLoading || isExporting}
+						className='h-10 gap-1.5'
+					>
+						{isExporting ? (
+							<Spinner />
+						) : (
+							<>
+								<DownloadIcon style={{ fontSize: 18 }} />
+								<span>Tải xuống</span>
+							</>
+						)}
+					</Button>
+				)}
 			</div>
 
 			{error ? (

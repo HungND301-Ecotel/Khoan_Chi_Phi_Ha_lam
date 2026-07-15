@@ -8,8 +8,11 @@ import {
 	ProductionOrder,
 } from './columns';
 import { ProductionOrderForm } from './actions';
+import { usePermission } from '@/hooks/use-permission';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export function MainCatalogParameterProductionOrderPage() {
+	const { hasPermission } = usePermission();
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 
@@ -67,12 +70,12 @@ export function MainCatalogParameterProductionOrderPage() {
 				{ key: 'name', label: 'Tên quyết định, lệnh sản xuất' },
 				{ key: 'startMonth', label: 'Thời gian' },
 			]}
-			onCreate={(props) => <ProductionOrderForm {...props} />}
-			onDuplicate={(props) => <ProductionOrderForm {...props} isDuplicate />}
-			onUpdate={(props) => <ProductionOrderForm {...props} />}
-			onDelete={handleDelete}
-			onExport={handleExport}
-			onImport={handleImport}
+			onCreate={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.CREATE) ? (props) => <ProductionOrderForm {...props} /> : undefined}
+			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.CREATE) ? (props) => <ProductionOrderForm {...props} isDuplicate /> : undefined}
+			onUpdate={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.UPDATE) ? (props) => <ProductionOrderForm {...props} /> : undefined}
+			onDelete={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.DELETE) ? handleDelete : undefined}
+			onExport={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.EXPORT) ? handleExport : undefined}
+			onImport={hasPermission(PERMISSIONS.CATALOG.PRODUCTION_ORDER.IMPORT) ? handleImport : undefined}
 		/>
 	);
 }

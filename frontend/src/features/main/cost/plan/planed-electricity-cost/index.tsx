@@ -21,6 +21,7 @@ import { PlanElectricityCostForm } from '@/features/main/cost/plan/planed-electr
 import { PlanedElectricityCostDetail } from '@/features/main/cost/plan/planed-electricity-cost/types';
 import { ProductCostExpandProps } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
+import { usePermission } from '@/hooks/use-permission';
 import { formatNumber } from '@/lib/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CreateIcon from '@mui/icons-material/Create';
@@ -36,6 +37,7 @@ export function PlanedElectricityCost({
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
+	const { hasPermission } = usePermission();
 	const [planedElectricityCost, setPlanedElectricityCost] =
 		useState<PlanedElectricityCostDetail>();
 	const [total, setTotal] = useState<number>(0);
@@ -93,7 +95,7 @@ export function PlanedElectricityCost({
 					</ItemTitle>
 				</ItemContent>
 				<ItemActions className='gap-1'>
-					<DialogProvider>
+					{hasPermission('production.plannedelecticitycost.create') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tạo mới'
 							crumb='Doanh thu điện năng kế hoạch ban đầu'
@@ -114,9 +116,9 @@ export function PlanedElectricityCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 
-					<AccordionTrigger
+					{hasPermission('production.plannedelecticitycost.read') && (<AccordionTrigger
 						disabled={!id}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -126,8 +128,8 @@ export function PlanedElectricityCost({
 						<div className='hidden group-data-[state=open]:block'>
 							<VisibilityOffIcon />
 						</div>
-					</AccordionTrigger>
-					<DialogProvider>
+					</AccordionTrigger>)}
+					{hasPermission('production.plannedelecticitycost.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Doanh thu điện năng kế hoạch ban đầu'
@@ -149,7 +151,7 @@ export function PlanedElectricityCost({
 								callback={callback}
 							/>
 						</DataTableEditDialog>
-					</DialogProvider>
+					</DialogProvider>)}
 				</ItemActions>
 			</Item>
 
