@@ -15,7 +15,6 @@ public class PositionDto : IDto
     public string Name { get; set; } = string.Empty;
     public int Level { get; set; }
     public string Description { get; set; }
-    public bool IsActive { get; set; }
 }
 
 public class CreatePositionDto
@@ -31,7 +30,6 @@ public class UpdatePositionDto
     public string Name { get; set; } = string.Empty;
     public int? Level { get; set; }
     public string Description { get; set; }
-    public bool IsActive { get; set; }
 }
 
 public class PositionExcelDto
@@ -47,7 +45,5 @@ public class PositionExcelDto
     [Display(Name = "Mô tả")]
     public string? Description { get; set; }
 
-    [Display(Name = "Trạng thái")]
-    public string IsActiveName { get; set; } = string.Empty;
 }
 

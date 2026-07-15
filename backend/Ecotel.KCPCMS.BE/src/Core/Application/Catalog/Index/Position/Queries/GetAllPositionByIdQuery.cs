@@ -28,7 +28,8 @@ public class GetPositionByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
         {
             Id = entity.Id,
             Name = entity.Name,
-            IsActive = entity.IsActive
+            Level = entity.Level ?? 0,
+            Description = entity.Description
         };
     }
 }

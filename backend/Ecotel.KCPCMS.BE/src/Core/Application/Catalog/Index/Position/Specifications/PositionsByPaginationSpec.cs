@@ -26,8 +26,7 @@ public class PositionsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                 Id = p.Id,
                 Name = p.Name,
                 Level = p.Level ?? 0,
-                Description = p.Description,
-                IsActive = p.IsActive
+                Description = p.Description
             });
     }
 }

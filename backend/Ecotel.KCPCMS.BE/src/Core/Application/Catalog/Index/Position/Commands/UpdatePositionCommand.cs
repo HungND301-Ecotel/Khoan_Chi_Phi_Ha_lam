@@ -28,7 +28,7 @@ public class UpdatePositionCommandHandler(IUnitOfWork unitOfWork, ICodeService c
 
         
         
-        entity.Update(request.Dto.Name.Trim(),request.Dto.Level ?? 0,request.Dto.Description.Trim(), request.Dto.IsActive);
+        entity.Update(request.Dto.Name.Trim(),request.Dto.Level ?? 0,request.Dto.Description.Trim());
         _positionRepository.Update(entity);
         await unitOfWork.SaveChangesAsync();
         return true;

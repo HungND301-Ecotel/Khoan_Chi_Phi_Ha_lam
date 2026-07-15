@@ -11,7 +11,7 @@ export const employeeFormSchema = z.object({
 		message: 'Vui lòng chọn chức vụ',
 	}),
 	departmentId: z.string().min(1, {
-		message: 'Vui lòng chọn phòng ban',
+		message: 'Vui lòng chọn đơn vị',
 	}),
 	email: z
 		.string()
@@ -22,10 +22,8 @@ export const employeeFormSchema = z.object({
 		.or(z.literal('')),
 	phoneNumber: z.string().optional().or(z.literal('')),
 	cccd: z.string().optional().or(z.literal('')),
-	province: z.string().optional().or(z.literal('')),
-	district: z.string().optional().or(z.literal('')),
-	ward: z.string().optional().or(z.literal('')),
-	streetAddress: z.string().optional().or(z.literal('')),
+	dob: z.string().optional().or(z.literal('')),
+	genre: z.any().optional(),
 });
 
 export type EmployeeFormSchema = z.infer<typeof employeeFormSchema>;
@@ -38,8 +36,6 @@ export const EMPLOYEE_FORM_DEFAULT: EmployeeFormSchema = {
 	email: '',
 	phoneNumber: '',
 	cccd: '',
-	province: '',
-	district: '',
-	ward: '',
-	streetAddress: '',
+	dob: '',
+	genre: true,
 };

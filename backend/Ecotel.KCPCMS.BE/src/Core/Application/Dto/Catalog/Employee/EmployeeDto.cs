@@ -21,16 +21,15 @@ public class EmployeeDto : IDto, IAvatarCarrier
     public string? DepartmentName { get; set; }
     public int UserId { get; set; }
     public string? UserName { get; set; }
-    public string Province { get; set; }
-    public string District { get; set; }
-    public string Ward { get; set; }
-
-    public string StreetAddress { get; set; }
-    public string Dob { get; set; }
+    public DateOnly Dob { get; set; }
     public string Cccd { get; set; }
     public string Avatar { get; set; }
     public string? Email { get; set; }
     public string? PhoneNumber { get; set; }
+
+    public bool Genre { get; set; }
+    public bool IsActive { get; set; }
+
 
     [JsonIgnore]
     public string? AvatarKey => Avatar;
@@ -50,7 +49,8 @@ public class CreateEmployeeDto
     public string Email { get; set; }
     public string PhoneNumber { get; set; }
     public string Cccd { get; set; }
-    public string Province { get; set; }
+    public DateOnly Dob { get; set; }
+    public bool Genre { get; set; }
 }
 
 public class UpdateEmployeeDto
@@ -58,16 +58,6 @@ public class UpdateEmployeeDto
     public string FullName { get; set; } = string.Empty;
     public int PositionId { get; set; }
     public Guid DepartmentId { get; set; }
-    public string Province { get; set; }
-    [MaxLength(255)]
-    public string? District { get; set; }
-
-    [MaxLength(255)]
-    public string? Ward { get; set; }
-
-    [MaxLength(255)]
-    public string? StreetAddress { get; set; }
-
     public DateOnly? Dob { get; set; }
     public bool? Gender { get; set; }
     [MaxLength(255)]
@@ -137,23 +127,13 @@ public class EmployeeExcelDto
     [Display(Name = "CCCD")]
     public string? Cccd { get; set; }
 
-    [Display(Name = "Tỉnh/Thành phố")]
-    public string? Province { get; set; }
-
-    [Display(Name = "Quận/Huyện")]
-    public string? District { get; set; }
-
-    [Display(Name = "Phường/Xã")]
-    public string? Ward { get; set; }
-
-    [Display(Name = "Địa chỉ")]
-    public string? StreetAddress { get; set; }
-
     [Display(Name = "Ngày sinh")]
     public DateOnly? Dob { get; set; }
 
     [Display(Name = "Giới tính")]
     public string? GenderName { get; set; }
+    [Display(Name = "Trạng thái")]
+    public string? IsActiveName { get; set; }
 }
 public class UploadEmployeeImageRequest
 {

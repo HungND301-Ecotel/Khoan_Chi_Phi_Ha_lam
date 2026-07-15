@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +14,6 @@ public class Position : AuditableEntity<int>, IAggregateRoot
     public string Name { get; private set; } = string.Empty;
     public int? Level { get; private set;  }
     public string Description { get;private set; }
-    public bool IsActive { get; private set; } = true;
 
     private readonly IList<Employee> _employees = new List<Employee>();
     public virtual IReadOnlyCollection<Employee> Employees => _employees.AsReadOnly();
@@ -37,19 +36,17 @@ public class Position : AuditableEntity<int>, IAggregateRoot
         {
             Name = name,
             Level = level,
-            Description= description,
-            IsActive = true
+            Description= description
         };
     }
 
-    public void Update(string name,int level,string description, bool isActive)
+    public void Update(string name,int level,string description)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
         }
         SetName(name);
-        SetActiveStatus(isActive);
         DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
     }
 
@@ -63,12 +60,6 @@ public class Position : AuditableEntity<int>, IAggregateRoot
         }
 
         Name = name;
-        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
-    }
-
-    public void SetActiveStatus(bool isActive)
-    {
-        IsActive = isActive;
         DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
     }
     public void SetLevel(int level)

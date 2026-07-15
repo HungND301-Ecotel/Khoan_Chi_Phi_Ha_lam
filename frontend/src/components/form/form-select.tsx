@@ -36,7 +36,7 @@ export function FormSelect<T extends FieldValues>({
 					<FormItem>
 						<FormLabel>{label}</FormLabel>
 						<FormControl>
-							<Select value={field.value} onValueChange={field.onChange}>
+							<Select key={field.value?.toString() + '_' + options.length} value={field.value?.toString() ?? ''} onValueChange={field.onChange}>
 								<SelectTrigger className='w-full flex-1'>
 									<SelectValue placeholder={placeholder} />
 								</SelectTrigger>

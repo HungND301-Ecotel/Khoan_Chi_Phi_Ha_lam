@@ -69,11 +69,7 @@ public class CreateEmployeeCommandHandler(
                 avatarUrl: string.Empty,
                 dob: null,
                 gender: null,
-                cccd: request.CreateModel.Cccd,
-                province: request.CreateModel.Province,
-                district: null,
-                ward: string.Empty,
-                streetAddress: string.Empty);
+                cccd: request.CreateModel.Cccd);
 
             await _employeeRepository.InsertAsync(employee, cancellationToken);
             await unitOfWork.SaveChangesAsync();

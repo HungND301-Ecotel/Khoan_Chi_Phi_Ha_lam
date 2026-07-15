@@ -1,4 +1,5 @@
-﻿using Application.Common.Exceptions;
+using System.Dynamic;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Employee;
@@ -20,6 +21,7 @@ public class ImportExcelEmployeeCommandHandler(
 {
     private const string DefaultPassword = "123456";
     private const string MaleLabel = "Nam";
+    private const string ActiveLabel = "Hoạt động";
 
     private readonly IWriteRepository<Domain.Entities.Index.Employee> _employeeRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.Employee>();
@@ -48,8 +50,8 @@ public class ImportExcelEmployeeCommandHandler(
             predicate: r => r.RoleType == RoleType.User,
             disableTracking: true) ?? throw new NotFoundException("Không tìm thấy Role User mặc định.");
 
-        var updatePayloads = new List<(Domain.Entities.Index.Employee Entity, EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender)>();
-        var addPayloads = new List<(EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender)>();
+        var updatePayloads = new List<(Domain.Entities.Index.Employee Entity, EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender, bool IsActive)>();
+        var addPayloads = new List<(EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender, bool IsActive)>();
 
         foreach (var dto in dtos)
         {
@@ -71,13 +73,15 @@ public class ImportExcelEmployeeCommandHandler(
             bool? gender = string.IsNullOrWhiteSpace(dto.GenderName)
                 ? null
                 : string.Equals(dto.GenderName.Trim(), MaleLabel, StringComparison.OrdinalIgnoreCase);
+                
+            bool isActive = string.IsNullOrWhiteSpace(dto.IsActiveName) || string.Equals(dto.IsActiveName.Trim(), ActiveLabel, StringComparison.OrdinalIgnoreCase);
 
             if (dto.Id.HasValue)
             {
                 var entityToUpdate = dbEmployees.FirstOrDefault(x => x.Id == dto.Id.Value)
                     ?? throw new NotFoundException($"Không tìm thấy nhân viên Id={dto.Id.Value} ở dòng {rowNumber}.");
 
-                updatePayloads.Add((entityToUpdate, dto, position.Id, department.Id, gender));
+                updatePayloads.Add((entityToUpdate, dto, position.Id, department.Id, gender, isActive));
             }
             else
             {
@@ -91,14 +95,14 @@ public class ImportExcelEmployeeCommandHandler(
                     throw new ConflictException($"Tên đăng nhập '{dto.UserName}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addPayloads.Add((dto, position.Id, department.Id, gender));
+                addPayloads.Add((dto, position.Id, department.Id, gender, isActive));
             }
         }
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            foreach (var (entity, dto, positionId, departmentId, gender) in updatePayloads)
+            foreach (var (entity, dto, positionId, departmentId, gender, isActive) in updatePayloads)
             {
                 entity.UpdateEmployee(
                     fullName: dto.FullName.Trim(),
@@ -107,16 +111,30 @@ public class ImportExcelEmployeeCommandHandler(
                     avatarUrl: entity.Avatar,
                     dob: dto.Dob,
                     gender: gender,
-                    cccd: dto.Cccd?.Trim() ?? string.Empty,
-                    province: dto.Province?.Trim() ?? string.Empty,
-                    district: dto.District?.Trim(),
-                    ward: dto.Ward?.Trim() ?? string.Empty,
-                    streetAddress: dto.StreetAddress?.Trim() ?? string.Empty);
+                    cccd: dto.Cccd?.Trim() ?? string.Empty
+                    );
 
                 _employeeRepository.Update(entity);
+
+                var user = await _userRepository.GetFirstOrDefaultAsync(
+                    predicate: u => u.Id == entity.UserId,
+                    disableTracking: true);
+                if (user != null)
+                {
+                    if (!isActive)
+                    {
+                        user.LockAccount(TimeSpan.FromDays(365 * 100));
+                    }
+                    else
+                    {
+                        user.UnlockAccount();
+                    }
+
+                    _userRepository.Update(user);
+                }
             }
 
-            foreach (var (dto, positionId, departmentId, gender) in addPayloads)
+            foreach (var (dto, positionId, departmentId, gender, isActive) in addPayloads)
             {
                 var userName = dto.UserName.Trim();
                 var user = new User(userName, string.IsNullOrWhiteSpace(dto.Email) ? $"{userName}@company.com" : dto.Email.Trim(), dto.PhoneNumber.Trim());
@@ -125,6 +143,15 @@ public class ImportExcelEmployeeCommandHandler(
                 if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
                 {
                     user.SetPhoneNumber(dto.PhoneNumber.Trim());
+                }
+                
+                if (!isActive)
+                {
+                    user.LockAccount(TimeSpan.FromDays(365 * 100));
+                }
+                else
+                {
+                    user.UnlockAccount();
                 }
 
                 await _userRepository.InsertAsync(user, cancellationToken);
@@ -141,10 +168,6 @@ public class ImportExcelEmployeeCommandHandler(
                     dob: dto.Dob,
                     gender: gender,
                     cccd: dto.Cccd?.Trim() ?? string.Empty,
-                    province: dto.Province?.Trim() ?? string.Empty,
-                    district: dto.District?.Trim(),
-                    ward: dto.Ward?.Trim() ?? string.Empty,
-                    streetAddress: dto.StreetAddress?.Trim() ?? string.Empty,
                     userId: user.Id);
 
                 await _employeeRepository.InsertAsync(employee, cancellationToken);

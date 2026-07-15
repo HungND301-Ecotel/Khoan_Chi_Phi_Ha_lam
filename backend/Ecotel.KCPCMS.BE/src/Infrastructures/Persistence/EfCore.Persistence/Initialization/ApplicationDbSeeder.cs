@@ -144,11 +144,7 @@ internal class ApplicationDbSeeder(
             avatarUrl: string.Empty,
             dob: null,
             gender: null,
-            cccd: "000000000000",
-            province: "Quảng Ninh",
-            district: null,
-            ward: null,
-            streetAddress: null);
+            cccd: "000000000000");
 
         context.Employees.Add(adminEmployee);
         await context.SaveChangesAsync();

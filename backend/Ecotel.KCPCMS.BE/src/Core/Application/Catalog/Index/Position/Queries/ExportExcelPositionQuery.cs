@@ -22,11 +22,6 @@ public class ExportExcelPositionQueryHandler(
     {
         var hiddenProperties = new List<string> { nameof(PositionExcelDto.Id) };
 
-        var dropdownConfigs = new Dictionary<string, List<string>>
-        {
-            { nameof(PositionExcelDto.IsActiveName), new List<string> { ActiveLabel, InactiveLabel } }
-        };
-
         var positions = await _positionRepository.GetAllAsync(predicate: _ => true, disableTracking: true);
 
         var dtoList = positions
@@ -37,10 +32,9 @@ public class ExportExcelPositionQueryHandler(
                 Id = p.Id,
                 Name = p.Name,
                 Level = p.Level ?? 0,
-                Description = p.Description,
-                IsActiveName = p.IsActive ? ActiveLabel : InactiveLabel
+                Description = p.Description
             });
 
-        return excelService.ExportToExcel(dtoList, "Chức vụ", hiddenProperties, dropdownConfigs);
+        return excelService.ExportToExcel(dtoList, "Chức vụ", hiddenProperties);
     }
 }

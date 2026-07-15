@@ -123,6 +123,7 @@ export const fetcher = async <Res, Req>(
 		method,
 		body: JSON.stringify(body),
 		headers: getHeaders(),
+		cache: 'no-store',
 	});
 
 	const json = await response.json();
@@ -181,7 +182,9 @@ export const api = {
 	) => {
 		const search = new URLSearchParams(options?.query).toString();
 		const url = `${base}${path}${search ? '?' + search : ''}`;
-		const response = await fetch(url);
+		
+		const headers = getHeaders();
+		const response = await fetch(url, { headers });
 
 		if (!response.ok) {
 			const json = await response.json();
@@ -228,12 +231,14 @@ export const api = {
 			});
 		}
 
+		const headers = getHeaders();
+		delete headers['Content-Type']; // Let browser set Content-Type with boundary for FormData
+		headers['Accept'] = 'application/octet-stream';
+
 		const response = await fetch(url, {
 			method: 'POST',
 			body: formData,
-			headers: {
-				Accept: 'application/octet-stream',
-			},
+			headers,
 		});
 
 		if (!response.ok) {
@@ -274,9 +279,13 @@ export const api = {
 		const formData = new FormData();
 		formData.append('file', file);
 
+		const headers = getHeaders();
+		delete headers['Content-Type'];
+
 		const response = await fetch(url, {
 			method: 'POST',
 			body: formData,
+			headers,
 		});
 
 		const json = await response.json();

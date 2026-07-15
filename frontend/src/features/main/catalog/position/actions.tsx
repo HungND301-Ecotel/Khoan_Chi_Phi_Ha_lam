@@ -42,7 +42,6 @@ export function PositionForm({
 			name: row.name,
 			level: row.level,
 			description: row.description || '',
-			isActive: row.isActive,
 		});
 	}, [row, form, isDuplicate]);
 
