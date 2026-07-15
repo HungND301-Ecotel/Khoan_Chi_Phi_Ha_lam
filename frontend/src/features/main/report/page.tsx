@@ -6,7 +6,7 @@ import { usePermission } from '@/hooks/use-permission';
 import { ReportSidebar } from './sidebar';
 import { REPORT_CATEGORIES } from './types';
 
-const DEFAULT_CATEGORY_ID = REPORT_CATEGORIES[0]?.id ?? '';
+// const DEFAULT_CATEGORY_ID = REPORT_CATEGORIES[0]?.id ?? '';
 
 export function MainReportPage() {
 	const navigate = useNavigate();
@@ -14,13 +14,15 @@ export function MainReportPage() {
 	const { hasPermission } = usePermission();
 
 	const authorizedCategories = useMemo(() => {
-		return REPORT_CATEGORIES.filter(c => !c.permission || hasPermission(c.permission));
+		return REPORT_CATEGORIES.filter(
+			(c) => !c.permission || hasPermission(c.permission),
+		);
 	}, [hasPermission]);
 
 	const selectedCategory = useMemo(() => {
 		const pathSegments = location.pathname.split('/').filter(Boolean);
 		const currentCategoryId = pathSegments[1];
-		
+
 		const defaultCategoryId = authorizedCategories[0]?.id ?? '';
 
 		const isValidCategory = authorizedCategories.some(
