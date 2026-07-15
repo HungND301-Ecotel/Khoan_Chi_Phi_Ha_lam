@@ -36,10 +36,12 @@ public class GetEmployeeByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
             UserId = existEmployee.UserId,
             UserName = existEmployee.User?.UserName,
             Cccd= existEmployee.Cccd,
-            Province = existEmployee.Province,
             Avatar = existEmployee.Avatar,
             Email = existEmployee.User?.Email,
-            PhoneNumber = existEmployee.User?.PhoneNumber
+            PhoneNumber = existEmployee.User?.PhoneNumber,
+            Dob = existEmployee.Dob ?? default,
+            Genre = existEmployee.Gender ?? true,
+            IsActive = !(existEmployee.User.LockoutEnabled && existEmployee.User.LockoutEnd != null && existEmployee.User.LockoutEnd > DateTimeOffset.UtcNow)
         };
     }
 }

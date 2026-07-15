@@ -397,9 +397,7 @@ export default function ProfilePage() {
 									</span>
 								</div>
 								<div className='flex justify-between'>
-									<span className='font-medium text-slate-400'>
-										Phòng ban/Đơn vị:
-									</span>
+									<span className='font-medium text-slate-400'>Đơn vị:</span>
 									<span className='font-semibold text-slate-900'>
 										{profile?.departmentName || 'Chưa cập nhật'}
 									</span>
@@ -552,41 +550,6 @@ export default function ProfilePage() {
 												]}
 											/>
 										</div>
-
-										<div className='my-4 border-t pt-4'>
-											<h5 className='mb-4 text-sm font-bold text-slate-800'>
-												Địa chỉ thường trú
-											</h5>
-											<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-												<FormInput
-													control={profileForm.control}
-													name='province'
-													label='Tỉnh / Thành phố'
-													placeholder='Ví dụ: Quảng Ninh'
-												/>
-												<FormInput
-													control={profileForm.control}
-													name='district'
-													label='Quận / Huyện'
-													placeholder='Ví dụ: Cẩm Phả'
-												/>
-											</div>
-											<div className='mt-4 grid grid-cols-1 gap-4 md:grid-cols-2'>
-												<FormInput
-													control={profileForm.control}
-													name='ward'
-													label='Phường / Xã'
-													placeholder='Ví dụ: Cẩm Phả'
-												/>
-												<FormInput
-													control={profileForm.control}
-													name='streetAddress'
-													label='Số nhà / Tên đường'
-													placeholder='Ví dụ: Số 123 đường Trần Phú'
-												/>
-											</div>
-										</div>
-
 										<div className='flex justify-end border-t pt-4'>
 											<Button
 												type='submit'

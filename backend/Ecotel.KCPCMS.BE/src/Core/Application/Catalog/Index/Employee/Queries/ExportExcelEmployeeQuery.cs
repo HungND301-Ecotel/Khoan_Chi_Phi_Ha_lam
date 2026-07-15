@@ -1,4 +1,4 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Employee;
 using Application.Interfaces.Services;
@@ -15,6 +15,8 @@ public class ExportExcelEmployeeQueryHandler(
 {
     private const string MaleLabel = "Nam";
     private const string FemaleLabel = "Nữ";
+    private const string ActiveLabel = "Hoạt động";
+    private const string InActiveLabel = "Đã khóa";
 
     private readonly IWriteRepository<Domain.Entities.Index.Employee> _employeeRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.Employee>();
@@ -27,7 +29,7 @@ public class ExportExcelEmployeeQueryHandler(
     {
         var hiddenProperties = new List<string> { nameof(EmployeeExcelDto.Id) };
 
-        var positions = await _positionRepository.GetAllAsync(predicate: p => p.IsActive, disableTracking: true);
+        var positions = await _positionRepository.GetAllAsync(predicate: _ => true, disableTracking: true);
         var departments = await _departmentRepository.GetAllAsync(predicate: _ => true, disableTracking: true);
 
         var dropdownConfigs = new Dictionary<string, List<string>>
@@ -43,6 +45,10 @@ public class ExportExcelEmployeeQueryHandler(
             {
                 nameof(EmployeeExcelDto.GenderName),
                 new List<string> { MaleLabel, FemaleLabel }
+            },
+            {
+                nameof(EmployeeExcelDto.IsActiveName),
+                new List<string> { ActiveLabel, InActiveLabel }
             }
         };
 
@@ -65,12 +71,9 @@ public class ExportExcelEmployeeQueryHandler(
                 Email = e.User != null ? e.User.Email : string.Empty,
                 PhoneNumber = e.User != null ? e.User.PhoneNumber : string.Empty,
                 Cccd = e.Cccd,
-                Province = e.Province,
-                District = e.District,
-                Ward = e.Ward,
-                StreetAddress = e.StreetAddress,
                 Dob = e.Dob,
-                GenderName = e.Gender.HasValue ? (e.Gender.Value ? MaleLabel : FemaleLabel) : string.Empty
+                GenderName = e.Gender.HasValue ? (e.Gender.Value ? MaleLabel : FemaleLabel) : string.Empty,
+                IsActiveName = e.User != null ? (!(e.User.LockoutEnabled && e.User.LockoutEnd != null && e.User.LockoutEnd > DateTimeOffset.UtcNow) ? ActiveLabel : InActiveLabel) : string.Empty
             });
 
         return excelService.ExportToExcel(dtoList, "Nhân viên", hiddenProperties, dropdownConfigs);

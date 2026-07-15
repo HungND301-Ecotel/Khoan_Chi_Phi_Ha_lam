@@ -5,7 +5,6 @@ export type Position = {
 	name: string;
 	level: number;
 	description: string;
-	isActive: boolean;
 };
 
 export const CATALOG_POSITION_COLUMNS: ColumnDef<Position>[] = [
@@ -20,11 +19,5 @@ export const CATALOG_POSITION_COLUMNS: ColumnDef<Position>[] = [
 	{
 		accessorKey: 'description',
 		header: 'Mô tả',
-	},
-	{
-		accessorKey: 'isActive',
-		header: 'Trạng thái',
-		cell: ({ row }) =>
-			row.original.isActive ? 'Hoạt động' : 'Không hoạt động',
 	},
 ];

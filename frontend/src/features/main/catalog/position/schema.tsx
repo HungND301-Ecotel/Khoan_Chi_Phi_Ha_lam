@@ -8,7 +8,6 @@ export const positionFormSchema = z.object({
 		message: 'Cấp bậc phải là số dương',
 	}),
 	description: z.string().optional(),
-	isActive: z.boolean().default(true),
 });
 
 export type PositionFormSchema = z.infer<typeof positionFormSchema>;
@@ -17,5 +16,4 @@ export const POSITION_FORM_DEFAULT: PositionFormSchema = {
 	name: '',
 	level: 0,
 	description: '',
-	isActive: true,
 };

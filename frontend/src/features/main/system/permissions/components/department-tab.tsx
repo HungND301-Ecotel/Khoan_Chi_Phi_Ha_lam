@@ -103,7 +103,7 @@ export function MainSystemDepartmentTab() {
 				),
 			);
 			setDirty(new Set());
-			popup.success('Đã lưu phân quyền phòng ban');
+			popup.success('Đã lưu phân quyền đơn vị');
 		} catch (e) {
 			popup.error(e);
 		} finally {
@@ -124,10 +124,10 @@ export function MainSystemDepartmentTab() {
 			<div className='flex items-start justify-between'>
 				<div>
 					<p className='text-sm font-medium text-gray-800'>
-						Bước 1: Phân quyền Module theo Phòng ban
+						Bước 1: Phân quyền Module theo Đơn vị
 					</p>
 					<p className='mt-0.5 text-xs text-gray-400'>
-						Xác định phạm vi dữ liệu (module) mà mỗi phòng ban được truy cập
+						Xác định phạm vi dữ liệu (module) mà mỗi đơn vị được truy cập
 					</p>
 				</div>
 				{hasUpdatePerm && (
@@ -152,7 +152,7 @@ export function MainSystemDepartmentTab() {
 					<thead>
 						<tr className='border-b border-gray-200 bg-gray-50'>
 							<th className='w-48 min-w-[12rem] p-3 text-left font-medium text-gray-600'>
-								Phòng ban
+								Đơn vị
 							</th>
 							{catalog?.modules.map((m) => (
 								<th
@@ -198,7 +198,7 @@ export function MainSystemDepartmentTab() {
 									colSpan={(catalog?.modules.length ?? 0) + 1}
 									className='py-10 text-center text-sm text-gray-400'
 								>
-									Chưa có dữ liệu phòng ban
+									Chưa có dữ liệu đơn vị
 								</td>
 							</tr>
 						)}

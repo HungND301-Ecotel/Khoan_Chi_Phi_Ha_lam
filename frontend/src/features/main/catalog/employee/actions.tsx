@@ -3,6 +3,7 @@ import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormInput } from '@/components/form/form-input';
 import { FormSelect } from '@/components/form/form-select';
 import { FormProvider } from '@/components/form/form-provider';
+import { FormDate } from '@/components/form/form-date';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -62,7 +63,7 @@ export function EmployeeForm({
 				if (deptRes?.result?.data) {
 					setDepartments(
 						deptRes.result.data.map((d: any) => ({
-							value: d.id.toString(),
+							value: String(d.id).toLowerCase(),
 							label: d.name,
 						})),
 					);
@@ -70,7 +71,7 @@ export function EmployeeForm({
 				if (posRes?.result?.data) {
 					setPositions(
 						posRes.result.data.map((p: any) => ({
-							value: p.id.toString(),
+							value: String(p.id).toLowerCase(),
 							label: p.name,
 						})),
 					);
@@ -87,27 +88,33 @@ export function EmployeeForm({
 		form.reset({
 			fullName: row.fullName,
 			userName: row.userName || '',
-			positionId: row.positionId?.toString() as any,
-			departmentId: row.departmentId?.toString() || '',
+			positionId: row.positionId ?? 0,
+			departmentId: row.departmentId
+				? String(row.departmentId).toLowerCase()
+				: '',
 			email: row.email || '',
 			phoneNumber: row.phoneNumber || '',
 			cccd: row.cccd || '',
-			province: row.province || '',
-			district: row.district || '',
-			ward: row.ward || '',
-			streetAddress: row.streetAddress || '',
+			dob: row.dob || '',
+			genre: row.genre === false ? 'false' : 'true',
 		});
 	}, [row, form, isDuplicate]);
 
 	const handleSubmit = async (values: EmployeeFormSchema) => {
 		try {
+			const submitData = {
+				...values,
+				genre: values.genre === true || (values.genre as any) === 'true',
+				gender: values.genre === true || (values.genre as any) === 'true',
+			};
+
 			if (row?.id && !isDuplicate) {
 				await api.put(`${API.CATALOG.EMPLOYEE.UPDATE}/${row.id}`, {
 					id: row.id,
-					...values,
+					...submitData,
 				});
 			} else {
-				await api.post(API.CATALOG.EMPLOYEE.CREATE, values);
+				await api.post(API.CATALOG.EMPLOYEE.CREATE, submitData);
 			}
 
 			setOpen(false);
@@ -140,8 +147,8 @@ export function EmployeeForm({
 				<FormSelect
 					control={form.control}
 					name='departmentId'
-					label='Phòng ban'
-					placeholder='Chọn phòng ban'
+					label='Đơn vị'
+					placeholder='Chọn đơn vị'
 					options={departments}
 				/>
 				<FormSelect
@@ -169,29 +176,21 @@ export function EmployeeForm({
 					label='CCCD/CMND'
 					placeholder='Nhập số CCCD/CMND'
 				/>
-				<FormInput
+				<FormDate
 					control={form.control}
-					name='province'
-					label='Tỉnh/Thành phố'
-					placeholder='Nhập Tỉnh/Thành phố'
+					name='dob'
+					label='Ngày sinh'
+					placeholder='Chọn ngày sinh'
 				/>
-				<FormInput
+				<FormSelect
 					control={form.control}
-					name='district'
-					label='Quận/Huyện'
-					placeholder='Nhập Quận/Huyện'
-				/>
-				<FormInput
-					control={form.control}
-					name='ward'
-					label='Phường/Xã'
-					placeholder='Nhập Phường/Xã'
-				/>
-				<FormInput
-					control={form.control}
-					name='streetAddress'
-					label='Số nhà, tên đường'
-					placeholder='Nhập số nhà, tên đường'
+					name='genre'
+					label='Giới tính'
+					placeholder='Chọn giới tính'
+					options={[
+						{ value: 'true', label: 'Nam' },
+						{ value: 'false', label: 'Nữ' },
+					]}
 				/>
 			</div>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

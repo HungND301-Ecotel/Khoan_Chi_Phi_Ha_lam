@@ -37,13 +37,12 @@ public class EmployeesByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                 UserId = e.UserId,
                 UserName = e.User != null ? e.User.UserName : null,
                 Cccd = e.Cccd != null ? e.Cccd : null,
-                Province = e.Province != null ? e.Province : null,
-                District = e.Province != null ? e.District : null,
-                Ward = e.Ward != null ? e.Ward : null,
-                StreetAddress = e.StreetAddress != null ? e.StreetAddress : null,
                 Avatar = e.Avatar != null ? e.Avatar : null,
                 Email = e.User != null ? e.User.Email : null,
                 PhoneNumber = e.User != null ? e.User.PhoneNumber : null,
+                Dob = e.Dob.HasValue ? e.Dob.Value : DateOnly.MinValue,
+                Genre = e.Gender ?? true,
+                IsActive = !(e.User.LockoutEnabled && e.User.LockoutEnd != null && e.User.LockoutEnd > DateTimeOffset.UtcNow)
             });
     }
 }

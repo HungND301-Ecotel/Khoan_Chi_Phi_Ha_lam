@@ -14,8 +14,6 @@ public class ImportExcelPositionCommandHandler(
     IExcelService excelService,
     IUnitOfWork unitOfWork) : IRequestHandler<ImportExcelPositionCommand, bool>
 {
-    private const string ActiveLabel = "Hoạt động";
-
     private readonly IWriteRepository<Domain.Entities.Index.Position> _positionRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.Position>();
 
@@ -54,7 +52,6 @@ public class ImportExcelPositionCommandHandler(
                 throw new ConflictException($"Tên chức vụ '{dto.Name}' đã tồn tại ở dòng {rowNumber}.");
             }
 
-            var isActive = string.Equals(dto.IsActiveName?.Trim(), ActiveLabel, StringComparison.OrdinalIgnoreCase);
 
             if (dto.Id.HasValue && dbPositions.Any(x => x.Id == dto.Id.Value))
             {
@@ -62,12 +59,11 @@ public class ImportExcelPositionCommandHandler(
 
                 var hasChanged = entityToUpdate.Name != dto.Name.Trim()
                     || entityToUpdate.Level != dto.Level
-                    || entityToUpdate.Description != dto.Description
-                    || entityToUpdate.IsActive != isActive;
+                    || entityToUpdate.Description != dto.Description;
 
                 if (hasChanged)
                 {
-                    entityToUpdate.Update(dto.Name.Trim(), dto.Level, dto.Description ?? string.Empty, isActive);
+                    entityToUpdate.Update(dto.Name.Trim(), dto.Level, dto.Description ?? string.Empty);
                     updateList.Add(entityToUpdate);
                 }
             }

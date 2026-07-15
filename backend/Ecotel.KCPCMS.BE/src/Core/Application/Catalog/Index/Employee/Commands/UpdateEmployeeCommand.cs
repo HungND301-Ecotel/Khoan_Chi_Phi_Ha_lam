@@ -29,11 +29,8 @@ public class UpdateEmployeeCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
 
         dob: request.UpdateModel.Dob,
         gender: request.UpdateModel.Gender,
-        cccd: request.UpdateModel.Cccd?.Trim() ?? string.Empty,
-        province: request.UpdateModel.Province?.Trim() ?? string.Empty,
-        district: request.UpdateModel.District?.Trim(),
-        ward: request.UpdateModel.Ward?.Trim() ?? string.Empty,
-        streetAddress: request.UpdateModel.StreetAddress?.Trim() ?? string.Empty
+        cccd: request.UpdateModel.Cccd?.Trim() ?? string.Empty
+
 
 
 );
