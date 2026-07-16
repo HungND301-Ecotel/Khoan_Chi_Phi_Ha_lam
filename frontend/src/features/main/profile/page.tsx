@@ -127,10 +127,6 @@ export default function ProfilePage() {
 					result.gender !== null && result.gender !== undefined
 						? (String(result.gender) as 'true' | 'false')
 						: 'true',
-				province: result.province || '',
-				district: result.district || '',
-				ward: result.ward || '',
-				streetAddress: result.streetAddress || '',
 				positionId: result.positionId || 0,
 				departmentId: result.departmentId || '',
 			});
@@ -243,10 +239,6 @@ export default function ProfilePage() {
 				fullName: values.fullName,
 				positionId: values.positionId,
 				departmentId: values.departmentId,
-				province: values.province,
-				district: values.district,
-				ward: values.ward,
-				streetAddress: values.streetAddress,
 				dob: values.dob,
 				gender: values.gender === 'true',
 				cccd: values.cccd,

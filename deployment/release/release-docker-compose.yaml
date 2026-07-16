@@ -90,6 +90,8 @@ services:
   khl_backend:
     image: ${REGISTRY}/khl_ecotel_backend_img:${VERSION}
     container_name: khl_ecotel_backend_img
+    env_file:
+      - .env_backend
     ports:
       - "5001:8175"
     environment:
@@ -97,6 +99,11 @@ services:
       - ASPNETCORE_HTTP_PORTS=8175
       - ASPNETCORE_HTTPs_PORTS=8175
       - ASPNETCORE_ENVIRONMENT=Production
+      - AwsS3Configuration__AccessKeyId= ${AWS_ACCESS_KEY_ID}
+      - AwsS3Configuration__SecretAccessKey= ${AWS_SECRET_ACCESS_KEY}
+      - AwsS3Configuration__Region=${AWS_REGION}
+      - AwsS3Configuration__Bucket__SourceDefault=${AWS_BUCKET}
+      - AwsS3Configuration__Uri__SourceDefault=${AWS_URI}
     depends_on:
       khl_postgres:
         condition: service_healthy
