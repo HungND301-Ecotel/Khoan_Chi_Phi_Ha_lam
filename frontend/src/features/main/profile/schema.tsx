@@ -12,10 +12,6 @@ export const profileFormSchema = z.object({
 		.max(12, 'CCCD phải từ 9-12 chữ số'),
 	dob: z.string().nullable().optional(),
 	gender: z.enum(['true', 'false']).nullable().optional(),
-	province: z.string().min(1, 'Tỉnh/Thành phố không được để trống'),
-	district: z.string().nullable().optional(),
-	ward: z.string().nullable().optional(),
-	streetAddress: z.string().nullable().optional(),
 	positionId: z.number().int(),
 	departmentId: z.string(),
 });
@@ -46,10 +42,6 @@ export const PROFILE_FORM_DEFAULT: ProfileFormValues = {
 	cccd: '',
 	dob: null,
 	gender: 'true' as 'true' | 'false',
-	province: '',
-	district: '',
-	ward: '',
-	streetAddress: '',
 	positionId: 0,
 	departmentId: '',
 };
