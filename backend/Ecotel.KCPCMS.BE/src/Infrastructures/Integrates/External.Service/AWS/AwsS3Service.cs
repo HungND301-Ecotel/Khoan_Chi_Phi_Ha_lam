@@ -256,7 +256,7 @@ public class AwsS3Service : IAwsS3Service
             SourceKey = srcKey,
             DestinationBucket = destBucket,
             DestinationKey = destKey,
-            CannedACL = S3CannedACL.PublicRead
+            //CannedACL = S3CannedACL.PublicRead
         };
 
         await _s3Client.CopyObjectAsync(request);
@@ -320,7 +320,7 @@ public class AwsS3Service : IAwsS3Service
             Key = AwsS3Extension.GenerateAwsS3Key(
                 AwsS3Extension.GenAwsFolder(_awsS3Configuration.RootFolder, placeFolder, input.Module),
                 AwsS3Extension.GenAwsFileName(input.FileId.ToString(), extension)),
-            CannedACL = input.CannedAcl ?? S3CannedACL.PublicRead,
+            //CannedACL = input.CannedAcl ?? S3CannedACL.PublicRead,
             InputStream = inputStream,
             Headers =
             {
