@@ -47,15 +47,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         var groupedRows = GroupByProcessGroup(response.Items);
         var reportRows = BuildReportRows(
             groupedRows,
-            response.RevenuesByMonth,
-            response.TransferredCosts,
-            response.CustomCosts,
-            response.CoalExcavationActualQuantity,
-            response.CoalCrosscutActualQuantity,
-            response.MeterExcavationActualQuantity,
-            response.MeterCrosscutActualQuantity,
-            response.AcceptedSavingQuarter,
-            response.SavingsValue,
+            response,
             quarter,
             year);
 
@@ -146,21 +138,13 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
 
     private static List<ExportRow> BuildReportRows(
         IReadOnlyList<ExportRow> groupedRows,
-        IReadOnlyList<LumpSumQuarterRevenueByMonthDto> revenuesByMonth,
-        IReadOnlyList<LumpSumQuarterTransferredCostDto> transferredCosts,
-        IReadOnlyList<LumpSumQuarterCustomCostDto> customCosts,
-        double coalExcavationActualQuantity,
-        double coalCrosscutActualQuantity,
-        double meterExcavationActualQuantity,
-        double meterCrosscutActualQuantity,
-        double acceptedSavingQuarterFromResponse,
-        double savingsValue,
+        LumpSumFinalSettlementQuarterResponseDto response,
         int quarter,
         int year)
     {
         var quarterRoman = ToRomanQuarter(quarter);
         var months = QuarterToMonthRange(quarter);
-        var revenueByMonthMap = revenuesByMonth.ToDictionary(x => x.Month, x => x);
+        var revenueByMonthMap = response.RevenuesByMonth.ToDictionary(x => x.Month, x => x);
 
         var revenueRows = months.Select(monthNumber =>
         {
@@ -175,7 +159,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
 
         var revenueQuarter = SummaryAmounts.Sum(revenueRows);
 
-        var transferredByMonth = transferredCosts.ToDictionary(
+        var transferredByMonth = response.TransferredCosts.ToDictionary(
             x => x.Month,
             x => new SummaryAmounts(
                 x.Month,
@@ -185,9 +169,8 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 x.TotalAmount));
 
         var customCostRowsByMonth = new Dictionary<int, List<ExportRow>>();
-        var customCostTotalsByMonth = new Dictionary<int, SummaryAmounts>();
 
-        foreach (var item in customCosts)
+        foreach (var item in response.CustomCosts)
         {
             var month = item.Month;
             if (month <= 0)
@@ -203,26 +186,18 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
             }
 
             rows.Add(row);
-
-            customCostTotalsByMonth.TryGetValue(month, out var currentTotal);
-            customCostTotalsByMonth[month] = new SummaryAmounts(
-                month,
-                (currentTotal?.Materials ?? 0) + row.MaterialsTotalAmount,
-                (currentTotal?.Maintains ?? 0) + row.MaintainsTotalAmount,
-                (currentTotal?.Electricities ?? 0) + row.ElectricitiesTotalAmount,
-                (currentTotal?.Total ?? 0) + row.TotalAmount);
         }
 
+        var costByMonthMap = response.CostsByMonth.ToDictionary(x => x.Month, x => x);
         var costRows = months.Select(month =>
         {
-            transferredByMonth.TryGetValue(month, out var monthTransferred);
-            customCostTotalsByMonth.TryGetValue(month, out var monthCustom);
+            costByMonthMap.TryGetValue(month, out var value);
             return new SummaryAmounts(
                 month,
-                (monthTransferred?.Materials ?? 0) + (monthCustom?.Materials ?? 0),
-                (monthTransferred?.Maintains ?? 0) + (monthCustom?.Maintains ?? 0),
-                (monthTransferred?.Electricities ?? 0) + (monthCustom?.Electricities ?? 0),
-                (monthTransferred?.Total ?? 0) + (monthCustom?.Total ?? 0));
+                value?.Materials?.TotalAmount ?? 0,
+                value?.Maintains?.TotalAmount ?? 0,
+                value?.Electricities?.TotalAmount ?? 0,
+                value?.TotalAmount ?? 0);
         }).ToList();
 
         var costQuarter = SummaryAmounts.Sum(costRows);
@@ -240,26 +215,36 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         }).ToList();
 
         var savingQuarter = SummaryAmounts.Sum(savingRows);
-        var acceptedSavingQuarter = acceptedSavingQuarterFromResponse;
-        if (Math.Abs(acceptedSavingQuarter) < double.Epsilon)
-        {
-            acceptedSavingQuarter =
-                savingQuarter.Materials +
-                savingQuarter.Maintains +
-                savingQuarter.Electricities;
-        }
+        var acceptedSavingQuarter = response.AcceptedSavingQuarter;
+        var savingAddedToIncomeQuarter = response.SavingAddedToIncomeQuarter;
 
-        var savingAddedToIncomeByMonth = months
-            .Select((_, index) =>
+        var monthBreakdownByMonth = response.MonthBreakdowns
+            .Where(x => x != null)
+            .ToDictionary(x => x.Revenue?.Month ?? 0, x => x);
+
+        monthBreakdownByMonth.TryGetValue(months[^1], out var lastMonthBreakdown);
+        var savingCarryForwardToNextQuarter = lastMonthBreakdown?.SavingCarryForwardByMonths
+            .Sum(x => x.Value) ?? 0;
+        var savingAddedToIncomeQuarterAfterCarryForward =
+            savingAddedToIncomeQuarter - savingCarryForwardToNextQuarter;
+
+        var savingAddedToIncomeMonth1And2 = months
+            .Take(2)
+            .Select(monthNumber =>
             {
-                var acceptedSavingMonth =
-                    savingRows[index].Materials +
-                    savingRows[index].Maintains +
-                    savingRows[index].Electricities;
-                return acceptedSavingMonth * savingsValue;
+                monthBreakdownByMonth.TryGetValue(monthNumber, out var mb);
+                return mb?.SavingAddedToIncomeMonth ?? 0;
             })
             .ToList();
-        var savingAddedToIncomeQuarter = savingAddedToIncomeByMonth.Sum();
+
+        var savingAddedToIncomeByMonth = new List<double>
+        {
+            savingAddedToIncomeMonth1And2[0],
+            savingAddedToIncomeMonth1And2[1],
+            savingAddedToIncomeQuarterAfterCarryForward
+                - savingAddedToIncomeMonth1And2[0]
+                - savingAddedToIncomeMonth1And2[1]
+        };
 
         var specialRows = new List<ExportRow>
         {
@@ -269,7 +254,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 ProductName = "Than dao lo",
                 UnitOfMeasureName = "Tan",
                 PlannedQuantity = null,
-                ActualQuantity = coalExcavationActualQuantity,
+                ActualQuantity = response.CoalExcavationActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -279,7 +264,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 ProductName = "Than xen lo",
                 UnitOfMeasureName = "Tan",
                 PlannedQuantity = null,
-                ActualQuantity = coalCrosscutActualQuantity,
+                ActualQuantity = response.CoalCrosscutActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -289,7 +274,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 ProductName = "Met lo dao",
                 UnitOfMeasureName = "m",
                 PlannedQuantity = null,
-                ActualQuantity = meterExcavationActualQuantity,
+                ActualQuantity = response.MeterExcavationActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -299,7 +284,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 ProductName = "Met xen lo",
                 UnitOfMeasureName = "m",
                 PlannedQuantity = null,
-                ActualQuantity = meterCrosscutActualQuantity,
+                ActualQuantity = response.MeterCrosscutActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             }

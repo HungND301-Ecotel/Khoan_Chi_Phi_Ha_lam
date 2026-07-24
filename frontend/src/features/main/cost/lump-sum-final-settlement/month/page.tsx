@@ -12,6 +12,7 @@ import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementListRequest,
 	LumpSumFinalSettlementMonthResponse,
+	LumpSumFinalSettlementQuarterResponse,
 	LumpSumQuarterCustomCost,
 	LumpSumQuarterRevenueByMonth,
 	LumpSumQuarterTransferredCost,
@@ -61,6 +62,8 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		useState<LumpSumQuarterRevenueByMonth | null>(null);
 	const [transferredCostByMonth, setTransferredCostByMonth] =
 		useState<LumpSumQuarterTransferredCost | null>(null);
+	const [quarterBreakdown, setQuarterBreakdown] =
+		useState<LumpSumFinalSettlementQuarterResponse | null>(null);
 	const [acceptedSavingMonth, setAcceptedSavingMonth] = useState(0);
 	const [quyetToanSavingsLimit, setQuyetToanSavingsLimit] = useState(0);
 	const [savingAddedToIncomeMonth, setSavingAddedToIncomeMonth] = useState(0);
@@ -146,6 +149,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setCostByMonth(monthRes.result.cost ?? null);
 				setSavingByMonth(monthRes.result.saving ?? null);
 				setTransferredCostByMonth(monthRes.result.transferredCost ?? null);
+				setQuarterBreakdown(monthRes.result.quarterBreakdown ?? null);
 				setAcceptedSavingMonth(monthRes.result.acceptedSavingMonth ?? 0);
 				setQuyetToanSavingsLimit(monthRes.result.quyetToanSavingsLimit ?? 0);
 				setSavingAddedToIncomeMonth(
@@ -161,7 +165,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					monthRes.result.savingCarryForwardToNextMonths ?? 0,
 				);
 				setSavingCarryForwardEditing(false);
-				setCustomCosts(monthRes.result.customCosts ?? []);
+				const selectedMonthNum = Number(payload.month);
+				const monthCustomCosts = monthRes.result.customCosts ?? [];
+				const quarterCustomCosts = (
+					monthRes.result.quarterBreakdown?.customCosts ?? []
+				).filter((item) => Number(item.month) !== selectedMonthNum);
+				setCustomCosts([...monthCustomCosts, ...quarterCustomCosts]);
 				setEditingSnapshot({});
 			} catch (error) {
 				console.error('Error fetching lump sum month list:', error);
@@ -181,6 +190,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				setCostByMonth(null);
 				setSavingByMonth(null);
 				setTransferredCostByMonth(null);
+				setQuarterBreakdown(null);
 				setAcceptedSavingMonth(0);
 				setQuyetToanSavingsLimit(0);
 				setSavingAddedToIncomeMonth(0);
@@ -234,7 +244,14 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 	const monthDisplayData = useMemo(() => {
 		const selectedMonth = form.watch('month') || defaultMonth;
 		const selectedYear = form.watch('year') || defaultYear;
-		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
+		const customCostRowsByMonth = new Map<number, LumpSumFinalSettlement[]>();
+		for (const item of customCosts) {
+			const itemMonth = item.month ? Number(item.month) : undefined;
+			if (!itemMonth) continue;
+			const list = customCostRowsByMonth.get(itemMonth) ?? [];
+			list.push(buildCustomCostRow(item));
+			customCostRowsByMonth.set(itemMonth, list);
+		}
 
 		const currentMonthNum = Number(selectedMonth);
 		const currentYearNum = Number(selectedYear);
@@ -328,7 +345,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				hidePlanActual: true,
 				hideUnitPrice: true,
 			}),
-			...customCostRows,
+			...(customCostRowsByMonth.get(currentMonthNum) ?? []),
 			makeZeroRow(
 				`Giá trị tiết kiệm(+)/bội chi(-) tháng ${selectedMonth}/${selectedYear}`,
 				{
@@ -379,8 +396,11 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					hideUnitPrice: true,
 					isMergedValueRow: true,
 					mergedValue:
-						savingCarryForwardByMonths.find((x) => x.month === prevMonthNum)
-							?.value ?? 0,
+						currentMonthNum === 1
+							? 0
+							: savingCarryForwardByMonths
+									.filter((x) => x.month <= prevMonthNum)
+									.reduce((sum, x) => sum + (x.value ?? 0), 0),
 				},
 			),
 
@@ -398,6 +418,329 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				},
 			),
 		];
+
+		if (currentMonthNum % 3 === 0 && quarterBreakdown) {
+			const quarterNum = Math.floor((currentMonthNum - 1) / 3) + 1;
+			const romanQuarter =
+				quarterNum === 1
+					? 'I'
+					: quarterNum === 2
+						? 'II'
+						: quarterNum === 3
+							? 'III'
+							: 'IV';
+			const quarterStartMonth = (quarterNum - 1) * 3 + 1;
+			const m1 = quarterStartMonth;
+			const m2 = quarterStartMonth + 1;
+			const m3 = quarterStartMonth + 2;
+
+			const monthBreakdowns = quarterBreakdown.monthBreakdowns ?? [];
+			const findMonthBreakdown = (targetMonth: number, fallbackIndex: number) =>
+				monthBreakdowns.find(
+					(x: LumpSumFinalSettlementMonthResponse) =>
+						x?.revenue?.month === targetMonth ||
+						x?.cost?.month === targetMonth ||
+						x?.saving?.month === targetMonth,
+				) ?? monthBreakdowns[fallbackIndex];
+
+			const mb1 = findMonthBreakdown(m1, 0);
+			const mb2 = findMonthBreakdown(m2, 1);
+			const mb3 = findMonthBreakdown(m3, 2);
+
+			const savingCarryForwardToNextQuarter = savingCarryForwardByMonths.reduce(
+				(sum, x) => sum + (x.value ?? 0),
+				0,
+			);
+			const savingAddedToIncomeQuarterAfterCarryForward =
+				(quarterBreakdown.savingAddedToIncomeQuarter ?? 0) -
+				savingCarryForwardToNextQuarter;
+			const savingAddedToIncomeMonth1 = mb1?.savingAddedToIncomeMonth ?? 0;
+			const savingAddedToIncomeMonth2 = mb2?.savingAddedToIncomeMonth ?? 0;
+			const savingAddedToIncomeMonth3 =
+				savingAddedToIncomeQuarterAfterCarryForward -
+				savingAddedToIncomeMonth1 -
+				savingAddedToIncomeMonth2;
+
+			const quarterCustomCostRows1 = customCostRowsByMonth.get(m1) ?? [];
+			const quarterCustomCostRows2 = customCostRowsByMonth.get(m2) ?? [];
+			const quarterCustomCostRows3 = customCostRowsByMonth.get(m3) ?? [];
+
+			defaultRows.push(
+				makeZeroRow(`Doanh thu quý ${romanQuarter}/${selectedYear}`, {
+					sttLabel: 'IV',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount:
+						quarterBreakdown.revenueQuarter?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount:
+						quarterBreakdown.revenueQuarter?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						quarterBreakdown.revenueQuarter?.electricities?.totalAmount ?? 0,
+					totalAmount: quarterBreakdown.revenueQuarter?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m1}/${selectedYear}`, {
+					sttLabel: 'IV.1',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb1?.revenue?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb1?.revenue?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb1?.revenue?.electricities?.totalAmount ?? 0,
+					totalAmount: mb1?.revenue?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m2}/${selectedYear}`, {
+					sttLabel: 'IV.2',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb2?.revenue?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb2?.revenue?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb2?.revenue?.electricities?.totalAmount ?? 0,
+					totalAmount: mb2?.revenue?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m3}/${selectedYear}`, {
+					sttLabel: 'IV.3',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb3?.revenue?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb3?.revenue?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb3?.revenue?.electricities?.totalAmount ?? 0,
+					totalAmount: mb3?.revenue?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Chi phí quý ${romanQuarter}/${selectedYear}`, {
+					sttLabel: 'V',
+					isBold: true,
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount:
+						quarterBreakdown.costQuarter?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount:
+						quarterBreakdown.costQuarter?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						quarterBreakdown.costQuarter?.electricities?.totalAmount ?? 0,
+					totalAmount: quarterBreakdown.costQuarter?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m1}/${selectedYear}`, {
+					sttLabel: 'V.1',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb1?.cost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb1?.cost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount: mb1?.cost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb1?.cost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Chi phí kết chuyển T${m1}/${selectedYear}`, {
+					sttLabel: '-',
+					isTransferredDefaultRow: true,
+					month: m1,
+					unitOfMeasureName: '',
+					materialsTotalAmount:
+						mb1?.transferredCost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount:
+						mb1?.transferredCost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb1?.transferredCost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb1?.transferredCost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterCustomCostRows1,
+				makeZeroRow(`Tháng ${m2}/${selectedYear}`, {
+					sttLabel: 'V.2',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb2?.cost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb2?.cost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount: mb2?.cost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb2?.cost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Chi phí kết chuyển T${m2}/${selectedYear}`, {
+					sttLabel: '-',
+					isTransferredDefaultRow: true,
+					month: m2,
+					unitOfMeasureName: '',
+					materialsTotalAmount:
+						mb2?.transferredCost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount:
+						mb2?.transferredCost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb2?.transferredCost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb2?.transferredCost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterCustomCostRows2,
+				makeZeroRow(`Tháng ${m3}/${selectedYear}`, {
+					sttLabel: 'V.3',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb3?.cost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb3?.cost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount: mb3?.cost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb3?.cost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Chi phí kết chuyển T${m3}/${selectedYear}`, {
+					sttLabel: '-',
+					isTransferredDefaultRow: true,
+					month: m3,
+					unitOfMeasureName: '',
+					materialsTotalAmount:
+						mb3?.transferredCost?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount:
+						mb3?.transferredCost?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb3?.transferredCost?.electricities?.totalAmount ?? 0,
+					totalAmount: mb3?.transferredCost?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterCustomCostRows3,
+				makeZeroRow(
+					`Giá trị tiết kiệm, bội chi quý ${romanQuarter}/${selectedYear}`,
+					{
+						sttLabel: 'VI',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						materialsTotalAmount:
+							quarterBreakdown.savingQuarter?.materials?.totalAmount ?? 0,
+						maintainsTotalAmount:
+							quarterBreakdown.savingQuarter?.maintains?.totalAmount ?? 0,
+						electricitiesTotalAmount:
+							quarterBreakdown.savingQuarter?.electricities?.totalAmount ?? 0,
+						totalAmount: quarterBreakdown.savingQuarter?.totalAmount ?? 0,
+						hidePlanActual: true,
+						hideUnitPrice: true,
+					},
+				),
+				makeZeroRow(`Tháng ${m1}/${selectedYear}`, {
+					sttLabel: 'VI.1',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb1?.saving?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb1?.saving?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb1?.saving?.electricities?.totalAmount ?? 0,
+					totalAmount: mb1?.saving?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m2}/${selectedYear}`, {
+					sttLabel: 'VI.2',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb2?.saving?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb2?.saving?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb2?.saving?.electricities?.totalAmount ?? 0,
+					totalAmount: mb2?.saving?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(`Tháng ${m3}/${selectedYear}`, {
+					sttLabel: 'VI.3',
+					unitOfMeasureName: 'Đồng',
+					materialsTotalAmount: mb3?.saving?.materials?.totalAmount ?? 0,
+					maintainsTotalAmount: mb3?.saving?.maintains?.totalAmount ?? 0,
+					electricitiesTotalAmount:
+						mb3?.saving?.electricities?.totalAmount ?? 0,
+					totalAmount: mb3?.saving?.totalAmount ?? 0,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				makeZeroRow(
+					`Tổng giá trị tiết kiệm được chấp nhận quý ${romanQuarter}/${selectedYear}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: quarterBreakdown.acceptedSavingQuarter ?? 0,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm được cộng vào thu nhập quý ${romanQuarter}/${selectedYear}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: quarterBreakdown.savingAddedToIncomeQuarter ?? 0,
+					},
+				),
+				makeZeroRow(
+					`Luân chuyển giá trị tiết kiệm quý ${romanQuarter}/${selectedYear} sang quý sau`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingCarryForwardToNextQuarter,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm được cộng vào thu nhập quý ${romanQuarter}/${selectedYear} (Sau luân chuyển)`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingAddedToIncomeQuarterAfterCarryForward,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${m1}/${selectedYear}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingAddedToIncomeMonth1,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${m2}/${selectedYear}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingAddedToIncomeMonth2,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${m3}/${selectedYear}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingAddedToIncomeMonth3,
+					},
+				),
+			);
+		}
 
 		const specialRows: LumpSumFinalSettlement[] = [
 			{
@@ -461,6 +804,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		defaultYear,
 		filteredData,
 		form,
+		quarterBreakdown,
 		quarterSpecialQuantities,
 		revenueByMonth,
 		savingAddedToIncomeMonth,
@@ -549,14 +893,12 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 						payload,
 					);
 				}
-				// Giữ lại các temp rows chưa được lưu
 				const tempRowsBeforeReload = customCosts.filter(
 					(x) => x.id !== row.id && x.id.startsWith('temp-'),
 				);
 
 				await reloadCurrentMonth();
 
-				// hiện lên
 				if (tempRowsBeforeReload.length > 0) {
 					setCustomCosts((prev) => [...prev, ...tempRowsBeforeReload]);
 				}
@@ -885,19 +1227,51 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
 					data={monthDisplayData}
 					isLoading={isLoading}
-					onAddCustomCost={hasPermission('production.lumpsumfinalsettlement.create') ? addCustomCostRow : undefined}
-					onEditCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? editCustomCost : undefined}
+					onAddCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.create')
+							? addCustomCostRow
+							: undefined
+					}
+					onEditCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? editCustomCost
+							: undefined
+					}
 					onCancelCustomCost={cancelCustomCost}
-					onSaveCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? saveCustomCost : undefined}
-					onDeleteCustomCost={hasPermission('production.lumpsumfinalsettlement.delete') ? deleteCustomCost : undefined}
+					onSaveCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? saveCustomCost
+							: undefined
+					}
+					onDeleteCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.delete')
+							? deleteCustomCost
+							: undefined
+					}
 					onCustomCostChange={changeCustomCostValue}
-					onEditSpecialQuantity={hasPermission('production.lumpsumfinalsettlement.update') ? editSpecialQuantity : undefined}
+					onEditSpecialQuantity={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? editSpecialQuantity
+							: undefined
+					}
 					onCancelSpecialQuantity={cancelSpecialQuantity}
-					onSaveSpecialQuantity={hasPermission('production.lumpsumfinalsettlement.update') ? saveSpecialQuantity : undefined}
+					onSaveSpecialQuantity={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? saveSpecialQuantity
+							: undefined
+					}
 					onSpecialQuantityChange={changeSpecialQuantityValue}
 					onSavingCarryForwardChange={changeSavingCarryForwardValue}
-					onSaveSavingCarryForward={hasPermission('production.lumpsumfinalsettlement.update') ? saveSavingCarryForwardValue : undefined}
-					onEditSavingCarryForward={hasPermission('production.lumpsumfinalsettlement.update') ? editSavingCarryForwardValue : undefined}
+					onSaveSavingCarryForward={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? saveSavingCarryForwardValue
+							: undefined
+					}
+					onEditSavingCarryForward={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? editSavingCarryForwardValue
+							: undefined
+					}
 					onCancelSavingCarryForward={cancelSavingCarryForwardValue}
 				/>
 			</CardContent>

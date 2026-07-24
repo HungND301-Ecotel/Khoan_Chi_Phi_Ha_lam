@@ -29,6 +29,7 @@ export interface LumpSumFinalSettlementQuarterResponse {
 	meterExcavationActualQuantity?: number;
 	meterCrosscutActualQuantity?: number;
 	totalSavingQuarter?: number;
+	quyetToanSavingsLimitQuarter?: number;
 	acceptedSavingQuarter?: number;
 	savingsValue?: number;
 	revenueAdjustmentRate?: number;
@@ -54,6 +55,7 @@ export interface LumpSumFinalSettlementMonthResponse {
 	savingAddedToIncomeMonth?: number;
 	savingCarryForwardByMonths?: LumpSumSavingCarryForwardByMonth[];
 	savingCarryForwardToNextMonths?: number;
+	quarterBreakdown?: LumpSumFinalSettlementQuarterResponse | null;
 }
 
 export interface LumpSumSavingCarryForwardByMonth {
