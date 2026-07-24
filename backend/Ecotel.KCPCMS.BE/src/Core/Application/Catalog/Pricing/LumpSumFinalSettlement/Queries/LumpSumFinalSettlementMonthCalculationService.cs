@@ -463,7 +463,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         var revenueTotal = revenueMaterialTotal + revenueMaintainTotal + revenueElectricityTotal;
         var savingsValue = ResolveSavingsValue(revenueTotal, savingsRateConfigs);
         var quyetToanSavingsLimit = revenueTotal * savingsValue;
-        var acceptedSavingMonth = savingTotal;
+        var acceptedSavingMonth = Math.Min(savingTotal, quyetToanSavingsLimit);
+        //var acceptedSavingMonth = savingTotal;
 
         var revenueCostAdjustmentConfigs = await _revenueCostAdjustmentConfigRepository.GetAll()
             .AsNoTracking()
@@ -671,5 +672,40 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .ToString()
             .Normalize(NormalizationForm.FormC)
             .Replace(" ", string.Empty);
+    }
+
+    public async Task<QuarterAcceptedSavingResult> CalculateQuarterAcceptedSavingAsync(
+     double revenueQuarterTotal,
+     CancellationToken cancellationToken)
+    {
+        var savingsRateConfigs = await _savingsRateConfigRepository.GetAll()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var savingsValue = ResolveSavingsValue(revenueQuarterTotal, savingsRateConfigs);
+        var acceptedSavingQuarter = revenueQuarterTotal * savingsValue;
+
+        var revenueCostAdjustmentConfigs = await _revenueCostAdjustmentConfigRepository.GetAll()
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        var revenueAdjustmentRate = ResolveRevenueCostAdjustmentRate(acceptedSavingQuarter, revenueCostAdjustmentConfigs);
+        var savingAddedToIncomeQuarter = acceptedSavingQuarter * revenueAdjustmentRate;
+
+        return new QuarterAcceptedSavingResult
+        {
+            SavingsValue = savingsValue,
+            QuyetToanSavingsLimitQuarter = acceptedSavingQuarter,
+            AcceptedSavingQuarter = acceptedSavingQuarter,
+            RevenueAdjustmentRate = revenueAdjustmentRate,
+            SavingAddedToIncomeQuarter = savingAddedToIncomeQuarter
+        };
+    }
+
+    public sealed class QuarterAcceptedSavingResult
+    {
+        public double SavingsValue { get; set; }
+        public double QuyetToanSavingsLimitQuarter { get; set; }
+        public double AcceptedSavingQuarter { get; set; }
+        public double RevenueAdjustmentRate { get; set; }
+        public double SavingAddedToIncomeQuarter { get; set; }
     }
 }

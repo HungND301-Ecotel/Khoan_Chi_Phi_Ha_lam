@@ -383,6 +383,28 @@ export function LumpSumFinalSettlementReportTable({
 			0,
 		);
 
+		const lastMonthBreakdown = monthBreakdownByMonth.get(
+			months[months.length - 1],
+		);
+		const savingCarryForwardToNextQuarter = (
+			lastMonthBreakdown?.savingCarryForwardByMonths ?? []
+		).reduce((sum, x) => sum + (x.value ?? 0), 0);
+		const savingAddedToIncomeQuarterAfterCarryForward =
+			savingAddedToIncomeQuarter - savingCarryForwardToNextQuarter;
+		const savingAddedToIncomeMonth1 =
+			monthBreakdownByMonth.get(months[0])?.savingAddedToIncomeMonth ?? 0;
+		const savingAddedToIncomeMonth2 =
+			monthBreakdownByMonth.get(months[1])?.savingAddedToIncomeMonth ?? 0;
+		const savingAddedToIncomeMonth3 =
+			savingAddedToIncomeQuarterAfterCarryForward -
+			savingAddedToIncomeMonth1 -
+			savingAddedToIncomeMonth2;
+		const savingAddedToIncomeByMonth = [
+			savingAddedToIncomeMonth1,
+			savingAddedToIncomeMonth2,
+			savingAddedToIncomeMonth3,
+		];
+
 		const buildCustomCostRow = (
 			item: LumpSumQuarterCustomCost,
 		): LumpSumFinalSettlement => {
@@ -627,7 +649,7 @@ export function LumpSumFinalSettlementReportTable({
 					mergedValue: savingAddedToIncomeQuarter,
 				},
 			),
-			...months.map((monthNumber) =>
+			...months.map((monthNumber, idx) =>
 				makeZeroRow(
 					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`,
 					{
@@ -636,9 +658,7 @@ export function LumpSumFinalSettlementReportTable({
 						hidePlanActual: true,
 						hideUnitPrice: true,
 						isMergedValueRow: true,
-						mergedValue:
-							monthBreakdownByMonth.get(monthNumber)
-								?.savingAddedToIncomeMonth ?? 0,
+						mergedValue: savingAddedToIncomeByMonth[idx] ?? 0,
 					},
 				),
 			),

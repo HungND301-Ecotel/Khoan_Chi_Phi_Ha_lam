@@ -1,7 +1,5 @@
 using Application.Common.Exceptions;
-using Application.Catalog.Index.SavingsRateConfig.Queries;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
-using Application.Dto.Catalog.SavingsRateConfig;
 using ClosedXML.Excel;
 using MediatR;
 
@@ -46,23 +44,8 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 request.DepartmentId),
             cancellationToken);
 
-        var savingsRateConfigResponse = await mediator.Send(
-            new GetAllSavingsRateConfigQuery(1, 1000, null, true),
-            cancellationToken);
-
         var groupedRows = GroupByProcessGroup(response.Items);
-        var reportRows = BuildReportRows(
-            groupedRows,
-            response.Revenue,
-            response.TransferredCost,
-            response.CustomCosts,
-            response.CoalExcavationActualQuantity,
-            response.CoalCrosscutActualQuantity,
-            response.MeterExcavationActualQuantity,
-            response.MeterCrosscutActualQuantity,
-            savingsRateConfigResponse.Data,
-            month,
-            year);
+        var reportRows = BuildReportRows(groupedRows, response, month, year);
 
         var filteredRows = ApplySearch(reportRows, request.Search);
         var fileBytes = BuildWorkbook(filteredRows, month, year);
@@ -150,47 +133,49 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
 
     private static List<ExportRow> BuildReportRows(
         IReadOnlyList<ExportRow> groupedRows,
-        LumpSumQuarterRevenueByMonthDto? revenue,
-        LumpSumQuarterTransferredCostDto? transferredCost,
-        IReadOnlyList<LumpSumQuarterCustomCostDto> customCosts,
-        double coalExcavationActualQuantity,
-        double coalCrosscutActualQuantity,
-        double meterExcavationActualQuantity,
-        double meterCrosscutActualQuantity,
-        IReadOnlyList<SavingsRateConfigDto> savingsRateConfigs,
+        LumpSumFinalSettlementMonthResponseDto response,
         int month,
         int year)
     {
+        var revenue = response.Revenue;
+        var cost = response.Cost;
+        var saving = response.Saving;
+        var transferredCost = response.TransferredCost;
+
         var revenueMaterials = revenue?.Materials?.TotalAmount ?? 0;
         var revenueMaintains = revenue?.Maintains?.TotalAmount ?? 0;
         var revenueElectricities = revenue?.Electricities?.TotalAmount ?? 0;
         var revenueTotal = revenue?.TotalAmount ?? 0;
 
-        var customRows = customCosts.Select(BuildCustomCostRow).ToList();
+        var costMaterials = cost?.Materials?.TotalAmount ?? 0;
+        var costMaintains = cost?.Maintains?.TotalAmount ?? 0;
+        var costElectricities = cost?.Electricities?.TotalAmount ?? 0;
+        var costTotal = cost?.TotalAmount ?? 0;
 
-        var customMaterialsTotal = customRows.Sum(x => x.MaterialsTotalAmount);
-        var customMaintainsTotal = customRows.Sum(x => x.MaintainsTotalAmount);
-        var customElectricitiesTotal = customRows.Sum(x => x.ElectricitiesTotalAmount);
-        var customTotal = customRows.Sum(x => x.TotalAmount);
+        var savingMaterials = saving?.Materials?.TotalAmount ?? 0;
+        var savingMaintains = saving?.Maintains?.TotalAmount ?? 0;
+        var savingElectricities = saving?.Electricities?.TotalAmount ?? 0;
+        var savingTotal = saving?.TotalAmount ?? 0;
 
         var transferredMaterials = transferredCost?.Materials?.TotalAmount ?? 0;
         var transferredMaintains = transferredCost?.Maintains?.TotalAmount ?? 0;
         var transferredElectricities = transferredCost?.Electricities?.TotalAmount ?? 0;
         var transferredTotal = transferredCost?.TotalAmount ?? 0;
 
-        var costMaterials = transferredMaterials + customMaterialsTotal;
-        var costMaintains = transferredMaintains + customMaintainsTotal;
-        var costElectricities = transferredElectricities + customElectricitiesTotal;
-        var costTotal = transferredTotal + customTotal;
+        var customRows = response.CustomCosts.Select(BuildCustomCostRow).ToList();
 
-        var savingMaterials = revenueMaterials - costMaterials;
-        var savingMaintains = revenueMaintains - costMaintains;
-        var savingElectricities = revenueElectricities - costElectricities;
-        var savingTotal = revenueTotal - costTotal;
+        var acceptedSavingMonth = response.AcceptedSavingMonth;
+        var savingAddedToIncomeMonth = response.SavingAddedToIncomeMonth;
 
-        var acceptedSavingMonth = savingMaterials + savingMaintains + savingElectricities;
-        var savingsValue = ResolveSavingsValue(acceptedSavingMonth, savingsRateConfigs);
-        var savingAddedToIncomeMonth = acceptedSavingMonth * savingsValue;
+        var currentMonthNum = month;
+        var currentYearNum = year;
+        var prevMonthNum = currentMonthNum == 1 ? 12 : currentMonthNum - 1;
+        var prevYearNum = currentMonthNum == 1 ? currentYearNum - 1 : currentYearNum;
+        var savingCarryForwardInFromPrevMonth = currentMonthNum == 1
+            ? 0
+            : response.SavingCarryForwardByMonths
+                .Where(x => x.Month <= prevMonthNum)
+                .Sum(x => x.Value);
 
         var specialRows = new List<ExportRow>
         {
@@ -200,7 +185,7 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 ProductName = "Than dao lo",
                 UnitOfMeasureName = "Tan",
                 PlannedQuantity = null,
-                ActualQuantity = coalExcavationActualQuantity,
+                ActualQuantity = response.CoalExcavationActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -210,7 +195,7 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 ProductName = "Than xen lo",
                 UnitOfMeasureName = "Tan",
                 PlannedQuantity = null,
-                ActualQuantity = coalCrosscutActualQuantity,
+                ActualQuantity = response.CoalCrosscutActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -220,7 +205,7 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 ProductName = "Met lo dao",
                 UnitOfMeasureName = "m",
                 PlannedQuantity = null,
-                ActualQuantity = meterExcavationActualQuantity,
+                ActualQuantity = response.MeterExcavationActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             },
@@ -230,7 +215,7 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 ProductName = "Met xen lo",
                 UnitOfMeasureName = "m",
                 PlannedQuantity = null,
-                ActualQuantity = meterCrosscutActualQuantity,
+                ActualQuantity = response.MeterCrosscutActualQuantity,
                 IsBold = true,
                 ExcludeFromSummary = true
             }
@@ -276,11 +261,192 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
             unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
             isMergedValueRow: true, mergedValue: acceptedSavingMonth));
 
-        defaultRows.Add(MakeZeroRow($"Gia tri tiet kiem duoc cong vao thu nhap thang {month}/{year}", sttLabel: "*", isBold: true,
+        defaultRows.Add(MakeZeroRow($"Gia tri tiet kiem luan chuyen tu thang {prevMonthNum}/{prevYearNum} cong/tru vao thu nhap thang {month}/{year}", sttLabel: "*", isBold: true,
             unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
-            isMergedValueRow: true, mergedValue: savingAddedToIncomeMonth));
+            isMergedValueRow: true, mergedValue: savingCarryForwardInFromPrevMonth));
 
-        return [.. specialRows, .. groupedRows, .. defaultRows];
+        defaultRows.Add(MakeZeroRow("Gia tri tiet kiem duoc cong/tru vao thu nhap luan chuyen sang cac thang tiep theo", sttLabel: "*", isBold: true,
+            unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+            isMergedValueRow: true, mergedValue: response.SavingCarryForwardToNextMonths));
+
+        var quarterRows = BuildQuarterRows(response, month, year);
+
+        return [.. specialRows, .. groupedRows, .. defaultRows, .. quarterRows];
+    }
+
+    private static List<ExportRow> BuildQuarterRows(
+        LumpSumFinalSettlementMonthResponseDto response,
+        int month,
+        int year)
+    {
+        var quarterBreakdown = response.QuarterBreakdown;
+        if (month % 3 != 0 || quarterBreakdown == null)
+        {
+            return [];
+        }
+
+        var quarterNum = (month - 1) / 3 + 1;
+        var quarterRoman = ToRomanQuarter(quarterNum);
+        var quarterStartMonth = (quarterNum - 1) * 3 + 1;
+        var months = new List<int> { quarterStartMonth, quarterStartMonth + 1, quarterStartMonth + 2 };
+
+        var revenueByMonthMap = quarterBreakdown.RevenuesByMonth.ToDictionary(x => x.Month, x => x);
+        var costByMonthMap = quarterBreakdown.CostsByMonth.ToDictionary(x => x.Month, x => x);
+        var savingByMonthMap = quarterBreakdown.SavingsByMonth.ToDictionary(x => x.Month, x => x);
+        var transferredByMonthMap = quarterBreakdown.TransferredCosts.ToDictionary(x => x.Month, x => x);
+        var monthBreakdownByMonth = quarterBreakdown.MonthBreakdowns
+            .Where(x => x != null)
+            .ToDictionary(x => x.Revenue?.Month ?? 0, x => x);
+
+        var customCostRowsByMonth = new Dictionary<int, List<ExportRow>>();
+        foreach (var item in quarterBreakdown.CustomCosts)
+        {
+            if (item.Month <= 0)
+            {
+                continue;
+            }
+
+            if (!customCostRowsByMonth.TryGetValue(item.Month, out var list))
+            {
+                list = [];
+                customCostRowsByMonth[item.Month] = list;
+            }
+
+            list.Add(BuildCustomCostRow(item));
+        }
+
+        var savingCarryForwardToNextQuarter = response.SavingCarryForwardByMonths.Sum(x => x.Value);
+        var savingAddedToIncomeQuarterAfterCarryForward =
+            quarterBreakdown.SavingAddedToIncomeQuarter - savingCarryForwardToNextQuarter;
+
+        monthBreakdownByMonth.TryGetValue(months[0], out var mb1);
+        monthBreakdownByMonth.TryGetValue(months[1], out var mb2);
+        var savingAddedToIncomeMonth1 = mb1?.SavingAddedToIncomeMonth ?? 0;
+        var savingAddedToIncomeMonth2 = mb2?.SavingAddedToIncomeMonth ?? 0;
+        var savingAddedToIncomeMonth3 =
+            savingAddedToIncomeQuarterAfterCarryForward - savingAddedToIncomeMonth1 - savingAddedToIncomeMonth2;
+        var savingAddedToIncomeByMonth = new List<double>
+        {
+            savingAddedToIncomeMonth1,
+            savingAddedToIncomeMonth2,
+            savingAddedToIncomeMonth3
+        };
+
+        var rows = new List<ExportRow>
+        {
+            MakeZeroRow($"Doanh thu quy {quarterRoman}/{year}", sttLabel: "IV", isBold: true,
+                unitOfMeasureName: "Dong",
+                materialsTotalAmount: quarterBreakdown.RevenueQuarter.Materials?.TotalAmount ?? 0,
+                maintainsTotalAmount: quarterBreakdown.RevenueQuarter.Maintains?.TotalAmount ?? 0,
+                electricitiesTotalAmount: quarterBreakdown.RevenueQuarter.Electricities?.TotalAmount ?? 0,
+                totalAmount: quarterBreakdown.RevenueQuarter.TotalAmount,
+                hidePlanActual: true, hideUnitPrice: true)
+        };
+
+        rows.AddRange(months.Select((monthNumber, index) =>
+        {
+            revenueByMonthMap.TryGetValue(monthNumber, out var value);
+            return MakeZeroRow($"Thang {monthNumber}/{year}", sttLabel: $"IV.{index + 1}",
+                unitOfMeasureName: "Dong",
+                materialsTotalAmount: value?.Materials?.TotalAmount ?? 0,
+                maintainsTotalAmount: value?.Maintains?.TotalAmount ?? 0,
+                electricitiesTotalAmount: value?.Electricities?.TotalAmount ?? 0,
+                totalAmount: value?.TotalAmount ?? 0,
+                hidePlanActual: true, hideUnitPrice: true);
+        }));
+
+        rows.Add(MakeZeroRow($"Chi phi quy {quarterRoman}/{year}", sttLabel: "V", isBold: true,
+            unitOfMeasureName: "Dong",
+            materialsTotalAmount: quarterBreakdown.CostQuarter.Materials?.TotalAmount ?? 0,
+            maintainsTotalAmount: quarterBreakdown.CostQuarter.Maintains?.TotalAmount ?? 0,
+            electricitiesTotalAmount: quarterBreakdown.CostQuarter.Electricities?.TotalAmount ?? 0,
+            totalAmount: quarterBreakdown.CostQuarter.TotalAmount,
+            hidePlanActual: true, hideUnitPrice: true));
+
+        foreach (var (monthNumber, index) in months.Select((m, idx) => (m, idx)))
+        {
+            costByMonthMap.TryGetValue(monthNumber, out var monthCost);
+            transferredByMonthMap.TryGetValue(monthNumber, out var monthTransferred);
+
+            rows.Add(MakeZeroRow($"Thang {monthNumber}/{year}", sttLabel: $"V.{index + 1}",
+                unitOfMeasureName: "Dong",
+                materialsTotalAmount: monthCost?.Materials?.TotalAmount ?? 0,
+                maintainsTotalAmount: monthCost?.Maintains?.TotalAmount ?? 0,
+                electricitiesTotalAmount: monthCost?.Electricities?.TotalAmount ?? 0,
+                totalAmount: monthCost?.TotalAmount ?? 0,
+                hidePlanActual: true, hideUnitPrice: true));
+
+            rows.Add(MakeZeroRow($"Chi phi ket chuyen T{monthNumber}/{year}", sttLabel: "-",
+                isTransferredDefaultRow: true,
+                month: monthNumber,
+                unitOfMeasureName: string.Empty,
+                materialsTotalAmount: monthTransferred?.Materials?.TotalAmount ?? 0,
+                maintainsTotalAmount: monthTransferred?.Maintains?.TotalAmount ?? 0,
+                electricitiesTotalAmount: monthTransferred?.Electricities?.TotalAmount ?? 0,
+                totalAmount: monthTransferred?.TotalAmount ?? 0,
+                hidePlanActual: true, hideUnitPrice: true));
+
+            if (customCostRowsByMonth.TryGetValue(monthNumber, out var monthCustomRows))
+            {
+                rows.AddRange(monthCustomRows);
+            }
+        }
+
+        rows.Add(MakeZeroRow($"Gia tri tiet kiem, boi chi quy {quarterRoman}/{year}", sttLabel: "VI", isBold: true,
+            unitOfMeasureName: "Dong",
+            materialsTotalAmount: quarterBreakdown.SavingQuarter.Materials?.TotalAmount ?? 0,
+            maintainsTotalAmount: quarterBreakdown.SavingQuarter.Maintains?.TotalAmount ?? 0,
+            electricitiesTotalAmount: quarterBreakdown.SavingQuarter.Electricities?.TotalAmount ?? 0,
+            totalAmount: quarterBreakdown.SavingQuarter.TotalAmount,
+            hidePlanActual: true, hideUnitPrice: true));
+
+        rows.AddRange(months.Select((monthNumber, index) =>
+        {
+            savingByMonthMap.TryGetValue(monthNumber, out var value);
+            return MakeZeroRow($"Thang {monthNumber}/{year}", sttLabel: $"VI.{index + 1}",
+                unitOfMeasureName: "Dong",
+                materialsTotalAmount: value?.Materials?.TotalAmount ?? 0,
+                maintainsTotalAmount: value?.Maintains?.TotalAmount ?? 0,
+                electricitiesTotalAmount: value?.Electricities?.TotalAmount ?? 0,
+                totalAmount: value?.TotalAmount ?? 0,
+                hidePlanActual: true, hideUnitPrice: true);
+        }));
+
+        rows.Add(MakeZeroRow($"Tong gia tri tiet kiem duoc chap nhan quy {quarterRoman}/{year}", sttLabel: "*", isBold: true,
+            unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+            isMergedValueRow: true, mergedValue: quarterBreakdown.AcceptedSavingQuarter));
+
+        rows.Add(MakeZeroRow($"Gia tri tiet kiem duoc cong vao thu nhap quy {quarterRoman}/{year}", sttLabel: "*", isBold: true,
+            unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+            isMergedValueRow: true, mergedValue: quarterBreakdown.SavingAddedToIncomeQuarter));
+
+        rows.Add(MakeZeroRow($"Luan chuyen gia tri tiet kiem quy {quarterRoman}/{year} sang quy sau", sttLabel: "*", isBold: true,
+            unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+            isMergedValueRow: true, mergedValue: savingCarryForwardToNextQuarter));
+
+        rows.Add(MakeZeroRow($"Gia tri tiet kiem duoc cong vao thu nhap quy {quarterRoman}/{year} (Sau luan chuyen)", sttLabel: "*", isBold: true,
+            unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+            isMergedValueRow: true, mergedValue: savingAddedToIncomeQuarterAfterCarryForward));
+
+        rows.AddRange(months.Select((monthNumber, index) =>
+            MakeZeroRow($"Gia tri tiet kiem da cong vao thu nhap thang {monthNumber}/{year}", sttLabel: "*",
+                unitOfMeasureName: "Dong", hidePlanActual: true, hideUnitPrice: true,
+                isMergedValueRow: true,
+                mergedValue: savingAddedToIncomeByMonth[index])));
+
+        return rows;
+    }
+
+    private static string ToRomanQuarter(int quarter)
+    {
+        return quarter switch
+        {
+            1 => "I",
+            2 => "II",
+            3 => "III",
+            4 => "IV",
+            _ => quarter.ToString()
+        };
     }
 
     private static List<ExportRow> ApplySearch(IReadOnlyList<ExportRow> rows, string? search)
@@ -369,42 +535,6 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
             TotalAmount = totalAmount,
             MergedValue = mergedValue
         };
-    }
-
-    private static double ResolveSavingsValue(
-        double acceptedSavingMonth,
-        IReadOnlyCollection<SavingsRateConfigDto> configs)
-    {
-        var boundedConfigs = configs
-            .Where(x => x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
-            .OrderBy(x => x.MaxRevenue)
-            .ToList();
-
-        var matchedBoundedConfig = boundedConfigs
-            .FirstOrDefault(x => acceptedSavingMonth <= (double)x.MaxRevenue!.Value);
-        if (matchedBoundedConfig?.MaxSavingsRate is decimal matchedRate)
-        {
-            return (double)(matchedRate / 100m);
-        }
-
-        var unlimitedConfig = configs
-            .Where(x => !x.MaxRevenue.HasValue && x.MaxSavingsRate.HasValue)
-            .OrderByDescending(x => x.CreateOn)
-            .FirstOrDefault();
-
-        if (unlimitedConfig?.MaxSavingsRate is decimal unlimitedRate)
-        {
-            var maxBoundedRevenue = boundedConfigs.Any()
-                ? (double)boundedConfigs.Max(x => x.MaxRevenue!.Value)
-                : double.MinValue;
-
-            if (!boundedConfigs.Any() || acceptedSavingMonth > maxBoundedRevenue)
-            {
-                return (double)(unlimitedRate / 100m);
-            }
-        }
-
-        return 0;
     }
 
     private static byte[] BuildWorkbook(IReadOnlyList<ExportRow> rows, int month, int year)

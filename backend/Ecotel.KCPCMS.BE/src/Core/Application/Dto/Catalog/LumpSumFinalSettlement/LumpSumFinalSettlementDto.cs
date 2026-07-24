@@ -52,6 +52,7 @@ public class LumpSumFinalSettlementQuarterResponseDto
     public double MeterExcavationActualQuantity { get; set; }
     public double MeterCrosscutActualQuantity { get; set; }
     public double TotalSavingQuarter { get; set; }
+    public double QuyetToanSavingsLimitQuarter { get; set; }
     public double AcceptedSavingQuarter { get; set; }
     public double SavingsValue { get; set; }
     public double RevenueAdjustmentRate { get; set; }
@@ -78,6 +79,7 @@ public class LumpSumFinalSettlementMonthResponseDto
     public double SavingAddedToIncomeMonth { get; set; }
     public List<LumpSumSavingCarryForwardByMonthDto> SavingCarryForwardByMonths { get; set; } = new();
     public double SavingCarryForwardToNextMonths { get; set; }
+    public LumpSumFinalSettlementQuarterResponseDto? QuarterBreakdown { get; set; }
 }
 
 public class LumpSumQuarterRevenueByMonthDto

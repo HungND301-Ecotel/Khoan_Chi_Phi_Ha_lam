@@ -19,6 +19,7 @@ import {
 	LumpSumFinalSettlement,
 	LumpSumFinalSettlementListRequest,
 	LumpSumFinalSettlementMonthResponse,
+	LumpSumFinalSettlementQuarterResponse,
 	LumpSumQuarterCustomCost,
 	LumpSumQuarterRevenueByMonth,
 	LumpSumQuarterTransferredCost,
@@ -34,6 +35,27 @@ import { PERMISSIONS } from '@/constants/permissions';
 
 const ALL_DEPARTMENT = '__all_department__';
 const ALL_PROCESS_GROUP = '__all_process_group__';
+
+const quarterRomanFromMonth = (month: string | number) => {
+	const monthNumber = Number(month);
+	const quarterNumber = Math.floor((monthNumber - 1) / 3) + 1;
+	if (quarterNumber === 1) return 'I';
+	if (quarterNumber === 2) return 'II';
+	if (quarterNumber === 3) return 'III';
+	if (quarterNumber === 4) return 'IV';
+	return String(quarterNumber);
+};
+
+const sumRows = (rows: LumpSumQuarterRevenueByMonth[]) =>
+	rows.reduce(
+		(acc, item) => ({
+			materials: acc.materials + (item.materials?.totalAmount ?? 0),
+			maintains: acc.maintains + (item.maintains?.totalAmount ?? 0),
+			electricities: acc.electricities + (item.electricities?.totalAmount ?? 0),
+			total: acc.total + (item.totalAmount ?? 0),
+		}),
+		{ materials: 0, maintains: 0, electricities: 0, total: 0 },
+	);
 
 interface LumpSumFinalSettlementMonthReportTableProps {
 	enableSearch?: boolean;
@@ -175,6 +197,8 @@ export function LumpSumFinalSettlementMonthReportTable({
 	>([]);
 	const [savingCarryForwardToNextMonths, setSavingCarryForwardToNextMonths] =
 		useState(0);
+	const [quarterBreakdown, setQuarterBreakdown] =
+		useState<LumpSumFinalSettlementQuarterResponse | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 	const [isLoadingProcessGroups, setIsLoadingProcessGroups] = useState(false);
@@ -309,6 +333,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 				monthData?.savingCarryForwardToNextMonths ?? 0,
 			);
 			setCustomCosts(monthData?.customCosts ?? []);
+			setQuarterBreakdown(monthData?.quarterBreakdown ?? null);
 		} catch (err) {
 			setRows([]);
 			setQuarterSpecialQuantities({
@@ -327,6 +352,7 @@ export function LumpSumFinalSettlementMonthReportTable({
 			setSavingCarryForwardByMonths([]);
 			setSavingCarryForwardToNextMonths(0);
 			setCustomCosts([]);
+			setQuarterBreakdown(null);
 			setError(
 				err instanceof Error
 					? err.message
@@ -534,8 +560,11 @@ export function LumpSumFinalSettlementMonthReportTable({
 					hideUnitPrice: true,
 					isMergedValueRow: true,
 					mergedValue:
-						savingCarryForwardByMonths.find((x) => x.month === prevMonthNum)
-							?.value ?? 0,
+						currentMonthNum === 1
+							? 0
+							: savingCarryForwardByMonths
+									.filter((x) => x.month <= prevMonthNum)
+									.reduce((sum, x) => sum + (x.value ?? 0), 0),
 				},
 			),
 			makeZeroRow(
@@ -591,12 +620,249 @@ export function LumpSumFinalSettlementMonthReportTable({
 			},
 		];
 
-		return [...specialRows, ...rows, ...defaultRows];
+		const quarterRows: LumpSumFinalSettlement[] = [];
+
+		if (quarterBreakdown) {
+			const quarterRoman = quarterRomanFromMonth(month);
+			const quarterMonths = (quarterBreakdown.revenuesByMonth ?? [])
+				.map((item) => item.month)
+				.filter((monthNumber): monthNumber is number => Boolean(monthNumber))
+				.sort((a, b) => a - b);
+
+			const revenueByMonthMap = new Map(
+				(quarterBreakdown.revenuesByMonth ?? []).map((item) => [
+					item.month,
+					item,
+				]),
+			);
+			const costByMonthMap = new Map(
+				(quarterBreakdown.costsByMonth ?? []).map((item) => [item.month, item]),
+			);
+			const savingByMonthMap = new Map(
+				(quarterBreakdown.savingsByMonth ?? []).map((item) => [
+					item.month,
+					item,
+				]),
+			);
+			const monthBreakdownByMonth = new Map(
+				(quarterBreakdown.monthBreakdowns ?? [])
+					.filter((item): item is NonNullable<typeof item> => item != null)
+					.map((item) => [item.revenue?.month ?? 0, item]),
+			);
+
+			const revenueQuarterTotal = sumRows(
+				quarterBreakdown.revenuesByMonth ?? [],
+			);
+			const costQuarterTotal = sumRows(quarterBreakdown.costsByMonth ?? []);
+			const savingQuarterTotal = sumRows(quarterBreakdown.savingsByMonth ?? []);
+
+			const savingCarryForwardToNextQuarter = savingCarryForwardByMonths.reduce(
+				(sum, x) => sum + (x.value ?? 0),
+				0,
+			);
+			const savingAddedToIncomeQuarterAfterCarryForward =
+				(quarterBreakdown.savingAddedToIncomeQuarter ?? 0) -
+				savingCarryForwardToNextQuarter;
+			const savingAddedToIncomeMonth1 =
+				monthBreakdownByMonth.get(quarterMonths[0])?.savingAddedToIncomeMonth ??
+				0;
+			const savingAddedToIncomeMonth2 =
+				monthBreakdownByMonth.get(quarterMonths[1])?.savingAddedToIncomeMonth ??
+				0;
+			const savingAddedToIncomeMonth3 =
+				savingAddedToIncomeQuarterAfterCarryForward -
+				savingAddedToIncomeMonth1 -
+				savingAddedToIncomeMonth2;
+
+			const quarterCustomCostsByMonth = new Map<
+				number,
+				LumpSumQuarterCustomCost[]
+			>();
+			for (const item of quarterBreakdown.customCosts ?? []) {
+				const itemMonth = item.month ? Number(item.month) : undefined;
+				if (!itemMonth) continue;
+				const list = quarterCustomCostsByMonth.get(itemMonth) ?? [];
+				list.push(item);
+				quarterCustomCostsByMonth.set(itemMonth, list);
+			}
+
+			quarterRows.push(
+				makeZeroRow(`Doanh thu quý ${quarterRoman}/${year}`, {
+					sttLabel: 'IV',
+					isBold: true,
+					materialsTotalAmount: revenueQuarterTotal.materials,
+					maintainsTotalAmount: revenueQuarterTotal.maintains,
+					electricitiesTotalAmount: revenueQuarterTotal.electricities,
+					totalAmount: revenueQuarterTotal.total,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterMonths.map((monthNumber, idx) =>
+					makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+						sttLabel: `IV.${idx + 1}`,
+						unitOfMeasureName: 'Đồng',
+						materialsTotalAmount:
+							revenueByMonthMap.get(monthNumber)?.materials?.totalAmount ?? 0,
+						maintainsTotalAmount:
+							revenueByMonthMap.get(monthNumber)?.maintains?.totalAmount ?? 0,
+						electricitiesTotalAmount:
+							revenueByMonthMap.get(monthNumber)?.electricities?.totalAmount ??
+							0,
+						totalAmount: revenueByMonthMap.get(monthNumber)?.totalAmount ?? 0,
+						hidePlanActual: true,
+						hideUnitPrice: true,
+					}),
+				),
+				makeZeroRow(`Chi phí quý ${quarterRoman}/${year}`, {
+					sttLabel: 'V',
+					isBold: true,
+					materialsTotalAmount: costQuarterTotal.materials,
+					maintainsTotalAmount: costQuarterTotal.maintains,
+					electricitiesTotalAmount: costQuarterTotal.electricities,
+					totalAmount: costQuarterTotal.total,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterMonths.flatMap((monthNumber, idx) => {
+					const monthTransferred =
+						monthBreakdownByMonth.get(monthNumber)?.transferredCost;
+					return [
+						makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+							sttLabel: `V.${idx + 1}`,
+							unitOfMeasureName: 'Đồng',
+							materialsTotalAmount:
+								costByMonthMap.get(monthNumber)?.materials?.totalAmount ?? 0,
+							maintainsTotalAmount:
+								costByMonthMap.get(monthNumber)?.maintains?.totalAmount ?? 0,
+							electricitiesTotalAmount:
+								costByMonthMap.get(monthNumber)?.electricities?.totalAmount ??
+								0,
+							totalAmount: costByMonthMap.get(monthNumber)?.totalAmount ?? 0,
+							hidePlanActual: true,
+							hideUnitPrice: true,
+						}),
+						makeZeroRow(`Chi phí kết chuyển T${monthNumber}/${year}`, {
+							sttLabel: '-',
+							isTransferredDefaultRow: true,
+							month: monthNumber,
+							unitOfMeasureName: '',
+							materialsTotalAmount:
+								monthTransferred?.materials?.totalAmount ?? 0,
+							maintainsTotalAmount:
+								monthTransferred?.maintains?.totalAmount ?? 0,
+							electricitiesTotalAmount:
+								monthTransferred?.electricities?.totalAmount ?? 0,
+							totalAmount: monthTransferred?.totalAmount ?? 0,
+							hidePlanActual: true,
+							hideUnitPrice: true,
+						}),
+						...(quarterCustomCostsByMonth.get(monthNumber) ?? []).map((item) =>
+							buildCustomCostRow(item),
+						),
+					];
+				}),
+				makeZeroRow(`Giá trị tiết kiệm, bội chi quý ${quarterRoman}/${year}`, {
+					sttLabel: 'VI',
+					isBold: true,
+					materialsTotalAmount: savingQuarterTotal.materials,
+					maintainsTotalAmount: savingQuarterTotal.maintains,
+					electricitiesTotalAmount: savingQuarterTotal.electricities,
+					totalAmount: savingQuarterTotal.total,
+					hidePlanActual: true,
+					hideUnitPrice: true,
+				}),
+				...quarterMonths.map((monthNumber, idx) =>
+					makeZeroRow(`Tháng ${monthNumber}/${year}`, {
+						sttLabel: `VI.${idx + 1}`,
+						unitOfMeasureName: 'Đồng',
+						materialsTotalAmount:
+							savingByMonthMap.get(monthNumber)?.materials?.totalAmount ?? 0,
+						maintainsTotalAmount:
+							savingByMonthMap.get(monthNumber)?.maintains?.totalAmount ?? 0,
+						electricitiesTotalAmount:
+							savingByMonthMap.get(monthNumber)?.electricities?.totalAmount ??
+							0,
+						totalAmount: savingByMonthMap.get(monthNumber)?.totalAmount ?? 0,
+						hidePlanActual: true,
+						hideUnitPrice: true,
+					}),
+				),
+				makeZeroRow(
+					`Tổng giá trị tiết kiệm được chấp nhận quý ${quarterRoman}/${year}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: quarterBreakdown.acceptedSavingQuarter ?? 0,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm được cộng vào thu nhập quý ${quarterRoman}/${year}`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: quarterBreakdown.savingAddedToIncomeQuarter ?? 0,
+					},
+				),
+				makeZeroRow(
+					`Luân chuyển giá trị tiết kiệm quý ${quarterRoman}/${year} sang quý sau`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingCarryForwardToNextQuarter,
+					},
+				),
+				makeZeroRow(
+					`Giá trị tiết kiệm được cộng vào thu nhập quý ${quarterRoman}/${year} (Sau luân chuyển)`,
+					{
+						sttLabel: '*',
+						isBold: true,
+						unitOfMeasureName: 'Đồng',
+						hidePlanActual: true,
+						hideUnitPrice: true,
+						isMergedValueRow: true,
+						mergedValue: savingAddedToIncomeQuarterAfterCarryForward,
+					},
+				),
+				...quarterMonths.map((monthNumber, idx) =>
+					makeZeroRow(
+						`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${monthNumber}/${year}`,
+						{
+							sttLabel: '*',
+							unitOfMeasureName: 'Đồng',
+							hidePlanActual: true,
+							hideUnitPrice: true,
+							isMergedValueRow: true,
+							mergedValue:
+								idx === 0
+									? savingAddedToIncomeMonth1
+									: idx === 1
+										? savingAddedToIncomeMonth2
+										: savingAddedToIncomeMonth3,
+						},
+					),
+				),
+			);
+		}
+
+		return [...specialRows, ...rows, ...defaultRows, ...quarterRows];
 	}, [
 		acceptedSavingMonth,
 		costByMonth,
 		customCosts,
 		month,
+		quarterBreakdown,
 		quarterSpecialQuantities,
 		revenueByMonth,
 		rows,

@@ -278,11 +278,32 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 			{ materials: 0, maintains: 0, electricities: 0, total: 0 },
 		);
 
-		// ĐÂY LÀ ĐOẠN TỚ THÊM VÀO: Tính tổng quyetToanSavingsLimit của 3 tháng
 		const quyetToanSavingsLimitQuarter = monthBreakdowns.reduce(
 			(acc, month) => acc + (month.quyetToanSavingsLimit ?? 0),
 			0,
 		);
+
+		const lastMonthBreakdown = monthBreakdownByMonth.get(
+			months[months.length - 1],
+		);
+		const savingCarryForwardToNextQuarter = (
+			lastMonthBreakdown?.savingCarryForwardByMonths ?? []
+		).reduce((sum, x) => sum + (x.value ?? 0), 0);
+		const savingAddedToIncomeQuarterAfterCarryForward =
+			quarterAddedToIncome - savingCarryForwardToNextQuarter;
+		const savingAddedToIncomeMonth1 =
+			monthBreakdownByMonth.get(months[0])?.savingAddedToIncomeMonth ?? 0;
+		const savingAddedToIncomeMonth2 =
+			monthBreakdownByMonth.get(months[1])?.savingAddedToIncomeMonth ?? 0;
+		const savingAddedToIncomeMonth3 =
+			savingAddedToIncomeQuarterAfterCarryForward -
+			savingAddedToIncomeMonth1 -
+			savingAddedToIncomeMonth2;
+		const savingAddedToIncomeByMonth = [
+			savingAddedToIncomeMonth1,
+			savingAddedToIncomeMonth2,
+			savingAddedToIncomeMonth3,
+		];
 
 		const defaultRows: LumpSumFinalSettlement[] = [
 			makeZeroRow(`Doanh thu quý ${quarterRoman}/${selectedYear}`, {
@@ -385,7 +406,6 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				}),
 			),
 
-			// ĐÂY LÀ ĐOẠN TỚ THÊM VÀO: Row hiển thị mức tiết kiệm thanh quyết toán của Quý
 			makeZeroRow(
 				`Mức tiết kiệm theo quy định thanh quyết toán quý ${quarterRoman}/${selectedYear}`,
 				{
@@ -423,7 +443,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					mergedValue: quarterAddedToIncome,
 				},
 			),
-			...months.map((m) =>
+			...months.map((m, idx) =>
 				makeZeroRow(
 					`Giá trị tiết kiệm đã cộng vào thu nhập tháng ${m}/${selectedYear}`,
 					{
@@ -432,8 +452,7 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 						hidePlanActual: true,
 						hideUnitPrice: true,
 						isMergedValueRow: true,
-						mergedValue:
-							monthBreakdownByMonth.get(m)?.savingAddedToIncomeMonth ?? 0,
+						mergedValue: savingAddedToIncomeByMonth[idx] ?? 0,
 					},
 				),
 			),
@@ -773,11 +792,27 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
 					data={quarterDisplayData}
 					isLoading={isLoading}
-					onAddCustomCost={hasPermission('production.lumpsumfinalsettlement.create') ? addCustomCostRow : undefined}
-					onEditCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? editCustomCost : undefined}
+					onAddCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.create')
+							? addCustomCostRow
+							: undefined
+					}
+					onEditCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? editCustomCost
+							: undefined
+					}
 					onCancelCustomCost={cancelCustomCost}
-					onSaveCustomCost={hasPermission('production.lumpsumfinalsettlement.update') ? saveCustomCost : undefined}
-					onDeleteCustomCost={hasPermission('production.lumpsumfinalsettlement.delete') ? deleteCustomCost : undefined}
+					onSaveCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.update')
+							? saveCustomCost
+							: undefined
+					}
+					onDeleteCustomCost={
+						hasPermission('production.lumpsumfinalsettlement.delete')
+							? deleteCustomCost
+							: undefined
+					}
 					onCustomCostChange={changeCustomCostValue}
 				/>
 			</CardContent>
