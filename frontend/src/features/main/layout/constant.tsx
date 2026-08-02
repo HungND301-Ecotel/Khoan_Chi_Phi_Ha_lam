@@ -32,11 +32,42 @@ export const NAVIGATIONS: Navigation[] = [
 		name: 'danh mục',
 		icon: () => <ClipboardListIcon className='size-5' strokeWidth={2} />,
 		items: [
-			{ type: 'link', name: 'Chức vụ', href: '/catalogs/positions', permission: PERMISSIONS.CATALOG.POSITION.READ },
-			{ type: 'link', name: 'Cán bộ, nhân viên', href: '/catalogs/employees', permission: PERMISSIONS.CATALOG.EMPLOYEE.READ },
-			{ type: 'link', name: 'Đơn vị tính', href: '/catalogs/units', permission: PERMISSIONS.CATALOG.UNIT.READ },
-			{ type: 'link', name: 'Đơn vị', href: '/catalogs/departments', permission: PERMISSIONS.CATALOG.DEPARTMENT.READ },
-			{ type: 'link', name: 'Công đoạn sản xuất', href: '/catalogs/processes', permission: PERMISSIONS.CATALOG.PROCESS_STEP.READ },
+			{
+				type: 'link',
+				name: 'Chức vụ',
+				href: '/catalogs/positions',
+				permission: PERMISSIONS.CATALOG.POSITION.READ,
+			},
+			{
+				type: 'link',
+				name: 'Cán bộ, nhân viên',
+				href: '/catalogs/employees',
+				permission: PERMISSIONS.CATALOG.EMPLOYEE.READ,
+			},
+			{
+				type: 'link',
+				name: 'Đơn vị tính',
+				href: '/catalogs/units',
+				permission: PERMISSIONS.CATALOG.UNIT.READ,
+			},
+			{
+				type: 'link',
+				name: 'Đơn vị',
+				href: '/catalogs/departments',
+				permission: PERMISSIONS.CATALOG.DEPARTMENT.READ,
+			},
+			{
+				type: 'link',
+				name: 'Công đoạn sản xuất',
+				href: '/catalogs/processes',
+				permission: PERMISSIONS.CATALOG.PROCESS_STEP.READ,
+			},
+			{
+				type: 'link',
+				name: 'Tuyến vận tải',
+				href: '/catalogs/transport-routes',
+				permission: PERMISSIONS.CATALOG.TRANSPORT_ROUTE.READ,
+			},
 			{
 				type: 'link',
 				name: 'Nhóm vật tư, tài sản',
@@ -49,8 +80,18 @@ export const NAVIGATIONS: Navigation[] = [
 				href: '/catalogs/assets/internal',
 				permission: PERMISSIONS.CATALOG.ASSET.READ,
 			},
-			{ type: 'link', name: 'Sản phẩm', href: '/catalogs/products', permission: PERMISSIONS.CATALOG.PRODUCT.READ },
-			{ type: 'link', name: 'Thông số', href: '/catalogs/parameters', permission: PERMISSIONS.CATALOG.PARAMETER_PASSPORT.READ },
+			{
+				type: 'link',
+				name: 'Sản phẩm',
+				href: '/catalogs/products',
+				permission: PERMISSIONS.CATALOG.PRODUCT.READ,
+			},
+			{
+				type: 'link',
+				name: 'Thông số',
+				href: '/catalogs/parameters',
+				permission: PERMISSIONS.CATALOG.PARAMETER_PASSPORT.READ,
+			},
 			{
 				type: 'link',
 				name: 'Hệ số điều chỉnh',
@@ -169,7 +210,8 @@ export const NAVIGATIONS: Navigation[] = [
 						type: 'link',
 						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
 						href: '/pricing/longwall-panel/low-value-perishable-supply',
-						permission: 'pricing.longwalllowvalueperishablesupplyunitprice.read',
+						permission:
+							'pricing.longwalllowvalueperishablesupplyunitprice.read',
 					},
 					{
 						type: 'link',
@@ -185,6 +227,25 @@ export const NAVIGATIONS: Navigation[] = [
 					},
 				],
 			},
+			{
+				type: 'sub-menu',
+				name: 'Vận tải lò',
+				href: '/pricing/transport',
+				items: [
+					{
+						type: 'link',
+						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						href: '/pricing/transport/low-value-perishable-supply',
+						permission: 'pricing.transportlowvalueperishablesupplyunitprice.read',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá và định mức vật liệu, nhiên liệu, động lực và SCTX',
+						href: '/pricing/transport/unit-price',
+						permission: 'pricing.transportunitprice.read',
+					},
+				],
+			},
 		],
 	},
 	{
@@ -192,8 +253,18 @@ export const NAVIGATIONS: Navigation[] = [
 		name: 'thống kê vận hành',
 		icon: () => <BoxesIcon className='size-5' strokeWidth={2} />,
 		items: [
-			{ type: 'link', name: 'Kế hoạch sản xuất', href: '/cost/plan', permission: 'production.productunitprice.read' },
-			{ type: 'link', name: 'Vận hành sản xuất', href: '/cost/production', permission: 'production.productionoutput.read' },
+			{
+				type: 'link',
+				name: 'Kế hoạch sản xuất',
+				href: '/cost/plan',
+				permission: 'production.productunitprice.read',
+			},
+			{
+				type: 'link',
+				name: 'Vận hành sản xuất',
+				href: '/cost/production',
+				permission: 'production.productionoutput.read',
+			},
 			{
 				type: 'link',
 				name: 'Quyết toán giao khoán',
@@ -220,8 +291,18 @@ export const NAVIGATIONS: Navigation[] = [
 		name: 'hệ thống',
 		icon: () => <Settings2Icon className='size-5' strokeWidth={2} />,
 		items: [
-			{ type: 'link', name: 'Phân quyền', href: '/system/permissions', permission: PERMISSIONS.SYSTEM.PERMISSION.READ },
-			{ type: 'link', name: 'Khóa cấu hình', href: '/system/fixed-keys', permission: 'system.fixkey.read' },
+			{
+				type: 'link',
+				name: 'Phân quyền',
+				href: '/system/permissions',
+				permission: PERMISSIONS.SYSTEM.PERMISSION.READ,
+			},
+			{
+				type: 'link',
+				name: 'Khóa cấu hình',
+				href: '/system/fixed-keys',
+				permission: 'system.fixkey.read',
+			},
 		],
 	},
 ] as const;

@@ -34,7 +34,7 @@ export const LOW_VALUE_PERISHABLE_SUPPLY_COLUMNS: ColumnDef<LowValuePerishableSu
 		},
 		{
 			accessorKey: 'totalPrice',
-			header: 'Đơn giá (đ/m)',
+			header: 'Đơn giá (đ/tháng)',
 			cell: ({ row }) => formatNumber(row.original.totalPrice),
 		},
 		{

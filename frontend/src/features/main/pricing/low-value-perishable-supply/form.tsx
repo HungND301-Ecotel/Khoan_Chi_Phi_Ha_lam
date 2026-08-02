@@ -83,20 +83,17 @@ export function LowValuePerishableSupplyForm({
 			type,
 		};
 
+		const apiConfig =
+			type === LowValuePerishableSupplyType.TunnelExcavation
+				? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TUNNELING
+				: type === LowValuePerishableSupplyType.Longwall
+				? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.LONGWALL
+				: API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TRANSPORT;
+
 		if (row && !isDuplicate) {
-			await api.put(
-				type === LowValuePerishableSupplyType.TunnelExcavation
-					? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TUNNELING.UPDATE
-					: API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.LONGWALL.UPDATE,
-				{ id: row.id, ...payload },
-			);
+			await api.put(apiConfig.UPDATE, { id: row.id, ...payload });
 		} else {
-			await api.post(
-				type === LowValuePerishableSupplyType.TunnelExcavation
-					? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TUNNELING.CREATE
-					: API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.LONGWALL.CREATE,
-				[payload],
-			);
+			await api.post(apiConfig.CREATE, [payload]);
 		}
 
 		setOpen(false);
@@ -148,7 +145,7 @@ export function LowValuePerishableSupplyForm({
 			<FormNumber
 				control={form.control}
 				name='totalPrice'
-				label='Đơn giá (đ/tấn)'
+				label='Đơn giá (đ/tháng)'
 				placeholder='Nhập đơn giá'
 			/>
 

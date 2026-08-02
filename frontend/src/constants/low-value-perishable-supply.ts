@@ -1,6 +1,7 @@
 export const LowValuePerishableSupplyType = {
 	TunnelExcavation: 1,
 	Longwall: 2,
+	Transport: 3,
 } as const;
 
 export type LowValuePerishableSupplyType =

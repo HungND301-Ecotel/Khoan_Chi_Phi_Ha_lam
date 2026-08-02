@@ -254,6 +254,14 @@ export const PERMISSIONS = {
 			IMPORT: 'catalog.normfactor.import',
 			EXPORT: 'catalog.normfactor.export',
 		},
+		TRANSPORT_ROUTE: {
+			READ: 'catalog.transportroute.read',
+			CREATE: 'catalog.transportroute.create',
+			UPDATE: 'catalog.transportroute.update',
+			DELETE: 'catalog.transportroute.delete',
+			IMPORT: 'catalog.transportroute.import',
+			EXPORT: 'catalog.transportroute.export',
+		},
 	},
 	SYSTEM: {
 		PERMISSION: {

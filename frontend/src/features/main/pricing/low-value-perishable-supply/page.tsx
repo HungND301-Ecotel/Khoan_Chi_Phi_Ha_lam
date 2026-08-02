@@ -25,12 +25,16 @@ export function LowValuePerishableSupplyPage({
 	const permPrefix =
 		type === LowValuePerishableSupplyType.TunnelExcavation
 			? 'pricing.tunnellowvalueperishablesupplyunitprice'
-			: 'pricing.longwalllowvalueperishablesupplyunitprice';
+			: type === LowValuePerishableSupplyType.Longwall
+			? 'pricing.longwalllowvalueperishablesupplyunitprice'
+			: 'pricing.transportlowvalueperishablesupplyunitprice';
 
 	const apiConfig =
 		type === LowValuePerishableSupplyType.TunnelExcavation
 			? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TUNNELING
-			: API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.LONGWALL;
+			: type === LowValuePerishableSupplyType.Longwall
+			? API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.LONGWALL
+			: API.PRICING.LOW_VALUE_PERISHABLE_SUPPLY.TRANSPORT;
 
 	const handleDelete = async ({
 		data,

@@ -18,6 +18,9 @@ namespace Domain.Entities.Index
 
         private IList<ProductUnitPrice> _productUnitPrices = new List<ProductUnitPrice>();
         public virtual IReadOnlyCollection<ProductUnitPrice> ProductUnitPrices => _productUnitPrices.AsReadOnly();
+
+        private IList<TransportUnitPrice> _transportUnitPrices = new List<TransportUnitPrice>();
+        public virtual IReadOnlyCollection<TransportUnitPrice> TransportUnitPrices => _transportUnitPrices.AsReadOnly();
         //constructor
         public static Product Create(
             string code,

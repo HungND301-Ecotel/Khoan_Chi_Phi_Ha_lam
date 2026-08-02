@@ -45,12 +45,16 @@ public class ImportLowValuePerishableSupplyUnitPriceExcelCommandHandler(
             .Where(d => d.Code != null)
             .ToDictionary(d => d.Code!.Value.Trim(), d => d, StringComparer.OrdinalIgnoreCase);
 
-        ProcessGroupType processGroupType = request.Type == LowValuePerishableSupplyType.TunnelExcavation
-            ? ProcessGroupType.DL
-            : ProcessGroupType.LC;
+        ProcessGroupType processGroupType = request.Type switch
+        {
+            LowValuePerishableSupplyType.TunnelExcavation => ProcessGroupType.DL,
+            LowValuePerishableSupplyType.Longwall => ProcessGroupType.LC,
+            LowValuePerishableSupplyType.Transport => ProcessGroupType.VTL,
+            _ => ProcessGroupType.None,
+        };
 
         var processGroups = await _processGroupRepository.GetAllAsync(
-            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type) == processGroupType,
+            predicate: pg => pg.Type == processGroupType,
             include: pg => pg.Include(x => x.Code).Include(x => x.FixedKey),
             disableTracking: true);
         Dictionary<string, ProcessGroup> processGroupMap = processGroups

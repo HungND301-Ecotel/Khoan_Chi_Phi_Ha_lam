@@ -36,12 +36,16 @@ public class ExportExcelLowValuePerishableSupplyUnitPriceQueryHandler(
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
 
-        ProcessGroupType processGroupType = request.Type == LowValuePerishableSupplyType.TunnelExcavation
-            ? ProcessGroupType.DL
-            : ProcessGroupType.LC;
+        ProcessGroupType processGroupType = request.Type switch
+        {
+            LowValuePerishableSupplyType.TunnelExcavation => ProcessGroupType.DL,
+            LowValuePerishableSupplyType.Longwall => ProcessGroupType.LC,
+            LowValuePerishableSupplyType.Transport => ProcessGroupType.VTL,
+            _ => ProcessGroupType.None,
+        };
 
         List<string> processGroupCodes = (await _processGroupRepository.GetAllAsync(
-            predicate: pg => (pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type) == processGroupType,
+            predicate: pg => pg.Type == processGroupType,
             include: pg => pg.Include(x => x.Code).Include(x => x.FixedKey),
             selector: pg => pg.FixedKey != null ? pg.FixedKey.Key : pg.Code != null ? pg.Code.Value : string.Empty,
                 disableTracking: true))
@@ -64,9 +68,13 @@ public class ExportExcelLowValuePerishableSupplyUnitPriceQueryHandler(
             TotalPrice = e.TotalPrice,
         });
 
-        string sheetName = request.Type == LowValuePerishableSupplyType.TunnelExcavation
-            ? "VT mau hong dao lo"
-            : "VT mau hong lo cho";
+        string sheetName = request.Type switch
+        {
+            LowValuePerishableSupplyType.TunnelExcavation => "VT mau hong dao lo",
+            LowValuePerishableSupplyType.Longwall => "VT mau hong lo cho",
+            LowValuePerishableSupplyType.Transport => "VT mau hong van tai lo",
+            _ => "VT mau hong",
+        };
 
         return excelService.ExportToExcel(dtoList, sheetName, hiddenProperties, dropdownConfigs);
     }

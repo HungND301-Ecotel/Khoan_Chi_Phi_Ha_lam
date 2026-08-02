@@ -29,6 +29,7 @@ public class ApplicationDbContext(
     private static readonly Guid FixedKeyTunnelingId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid FixedKeyLongwallId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid FixedKeyRoadwaySlashingId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid FixedKeyTransportVehicleId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
     private static readonly Guid FixedKeyAdjustmentFactorK1Id = Guid.Parse("44444444-4444-4444-4444-444444444444");
     private static readonly Guid FixedKeyAdjustmentFactorK2Id = Guid.Parse("55555555-5555-5555-5555-555555555555");
     private static readonly Guid FixedKeyAdjustmentFactorK3Id = Guid.Parse("66666666-6666-6666-6666-666666666666");
@@ -57,6 +58,7 @@ public class ApplicationDbContext(
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
     public DbSet<ProcessGroup> ProcessGroups => Set<ProcessGroup>();
     public DbSet<ProductionProcess> ProductionProcesses => Set<ProductionProcess>();
+    public DbSet<TransportRoute> TransportRoutes => Set<TransportRoute>();
     public DbSet<Hardness> Hardnesses => Set<Hardness>();
     public DbSet<Power> Powers => Set<Power>();
     public DbSet<StoneClampRatio> StoneClampRatios => Set<StoneClampRatio>();
@@ -96,6 +98,7 @@ public class ApplicationDbContext(
     public DbSet<PlannedElectricityCostAdjustmentFactor> PlannedElectricityCostAdjustmentFactors => Set<PlannedElectricityCostAdjustmentFactor>();
     public DbSet<Output> Outputs => Set<Output>();
     public DbSet<ProductUnitPriceProductionOutput> ProductUnitPriceProductionOutputs => Set<ProductUnitPriceProductionOutput>();
+    public DbSet<TransportUnitPrice> TransportUnitPrices => Set<TransportUnitPrice>();
     #endregion
 
     #region Production
@@ -144,6 +147,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<UnitOfMeasure>().ToTable(nameof(UnitOfMeasure), "Index");
         modelBuilder.Entity<ProcessGroup>().ToTable(nameof(ProcessGroup), "Index");
         modelBuilder.Entity<ProductionProcess>().ToTable(nameof(ProductionProcess), "Index");
+        modelBuilder.Entity<TransportRoute>().ToTable(nameof(TransportRoute), "Index");
         modelBuilder.Entity<Hardness>().ToTable(nameof(Hardness), "Index");
         modelBuilder.Entity<StoneClampRatio>().ToTable(nameof(StoneClampRatio), "Index");
         modelBuilder.Entity<InsertItem>().ToTable(nameof(InsertItem), "Index");
@@ -164,7 +168,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<NormFactor>().ToTable(nameof(NormFactor), "Index");
         modelBuilder.Entity<NormFactorAssignmentCode>().ToTable(nameof(NormFactorAssignmentCode), "Index");
         modelBuilder.Entity<Code>().ToTable(nameof(Code), "Index");
-        modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>()
+        modelBuilder.Entity<PlannedMaintainCostAdjustmentFactorDescription>()          
             .ToTable(nameof(PlannedMaintainCostAdjustmentFactorDescription), "Index", tb => tb.HasCheckConstraint(
                 "CK_PlannedMaintainCostAdjustmentFactorDescription_CustomOrReference",
                 @"
@@ -349,6 +353,19 @@ public class ApplicationDbContext(
                 },
                 new
                 {
+                    Id = FixedKeyTransportVehicleId,
+                    Key = "VTL",
+                    Name = "Vận tải lò",
+                    Type = FixedKeyType.VTL,
+                    CreatedBy = 0L,
+                    CreatedOn = FixedKeySeedTimestamp,
+                    LastModifiedBy = 0L,
+                    LastModifiedOn = FixedKeySeedTimestamp,
+                    DeletedBy = (long?)null,
+                    DeletedOn = (DateTimeOffset?)null,
+                },
+                new
+                {
                     Id = FixedKeyAdjustmentFactorK1Id,
                     Key = "K1",
                     Name = "Hệ số điều chỉnh K1",
@@ -479,6 +496,18 @@ public class ApplicationDbContext(
         modelBuilder.Entity<AkFactorConfig>()
             .Property(x => x.AdjustmentRate)
             .HasPrecision(18, 4);
+
+        // TransportRoute table
+        modelBuilder.Entity<TransportRoute>()
+            .HasOne(s => s.Code)
+            .WithOne(h => h.TransportRoute)
+            .HasForeignKey<TransportRoute>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TransportRoute>()
+            .HasOne(s => s.ProductionProcess)
+            .WithMany()
+            .HasForeignKey(s => s.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Department table
         modelBuilder.Entity<Department>()
@@ -696,6 +725,13 @@ public class ApplicationDbContext(
         modelBuilder.Entity<PlannedMaintainCostAdjustmentFactor>().ToTable(nameof(PlannedMaintainCostAdjustmentFactor), "Pricing");
         modelBuilder.Entity<PlannedElectricityCostAdjustmentFactor>().ToTable(nameof(PlannedElectricityCostAdjustmentFactor), "Pricing");
         modelBuilder.Entity<Output>().ToTable(nameof(Output), "Pricing");
+        modelBuilder.Entity<TransportUnitPrice>()
+            .ToTable(nameof(TransportUnitPrice), "Pricing", tb =>
+            {
+                tb.HasCheckConstraint(
+                    "CK_TransportUnitPrice_AtLeastOnePrice",
+                    "(\"MaterialFuelUnitPrice\" IS NOT NULL OR \"PowerUnitPrice\" IS NOT NULL OR \"MaintenanceUnitPrice\" IS NOT NULL)");
+            });
 
         //MaterialUnitPrices table - Base configuration
         modelBuilder.Entity<MaterialUnitPrice>()
@@ -923,6 +959,28 @@ public class ApplicationDbContext(
             .WithMany(d => d.ProductUnitPrices)
             .HasForeignKey(s => s.DepartmentId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        //TransportUnitPrice table
+        modelBuilder.Entity<TransportUnitPrice>()
+            .HasOne(s => s.ProductionProcess)
+            .WithMany()
+            .HasForeignKey(s => s.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TransportUnitPrice>()
+            .HasOne(s => s.TransportRoute)
+            .WithMany(h => h.TransportUnitPrices)
+            .HasForeignKey(s => s.TransportRouteId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportUnitPrice>()
+            .HasOne(s => s.Department)
+            .WithMany()
+            .HasForeignKey(s => s.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportUnitPrice>()
+            .HasOne(s => s.Equipment)
+            .WithMany()
+            .HasForeignKey(s => s.EquipmentId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         //ProductUnitPriceProductionOutput - Many-to-Many relationship table
         modelBuilder.Entity<ProductUnitPriceProductionOutput>().ToTable(nameof(ProductUnitPriceProductionOutput), "Pricing");

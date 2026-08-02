@@ -12,6 +12,8 @@ import { RouteObject } from 'react-router-dom';
 import { MainPricingLongwallElectricityPage } from './longwall-panel/electricity/page';
 import { MainPricingMaintenanceLongwallPanelPage } from './longwall-panel/maintenance/page';
 import { MainPricingMaintenanceTunnelingPage } from './tunneling/maintenance/page';
+import { MainPricingTransportUnitPricePage } from '@/features/main/pricing/transport/unit-price/page';
+import { MainPricingLowValuePerishableSupplyTransportPage } from '@/features/main/pricing/transport/low-value-perishable-supply/page';
 
 const MainPricingRouter: RouteObject = {
 	path: 'pricing',
@@ -128,6 +130,28 @@ const MainPricingRouter: RouteObject = {
 					handle: {
 						breadcrumb: 'Đơn giá và định mức vật liệu',
 						title: 'Đơn giá và định mức vật liệu',
+					},
+				},
+			],
+		},
+		{
+			path: 'transport',
+			handle: { breadcrumb: 'Vận tải lò' },
+			children: [
+				{
+					path: 'unit-price',
+					element: <MainPricingTransportUnitPricePage />,
+					handle: {
+						breadcrumb: 'Đơn giá và định mức VL-NL, động lực, SCTX',
+						title: 'Đơn giá và định mức VL-NL, động lực, SCTX',
+					},
+				},
+				{
+					path: 'low-value-perishable-supply',
+					element: <MainPricingLowValuePerishableSupplyTransportPage />,
+					handle: {
+						breadcrumb: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
+						title: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
 					},
 				},
 			],

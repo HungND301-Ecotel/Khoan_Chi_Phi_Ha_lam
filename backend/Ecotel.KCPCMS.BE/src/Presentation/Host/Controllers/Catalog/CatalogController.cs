@@ -34,6 +34,8 @@ using Application.Catalog.Index.SavingsRateConfig.Commands;
 using Application.Catalog.Index.SavingsRateConfig.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
 using Application.Catalog.Index.StoneClampRatio.Queries;
+using Application.Catalog.Index.TransportRoutes.Commands;
+using Application.Catalog.Index.TransportRoutes.Queries;
 using Application.Catalog.Index.UnitOfMeasures.Commands;
 using Application.Catalog.Index.UnitOfMeasures.Queries;
 using Application.Dto.Catalog.AdjustmentFactor;
@@ -42,7 +44,6 @@ using Application.Dto.Catalog.AkFactorConfig;
 using Application.Dto.Catalog.AssignmentCode;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.Department;
-using Application.Dto.Catalog.FixedKey;
 using Application.Dto.Catalog.LongwallParameters;
 using Application.Dto.Catalog.Material;
 using Application.Dto.Catalog.Metric;
@@ -56,6 +57,7 @@ using Application.Dto.Catalog.ProductionProcess;
 using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
 using Application.Dto.Catalog.SavingsRateConfig;
 using Application.Dto.Catalog.StoneClampRatio;
+using Application.Dto.Catalog.TransportRoute;
 using Application.Dto.Catalog.UnitOfMeasure;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
@@ -536,6 +538,82 @@ public class CatalogController : BaseAuthController
     {
         var result = await Mediator.Send(new DeleteProcessGroupListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region TransportRoute
+
+    [HttpGet("TransportRoute")]
+    [OpenApiOperation("Get All TransportRoute", "")]
+    [HasPermission("catalog.transportroute.read", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> GetAllTransportRoute([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTransportRouteQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TransportRoute/{id:guid}")]
+    [OpenApiOperation("Get TransportRoute By Id", "")]
+    [HasPermission("catalog.transportroute.read", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> GetTransportRouteById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTransportRouteByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TransportRoute")]
+    [OpenApiOperation("Create New TransportRoute", "")]
+    [HasPermission("catalog.transportroute.create", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> CreateTransportRoute([FromBody] CreateTransportRouteDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTransportRouteCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("TransportRoute")]
+    [OpenApiOperation("Update TransportRoute", "")]
+    [HasPermission("catalog.transportroute.update", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> UpdateTransportRoute([FromBody] TransportRouteDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTransportRouteCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TransportRoute/{deleteId:guid}")]
+    [OpenApiOperation("Delete TransportRoute", "")]
+    [HasPermission("catalog.transportroute.delete", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> DeleteTransportRoute([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTransportRouteCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TransportRoute")]
+    [OpenApiOperation("Delete Many TransportRoute", "")]
+    [HasPermission("catalog.transportroute.delete", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> DeleteTransportRouteList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTransportRouteListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TransportRoute/export")]
+    [OpenApiOperation("Export TransportRoute", "")]
+    [HasPermission("catalog.transportroute.export", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> ExportTransportRoute()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTransportRouteQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Tuyen_van_tai.xlsx");
+        return result;
+    }
+
+    [HttpPost("TransportRoute/import")]
+    [OpenApiOperation("Import TransportRoute", "")]
+    [HasPermission("catalog.transportroute.import", "Danh mục", "Tuyến vận tải")]
+    public async Task<IActionResult> ImportTransportRoute([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTransportRouteExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion
 

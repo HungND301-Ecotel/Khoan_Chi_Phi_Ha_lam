@@ -15,6 +15,7 @@ import { MainCatalogSavingsRateConfigPage } from './savings-rate-config/page';
 import { MainCatalogAkFactorConfigPage } from './ak-factor-config/page';
 import { MainCatalogEmployeePage } from '@/features/main/catalog/employee/page';
 import { MainCatalogPositionPage } from '@/features/main/catalog/position/page';
+import { MainCatalogTransportRoutePage } from '@/features/main/catalog/transport-route/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -116,6 +117,14 @@ const MainCatalogRouter: RouteObject = {
 			handle: {
 				breadcrumb: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
 				title: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
+			},
+		},
+		{
+			path: 'transport-routes',
+			element: <MainCatalogTransportRoutePage />,
+			handle: {
+				breadcrumb: 'Tuyến vận tải',
+				title: 'Tuyến vận tải',
 			},
 		},
 	],
