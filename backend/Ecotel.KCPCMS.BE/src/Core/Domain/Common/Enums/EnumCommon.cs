@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Domain.Common.Enums;
 
@@ -34,7 +34,8 @@ public enum FixedKeyType
     K5 = 8,
     K6 = 9,
     K7 = 10,
-    K8 = 11
+    K8 = 11,
+    VTL = 12
 }
 
 public static class FixedKeyTypeExtensions
@@ -46,6 +47,7 @@ public static class FixedKeyTypeExtensions
             FixedKeyType.DL => ProcessGroupType.DL,
             FixedKeyType.LC => ProcessGroupType.LC,
             FixedKeyType.XL => ProcessGroupType.XL,
+            FixedKeyType.VTL => ProcessGroupType.VTL,
             _ => ProcessGroupType.None,
         };
     }
@@ -73,6 +75,7 @@ public static class FixedKeyTypeExtensions
             ProcessGroupType.DL => FixedKeyType.DL,
             ProcessGroupType.LC => FixedKeyType.LC,
             ProcessGroupType.XL => FixedKeyType.XL,
+            ProcessGroupType.VTL => FixedKeyType.VTL,
             _ => FixedKeyType.None,
         };
     }
@@ -83,7 +86,8 @@ public enum ProcessGroupType
     None = 0,
     DL = 1,
     LC = 2,
-    XL = 3
+    XL = 3,
+    VTL = 4
 }
 
 public enum CostType
@@ -116,6 +120,7 @@ public enum LowValuePerishableSupplyType
 {
     TunnelExcavation = 1,
     Longwall = 2,
+    Transport = 3
 }
 
 public enum OutputType

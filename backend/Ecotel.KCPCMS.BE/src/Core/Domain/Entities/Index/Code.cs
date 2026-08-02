@@ -18,7 +18,7 @@ public class Code(string value) : AuditableEntity<Guid>, IAggregateRoot
     public virtual MaterialUnitPrice? MaterialUnitPrice { get; protected set; }
     public virtual SlideUnitPrice? SlideUnitPrice { get; protected set; }
     public virtual ProductionOrder? ProductionOrder { get; protected set; }
-
+    public virtual TransportRoute? TransportRoute { get; protected set; }
     public AssignmentCode? Equipment => AssignmentCode;
     public Material? Part => Material;
 

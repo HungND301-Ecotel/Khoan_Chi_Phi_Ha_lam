@@ -77,6 +77,7 @@ public class UpdateLowValuePerishableSupplyUnitPriceCommandHandler(
         {
             LowValuePerishableSupplyType.TunnelExcavation => ProcessGroupType.DL,
             LowValuePerishableSupplyType.Longwall => ProcessGroupType.LC,
+            LowValuePerishableSupplyType.Transport => ProcessGroupType.VTL,
             _ => ProcessGroupType.None,
         };
 

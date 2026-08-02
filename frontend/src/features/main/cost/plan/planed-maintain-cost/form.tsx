@@ -97,6 +97,7 @@ export function PlanMaintainCostForm({
 			[ProcessGroupType.DL]: 1,
 			[ProcessGroupType.LC]: 2,
 			[ProcessGroupType.XL]: 3,
+			[ProcessGroupType.VTL]: 4,
 		};
 
 		return tunnelings.filter(

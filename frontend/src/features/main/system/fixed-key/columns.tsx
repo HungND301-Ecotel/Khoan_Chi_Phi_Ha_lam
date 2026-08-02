@@ -18,6 +18,7 @@ const PROCESS_GROUP_TYPE_LABELS: Record<ProcessGroupType, string> = {
 	[ProcessGroupType.DL]: 'Đào lò',
 	[ProcessGroupType.LC]: 'Lò chợ',
 	[ProcessGroupType.XL]: 'Xén lò',
+	[ProcessGroupType.VTL]: 'Vận tải lò',
 };
 
 function getFixedKeyTypeLabel(fixedKey: FixedKey) {
@@ -51,5 +52,6 @@ export const FIXED_KEY_TYPE_OPTIONS = [
 	{ value: ProcessGroupType.DL, label: 'Đào lò' },
 	{ value: ProcessGroupType.LC, label: 'Lò chợ' },
 	{ value: ProcessGroupType.XL, label: 'Xén lò' },
+	{ value: ProcessGroupType.VTL, label: 'Vận tải lò' },
 	...ADJUSTMENT_FACTOR_TYPE_OPTIONS,
 ];

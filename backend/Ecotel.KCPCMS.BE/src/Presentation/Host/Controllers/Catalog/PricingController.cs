@@ -25,6 +25,8 @@ using Application.Catalog.Pricing.ProductUnitPrice.Commands;
 using Application.Catalog.Pricing.ProductUnitPrice.Queries;
 using Application.Catalog.Pricing.SlideUnitPrice.Commands;
 using Application.Catalog.Pricing.SlideUnitPrice.Queries;
+using Application.Catalog.Pricing.TransportUnitPrice.Commands;
+using Application.Catalog.Pricing.TransportUnitPrice.Queries;
 using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
 using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Queries;
 using Application.Dto.Catalog.ActualElectricityCost;
@@ -39,6 +41,7 @@ using Application.Dto.Catalog.PlannedMaintainCost;
 using Application.Dto.Catalog.PlannedMaterialCost;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Application.Dto.Catalog.SlideUnitPrice;
+using Application.Dto.Catalog.TransportUnitPrice;
 using Application.Dto.Catalog.UnitOfMeasure;
 using Domain.Common.Enums;
 using Host.Controllers.Base;
@@ -1039,7 +1042,7 @@ public class PricingController : BaseAuthController
     }
     #endregion
 
-    #region LowValuePerishableSupplyUnitPrice
+    #region LowValuePerishableSupplyUnitPrice ()
 
     [HttpGet("TunnelLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
@@ -1180,6 +1183,75 @@ public class PricingController : BaseAuthController
         return Ok(result, MessageCommon.ImportSuccess);
     }
 
+    [HttpGet("TransportLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> GetAllTransportLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.Transport));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TransportLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Create Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> CreateTransportLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
+    {
+        foreach (var item in createModel)
+        {
+            item.Type = LowValuePerishableSupplyType.Transport;
+        }
+
+        var result = await Mediator.Send(new CreateLowValuePerishableSupplyUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpGet("TransportLowValuePerishableSupplyUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get Transport LowValuePerishableSupplyUnitPrice By Id (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> GetTransportLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetLowValuePerishableSupplyUnitPriceByIdQuery(id, LowValuePerishableSupplyType.Transport));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPut("TransportLowValuePerishableSupplyUnitPrice")]
+    [OpenApiOperation("Update Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> UpdateTransportLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
+    {
+        updateModel.Type = LowValuePerishableSupplyType.Transport;
+        var result = await Mediator.Send(new UpdateLowValuePerishableSupplyUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TransportLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> DeleteTransportLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TransportLowValuePerishableSupplyUnitPrice/export")]
+    [OpenApiOperation("Export Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> ExportTransportLowValuePerishableSupplyUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.Transport));
+        return File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_gia_vat_tu_mau_hong_van_tai_lo.xlsx");
+    }
+
+    [HttpPost("TransportLowValuePerishableSupplyUnitPrice/import")]
+    [OpenApiOperation("Import Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
+    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    public async Task<IActionResult> ImportTransportLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.Transport));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
     [HttpDelete("LowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Delete LowValuePerishableSupplyUnitPrice List", "")]
     [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
@@ -1187,6 +1259,73 @@ public class PricingController : BaseAuthController
     {
         var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
+    }
+    #endregion
+
+    #region TransportUnitPrice
+
+    [HttpGet("TransportUnitPrice")]
+    [OpenApiOperation("Get All TransportUnitPrice", "")]
+    public async Task<IActionResult> GetAllTransportUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTransportUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TransportUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get TransportUnitPrice By Id", "")]
+    public async Task<IActionResult> GetTransportUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTransportUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TransportUnitPrice")]
+    [OpenApiOperation("Create New TransportUnitPrice", "")]
+    public async Task<IActionResult> CreateTransportUnitPrice([FromBody] CreateTransportUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTransportUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("TransportUnitPrice")]
+    [OpenApiOperation("Update TransportUnitPrice", "")]
+    public async Task<IActionResult> UpdateTransportUnitPrice([FromBody] TransportUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTransportUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TransportUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete TransportUnitPrice", "")]
+    public async Task<IActionResult> DeleteTransportUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTransportUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TransportUnitPrice")]
+    [OpenApiOperation("Delete Many TransportUnitPrice", "")]
+    public async Task<IActionResult> DeleteTransportUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTransportUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("TransportUnitPrice/export")]
+    [OpenApiOperation("Export TransportUnitPrice", "")]
+    public async Task<IActionResult> ExportTransportUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTransportUnitPriceQuery());
+        return File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_gia_dinh_muc_van_tai_lo.xlsx");
+    }
+
+    [HttpPost("TransportUnitPrice/import")]
+    [OpenApiOperation("Import TransportUnitPrice", "")]
+    public async Task<IActionResult> ImportTransportUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTransportUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion
 

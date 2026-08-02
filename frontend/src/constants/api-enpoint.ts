@@ -299,6 +299,16 @@ export const API = {
 			IMPORT: '/v1/catalog/normfactor/import',
 			EXPORT: '/v1/catalog/normfactor/export',
 		},
+		TRANSPORT_ROUTE: {
+			LIST: '/v1/catalog/transportroute',
+			CREATE: '/v1/catalog/transportroute',
+			UPDATE: '/v1/catalog/transportroute',
+			DELETES: '/v1/catalog/transportroute',
+			DELETE: (id: string) => `/v1/catalog/transportroute/${id}`,
+			DETAIL: (id: string) => `/v1/catalog/transportroute/${id}`,
+			IMPORT: '/v1/catalog/transportroute/import',
+			EXPORT: '/v1/catalog/transportroute/export',
+		},
 	},
 	SYSTEM: {
 		FIXED_KEY: {
@@ -383,8 +393,10 @@ export const API = {
 			TUNNEL_CREATE: '/v1/pricing/tunnelmaintainunitpriceequipment',
 			TUNNEL_UPDATE: '/v1/pricing/tunnelmaintainunitpriceequipment',
 			TUNNEL_DELETES: '/v1/pricing/tunnelmaintainunitpriceequipment',
-			TUNNEL_DELETE: (id: string) => `/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
-			TUNNEL_DETAIL: (id: string) => `/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
+			TUNNEL_DELETE: (id: string) =>
+				`/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
+			TUNNEL_DETAIL: (id: string) =>
+				`/v1/pricing/tunnelmaintainunitpriceequipment/${id}`,
 			TUNNEL_IMPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/import',
 			TUNNEL_EXPORT: '/v1/pricing/tunnelmaintainunitpriceequipment/export',
 			TRIMMING_IMPORT: '/v1/pricing/trimmingmaintainunitpriceequipment/import',
@@ -401,8 +413,10 @@ export const API = {
 			LONGWALL_CREATE: '/v1/pricing/longwallmaintainunitpriceequipment',
 			LONGWALL_UPDATE: '/v1/pricing/longwallmaintainunitpriceequipment',
 			LONGWALL_DELETES: '/v1/pricing/longwallmaintainunitpriceequipment',
-			LONGWALL_DELETE: (id: string) => `/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
-			LONGWALL_DETAIL: (id: string) => `/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
+			LONGWALL_DELETE: (id: string) =>
+				`/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
+			LONGWALL_DETAIL: (id: string) =>
+				`/v1/pricing/longwallmaintainunitpriceequipment/${id}`,
 			LONGWALL_IMPORT: '/v1/pricing/longwallmaintainunitpriceequipment/import',
 			LONGWALL_EXPORT: '/v1/pricing/longwallmaintainunitpriceequipment/export',
 		},
@@ -468,6 +482,28 @@ export const API = {
 				IMPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/import',
 				EXPORT: '/v1/pricing/LongwallLowValuePerishableSupplyUnitPrice/export',
 			},
+			TRANSPORT: {
+				LIST: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice',
+				CREATE: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice',
+				UPDATE: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice',
+				DELETES: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice',
+				DELETE: (id: string) =>
+					`/v1/pricing/TransportLowValuePerishableSupplyUnitPrice/${id}`,
+				DETAIL: (id: string) =>
+					`/v1/pricing/TransportLowValuePerishableSupplyUnitPrice/${id}`,
+				IMPORT: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice/import',
+				EXPORT: '/v1/pricing/TransportLowValuePerishableSupplyUnitPrice/export',
+			},
+		},
+		TRANSPORT: {
+			LIST: '/v1/pricing/transportunitprice',
+			CREATE: '/v1/pricing/transportunitprice',
+			UPDATE: '/v1/pricing/transportunitprice',
+			DELETES: '/v1/pricing/transportunitprice',
+			DELETE: (id: string) => `/v1/pricing/transportunitprice/${id}`,
+			DETAIL: (id: string) => `/v1/pricing/transportunitprice/${id}`,
+			IMPORT: '/v1/pricing/transportunitprice/import',
+			EXPORT: '/v1/pricing/transportunitprice/export',
 		},
 	},
 

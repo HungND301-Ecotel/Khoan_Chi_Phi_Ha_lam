@@ -29,7 +29,7 @@ public static class CustomResponseMessage
     public const string AdjustmentFactorCodeAlreadyExists = "ADJUSTMENT_FACTOR_CODE_ALREADY_EXISTS";
     public const string ProcessGroupNotFound = "PROCESS_GROUP_NOT_FOUND";
     public const string AdjustmentFactorNotFound = "ADJUSTMENT_FACTOR_NOT_FOUND";
-    public const string EquipmentNotFound = "ADJUSTMENT_FACTOR_NOT_FOUND";
+    public const string EquipmentNotFound = "EQUIPMENT_NOT_FOUND";
     public const string AssignmentCodeAlreadyExists = "ASSIGNMENT_CODE_ALREADY_EXISTS";
     public const string UnitOfMeasureNotFound = "UNIT_OF_MEASURE_NOT_FOUND";
     public const string EquipmentCodeAlreadyExists = "EQUIPMENT_CODE_ALREADY_EXISTS";
@@ -60,6 +60,13 @@ public static class CustomResponseMessage
     public const string ProductNotFound = "PRODUCT_NOT_FOUND";
     public const string ProductionProcessCodeAlreadyExists = "PRODUCTION_PROCESS_CODE_ALREADY_EXISTS";
     public const string ProductionProcessNotFound = "PRODUCTION_PROCESS_NOT_FOUND";
+    public const string ProductionProcessIdCannotBeEmpty = "PRODUCTION_PROCESS_ID_CANNOT_BE_EMPTY";
+    public const string TransportRouteCodeAlreadyExists = "TRANSPORT_ROUTE_CODE_ALREADY_EXISTS";
+    public const string TransportRouteNotFound = "TRANSPORT_ROUTE_NOT_FOUND";
+    public const string TransportRouteInUse = "TRANSPORT_ROUTE_IN_USE";
+    public const string TransportUnitPriceMustHaveAtLeastOneValue = "TRANSPORT_UNIT_PRICE_MUST_HAVE_AT_LEAST_ONE_VALUE";
+    public const string TransportUnitPriceNotFound = "TRANSPORT_UNIT_PRICE_NOT_FOUND";
+    public const string TransportUnitPriceRouteEquipmentConflict = "TRANSPORT_UNIT_PRICE_ROUTE_EQUIPMENT_CONFLICT";
     public const string ElectricityUnitPriceNotFound = "ELECTRICITY_UNIT_PRICE_NOT_FOUND";
     public const string StoneClampRatioNotFound = "STONE_CLAMP_RATIO_NOT_FOUND";
     public const string NormFactorNotFound = "NORM_FACTOR_NOT_FOUND";
