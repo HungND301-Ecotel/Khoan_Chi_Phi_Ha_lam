@@ -5,15 +5,8 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { useMemo } from 'react';
 import { UNIFIED_MOTORIZED_TRANSPORT_COLUMNS } from './unified-columns';
-import {
-	EXPAND_PRICE_COLUMNS,
-	buildExpandData,
-} from './expand-columns';
-import {
-	MechanizedTransportUnitPriceGroupDto,
-	VEHICLE_TYPE_LABELS,
-	getVehicleApi,
-} from './types';
+import { EXPAND_PRICE_COLUMNS, buildExpandData } from './expand-columns';
+import { MechanizedTransportUnitPriceGroupDto, getVehicleApi } from './types';
 import UnifiedMotorizedTransportForm from './unified-form';
 
 // Component hiển thị chi tiết khi expand row
@@ -32,7 +25,9 @@ function MaterialDetailExpand({
 					group.cargoTypeName,
 					group.receivingLocationName,
 					group.dumpingLocationName,
-				].filter(Boolean).join(' - ');
+				]
+					.filter(Boolean)
+					.join(' - ');
 
 				return (
 					<div key={key} className='space-y-3'>
@@ -61,9 +56,7 @@ function MaterialDetailExpand({
 											{group.productionProcessName}
 										</td>
 										{params && (
-											<td className='px-4 py-3 text-gray-900'>
-												{params}
-											</td>
+											<td className='px-4 py-3 text-gray-900'>{params}</td>
 										)}
 									</tr>
 								</tbody>
