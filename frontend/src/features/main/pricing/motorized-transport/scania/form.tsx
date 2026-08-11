@@ -381,9 +381,9 @@ export function MotorizedScaniaForm({
 					assignmentCodeId: string;
 					equipmentQuality: string;
 					productionProcessId: string;
-					cargoTypeId: string;
-					receivingLocationId: string | null;
-					dumpingLocationId: string | null;
+					cargoTypeId: string | undefined;
+					receivingLocationId: string | null | undefined;
+					dumpingLocationId: string | null | undefined;
 					startMonth: string;
 					endMonth: string;
 					details: Array<{

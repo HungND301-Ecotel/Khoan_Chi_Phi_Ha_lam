@@ -102,12 +102,6 @@ export function MotorizedServiceCraneForm({
 	const showBottomSection =
 		selectedAssignmentCodeIds.length > 0 && selectedEquipmentQualities.length > 0;
 
-	// Check if a process is "Tưới đường mỏ" (needs distance)
-	const isWateringProcess = (procId: string): boolean => {
-		const procObj = processOptions.find((p) => p.value === procId);
-		return procObj?.name?.toLowerCase().includes('tưới đường mỏ') || false;
-	};
-
 	useEffect(() => {
 		Promise.all([
 			fetchCatalogList(API.CATALOG.CONTRACT_CODE.LIST),
