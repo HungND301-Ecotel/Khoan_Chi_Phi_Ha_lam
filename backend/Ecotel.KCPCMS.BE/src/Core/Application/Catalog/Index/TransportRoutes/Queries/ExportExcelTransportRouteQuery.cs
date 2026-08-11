@@ -23,9 +23,7 @@ public class ExportExcelTransportRouteQueryHandler(IExcelService excelService, I
 
         var list = await _transportRouteRepository.GetAllAsync(
             include: query => query
-                .Include(t => t.Code)
-                .Include(t => t.ProductionProcess)
-                    .ThenInclude(p => p.Code),
+                .Include(t => t.Code),
             disableTracking: true);
 
         var excelDtos = list.Select(t => new TransportRouteExcelDto
@@ -34,7 +32,6 @@ public class ExportExcelTransportRouteQueryHandler(IExcelService excelService, I
             Code = t.Code?.Value ?? string.Empty,
             Name = t.Name,
             Note = t.Note,
-            ProductionProcessCode = t.ProductionProcess?.Code?.Value ?? string.Empty,
             IsSpecialLowVolume = t.IsSpecialLowVolume
         }).ToList();
 
@@ -45,7 +42,6 @@ public class ExportExcelTransportRouteQueryHandler(IExcelService excelService, I
 
         var dropdownData = new Dictionary<string, List<string>>
         {
-            { nameof(TransportRouteExcelDto.ProductionProcessCode), vtlProductionProcessCodes.Select(p => p.Code!.Value).ToList() },
             { nameof(TransportRouteExcelDto.IsSpecialLowVolume), new List<string> { "True", "False" } }
         };
 

@@ -2,6 +2,7 @@ import { MainCatalogAdjustmentRouter } from '@/features/main/catalog/adjustment/
 import MainCatalogAssetInternalPage from '@/features/main/catalog/asset/internal/page';
 import MainCatalogContractCodePage from '@/features/main/catalog/contract-code/page';
 import { MainCatalogDepartmentPage } from '@/features/main/catalog/department/page';
+import { MainCatalogFactorRouter } from '@/features/main/catalog/factor/router';
 import { MainCatalogLayout } from '@/features/main/catalog/layout';
 import { MainCatalogParameterRouter } from '@/features/main/catalog/parameter/router';
 import { MainCatalogProcessRouter } from '@/features/main/catalog/process/router';
@@ -9,13 +10,10 @@ import { MainCatalogProductPage } from '@/features/main/catalog/product/page';
 import MainCatalogUnitPage from '@/features/main/catalog/unit/page';
 import { Navigate, Outlet, type RouteObject } from 'react-router-dom';
 import { MainCatalogParameterProductionOrderPage } from './production-order/page';
-import { MainCatalogNormFactorPage } from './norm-factor/page';
-import { MainCatalogRevenueCostAdjustmentConfigPage } from './revenue-cost-adjustment-config/page';
-import { MainCatalogSavingsRateConfigPage } from './savings-rate-config/page';
-import { MainCatalogAkFactorConfigPage } from './ak-factor-config/page';
 import { MainCatalogEmployeePage } from '@/features/main/catalog/employee/page';
 import { MainCatalogPositionPage } from '@/features/main/catalog/position/page';
 import { MainCatalogTransportRoutePage } from '@/features/main/catalog/transport-route/page';
+import { MainCatalogCargoTypePage } from '@/features/main/catalog/cargo-type/page';
 
 const MainCatalogRouter: RouteObject = {
 	path: 'catalogs',
@@ -27,6 +25,7 @@ const MainCatalogRouter: RouteObject = {
 		MainCatalogProcessRouter,
 		MainCatalogParameterRouter,
 		MainCatalogAdjustmentRouter,
+		MainCatalogFactorRouter,
 		{
 			path: 'positions',
 			element: <MainCatalogPositionPage />,
@@ -88,43 +87,19 @@ const MainCatalogRouter: RouteObject = {
 			},
 		},
 		{
-			path: 'norm-factors',
-			element: <MainCatalogNormFactorPage />,
-			handle: {
-				breadcrumb: 'Hệ số điều chỉnh định mức',
-				title: 'Hệ số điều chỉnh định mức',
-			},
-		},
-		{
-			path: 'accepted-savings-rates',
-			element: <MainCatalogSavingsRateConfigPage />,
-			handle: {
-				breadcrumb: 'Hệ số tiết kiệm được chấp nhận',
-				title: 'Hệ số tiết kiệm được chấp nhận',
-			},
-		},
-		{
-			path: 'ak-factors',
-			element: <MainCatalogAkFactorConfigPage />,
-			handle: {
-				breadcrumb: 'Hệ số Ak',
-				title: 'Hệ số Ak',
-			},
-		},
-		{
-			path: 'revenue-cost-adjustment-configs',
-			element: <MainCatalogRevenueCostAdjustmentConfigPage />,
-			handle: {
-				breadcrumb: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
-				title: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
-			},
-		},
-		{
 			path: 'transport-routes',
 			element: <MainCatalogTransportRoutePage />,
 			handle: {
 				breadcrumb: 'Tuyến vận tải',
 				title: 'Tuyến vận tải',
+			},
+		},
+		{
+			path: 'cargo-types',
+			element: <MainCatalogCargoTypePage />,
+			handle: {
+				breadcrumb: 'Chủng loại hàng',
+				title: 'Chủng loại hàng',
 			},
 		},
 	],

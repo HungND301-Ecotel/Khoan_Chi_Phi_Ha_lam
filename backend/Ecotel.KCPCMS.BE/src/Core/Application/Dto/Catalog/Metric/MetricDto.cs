@@ -58,6 +58,14 @@ namespace Application.Dto.Catalog.Metric
         public string Value { get; set; }
     }
 
+    public class HaulDistanceExcelDto
+    {
+        public Guid? Id { get; set; }
+
+        [Display(Name = "Cung độ vận tải")]
+        public string Value { get; set; } = string.Empty;
+    }
+
     public class CreateMetricDto
     {
         public string Value { get; set; }

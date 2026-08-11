@@ -35,7 +35,6 @@ public class UpdateTransportRouteCommandHandler(IUnitOfWork unitOfWork) : IReque
             request.UpdateModel.Code.Trim(),
             request.UpdateModel.Name.Trim(),
             request.UpdateModel.Note?.Trim(),
-            request.UpdateModel.ProductionProcessId,
             request.UpdateModel.IsSpecialLowVolume);
 
         _transportRouteRepository.Update(existTransportRoute);

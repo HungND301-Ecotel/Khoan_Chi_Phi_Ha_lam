@@ -203,12 +203,32 @@ export function TransportUnitPriceForm({
 			}>(API.CATALOG.PROCESS.STEP.LIST, { ignorePagination: true })
 			.then((res) => {
 				const fetched = res.result.data || [];
-				const vtlProcesses = fetched.filter(
-					(p) =>
+				const vtlProcesses = fetched.filter((p) => {
+					const group = (p.processGroupName || '').toLowerCase();
+					const name = (p.name || '').toLowerCase();
+					const code = (p.code || '').toUpperCase();
+
+					// Loại bỏ các công đoạn của Vận tải cơ giới (Giờ di chuyển, Giờ phục vụ...)
+					if (
+						group.includes('cơ giới') ||
+						code === 'GDC' ||
+						code === 'GPV' ||
+						code === 'GGDC' ||
+						code === 'GGPV' ||
+						name.startsWith('giờ phục vụ') ||
+						name.startsWith('giờ di chuyển') ||
+						name.startsWith('giờ gạt')
+					) {
+						return false;
+					}
+
+					return (
 						!p.processGroupName ||
-						p.processGroupName.toLowerCase().includes('vận tải') ||
-						p.processGroupName.toLowerCase().includes('vtl'),
-				);
+						group.includes('vận tải lò') ||
+						group.includes('vtl') ||
+						group.includes('vận tải')
+					);
+				});
 				const finalProcesses = vtlProcesses.length > 0 ? vtlProcesses : fetched;
 				setProductionProcesses(finalProcesses);
 				if (
@@ -631,16 +651,10 @@ export function TransportUnitPriceForm({
 					name='transportRouteIds'
 					label='Tuyến vận tải'
 					placeholder='Chọn Tuyến vận tải'
-					options={routes
-						.filter((r) =>
-							selectedProductionProcessId
-								? r.productionProcessId === selectedProductionProcessId
-								: true,
-						)
-						.map((r) => ({
-							value: r.id,
-							label: `${r.code} - ${r.name}`,
-						}))}
+					options={routes.map((r) => ({
+						value: r.id,
+						label: `${r.code} - ${r.name}`,
+					}))}
 				/>
 			)}
 

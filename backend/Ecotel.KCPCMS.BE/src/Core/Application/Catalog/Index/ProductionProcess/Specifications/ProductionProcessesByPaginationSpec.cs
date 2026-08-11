@@ -15,7 +15,7 @@ public class ProductionProcessesByPaginationSpec
         var searchTerm = (search ?? "").Trim().ToLower();
 
         Query
-            .Include(p => p.ProcessGroup).Include(p => p.Code)
+            .Include(p => p.ProcessGroup).Include(p => p.Code).Include(p => p.UnitOfMeasure)
             .Where(p => string.IsNullOrWhiteSpace(searchTerm) ||
                         p.Name.ToLower().Contains(searchTerm) ||
                         p.Code.Value.ToLower().Contains(searchTerm));
@@ -26,7 +26,9 @@ public class ProductionProcessesByPaginationSpec
                 Code = p.Code.Value,
                 Name = p.Name,
                 ProcessGroupId = p.ProcessGroupId,
-                ProcessGroupName = p.ProcessGroup != null ? p.ProcessGroup.Name : string.Empty
+                ProcessGroupName = p.ProcessGroup != null ? p.ProcessGroup.Name : string.Empty,
+                UnitOfMeasureId = p.UnitOfMeasureId,
+                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty
             });
     }
 }

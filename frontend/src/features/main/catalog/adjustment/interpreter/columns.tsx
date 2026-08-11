@@ -13,11 +13,11 @@ export const CATALOG_ADJUSTMENT_INTERPRETER_COLUMNS: ColumnDef<Interpreter>[] =
 	[
 		{
 			accessorKey: 'adjustmentFactorCode',
-			header: 'Mã HSĐC',
+			header: 'Mã hệ số điều chỉnh',
 		},
 		{
 			accessorKey: 'description',
-			header: 'Diễn giải HSĐC',
+			header: 'Diễn giải hệ số điều chỉnh',
 		},
 		{
 			accessorKey: 'maintenanceAdjustmentValue',

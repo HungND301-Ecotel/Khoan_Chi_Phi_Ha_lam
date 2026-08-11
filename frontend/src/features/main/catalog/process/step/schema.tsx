@@ -5,11 +5,12 @@ export const processStepSchema = z.object({
 		message: 'Mã nhóm công đoạn sản xuất không được để trống',
 	}),
 	code: z.string().min(1, {
-		message: 'Mã nhóm công đoạn sản xuất không được để trống',
+		message: 'Mã công đoạn sản xuất không được để trống',
 	}),
 	name: z.string().min(1, {
-		message: 'Tên nhóm công đoạn sản xuất không được để trống',
+		message: 'Tên công đoạn sản xuất không được để trống',
 	}),
+	unitOfMeasureId: z.string().optional(),
 });
 
 export type ProcessStepSchema = z.infer<typeof processStepSchema>;
@@ -18,4 +19,5 @@ export const PROCESS_STEP_SCHEMA_DEFAULT: ProcessStepSchema = {
 	processGroupId: '',
 	code: '',
 	name: '',
+	unitOfMeasureId: '',
 } as const;

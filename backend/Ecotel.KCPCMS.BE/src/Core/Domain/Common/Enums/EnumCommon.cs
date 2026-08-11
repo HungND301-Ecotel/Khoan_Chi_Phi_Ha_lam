@@ -35,7 +35,8 @@ public enum FixedKeyType
     K6 = 9,
     K7 = 10,
     K8 = 11,
-    VTL = 12
+    VTL = 12,
+    VTCG = 13,
 }
 
 public static class FixedKeyTypeExtensions
@@ -48,6 +49,7 @@ public static class FixedKeyTypeExtensions
             FixedKeyType.LC => ProcessGroupType.LC,
             FixedKeyType.XL => ProcessGroupType.XL,
             FixedKeyType.VTL => ProcessGroupType.VTL,
+            FixedKeyType.VTCG => ProcessGroupType.VTCG,
             _ => ProcessGroupType.None,
         };
     }
@@ -76,6 +78,7 @@ public static class FixedKeyTypeExtensions
             ProcessGroupType.LC => FixedKeyType.LC,
             ProcessGroupType.XL => FixedKeyType.XL,
             ProcessGroupType.VTL => FixedKeyType.VTL,
+            ProcessGroupType.VTCG => FixedKeyType.VTCG,
             _ => FixedKeyType.None,
         };
     }
@@ -87,7 +90,25 @@ public enum ProcessGroupType
     DL = 1,
     LC = 2,
     XL = 3,
-    VTL = 4
+    VTL = 4,
+    VTCG = 5
+}
+
+public enum LocationType
+{
+    None = 0,
+    Receiving = 1,
+    Dumping = 2,
+    Both = 3
+}
+
+public enum MechanizedTransportUnitPriceType
+{
+    None = 0,
+    ScaniaTruck = 1,
+    WasteSuctionTruck = 2,
+    ServiceAndCraneVehicle = 3,
+    ExcavatorAndBulldozer = 4
 }
 
 public enum CostType

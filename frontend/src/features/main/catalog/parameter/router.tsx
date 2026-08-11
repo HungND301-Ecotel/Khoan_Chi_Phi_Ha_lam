@@ -9,7 +9,9 @@ import { MainCatalogParameterStepPage } from '@/features/main/catalog/parameter/
 import { MainCatalogParameterStrengthPage } from '@/features/main/catalog/parameter/strength/page';
 import { MainCatalogParameterTechnologyPage } from '@/features/main/catalog/parameter/technology/page';
 import { Navigate, RouteObject } from 'react-router-dom';
+import { MainCatalogTransportLocationPage } from '@/features/main/catalog/transport-location/page';
 import { MainCatalogParameterPowerPage } from './power/page';
+import { MainCatalogParameterTransportDistancePage } from './transport-distance/page';
 
 export const MainCatalogParameterRouter: RouteObject = {
 	path: 'parameters',
@@ -72,6 +74,16 @@ export const MainCatalogParameterRouter: RouteObject = {
 			path: 'powers',
 			element: <MainCatalogParameterPowerPage />,
 			handle: { breadcrumb: 'Công suất' },
+		},
+		{
+			path: 'transport-distances',
+			element: <MainCatalogParameterTransportDistancePage />,
+			handle: { breadcrumb: 'Cung độ vận tải (L)' },
+		},
+		{
+			path: 'transport-locations',
+			element: <MainCatalogTransportLocationPage />,
+			handle: { breadcrumb: 'Vị trí' },
 		},
 	],
 };

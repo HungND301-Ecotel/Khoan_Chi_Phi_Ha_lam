@@ -84,7 +84,11 @@ export function useDataTable<TData>(
 		try {
 			setLoading(true);
 			if (!url) return;
-			const response = await api.pagging<TData>(url, query);
+			const mergedQuery = {
+				...query,
+				...(globalFilter ? { search: globalFilter } : {}),
+			};
+			const response = await api.pagging<TData>(url, mergedQuery);
 			const result = response.result.data || [];
 			setData(transformData ? transformData(result) : result);
 			setRefreshVersion((prev) => prev + 1);
@@ -92,7 +96,7 @@ export function useDataTable<TData>(
 			setLoading(false);
 			// bỏ setExpanded({}) để không tự đóng expand
 		}
-	}, [url, query, transformData]);
+	}, [url, query, transformData, globalFilter]);
 
 	useEffect(() => {
 		refresh();

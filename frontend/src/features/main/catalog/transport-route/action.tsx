@@ -1,14 +1,12 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormCheckBox } from '@/components/form/form-check-box';
-import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { ProcessStep } from '@/features/main/catalog/process/step/columns';
 import { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import {
 	TRANSPORT_ROUTE_SCHEMA_DEFAULT,
@@ -17,7 +15,6 @@ import {
 } from '@/features/main/catalog/transport-route/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 type TransportRouteFormProps = ActionDialogProps<TransportRoute> & {
@@ -32,7 +29,6 @@ export function TransportRouteForm({
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
-	const [steps, setSteps] = useState<ProcessStep[]>();
 
 	const form = useForm<TransportRouteSchema>({
 		resolver: zodResolver(transportRouteSchema) as any,
@@ -42,19 +38,10 @@ export function TransportRouteForm({
 					code: isDuplicate ? '' : row.code,
 					name: row.name,
 					note: row.note || '',
-					productionProcessId: row.productionProcessId,
 					isSpecialLowVolume: row.isSpecialLowVolume ?? false,
 				}
 			: TRANSPORT_ROUTE_SCHEMA_DEFAULT,
 	});
-
-	useEffect(() => {
-		api
-			.pagging<ProcessStep>(API.CATALOG.PROCESS.STEP.LIST, {
-				ignorePagination: true,
-			})
-			.then((res) => setSteps(res.result.data));
-	}, []);
 
 	const handleSubmit = async (values: TransportRouteSchema) => {
 		try {
@@ -80,17 +67,6 @@ export function TransportRouteForm({
 
 	return (
 		<FormProvider context={form as any} onSubmit={handleSubmit as any}>
-			<FormComboBox
-				control={form.control}
-				name='productionProcessId'
-				label='Công đoạn sản xuất'
-				placeholder='Chọn công đoạn sản xuất'
-				options={steps?.map((step) => ({
-					value: step.id,
-					label: `${step.code} - ${step.name}`,
-				}))}
-			/>
-
 			<FormInput
 				control={form.control}
 				name='code'

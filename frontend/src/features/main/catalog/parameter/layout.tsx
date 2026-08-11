@@ -23,6 +23,11 @@ const TABS: { title: string; href: string }[] = [
 	},
 	{ title: 'Thông số lò chợ', href: '/catalogs/parameters/longwallparameters' },
 	{ title: 'Công suất', href: '/catalogs/parameters/powers' },
+	{
+		title: 'Cung độ vận tải (L)',
+		href: '/catalogs/parameters/transport-distances',
+	},
+	{ title: 'Vị trí', href: '/catalogs/parameters/transport-locations' },
 ] as const;
 
 export function MainCatalogParameterLayout() {

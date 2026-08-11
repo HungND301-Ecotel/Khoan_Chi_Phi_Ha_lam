@@ -18,7 +18,8 @@ namespace Domain.Entities.Index
         private IList<ProductUnitPrice> _productUnitPrices = new List<ProductUnitPrice>();
         public virtual IReadOnlyCollection<ProductUnitPrice> ProductUnitPrices => _productUnitPrices.AsReadOnly();
 
-
+        private IList<ProductionProcess> _productionProcesses = new List<ProductionProcess>();
+        public virtual IReadOnlyCollection<ProductionProcess> ProductionProcesses => _productionProcesses.AsReadOnly();
         //constructor
         public static UnitOfMeasure Create(string name)
         {

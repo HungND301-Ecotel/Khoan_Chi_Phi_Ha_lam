@@ -28,7 +28,6 @@ public class GetTransportRouteByIdQueryHandler(IUnitOfWork unitOfWork) : IReques
             Code = transportRoute.Code?.Value ?? string.Empty,
             Name = transportRoute.Name,
             Note = transportRoute.Note,
-            ProductionProcessId = transportRoute.ProductionProcessId,
             IsSpecialLowVolume = transportRoute.IsSpecialLowVolume
         };
     }

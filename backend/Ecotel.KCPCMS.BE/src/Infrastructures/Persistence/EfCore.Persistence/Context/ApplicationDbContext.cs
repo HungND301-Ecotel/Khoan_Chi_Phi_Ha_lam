@@ -7,6 +7,7 @@ using Domain.Entities.Index;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.EletricityUnitPrice;
 using Domain.Entities.Pricing.MaterialUnitPrice;
+using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
 using Domain.Entities.Production;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -30,6 +31,7 @@ public class ApplicationDbContext(
     private static readonly Guid FixedKeyLongwallId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid FixedKeyRoadwaySlashingId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly Guid FixedKeyTransportVehicleId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    private static readonly Guid FixedKeyMechanizedTransportId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
     private static readonly Guid FixedKeyAdjustmentFactorK1Id = Guid.Parse("44444444-4444-4444-4444-444444444444");
     private static readonly Guid FixedKeyAdjustmentFactorK2Id = Guid.Parse("55555555-5555-5555-5555-555555555555");
     private static readonly Guid FixedKeyAdjustmentFactorK3Id = Guid.Parse("66666666-6666-6666-6666-666666666666");
@@ -79,6 +81,9 @@ public class ApplicationDbContext(
     public DbSet<SavingsRateConfig> SavingsRateConfigs => Set<SavingsRateConfig>();
     public DbSet<AkFactorConfig> AkFactorConfigs => Set<AkFactorConfig>();
     public DbSet<RevenueCostAdjustmentConfig> RevenueCostAdjustmentConfigs => Set<RevenueCostAdjustmentConfig>();
+    public DbSet<CargoType> CargoTypes => Set<CargoType>();
+    public DbSet<HaulDistance> HaulDistances => Set<HaulDistance>();
+    public DbSet<TransportLocation> TransportLocations => Set<TransportLocation>();
 
     #endregion
 
@@ -99,6 +104,9 @@ public class ApplicationDbContext(
     public DbSet<Output> Outputs => Set<Output>();
     public DbSet<ProductUnitPriceProductionOutput> ProductUnitPriceProductionOutputs => Set<ProductUnitPriceProductionOutput>();
     public DbSet<TransportUnitPrice> TransportUnitPrices => Set<TransportUnitPrice>();
+    public DbSet<MechanizedTransportUnitPrice> MechanizedTransportUnitPrices => Set<MechanizedTransportUnitPrice>();
+    public DbSet<MechanizedTransportUnitPriceDetail> MechanizedTransportUnitPriceDetails => Set<MechanizedTransportUnitPriceDetail>();
+    public DbSet<MechanizedTransportOverheadUnitPrice> MechanizedTransportOverheadUnitPrices => Set<MechanizedTransportOverheadUnitPrice>();
     #endregion
 
     #region Production
@@ -148,6 +156,9 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProcessGroup>().ToTable(nameof(ProcessGroup), "Index");
         modelBuilder.Entity<ProductionProcess>().ToTable(nameof(ProductionProcess), "Index");
         modelBuilder.Entity<TransportRoute>().ToTable(nameof(TransportRoute), "Index");
+        modelBuilder.Entity<CargoType>().ToTable(nameof(CargoType), "Index");
+        modelBuilder.Entity<HaulDistance>().ToTable(nameof(HaulDistance), "Index");
+        modelBuilder.Entity<TransportLocation>().ToTable(nameof(TransportLocation), "Index");
         modelBuilder.Entity<Hardness>().ToTable(nameof(Hardness), "Index");
         modelBuilder.Entity<StoneClampRatio>().ToTable(nameof(StoneClampRatio), "Index");
         modelBuilder.Entity<InsertItem>().ToTable(nameof(InsertItem), "Index");
@@ -366,6 +377,19 @@ public class ApplicationDbContext(
                 },
                 new
                 {
+                    Id = FixedKeyMechanizedTransportId,
+                    Key = "VTCG",
+                    Name = "Vận tải cơ giới",
+                    Type = FixedKeyType.VTCG,
+                    CreatedBy = 0L,
+                    CreatedOn = FixedKeySeedTimestamp,
+                    LastModifiedBy = 0L,
+                    LastModifiedOn = FixedKeySeedTimestamp,
+                    DeletedBy = (long?)null,
+                    DeletedOn = (DateTimeOffset?)null,
+                },
+                new
+                {
                     Id = FixedKeyAdjustmentFactorK1Id,
                     Key = "K1",
                     Name = "Hệ số điều chỉnh K1",
@@ -503,11 +527,6 @@ public class ApplicationDbContext(
             .WithOne(h => h.TransportRoute)
             .HasForeignKey<TransportRoute>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<TransportRoute>()
-            .HasOne(s => s.ProductionProcess)
-            .WithMany()
-            .HasForeignKey(s => s.ProductionProcessId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         // Department table
         modelBuilder.Entity<Department>()
@@ -522,6 +541,28 @@ public class ApplicationDbContext(
             .WithOne(h => h.ProductionProcess)
             .HasForeignKey<ProductionProcess>(s => s.CodeId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProductionProcess>()
+            .HasOne(s => s.UnitOfMeasure)
+            .WithMany(h => h.ProductionProcesses)
+            .HasForeignKey(s => s.UnitOfMeasureId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CargoType>()
+            .HasOne(s => s.Code)
+            .WithOne(h => h.CargoType)
+            .HasForeignKey<CargoType>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TransportLocation>()
+            .HasOne(s => s.Code)
+            .WithOne(h => h.TransportLocation)
+            .HasForeignKey<TransportLocation>(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<HaulDistance>()
+            .HasIndex(e => e.Value)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
 
         // Adjustment Factor table
         modelBuilder.Entity<AdjustmentFactor>()
@@ -1115,6 +1156,68 @@ public class ApplicationDbContext(
 
         //ActualElectricityCostAdjustmentFactor (remove - entity deleted)
 
+
+        //  van tai co gioi
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .ToTable(nameof(MechanizedTransportUnitPrice), "Pricing")
+            .HasDiscriminator<MechanizedTransportUnitPriceType>("VehicleType")
+            .HasValue<ScaniaTruckUnitPrice>(MechanizedTransportUnitPriceType.ScaniaTruck)
+            .HasValue<WasteSuctionTruckUnitPrice>(MechanizedTransportUnitPriceType.WasteSuctionTruck)
+            .HasValue<ServiceAndCraneVehicleUnitPrice>(MechanizedTransportUnitPriceType.ServiceAndCraneVehicle)
+            .HasValue<ExcavatorAndBulldozerUnitPrice>(MechanizedTransportUnitPriceType.ExcavatorAndBulldozer);
+
+        modelBuilder.Entity<MechanizedTransportUnitPriceDetail>().ToTable(nameof(MechanizedTransportUnitPriceDetail), "Pricing");
+        modelBuilder.Entity<MechanizedTransportOverheadUnitPrice>().ToTable(nameof(MechanizedTransportOverheadUnitPrice), "Pricing");
+
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .HasOne(s => s.AssignmentCode)
+            .WithMany()
+            .HasForeignKey(s => s.AssignmentCodeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .HasOne(s => s.ProductionProcess)
+            .WithMany()
+            .HasForeignKey(s => s.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .Property(s => s.EquipmentQuality)
+            .HasMaxLength(1);
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .HasMany(s => s.Details)
+            .WithOne(h => h.MechanizedTransportUnitPrice)
+            .HasForeignKey(s => s.MechanizedTransportUnitPriceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MechanizedTransportUnitPrice>()
+            .Navigation(s => s.Details)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<ScaniaTruckUnitPrice>()
+            .HasOne(s => s.CargoType)
+            .WithMany()
+            .HasForeignKey(s => s.CargoTypeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ScaniaTruckUnitPrice>()
+            .HasOne(s => s.ReceivingLocation)
+            .WithMany()
+            .HasForeignKey(s => s.ReceivingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ScaniaTruckUnitPrice>()
+            .HasOne(s => s.DumpingLocation)
+            .WithMany()
+            .HasForeignKey(s => s.DumpingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MechanizedTransportUnitPriceDetail>()
+            .HasOne(s => s.HaulDistance)
+            .WithMany()
+            .HasForeignKey(s => s.HaulDistanceId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MechanizedTransportOverheadUnitPrice>()
+            .HasOne(s => s.ProcessGroup)
+            .WithMany()
+            .HasForeignKey(s => s.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
         #endregion
 
         #region Production

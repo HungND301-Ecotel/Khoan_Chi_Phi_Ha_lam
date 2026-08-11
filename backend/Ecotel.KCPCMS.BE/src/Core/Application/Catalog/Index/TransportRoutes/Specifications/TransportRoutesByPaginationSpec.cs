@@ -23,7 +23,6 @@ public class TransportRoutesByPaginationSpec : EntitiesByPaginationFilterSpec<Tr
                 Code = t.Code!.Value,
                 Name = t.Name,
                 Note = t.Note,
-                ProductionProcessId = t.ProductionProcessId,
                 IsSpecialLowVolume = t.IsSpecialLowVolume
             });
     }

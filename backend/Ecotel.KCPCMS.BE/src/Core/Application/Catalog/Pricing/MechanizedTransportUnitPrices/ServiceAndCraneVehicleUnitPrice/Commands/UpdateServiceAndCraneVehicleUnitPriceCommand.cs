@@ -1,0 +1,51 @@
+﻿using Application.Common.Exceptions;
+using Application.Common.Repositories;
+using Application.Common.UnitOfWork;
+using Application.Dto.Catalog.MechanizedTransportUnitPrices;
+using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Shared.Constants;
+
+namespace Application.Catalog.Pricing.MechanizedTransportUnitPrices.ServiceAndCraneVehicleUnitPrice.Commands;
+
+public record UpdateServiceAndCraneVehicleUnitPriceCommand(UpdateServiceAndCraneVehicleUnitPriceDto UpdateModel) : IRequest<bool>;
+
+public class UpdateServiceAndCraneVehicleUnitPriceCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<UpdateServiceAndCraneVehicleUnitPriceCommand, bool>
+{
+    private readonly IWriteRepository<Domain.Entities.Pricing.MechanizedTransportUnitPrice.ServiceAndCraneVehicleUnitPrice> _repository = unitOfWork.GetRepository<Domain.Entities.Pricing.MechanizedTransportUnitPrice.ServiceAndCraneVehicleUnitPrice>();
+
+    public async Task<bool> Handle(UpdateServiceAndCraneVehicleUnitPriceCommand request, CancellationToken cancellationToken)
+    {
+        var entity = await _repository.GetFirstOrDefaultAsync(
+            predicate: x => x.Id == request.UpdateModel.Id,
+            include: x => x.Include(s => s.Details),
+            disableTracking: false)
+            ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
+
+        var details = request.UpdateModel.Details.Select(d =>
+            new MechanizedTransportUnitPriceDetailInput(d.HaulDistanceId, d.FuelUnitPrice, null, d.MaintenanceUnitPrice));
+
+        entity.Update(
+            request.UpdateModel.AssignmentCodeId,
+            request.UpdateModel.EquipmentQuality,
+            request.UpdateModel.ProductionProcessId,
+            request.UpdateModel.StartMonth,
+            request.UpdateModel.EndMonth,
+            details);
+
+        await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
+        try
+        {
+            _repository.Update(entity);
+            await unitOfWork.SaveChangesAsync();
+            await unitOfWork.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+}

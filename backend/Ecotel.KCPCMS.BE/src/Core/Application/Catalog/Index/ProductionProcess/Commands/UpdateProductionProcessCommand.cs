@@ -20,7 +20,7 @@ public class UpdateProductionProcessCommandHandler(IUnitOfWork unitOfWork, ICode
         {
             var existProductionProcess = await _productionProcessRepository.GetFirstOrDefaultAsync(
                 predicate: t => t.Id == request.UpdateModel.Id,
-                include: t => t.Include(t => t.Code),
+                include: t => t.Include(t => t.Code).Include(t => t.UnitOfMeasure),
                 disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
             if (await codeService.IsCodeExisted(request.UpdateModel.Code, existProductionProcess.CodeId))
@@ -28,7 +28,7 @@ public class UpdateProductionProcessCommandHandler(IUnitOfWork unitOfWork, ICode
                 throw new ConflictException(CustomResponseMessage.ProductionProcessCodeAlreadyExists);
             }
 
-            existProductionProcess.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId);
+            existProductionProcess.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId, request.UpdateModel.UnitOfMeasureId ?? Guid.Empty);
 
             _productionProcessRepository.Update(existProductionProcess);
             await unitOfWork.SaveChangesAsync();
