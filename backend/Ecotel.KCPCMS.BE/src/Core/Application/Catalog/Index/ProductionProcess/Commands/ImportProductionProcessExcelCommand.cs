@@ -19,6 +19,8 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
     private readonly IWriteRepository<ProductionProcessEntity> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcessEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Domain.Entities.Index.Code> _codeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Code>();
+    private readonly IWriteRepository<Domain.Entities.Index.UnitOfMeasure> _unitOfMeasureRepository = unitOfWork.GetRepository<Domain.Entities.Index.UnitOfMeasure>();
+
     public async Task<bool> Handle(ImportProductionProcessExcelCommand request, CancellationToken cancellationToken)
     {
         if (request.File == null || request.File.Length == 0)
@@ -59,18 +61,32 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
             disableTracking: true);
         var processGroupIdMap = processGroup.ToDictionary(p => p.FixedKey!.Key.Trim(), p => p.Id, StringComparer.OrdinalIgnoreCase);
 
-        var excelDtos = dtos.Select(d =>
+        var unitOfMeasures = await _unitOfMeasureRepository.GetAllAsync(disableTracking: true);
+        var unitOfMeasureMap = unitOfMeasures
+            .Where(u => !string.IsNullOrWhiteSpace(u.Name))
+            .ToDictionary(u => u.Name.Trim(), u => u.Id, StringComparer.OrdinalIgnoreCase);
+
+        var excelDtos = dtos.Select((d, idx) =>
         {
-            if (processGroupIdMap.TryGetValue(d.ProcessGroupCode?.Trim() ?? string.Empty, out var processGroupId))
-            {
-                return ProductionProcessEntity.Create(d.Id, d.Code, d.Name, processGroupId);
-            }
-            else
+            var rowNumber = idx + 2;
+
+            if (!processGroupIdMap.TryGetValue(d.ProcessGroupCode?.Trim() ?? string.Empty, out var processGroupId))
             {
                 return null;
             }
-        }).Where(d => d != null).ToList();
 
+            Guid? unitOfMeasureId = null;
+            if (!string.IsNullOrWhiteSpace(d.UnitOfMeasureName))
+            {
+                if (!unitOfMeasureMap.TryGetValue(d.UnitOfMeasureName.Trim(), out var uomId))
+                {
+                    throw new BadRequestException($"Giá trị đơn vị tính '{d.UnitOfMeasureName}' không tồn tại ở dòng {rowNumber}.");
+                }
+                unitOfMeasureId = uomId;
+            }
+
+            return ProductionProcessEntity.Create(d.Id, d.Code, d.Name, processGroupId, unitOfMeasureId?? Guid.Empty);
+        }).Where(d => d != null).ToList();
 
         var dbProductionProcess = await _productionProcessRepository.GetAllAsync(disableTracking: true);
 
@@ -99,7 +115,7 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
                         throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId);
+                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -110,7 +126,7 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
                     throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(ProductionProcessEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId));
+                addList.Add(ProductionProcessEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty));
             }
         }
 
@@ -147,5 +163,4 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
             throw;
         }
     }
-
 }

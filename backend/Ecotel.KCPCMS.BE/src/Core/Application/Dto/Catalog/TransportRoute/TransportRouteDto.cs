@@ -9,7 +9,6 @@ namespace Application.Dto.Catalog.TransportRoute
         public string Code { get; set; }
         public string Name { get; set; }
         public string? Note { get; set; }
-        public Guid ProductionProcessId { get; set; }
         public bool IsSpecialLowVolume { get; set; }
     }
 
@@ -18,7 +17,6 @@ namespace Application.Dto.Catalog.TransportRoute
         public string Code { get; set; }
         public string Name { get; set; }
         public string? Note { get; set; }
-        public Guid ProductionProcessId { get; set; }
         public bool IsSpecialLowVolume { get; set; }
     }
 
@@ -31,9 +29,6 @@ namespace Application.Dto.Catalog.TransportRoute
 
         [Display(Name = "Tuyến vận tải")]
         public string Name { get; set; }
-
-        [Display(Name = "Mã công đoạn sản xuất")]
-        public string ProductionProcessCode { get; set; }
 
         [Display(Name = "Áp dụng giá đặc biệt sản lượng thấp")]
         public bool IsSpecialLowVolume { get; set; }

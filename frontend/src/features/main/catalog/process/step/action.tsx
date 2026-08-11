@@ -32,6 +32,7 @@ export function ProcessStepForm({
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [groups, setGroups] = useState<ProcessGroup[]>();
+	const [units, setUnits] = useState<{ id: string; name: string }[]>();
 
 	const form = useForm<ProcessStepSchema>({
 		resolver: zodResolver(processStepSchema),
@@ -41,14 +42,23 @@ export function ProcessStepForm({
 					code: isDuplicate ? '' : row.code,
 					name: row.name,
 					processGroupId: row.processGroupId,
+					unitOfMeasureId: row.unitOfMeasureId || '',
 				}
 			: PROCESS_STEP_SCHEMA_DEFAULT,
 	});
 
 	useEffect(() => {
 		api
-			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
+			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST, {
+				ignorePagination: true,
+			})
 			.then((res) => setGroups(res.result.data));
+
+		api
+			.pagging<{ id: string; name: string }>(API.CATALOG.UNIT.LIST, {
+				ignorePagination: true,
+			})
+			.then((res) => setUnits(res.result.data));
 	}, []);
 
 	const handleSubmit = async (values: ProcessStepSchema) => {
@@ -97,7 +107,18 @@ export function ProcessStepForm({
 				control={form.control}
 				name='name'
 				label='Tên công đoạn sản xuất'
-				placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
+				placeholder='Nhập tên công đoạn sản xuất, ví dụ: Đào lò'
+			/>
+
+			<FormComboBox
+				control={form.control}
+				name='unitOfMeasureId'
+				label='Đơn vị tính'
+				placeholder='Chọn đơn vị tính'
+				options={units?.map((u) => ({
+					value: u.id,
+					label: u.name,
+				}))}
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

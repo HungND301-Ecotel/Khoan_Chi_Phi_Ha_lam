@@ -27,7 +27,6 @@ public class CreateTransportRouteCommandHandler(IUnitOfWork unitOfWork) : IReque
             request.CreateModel.Code,
             request.CreateModel.Name,
             request.CreateModel.Note,
-            request.CreateModel.ProductionProcessId,
             request.CreateModel.IsSpecialLowVolume);
 
         await _transportRouteRepository.InsertAsync(newTransportRoute, cancellationToken);

@@ -51,13 +51,6 @@ public class ImportTransportRouteExcelCommandHandler(IExcelService excelService,
                 continue;
             }
 
-            var productionProcess = productionProcesses.FirstOrDefault(
-                p => p.Code != null && p.Code.Value.ToUpper() == (dto.ProductionProcessCode ?? string.Empty).Trim().ToUpper());
-
-            if (productionProcess == null)
-            {
-                throw new NotFoundException($"{CustomResponseMessage.ProductionProcessNotFound}: {dto.ProductionProcessCode}");
-            }
 
             if (dto.Id != Guid.Empty && dbTransportRoutes.Any(x => x.Id == dto.Id))
             {
@@ -66,18 +59,17 @@ public class ImportTransportRouteExcelCommandHandler(IExcelService excelService,
                 var hasChanged = entityToUpdate.Code?.Value != dto.Code.Trim().ToUpper()
                     || entityToUpdate.Name != dto.Name.Trim()
                     || entityToUpdate.Note != dto.Note?.Trim()
-                    || entityToUpdate.ProductionProcessId != productionProcess.Id
                     || entityToUpdate.IsSpecialLowVolume != dto.IsSpecialLowVolume;
 
                 if (hasChanged)
                 {
-                    entityToUpdate.Update(dto.Code.Trim(), dto.Name.Trim(), dto.Note?.Trim(), productionProcess.Id, dto.IsSpecialLowVolume);
+                    entityToUpdate.Update(dto.Code.Trim(), dto.Name.Trim(), dto.Note?.Trim(), dto.IsSpecialLowVolume);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(TransportRoute.Create(dto.Code.Trim(), dto.Name.Trim(), dto.Note?.Trim(), productionProcess.Id, dto.IsSpecialLowVolume));
+                addList.Add(TransportRoute.Create(dto.Code.Trim(), dto.Name.Trim(), dto.Note?.Trim(), dto.IsSpecialLowVolume));
             }
         }
 

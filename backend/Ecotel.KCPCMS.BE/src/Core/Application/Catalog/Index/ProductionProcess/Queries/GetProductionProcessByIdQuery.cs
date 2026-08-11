@@ -16,7 +16,7 @@ public class GetProductionProcessByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
     {
         var productionProcess = await _productionProcessRepository.GetFirstOrDefaultAsync(
             predicate: t => t.Id == request.Id,
-            include: t => t.Include(p => p.ProcessGroup).Include(t => t.Code),
+            include: t => t.Include(p => p.ProcessGroup).Include(t => t.Code).Include(t => t.UnitOfMeasure),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
         return new ProductionProcessDto
         {
@@ -24,7 +24,9 @@ public class GetProductionProcessByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             Code = productionProcess.Code.Value,
             Name = productionProcess.Name,
             ProcessGroupId = productionProcess.ProcessGroupId,
-            ProcessGroupName = productionProcess.ProcessGroup != null ? productionProcess.ProcessGroup.Name : string.Empty
+            ProcessGroupName = productionProcess.ProcessGroup != null ? productionProcess.ProcessGroup.Name : string.Empty,
+            UnitOfMeasureId = productionProcess.UnitOfMeasureId,
+            UnitOfMeasureName = productionProcess.UnitOfMeasure != null ? productionProcess.UnitOfMeasure.Name : string.Empty
         };
     }
 }

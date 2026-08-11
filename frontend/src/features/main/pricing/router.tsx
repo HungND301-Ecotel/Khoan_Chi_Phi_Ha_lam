@@ -14,6 +14,7 @@ import { MainPricingMaintenanceLongwallPanelPage } from './longwall-panel/mainte
 import { MainPricingMaintenanceTunnelingPage } from './tunneling/maintenance/page';
 import { MainPricingTransportUnitPricePage } from '@/features/main/pricing/transport/unit-price/page';
 import { MainPricingLowValuePerishableSupplyTransportPage } from '@/features/main/pricing/transport/low-value-perishable-supply/page';
+import MainPricingMotorizedTransportRouter from '@/features/main/pricing/motorized-transport/router';
 
 const MainPricingRouter: RouteObject = {
 	path: 'pricing',
@@ -156,6 +157,7 @@ const MainPricingRouter: RouteObject = {
 				},
 			],
 		},
+		MainPricingMotorizedTransportRouter,
 	],
 };
 

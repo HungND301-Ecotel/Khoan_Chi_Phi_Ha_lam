@@ -45,6 +45,7 @@ public static class CustomResponseMessage
     public const string UnsupportedCostType = "UNSUPPORTED_COST_TYPE";
     public const string CostsCannotBeEmpty = "COSTS_CANNOT_BE_EMPTY";
     public const string ProcessGroupIdCannotBeEmpty = "PROCESS_GROUP_ID_CANNOT_BE_EMPTY";
+    public const string UnitOfMeasureIdCannotBeEmpty = "UNIT_OF_MEASURE_ID_CANNOT_BE_EMPTY";
     public const string CoefficientValueCannotBeZeroOrNegative = "COEFFICIENT_VALUE_CANNOT_BE_ZERO_OR_NEGATIVE";
     public const string MonthlyElectricityCostCannotBeNegative = "MONTHLY_ELECTRICITY_COST_CANNOT_BE_NEGATIVE";
     public const string AverageMonthlyTunnelProductionCannotBeNegative = "AVERAGE_MONTHLY_TUNNEL_PRODUCTION_CANNOT_BE_NEGATIVE";

@@ -9,11 +9,9 @@ namespace Domain.Entities.Index
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
         public string? Note { get; protected set; }
-        public Guid ProductionProcessId { get; protected set; }
         public bool IsSpecialLowVolume { get; protected set; }
 
         public virtual Code? Code { get; protected set; }
-        public virtual ProductionProcess? ProductionProcess { get; protected set; }
 
         private IList<TransportUnitPrice> _transportUnitPrices = new List<TransportUnitPrice>();
         public virtual IReadOnlyCollection<TransportUnitPrice> TransportUnitPrices => _transportUnitPrices.AsReadOnly();
@@ -22,17 +20,15 @@ namespace Domain.Entities.Index
             string code,
             string name,
             string? note,
-            Guid productionProcessId,
             bool isSpecialLowVolume)
         {
-            Validate(code, name, productionProcessId);
+            Validate(code, name);
 
             return new TransportRoute
             {
                 Code = new Code(code.ToUpper()),
                 Name = name,
                 Note = note,
-                ProductionProcessId = productionProcessId,
                 IsSpecialLowVolume = isSpecialLowVolume,
             };
         }
@@ -42,10 +38,9 @@ namespace Domain.Entities.Index
             string code,
             string name,
             string? note,
-            Guid productionProcessId,
             bool isSpecialLowVolume)
         {
-            Validate(code, name, productionProcessId);
+            Validate(code, name);
 
             return new TransportRoute
             {
@@ -53,7 +48,6 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 Name = name,
                 Note = note,
-                ProductionProcessId = productionProcessId,
                 IsSpecialLowVolume = isSpecialLowVolume,
             };
         }
@@ -62,10 +56,9 @@ namespace Domain.Entities.Index
             string code,
             string name,
             string? note,
-            Guid productionProcessId,
             bool isSpecialLowVolume)
         {
-            Validate(code, name, productionProcessId);
+            Validate(code, name);
 
             if (Code != null)
             {
@@ -74,7 +67,6 @@ namespace Domain.Entities.Index
 
             Name = name;
             Note = note;
-            ProductionProcessId = productionProcessId;
             IsSpecialLowVolume = isSpecialLowVolume;
         }
 
@@ -83,11 +75,10 @@ namespace Domain.Entities.Index
             return !(Code?.Value == dto.Code?.Value
                 && Name == dto.Name
                 && Note == dto.Note
-                && ProductionProcessId == dto.ProductionProcessId
                 && IsSpecialLowVolume == dto.IsSpecialLowVolume);
         }
 
-        private static void Validate(string code, string name, Guid productionProcessId)
+        private static void Validate(string code, string name)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -97,11 +88,6 @@ namespace Domain.Entities.Index
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException(CustomResponseMessage.NameCannotBeNullOrEmpty);
-            }
-
-            if (productionProcessId == Guid.Empty)
-            {
-                throw new ArgumentException(CustomResponseMessage.ProductionProcessIdCannotBeEmpty);
             }
         }
     }

@@ -15,6 +15,18 @@ using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Commands;
 using Application.Catalog.Pricing.MaintainUnitPriceEquipment.Queries;
 using Application.Catalog.Pricing.MaterialUnitPrice.Commands;
 using Application.Catalog.Pricing.MaterialUnitPrice.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ExcavatorAndBulldozerUnitPrice.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ExcavatorAndBulldozerUnitPrice.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.MechanizedTransportOverheadUnitPrice.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.MechanizedTransportOverheadUnitPrice.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ScaniaTruckUnitPrice.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ScaniaTruckUnitPrice.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ServiceAndCraneVehicleUnitPrice.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.ServiceAndCraneVehicleUnitPrice.Queries;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.WasteSuctionTruckUnitPrice.Commands;
+using Application.Catalog.Pricing.MechanizedTransportUnitPrices.WasteSuctionTruckUnitPrice.Queries;
 using Application.Catalog.Pricing.PlannedElectricityCost.Commands;
 using Application.Catalog.Pricing.PlannedElectricityCost.Queries;
 using Application.Catalog.Pricing.PlannedMaintainCost.Commands;
@@ -36,6 +48,7 @@ using Application.Dto.Catalog.LowValuePerishableSupplyUnitPrice;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
 using Application.Dto.Catalog.MaintainUnitPriceEquipment;
 using Application.Dto.Catalog.MaterialUnitPrice;
+using Application.Dto.Catalog.MechanizedTransportUnitPrices;
 using Application.Dto.Catalog.PlannedElectricityCost;
 using Application.Dto.Catalog.PlannedMaintainCost;
 using Application.Dto.Catalog.PlannedMaterialCost;
@@ -1266,6 +1279,8 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice")]
     [OpenApiOperation("Get All TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+
     public async Task<IActionResult> GetAllTransportUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllTransportUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1274,6 +1289,8 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice/{id:guid}")]
     [OpenApiOperation("Get TransportUnitPrice By Id", "")]
+    [HasPermission("pricing.transportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+
     public async Task<IActionResult> GetTransportUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTransportUnitPriceByIdQuery(id));
@@ -1282,6 +1299,8 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportUnitPrice")]
     [OpenApiOperation("Create New TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.create", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+
     public async Task<IActionResult> CreateTransportUnitPrice([FromBody] CreateTransportUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateTransportUnitPriceCommand(createModel));
@@ -1290,6 +1309,8 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TransportUnitPrice")]
     [OpenApiOperation("Update TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.update", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+
     public async Task<IActionResult> UpdateTransportUnitPrice([FromBody] TransportUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateTransportUnitPriceCommand(updateModel));
@@ -1298,6 +1319,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
     public async Task<IActionResult> DeleteTransportUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTransportUnitPriceCommand(deleteId));
@@ -1306,6 +1328,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportUnitPrice")]
     [OpenApiOperation("Delete Many TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
     public async Task<IActionResult> DeleteTransportUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteTransportUnitPriceListCommand(deleteIds));
@@ -1314,6 +1337,8 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice/export")]
     [OpenApiOperation("Export TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.export", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+
     public async Task<IActionResult> ExportTransportUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelTransportUnitPriceQuery());
@@ -1322,12 +1347,14 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportUnitPrice/import")]
     [OpenApiOperation("Import TransportUnitPrice", "")]
+    [HasPermission("pricing.transportunitprice.import", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
     public async Task<IActionResult> ImportTransportUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTransportUnitPriceExcelCommand(importModel.FormFile));
         return Ok(result, MessageCommon.ImportSuccess);
     }
     #endregion
+
 
     #region ProductUnitPrice
 
@@ -1752,6 +1779,421 @@ public class PricingController : BaseAuthController
     }
 
     #endregion
+
+    #region MechanizedTransportOverheadUnitPrice
+
+    [HttpGet("MechanizedTransportOverheadUnitPrice")]
+    [OpenApiOperation("Get All MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> GetAllMechanizedTransportOverheadUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMechanizedTransportOverheadUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("MechanizedTransportOverheadUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get MechanizedTransportOverheadUnitPrice By Id", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> GetMechanizedTransportOverheadUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMechanizedTransportOverheadUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("MechanizedTransportOverheadUnitPrice")]
+    [OpenApiOperation("Create New MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.create", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> CreateMechanizedTransportOverheadUnitPrice([FromBody] CreateMechanizedTransportOverheadUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateMechanizedTransportOverheadUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("MechanizedTransportOverheadUnitPrice")]
+    [OpenApiOperation("Update MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.update", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> UpdateMechanizedTransportOverheadUnitPrice([FromBody] UpdateMechanizedTransportOverheadUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateMechanizedTransportOverheadUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("MechanizedTransportOverheadUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> DeleteMechanizedTransportOverheadUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMechanizedTransportOverheadUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("MechanizedTransportOverheadUnitPrice")]
+    [OpenApiOperation("Delete Many MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> DeleteMechanizedTransportOverheadUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteMechanizedTransportOverheadUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("MechanizedTransportOverheadUnitPrice/export")]
+    [OpenApiOperation("Export MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.export", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> ExportMechanizedTransportOverheadUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelMechanizedTransportOverheadUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "VT_mau_hong_re_tien_va_Dien_nang.xlsx");
+        return result;
+    }
+
+    [HttpPost("MechanizedTransportOverheadUnitPrice/import")]
+    [OpenApiOperation("Import MechanizedTransportOverheadUnitPrice", "")]
+    [HasPermission("pricing.mechanizedtransportoverheadunitprice.import", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    public async Task<IActionResult> ImportMechanizedTransportOverheadUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportMechanizedTransportOverheadUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region ExcavatorAndBulldozerUnitPrice
+
+    [HttpGet("ExcavatorAndBulldozerUnitPrice")]
+    [OpenApiOperation("Get All ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.read", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> GetAllExcavatorAndBulldozerUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllExcavatorAndBulldozerUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ExcavatorAndBulldozerUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get ExcavatorAndBulldozerUnitPrice By Id", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.read", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> GetExcavatorAndBulldozerUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetExcavatorAndBulldozerUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("ExcavatorAndBulldozerUnitPrice")]
+    [OpenApiOperation("Create New ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.create", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> CreateExcavatorAndBulldozerUnitPrice([FromBody] CreateExcavatorAndBulldozerUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateExcavatorAndBulldozerUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ExcavatorAndBulldozerUnitPrice")]
+    [OpenApiOperation("Update ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.update", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> UpdateExcavatorAndBulldozerUnitPrice([FromBody] UpdateExcavatorAndBulldozerUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateExcavatorAndBulldozerUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("ExcavatorAndBulldozerUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> DeleteExcavatorAndBulldozerUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteExcavatorAndBulldozerUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("ExcavatorAndBulldozerUnitPrice")]
+    [OpenApiOperation("Delete Many ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> DeleteExcavatorAndBulldozerUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteExcavatorAndBulldozerUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("ExcavatorAndBulldozerUnitPrice/export")]
+    [OpenApiOperation("Export ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.export", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> ExportExcavatorAndBulldozerUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelExcavatorAndBulldozerUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Don_ gia_dinh_muc_may_xuc_va_may_gat.xlsx");
+        return result;
+    }
+
+    [HttpPost("ExcavatorAndBulldozerUnitPrice/import")]
+    [OpenApiOperation("Import ExcavatorAndBulldozerUnitPrice", "")]
+    [HasPermission("pricing.excavatorandbulldozerunitprice.import", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    public async Task<IActionResult> ImportExcavatorAndBulldozerUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportExcavatorAndBulldozerUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region WasteSuctionTruckUnitPrice
+
+    [HttpGet("WasteSuctionTruckUnitPrice")]
+    [OpenApiOperation("Get All WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> GetAllWasteSuctionTruckUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllWasteSuctionTruckUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("WasteSuctionTruckUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get WasteSuctionTruckUnitPrice By Id", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> GetWasteSuctionTruckUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetWasteSuctionTruckUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("WasteSuctionTruckUnitPrice")]
+    [OpenApiOperation("Create New WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> CreateWasteSuctionTruckUnitPrice([FromBody] CreateWasteSuctionTruckUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateWasteSuctionTruckUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("WasteSuctionTruckUnitPrice")]
+    [OpenApiOperation("Update WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> UpdateWasteSuctionTruckUnitPrice([FromBody] UpdateWasteSuctionTruckUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateWasteSuctionTruckUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("WasteSuctionTruckUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> DeleteWasteSuctionTruckUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteWasteSuctionTruckUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("WasteSuctionTruckUnitPrice")]
+    [OpenApiOperation("Delete Many WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> DeleteWasteSuctionTruckUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteWasteSuctionTruckUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("WasteSuctionTruckUnitPrice/export")]
+    [OpenApiOperation("Export WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> ExportWasteSuctionTruckUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelWasteSuctionTruckUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Xe_hut_bun_chat_thai.xlsx");
+        return result;
+    }
+
+    [HttpPost("WasteSuctionTruckUnitPrice/import")]
+    [OpenApiOperation("Import WasteSuctionTruckUnitPrice", "")]
+    [HasPermission("pricing.wastesuctiontruckunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    public async Task<IActionResult> ImportWasteSuctionTruckUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportWasteSuctionTruckUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region ServiceAndCraneVehicleUnitPrice
+
+    [HttpGet("ServiceAndCraneVehicleUnitPrice")]
+    [OpenApiOperation("Get All ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> GetAllServiceAndCraneVehicleUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllServiceAndCraneVehicleUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ServiceAndCraneVehicleUnitPrice/export")]
+    [OpenApiOperation("Export ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> ExportServiceAndCraneVehicleUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelServiceAndCraneVehicleUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Xe_phuc_vu_va_xe_cau.xlsx");
+        return result;
+    }
+
+    [HttpPost("ServiceAndCraneVehicleUnitPrice/import")]
+    [OpenApiOperation("Import ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> ImportServiceAndCraneVehicleUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportServiceAndCraneVehicleUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("ServiceAndCraneVehicleUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get ServiceAndCraneVehicleUnitPrice By Id", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> GetServiceAndCraneVehicleUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetServiceAndCraneVehicleUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("ServiceAndCraneVehicleUnitPrice")]
+    [OpenApiOperation("Create New ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> CreateServiceAndCraneVehicleUnitPrice([FromBody] CreateServiceAndCraneVehicleUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateServiceAndCraneVehicleUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ServiceAndCraneVehicleUnitPrice")]
+    [OpenApiOperation("Update ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> UpdateServiceAndCraneVehicleUnitPrice([FromBody] UpdateServiceAndCraneVehicleUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateServiceAndCraneVehicleUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("ServiceAndCraneVehicleUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> DeleteServiceAndCraneVehicleUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteServiceAndCraneVehicleUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("ServiceAndCraneVehicleUnitPrice")]
+    [OpenApiOperation("Delete Many ServiceAndCraneVehicleUnitPrice", "")]
+    [HasPermission("pricing.serviceandcranevehicleunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    public async Task<IActionResult> DeleteServiceAndCraneVehicleUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteServiceAndCraneVehicleUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    #endregion
+
+    #region ScaniaTruckUnitPrice
+
+    [HttpGet("ScaniaTruckUnitPrice")]
+    [OpenApiOperation("Get All ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> GetAllScaniaTruckUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllScaniaTruckUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("ScaniaTruckUnitPrice/export")]
+    [OpenApiOperation("Export ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> ExportScaniaTruckUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelScaniaTruckUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Xe_Scania.xlsx");
+        return result;
+    }
+
+    [HttpPost("ScaniaTruckUnitPrice/import")]
+    [OpenApiOperation("Import ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> ImportScaniaTruckUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportScaniaTruckUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("ScaniaTruckUnitPrice/{id:guid}")]
+    [OpenApiOperation("Get ScaniaTruckUnitPrice By Id", "")]
+    [HasPermission("pricing.scaniatruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> GetScaniaTruckUnitPriceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetScaniaTruckUnitPriceByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("ScaniaTruckUnitPrice")]
+    [OpenApiOperation("Create New ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> CreateScaniaTruckUnitPrice([FromBody] CreateScaniaTruckUnitPriceDto createModel)
+    {
+        var result = await Mediator.Send(new CreateScaniaTruckUnitPriceCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("ScaniaTruckUnitPrice")]
+    [OpenApiOperation("Update ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> UpdateScaniaTruckUnitPrice([FromBody] UpdateScaniaTruckUnitPriceDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateScaniaTruckUnitPriceCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("ScaniaTruckUnitPrice/{deleteId:guid}")]
+    [OpenApiOperation("Delete ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> DeleteScaniaTruckUnitPrice([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteScaniaTruckUnitPriceCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("ScaniaTruckUnitPrice")]
+    [OpenApiOperation("Delete Many ScaniaTruckUnitPrice", "")]
+    [HasPermission("pricing.scaniatruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    public async Task<IActionResult> DeleteScaniaTruckUnitPriceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteScaniaTruckUnitPriceListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    #endregion
+
+    [HttpGet("MechanizedTransportUnitPrice")]
+    [OpenApiOperation("Get All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
+    [HasPermission("pricing.mechanizedtransportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    public async Task<IActionResult> GetAllMechanizedTransportUnitPrice(
+    [FromQuery] int pageIndex = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? search = "",
+    [FromQuery] bool ignorePagination = false,
+    [FromQuery] MechanizedTransportUnitPriceType? vehicleType = null)
+    {
+        var result = await Mediator.Send(new GetAllMechanizedTransportUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, vehicleType));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("MechanizedTransportUnitPrice/export")]
+    [OpenApiOperation("Export All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
+    [HasPermission("pricing.mechanizedtransportunitprice.export", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    public async Task<IActionResult> ExportAllMechanizedTransportUnitPrice()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelAllMechanizedTransportUnitPriceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Van_tai_co_gioi_don_gia.xlsx");
+        return result;
+    }
+
+    [HttpPost("MechanizedTransportUnitPrice/import")]
+    [OpenApiOperation("Import All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
+    [HasPermission("pricing.mechanizedtransportunitprice.import", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    public async Task<IActionResult> ImportAllMechanizedTransportUnitPrice([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportAllMechanizedTransportUnitPriceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
 }
 
 

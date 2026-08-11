@@ -6,6 +6,8 @@ using Application.Catalog.Index.AkFactorConfig.Commands;
 using Application.Catalog.Index.AkFactorConfig.Queries;
 using Application.Catalog.Index.AssignmentCodes.Commands;
 using Application.Catalog.Index.AssignmentCodes.Queries;
+using Application.Catalog.Index.CargoType.Commands;
+using Application.Catalog.Index.CargoType.Queries;
 using Application.Catalog.Index.CuttingThickness.Commands;
 using Application.Catalog.Index.CuttingThickness.Queries;
 using Application.Catalog.Index.Department.Commands;
@@ -34,6 +36,8 @@ using Application.Catalog.Index.SavingsRateConfig.Commands;
 using Application.Catalog.Index.SavingsRateConfig.Queries;
 using Application.Catalog.Index.StoneClampRatio.Commands;
 using Application.Catalog.Index.StoneClampRatio.Queries;
+using Application.Catalog.Index.TransportLocation.Commands;
+using Application.Catalog.Index.TransportLocation.Queries;
 using Application.Catalog.Index.TransportRoutes.Commands;
 using Application.Catalog.Index.TransportRoutes.Queries;
 using Application.Catalog.Index.UnitOfMeasures.Commands;
@@ -42,6 +46,7 @@ using Application.Dto.Catalog.AdjustmentFactor;
 using Application.Dto.Catalog.AdjustmentFactorDescription;
 using Application.Dto.Catalog.AkFactorConfig;
 using Application.Dto.Catalog.AssignmentCode;
+using Application.Dto.Catalog.CargoType;
 using Application.Dto.Catalog.CuttingThickness;
 using Application.Dto.Catalog.Department;
 using Application.Dto.Catalog.LongwallParameters;
@@ -57,6 +62,7 @@ using Application.Dto.Catalog.ProductionProcess;
 using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
 using Application.Dto.Catalog.SavingsRateConfig;
 using Application.Dto.Catalog.StoneClampRatio;
+using Application.Dto.Catalog.TransportLocation;
 using Application.Dto.Catalog.TransportRoute;
 using Application.Dto.Catalog.UnitOfMeasure;
 using Domain.Common.Enums;
@@ -2070,5 +2076,235 @@ public class CatalogController : BaseAuthController
         var result = await Mediator.Send(new DeleteRevenueCostAdjustmentConfigListCommand(deleteIds));
         return Ok(result, MessageCommon.DeleteSuccess);
     }
+    #endregion
+
+    #region HaulDistance
+
+    [HttpGet("HaulDistance")]
+    [OpenApiOperation("Get All HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.read", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> GetAllHaulDistance([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllMetricQuery<HaulDistance>(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("HaulDistance/{id:guid}")]
+    [OpenApiOperation("Get HaulDistance By Id", "")]
+    [HasPermission("catalog.hauldistance.read", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> GetHaulDistanceById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetMetricByIdQuery<HaulDistance>(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("HaulDistance")]
+    [OpenApiOperation("Create New HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.create", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> CreateHaulDistance([FromBody] CreateMetricDto createModel)
+    {
+        var result = await Mediator.Send(new CreateMetricCommand<HaulDistance>(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("HaulDistance")]
+    [OpenApiOperation("Update HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.update", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> UpdateHaulDistance([FromBody] MetricDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateMetricCommand<HaulDistance>(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("HaulDistance/{deleteId:guid}")]
+    [OpenApiOperation("Delete HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.delete", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> DeleteHaulDistance([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteMetricCommand<HaulDistance>(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("HaulDistance")]
+    [OpenApiOperation("Delete Many HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.delete", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> DeleteHaulDistanceList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteMetricListCommand<HaulDistance>(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpGet("HaulDistance/export")]
+    [OpenApiOperation("Export HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.export", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> ExportHaulDistance()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelHaulDistanceQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Cung_do_van_tai.xlsx");
+        return result;
+    }
+
+    [HttpPost("HaulDistance/import")]
+    [OpenApiOperation("Import HaulDistance", "")]
+    [HasPermission("catalog.hauldistance.import", "Danh mục", "Cung độ vận tải")]
+    public async Task<IActionResult> ImportHaulDistance([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportHaulDistanceExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region TransportLocation
+
+    [HttpGet("TransportLocation")]
+    [OpenApiOperation("Get All TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.read", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> GetAllTransportLocation([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllTransportLocationQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TransportLocation/export")]
+    [OpenApiOperation("Export TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.export", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> ExportTransportLocation()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelTransportLocationQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Vi_tri_nhan_do.xlsx");
+        return result;
+    }
+
+    [HttpPost("TransportLocation/import")]
+    [OpenApiOperation("Import TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.import", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> ImportTransportLocation([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportTransportLocationExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("TransportLocation/{id:guid}")]
+    [OpenApiOperation("Get TransportLocation By Id", "")]
+    [HasPermission("catalog.transportlocation.read", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> GetTransportLocationById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTransportLocationByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TransportLocation")]
+    [OpenApiOperation("Create New TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.create", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> CreateTransportLocation([FromBody] CreateTransportLocationDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTransportLocationCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("TransportLocation")]
+    [OpenApiOperation("Update TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.update", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> UpdateTransportLocation([FromBody] UpdateTransportLocationDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTransportLocationCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TransportLocation/{deleteId:guid}")]
+    [OpenApiOperation("Delete TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.delete", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> DeleteTransportLocation([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTransportLocationCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TransportLocation")]
+    [OpenApiOperation("Delete Many TransportLocation", "")]
+    [HasPermission("catalog.transportlocation.delete", "Danh mục", "Vị trí nhận, đổ")]
+    public async Task<IActionResult> DeleteTransportLocationList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTransportLocationListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    #endregion
+
+    #region CargoType
+
+    [HttpGet("CargoType")]
+    [OpenApiOperation("Get All CargoType", "")]
+    [HasPermission("catalog.cargotype.read", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> GetAllCargoType([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetAllCargoTypeQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("CargoType/export")]
+    [OpenApiOperation("Export CargoType", "")]
+    [HasPermission("catalog.cargotype.export", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> ExportCargoType()
+    {
+        var fileByte = await Mediator.Send(new ExportExcelCargoTypeQuery());
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chung_loai_hang.xlsx");
+        return result;
+    }
+
+    [HttpPost("CargoType/import")]
+    [OpenApiOperation("Import CargoType", "")]
+    [HasPermission("catalog.cargotype.import", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> ImportCargoType([FromForm] ImportDto importModel)
+    {
+        var result = await Mediator.Send(new ImportCargoTypeExcelCommand(importModel.FormFile));
+        return Ok(result, MessageCommon.ImportSuccess);
+    }
+
+    [HttpGet("CargoType/{Id:guid}")]
+    [OpenApiOperation("Get CargoType By Id", "")]
+    [HasPermission("catalog.cargotype.read", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> GetCargoTypeById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetCargoTypeByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("CargoType")]
+    [OpenApiOperation("Create New CargoType", "")]
+    [HasPermission("catalog.cargotype.create", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> CreateCargoType([FromBody] CreateCargoTypeDto createModel)
+    {
+        var result = await Mediator.Send(new CreateCargoTypeCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("CargoType")]
+    [OpenApiOperation("Update CargoType", "")]
+    [HasPermission("catalog.cargotype.update", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> UpdateCargoType([FromBody] UpdateCargoTypeDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateCargoTypeCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("CargoType/{deleteId:guid}")]
+    [OpenApiOperation("Delete CargoType", "")]
+    [HasPermission("catalog.cargotype.delete", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> DeleteCargoType([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteCargoTypeCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("CargoType")]
+    [OpenApiOperation("Delete Many CargoType", "")]
+    [HasPermission("catalog.cargotype.delete", "Danh mục", "Chủng loại hàng")]
+    public async Task<IActionResult> DeleteCargoTypeList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteCargoTypeListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
     #endregion
 }

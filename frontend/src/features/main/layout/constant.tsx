@@ -94,9 +94,15 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
-				name: 'Hệ số điều chỉnh',
-				href: '/catalogs/adjustments',
-				permission: PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.READ,
+				name: 'Hệ số',
+				href: '/catalogs/factors',
+				permission: [
+					PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR.READ,
+					PERMISSIONS.CATALOG.NORM_FACTOR.READ,
+					PERMISSIONS.CATALOG.SAVINGS_RATE.READ,
+					PERMISSIONS.CATALOG.AK_FACTOR.READ,
+					PERMISSIONS.CATALOG.REVENUE_COST.READ,
+				],
 			},
 			{
 				type: 'link',
@@ -106,27 +112,9 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
-				name: 'Hệ số điều chỉnh định mức',
-				href: '/catalogs/norm-factors',
-				permission: PERMISSIONS.CATALOG.NORM_FACTOR.READ,
-			},
-			{
-				type: 'link',
-				name: 'Hệ số tiết kiệm được chấp nhận',
-				href: '/catalogs/accepted-savings-rates',
-				permission: PERMISSIONS.CATALOG.SAVINGS_RATE.READ,
-			},
-			{
-				type: 'link',
-				name: 'Hệ số Ak',
-				href: '/catalogs/ak-factors',
-				permission: PERMISSIONS.CATALOG.AK_FACTOR.READ,
-			},
-			{
-				type: 'link',
-				name: 'Giá trị tiết kiệm được cộng/trừ vào thu nhập',
-				href: '/catalogs/revenue-cost-adjustment-configs',
-				permission: PERMISSIONS.CATALOG.REVENUE_COST.READ,
+				name: 'Chủng loại hàng',
+				href: '/catalogs/cargo-types',
+				permission: PERMISSIONS.CATALOG.CARGO_TYPE.READ,
 			},
 		],
 	},
@@ -236,13 +224,34 @@ export const NAVIGATIONS: Navigation[] = [
 						type: 'link',
 						name: 'Đơn giá khoán vật tư mau hỏng rẻ tiền',
 						href: '/pricing/transport/low-value-perishable-supply',
-						permission: 'pricing.transportlowvalueperishablesupplyunitprice.read',
+						permission:
+							'pricing.transportlowvalueperishablesupplyunitprice.read',
 					},
 					{
 						type: 'link',
 						name: 'Đơn giá và định mức vật liệu, nhiên liệu, động lực và SCTX',
 						href: '/pricing/transport/unit-price',
 						permission: 'pricing.transportunitprice.read',
+					},
+				],
+			},
+			{
+				type: 'sub-menu',
+				name: 'Vận tải cơ giới',
+				href: '/pricing/motorized-transport',
+				items: [
+					{
+						type: 'link',
+						name: 'Đơn giá khoán chi phí nhiên liệu, động lực, SCTX',
+						href: '/pricing/motorized-transport/unit-price',
+						permission: 'pricing.scaniatruckunitprice.read',
+					},
+					{
+						type: 'link',
+						name: 'Đơn giá khoán Vật tư mau hỏng rẻ tiền & Điện năng',
+						href: '/pricing/motorized-transport/low-value-supply-electricity',
+						permission:
+							'pricing.motorizedlowvaluesupplyelectricityunitprice.read',
 					},
 				],
 			},

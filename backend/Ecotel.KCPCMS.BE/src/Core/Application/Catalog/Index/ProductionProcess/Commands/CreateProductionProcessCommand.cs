@@ -37,7 +37,7 @@ public class CreateProductionProcessCommandHandler(IUnitOfWork unitOfWork, ICode
             }
 
             var newProcessGroup = Domain.Entities.Index.ProductionProcess.Create(request.CreateModel.Code,
-                request.CreateModel.Name, request.CreateModel.ProcessGroupId);
+                request.CreateModel.Name, request.CreateModel.ProcessGroupId, request.CreateModel.UnitOfMeasureId ?? Guid.Empty);
             await _productionProcessRepository.InsertAsync(newProcessGroup);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync();

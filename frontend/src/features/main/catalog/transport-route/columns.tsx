@@ -5,7 +5,6 @@ export type TransportRoute = {
 	code: string;
 	name: string;
 	note?: string;
-	productionProcessId: string;
 	isSpecialLowVolume: boolean;
 };
 

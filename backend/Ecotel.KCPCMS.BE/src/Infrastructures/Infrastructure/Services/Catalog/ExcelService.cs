@@ -11,9 +11,7 @@ public class ExcelService(IConfiguration configuration) : IExcelService
     public byte[] ExportToExcel<T>(IEnumerable<T> data, string sheetName = "Sheet1", List<string>? hiddenProperties = null, Dictionary<string, List<string>>? dropdownData = null)
     {
         using var workbook = new XLWorkbook();
-        var worksheet = workbook.Worksheets.Add(sheetName);
-        worksheet.Style.NumberFormat.Format = "@";
-        WriteToWorksheet(worksheet, data, hiddenProperties, dropdownData);
+        AddSheetWithDropdown(workbook, data, sheetName, hiddenProperties, dropdownData);
         return SaveWorkbook(workbook);
     }
 
@@ -29,10 +27,20 @@ public class ExcelService(IConfiguration configuration) : IExcelService
         return SaveWorkbook(workbook);
     }
 
+    public void AddSheetWithDropdown<T>(XLWorkbook workbook, IEnumerable<T> data, string sheetName, List<string>? hiddenProperties = null, Dictionary<string, List<string>>? dropdownData = null)
+    {
+        var worksheet = workbook.Worksheets.Add(sheetName);
+        worksheet.Style.NumberFormat.Format = "@";
+        WriteToWorksheet(worksheet, data, hiddenProperties, dropdownData);
+    }
+
     private void WriteToWorksheet<T>(IXLWorksheet worksheet, IEnumerable<T> data, List<string>? hiddenProperties, Dictionary<string, List<string>>? dropdownData)
     {
         var dataList = data.ToList();
-        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var elementType = typeof(T) == typeof(object) && dataList.Count > 0 && dataList[0] != null
+            ? dataList[0]!.GetType()
+            : typeof(T);
+        var properties = elementType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
         var workbook = worksheet.Workbook;
 
         // Tạo sheet ẩn để chứa dữ liệu dropdown nếu danh sách dài
@@ -58,7 +66,8 @@ public class ExcelService(IConfiguration configuration) : IExcelService
             {
                 if (sourceSheet == null)
                 {
-                    sourceSheet = workbook.Worksheets.Add("DataSources");
+                    var sourceSheetName = GetUniqueDataSourcesSheetName(workbook, worksheet.Name);
+                    sourceSheet = workbook.Worksheets.Add(sourceSheetName);
                     sourceSheet.Hide();
                 }
 
@@ -131,9 +140,24 @@ public class ExcelService(IConfiguration configuration) : IExcelService
 
     public List<T> ImportFromExcel<T>(Stream fileStream) where T : new()
     {
-        var result = new List<T>();
         using var workbook = new XLWorkbook(fileStream);
-        var worksheet = workbook.Worksheet(1);
+        return ParseWorksheet<T>(workbook.Worksheet(1));
+    }
+
+    public List<T> ImportFromExcelSheet<T>(Stream fileStream, string sheetName) where T : new()
+    {
+        using var workbook = new XLWorkbook(fileStream);
+        var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == sheetName);
+        if (worksheet == null)
+        {
+            return new List<T>();
+        }
+        return ParseWorksheet<T>(worksheet);
+    }
+
+    private List<T> ParseWorksheet<T>(IXLWorksheet worksheet) where T : new()
+    {
+        var result = new List<T>();
         var rows = worksheet.RangeUsed().RowsUsed();
         var headerRow = rows.First();
 
@@ -202,6 +226,23 @@ public class ExcelService(IConfiguration configuration) : IExcelService
         }
         return result;
     }
+
+    private static string GetUniqueDataSourcesSheetName(XLWorkbook workbook, string baseSheetName)
+    {
+        var truncated = baseSheetName.Length > 24 ? baseSheetName[..24] : baseSheetName;
+        var candidate = $"DS_{truncated}";
+        var counter = 1;
+        while (workbook.Worksheets.Any(w => w.Name == candidate))
+        {
+            var suffix = $"_{counter}";
+            var maxBaseLength = 31 - 3 - suffix.Length;
+            var trimmedBase = truncated.Length > maxBaseLength ? truncated[..maxBaseLength] : truncated;
+            candidate = $"DS_{trimmedBase}{suffix}";
+            counter++;
+        }
+        return candidate;
+    }
+
     private static bool TryParseDateOnly(IXLCell cell, out DateOnly date)
     {
         if (cell.TryGetValue<DateTime>(out var cellDateTime))

@@ -66,7 +66,7 @@ export function MainCatalogAdjustmentInterpreterPage() {
 			url={API.CATALOG.ADJUSTMENT.INTERPRETER.LIST}
 			columns={CATALOG_ADJUSTMENT_INTERPRETER_COLUMNS}
 			filters={[
-				{ key: 'description', label: 'Diễn giải HSĐC' },
+				{ key: 'description', label: 'Diễn giải hệ số điều chỉnh' },
 				{ key: 'maintenanceAdjustmentValue', label: 'Trị số điều chỉnh SCTX' },
 				{
 					key: 'electricityAdjustmentValue',
@@ -77,12 +77,36 @@ export function MainCatalogAdjustmentInterpreterPage() {
 					label: 'Mã hệ số điều chỉnh',
 				},
 			]}
-			onCreate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.CREATE) ? (props) => <InterpreterForm {...props} /> : undefined}
-			onDuplicate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.CREATE) ? (props) => <InterpreterForm {...props} isDuplicate /> : undefined}
-			onUpdate={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.UPDATE) ? (props) => <InterpreterForm {...props} /> : undefined}
-			onDelete={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.DELETE) ? handleDelete : undefined}
-			onExport={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.EXPORT) ? handleExport : undefined}
-			onImport={hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.IMPORT) ? handleImport : undefined}
+			onCreate={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.CREATE)
+					? (props) => <InterpreterForm {...props} />
+					: undefined
+			}
+			onDuplicate={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.CREATE)
+					? (props) => <InterpreterForm {...props} isDuplicate />
+					: undefined
+			}
+			onUpdate={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.UPDATE)
+					? (props) => <InterpreterForm {...props} />
+					: undefined
+			}
+			onDelete={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.DELETE)
+					? handleDelete
+					: undefined
+			}
+			onExport={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.EXPORT)
+					? handleExport
+					: undefined
+			}
+			onImport={
+				hasPermission(PERMISSIONS.CATALOG.ADJUSTMENT_FACTOR_DESC.IMPORT)
+					? handleImport
+					: undefined
+			}
 		/>
 	);
 }
