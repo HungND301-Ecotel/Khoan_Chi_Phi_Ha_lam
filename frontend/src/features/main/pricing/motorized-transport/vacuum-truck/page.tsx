@@ -6,7 +6,6 @@ import { api } from '@/lib/api';
 import { MOTORIZED_VACUUM_TRUCK_COLUMNS, MotorizedVacuumTruckUnitPrice } from './columns';
 import { MotorizedVacuumTruckForm } from './form';
 import { MotorizedVacuumTruckViewDialog } from './view-dialog';
-import UnifiedMotorizedTransportForm from '../unit-price/unified-form';
 
 export function MotorizedVacuumTruckPage() {
 	const popup = usePopup();
@@ -96,7 +95,7 @@ export function MotorizedVacuumTruckPage() {
 				{ key: 'productionProcessName', label: 'Công đoạn sản xuất' },
 			]}
 			onExpand={({ row }) => <MotorizedVacuumTruckViewDialog row={row} />}
-			onCreate={(props) => <UnifiedMotorizedTransportForm {...props} defaultVehicleType='vacuum-truck' />}
+			onCreate={(props) => <MotorizedVacuumTruckForm {...props} />}
 			onDuplicate={(props) => <MotorizedVacuumTruckForm {...props} isDuplicate />}
 			onUpdate={(props) => <MotorizedVacuumTruckForm {...props} />}
 			onDelete={handleDelete}

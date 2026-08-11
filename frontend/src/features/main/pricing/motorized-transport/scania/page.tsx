@@ -5,7 +5,6 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { MOTORIZED_SCANIA_COLUMNS, MotorizedScaniaUnitPrice } from './columns';
 import { MotorizedScaniaForm } from './form';
-import UnifiedMotorizedTransportForm from '../unit-price/unified-form';
 
 export function MotorizedScaniaPage() {
 	const popup = usePopup();
@@ -60,7 +59,7 @@ export function MotorizedScaniaPage() {
 				{ key: 'productionProcess', label: 'Công đoạn sản xuất' },
 				{ key: 'cargoTypeName', label: 'Chủng loại hàng' },
 			]}
-			onCreate={(props) => <UnifiedMotorizedTransportForm {...props} defaultVehicleType='scania' />}
+			onCreate={(props) => <MotorizedScaniaForm {...props} />}
 			onDuplicate={(props) => <MotorizedScaniaForm {...props} isDuplicate />}
 			onUpdate={(props) => <MotorizedScaniaForm {...props} />}
 			onDelete={handleDelete}

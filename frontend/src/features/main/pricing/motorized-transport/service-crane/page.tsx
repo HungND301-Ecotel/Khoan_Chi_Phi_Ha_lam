@@ -5,7 +5,6 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { MOTORIZED_SERVICE_CRANE_COLUMNS, MotorizedServiceCraneUnitPrice } from './columns';
 import { MotorizedServiceCraneForm } from './form';
-import UnifiedMotorizedTransportForm from '../unit-price/unified-form';
 
 export function MotorizedServiceCranePage() {
 	const popup = usePopup();
@@ -59,7 +58,7 @@ export function MotorizedServiceCranePage() {
 				{ key: 'equipmentName', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'productionProcess', label: 'Công đoạn sản xuất' },
 			]}
-			onCreate={(props) => <UnifiedMotorizedTransportForm {...props} defaultVehicleType='service-crane' />}
+			onCreate={(props) => <MotorizedServiceCraneForm {...props} />}
 			onDuplicate={(props) => <MotorizedServiceCraneForm {...props} isDuplicate />}
 			onUpdate={(props) => <MotorizedServiceCraneForm {...props} />}
 			onDelete={handleDelete}

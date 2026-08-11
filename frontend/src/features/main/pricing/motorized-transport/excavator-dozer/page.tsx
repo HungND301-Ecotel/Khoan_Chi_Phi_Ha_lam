@@ -6,7 +6,6 @@ import { api } from '@/lib/api';
 import { MOTORIZED_EXCAVATOR_DOZER_COLUMNS, MotorizedExcavatorDozerUnitPrice } from './columns';
 import { MotorizedExcavatorDozerForm } from './form';
 import { MotorizedExcavatorDozerViewDialog } from './view-dialog';
-import UnifiedMotorizedTransportForm from '../unit-price/unified-form';
 
 export function MotorizedExcavatorDozerPage() {
 	const popup = usePopup();
@@ -96,7 +95,7 @@ export function MotorizedExcavatorDozerPage() {
 				{ key: 'productionProcessName', label: 'Công đoạn sản xuất' },
 			]}
 			onExpand={({ row }) => <MotorizedExcavatorDozerViewDialog row={row} />}
-			onCreate={(props) => <UnifiedMotorizedTransportForm {...props} defaultVehicleType='excavator-dozer' />}
+			onCreate={(props) => <MotorizedExcavatorDozerForm {...props} />}
 			onDuplicate={(props) => <MotorizedExcavatorDozerForm {...props} isDuplicate />}
 			onUpdate={(props) => <MotorizedExcavatorDozerForm {...props} />}
 			onDelete={handleDelete}
