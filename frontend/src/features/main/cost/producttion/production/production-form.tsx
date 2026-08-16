@@ -6,31 +6,42 @@ import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
-import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
+import { type MultiSelectOption } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import type { Department } from '@/features/main/catalog/department/columns';
 import type { Product } from '@/features/main/catalog/product/columns';
-import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import {
+	normalizeProcessGroup,
+	type ProcessGroup,
+} from '@/features/main/catalog/process/group/columns';
+import type { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import type { Production } from './columns';
+import { KhaiThacGroupFields } from './khai-thac/form-section';
 import {
-	type ProductionFormMode,
-	type ProductionFormSchema,
 	getProductionFormDefault,
 	PRODUCTION_GROUP_DEFAULT,
 	productionFormSchema,
+	type ProductionFormMode,
+	type ProductionFormSchema,
+	type ProductionGroupSchema,
 } from './production-form-schema';
+import {
+	VanTaiLoGroupFields,
+	type ProductionProcessOption,
+} from './van-tai-lo/form-section';
 
 type ProductionOutputDetailProduct = {
 	productId: string;
@@ -38,11 +49,21 @@ type ProductionOutputDetailProduct = {
 	actualAshContent?: number;
 };
 
+type ProductionOutputDetailTransportLine = {
+	productionProcessId: string;
+	equipmentId?: string | null;
+	equipmentQuality?: string | null;
+	transportRouteId?: string | null;
+	routeDepartmentId?: string | null;
+	productionMeters: number;
+};
+
 type ProductionOutputDetailProcessGroup = {
 	processGroupId: string;
 	planProductionMeters: number;
 	standardProductionMeters: number;
 	products: ProductionOutputDetailProduct[];
+	transportLines?: ProductionOutputDetailTransportLine[];
 };
 
 type ProductionOutputDetail = {
@@ -59,19 +80,40 @@ type ProductionOutputDetail = {
 type ProductionFormProps = ActionDialogProps<Production> & {
 	onSuccess?: () => void;
 };
-type ProductionGroup = NonNullable<ProductionFormSchema['groups']>[number];
-type ProductionGroupProduct = ProductionGroup['products'][number];
+type ProductionGroupProduct = ProductionGroupSchema['products'][number];
 
 function formatCodeNameOption(code?: string | null, name?: string | null) {
 	return [code, name].filter(Boolean).join(' - ');
 }
 
-function createGroupDefault(): ProductionGroup {
-	return {
-		...PRODUCTION_GROUP_DEFAULT,
-		productIds: [],
-		products: [],
-	};
+function createGroupDefault(): ProductionGroupSchema {
+	return { ...PRODUCTION_GROUP_DEFAULT };
+}
+
+// Nhóm công đoạn kiểu VTL/VTCG dùng khối field khác hẳn (Công đoạn/Tuyến/Thiết bị thay vì Sản
+// phẩm) — xác định qua code hoặc fixedKeyType của processGroupId đã chọn.
+function resolveGroupType(
+	processGroupId: string,
+	processGroupsById: Map<string, ProcessGroup>,
+): 'khaithac' | 'vantailo' {
+	const processGroup = processGroupsById.get(processGroupId);
+	if (!processGroup) return 'khaithac';
+	const code = (processGroup.code || '').trim().toUpperCase();
+	if (code === 'VTL' || code === 'VTCG') return 'vantailo';
+	const fixedKeyType = processGroup.fixedKeyType ?? (processGroup as any).type;
+	if (
+		fixedKeyType === ProcessGroupType.VTL ||
+		fixedKeyType === ProcessGroupType.VTCG ||
+		fixedKeyType === 4 ||
+		fixedKeyType === 5 ||
+		fixedKeyType === 12 ||
+		fixedKeyType === 13
+	) {
+		return 'vantailo';
+	}
+	const name = (processGroup.name || '').toLowerCase();
+	if (name.includes('vận tải')) return 'vantailo';
+	return 'khaithac';
 }
 
 function isSameStringArray(current: string[] = [], next: string[] = []) {
@@ -103,21 +145,28 @@ function isSameProductionRows(
 	});
 }
 
-function calculateTotals(groups: ProductionGroup[] = []) {
+function calculateTotals(groups: ProductionGroupSchema[] = []) {
 	return {
 		plannedOutput: groups.reduce(
 			(sum, group) => sum + (group.planProductionMeters || 0),
 			0,
 		),
-		productionMeters: groups.reduce(
-			(sum, group) =>
-				sum +
-				(group.products || []).reduce(
-					(productSum, product) => productSum + (product.productionMeters || 0),
-					0,
-				),
-			0,
-		),
+		productionMeters: groups.reduce((sum, group) => {
+			const productMeters = (group.products || []).reduce(
+				(productSum, product) => productSum + (product.productionMeters || 0),
+				0,
+			);
+			const transportMeters = (group.transportProcesses || []).reduce(
+				(processSum, process) =>
+					processSum +
+					(process.items || []).reduce(
+						(itemSum, item) => itemSum + (item.productionMeters || 0),
+						0,
+					),
+				0,
+			);
+			return sum + productMeters + transportMeters;
+		}, 0),
 		standardProductionMeters: groups.reduce(
 			(sum, group) => sum + (group.standardProductionMeters || 0),
 			0,
@@ -126,7 +175,7 @@ function calculateTotals(groups: ProductionGroup[] = []) {
 }
 
 function buildProcessGroupPayload(
-	groups: ProductionGroup[] = [],
+	groups: ProductionGroupSchema[] = [],
 	akProcessGroupIds: Set<string> = new Set(),
 ) {
 	return groups.map((group) => ({
@@ -140,7 +189,100 @@ function buildProcessGroupPayload(
 				? (product.actualAshContent ?? 0)
 				: 0,
 		})),
+		transportLines: (group.transportProcesses || []).flatMap((process) =>
+			(process.items || [])
+				.filter(
+					(item) =>
+						typeof item.productionMeters === 'number' &&
+						!Number.isNaN(item.productionMeters),
+				)
+				.map((item) => ({
+					productionProcessId: process.productionProcessId,
+					equipmentId: item.equipmentId || undefined,
+					equipmentQuality: item.equipmentQuality || undefined,
+					transportRouteId: item.transportRouteId || undefined,
+					routeDepartmentId: item.routeDepartmentId || undefined,
+					productionMeters: item.productionMeters,
+				})),
+		),
 	}));
+}
+
+// Gộp danh sách transportLines phẳng (từ API) thành processIds + transportProcesses theo đúng
+// cấu trúc form — nhóm theo productionProcessId, mỗi dòng giữ nguyên Tuyến HOẶC Thiết bị.
+function mapTransportLinesToFormState(
+	transportLines: ProductionOutputDetailTransportLine[] = [],
+) {
+	const byProcess = new Map<
+		string,
+		ProductionGroupSchema['transportProcesses'][number]
+	>();
+
+	transportLines.forEach((line) => {
+		const existing = byProcess.get(line.productionProcessId) ?? {
+			productionProcessId: line.productionProcessId,
+			routeIds: [],
+			routeDepartmentIds: {},
+			equipmentIds: [],
+			equipmentQualities: [],
+			equipmentQualitiesMap: {},
+			items: [],
+		};
+
+		if (line.transportRouteId) {
+			existing.routeIds = [
+				...new Set([...existing.routeIds, line.transportRouteId]),
+			];
+		}
+		if (line.transportRouteId && line.routeDepartmentId) {
+			const deptsForRoute =
+				existing.routeDepartmentIds[line.transportRouteId] || [];
+			existing.routeDepartmentIds = {
+				...existing.routeDepartmentIds,
+				[line.transportRouteId]: [
+					...new Set([...deptsForRoute, line.routeDepartmentId]),
+				],
+			};
+		}
+		if (line.equipmentId) {
+			existing.equipmentIds = [
+				...new Set([...existing.equipmentIds, line.equipmentId]),
+			];
+		}
+		if (line.equipmentQuality) {
+			existing.equipmentQualities = [
+				...new Set([...existing.equipmentQualities, line.equipmentQuality]),
+			];
+		}
+		if (line.equipmentId && line.equipmentQuality) {
+			const qualitiesForEq =
+				existing.equipmentQualitiesMap[line.equipmentId] || [];
+			existing.equipmentQualitiesMap = {
+				...existing.equipmentQualitiesMap,
+				[line.equipmentId]: [
+					...new Set([...qualitiesForEq, line.equipmentQuality]),
+				],
+			};
+		}
+		existing.items = [
+			...existing.items,
+			{
+				transportRouteId: line.transportRouteId || undefined,
+				routeDepartmentId: line.routeDepartmentId || undefined,
+				equipmentId: line.equipmentId || undefined,
+				equipmentQuality: line.equipmentQuality || undefined,
+				productionMeters: line.productionMeters,
+			},
+		];
+
+		byProcess.set(line.productionProcessId, existing);
+	});
+
+	const transportProcesses = Array.from(byProcess.values());
+	return {
+		processIds: transportProcesses.map((p) => p.productionProcessId),
+		transportProcesses,
+	};
 }
 
 export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
@@ -152,12 +294,19 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const [processGroups, setProcessGroups] = useState<ProcessGroup[]>([]);
 	const [products, setProducts] = useState<Product[]>([]);
 	const [departments, setDepartments] = useState<Department[]>([]);
+	const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>([]);
+	const [contractCodes, setContractCodes] = useState<
+		{ id: string; code: string; name: string }[]
+	>([]);
+	const [productionProcesses, setProductionProcesses] = useState<
+		(ProductionProcessOption & { processGroupId: string })[]
+	>([]);
 	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
 		new Set(),
 	);
 
 	const form = useForm<ProductionFormSchema>({
-		resolver: zodResolver(productionFormSchema),
+		resolver: zodResolver(productionFormSchema) as any,
 		mode: 'onSubmit',
 		defaultValues: getProductionFormDefault(mode),
 	});
@@ -174,8 +323,8 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const watchedGroups = useWatch({
 		control: form.control,
 		name: 'groups',
-		defaultValue: [] as ProductionGroup[],
-	}) as ProductionGroup[];
+		defaultValue: [] as ProductionGroupSchema[],
+	}) as ProductionGroupSchema[];
 
 	useEffect(() => {
 		form.reset(getProductionFormDefault(mode));
@@ -197,23 +346,28 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					standardProductionMeters,
 				} = res.result;
 
-				const mappedGroups: ProductionGroup[] = (processGroups || []).map(
-					(group) => {
-						const mappedProducts = (group.products || []).map((product) => ({
-							productId: product.productId,
-							productionMeters: product.productionMeters,
-							actualAshContent: product.actualAshContent ?? 0,
-						}));
+				const mappedGroups: ProductionGroupSchema[] = (
+					processGroups || []
+				).map((group) => {
+					const mappedProducts = (group.products || []).map((product) => ({
+						productId: product.productId,
+						productionMeters: product.productionMeters,
+						actualAshContent: product.actualAshContent ?? 0,
+					}));
+					const { processIds, transportProcesses } =
+						mapTransportLinesToFormState(group.transportLines);
 
-						return {
-							processGroupId: group.processGroupId,
-							planProductionMeters: group.planProductionMeters ?? 0,
-							standardProductionMeters: group.standardProductionMeters,
-							productIds: mappedProducts.map((product) => product.productId),
-							products: mappedProducts,
-						};
-					},
-				);
+					return {
+						groupType: transportProcesses.length > 0 ? 'vantailo' : 'khaithac',
+						processGroupId: group.processGroupId,
+						planProductionMeters: group.planProductionMeters ?? 0,
+						standardProductionMeters: group.standardProductionMeters,
+						productIds: mappedProducts.map((product) => product.productId),
+						products: mappedProducts,
+						processIds,
+						transportProcesses,
+					};
+				});
 
 				form.reset({
 					mode: 'edit',
@@ -245,19 +399,38 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					ignorePagination: true,
 				},
 			),
+			api.pagging<TransportRoute>(API.CATALOG.TRANSPORT_ROUTE.LIST, {
+				ignorePagination: true,
+			}),
+			api.pagging<{ id: string; code: string; name: string }>(
+				API.CATALOG.CONTRACT_CODE.LIST,
+				{ ignorePagination: true },
+			),
+			api.pagging<ProductionProcessOption & { processGroupId: string }>(
+				API.CATALOG.PROCESS.STEP.LIST,
+				{ ignorePagination: true },
+			),
 		]);
 
 		promises.then(
-			([departmentRes, processGroupRes, productRes, akFactorConfigRes]) => {
+			([
+				departmentRes,
+				processGroupRes,
+				productRes,
+				akFactorConfigRes,
+				routesRes,
+				contractsRes,
+				processesRes,
+			]) => {
 				setDepartments(
 					[...departmentRes.result.data].sort((a, b) =>
 						a.code.localeCompare(b.code),
 					),
 				);
 				setProcessGroups(
-					[...processGroupRes.result.data].sort((a, b) =>
-						a.code.localeCompare(b.code),
-					),
+					[...processGroupRes.result.data]
+						.map(normalizeProcessGroup)
+						.sort((a, b) => a.code.localeCompare(b.code)),
 				);
 				setProducts(
 					[...productRes.result.data].sort((a, b) =>
@@ -271,9 +444,52 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 							.filter((id) => !!id),
 					),
 				);
+				setTransportRoutes(routesRes.result.data ?? []);
+				setContractCodes(contractsRes.result.data ?? []);
+				setProductionProcesses(processesRes.result.data ?? []);
 			},
 		);
 	}, []);
+
+	const processGroupsById = new Map(processGroups.map((g) => [g.id, g]));
+
+	// Xác định lại groupType mỗi khi người dùng đổi Nhóm công đoạn sản xuất của 1 khối — dọn field
+	// của loại cũ (Sản phẩm hoặc Công đoạn/Tuyến/Thiết bị) khi đổi loại, tránh mang dữ liệu sai sang.
+	const prevGroupTypesRef = useRef<Record<number, string>>({});
+	useEffect(() => {
+		if (processGroups.length === 0) return;
+
+		watchedGroups.forEach((group, groupIndex) => {
+			if (!group.processGroupId) return;
+
+			const correctType = resolveGroupType(
+				group.processGroupId,
+				processGroupsById,
+			);
+			const prevType = prevGroupTypesRef.current[groupIndex];
+
+			if (prevType === undefined) {
+				prevGroupTypesRef.current[groupIndex] = correctType;
+				if (group.groupType !== correctType) {
+					form.setValue(`groups.${groupIndex}.groupType`, correctType);
+				}
+				return;
+			}
+
+			if (prevType === correctType) return;
+
+			prevGroupTypesRef.current[groupIndex] = correctType;
+			form.setValue(`groups.${groupIndex}.groupType`, correctType);
+			form.setValue(`groups.${groupIndex}.productIds`, []);
+			form.setValue(`groups.${groupIndex}.products`, []);
+			form.setValue(`groups.${groupIndex}.processIds`, []);
+			form.setValue(`groups.${groupIndex}.transportProcesses`, []);
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [
+		JSON.stringify(watchedGroups.map((g) => g.processGroupId)),
+		processGroups,
+	]);
 
 	useEffect(() => {
 		if (products.length === 0) {
@@ -281,6 +497,8 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 		}
 
 		watchedGroups.forEach((group, groupIndex) => {
+			if (group.groupType === 'vantailo') return;
+
 			const validProductIds = products
 				.filter((product) => product.processGroupId === group.processGroupId)
 				.map((product) => product.id);
@@ -350,7 +568,10 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			const groups = values.groups || [];
 			const { productionMeters, standardProductionMeters } =
 				calculateTotals(groups);
-			const processGroups = buildProcessGroupPayload(groups, akProcessGroupIds);
+			const processGroupsPayload = buildProcessGroupPayload(
+				groups,
+				akProcessGroupIds,
+			);
 
 			if (isEdit && row) {
 				await api.put(API.PRODUCTION.PRODUCTION_OUTPUT.UPDATE, {
@@ -361,7 +582,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					acceptanceReportId: row.acceptanceReportId || null,
 					productionMeters,
 					standardProductionMeters,
-					processGroups,
+					processGroups: processGroupsPayload,
 				});
 			} else {
 				await api.post(API.PRODUCTION.PRODUCTION_OUTPUT.CREATE, {
@@ -370,7 +591,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					departmentId: values.departmentId,
 					productionMeters,
 					standardProductionMeters,
-					processGroups,
+					processGroups: processGroupsPayload,
 				});
 			}
 
@@ -434,34 +655,44 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			<div className='flex flex-col gap-4'>
 				{groupFields.map((field, groupIndex) => {
 					const group = watchedGroups[groupIndex] || createGroupDefault();
+					// Tính thẳng từ processGroupId đang chọn — không đợi useEffect đồng bộ
+					// group.groupType (chỉ dùng field đó để validate lúc submit).
+					const isVanTaiLo = group.processGroupId
+						? resolveGroupType(group.processGroupId, processGroupsById) ===
+							'vantailo'
+						: false;
 					const isAkApplicableForGroup =
 						!!group.processGroupId &&
 						akProcessGroupIds.has(group.processGroupId);
-					const availableProducts = products.filter(
-						(product) => product.processGroupId === group.processGroupId,
-					);
 
-					const productOptions = availableProducts.map((product) => ({
-						value: product.id,
-						label: formatCodeNameOption(product.code, product.name),
-					}));
-
-					const selectedProducts = productOptions.filter((option) =>
-						(group.productIds || []).includes(option.value),
-					);
-
-					const groupProducts = group.products || [];
-					const totalProductionMeters = groupProducts.reduce(
+					const groupProductMeters = (group.products || []).reduce(
 						(sum: number, product: ProductionGroupProduct) => {
 							if (Number.isNaN(product.productionMeters)) return sum;
 							return sum + (product.productionMeters || 0);
 						},
 						0,
 					);
+					const groupTransportMeters = (group.transportProcesses || []).reduce(
+						(sum, process) =>
+							sum +
+							(process.items || []).reduce(
+								(itemSum, item) =>
+									Number.isNaN(item.productionMeters)
+										? itemSum
+										: itemSum + (item.productionMeters || 0),
+								0,
+							),
+						0,
+					);
+					const totalProductionMeters = groupProductMeters + groupTransportMeters;
 
-					const productErrors =
-						form.formState.errors.groups?.[groupIndex]?.productIds?.message ||
-						form.formState.errors.groups?.[groupIndex]?.products?.message;
+					const groupProcessesForGroup = productionProcesses.filter(
+						(p) => p.processGroupId === group.processGroupId,
+					);
+					const availableProcesses =
+						groupProcessesForGroup.length > 0
+							? groupProcessesForGroup
+							: productionProcesses;
 
 					return (
 						<div
@@ -521,63 +752,24 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 								</div>
 							</FormRow>
 
-							<MultiSelect
-								label='Danh sách sản phẩm'
-								placeholder='Chọn sản phẩm'
-								values={selectedProducts}
-								onValuesChange={(values) =>
-									handleProductsChange(groupIndex, values)
-								}
-								options={productOptions}
-							/>
-
-							{typeof productErrors === 'string' && (
-								<p className='text-destructive text-sm'>{productErrors}</p>
-							)}
-
-							{groupProducts.length > 0 && (
-								<div className='flex flex-col gap-3'>
-									{groupProducts.map(
-										(product: ProductionGroupProduct, productIndex: number) => {
-											const selectedProduct = products.find(
-												(item) => item.id === product.productId,
-											);
-
-											return (
-												<FormRow key={`${product.productId}-${groupIndex}`}>
-													<div className='flex-1 space-y-2'>
-														<Label>Mã sản phẩm</Label>
-														<Input
-															readOnly
-															value={selectedProduct?.code || product.productId}
-															placeholder='Chọn sản phẩm'
-														/>
-													</div>
-
-													<div className='flex-1'>
-														<FormNumber
-															control={form.control}
-															name={`groups.${groupIndex}.products.${productIndex}.productionMeters`}
-															label='Sản lượng thực tế'
-															placeholder='Nhập sản lượng thực tế'
-														/>
-													</div>
-
-													{isAkApplicableForGroup && (
-														<div className='flex-1'>
-															<FormNumber
-																control={form.control}
-																name={`groups.${groupIndex}.products.${productIndex}.actualAshContent`}
-																label='Ak thực hiện (%)'
-																placeholder='Nhập Ak thực hiện'
-															/>
-														</div>
-													)}
-												</FormRow>
-											);
-										},
-									)}
-								</div>
+							{isVanTaiLo ? (
+								<VanTaiLoGroupFields
+									form={form}
+									groupIndex={groupIndex}
+									productionProcesses={availableProcesses}
+									transportRoutes={transportRoutes}
+									contractCodes={contractCodes}
+									departments={departments}
+								/>
+							) : (
+								<KhaiThacGroupFields
+									form={form}
+									groupIndex={groupIndex}
+									group={group}
+									products={products}
+									isAkApplicableForGroup={isAkApplicableForGroup}
+									onProductsChange={handleProductsChange}
+								/>
 							)}
 						</div>
 					);

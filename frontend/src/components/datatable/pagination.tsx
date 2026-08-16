@@ -15,16 +15,18 @@ import { cn } from '@/lib/utils';
 
 interface DataTablePaginationProps<TData> {
 	table: Table<TData>;
+	totalCount?: number;
 }
 
 export function DataTablePagination<TData>({
 	table,
+	totalCount,
 }: DataTablePaginationProps<TData>) {
 	const MAX_VISIBLE_PAGES = 10;
 	const pageSize = table.getState().pagination.pageSize;
 	const pageIndex = table.getState().pagination.pageIndex;
 	const pageCount = table.getPageCount();
-	const totalItems = table.getFilteredRowModel().rows.length;
+	const totalItems = totalCount ?? table.getFilteredRowModel().rows.length;
 	const [jumpPage, setJumpPage] = useState(`${pageIndex + 1}`);
 
 	const startItem = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
@@ -39,10 +41,14 @@ export function DataTablePagination<TData>({
 			return [];
 		}
 
-		const windowStart = Math.floor(pageIndex / MAX_VISIBLE_PAGES) * MAX_VISIBLE_PAGES;
+		const windowStart =
+			Math.floor(pageIndex / MAX_VISIBLE_PAGES) * MAX_VISIBLE_PAGES;
 		const windowEnd = Math.min(windowStart + MAX_VISIBLE_PAGES, pageCount);
 
-		return Array.from({ length: windowEnd - windowStart }, (_, index) => windowStart + index);
+		return Array.from(
+			{ length: windowEnd - windowStart },
+			(_, index) => windowStart + index,
+		);
 	}, [pageCount, pageIndex]);
 
 	const goToPage = () => {
@@ -52,7 +58,10 @@ export function DataTablePagination<TData>({
 			return;
 		}
 
-		const targetPage = Math.min(Math.max(Math.trunc(parsed), 1), Math.max(pageCount, 1));
+		const targetPage = Math.min(
+			Math.max(Math.trunc(parsed), 1),
+			Math.max(pageCount, 1),
+		);
 		table.setPageIndex(targetPage - 1);
 		setJumpPage(`${targetPage}`);
 	};

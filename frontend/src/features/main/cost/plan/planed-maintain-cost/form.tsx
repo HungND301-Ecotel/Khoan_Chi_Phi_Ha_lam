@@ -92,12 +92,13 @@ export function PlanMaintainCostForm({
 			return tunnelings;
 		}
 
-		const maintainTypeByProcessGroup: Record<ProcessGroupType, number> = {
+		const maintainTypeByProcessGroup: Partial<Record<ProcessGroupType, number>> = {
 			[ProcessGroupType.None]: 0,
 			[ProcessGroupType.DL]: 1,
 			[ProcessGroupType.LC]: 2,
 			[ProcessGroupType.XL]: 3,
 			[ProcessGroupType.VTL]: 4,
+			[ProcessGroupType.VTCG]: 5,
 		};
 
 		return tunnelings.filter(

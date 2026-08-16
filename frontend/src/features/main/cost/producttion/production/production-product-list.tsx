@@ -13,6 +13,11 @@ import {
 } from '@/components/ui/item';
 import { API } from '@/constants/api-enpoint';
 import type { Product } from '@/features/main/catalog/product/columns';
+import {
+	TRANSPORT_LINE_COLUMNS,
+	toTransportLineRows,
+	type ProductionOutputTransportLineRow,
+} from '@/features/main/cost/producttion/production/van-tai-lo/transport-line-list';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -35,6 +40,7 @@ type ProductionOutputProcessGroup = {
 	standardProductionMeters?: number;
 	productionMeters?: number;
 	products?: ProductionOutputProcessGroupProduct[];
+	transportLines?: ProductionOutputTransportLineRow[];
 };
 
 type ProductionOutputDetail = {
@@ -169,12 +175,21 @@ export function ProductionProductList({
 							onValueChange={setOpenedGroups}
 						>
 							{processGroups.map((processGroup, index) => {
+								const isVanTaiLo =
+									(processGroup.transportLines ?? []).length > 0 ||
+									(processGroup.processGroupCode || '').toUpperCase().includes('VTL') ||
+									(processGroup.processGroupCode || '').toUpperCase().includes('VTCG') ||
+									(processGroup.processGroupName || '').toLowerCase().includes('vận tải');
 								const totalProductionMeters =
 									processGroup.productionMeters ??
 									(processGroup.products ?? []).reduce(
 										(sum, product) => sum + (product.productionMeters ?? 0),
 										0,
-									);
+									) +
+										(processGroup.transportLines ?? []).reduce(
+											(sum, line) => sum + (line.productionMeters ?? 0),
+											0,
+										);
 								const groupKey =
 									processGroup.processGroupId || `process-group-${index}`;
 								const productRows: ProductionGroupProductRow[] = (
@@ -191,6 +206,10 @@ export function ProductionProductList({
 										productionMeters: product.productionMeters ?? 0,
 									};
 								});
+								const transportLineRows = toTransportLineRows(
+									groupKey,
+									processGroup.transportLines ?? [],
+								);
 
 								return (
 									<AccordionItem
@@ -234,15 +253,27 @@ export function ProductionProductList({
 
 										<AccordionContent className='p-0 pt-2'>
 											<div className='w-full min-w-0 overflow-x-auto'>
-												<DataTable
-													columns={PRODUCTION_GROUP_PRODUCT_COLUMNS}
-													items={productRows}
-													hasActions={false}
-													hasPagination={false}
-													hasSort={false}
-													hasIndex={false}
-													compact={true}
-												/>
+												{isVanTaiLo ? (
+													<DataTable
+														columns={TRANSPORT_LINE_COLUMNS}
+														items={transportLineRows}
+														hasActions={false}
+														hasPagination={false}
+														hasSort={false}
+														hasIndex={false}
+														compact={true}
+													/>
+												) : (
+													<DataTable
+														columns={PRODUCTION_GROUP_PRODUCT_COLUMNS}
+														items={productRows}
+														hasActions={false}
+														hasPagination={false}
+														hasSort={false}
+														hasIndex={false}
+														compact={true}
+													/>
+												)}
 											</div>
 										</AccordionContent>
 									</AccordionItem>

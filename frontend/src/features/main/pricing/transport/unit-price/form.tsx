@@ -73,9 +73,16 @@ export function TransportUnitPriceForm({
 		),
 	) as string[];
 
-	const qualities = Array.from(
-		new Set(childList.map((i: any) => i.equipmentQuality).filter(Boolean)),
-	) as string[];
+	const contractCodeQualities: Record<string, string[]> = {};
+	childList.forEach((i: any) => {
+		const ccId = i.contractCodeId || i.equipmentId;
+		if (ccId && i.equipmentQuality) {
+			if (!contractCodeQualities[ccId]) contractCodeQualities[ccId] = [];
+			if (!contractCodeQualities[ccId].includes(i.equipmentQuality)) {
+				contractCodeQualities[ccId].push(i.equipmentQuality);
+			}
+		}
+	});
 
 	const routeDepts: Record<string, string[]> = {};
 	childList.forEach((i: any) => {
@@ -117,12 +124,16 @@ export function TransportUnitPriceForm({
 								: row.equipmentId
 									? [row.equipmentId]
 									: [],
-					equipmentQualities:
-						qualities.length > 0
-							? qualities
-							: row.equipmentQuality
-								? [row.equipmentQuality]
-								: [],
+					contractCodeQualityIds:
+						Object.keys(contractCodeQualities).length > 0
+							? contractCodeQualities
+							: (row.contractCodeId || row.equipmentId) && row.equipmentQuality
+								? {
+										[(row.contractCodeId || row.equipmentId) as string]: [
+											row.equipmentQuality,
+										],
+									}
+								: {},
 					qualityPrices: {},
 					materialFuelUnitPrice: row.materialFuelUnitPrice ?? null,
 					powerUnitPrice: row.powerUnitPrice ?? null,
@@ -180,11 +191,11 @@ export function TransportUnitPriceForm({
 			name: 'contractCodeIds',
 		}) || [];
 
-	const selectedEquipmentQualities =
+	const contractCodeQualityIds =
 		useWatch({
 			control: form.control,
-			name: 'equipmentQualities',
-		}) || [];
+			name: 'contractCodeQualityIds',
+		}) || {};
 
 	const items =
 		useWatch({
@@ -331,7 +342,7 @@ export function TransportUnitPriceForm({
 			form.setValue('departmentIds', []);
 			form.setValue('routeDepartmentIds', {});
 			form.setValue('contractCodeIds', []);
-			form.setValue('equipmentQualities', []);
+			form.setValue('contractCodeQualityIds', {});
 			form.setValue('items', []);
 			form.setValue('qualityPrices', {});
 		}
@@ -429,13 +440,11 @@ export function TransportUnitPriceForm({
 				});
 			}
 		} else if (transportMode === 'monorail') {
-			if (
-				selectedContractCodeIds.length > 0 &&
-				selectedEquipmentQualities.length > 0
-			) {
+			if (selectedContractCodeIds.length > 0) {
 				selectedContractCodeIds.forEach((ccId) => {
 					const cc = contractCodes.find((c) => c.id === ccId);
-					selectedEquipmentQualities.forEach((quality) => {
+					const qualitiesForCc = contractCodeQualityIds[ccId] || [];
+					qualitiesForCc.forEach((quality) => {
 						const existing = items.find(
 							(it) =>
 								it.contractCodeId === ccId && it.equipmentQuality === quality,
@@ -475,7 +484,7 @@ export function TransportUnitPriceForm({
 		JSON.stringify(selectedRouteIds),
 		JSON.stringify(routeDepartmentIds),
 		JSON.stringify(selectedContractCodeIds),
-		JSON.stringify(selectedEquipmentQualities),
+		JSON.stringify(contractCodeQualityIds),
 		routes,
 		contractCodes,
 	]);
@@ -512,7 +521,7 @@ export function TransportUnitPriceForm({
 				for (const singleItem of itemsToUpdate) {
 					const qualityVal =
 						singleItem?.equipmentQuality ||
-						values.equipmentQualities?.[0] ||
+						values.contractCodeQualityIds?.[singleItem?.contractCodeId || '']?.[0] ||
 						values.equipmentQuality ||
 						null;
 					const adjustmentFactorDescriptionId = isGuid(qualityVal)
@@ -659,30 +668,16 @@ export function TransportUnitPriceForm({
 			)}
 
 			{transportMode === 'monorail' && (
-				<>
-					<FormMultiSelect
-						control={form.control}
-						name='contractCodeIds'
-						label='Nhóm vật tư, tài sản'
-						placeholder='Chọn Nhóm vật tư, tài sản'
-						options={contractCodes.map((c) => ({
-							value: c.id,
-							label: `${c.code} - ${c.name}`,
-						}))}
-					/>
-
-					<FormMultiSelect
-						control={form.control}
-						name='equipmentQualities'
-						label='Chất lượng thiết bị'
-						placeholder='Chọn Chất lượng thiết bị'
-						options={[
-							{ value: 'A', label: 'Thiết bị loại A' },
-							{ value: 'B', label: 'Thiết bị loại B' },
-							{ value: 'C', label: 'Thiết bị loại C' },
-						]}
-					/>
-				</>
+				<FormMultiSelect
+					control={form.control}
+					name='contractCodeIds'
+					label='Nhóm vật tư, tài sản'
+					placeholder='Chọn Nhóm vật tư, tài sản'
+					options={contractCodes.map((c) => ({
+						value: c.id,
+						label: `${c.code} - ${c.name}`,
+					}))}
+				/>
 			)}
 
 			{transportMode === 'other' && (
@@ -844,11 +839,10 @@ export function TransportUnitPriceForm({
 					</>
 				)}
 
-			{/* Monorail Mode: Mỗi Nhóm vật tư, tài sản bọc 1 khối Chất lượng thiết bị tương ứng */}
+			{/* Monorail Mode: Mỗi Nhóm vật tư, tài sản bọc 1 khối Chất lượng thiết bị riêng của nó */}
 			{transportMode === 'monorail' &&
 				selectedProductionProcessId &&
-				selectedContractCodeIds.length > 0 &&
-				selectedEquipmentQualities.length > 0 && (
+				selectedContractCodeIds.length > 0 && (
 					<>
 						<FormSeparator />
 						<div className='space-y-4'>
@@ -861,6 +855,7 @@ export function TransportUnitPriceForm({
 
 							{selectedContractCodeIds.map((ccId) => {
 								const cc = contractCodes.find((c) => c.id === ccId);
+								const qualitiesForCc = contractCodeQualityIds[ccId] || [];
 								return (
 									<div
 										key={ccId}
@@ -870,6 +865,19 @@ export function TransportUnitPriceForm({
 											{cc ? `${cc.code} - ${cc.name}` : ccId}
 										</div>
 
+										<FormMultiSelect
+											control={form.control}
+											name={`contractCodeQualityIds.${ccId}` as any}
+											label='Chất lượng thiết bị'
+											placeholder='Chọn Chất lượng thiết bị'
+											options={[
+												{ value: 'A', label: 'Thiết bị loại A' },
+												{ value: 'B', label: 'Thiết bị loại B' },
+												{ value: 'C', label: 'Thiết bị loại C' },
+											]}
+										/>
+
+										{qualitiesForCc.length > 0 && (
 										<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
 											<table className='w-full text-left text-sm'>
 												<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
@@ -889,7 +897,7 @@ export function TransportUnitPriceForm({
 													</tr>
 												</thead>
 												<tbody className='divide-y divide-gray-100'>
-													{selectedEquipmentQualities.map((quality) => {
+													{qualitiesForCc.map((quality) => {
 														const itemIndex = items.findIndex(
 															(it) =>
 																it.contractCodeId === ccId &&
@@ -935,6 +943,7 @@ export function TransportUnitPriceForm({
 												</tbody>
 											</table>
 										</div>
+										)}
 									</div>
 								);
 							})}

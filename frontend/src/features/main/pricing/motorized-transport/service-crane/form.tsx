@@ -21,9 +21,10 @@ import {
 	MotorizedServiceCraneFormSchema,
 } from './schema';
 
-type MotorizedServiceCraneFormProps = ActionDialogProps<MotorizedServiceCraneUnitPrice> & {
-	isDuplicate?: boolean;
-};
+type MotorizedServiceCraneFormProps =
+	ActionDialogProps<MotorizedServiceCraneUnitPrice> & {
+		isDuplicate?: boolean;
+	};
 
 const extractData = (res: any): any[] => {
 	if (!res) return [];
@@ -36,7 +37,10 @@ const extractData = (res: any): any[] => {
 
 const fetchCatalogList = async (url: string) => {
 	try {
-		const res: any = await api.pagging(url, { ignorePagination: true, pageSize: 1000 });
+		const res: any = await api.pagging(url, {
+			ignorePagination: true,
+			pageSize: 1000,
+		});
 		const data = extractData(res);
 		if (data.length > 0) return data;
 	} catch (e) {
@@ -100,7 +104,8 @@ export function MotorizedServiceCraneForm({
 		}) || [];
 
 	const showBottomSection =
-		selectedAssignmentCodeIds.length > 0 && selectedEquipmentQualities.length > 0;
+		selectedAssignmentCodeIds.length > 0 &&
+		selectedEquipmentQualities.length > 0;
 
 	useEffect(() => {
 		Promise.all([
@@ -120,7 +125,7 @@ export function MotorizedServiceCraneForm({
 				}));
 				setProcessOptions(procOpts);
 
-				// 3. Cung độ vận chuyển (HaulDistance)
+				// 3. Cung độ vận tải (HaulDistance)
 				const distOpts = distList.map((item: any) => ({
 					label: item.value || item.name || item.distanceRange || item.code,
 					value: item.id,
@@ -131,8 +136,10 @@ export function MotorizedServiceCraneForm({
 				if (!row) return;
 
 				// Map row data to form format
-				const allProcs: MotorizedServiceCraneUnitPrice[] = (row as any).allProcesses || [row];
-				const initialAcId = row.assignmentCodeId || (row as any).equipmentId || '';
+				const allProcs: MotorizedServiceCraneUnitPrice[] = (row as any)
+					.allProcesses || [row];
+				const initialAcId =
+					row.assignmentCodeId || (row as any).equipmentId || '';
 
 				const initialQualitiesList: string[] = [];
 				const initialProcsList: string[] = [];
@@ -148,12 +155,18 @@ export function MotorizedServiceCraneForm({
 						initialQualitiesList.push(q);
 					}
 
-					if (p.productionProcessId && !initialProcsList.includes(p.productionProcessId)) {
+					if (
+						p.productionProcessId &&
+						!initialProcsList.includes(p.productionProcessId)
+					) {
 						initialProcsList.push(p.productionProcessId);
 					}
 
 					(p.details || []).forEach((d) => {
-						if (d.haulDistanceId && !initialDistsList.includes(d.haulDistanceId)) {
+						if (
+							d.haulDistanceId &&
+							!initialDistsList.includes(d.haulDistanceId)
+						) {
 							initialDistsList.push(d.haulDistanceId);
 						}
 
@@ -163,7 +176,8 @@ export function MotorizedServiceCraneForm({
 							assignmentCodeId: initialAcId,
 							equipmentQuality: q,
 							productionProcessId: p.productionProcessId,
-							productionProcessName: p.productionProcessName || p.productionProcess || '',
+							productionProcessName:
+								p.productionProcessName || p.productionProcess || '',
 							haulDistanceId: d.haulDistanceId || null,
 							haulDistanceValue: d.haulDistanceValue || '',
 							fuelUnitPrice: d.fuelUnitPrice ?? 0,
@@ -177,8 +191,12 @@ export function MotorizedServiceCraneForm({
 					endMonth: row.endMonth?.substring(0, 7),
 					assignmentCodeIds: initialAcId ? [initialAcId] : [],
 					equipmentQualities: initialQualitiesList,
-					equipmentProcesses: initialAcId ? { [initialAcId]: initialProcsList } : {},
-					equipmentDistances: initialAcId ? { [initialAcId]: initialDistsList } : {},
+					equipmentProcesses: initialAcId
+						? { [initialAcId]: initialProcsList }
+						: {},
+					equipmentDistances: initialAcId
+						? { [initialAcId]: initialDistsList }
+						: {},
 					items: initialItems,
 				});
 			})
@@ -238,7 +256,9 @@ export function MotorizedServiceCraneForm({
 								haulDistanceId: distId,
 								haulDistanceValue: distValue,
 								fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-								maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
+								maintenanceUnitPrice: existing
+									? existing.maintenanceUnitPrice
+									: 0,
 							});
 						});
 					} else {
@@ -262,7 +282,9 @@ export function MotorizedServiceCraneForm({
 							haulDistanceId: null,
 							haulDistanceValue: '',
 							fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-							maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
+							maintenanceUnitPrice: existing
+								? existing.maintenanceUnitPrice
+								: 0,
 						});
 					}
 				});
@@ -302,9 +324,13 @@ export function MotorizedServiceCraneForm({
 			}
 
 			const startMonth =
-				values.startMonth.length === 7 ? `${values.startMonth}-01` : values.startMonth;
+				values.startMonth.length === 7
+					? `${values.startMonth}-01`
+					: values.startMonth;
 			const endMonth =
-				values.endMonth.length === 7 ? `${values.endMonth}-01` : values.endMonth;
+				values.endMonth.length === 7
+					? `${values.endMonth}-01`
+					: values.endMonth;
 
 			// Group items by (assignmentCodeId, equipmentQuality, productionProcessId)
 			const groupedHeaders: Record<
@@ -345,7 +371,8 @@ export function MotorizedServiceCraneForm({
 							? Number(item.fuelUnitPrice)
 							: 0,
 					maintenanceUnitPrice:
-						item.maintenanceUnitPrice !== null && item.maintenanceUnitPrice !== undefined
+						item.maintenanceUnitPrice !== null &&
+						item.maintenanceUnitPrice !== undefined
 							? Number(item.maintenanceUnitPrice)
 							: 0,
 				});
@@ -367,7 +394,10 @@ export function MotorizedServiceCraneForm({
 						...payload,
 					});
 				} else {
-					return api.post(API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.CREATE, payload);
+					return api.post(
+						API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.CREATE,
+						payload,
+					);
 				}
 			});
 
@@ -413,7 +443,9 @@ export function MotorizedServiceCraneForm({
 						label='Nhóm vật tư, tài sản'
 						placeholder='Chọn nhóm vật tư, tài sản'
 						options={assignmentCodes.map((item) => ({
-							label: item.code ? `${item.code} - ${item.name}` : item.name || item.id,
+							label: item.code
+								? `${item.code} - ${item.name}`
+								: item.name || item.id,
 							value: item.id,
 						}))}
 					/>
@@ -438,8 +470,9 @@ export function MotorizedServiceCraneForm({
 			{/* FORM DƯỚI - Matrix nhập đơn giá */}
 			{showBottomSection && (
 				<div className='space-y-4'>
-					<div className='text-xs font-semibold uppercase text-gray-500'>
-						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm vật tư )
+					<div className='text-xs font-semibold text-gray-500 uppercase'>
+						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm
+						vật tư )
 					</div>
 
 					{selectedAssignmentCodeIds.map((acId: string) => {
@@ -449,15 +482,19 @@ export function MotorizedServiceCraneForm({
 								? `${acObj.code} - ${acObj.name}`
 								: acObj.name
 							: acId;
-						const selectedProcList: string[] = watchedEquipmentProcesses?.[acId] || [];
-						const selectedDistList: string[] = watchedEquipmentDistances?.[acId] || [];
+						const selectedProcList: string[] =
+							watchedEquipmentProcesses?.[acId] || [];
+						const selectedDistList: string[] =
+							watchedEquipmentDistances?.[acId] || [];
 
 						return (
 							<div
 								key={acId}
 								className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs'
 							>
-								<div className='text-sm font-semibold text-gray-800'>{title}</div>
+								<div className='text-sm font-semibold text-gray-800'>
+									{title}
+								</div>
 
 								<FormRow>
 									<div className='flex-1'>
@@ -473,9 +510,13 @@ export function MotorizedServiceCraneForm({
 
 								{/* VỚI MỖI CÔNG ĐOẠN ĐƯỢC CHỌN -> HIỂN THỊ BẢNG ĐƠN GIÁ TƯƠNG ỨNG */}
 								{selectedProcList.map((procId: string) => {
-									const procObj = processOptions.find((p) => p.value === procId);
+									const procObj = processOptions.find(
+										(p) => p.value === procId,
+									);
 									const procName = procObj ? procObj.label : procId;
-									const isWatering = procName.toLowerCase().includes('tưới đường mỏ');
+									const isWatering = procName
+										.toLowerCase()
+										.includes('tưới đường mỏ');
 									const isHourly =
 										procName.toLowerCase().includes('phục vụ') ||
 										procName.toLowerCase().includes('di chuyển');
@@ -498,7 +539,7 @@ export function MotorizedServiceCraneForm({
 											key={procId}
 											className='space-y-2 rounded-md border border-gray-100 bg-gray-50/50 p-3'
 										>
-											<div className='text-sm font-semibold text-primary'>
+											<div className='text-primary text-sm font-semibold'>
 												{procName}
 											</div>
 
@@ -508,8 +549,8 @@ export function MotorizedServiceCraneForm({
 													<FormMultiSelect
 														control={form.control as any}
 														name={`equipmentDistances.${acId}`}
-														label='Cung độ vận chuyển (km)'
-														placeholder='Chọn các cung độ vận chuyển'
+														label='Cung độ vận tải'
+														placeholder='Chọn các cung độ vận tải'
 														options={distanceOptions}
 													/>
 												</div>
@@ -517,7 +558,7 @@ export function MotorizedServiceCraneForm({
 
 											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
 												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
+													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
 														<tr>
 															<th className='min-w-[140px] px-4 py-3'>
 																Chất lượng
@@ -558,11 +599,12 @@ export function MotorizedServiceCraneForm({
 																	<td className='px-4 py-2 text-sm font-medium text-gray-700'>
 																		{qText}
 																	</td>
-																	{isWatering && selectedDistList.length > 0 && (
-																		<td className='px-4 py-2 text-sm font-medium text-gray-700'>
-																			{item.haulDistanceValue || '-'}
-																		</td>
-																	)}
+																	{isWatering &&
+																		selectedDistList.length > 0 && (
+																			<td className='px-4 py-2 text-sm font-medium text-gray-700'>
+																				{item.haulDistanceValue || '-'}
+																			</td>
+																		)}
 																	<td className='px-4 py-2'>
 																		<FormNumber
 																			control={form.control as any}

@@ -18,6 +18,11 @@ public class ProductionOutputProcessGroup : AuditableEntity<Guid>
     private IList<ProductionOutputProduct> _productionOutputProducts = new List<ProductionOutputProduct>();
     public virtual IReadOnlyCollection<ProductionOutputProduct> ProductionOutputProducts => _productionOutputProducts.AsReadOnly();
 
+    // Vận tải lò/Vận tải cơ giới — song song ProductionOutputProducts (Khai thác), loại trừ lẫn nhau
+    // theo ProcessGroup của nhóm này.
+    private IList<ProductionOutputTransportLine> _productionOutputTransportLines = new List<ProductionOutputTransportLine>();
+    public virtual IReadOnlyCollection<ProductionOutputTransportLine> ProductionOutputTransportLines => _productionOutputTransportLines.AsReadOnly();
+
     public static ProductionOutputProcessGroup Create(
         Guid processGroupId,
         double planProductionMeters,
@@ -49,8 +54,21 @@ public class ProductionOutputProcessGroup : AuditableEntity<Guid>
         RecalculateProductionMeters();
     }
 
+    public void AddTransportLine(ProductionOutputTransportLine transportLine)
+    {
+        _productionOutputTransportLines.Add(transportLine);
+        RecalculateProductionMeters();
+    }
+
+    public void ClearTransportLines()
+    {
+        _productionOutputTransportLines.Clear();
+        RecalculateProductionMeters();
+    }
+
     public void RecalculateProductionMeters()
     {
-        ProductionMeters = _productionOutputProducts.Sum(x => x.ProductionMeters);
+        ProductionMeters = _productionOutputProducts.Sum(x => x.ProductionMeters)
+            + _productionOutputTransportLines.Sum(x => x.ProductionMeters);
     }
 }

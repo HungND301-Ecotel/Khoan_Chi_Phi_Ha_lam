@@ -21,6 +21,7 @@ export type UseDataTable<TData> = {
 	refreshVersion: number;
 	refresh: () => Promise<void>;
 	table: Table<TData>;
+	totalCount: number;
 };
 
 export function useDataTable<TData>(
@@ -45,9 +46,22 @@ export function useDataTable<TData>(
 		pageIndex: 0,
 		pageSize: 10,
 	});
+	const [totalCount, setTotalCount] = useState(0);
+
+	const isServerPaginated =
+		hasPagination && !!url && query?.ignorePagination !== true;
+
+	useEffect(() => {
+		if (!isServerPaginated) return;
+		setPagination((prev) =>
+			prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 },
+		);
+	}, [url, query, globalFilter, pagination.pageSize, isServerPaginated]);
 
 	const globalSearchFilter: FilterFn<TData> = (row, _columnId, filterValue) => {
-		const normalizedFilter = String(filterValue ?? '').trim().toLowerCase();
+		const normalizedFilter = String(filterValue ?? '')
+			.trim()
+			.toLowerCase();
 		if (!normalizedFilter) return true;
 
 		const normalizeValue = (value: unknown): string => {
@@ -84,19 +98,38 @@ export function useDataTable<TData>(
 		try {
 			setLoading(true);
 			if (!url) return;
-			const mergedQuery = {
+			const mergedQuery: PaggingRequest = {
 				...query,
+				...(isServerPaginated
+					? {
+							pageIndex: pagination.pageIndex + 1, // BE dùng pageIndex 1-based
+							pageSize: pagination.pageSize,
+						}
+					: {}),
 				...(globalFilter ? { search: globalFilter } : {}),
 			};
 			const response = await api.pagging<TData>(url, mergedQuery);
 			const result = response.result.data || [];
 			setData(transformData ? transformData(result) : result);
+			setTotalCount(
+				isServerPaginated
+					? (response.result.totalCount ?? result.length)
+					: result.length,
+			);
 			setRefreshVersion((prev) => prev + 1);
 		} finally {
 			setLoading(false);
 			// bỏ setExpanded({}) để không tự đóng expand
 		}
-	}, [url, query, transformData, globalFilter]);
+	}, [
+		url,
+		query,
+		transformData,
+		globalFilter,
+		isServerPaginated,
+		pagination.pageIndex,
+		pagination.pageSize,
+	]);
 
 	useEffect(() => {
 		refresh();
@@ -122,6 +155,10 @@ export function useDataTable<TData>(
 		...(hasPagination && {
 			getPaginationRowModel: getPaginationRowModel(),
 			onPaginationChange: setPagination,
+			...(isServerPaginated && {
+				manualPagination: true,
+				pageCount: Math.max(1, Math.ceil(totalCount / pagination.pageSize)),
+			}),
 		}),
 		...(hasSort && {
 			onSortingChange: setSorting,
@@ -150,5 +187,8 @@ export function useDataTable<TData>(
 		refreshVersion,
 		refresh,
 		table,
+		totalCount: isServerPaginated
+			? totalCount
+			: table.getFilteredRowModel().rows.length,
 	};
 }

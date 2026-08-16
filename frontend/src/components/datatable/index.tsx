@@ -134,7 +134,7 @@ export function DataTable<TData>({
 		getRowId,
 		filters?.map((filter) => String(filter.key)),
 	);
-	const { table, loading } = datatable;
+	const { table, loading, totalCount } = datatable;
 
 	const selected = table
 		.getFilteredSelectedRowModel()
@@ -687,7 +687,9 @@ export function DataTable<TData>({
 				</Table>
 			</div>
 
-			{hasPagination && <DataTablePagination table={table} />}
+			{hasPagination && (
+				<DataTablePagination table={table} totalCount={totalCount} />
+			)}
 		</div>
 	);
 }

@@ -37,6 +37,8 @@ using Application.Catalog.Pricing.ProductUnitPrice.Commands;
 using Application.Catalog.Pricing.ProductUnitPrice.Queries;
 using Application.Catalog.Pricing.SlideUnitPrice.Commands;
 using Application.Catalog.Pricing.SlideUnitPrice.Queries;
+using Application.Catalog.Pricing.TransportPlanLine.Commands;
+using Application.Catalog.Pricing.TransportPlanLine.Queries;
 using Application.Catalog.Pricing.TransportUnitPrice.Commands;
 using Application.Catalog.Pricing.TransportUnitPrice.Queries;
 using Application.Catalog.Pricing.TunnelSupportAndDrillingMaterialPricing.Commands;
@@ -54,6 +56,7 @@ using Application.Dto.Catalog.PlannedMaintainCost;
 using Application.Dto.Catalog.PlannedMaterialCost;
 using Application.Dto.Catalog.ProductUnitPrice;
 using Application.Dto.Catalog.SlideUnitPrice;
+using Application.Dto.Catalog.TransportPlanLine;
 using Application.Dto.Catalog.TransportUnitPrice;
 using Application.Dto.Catalog.UnitOfMeasure;
 using Domain.Common.Enums;
@@ -1352,6 +1355,72 @@ public class PricingController : BaseAuthController
     {
         var result = await Mediator.Send(new ImportTransportUnitPriceExcelCommand(importModel.FormFile));
         return Ok(result, MessageCommon.ImportSuccess);
+    }
+    #endregion
+
+    #region TransportPlanLine (Kế hoạch sản xuất - Vận tải lò)
+
+    [HttpGet("TransportPlanLine")]
+    [OpenApiOperation("Get All Planned TransportPlanLine Summary List", "")]
+    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> GetAllTransportPlanLine([FromQuery] bool ignorePagination = true)
+    {
+        var result = await Mediator.Send(new GetAllTransportPlanLineQuery(ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TransportPlanLine/Planned/Department/{departmentId:guid}")]
+    [OpenApiOperation("Get Planned TransportPlanLine By Department", "")]
+    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> GetPlannedTransportPlanLineByDepartment([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetTransportPlanLineByDepartmentQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("TransportPlanLine/Planned/{id:guid}")]
+    [OpenApiOperation("Get Planned TransportPlanLine By Id", "")]
+    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> GetPlannedTransportPlanLineById([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetTransportPlanLineByIdQuery(id));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpPost("TransportPlanLine/Planned-By-Department")]
+    [OpenApiOperation("Create Planned TransportPlanLine By Department", "")]
+    [HasPermission("production.transportplanline.create", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> CreatePlannedTransportPlanLineByDepartment([FromBody] CreateTransportPlanLineByDepartmentDto createModel)
+    {
+        var result = await Mediator.Send(new CreateTransportPlanLineByDepartmentCommand(createModel));
+        return Ok(result, MessageCommon.CreateSuccess);
+    }
+
+    [HttpPut("TransportPlanLine/Planned-By-Department")]
+    [OpenApiOperation("Update Planned TransportPlanLine By Department", "")]
+    [HasPermission("production.transportplanline.update", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> UpdatePlannedTransportPlanLineByDepartment([FromBody] UpdateTransportPlanLineByDepartmentDto updateModel)
+    {
+        var result = await Mediator.Send(new UpdateTransportPlanLineByDepartmentCommand(updateModel));
+        return Ok(result, MessageCommon.UpdateSuccess);
+    }
+
+    [HttpDelete("TransportPlanLine/{deleteId:guid}")]
+    [OpenApiOperation("Delete TransportPlanLine", "")]
+    [HasPermission("production.transportplanline.delete", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> DeleteTransportPlanLine([FromRoute] Guid deleteId)
+    {
+        var result = await Mediator.Send(new DeleteTransportPlanLineCommand(deleteId));
+        return Ok(result, MessageCommon.DeleteSuccess);
+    }
+
+    [HttpDelete("TransportPlanLine")]
+    [OpenApiOperation("Delete TransportPlanLine List", "")]
+    [HasPermission("production.transportplanline.delete", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    public async Task<IActionResult> DeleteTransportPlanLineList([FromBody] IList<Guid> deleteIds)
+    {
+        var result = await Mediator.Send(new DeleteTransportPlanLineListCommand(deleteIds));
+        return Ok(result, MessageCommon.DeleteSuccess);
     }
     #endregion
 
