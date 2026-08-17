@@ -12,11 +12,6 @@ namespace Application.Catalog.Pricing.TransportPlanLine.Queries;
 public record GetTransportPlanLineAdjustmentByDepartmentQuery(Guid DepartmentId)
     : IRequest<TransportPlanLineAdjustmentByDepartmentDetailDto>;
 
-// "Doanh thu điều chỉnh" VTL: lấy nguyên đơn giá + K1/K2 đã chốt ở Kế hoạch ban đầu
-// (TransportPlanLine), chỉ thay Sản lượng kế hoạch bằng Sản lượng thực tế
-// (ProductionOutputTransportLine của ProductionOutput cùng Đơn vị + Tháng), khớp theo đúng khoá
-// (ProductionProcessId, TransportRouteId/RouteDepartmentId hoặc EquipmentId/EquipmentQuality) —
-// PM chỉ note: "Lấy thông tin ở Kế hoạch ban đầu + Sản lượng thực tế → doanh thu điều chỉnh".
 public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork unitOfWork)
     : IRequestHandler<GetTransportPlanLineAdjustmentByDepartmentQuery, TransportPlanLineAdjustmentByDepartmentDetailDto>
 {

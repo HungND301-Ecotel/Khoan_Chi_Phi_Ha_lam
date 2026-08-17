@@ -5,12 +5,7 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-	Item,
-	ItemActions,
-	ItemContent,
-	ItemTitle,
-} from '@/components/ui/item';
+import { Item, ItemActions, ItemTitle } from '@/components/ui/item';
 import {
 	detectTransportMode,
 	isMonorailMode,

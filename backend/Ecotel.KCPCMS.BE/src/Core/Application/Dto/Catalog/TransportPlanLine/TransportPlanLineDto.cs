@@ -52,8 +52,7 @@ public class TransportPlanLineItemDto
 public class TransportPlanLineMonthDto
 {
     public DateOnly Month { get; set; }
-    // Tick "Chi phí vật tư mau hỏng rẻ tiền" đã lưu cho (Đơn vị, Tháng) này — bên Vận hành sản xuất
-    // tự đọc cờ này để rollup LowValuePerishableSupplyUnitPrice(Type=Transport) khi cần.
+
     public bool LowValuePerishableSupply { get; set; }
     public IList<TransportPlanLineItemDto> Items { get; set; } = new List<TransportPlanLineItemDto>();
 }
@@ -66,9 +65,7 @@ public class TransportPlanLineByDepartmentDetailDto
     public IList<TransportPlanLineMonthDto> Months { get; set; } = new List<TransportPlanLineMonthDto>();
 }
 
-// "Doanh thu điều chỉnh" VTL — lấy nguyên đơn giá + K1/K2 đã chốt ở Kế hoạch ban đầu
-// (TransportPlanLine), chỉ thay Sản lượng kế hoạch bằng Sản lượng thực tế
-// (ProductionOutputTransportLine, khớp theo đúng khoá ProductionProcess+Tuyến/Thiết bị).
+
 public class TransportPlanLineAdjustmentItemDto
 {
     public Guid Id { get; set; }
