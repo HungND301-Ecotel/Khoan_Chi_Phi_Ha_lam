@@ -14,8 +14,7 @@ import {
 import { API } from '@/constants/api-enpoint';
 import type { Product } from '@/features/main/catalog/product/columns';
 import {
-	TRANSPORT_LINE_COLUMNS,
-	toTransportLineRows,
+	Vtl3TierTreeList,
 	type ProductionOutputTransportLineRow,
 } from '@/features/main/cost/producttion/production/van-tai-lo/transport-line-list';
 import { api } from '@/lib/api';
@@ -206,10 +205,6 @@ export function ProductionProductList({
 										productionMeters: product.productionMeters ?? 0,
 									};
 								});
-								const transportLineRows = toTransportLineRows(
-									groupKey,
-									processGroup.transportLines ?? [],
-								);
 
 								return (
 									<AccordionItem
@@ -254,14 +249,8 @@ export function ProductionProductList({
 										<AccordionContent className='p-0 pt-2'>
 											<div className='w-full min-w-0 overflow-x-auto'>
 												{isVanTaiLo ? (
-													<DataTable
-														columns={TRANSPORT_LINE_COLUMNS}
-														items={transportLineRows}
-														hasActions={false}
-														hasPagination={false}
-														hasSort={false}
-														hasIndex={false}
-														compact={true}
+													<Vtl3TierTreeList
+														transportLines={processGroup.transportLines ?? []}
 													/>
 												) : (
 													<DataTable

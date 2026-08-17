@@ -1387,6 +1387,15 @@ public class PricingController : BaseAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("TransportPlanLine/Adjustment/Department/{departmentId:guid}")]
+    [OpenApiOperation("Get Adjustment TransportPlanLine By Department", "")]
+    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Doanh thu điều chỉnh")]
+    public async Task<IActionResult> GetAdjustmentTransportPlanLineByDepartment([FromRoute] Guid departmentId)
+    {
+        var result = await Mediator.Send(new GetTransportPlanLineAdjustmentByDepartmentQuery(departmentId));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpPost("TransportPlanLine/Planned-By-Department")]
     [OpenApiOperation("Create Planned TransportPlanLine By Department", "")]
     [HasPermission("production.transportplanline.create", "Thống kê vận hành", "Kế hoạch sản xuất")]

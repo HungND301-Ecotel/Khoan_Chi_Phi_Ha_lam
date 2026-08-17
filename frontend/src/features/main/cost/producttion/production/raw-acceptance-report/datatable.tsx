@@ -116,6 +116,8 @@ const getQuotaBasedMaterialLabel = (value: number): string => {
 			return 'Phụ kiện';
 		case QuotaBasedMaterial.MineTimber:
 			return 'Gỗ lò';
+		case QuotaBasedMaterial.LiningPlate:
+			return 'Tấm chèn';
 		default:
 			return '';
 	}
@@ -131,6 +133,14 @@ const getQuotaBasedMaterialTypeLabel = (value: number): string => {
 			return '';
 	}
 };
+
+// BE (GetAcceptanceReportByIdQuery) chỉ trả về mảng chi tiết quotaBasedMaterialQuantities, không
+// có field tổng quotaBasedMaterialQuantity — phải tự cộng dồn ở đây, nếu không sẽ luôn ra 0.
+const getQuotaBasedMaterialTotalQuantity = (item: RawAcceptanceReportItem): number =>
+	(item.quotaBasedMaterialQuantities ?? []).reduce(
+		(sum, detail) => sum + (detail.quantity || 0),
+		0,
+	);
 
 export function RawAcceptanceReportDataTable({
 	items,
@@ -472,7 +482,7 @@ export function RawAcceptanceReportDataTable({
 												</span>
 											)}
 											<span className='text-sm font-medium text-slate-700'>
-												SL: {formatNumber(item.quotaBasedMaterialQuantity || 0)}
+												SL: {formatNumber(getQuotaBasedMaterialTotalQuantity(item))}
 											</span>
 										</div>
 									</TooltipTrigger>
@@ -492,7 +502,7 @@ export function RawAcceptanceReportDataTable({
 												</span>
 											)}
 											<span className='font-medium'>
-												SL: {formatNumber(item.quotaBasedMaterialQuantity || 0)}
+												SL: {formatNumber(getQuotaBasedMaterialTotalQuantity(item))}
 											</span>
 										</div>
 									</TooltipContent>

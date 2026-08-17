@@ -1,5 +1,8 @@
+import { TransportCostComponent } from '@/features/main/cost/plan/types';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+
+export { VTL_COST_ADJUSTMENT_COLUMNS } from './van-tai-lo/columns';
 
 export type ProductionAdjustment = {
 	id: string;
@@ -29,12 +32,27 @@ export type ProductionAdjustment = {
 	actualAshContent?: number;
 	akRate?: number;
 	akRatePercent?: number;
+	// Vận tải lò — song song CostProduct bên Kế hoạch sản xuất
+	routeDepartmentId?: string;
+	routeDepartmentCode?: string;
+	routeDepartmentName?: string;
+	productionProcessCode?: string;
+	productionProcessName?: string;
+	contractCodeCode?: string;
+	contractCodeName?: string;
+	equipmentQuality?: string;
+	material?: TransportCostComponent;
+	maintenance?: TransportCostComponent;
+	power?: TransportCostComponent;
+	isLowVolumeCase?: boolean;
 };
 
 export type DepartmentAdjustmentGroup = {
 	id: string;
 	code: string;
 	name: string;
+	hasKhaiThac?: boolean;
+	hasVanTaiLo?: boolean;
 	startMonth?: string;
 	endMonth?: string;
 	productUnitPriceIds: string[];
