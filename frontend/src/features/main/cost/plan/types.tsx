@@ -1,5 +1,12 @@
 import { ProcessGroupType } from '@/constants/process-group';
 
+export type TransportCostComponent = {
+	baseUnitPrice?: number | null;
+	k1Coefficient?: number | null;
+	k2Coefficient?: number | null;
+	effectiveUnitPrice: number;
+};
+
 export type CostProduct = {
 	id: string;
 	productId: string;
@@ -14,10 +21,24 @@ export type CostProduct = {
 	departmentId?: string;
 	departmentCode?: string;
 	departmentName?: string;
+	routeDepartmentId?: string;
+	routeDepartmentCode?: string;
+	routeDepartmentName?: string;
 	totalProductionMeters: number;
 	plannedTotalCost: number;
 	startMonth: string;
 	endMonth: string;
+	productionProcessCode?: string;
+	productionProcessName?: string;
+	contractCodeCode?: string;
+	contractCodeName?: string;
+	equipmentQuality?: string;
+	material?: TransportCostComponent;
+	maintenance?: TransportCostComponent;
+	power?: TransportCostComponent;
+	// Tuyến đặc biệt (sản lượng < 10.000 tấn/tháng): material/maintenance/power đã là giá trọn gói,
+	// không nhân thêm totalProductionMeters khi hiển thị.
+	isLowVolumeCase?: boolean;
 };
 
 export type CostProductDetail = {

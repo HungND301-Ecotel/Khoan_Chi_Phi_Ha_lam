@@ -141,4 +141,11 @@ public static class CustomResponseMessage
 
     public const string MaintainIdRequired = "ACCEPTANCE_REPORT_ITEM_MAINTAIN_ID_REQUIRED";
     public const string MaterialIdRequired = "ACCEPTANCE_REPORT_ITEM_MATERIAL_ID_REQUIRED";
+
+    // TransportPlanLine / PlannedTransportCost (Vận tải lò + Vận tải cơ giới)
+    public const string DepartmentIdCannotBeEmpty = "DEPARTMENT_ID_CANNOT_BE_EMPTY";
+    public const string ProductionMetersMustBeGreaterThanZero = "PRODUCTION_METERS_MUST_BE_GREATER_THAN_ZERO";
+    public const string TransportPlanLineNotFound = "TRANSPORT_PLAN_LINE_NOT_FOUND";
+    public const string PlannedTransportCostNotFound = "PLANNED_TRANSPORT_COST_NOT_FOUND";
+    public const string PlannedTransportCostReferenceInvalid = "PLANNED_TRANSPORT_COST_REFERENCE_INVALID";
 }

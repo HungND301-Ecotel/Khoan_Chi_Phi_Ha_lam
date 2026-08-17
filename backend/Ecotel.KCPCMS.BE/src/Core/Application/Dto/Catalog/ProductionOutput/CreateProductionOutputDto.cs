@@ -16,6 +16,7 @@ public class CreateProductionOutputProcessGroupDto
     public double PlanProductionMeters { get; set; }
     public double StandardProductionMeters { get; set; }
     public IList<CreateProductionOutputProductDto> Products { get; set; } = new List<CreateProductionOutputProductDto>();
+    public IList<CreateProductionOutputTransportLineDto> TransportLines { get; set; } = new List<CreateProductionOutputTransportLineDto>();
 }
 
 public class CreateProductionOutputProductDto
@@ -23,4 +24,14 @@ public class CreateProductionOutputProductDto
     public Guid ProductId { get; set; }
     public double ProductionMeters { get; set; }
     public double ActualAshContent { get; set; }
+}
+
+public class CreateProductionOutputTransportLineDto
+{
+    public Guid ProductionProcessId { get; set; }
+    public Guid? EquipmentId { get; set; }
+    public string? EquipmentQuality { get; set; }
+    public Guid? TransportRouteId { get; set; }
+    public Guid? RouteDepartmentId { get; set; }
+    public double ProductionMeters { get; set; }
 }

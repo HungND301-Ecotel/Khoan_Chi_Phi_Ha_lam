@@ -107,12 +107,15 @@ public class ApplicationDbContext(
     public DbSet<MechanizedTransportUnitPrice> MechanizedTransportUnitPrices => Set<MechanizedTransportUnitPrice>();
     public DbSet<MechanizedTransportUnitPriceDetail> MechanizedTransportUnitPriceDetails => Set<MechanizedTransportUnitPriceDetail>();
     public DbSet<MechanizedTransportOverheadUnitPrice> MechanizedTransportOverheadUnitPrices => Set<MechanizedTransportOverheadUnitPrice>();
+    public DbSet<TransportPlanLine> TransportPlanLines => Set<TransportPlanLine>();
+    public DbSet<PlannedTransportCost> PlannedTransportCosts => Set<PlannedTransportCost>();
     #endregion
 
     #region Production
     public DbSet<ProductionOutput> ProductionOutputs => Set<ProductionOutput>();
     public DbSet<ProductionOutputProcessGroup> ProductionOutputProcessGroups => Set<ProductionOutputProcessGroup>();
     public DbSet<ProductionOutputProduct> ProductionOutputProducts => Set<ProductionOutputProduct>();
+    public DbSet<ProductionOutputTransportLine> ProductionOutputTransportLines => Set<ProductionOutputTransportLine>();
     public DbSet<AcceptanceReport> AcceptanceReports => Set<AcceptanceReport>();
     public DbSet<ActualElectricityCost> ActualElectricityCosts => Set<ActualElectricityCost>();
     public DbSet<ActualEletricityEquipment> ActualEletricityEquipments => Set<ActualEletricityEquipment>();
@@ -200,6 +203,24 @@ public class ApplicationDbContext(
         modelBuilder.Entity<PlannedElectricityCostAdjustmentFactorDescription>()
             .ToTable(nameof(PlannedElectricityCostAdjustmentFactorDescription), "Index", tb => tb.HasCheckConstraint(
                 "CK_PlannedElectricityCostAdjustmentFactorDescription_CustomOrReference",
+                @"
+                    (
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NOT NULL AND
+                            ""AdjustmentFactorId"" IS NULL AND
+                            ""CustomValue"" IS NULL
+                        )
+                        OR
+                        (
+                            ""AdjustmentFactorDescriptionId"" IS NULL AND
+                            ""AdjustmentFactorId"" IS NOT NULL AND
+                            ""CustomValue"" IS NOT NULL
+                        )
+                    )
+                "));
+        modelBuilder.Entity<PlannedTransportCostAdjustmentFactor>()
+            .ToTable(nameof(PlannedTransportCostAdjustmentFactor), "Index", tb => tb.HasCheckConstraint(
+                "CK_PlannedTransportCostAdjustmentFactor_CustomOrReference",
                 @"
                     (
                         (
@@ -678,6 +699,23 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.PlannedElectricityCostAdjustmentFactorId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        //PlannedTransportCostAdjustmentFactor table (K1/K2 cho Vận tải lò)
+        modelBuilder.Entity<PlannedTransportCostAdjustmentFactor>()
+            .HasOne(m => m.AdjustmentFactorDescription)
+            .WithMany()
+            .HasForeignKey(s => s.AdjustmentFactorDescriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedTransportCostAdjustmentFactor>()
+            .HasOne(m => m.AdjustmentFactor)
+            .WithMany()
+            .HasForeignKey(s => s.AdjustmentFactorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PlannedTransportCostAdjustmentFactor>()
+            .HasOne(m => m.PlannedTransportCost)
+            .WithMany(h => h.AdjustmentFactors)
+            .HasForeignKey(s => s.PlannedTransportCostId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         //Hardness table
         modelBuilder.Entity<Hardness>()
             .HasIndex(e => e.Value)
@@ -772,6 +810,14 @@ public class ApplicationDbContext(
                 tb.HasCheckConstraint(
                     "CK_TransportUnitPrice_AtLeastOnePrice",
                     "(\"MaterialFuelUnitPrice\" IS NOT NULL OR \"PowerUnitPrice\" IS NOT NULL OR \"MaintenanceUnitPrice\" IS NOT NULL)");
+            });
+        modelBuilder.Entity<TransportPlanLine>().ToTable(nameof(TransportPlanLine), "Pricing");
+        modelBuilder.Entity<PlannedTransportCost>()
+            .ToTable(nameof(PlannedTransportCost), "Pricing", tb =>
+            {
+                tb.HasCheckConstraint(
+                    "CK_PlannedTransportCost_ExactlyOneUnitPriceReference",
+                    "((\"TransportUnitPriceId\" IS NOT NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NULL) OR (\"TransportUnitPriceId\" IS NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NOT NULL))");
             });
 
         //MaterialUnitPrices table - Base configuration
@@ -1023,6 +1069,64 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.EquipmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        //TransportPlanLine table (Vận tải lò + Vận tải cơ giới, gộp chung
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.Department)
+            .WithMany()
+            .HasForeignKey(t => t.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.ProductionProcess)
+            .WithMany()
+            .HasForeignKey(t => t.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.UnitOfMeasure)
+            .WithMany()
+            .HasForeignKey(t => t.UnitOfMeasureId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.Equipment)
+            .WithMany()
+            .HasForeignKey(t => t.EquipmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.TransportRoute)
+            .WithMany()
+            .HasForeignKey(t => t.TransportRouteId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.RouteDepartment)
+            .WithMany()
+            .HasForeignKey(t => t.RouteDepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.HaulDistance)
+            .WithMany()
+            .HasForeignKey(t => t.HaulDistanceId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        //PlannedTransportCost table
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.PlannedTransportCost)
+            .WithOne(p => p.TransportPlanLine)
+            .HasForeignKey<PlannedTransportCost>(p => p.TransportPlanLineId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedTransportCost>()
+            .HasIndex(p => p.TransportPlanLineId)
+            .IsUnique()
+            .HasFilter("\"DeletedOn\" IS NULL");
+        modelBuilder.Entity<PlannedTransportCost>()
+            .HasOne(p => p.TransportUnitPrice)
+            .WithMany()
+            .HasForeignKey(p => p.TransportUnitPriceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PlannedTransportCost>()
+            .HasOne(p => p.MechanizedTransportUnitPriceDetail)
+            .WithMany()
+            .HasForeignKey(p => p.MechanizedTransportUnitPriceDetailId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         //ProductUnitPriceProductionOutput - Many-to-Many relationship table
         modelBuilder.Entity<ProductUnitPriceProductionOutput>().ToTable(nameof(ProductUnitPriceProductionOutput), "Pricing");
         modelBuilder.Entity<ProductUnitPriceProductionOutput>()
@@ -1225,6 +1329,7 @@ public class ApplicationDbContext(
         modelBuilder.Entity<ProductionOutput>().ToTable(nameof(ProductionOutput), "Production");
         modelBuilder.Entity<ProductionOutputProcessGroup>().ToTable(nameof(ProductionOutputProcessGroup), "Production");
         modelBuilder.Entity<ProductionOutputProduct>().ToTable(nameof(ProductionOutputProduct), "Production");
+        modelBuilder.Entity<ProductionOutputTransportLine>().ToTable(nameof(ProductionOutputTransportLine), "Production");
         modelBuilder.Entity<AcceptanceReport>().ToTable(nameof(AcceptanceReport), "Production");
         modelBuilder.Entity<AcceptanceReportItem>().ToTable(nameof(AcceptanceReportItem), "Production");
         modelBuilder.Entity<AcceptanceReportItemCategoryAllocation>().ToTable(nameof(AcceptanceReportItemCategoryAllocation), "Production");
@@ -1355,6 +1460,36 @@ public class ApplicationDbContext(
             .WithMany()
             .HasForeignKey(p => p.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductionOutputProcessGroup>()
+            .HasMany(g => g.ProductionOutputTransportLines)
+            .WithOne(t => t.ProductionOutputProcessGroup)
+            .HasForeignKey(t => t.ProductionOutputProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.ProductionProcess)
+            .WithMany()
+            .HasForeignKey(t => t.ProductionProcessId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.Equipment)
+            .WithMany()
+            .HasForeignKey(t => t.EquipmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.TransportRoute)
+            .WithMany()
+            .HasForeignKey(t => t.TransportRouteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.RouteDepartment)
+            .WithMany()
+            .HasForeignKey(t => t.RouteDepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ProductionOutput table
         modelBuilder.Entity<AcceptanceReport>(entity =>

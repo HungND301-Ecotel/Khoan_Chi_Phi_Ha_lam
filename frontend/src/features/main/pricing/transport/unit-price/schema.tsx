@@ -26,7 +26,12 @@ export const transportUnitPriceSchema = z.object({
 	departmentIds: z.array(z.string()).optional().default([]),
 	routeDepartmentIds: z.record(z.string(), z.array(z.string())).optional().default({}),
 	contractCodeIds: z.array(z.string()).optional().default([]),
-	equipmentQualities: z.array(z.string()).optional().default([]),
+	// Chất lượng thiết bị theo từng Nhóm vật tư (key = contractCodeId) — mỗi Nhóm vật tư có bộ
+	// chất lượng riêng, không dùng chung 1 danh sách cho mọi nhóm.
+	contractCodeQualityIds: z
+		.record(z.string(), z.array(z.string()))
+		.optional()
+		.default({}),
 	qualityPrices: z
 		.record(
 			z.string(),
@@ -65,7 +70,7 @@ export const TRANSPORT_UNIT_PRICE_SCHEMA_DEFAULT: TransportUnitPriceSchema = {
 	departmentIds: [],
 	routeDepartmentIds: {},
 	contractCodeIds: [],
-	equipmentQualities: [],
+	contractCodeQualityIds: {},
 	qualityPrices: {},
 	items: [],
 	transportRouteId: '',

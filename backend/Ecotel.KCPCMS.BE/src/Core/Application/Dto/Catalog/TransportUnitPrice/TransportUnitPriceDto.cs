@@ -25,6 +25,21 @@ namespace Application.Dto.Catalog.TransportUnitPrice
         public DateOnly EndMonth { get; set; }
     }
 
+    // 1 nhóm ứng với 1 lần tạo mới trên form (cùng Công đoạn sản xuất + Thời gian) — gộp nhiều
+    // TransportUnitPriceDto con (mỗi Tuyến/Đơn vị/Nhóm vật tư/Chất lượng thiết bị là 1 dòng con)
+    // để danh sách phân trang không hiển thị trùng lặp theo từng dòng con.
+    public class TransportUnitPriceGroupDto : IDto
+    {
+        public Guid Id { get; set; }
+        public Guid ProductionProcessId { get; set; }
+        public string? ProductionProcessCode { get; set; }
+        public string? ProductionProcessName { get; set; }
+        public int ItemCount { get; set; }
+        public DateOnly StartMonth { get; set; }
+        public DateOnly EndMonth { get; set; }
+        public IList<TransportUnitPriceDto> Items { get; set; } = new List<TransportUnitPriceDto>();
+    }
+
     public class CreateTransportUnitPriceDto
     {
         public Guid ProductionProcessId { get; set; }

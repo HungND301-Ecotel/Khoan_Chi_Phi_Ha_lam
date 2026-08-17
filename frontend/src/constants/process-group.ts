@@ -4,6 +4,7 @@ export const ProcessGroupType = {
 	LC: 2,
 	XL: 3,
 	VTL: 12,
+	VTCG: 13,
 } as const;
 
 export type ProcessGroupType =
@@ -14,6 +15,7 @@ export const PROCESS_GROUP: Record<string, string> = {
 	LONGWALL: 'LC',
 	ROADWAY_SLASHING: 'XL',
 	TRANSPORT_VEHICLE: 'VTL',
+	MOTOZIED_TRANSPORT: 'VTCG',
 };
 
 /**
@@ -35,6 +37,9 @@ export function getProcessGroupType(code?: string): ProcessGroupType {
 		case PROCESS_GROUP.TRANSPORT_VEHICLE:
 		case 'VTL':
 			return ProcessGroupType.VTL;
+		case PROCESS_GROUP.MOTOZIED_TRANSPORT:
+		case 'VTCG':
+			return ProcessGroupType.VTCG;
 		default:
 			return ProcessGroupType.None;
 	}

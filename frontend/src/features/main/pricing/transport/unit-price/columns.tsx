@@ -36,12 +36,31 @@ export type TransportUnitPrice = {
 	isLowVolumeCase?: boolean;
 	startMonth: string;
 	endMonth: string;
+	// Nhóm theo (Công đoạn sản xuất, Thời gian) — 1 hàng danh sách = 1 lần tạo mới trên form,
+	// gồm nhiều dòng Tuyến/Đơn vị/Nhóm vật tư/Chất lượng thiết bị con nằm trong items.
+	itemCount?: number;
+	items?: TransportUnitPrice[];
 };
 
 export const formatMoney = (value?: number) => {
 	if (value === undefined || value === null) return '-';
 	return new Intl.NumberFormat('vi-VN').format(value);
 };
+
+// Đúng logic suy luận trong form.tsx (tạo mới/sửa) — giữ riêng ở đây (file không phải
+// component) để bảng Xem (expand.tsx) chỉ đọc, không cần state/effect như form.
+export function detectTransportMode(code?: string, name?: string): TransportMode {
+	const c = (code || '').toUpperCase();
+	const n = (name || '').toLowerCase();
+
+	if (c === 'TKVVCVL' || n.includes('trục kéo')) return 'cable_winch';
+	if (c === 'VTT' || (n.includes('vận tải trục') && !n.includes('trục kéo')))
+		return 'shaft';
+	if (c.startsWith('MV') || n.includes('monoray') || n.includes('monorail'))
+		return 'monorail';
+	if (c === 'TBK' || n.includes('thiết bị khác')) return 'other';
+	return 'conveyor';
+}
 
 export const MAIN_PRICING_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitPrice>[] =
 	[
@@ -58,62 +77,5 @@ export const MAIN_PRICING_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitP
 		{
 			accessorKey: 'productionProcessName',
 			header: 'Công đoạn sản xuất',
-		},
-		{
-			accessorKey: 'transportRouteName',
-			header: 'Tuyến vận tải',
-			cell: ({ row }) => row.original.transportRouteName || '-',
-		},
-		{
-			accessorKey: 'contractCodeName',
-			header: 'Nhóm vật tư',
-			cell: ({ row }) =>
-				row.original.contractCodeName ||
-				row.original.equipmentName ||
-				row.original.materialName ||
-				'-',
-		},
-	];
-
-export const EXPAND_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitPrice>[] =
-	[
-		{
-			accessorKey: 'departmentName',
-			header: 'Đơn vị',
-			cell: ({ row }) => {
-				const dept = row.original.departmentName || '-';
-				if (row.original.isLowVolumeCase) {
-					return `${dept} ( < 10.000t/tháng )`;
-				}
-				return dept;
-			},
-		},
-		{
-			accessorKey: 'equipmentQuality',
-			header: 'Chất lượng thiết bị',
-			cell: ({ row }) =>
-				row.original.equipmentQuality
-					? `Thiết bị loại ${row.original.equipmentQuality}`
-					: '-',
-		},
-		{
-			accessorKey: 'materialFuelUnitPrice',
-			header: 'Đơn giá VL, NL',
-			cell: ({ row }) => formatMoney(row.original.materialFuelUnitPrice),
-		},
-		{
-			accessorKey: 'powerUnitPrice',
-			header: 'Đơn giá Động lực',
-			cell: ({ row }) => formatMoney(row.original.powerUnitPrice),
-		},
-		{
-			accessorKey: 'maintenanceUnitPrice',
-			header: 'Đơn giá SCTX',
-			cell: ({ row }) => formatMoney(row.original.maintenanceUnitPrice),
-		},
-		{
-			accessorKey: 'quantity',
-			header: 'Định mức',
-			cell: ({ row }) => row.original.quantity ?? '-',
 		},
 	];

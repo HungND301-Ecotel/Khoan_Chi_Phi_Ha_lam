@@ -1882,6 +1882,56 @@ namespace Migrators.PostgreSQL.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Domain.Entities.Index.PlannedTransportCostAdjustmentFactor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdjustmentFactorDescriptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdjustmentFactorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("CustomValue")
+                        .HasColumnType("double precision");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlannedTransportCostId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdjustmentFactorDescriptionId");
+
+                    b.HasIndex("AdjustmentFactorId");
+
+                    b.HasIndex("PlannedTransportCostId");
+
+                    b.ToTable("PlannedTransportCostAdjustmentFactor", "Index", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlannedTransportCostAdjustmentFactor_CustomOrReference", "\r\n                    (\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NOT NULL AND\r\n                            \"AdjustmentFactorId\" IS NULL AND\r\n                            \"CustomValue\" IS NULL\r\n                        )\r\n                        OR\r\n                        (\r\n                            \"AdjustmentFactorDescriptionId\" IS NULL AND\r\n                            \"AdjustmentFactorId\" IS NOT NULL AND\r\n                            \"CustomValue\" IS NOT NULL\r\n                        )\r\n                    )\r\n                ");
+                        });
+                });
+
             modelBuilder.Entity("Domain.Entities.Index.Position", b =>
                 {
                     b.Property<int>("Id")
@@ -3353,6 +3403,58 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("PlannedMaterialCost", "Pricing");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Pricing.PlannedTransportCost", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LowValuePerishableSupplyInclusion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("MechanizedTransportUnitPriceDetailId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TransportPlanLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransportUnitPriceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MechanizedTransportUnitPriceDetailId");
+
+                    b.HasIndex("TransportPlanLineId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedOn\" IS NULL");
+
+                    b.HasIndex("TransportUnitPriceId");
+
+                    b.ToTable("PlannedTransportCost", "Pricing", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlannedTransportCost_ExactlyOneUnitPriceReference", "((\"TransportUnitPriceId\" IS NOT NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NULL) OR (\"TransportUnitPriceId\" IS NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NOT NULL))");
+                        });
+                });
+
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3539,6 +3641,88 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasFilter("\"DeletedOn\" IS NULL");
 
                     b.ToTable("SlideUnitPriceAssignmentCode", "Pricing");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.TransportPlanLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndMonth")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("EquipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EquipmentQuality")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("HaulDistanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OutputType")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ProductionMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ProductionProcessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RouteDepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ScenarioType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("StartMonth")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("TransportRouteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UnitOfMeasureId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.HasIndex("HaulDistanceId");
+
+                    b.HasIndex("ProductionProcessId");
+
+                    b.HasIndex("RouteDepartmentId");
+
+                    b.HasIndex("TransportRouteId");
+
+                    b.HasIndex("UnitOfMeasureId");
+
+                    b.ToTable("TransportPlanLine", "Pricing");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.TransportUnitPrice", b =>
@@ -4636,6 +4820,66 @@ namespace Migrators.PostgreSQL.Migrations
                     b.ToTable("ProductionOutputProduct", "Production");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Production.ProductionOutputTransportLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EquipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EquipmentQuality")
+                        .HasColumnType("text");
+
+                    b.Property<long>("LastModifiedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastModifiedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("ProductionMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("ProductionOutputProcessGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductionProcessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RouteDepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TransportRouteId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.HasIndex("ProductionOutputProcessGroupId");
+
+                    b.HasIndex("ProductionProcessId");
+
+                    b.HasIndex("RouteDepartmentId");
+
+                    b.HasIndex("TransportRouteId");
+
+                    b.ToTable("ProductionOutputTransportLine", "Production");
+                });
+
             modelBuilder.Entity("EfCore.Persistence.Auditing.Trail", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5304,6 +5548,31 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("PlannedMaintainCostAdjustmentFactor");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Index.PlannedTransportCostAdjustmentFactor", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.AdjustmentFactorDescription", "AdjustmentFactorDescription")
+                        .WithMany()
+                        .HasForeignKey("AdjustmentFactorDescriptionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Index.AdjustmentFactor", "AdjustmentFactor")
+                        .WithMany()
+                        .HasForeignKey("AdjustmentFactorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Pricing.PlannedTransportCost", "PlannedTransportCost")
+                        .WithMany("AdjustmentFactors")
+                        .HasForeignKey("PlannedTransportCostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdjustmentFactor");
+
+                    b.Navigation("AdjustmentFactorDescription");
+
+                    b.Navigation("PlannedTransportCost");
+                });
+
             modelBuilder.Entity("Domain.Entities.Index.ProcessGroup", b =>
                 {
                     b.HasOne("Domain.Entities.Index.Code", "Code")
@@ -5724,6 +5993,31 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("StoneClampRatio");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Pricing.PlannedTransportCost", b =>
+                {
+                    b.HasOne("Domain.Entities.Pricing.MechanizedTransportUnitPrice.MechanizedTransportUnitPriceDetail", "MechanizedTransportUnitPriceDetail")
+                        .WithMany()
+                        .HasForeignKey("MechanizedTransportUnitPriceDetailId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Pricing.TransportPlanLine", "TransportPlanLine")
+                        .WithOne("PlannedTransportCost")
+                        .HasForeignKey("Domain.Entities.Pricing.PlannedTransportCost", "TransportPlanLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Pricing.TransportUnitPrice", "TransportUnitPrice")
+                        .WithMany()
+                        .HasForeignKey("TransportUnitPriceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("MechanizedTransportUnitPriceDetail");
+
+                    b.Navigation("TransportPlanLine");
+
+                    b.Navigation("TransportUnitPrice");
+                });
+
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
                 {
                     b.HasOne("Domain.Entities.Index.Department", "Department")
@@ -5820,6 +6114,60 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Material");
 
                     b.Navigation("SlideUnitPrice");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.TransportPlanLine", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.AssignmentCode", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Index.HaulDistance", "HaulDistance")
+                        .WithMany()
+                        .HasForeignKey("HaulDistanceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Entities.Index.ProductionProcess", "ProductionProcess")
+                        .WithMany()
+                        .HasForeignKey("ProductionProcessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Department", "RouteDepartment")
+                        .WithMany()
+                        .HasForeignKey("RouteDepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Index.TransportRoute", "TransportRoute")
+                        .WithMany()
+                        .HasForeignKey("TransportRouteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Index.UnitOfMeasure", "UnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("UnitOfMeasureId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Equipment");
+
+                    b.Navigation("HaulDistance");
+
+                    b.Navigation("ProductionProcess");
+
+                    b.Navigation("RouteDepartment");
+
+                    b.Navigation("TransportRoute");
+
+                    b.Navigation("UnitOfMeasure");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.TransportUnitPrice", b =>
@@ -6185,6 +6533,46 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("ProductionOutputProcessGroup");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Production.ProductionOutputTransportLine", b =>
+                {
+                    b.HasOne("Domain.Entities.Index.AssignmentCode", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Production.ProductionOutputProcessGroup", "ProductionOutputProcessGroup")
+                        .WithMany("ProductionOutputTransportLines")
+                        .HasForeignKey("ProductionOutputProcessGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.ProductionProcess", "ProductionProcess")
+                        .WithMany()
+                        .HasForeignKey("ProductionProcessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Index.Department", "RouteDepartment")
+                        .WithMany()
+                        .HasForeignKey("RouteDepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Index.TransportRoute", "TransportRoute")
+                        .WithMany()
+                        .HasForeignKey("TransportRouteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Equipment");
+
+                    b.Navigation("ProductionOutputProcessGroup");
+
+                    b.Navigation("ProductionProcess");
+
+                    b.Navigation("RouteDepartment");
+
+                    b.Navigation("TransportRoute");
                 });
 
             modelBuilder.Entity("Domain.Entities.Pricing.MaterialUnitPrice.LongwallMaterialUnitPrice", b =>
@@ -6603,6 +6991,11 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Navigation("PlannedMaintainCostAdjustmentFactorDescriptions");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Pricing.PlannedTransportCost", b =>
+                {
+                    b.Navigation("AdjustmentFactors");
+                });
+
             modelBuilder.Entity("Domain.Entities.Pricing.ProductUnitPrice", b =>
                 {
                     b.Navigation("Outputs");
@@ -6624,6 +7017,11 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Pricing.SlideUnitPriceAssignmentCode", b =>
                 {
                     b.Navigation("PlannedMaterialCosts");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Pricing.TransportPlanLine", b =>
+                {
+                    b.Navigation("PlannedTransportCost");
                 });
 
             modelBuilder.Entity("Domain.Entities.Production.AcceptanceReport", b =>
@@ -6681,6 +7079,8 @@ namespace Migrators.PostgreSQL.Migrations
             modelBuilder.Entity("Domain.Entities.Production.ProductionOutputProcessGroup", b =>
                 {
                     b.Navigation("ProductionOutputProducts");
+
+                    b.Navigation("ProductionOutputTransportLines");
                 });
 #pragma warning restore 612, 618
         }

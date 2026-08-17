@@ -595,6 +595,19 @@ export const API = {
 	},
 
 	COST: {
+		TRANSPORT_PLAN_LINE: {
+			LIST: '/v1/pricing/TransportPlanLine',
+			DETAIL_PLANNED_BY_DEPARTMENT: (departmentId: string) =>
+				`/v1/pricing/TransportPlanLine/Planned/Department/${departmentId}`,
+			DETAIL_PLANNED_BY_ID: (id: string) =>
+				`/v1/pricing/TransportPlanLine/Planned/${id}`,
+			CREATE_PLANNED_BY_DEPARTMENT:
+				'/v1/pricing/TransportPlanLine/Planned-By-Department',
+			UPDATE_PLANNED_BY_DEPARTMENT:
+				'/v1/pricing/TransportPlanLine/Planned-By-Department',
+			DELETE: (id: string) => `/v1/pricing/TransportPlanLine/${id}`,
+			DELETES: '/v1/pricing/TransportPlanLine',
+		},
 		PRODUCT: {
 			LIST: '/v1/pricing/productunitprice',
 			CREATE: '/v1/pricing/productunitprice',

@@ -29,7 +29,23 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(p => p.ProductionOutputProcessGroups)
                     .ThenInclude(g => g.ProductionOutputProducts)
                         .ThenInclude(pp => pp.Product)
-                            .ThenInclude(pr => pr.Code),
+                            .ThenInclude(pr => pr.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.ProductionProcess)
+                            .ThenInclude(pp => pp!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.Equipment)
+                            .ThenInclude(e => e!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.TransportRoute)
+                            .ThenInclude(r => r!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.RouteDepartment)
+                            .ThenInclude(d => d!.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         return new ProductionOutputDto
@@ -62,6 +78,24 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             ProductName = p.Product?.Name ?? string.Empty,
                             ProductionMeters = p.ProductionMeters,
                             ActualAshContent = p.ActualAshContent
+                        }).ToList(),
+                    TransportLines = g.ProductionOutputTransportLines
+                        .Select(tl => new ProductionOutputTransportLineDto
+                        {
+                            ProductionProcessId = tl.ProductionProcessId,
+                            ProductionProcessCode = tl.ProductionProcess?.Code?.Value ?? string.Empty,
+                            ProductionProcessName = tl.ProductionProcess?.Name ?? string.Empty,
+                            EquipmentId = tl.EquipmentId,
+                            EquipmentCode = tl.Equipment?.Code?.Value,
+                            EquipmentName = tl.Equipment?.Name,
+                            EquipmentQuality = tl.EquipmentQuality,
+                            TransportRouteId = tl.TransportRouteId,
+                            TransportRouteCode = tl.TransportRoute?.Code?.Value,
+                            TransportRouteName = tl.TransportRoute?.Name,
+                            RouteDepartmentId = tl.RouteDepartmentId,
+                            RouteDepartmentCode = tl.RouteDepartment?.Code?.Value,
+                            RouteDepartmentName = tl.RouteDepartment?.Name,
+                            ProductionMeters = tl.ProductionMeters
                         }).ToList()
                 }).ToList()
         };

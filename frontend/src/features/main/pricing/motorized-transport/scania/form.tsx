@@ -16,7 +16,10 @@ import { InfoIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { CargoType } from '@/features/main/catalog/cargo-type/columns';
-import { LocationType, TransportLocation } from '@/features/main/catalog/transport-location/columns';
+import {
+	LocationType,
+	TransportLocation,
+} from '@/features/main/catalog/transport-location/columns';
 import { MotorizedScaniaUnitPrice } from './columns';
 import {
 	MOTORIZED_SCANIA_FORM_DEFAULT,
@@ -39,7 +42,10 @@ const extractData = (res: any): any[] => {
 
 const fetchCatalogList = async (url: string) => {
 	try {
-		const res: any = await api.pagging(url, { ignorePagination: true, pageSize: 1000 });
+		const res: any = await api.pagging(url, {
+			ignorePagination: true,
+			pageSize: 1000,
+		});
 		const data = extractData(res);
 		if (data.length > 0) return data;
 	} catch (e) {
@@ -78,36 +84,53 @@ export function MotorizedScaniaForm({
 		useWatch({ control: form.control as any, name: 'assignmentCodeIds' }) || [];
 
 	const selectedEquipmentQualities =
-		useWatch({ control: form.control as any, name: 'equipmentQualities' }) || [];
+		useWatch({ control: form.control as any, name: 'equipmentQualities' }) ||
+		[];
 
 	const watchedEquipmentProcesses =
-		useWatch({ control: form.control as any, name: 'equipmentProcesses' }) || {};
+		useWatch({ control: form.control as any, name: 'equipmentProcesses' }) ||
+		{};
 
 	const watchedEquipmentDistances =
-		useWatch({ control: form.control as any, name: 'equipmentDistances' }) || {};
+		useWatch({ control: form.control as any, name: 'equipmentDistances' }) ||
+		{};
 
 	const watchedProcessCargoTypes =
 		useWatch({ control: form.control as any, name: 'processCargoTypes' }) || {};
 
 	const watchedProcessPickupLocations =
-		useWatch({ control: form.control as any, name: 'processPickupLocations' }) || {};
+		useWatch({
+			control: form.control as any,
+			name: 'processPickupLocations',
+		}) || {};
 
 	const watchedProcessDropoffLocations =
-		useWatch({ control: form.control as any, name: 'processDropoffLocations' }) || {};
+		useWatch({
+			control: form.control as any,
+			name: 'processDropoffLocations',
+		}) || {};
 
-	const items =
-		useWatch({ control: form.control as any, name: 'items' }) || [];
+	const items = useWatch({ control: form.control as any, name: 'items' }) || [];
 
 	const showBottomSection =
-		selectedAssignmentCodeIds.length > 0 && selectedEquipmentQualities.length > 0;
+		selectedAssignmentCodeIds.length > 0 &&
+		selectedEquipmentQualities.length > 0;
 
 	// Location options
 	const pickupOptions = locations
-		.filter((loc) => loc.locationType === LocationType.Receiving || Number(loc.locationType) === 1)
+		.filter(
+			(loc) =>
+				loc.locationType === LocationType.Receiving ||
+				Number(loc.locationType) === 1,
+		)
 		.map((loc) => ({ label: loc.name, value: loc.id || loc.name }));
 
 	const dropoffOptions = locations
-		.filter((loc) => loc.locationType === LocationType.Dumping || Number(loc.locationType) === 2)
+		.filter(
+			(loc) =>
+				loc.locationType === LocationType.Dumping ||
+				Number(loc.locationType) === 2,
+		)
 		.map((loc) => ({ label: loc.name, value: loc.id || loc.name }));
 
 	// Cargo type options
@@ -147,8 +170,10 @@ export function MotorizedScaniaForm({
 				if (!row) return;
 
 				// Map existing row data to form format
-				const allProcs: MotorizedScaniaUnitPrice[] = (row as any).allProcesses || [row];
-				const initialAcId = row.assignmentCodeId || (row as any).equipmentId || '';
+				const allProcs: MotorizedScaniaUnitPrice[] = (row as any)
+					.allProcesses || [row];
+				const initialAcId =
+					row.assignmentCodeId || (row as any).equipmentId || '';
 
 				const initialQualitiesList: string[] = [];
 				const initialProcsList: string[] = [];
@@ -167,7 +192,10 @@ export function MotorizedScaniaForm({
 						initialQualitiesList.push(q);
 					}
 
-					if (p.productionProcessId && !initialProcsList.includes(p.productionProcessId)) {
+					if (
+						p.productionProcessId &&
+						!initialProcsList.includes(p.productionProcessId)
+					) {
 						initialProcsList.push(p.productionProcessId);
 					}
 
@@ -176,27 +204,49 @@ export function MotorizedScaniaForm({
 						if (!initialProcCargoTypes[p.productionProcessId]) {
 							initialProcCargoTypes[p.productionProcessId] = [];
 						}
-						if (p.cargoTypeId && !initialProcCargoTypes[p.productionProcessId].includes(p.cargoTypeId)) {
+						if (
+							p.cargoTypeId &&
+							!initialProcCargoTypes[p.productionProcessId].includes(
+								p.cargoTypeId,
+							)
+						) {
 							initialProcCargoTypes[p.productionProcessId].push(p.cargoTypeId);
 						}
 
 						if (!initialProcPickups[p.productionProcessId]) {
 							initialProcPickups[p.productionProcessId] = [];
 						}
-						if (p.receivingLocationId && !initialProcPickups[p.productionProcessId].includes(p.receivingLocationId)) {
-							initialProcPickups[p.productionProcessId].push(p.receivingLocationId);
+						if (
+							p.receivingLocationId &&
+							!initialProcPickups[p.productionProcessId].includes(
+								p.receivingLocationId,
+							)
+						) {
+							initialProcPickups[p.productionProcessId].push(
+								p.receivingLocationId,
+							);
 						}
 
 						if (!initialProcDropoffs[p.productionProcessId]) {
 							initialProcDropoffs[p.productionProcessId] = [];
 						}
-						if (p.dumpingLocationId && !initialProcDropoffs[p.productionProcessId].includes(p.dumpingLocationId)) {
-							initialProcDropoffs[p.productionProcessId].push(p.dumpingLocationId);
+						if (
+							p.dumpingLocationId &&
+							!initialProcDropoffs[p.productionProcessId].includes(
+								p.dumpingLocationId,
+							)
+						) {
+							initialProcDropoffs[p.productionProcessId].push(
+								p.dumpingLocationId,
+							);
 						}
 					}
 
 					(p.details || []).forEach((d) => {
-						if (d.haulDistanceId && !initialDistsList.includes(d.haulDistanceId)) {
+						if (
+							d.haulDistanceId &&
+							!initialDistsList.includes(d.haulDistanceId)
+						) {
 							initialDistsList.push(d.haulDistanceId);
 						}
 
@@ -206,7 +256,8 @@ export function MotorizedScaniaForm({
 							assignmentCodeId: initialAcId,
 							equipmentQuality: q,
 							productionProcessId: p.productionProcessId,
-							productionProcessName: p.productionProcessName || p.productionProcess || '',
+							productionProcessName:
+								p.productionProcessName || p.productionProcess || '',
 							cargoTypeId: p.cargoTypeId || null,
 							cargoTypeName: p.cargoTypeName || '',
 							receivingLocationId: p.receivingLocationId || null,
@@ -227,8 +278,12 @@ export function MotorizedScaniaForm({
 					endMonth: row.endMonth?.substring(0, 7),
 					assignmentCodeIds: initialAcId ? [initialAcId] : [],
 					equipmentQualities: initialQualitiesList,
-					equipmentProcesses: initialAcId ? { [initialAcId]: initialProcsList } : {},
-					equipmentDistances: initialAcId ? { [initialAcId]: initialDistsList } : {},
+					equipmentProcesses: initialAcId
+						? { [initialAcId]: initialProcsList }
+						: {},
+					equipmentDistances: initialAcId
+						? { [initialAcId]: initialDistsList }
+						: {},
 					processCargoTypes: initialProcCargoTypes,
 					processPickupLocations: initialProcPickups,
 					processDropoffLocations: initialProcDropoffs,
@@ -266,8 +321,10 @@ export function MotorizedScaniaForm({
 
 				// Per-process cargo types and locations
 				const procCargoIds: string[] = watchedProcessCargoTypes[procId] || [];
-				const procPickupIds: string[] = watchedProcessPickupLocations[procId] || [];
-				const procDropoffIds: string[] = watchedProcessDropoffLocations[procId] || [];
+				const procPickupIds: string[] =
+					watchedProcessPickupLocations[procId] || [];
+				const procDropoffIds: string[] =
+					watchedProcessDropoffLocations[procId] || [];
 
 				selectedEquipmentQualities.forEach((qual: string) => {
 					// Nếu có chọn cung độ → tạo item cho mỗi cung độ
@@ -299,7 +356,9 @@ export function MotorizedScaniaForm({
 								haulDistanceValue: distValue,
 								fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
 								powerUnitPrice: existing ? existing.powerUnitPrice : 0,
-								maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
+								maintenanceUnitPrice: existing
+									? existing.maintenanceUnitPrice
+									: 0,
 							});
 						});
 					} else {
@@ -326,7 +385,9 @@ export function MotorizedScaniaForm({
 							haulDistanceValue: '',
 							fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
 							powerUnitPrice: existing ? existing.powerUnitPrice : 0,
-							maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
+							maintenanceUnitPrice: existing
+								? existing.maintenanceUnitPrice
+								: 0,
 						});
 					}
 				});
@@ -369,9 +430,13 @@ export function MotorizedScaniaForm({
 			}
 
 			const startMonth =
-				values.startMonth.length === 7 ? `${values.startMonth}-01` : values.startMonth;
+				values.startMonth.length === 7
+					? `${values.startMonth}-01`
+					: values.startMonth;
 			const endMonth =
-				values.endMonth.length === 7 ? `${values.endMonth}-01` : values.endMonth;
+				values.endMonth.length === 7
+					? `${values.endMonth}-01`
+					: values.endMonth;
 
 			// Flatten items by (assignmentCodeId, equipmentQuality, productionProcessId, cargoTypeId, receivingLocationId, dumpingLocationId)
 			const groupedHeaders: Record<
@@ -401,9 +466,12 @@ export function MotorizedScaniaForm({
 				const dumpingLocationIds: string[] = item.dumpingLocationIds || [];
 
 				// If no cargo types selected, still create one record with empty cargoTypeId
-				const cargoTypesToProcess = cargoTypeIds.length > 0 ? cargoTypeIds : [''];
-				const pickupsToProcess = receivingLocationIds.length > 0 ? receivingLocationIds : [null];
-				const dropoffsToProcess = dumpingLocationIds.length > 0 ? dumpingLocationIds : [null];
+				const cargoTypesToProcess =
+					cargoTypeIds.length > 0 ? cargoTypeIds : [''];
+				const pickupsToProcess =
+					receivingLocationIds.length > 0 ? receivingLocationIds : [null];
+				const dropoffsToProcess =
+					dumpingLocationIds.length > 0 ? dumpingLocationIds : [null];
 
 				cargoTypesToProcess.forEach((cargoTypeId) => {
 					pickupsToProcess.forEach((receivingLocationId) => {
@@ -454,7 +522,10 @@ export function MotorizedScaniaForm({
 						...payload,
 					});
 				} else {
-					return api.post(API.PRICING.MOTORIZED_TRANSPORT.SCANIA.CREATE, payload);
+					return api.post(
+						API.PRICING.MOTORIZED_TRANSPORT.SCANIA.CREATE,
+						payload,
+					);
 				}
 			});
 
@@ -500,7 +571,9 @@ export function MotorizedScaniaForm({
 						label='Nhóm vật tư, tài sản'
 						placeholder='Chọn nhóm vật tư, tài sản'
 						options={assignmentCodes.map((item) => ({
-							label: item.code ? `${item.code} - ${item.name}` : item.name || item.id,
+							label: item.code
+								? `${item.code} - ${item.name}`
+								: item.name || item.id,
 							value: item.id,
 						}))}
 					/>
@@ -525,8 +598,9 @@ export function MotorizedScaniaForm({
 			{/* FORM DƯỚI - Matrix nhập đơn giá */}
 			{showBottomSection && (
 				<div className='space-y-4'>
-					<div className='text-xs font-semibold uppercase text-gray-500'>
-						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm vật tư )
+					<div className='text-xs font-semibold text-gray-500 uppercase'>
+						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm
+						vật tư )
 					</div>
 
 					{selectedAssignmentCodeIds.map((acId: string) => {
@@ -536,15 +610,19 @@ export function MotorizedScaniaForm({
 								? `${acObj.code} - ${acObj.name}`
 								: acObj.name
 							: acId;
-						const selectedProcList: string[] = watchedEquipmentProcesses?.[acId] || [];
-						const selectedDistList: string[] = watchedEquipmentDistances?.[acId] || [];
+						const selectedProcList: string[] =
+							watchedEquipmentProcesses?.[acId] || [];
+						const selectedDistList: string[] =
+							watchedEquipmentDistances?.[acId] || [];
 
 						return (
 							<div
 								key={acId}
 								className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs'
 							>
-								<div className='text-sm font-semibold text-gray-800'>{title}</div>
+								<div className='text-sm font-semibold text-gray-800'>
+									{title}
+								</div>
 
 								<FormRow>
 									<div className='flex-1'>
@@ -560,8 +638,8 @@ export function MotorizedScaniaForm({
 										<FormMultiSelect
 											control={form.control as any}
 											name={`equipmentDistances.${acId}`}
-											label='Cung độ vận chuyển (km)'
-											placeholder='Chọn cung độ vận chuyển'
+											label='Cung độ vận tải'
+											placeholder='Chọn cung độ vận tải'
 											options={distanceOptions}
 										/>
 									</div>
@@ -569,7 +647,9 @@ export function MotorizedScaniaForm({
 
 								{/* VỚI MỖI CÔNG ĐOẠN ĐƯỢC CHỌN -> HIỂN THỊ FIELDS + BẢNG ĐƠN GIÁ */}
 								{selectedProcList.map((procId: string) => {
-									const procObj = processOptions.find((p) => p.value === procId);
+									const procObj = processOptions.find(
+										(p) => p.value === procId,
+									);
 									const procName = procObj ? procObj.label : procId;
 
 									const filteredItems = items.filter(
@@ -585,7 +665,7 @@ export function MotorizedScaniaForm({
 											key={procId}
 											className='space-y-3 rounded-md border border-gray-100 bg-gray-50/50 p-3'
 										>
-											<div className='text-sm font-semibold text-primary'>
+											<div className='text-primary text-sm font-semibold'>
 												{procName}
 											</div>
 
@@ -625,7 +705,7 @@ export function MotorizedScaniaForm({
 											{/* Bảng nhập đơn giá */}
 											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
 												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
+													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
 														<tr>
 															<th className='min-w-[140px] px-4 py-3'>
 																Chất lượng
@@ -715,9 +795,14 @@ export function MotorizedScaniaForm({
 					<InfoIcon className='size-4 text-blue-600 dark:text-blue-400' />
 					Lưu ý về Hệ số điều chỉnh đơn giá định mức (Cấu hình ở Danh mục):
 				</div>
-				<ul className='mt-1 list-disc pl-5 space-y-0.5 text-slate-700 dark:text-slate-300'>
-					<li>Đơn giá nhiên liệu, SCTX tăng 5% theo công đoạn sản xuất, mùa mưa và loại hàng.</li>
-					<li>Áp dụng hệ số điều chỉnh khi sản phẩm là Than, bùn, bã sàng, đá sàng đổ tại Kho 5 (Kho BHN) & Kho 6 (mức +75):
+				<ul className='mt-1 list-disc space-y-0.5 pl-5 text-slate-700 dark:text-slate-300'>
+					<li>
+						Đơn giá nhiên liệu, SCTX tăng 5% theo công đoạn sản xuất, mùa mưa và
+						loại hàng.
+					</li>
+					<li>
+						Áp dụng hệ số điều chỉnh khi sản phẩm là Than, bùn, bã sàng, đá sàng
+						đổ tại Kho 5 (Kho BHN) & Kho 6 (mức +75):
 						<span className='font-medium'> Mức ≤ +65 (K = 1)</span>;
 						<span className='font-medium'> +65 &lt; Mức ≤ +90 (K = 1,03)</span>;
 						<span className='font-medium'> Mức &gt; +90 (K = 1,06)</span>.

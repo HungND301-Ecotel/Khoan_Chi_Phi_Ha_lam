@@ -1,21 +1,25 @@
 import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
-import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormNumberInput } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
+import { FormSelect } from '@/components/form/form-select';
 import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
-import { Label } from '@/components/ui/label';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import type { Department } from '@/features/main/catalog/department/columns';
 import type { Product } from '@/features/main/catalog/product/columns';
+import {
+	normalizeProcessGroup,
+	type ProcessGroup,
+} from '@/features/main/catalog/process/group/columns';
+import type { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import type { Unit } from '@/features/main/catalog/unit/columns';
 import type { DepartmentPlanGroup } from '@/features/main/cost/plan/columns';
 import {
@@ -23,347 +27,35 @@ import {
 	type DepartmentPlanFormSchema,
 	departmentPlanFormSchema,
 } from '@/features/main/cost/plan/schema';
+import type { AdjustmentDetail } from '@/features/main/cost/plan/planed-maintain-cost/types';
 import {
 	type DepartmentPlannedDetail,
 	mapDepartmentPlannedDetail,
 } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircleIcon, TriangleAlertIcon, XCircleIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import {
-	type UseFormReturn,
-	useFieldArray,
-	useForm,
-	useWatch,
-} from 'react-hook-form';
+import { PlusCircleIcon, TriangleAlertIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 
 type PlanFormProps = ActionDialogProps<DepartmentPlanGroup> & {
 	onSuccess?: () => void;
 };
 
-type MonthSectionProps = {
-	form: UseFormReturn<DepartmentPlanFormSchema>;
-	monthIndex: number;
-	canRemove: boolean;
-	onRemoveMonth: () => void;
-	products: Product[];
-	units: Unit[];
-	akProcessGroupIds: Set<string>;
-	shouldPreserveInvalidSelection: (
-		item: DepartmentPlanFormSchema['months'][number]['items'][number],
-		month?: string,
-	) => boolean;
-	onSyncProductUnit: (
-		productId: string,
-		unitOfMeasureId: string,
-		origin: { monthIndex: number; itemIndex: number },
-	) => void;
-};
-
-const isProductAvailableForMonth = (product: Product, month?: string) => {
-	if (!month) return true;
-	return product.startMonth <= month && month <= product.endMonth;
-};
-
-const formatMonthLabel = (month?: string) => {
-	if (!month) return 'chưa chọn tháng';
-	const [year, monthValue] = month.split('-');
-	if (!year || !monthValue) return month;
-	return `Tháng ${monthValue}/${year}`;
-};
-
-const getInvalidSelectedProduct = (
-	products: Product[],
-	productId?: string,
-	month?: string,
-) => {
-	if (!productId || !month) return null;
-	const product = products.find((item) => item.id === productId);
-	if (!product) return null;
-	return isProductAvailableForMonth(product, month) ? null : product;
-};
+import {
+	MonthSection,
+	formatMonthLabel,
+	getInvalidSelectedProduct,
+} from './khai-thac/form-section';
+import {
+	ProductionProcessOption,
+	TransportMonthSection,
+} from './van-tai-lo/form-section';
+import { buildTransportMonthsPayload } from './van-tai-lo/utils';
 
 const getPersistedItemKey = (
 	item: DepartmentPlanFormSchema['months'][number]['items'][number],
 ) => item.outputId || item.productUnitPriceId || '';
-
-function MonthSection({
-	form,
-	monthIndex,
-	canRemove,
-	onRemoveMonth,
-	products,
-	units,
-	akProcessGroupIds,
-	shouldPreserveInvalidSelection,
-	onSyncProductUnit,
-}: MonthSectionProps) {
-	const monthPath = `months.${monthIndex}` as const;
-	const watchedMonth = useWatch({
-		control: form.control,
-		name: monthPath,
-	}) as DepartmentPlanFormSchema['months'][number];
-	const {
-		fields: itemFields,
-		append,
-		remove,
-	} = useFieldArray({
-		control: form.control,
-		name: `months.${monthIndex}.items`,
-	});
-
-	const getProduct = (productId?: string) =>
-		products.find((product) => product.id === productId);
-
-	const availableProducts = products.filter((product) =>
-		isProductAvailableForMonth(product, watchedMonth?.month),
-	);
-
-	const handleProductChange = (itemIndex: number, productId: string) => {
-		form.setValue(
-			`months.${monthIndex}.items.${itemIndex}.productId`,
-			productId,
-			{
-				shouldDirty: true,
-				shouldValidate: true,
-			},
-		);
-
-		const syncedUnit = form
-			.getValues('months')
-			.flatMap((month) => month.items)
-			.find(
-				(item) => item.productId === productId && item.unitOfMeasureId,
-			)?.unitOfMeasureId;
-
-		if (syncedUnit) {
-			form.setValue(
-				`months.${monthIndex}.items.${itemIndex}.unitOfMeasureId`,
-				syncedUnit,
-				{
-					shouldDirty: true,
-					shouldValidate: true,
-				},
-			);
-		}
-	};
-
-	const handleUnitChange = (itemIndex: number, unitOfMeasureId: string) => {
-		const productId = form.getValues(
-			`months.${monthIndex}.items.${itemIndex}.productId`,
-		);
-		form.setValue(
-			`months.${monthIndex}.items.${itemIndex}.unitOfMeasureId`,
-			unitOfMeasureId,
-			{
-				shouldDirty: true,
-				shouldValidate: true,
-			},
-		);
-
-		if (productId) {
-			onSyncProductUnit(productId, unitOfMeasureId, { monthIndex, itemIndex });
-		}
-	};
-
-	return (
-		<div className='flex flex-col gap-4 rounded-sm border border-[#999999] p-4'>
-			<div className='flex items-center justify-between gap-4'>
-				<FormMonthYear
-					control={form.control}
-					name={`months.${monthIndex}.month`}
-					label='Thời gian'
-					className='flex-1'
-				/>
-				<Button
-					type='button'
-					variant='ghost'
-					size='sm'
-					className='text-error hover:text-error-muted mt-7 bg-transparent'
-					onClick={onRemoveMonth}
-					disabled={!canRemove}
-				>
-					<XCircleIcon className='size-4' />
-					<span>Xóa tháng</span>
-				</Button>
-			</div>
-
-			{typeof form.formState.errors.months?.[monthIndex]?.month?.message ===
-				'string' && (
-				<FieldError
-					errors={[form.formState.errors.months?.[monthIndex]?.month]}
-				/>
-			)}
-
-			<div className='flex flex-col gap-4'>
-				{itemFields.map((field, itemIndex) => {
-					const currentItem = watchedMonth?.items?.[itemIndex];
-					const product = getProduct(currentItem?.productId);
-					const invalidSelectedProduct =
-						currentItem &&
-						shouldPreserveInvalidSelection(currentItem, watchedMonth?.month)
-						? getInvalidSelectedProduct(
-								products,
-								currentItem?.productId,
-								watchedMonth?.month,
-							)
-						: null;
-					const selectableProducts = invalidSelectedProduct
-						? [...availableProducts, invalidSelectedProduct].filter(
-								(productOption, index, allOptions) =>
-									allOptions.findIndex(
-										(candidate) => candidate.id === productOption.id,
-									) === index,
-							)
-						: availableProducts;
-					const isAkApplicable =
-						!!product?.processGroupId &&
-						akProcessGroupIds.has(product.processGroupId);
-
-					return (
-						<div
-							key={field.id}
-							className='flex flex-col gap-3 rounded-sm border border-dashed border-[#BDBDBD] p-3'
-						>
-							<div className='flex gap-4 [&>div>label]:flex [&>div>label]:min-h-10 [&>div>label]:items-end [&>div>label]:leading-5'>
-								<FormComboBox
-									label='Mã sản phẩm'
-									placeholder='Chọn mã sản phẩm'
-									value={currentItem?.productId || ''}
-									onValueChange={(value) =>
-										handleProductChange(itemIndex, value)
-									}
-									options={selectableProducts.map((productOption) => ({
-										label: `${productOption.code} - ${productOption.name}`,
-										value: productOption.id,
-									}))}
-								/>
-								<FormComboBox
-									label='Đơn vị tính'
-									placeholder='Chọn đơn vị tính'
-									value={currentItem?.unitOfMeasureId || ''}
-									onValueChange={(value) => handleUnitChange(itemIndex, value)}
-									options={units.map((unit) => ({
-										label: unit.name,
-										value: unit.id,
-									}))}
-								/>
-								<div className='flex flex-1 flex-col gap-2'>
-									<Label>Sản lượng kế hoạch ban đầu</Label>
-									<FormNumberInput
-										value={currentItem?.productionMeters}
-										onValueChange={(value) =>
-											form.setValue(
-												`months.${monthIndex}.items.${itemIndex}.productionMeters`,
-												value ?? Number.NaN,
-												{
-													shouldDirty: true,
-													shouldValidate: true,
-												},
-											)
-										}
-										placeholder='Nhập sản lượng kế hoạch ban đầu'
-									/>
-								</div>
-								{isAkApplicable && (
-									<div className='flex flex-1 flex-col gap-2'>
-										<Label>Ak kế hoạch (%)</Label>
-										<FormNumberInput
-											value={currentItem?.planAshContent}
-											onValueChange={(value) =>
-												form.setValue(
-													`months.${monthIndex}.items.${itemIndex}.planAshContent`,
-													value ?? 0,
-													{
-														shouldDirty: true,
-														shouldValidate: true,
-													},
-												)
-											}
-											placeholder='Nhập Ak kế hoạch'
-										/>
-									</div>
-								)}
-								<Button
-									type='button'
-									variant='ghost'
-									size='icon'
-									className='text-error hover:text-error-muted mt-7 bg-transparent'
-									onClick={() => remove(itemIndex)}
-									disabled={itemFields.length === 1}
-								>
-									<XCircleIcon className='size-6' />
-								</Button>
-							</div>
-
-							<div className='grid grid-cols-1 gap-2 md:grid-cols-3'>
-								{typeof form.formState.errors.months?.[monthIndex]?.items?.[
-									itemIndex
-								]?.productId?.message === 'string' && (
-									<FieldError
-										errors={[
-											form.formState.errors.months?.[monthIndex]?.items?.[
-												itemIndex
-											]?.productId,
-										]}
-									/>
-								)}
-								{typeof form.formState.errors.months?.[monthIndex]?.items?.[
-									itemIndex
-								]?.unitOfMeasureId?.message === 'string' && (
-									<FieldError
-										errors={[
-											form.formState.errors.months?.[monthIndex]?.items?.[
-												itemIndex
-											]?.unitOfMeasureId,
-										]}
-									/>
-								)}
-								{typeof form.formState.errors.months?.[monthIndex]?.items?.[
-									itemIndex
-								]?.productionMeters?.message === 'string' && (
-									<FieldError
-										errors={[
-											form.formState.errors.months?.[monthIndex]?.items?.[
-												itemIndex
-											]?.productionMeters,
-										]}
-									/>
-								)}
-							</div>
-						</div>
-					);
-				})}
-			</div>
-
-			{typeof form.formState.errors.months?.[monthIndex]?.items?.message ===
-				'string' && (
-				<FieldError
-					errors={[form.formState.errors.months?.[monthIndex]?.items]}
-				/>
-			)}
-
-			<Button
-				type='button'
-				variant='ghost'
-				size='sm'
-				className='h-fit w-fit bg-transparent'
-				onClick={() =>
-					append({
-						productId: '',
-						unitOfMeasureId: '',
-						productionMeters: Number.NaN,
-						planAshContent: 0,
-					})
-				}
-			>
-				<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
-				<span>Thêm sản phẩm</span>
-			</Button>
-		</div>
-	);
-}
 
 export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const popup = usePopup();
@@ -378,10 +70,25 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const [legacyProductIds, setLegacyProductIds] = useState<Map<string, string>>(
 		new Map(),
 	);
+	const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>([]);
+	const [contractCodes, setContractCodes] = useState<
+		{ id: string; code: string; name: string; unitOfMeasureId?: string }[]
+	>([]);
+	const [productionProcesses, setProductionProcesses] = useState<
+		ProductionProcessOption[]
+	>([]);
+	const [adjustments, setAdjustments] = useState<AdjustmentDetail[]>([]);
+	// K1 (Hệ số chất lượng thiết bị) và K2 (Hệ số điều kiện môi trường), lấy từ Danh mục Hệ số điều chỉnh
+	const [k1Adjustment, setK1Adjustment] = useState<AdjustmentDetail | null>(
+		null,
+	);
+	const [k2Adjustment, setK2Adjustment] = useState<AdjustmentDetail | null>(
+		null,
+	);
 	const isEdit = !!row;
 
 	const form = useForm<DepartmentPlanFormSchema>({
-		resolver: zodResolver(departmentPlanFormSchema),
+		resolver: zodResolver(departmentPlanFormSchema) as any,
 		mode: 'onSubmit',
 		defaultValues: DEPARTMENT_PLAN_FORM_DEFAULT,
 	});
@@ -395,11 +102,49 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		name: 'months',
 	});
 
+	const {
+		fields: transportMonthFields,
+		append: appendTransportMonth,
+		remove: removeTransportMonth,
+	} = useFieldArray({
+		control: form.control,
+		name: 'transportMonths',
+	});
+
 	const watchedMonths = useWatch({
 		control: form.control,
 		name: 'months',
 		defaultValue: DEPARTMENT_PLAN_FORM_DEFAULT.months,
 	}) as DepartmentPlanFormSchema['months'];
+
+	const watchedPlanMode = useWatch({
+		control: form.control,
+		name: 'planMode',
+	});
+
+	const prevPlanModeRef = useRef<string | undefined>(undefined);
+
+	// Làm mới dữ liệu Vận tải lò hoặc Khai thác khi đổi chế độ kế hoạch
+	useEffect(() => {
+		if (
+			prevPlanModeRef.current !== undefined &&
+			prevPlanModeRef.current !== watchedPlanMode
+		) {
+			if (watchedPlanMode === 'vantailo') {
+				form.setValue('months', []);
+			} else {
+				form.setValue('transportMonths', [
+					{
+						month: '',
+						lowValuePerishableSupply: false,
+						processIds: [],
+						processes: [],
+					},
+				]);
+			}
+		}
+		prevPlanModeRef.current = watchedPlanMode;
+	}, [watchedPlanMode, form]);
 
 	const invalidLegacySelections = useMemo(() => {
 		if (!isEdit) return [];
@@ -447,10 +192,37 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 					ignorePagination: true,
 				},
 			),
+			// Transport data
+			api.pagging<TransportRoute>(API.CATALOG.TRANSPORT_ROUTE.LIST, {
+				ignorePagination: true,
+			}),
+			api.pagging<{
+				id: string;
+				code: string;
+				name: string;
+				unitOfMeasureId?: string;
+			}>(API.CATALOG.CONTRACT_CODE.LIST, { ignorePagination: true }),
+			api.pagging<ProductionProcessOption>(API.CATALOG.PROCESS.STEP.LIST, {
+				ignorePagination: true,
+			}),
+			api
+				.get<AdjustmentDetail[]>(API.CATALOG.ADJUSTMENT.FACTOR.DETAILS)
+				.catch(() => ({
+					result: [] as AdjustmentDetail[],
+				})),
 		]);
 
 		promises.then(
-			async ([productsRes, unitsRes, departmentsRes, akConfigs]) => {
+			async ([
+				productsRes,
+				unitsRes,
+				departmentsRes,
+				akConfigs,
+				routesRes,
+				contractsRes,
+				processesRes,
+				adjustmentsRes,
+			]) => {
 				setProducts(productsRes.result.data ?? []);
 				setUnits(unitsRes.result.data ?? []);
 				setDepartments(departmentsRes.result.data ?? []);
@@ -461,42 +233,254 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							.filter((id) => !!id),
 					),
 				);
+				setTransportRoutes(routesRes.result.data ?? []);
+				setContractCodes(contractsRes.result.data ?? []);
+				setAdjustments((adjustmentsRes as any)?.result || []);
+
+				// Lọc các Công đoạn sản xuất thuộc Vận tải lò (loại trừ công đoạn của Vận tải cơ giới)
+				const allProcesses = processesRes.result.data || [];
+				const vtlProcesses = allProcesses.filter((p) => {
+					const group = (p.processGroupName || '').toLowerCase();
+					const name = (p.name || '').toLowerCase();
+					const code = (p.code || '').toUpperCase();
+
+					if (
+						group.includes('cơ giới') ||
+						code === 'GDC' ||
+						code === 'GPV' ||
+						code === 'GGDC' ||
+						code === 'GGPV' ||
+						name.startsWith('giờ phục vụ') ||
+						name.startsWith('giờ di chuyển') ||
+						name.startsWith('giờ gạt')
+					) {
+						return false;
+					}
+
+					return (
+						!p.processGroupName ||
+						group.includes('vận tải lò') ||
+						group.includes('vtl') ||
+						group.includes('vận tải')
+					);
+				});
+				setProductionProcesses(
+					vtlProcesses.length > 0 ? vtlProcesses : allProcesses,
+				);
 
 				if (!row) return;
 
-				const detail = await api.get<DepartmentPlannedDetail>(
-					API.COST.PRODUCT.DETAIL_PLANNED_BY_DEPARTMENT(row.id),
-				);
-				const mappedDetail = mapDepartmentPlannedDetail(detail.result);
+				const targetDeptId = (row as any)?.departmentId || row?.id;
+				const targetPlanMode =
+					(row as any)?.planMode ||
+					(row?.hasVanTaiLo && !row?.hasKhaiThac ? 'vantailo' : 'khaithac');
 
-				form.reset({
-					departmentId: mappedDetail.departmentId,
-					months: mappedDetail.months.map((month) => ({
-						month: month.month.substring(0, 10),
-						items: month.items.map((item) => ({
-							productUnitPriceId: item.productUnitPriceId,
-							outputId: item.outputId,
-							productId: item.productId,
-							unitOfMeasureId: item.unitOfMeasureId,
-							productionMeters: item.productionMeters,
-							planAshContent: item.planAshContent ?? 0,
+				if (targetPlanMode === 'vantailo') {
+					try {
+						const detailRes = await api.get<{
+							departmentId: string;
+							months: {
+								month: string;
+								items: {
+									id: string;
+									productionProcessId?: string;
+									transportRouteId?: string;
+									routeDepartmentId?: string;
+									contractCodeId?: string;
+									equipmentQuality?: string;
+									productionMeters?: number;
+									unitOfMeasureId?: string;
+									k1?: any;
+									k2?: any;
+								}[];
+							}[];
+						}>(
+							API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
+								targetDeptId,
+							),
+						);
+						const detail = detailRes.result;
+
+						const months = (detail.months || []).map((m) => {
+							const items = m.items || [];
+							const processIds = [
+								...new Set(
+									items.map((it) => it.productionProcessId).filter(Boolean),
+								),
+							] as string[];
+
+							const processes = processIds.map((pId) => {
+								const pItems = items.filter(
+									(it) => it.productionProcessId === pId,
+								);
+
+								const routeDepartmentIdsMap: Record<string, string[]> = {};
+								pItems.forEach((it) => {
+									if (it.transportRouteId && it.routeDepartmentId) {
+										if (!routeDepartmentIdsMap[it.transportRouteId]) {
+											routeDepartmentIdsMap[it.transportRouteId] = [];
+										}
+										if (
+											!routeDepartmentIdsMap[it.transportRouteId].includes(
+												it.routeDepartmentId,
+											)
+										) {
+											routeDepartmentIdsMap[it.transportRouteId].push(
+												it.routeDepartmentId,
+											);
+										}
+									}
+								});
+
+								const contractCodeQualityIdsMap: Record<string, string[]> = {};
+								pItems.forEach((it) => {
+									if (it.contractCodeId && it.equipmentQuality) {
+										if (!contractCodeQualityIdsMap[it.contractCodeId]) {
+											contractCodeQualityIdsMap[it.contractCodeId] = [];
+										}
+										if (
+											!contractCodeQualityIdsMap[it.contractCodeId].includes(
+												it.equipmentQuality,
+											)
+										) {
+											contractCodeQualityIdsMap[it.contractCodeId].push(
+												it.equipmentQuality,
+											);
+										}
+									}
+								});
+
+								return {
+									productionProcessId: pId,
+									routeIds: [
+										...new Set(
+											pItems.map((it) => it.transportRouteId).filter(Boolean),
+										),
+									] as string[],
+									routeDepartmentIds: routeDepartmentIdsMap,
+									contractCodeIds: [
+										...new Set(
+											pItems.map((it) => it.contractCodeId).filter(Boolean),
+										),
+									] as string[],
+									contractCodeQualityIds: contractCodeQualityIdsMap,
+									items: pItems.map((it: any) => ({
+										id: it.id,
+										transportRouteId: it.transportRouteId,
+										departmentId: it.routeDepartmentId,
+										contractCodeId: it.contractCodeId,
+										equipmentQuality: it.equipmentQuality,
+										productionMeters: it.productionMeters,
+										unitOfMeasureId: it.unitOfMeasureId,
+										k1Factor: it.k1
+											? {
+													adjustmentFactorId: it.k1.adjustmentFactorId,
+													adjustmentFactorDescriptionId:
+														it.k1.adjustmentFactorDescriptionId,
+													customValue: it.k1.customValue,
+												}
+											: undefined,
+										k2Factor: it.k2
+											? {
+													adjustmentFactorId: it.k2.adjustmentFactorId,
+													adjustmentFactorDescriptionId:
+														it.k2.adjustmentFactorDescriptionId,
+													customValue: it.k2.customValue,
+												}
+											: undefined,
+									})),
+								};
+							});
+
+							return {
+								month: m.month.substring(0, 10),
+								lowValuePerishableSupply: false,
+								processIds,
+								processes,
+							};
+						});
+
+						form.reset({
+							departmentId: detail.departmentId || targetDeptId,
+							planMode: 'vantailo',
+							months: [],
+							transportMonths: months,
+						});
+					} catch {
+						form.reset({
+							departmentId: targetDeptId,
+							planMode: 'vantailo',
+							months: [],
+							transportMonths: [],
+						});
+					}
+				} else {
+					const detail = await api.get<DepartmentPlannedDetail>(
+						API.COST.PRODUCT.DETAIL_PLANNED_BY_DEPARTMENT(targetDeptId),
+					);
+					const mappedDetail = mapDepartmentPlannedDetail(detail.result);
+
+					form.reset({
+						departmentId: mappedDetail.departmentId,
+						planMode: 'khaithac',
+						months: mappedDetail.months.map((month) => ({
+							month: month.month.substring(0, 10),
+							items: month.items.map((item) => ({
+								productUnitPriceId: item.productUnitPriceId,
+								outputId: item.outputId,
+								productId: item.productId,
+								unitOfMeasureId: item.unitOfMeasureId,
+								productionMeters: item.productionMeters,
+								planAshContent: item.planAshContent ?? 0,
+							})),
 						})),
-					})),
-				});
-				setLegacyProductIds(
-					new Map(
-						mappedDetail.months.flatMap((month) =>
-							month.items.flatMap((item) => {
-								const itemKey = item.outputId || item.productUnitPriceId;
-								if (!itemKey) return [];
-								return [[itemKey, item.productId] as const];
-							}),
+					});
+					setLegacyProductIds(
+						new Map(
+							mappedDetail.months.flatMap((month) =>
+								month.items.flatMap((item) => {
+									const itemKey = item.outputId || item.productUnitPriceId;
+									if (!itemKey) return [];
+									return [[itemKey, item.productId] as const];
+								}),
+							),
 						),
-					),
-				);
+					);
+				}
 			},
 		);
 	}, [form, row]);
+
+	// Lấy K1 (Hệ số chất lượng thiết bị) và K2 (Hệ số điều kiện môi trường)
+	// từ Danh mục Hệ số điều chỉnh của nhóm công đoạn Vận tải lò (VTL)
+	useEffect(() => {
+		api
+			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST, {
+				ignorePagination: true,
+			})
+			.then((res) => {
+				const groups = (res.result.data ?? []).map(normalizeProcessGroup);
+				const vtlGroup = groups.find(
+					(group) => group.fixedKeyType === ProcessGroupType.VTL,
+				);
+				if (!vtlGroup) return;
+
+				return api
+					.get<AdjustmentDetail[]>(API.CATALOG.ADJUSTMENT.FACTOR.DETAILS, {
+						processGroupId: vtlGroup.id,
+					})
+					.then((factorsRes) => {
+						const factors = factorsRes.result || [];
+						setK1Adjustment(
+							factors.find((f) => (f.fixedKeyKey ?? f.code) === 'K1') ?? null,
+						);
+						setK2Adjustment(
+							factors.find((f) => (f.fixedKeyKey ?? f.code) === 'K2') ?? null,
+						);
+					});
+			})
+			.catch(() => {});
+	}, []);
 
 	useEffect(() => {
 		if (!row) {
@@ -605,32 +589,54 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 	const handleSubmit = async (values: DepartmentPlanFormSchema) => {
 		try {
-			const payload = {
-				departmentId: values.departmentId,
-				months: values.months.map((month) => ({
-					month: month.month,
-					items: month.items.map((item) => {
-						const product = productMap.get(item.productId);
-						const isAkApplicable =
-							!!product?.processGroupId &&
-							akProcessGroupIds.has(product.processGroupId);
+			if (values.planMode === 'vantailo') {
+				const transportPayload = {
+					departmentId: values.departmentId,
+					months: buildTransportMonthsPayload(values.transportMonths),
+				};
 
-						return {
-							productUnitPriceId: item.productUnitPriceId,
-							outputId: item.outputId,
-							productId: item.productId,
-							unitOfMeasureId: item.unitOfMeasureId,
-							productionMeters: item.productionMeters,
-							planAshContent: isAkApplicable ? (item.planAshContent ?? 0) : 0,
-						};
-					}),
-				})),
-			};
-
-			if (isEdit) {
-				await api.put(API.COST.PRODUCT.UPDATE_PLANNED_BY_DEPARTMENT, payload);
+				if (isEdit) {
+					await api.put(
+						API.COST.TRANSPORT_PLAN_LINE.UPDATE_PLANNED_BY_DEPARTMENT,
+						transportPayload,
+					);
+				} else {
+					await api.post(
+						API.COST.TRANSPORT_PLAN_LINE.CREATE_PLANNED_BY_DEPARTMENT,
+						transportPayload,
+					);
+				}
 			} else {
-				await api.post(API.COST.PRODUCT.CREATE_PLANNED_BY_DEPARTMENT, payload);
+				const payload = {
+					departmentId: values.departmentId,
+					months: values.months.map((month) => ({
+						month: month.month,
+						items: month.items.map((item) => {
+							const product = productMap.get(item.productId);
+							const isAkApplicable =
+								!!product?.processGroupId &&
+								akProcessGroupIds.has(product.processGroupId);
+
+							return {
+								productUnitPriceId: item.productUnitPriceId,
+								outputId: item.outputId,
+								productId: item.productId,
+								unitOfMeasureId: item.unitOfMeasureId,
+								productionMeters: item.productionMeters,
+								planAshContent: isAkApplicable ? (item.planAshContent ?? 0) : 0,
+							};
+						}),
+					})),
+				};
+
+				if (isEdit) {
+					await api.put(API.COST.PRODUCT.UPDATE_PLANNED_BY_DEPARTMENT, payload);
+				} else {
+					await api.post(
+						API.COST.PRODUCT.CREATE_PLANNED_BY_DEPARTMENT,
+						payload,
+					);
+				}
 			}
 
 			setOpen(false);
@@ -646,7 +652,36 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	};
 
 	return (
-		<FormProvider context={form} onSubmit={handleSubmit}>
+		<FormProvider
+			context={form}
+			onSubmit={handleSubmit}
+			onInvalid={(errors) => {
+				console.error('Form validation errors:', errors);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const getFirstErrorMsg = (errObj: any): string | undefined => {
+					if (!errObj) return undefined;
+					if (typeof errObj.message === 'string') return errObj.message;
+					if (Array.isArray(errObj)) {
+						for (const item of errObj) {
+							const msg = getFirstErrorMsg(item);
+							if (msg) return msg;
+						}
+					} else if (typeof errObj === 'object') {
+						for (const key of Object.keys(errObj)) {
+							const msg = getFirstErrorMsg(errObj[key]);
+							if (msg) return msg;
+						}
+					}
+					return undefined;
+				};
+
+				const firstMsg = getFirstErrorMsg(errors);
+				popup.error(
+					firstMsg ||
+						'Vui lòng kiểm tra lại các thông tin nhập trong form (đơn vị, thời gian, công đoạn sản xuất, sản lượng...)',
+				);
+			}}
+		>
 			<FormRow>
 				<FormComboBox
 					control={form.control}
@@ -661,71 +696,139 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				/>
 			</FormRow>
 
+			{/* Chọn chế độ: Khai thác / Vận tải lò */}
+			<FormRow>
+				<FormSelect
+					control={form.control}
+					name='planMode'
+					label='Chọn'
+					placeholder='Chọn chế độ kế hoạch'
+					options={[
+						{ value: 'khaithac', label: 'Khai thác' },
+						{ value: 'vantailo', label: 'Vận tải lò' },
+					]}
+				/>
+			</FormRow>
+
 			<FormSeparator />
 
-			<div className='flex flex-col gap-4'>
-				{invalidLegacySelections.length > 0 && (
-					<Alert variant='destructive'>
-						<TriangleAlertIcon />
-						<AlertTitle>
-							Một số sản phẩm đang chọn không còn thuộc khoảng thời gian áp dụng
-						</AlertTitle>
-						<AlertDescription>
-							<div className='space-y-1'>
-								{invalidLegacySelections.map((selection) => (
-									<p
-										key={`${selection.monthIndex}-${selection.itemIndex}-${selection.product.id}`}
-									>
-										{`${formatMonthLabel(selection.month)}: ${selection.product.code} - ${selection.product.name}`}
-									</p>
-								))}
-							</div>
-						</AlertDescription>
-					</Alert>
-				)}
+			{/* ========== FORM KHAI THÁC ========== */}
+			{watchedPlanMode === 'khaithac' && (
+				<>
+					<div className='flex flex-col gap-4'>
+						{invalidLegacySelections.length > 0 && (
+							<Alert variant='destructive'>
+								<TriangleAlertIcon />
+								<AlertTitle>
+									Một số sản phẩm đang chọn không còn thuộc khoảng thời gian áp
+									dụng
+								</AlertTitle>
+								<AlertDescription>
+									<div className='space-y-1'>
+										{invalidLegacySelections.map((selection) => (
+											<p
+												key={`${selection.monthIndex}-${selection.itemIndex}-${selection.product.id}`}
+											>
+												{`${formatMonthLabel(selection.month)}: ${selection.product.code} - ${selection.product.name}`}
+											</p>
+										))}
+									</div>
+								</AlertDescription>
+							</Alert>
+						)}
 
-				{monthFields.map((field, monthIndex) => (
-					<MonthSection
-						key={field.id}
-						form={form}
-						monthIndex={monthIndex}
-						canRemove={monthFields.length > 1}
-						onRemoveMonth={() => remove(monthIndex)}
-						products={products}
-						units={units}
-						akProcessGroupIds={akProcessGroupIds}
-						shouldPreserveInvalidSelection={shouldPreserveInvalidSelection}
-						onSyncProductUnit={syncProductUnit}
-					/>
-				))}
-			</div>
+						{monthFields.map((field, monthIndex) => (
+							<MonthSection
+								key={field.id}
+								form={form}
+								monthIndex={monthIndex}
+								canRemove={monthFields.length > 1}
+								onRemoveMonth={() => remove(monthIndex)}
+								products={products}
+								units={units}
+								akProcessGroupIds={akProcessGroupIds}
+								shouldPreserveInvalidSelection={shouldPreserveInvalidSelection}
+								onSyncProductUnit={syncProductUnit}
+							/>
+						))}
+					</div>
 
-			{typeof form.formState.errors.months?.message === 'string' && (
-				<FieldError errors={[form.formState.errors.months]} />
+					{typeof form.formState.errors.months?.message === 'string' && (
+						<FieldError errors={[form.formState.errors.months]} />
+					)}
+
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						className='h-fit w-fit bg-transparent'
+						onClick={() =>
+							append({
+								month: '',
+								items: [
+									{
+										productId: '',
+										unitOfMeasureId: '',
+										productionMeters: Number.NaN,
+										planAshContent: 0,
+									},
+								],
+							})
+						}
+					>
+						<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+						<span>Thêm thời gian</span>
+					</Button>
+				</>
 			)}
 
-			<Button
-				type='button'
-				variant='ghost'
-				size='sm'
-				className='h-fit w-fit bg-transparent'
-				onClick={() =>
-					append({
-						month: '',
-						items: [
-							{
-								productId: '',
-								unitOfMeasureId: '',
-								productionMeters: Number.NaN,
-								planAshContent: 0,
-							},
-						],
-					})
-				}
-			>
-				<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
-				<span>Thêm thời gian</span>
-			</Button>
+			{/* ========== FORM VẬN TẢI LÒ ========== */}
+			{watchedPlanMode === 'vantailo' && (
+				<>
+					<div className='flex flex-col gap-4'>
+						{transportMonthFields.map((field, monthIndex) => (
+							<TransportMonthSection
+								key={field.id}
+								form={form}
+								monthIndex={monthIndex}
+								canRemove={transportMonthFields.length > 1}
+								onRemoveMonth={() => removeTransportMonth(monthIndex)}
+								productionProcesses={productionProcesses}
+								transportRoutes={transportRoutes}
+								departments={departments}
+								contractCodes={contractCodes}
+								units={units}
+								adjustments={adjustments}
+								k1Adjustment={k1Adjustment}
+								k2Adjustment={k2Adjustment}
+							/>
+						))}
+					</div>
+
+					{typeof form.formState.errors.transportMonths?.message ===
+						'string' && (
+						<FieldError errors={[form.formState.errors.transportMonths]} />
+					)}
+
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						className='h-fit w-fit bg-transparent'
+						onClick={() =>
+							appendTransportMonth({
+								month: '',
+								lowValuePerishableSupply: false,
+								processIds: [],
+								processes: [],
+							})
+						}
+					>
+						<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+						<span>Thêm thời gian</span>
+					</Button>
+				</>
+			)}
 
 			<FormSeparator />
 

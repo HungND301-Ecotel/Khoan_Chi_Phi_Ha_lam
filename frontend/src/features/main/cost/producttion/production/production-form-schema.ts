@@ -21,8 +21,39 @@ const productionGroupProductSchema = z.object({
 		.optional(),
 });
 
+// --- Vận tải lò/Vận tải cơ giới: 1 dòng sản lượng thực tế theo (Tuyến + Đơn vị áp dụng cho tuyến
+// — chỉ công đoạn Băng tải) HOẶC (Thiết bị + Chất lượng thiết bị — chỉ công đoạn Monoray). Cả 2
+// chiều đều giữ đúng khoá tra giá bên Kế hoạch (TransportUnitPrice) để sau này đối chiếu/quyết
+// toán theo từng đơn vị/chất lượng thiết bị. Vận tải trục (Shaft) và Thiết bị khác không có thêm
+// chiều này. ---
+const transportLineItemSchema = z.object({
+	transportRouteId: z.string().optional(),
+	routeDepartmentId: z.string().optional(),
+	equipmentId: z.string().optional(),
+	equipmentQuality: z.string().optional(),
+	productionMeters: z.coerce
+		.number<number>({ error: 'Sản lượng thực tế phải là số' })
+		.min(0, { error: 'Sản lượng thực tế không được âm' }),
+});
+
+// 1 khối ứng với 1 Công đoạn sản xuất cụ thể đã chọn trong nhóm VTL/VTCG
+const transportProcessEntrySchema = z.object({
+	productionProcessId: z.string().optional().default(''),
+	routeIds: z.array(z.string()).optional().default([]),
+	// Đơn vị áp dụng cho từng Tuyến (công đoạn Băng tải) — key là routeId
+	routeDepartmentIds: z.record(z.string(), z.array(z.string())).optional().default({}),
+	equipmentIds: z.array(z.string()).optional().default([]),
+	equipmentQualities: z.array(z.string()).optional().default([]),
+	// Chất lượng thiết bị cho từng Nhóm VTTS (công đoạn Monoray) — key là equipmentId
+	equipmentQualitiesMap: z.record(z.string(), z.array(z.string())).optional().default({}),
+	items: z.array(transportLineItemSchema).optional().default([]),
+});
+
 const productionGroupSchema = z
 	.object({
+		// 'khaithac' | 'vantailo' — set tự động theo fixedKeyType của processGroupId đã chọn
+		// (xem production-form.tsx), không phải người dùng tự chọn.
+		groupType: z.enum(['khaithac', 'vantailo']).optional().default('khaithac'),
 		processGroupId: z.string().nonempty({
 			error: 'Nhóm công đoạn sản xuất không được để trống',
 		}),
@@ -33,17 +64,39 @@ const productionGroupSchema = z
 			}),
 		standardProductionMeters: z.coerce
 			.number<number>({ error: 'Sản lượng định mức phải là số' })
-			.gt(0, {
-				error: 'Sản lượng định mức phải lớn hơn 0',
+			.min(0, {
+				error: 'Sản lượng định mức không được âm',
 			}),
-		productIds: z
-			.array(z.string())
-			.min(1, { error: 'Danh sách sản phẩm không được để trống' }),
-		products: z
-			.array(productionGroupProductSchema)
-			.min(1, { error: 'Danh sách sản phẩm không được để trống' }),
+		productIds: z.array(z.string()).optional().default([]),
+		products: z.array(productionGroupProductSchema).optional().default([]),
+		// Vận tải lò/Vận tải cơ giới
+		processIds: z.array(z.string()).optional().default([]),
+		transportProcesses: z
+			.array(transportProcessEntrySchema)
+			.optional()
+			.default([]),
 	})
 	.superRefine((data, ctx) => {
+		if (data.groupType === 'vantailo') {
+			if (data.processIds.length === 0) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Công đoạn sản xuất không được để trống',
+					path: ['processIds'],
+				});
+			}
+			return;
+		}
+
+		if (data.productIds.length === 0) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Danh sách sản phẩm không được để trống',
+				path: ['products'],
+			});
+			return;
+		}
+
 		if (data.productIds.length !== data.products.length) {
 			ctx.addIssue({
 				code: 'custom',
@@ -94,15 +147,35 @@ export const productionFormSchema = z
 	});
 
 export type ProductionFormSchema = z.infer<typeof productionFormSchema>;
+export type ProductionGroupSchema = NonNullable<
+	ProductionFormSchema['groups']
+>[number];
+export type TransportProcessEntrySchema = z.infer<
+	typeof transportProcessEntrySchema
+>;
+export type TransportLineItemSchema = z.infer<typeof transportLineItemSchema>;
+
+export const TRANSPORT_PROCESS_ENTRY_DEFAULT: TransportProcessEntrySchema = {
+	productionProcessId: '',
+	routeIds: [],
+	routeDepartmentIds: {},
+	equipmentIds: [],
+	equipmentQualities: [],
+	equipmentQualitiesMap: {},
+	items: [],
+};
 
 export const PRODUCTION_GROUP_DEFAULT: NonNullable<
 	ProductionFormSchema['groups']
 >[number] = {
+	groupType: 'khaithac',
 	processGroupId: '',
 	planProductionMeters: 0,
 	standardProductionMeters: 0,
 	productIds: [],
 	products: [],
+	processIds: [],
+	transportProcesses: [],
 };
 
 export function getProductionFormDefault(

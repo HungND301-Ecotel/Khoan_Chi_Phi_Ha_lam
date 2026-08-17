@@ -20,6 +20,7 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
     private readonly IWriteRepository<Product> _productRepository = unitOfWork.GetRepository<Product>();
+    private readonly IWriteRepository<ProductionProcess> _productionProcessRepository = unitOfWork.GetRepository<ProductionProcess>();
     private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<ProductUnitPrice>();
 
@@ -134,6 +135,8 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
         var processGroupIds = createModel.ProcessGroups.Select(x => x.ProcessGroupId).Distinct().ToList();
         var products = createModel.ProcessGroups.SelectMany(x => x.Products).ToList();
         var productIds = products.Select(x => x.ProductId).Distinct().ToList();
+        var transportLines = createModel.ProcessGroups.SelectMany(x => x.TransportLines).ToList();
+        var productionProcessIds = transportLines.Select(x => x.ProductionProcessId).Distinct().ToList();
 
         var existingProcessGroupIds = (await _processGroupRepository.GetAllAsync(
             predicate: x => processGroupIds.Contains(x.Id),
@@ -153,12 +156,23 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
             throw new NotFoundException(CustomResponseMessage.ProductNotFound);
         }
 
+        var existingProductionProcessIds = (await _productionProcessRepository.GetAllAsync(
+            predicate: x => productionProcessIds.Contains(x.Id),
+            disableTracking: true)).Select(x => x.Id).ToHashSet();
+
+        if (existingProductionProcessIds.Count != productionProcessIds.Count)
+        {
+            throw new NotFoundException(CustomResponseMessage.ProductionProcessNotFound);
+        }
+
         var productsById = existingProducts.ToDictionary(x => x.Id);
         var result = new List<ProductionOutputProcessGroup>();
 
         foreach (var groupDto in createModel.ProcessGroups)
         {
-            if (groupDto.Products == null || !groupDto.Products.Any())
+            var hasProducts = groupDto.Products != null && groupDto.Products.Any();
+            var hasTransportLines = groupDto.TransportLines != null && groupDto.TransportLines.Any();
+            if (!hasProducts && !hasTransportLines)
             {
                 continue;
             }
@@ -168,22 +182,39 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                 groupDto.PlanProductionMeters,
                 groupDto.StandardProductionMeters);
 
-            foreach (var productDto in groupDto.Products)
+            if (hasProducts)
             {
-                if (!productsById.TryGetValue(productDto.ProductId, out var product))
+                foreach (var productDto in groupDto.Products)
                 {
-                    throw new NotFoundException(CustomResponseMessage.ProductNotFound);
-                }
+                    if (!productsById.TryGetValue(productDto.ProductId, out var product))
+                    {
+                        throw new NotFoundException(CustomResponseMessage.ProductNotFound);
+                    }
 
-                if (product.ProcessGroupId != groupDto.ProcessGroupId)
+                    if (product.ProcessGroupId != groupDto.ProcessGroupId)
+                    {
+                        throw new ConflictException(CustomResponseMessage.InvalidParams);
+                    }
+
+                    groupEntity.AddProduct(ProductionOutputProduct.Create(
+                        productDto.ProductId,
+                        productDto.ProductionMeters,
+                        productDto.ActualAshContent));
+                }
+            }
+
+            if (hasTransportLines)
+            {
+                foreach (var transportLineDto in groupDto.TransportLines)
                 {
-                    throw new ConflictException(CustomResponseMessage.InvalidParams);
+                    groupEntity.AddTransportLine(ProductionOutputTransportLine.Create(
+                        transportLineDto.ProductionProcessId,
+                        transportLineDto.EquipmentId,
+                        transportLineDto.EquipmentQuality,
+                        transportLineDto.TransportRouteId,
+                        transportLineDto.RouteDepartmentId,
+                        transportLineDto.ProductionMeters));
                 }
-
-                groupEntity.AddProduct(ProductionOutputProduct.Create(
-                    productDto.ProductId,
-                    productDto.ProductionMeters,
-                    productDto.ActualAshContent));
             }
 
             result.Add(groupEntity);

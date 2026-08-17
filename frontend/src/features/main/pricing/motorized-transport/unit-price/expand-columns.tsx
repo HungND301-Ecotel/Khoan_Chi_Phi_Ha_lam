@@ -1,5 +1,8 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { MechanizedTransportUnitPriceGroupDto, VEHICLE_TYPE_LABELS } from './types';
+import {
+	MechanizedTransportUnitPriceGroupDto,
+	VEHICLE_TYPE_LABELS,
+} from './types';
 
 // ====== Types cho expand data ======
 
@@ -27,14 +30,13 @@ export const EXPAND_PRICE_COLUMNS: ColumnDef<ExpandPriceRow>[] = [
 	},
 	{
 		accessorKey: 'haulDistanceValue',
-		header: 'Cung độ vận chuyển',
+		header: 'Cung độ vận tải',
 		cell: ({ row }) => row.original.haulDistanceValue || '-',
 	},
 	{
 		accessorKey: 'fuelUnitPrice',
 		header: 'Đơn giá Nhiên liệu (đ)',
-		cell: ({ row }) =>
-			row.original.fuelUnitPrice?.toLocaleString('vi-VN') ?? 0,
+		cell: ({ row }) => row.original.fuelUnitPrice?.toLocaleString('vi-VN') ?? 0,
 	},
 	{
 		accessorKey: 'powerUnitPrice',
