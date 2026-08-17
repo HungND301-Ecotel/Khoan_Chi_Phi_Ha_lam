@@ -13,6 +13,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { API } from '@/constants/api-enpoint';
+import { ProcessGroupType } from '@/constants/process-group';
 import { useMeta } from '@/data/meta/meta-hook';
 import { AdjustmentExpand } from '@/features/main/cost/producttion/adjustment/adjustment-expand';
 import {
@@ -20,12 +21,15 @@ import {
 	DepartmentAdjustmentGroup,
 	MAIN_COST_ADJUSTMENT_COLUMNS,
 	ProductionAdjustment,
+	VTL_COST_ADJUSTMENT_COLUMNS,
 } from '@/features/main/cost/producttion/adjustment/columns';
 import {
 	type DepartmentAdjustmentDetail,
 	type DepartmentAdjustmentMonth,
 	mapDepartmentAdjustmentDetail,
 } from '@/features/main/cost/producttion/adjustment/type';
+import { VtlAdjustmentExpand } from '@/features/main/cost/producttion/adjustment/van-tai-lo/expand';
+import { TransportCostComponent } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -72,6 +76,45 @@ function DepartmentAdjustmentProductsTable({
 	selectAllRows,
 	onSelectedRowsChange,
 }: DepartmentAdjustmentProductsTableProps) {
+	const handleSelectedRowsChange = useCallback(
+		(rows: unknown[]) => {
+			onSelectedRowsChange(monthId, rows as ProductionAdjustment[]);
+		},
+		[monthId, onSelectedRowsChange],
+	);
+
+	const isVTL = items[0]?.fixedKeyType === ProcessGroupType.VTL;
+
+	if (isVTL) {
+		return (
+			<DataTable
+				columns={VTL_COST_ADJUSTMENT_COLUMNS}
+				items={items}
+				getRowId={(item) => item.id}
+				importCrumb='Doanh thu điều chỉnh'
+				filters={[
+					{ key: 'productionProcessCode', label: 'Mã CĐSX' },
+					{ key: 'productionProcessName', label: 'Tên CĐSX' },
+					{ key: 'contractCodeCode', label: 'Mã nhóm VTTS' },
+					{ key: 'contractCodeName', label: 'Tên nhóm VTTS' },
+					{ key: 'routeDepartmentCode', label: 'Mã đơn vị' },
+					{ key: 'routeDepartmentName', label: 'Tên đơn vị' },
+				]}
+				onExpand={(props) => (
+					<VtlAdjustmentExpand {...props} monthId={monthId} />
+				)}
+				showCreateAction={false}
+				showFilterAction={false}
+				showDeleteAction={false}
+				showUtilityActions={false}
+				onDelete={async () => undefined}
+				onSelectedRowsChange={handleSelectedRowsChange}
+				selectAllPageRows={selectAllRows}
+				hasPagination={false}
+			/>
+		);
+	}
+
 	return (
 		<DataTable
 			columns={MAIN_COST_ADJUSTMENT_COLUMNS}
@@ -89,9 +132,7 @@ function DepartmentAdjustmentProductsTable({
 			showDeleteAction={false}
 			showUtilityActions={false}
 			onDelete={async () => undefined}
-			onSelectedRowsChange={(rows) =>
-				onSelectedRowsChange(monthId, rows as ProductionAdjustment[])
-			}
+			onSelectedRowsChange={handleSelectedRowsChange}
 			selectAllPageRows={selectAllRows}
 			hasPagination={false}
 		/>
@@ -100,6 +141,8 @@ function DepartmentAdjustmentProductsTable({
 
 type DepartmentAdjustmentMonthsTableProps = {
 	departmentId: string;
+	hasKhaiThac?: boolean;
+	hasVanTaiLo?: boolean;
 	reloadKey: number;
 	selectAllRows: boolean;
 	onSelectedProductIdsChange: (
@@ -151,6 +194,8 @@ function mapDepartmentDetailToMonthGroups(
 
 function DepartmentAdjustmentMonthsTable({
 	departmentId,
+	hasKhaiThac,
+	hasVanTaiLo,
 	reloadKey,
 	selectAllRows,
 	onSelectedProductIdsChange,
@@ -181,12 +226,152 @@ function DepartmentAdjustmentMonthsTable({
 		let mounted = true;
 
 		const loadDepartmentDetail = async () => {
-			const response = await api.get<DepartmentAdjustmentDetail>(
-				API.COST.PRODUCT.DETAIL_ADJUSTMENT_BY_DEPARTMENT(departmentId),
-			);
+			const khaiThacPromise =
+				hasKhaiThac !== false
+					? api
+							.get<DepartmentAdjustmentDetail>(
+								API.COST.PRODUCT.DETAIL_ADJUSTMENT_BY_DEPARTMENT(departmentId),
+							)
+							.catch(() => null)
+					: Promise.resolve(null);
+
+			const vanTaiLoPromise =
+				hasVanTaiLo !== false
+					? api
+							.get<{
+								departmentId: string;
+								departmentCode: string;
+								departmentName: string;
+								months: {
+									month: string;
+									items: {
+										id: string;
+										productionProcessId?: string;
+										productionProcessCode?: string;
+										productionProcessName?: string;
+										transportRouteId?: string;
+										transportRouteCode?: string;
+										transportRouteName?: string;
+										routeDepartmentId?: string;
+										routeDepartmentCode?: string;
+										routeDepartmentName?: string;
+										equipmentId?: string;
+										equipmentCode?: string;
+										equipmentName?: string;
+										equipmentQuality?: string;
+										actualProductionMeters?: number;
+										unitOfMeasureId?: string;
+										unitOfMeasureName?: string;
+										material?: TransportCostComponent;
+										maintenance?: TransportCostComponent;
+										power?: TransportCostComponent;
+										isLowVolumeCase?: boolean;
+										adjustmentTotalCost?: number;
+									}[];
+								}[];
+							}>(
+								API.COST.TRANSPORT_PLAN_LINE.DETAIL_ADJUSTMENT_BY_DEPARTMENT(
+									departmentId,
+								),
+							)
+							.catch(() => null)
+					: Promise.resolve(null);
+
+			const [khaiThacRes, vanTaiLoRes] = await Promise.all([
+				khaiThacPromise,
+				vanTaiLoPromise,
+			]);
+
 			if (!mounted) return;
-			const mappedDetail = mapDepartmentAdjustmentDetail(response.result);
-			setMonthGroups(mapDepartmentDetailToMonthGroups(mappedDetail));
+
+			const khaiThacDetail = khaiThacRes?.result
+				? mapDepartmentAdjustmentDetail(khaiThacRes.result)
+				: null;
+
+			const vanTaiLoDetail = vanTaiLoRes?.result ? vanTaiLoRes.result : null;
+
+			const mergedMap = new Map<string, DepartmentAdjustmentMonthGroup>();
+
+			if (khaiThacDetail) {
+				const ktGroups = mapDepartmentDetailToMonthGroups(khaiThacDetail);
+				ktGroups.forEach((g) => mergedMap.set(g.id, g));
+			}
+
+			if (vanTaiLoDetail?.months) {
+				vanTaiLoDetail.months.forEach((vtlMonth) => {
+					const monthKey = vtlMonth.month.substring(0, 10);
+					const vtlProducts: ProductionAdjustment[] = (
+						vtlMonth.items || []
+					).map((item) => {
+						const nameParts = [
+							item.productionProcessName,
+							item.equipmentName && `TB: ${item.equipmentName}`,
+							item.equipmentQuality && `Loại ${item.equipmentQuality}`,
+							item.transportRouteName && `Tuyến: ${item.transportRouteName}`,
+						].filter(Boolean);
+
+						return {
+							id: item.id,
+							productId: item.productionProcessId || item.id,
+							productCode:
+								item.productionProcessCode ||
+								item.equipmentCode ||
+								item.transportRouteCode ||
+								'VTL',
+							productName: nameParts.join(' - ') || 'Vận tải lò',
+							processGroupId: '',
+							processGroupCode: 'VTL',
+							fixedKeyType: ProcessGroupType.VTL,
+							unitOfMeasureId: item.unitOfMeasureId || '',
+							unitOfMeasureName: item.unitOfMeasureName || '-',
+							departmentId: vanTaiLoDetail.departmentId,
+							departmentCode: vanTaiLoDetail.departmentCode,
+							departmentName: vanTaiLoDetail.departmentName,
+							routeDepartmentId: item.routeDepartmentId,
+							routeDepartmentCode: item.routeDepartmentCode || '-',
+							routeDepartmentName: item.routeDepartmentName || '-',
+							totalProductionMeters: item.actualProductionMeters ?? 0,
+							plannedTotalCost: 0,
+							actualTotalCost: 0,
+							adjustmentTotalCost: item.adjustmentTotalCost ?? 0,
+							startMonth: monthKey,
+							endMonth: monthKey,
+							productionProcessCode: item.productionProcessCode || '-',
+							productionProcessName: item.productionProcessName || '-',
+							contractCodeCode:
+								item.equipmentCode || item.transportRouteCode || '-',
+							contractCodeName:
+								item.equipmentName || item.transportRouteName || '-',
+							equipmentQuality: item.equipmentQuality || '-',
+							material: item.material,
+							maintenance: item.maintenance,
+							power: item.power,
+							isLowVolumeCase: item.isLowVolumeCase,
+						};
+					});
+
+					const existing = mergedMap.get(monthKey);
+					if (existing) {
+						existing.products = [...existing.products, ...vtlProducts];
+						existing.productUnitPriceIds = [
+							...existing.productUnitPriceIds,
+							...vtlMonth.items.map((it) => it.id),
+						];
+					} else {
+						mergedMap.set(monthKey, {
+							id: monthKey,
+							time: monthKey,
+							productUnitPriceIds: vtlMonth.items.map((it) => it.id),
+							products: vtlProducts,
+						});
+					}
+				});
+			}
+
+			const mergedMonthGroups = Array.from(mergedMap.values()).sort((a, b) =>
+				a.time.localeCompare(b.time),
+			);
+			setMonthGroups(mergedMonthGroups);
 		};
 
 		loadDepartmentDetail();
@@ -194,7 +379,7 @@ function DepartmentAdjustmentMonthsTable({
 		return () => {
 			mounted = false;
 		};
-	}, [departmentId, reloadKey]);
+	}, [departmentId, hasKhaiThac, hasVanTaiLo, reloadKey]);
 
 	useEffect(() => {
 		setSelectedProductIdsByMonth((prev) => {
@@ -340,6 +525,9 @@ export function MainCostProductionRevenueAdjustmentPage() {
 	);
 	const [selectedProductIdsByDepartment, setSelectedProductIdsByDepartment] =
 		useState<Record<string, string[]>>({});
+	const [vtlDepartmentGroups, setVtlDepartmentGroups] = useState<
+		DepartmentAdjustmentGroup[]
+	>([]);
 	const query = useMemo(
 		() => ({
 			ignorePagination: true,
@@ -351,12 +539,116 @@ export function MainCostProductionRevenueAdjustmentPage() {
 		() => [...new Set(Object.values(selectedProductIdsByDepartment).flat())],
 		[selectedProductIdsByDepartment],
 	);
+
+	// Doanh thu điều chỉnh VTL không có scenario riêng (không lưu thành bản ghi mới) — chỉ cần
+	// biết đơn vị nào có Kế hoạch ban đầu VTL để gộp vào danh sách Đơn vị, dùng chung
+	// TransportPlanLine/List đã có sẵn (giống cost/plan/page.tsx).
+	useEffect(() => {
+		let mounted = true;
+
+		Promise.all([
+			api.pagging<{ id: string; code: string; name: string }>(
+				API.CATALOG.DEPARTMENT.LIST,
+				{ ignorePagination: true },
+			),
+			api.get<
+				{
+					departmentId: string;
+					departmentCode: string;
+					departmentName: string;
+					months: { month: string; items: { id: string }[] }[];
+				}[]
+			>(API.COST.TRANSPORT_PLAN_LINE.LIST),
+		])
+			.then(([deptsRes, vtlRes]) => {
+				if (!mounted) return;
+				const deptsMap = new Map(
+					(deptsRes.result.data ?? []).map((d) => [d.id, d]),
+				);
+				const list = vtlRes.result || [];
+				const vtlGroups: DepartmentAdjustmentGroup[] = [];
+
+				list.forEach((detail) => {
+					const months = detail.months || [];
+					if (!months.length) return;
+
+					const allItems = months.flatMap((m) => m.items || []);
+					if (!allItems.length) return;
+
+					const monthDates = months
+						.map((m) => m.month.substring(0, 10))
+						.sort();
+
+					const deptInfo = deptsMap.get(detail.departmentId);
+
+					vtlGroups.push({
+						id: detail.departmentId,
+						code: detail.departmentCode || deptInfo?.code || '',
+						name: detail.departmentName || deptInfo?.name || '',
+						startMonth: monthDates[0],
+						endMonth: monthDates[monthDates.length - 1],
+						productUnitPriceIds: allItems.map((it) => it.id),
+					});
+				});
+
+				setVtlDepartmentGroups(vtlGroups);
+			})
+			.catch(() => {});
+
+		return () => {
+			mounted = false;
+		};
+	}, [reloadKey]);
+
 	const transformDepartmentRows = useCallback(
-		(rows: DepartmentAdjustmentGroup[]) =>
-			groupByDepartment(
+		(rows: DepartmentAdjustmentGroup[]) => {
+			const khaiThacGroups = groupByDepartment(
 				rows as unknown as ProductionAdjustment[],
-			) as unknown as DepartmentAdjustmentGroup[],
-		[],
+			);
+			const map = new Map<string, DepartmentAdjustmentGroup>();
+
+			khaiThacGroups.forEach((g) =>
+				map.set(g.id, {
+					...g,
+					hasKhaiThac: true,
+					hasVanTaiLo: false,
+				}),
+			);
+
+			vtlDepartmentGroups.forEach((vtlGroup) => {
+				const existed = map.get(vtlGroup.id);
+				if (existed) {
+					existed.hasVanTaiLo = true;
+					// Không gộp productUnitPriceIds VTL vào tập xoá được — Doanh thu điều chỉnh VTL
+					// chỉ là view tính toán (Kế hoạch + Sản lượng thực tế), không có bản ghi riêng để
+					// xoá; gộp id TransportPlanLine vào đây sẽ bị gửi nhầm sang API xoá ProductUnitPrice.
+					if (
+						vtlGroup.startMonth &&
+						(!existed.startMonth || vtlGroup.startMonth < existed.startMonth)
+					) {
+						existed.startMonth = vtlGroup.startMonth;
+					}
+					if (
+						vtlGroup.endMonth &&
+						(!existed.endMonth || vtlGroup.endMonth > existed.endMonth)
+					) {
+						existed.endMonth = vtlGroup.endMonth;
+					}
+				} else {
+					map.set(vtlGroup.id, {
+						...vtlGroup,
+						hasKhaiThac: false,
+						hasVanTaiLo: true,
+						productUnitPriceIds: [],
+					});
+				}
+			});
+
+			return Array.from(map.values()).sort((a, b) =>
+				a.code.localeCompare(b.code),
+			);
+		},
+		[vtlDepartmentGroups],
 	);
 
 	const handleDeleteAdjustment = async ({
@@ -436,6 +728,8 @@ export function MainCostProductionRevenueAdjustmentPage() {
 			onExpand={({ row }) => (
 				<DepartmentAdjustmentMonthsTable
 					departmentId={row?.id ?? ''}
+					hasKhaiThac={row?.hasKhaiThac}
+					hasVanTaiLo={row?.hasVanTaiLo}
 					reloadKey={reloadKey}
 					selectAllRows={selectedDepartmentIds.includes(row?.id ?? '')}
 					onSelectedProductIdsChange={handleProductSelectionChange}

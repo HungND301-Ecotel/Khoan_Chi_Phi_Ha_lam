@@ -141,6 +141,7 @@ export const QuotaBasedMaterial = {
 	MineSupport: 2,
 	SupportAccessories: 3,
 	MineTimber: 4,
+	LiningPlate: 5,
 } as const;
 
 export const QuotaBasedMaterialType = {
@@ -215,6 +216,7 @@ export const CONTRACT_LIMIT_OPTIONS = [
 	{ value: QuotaBasedMaterial.MineSupport, label: 'Vì chống lò' },
 	{ value: QuotaBasedMaterial.SupportAccessories, label: 'Phụ kiện' },
 	{ value: QuotaBasedMaterial.MineTimber, label: 'Gỗ lò' },
+	{ value: QuotaBasedMaterial.LiningPlate, label: 'Tấm chèn' },
 ];
 
 export const CONTRACT_LIMIT_SECONDARY_OPTIONS = [

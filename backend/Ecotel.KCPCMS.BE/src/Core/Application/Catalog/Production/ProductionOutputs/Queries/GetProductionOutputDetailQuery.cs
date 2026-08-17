@@ -520,6 +520,7 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
                 QuotaBasedMaterial.MineSupport => ("MineSupport", "Vì chống lò", true),
                 QuotaBasedMaterial.SupportAccessories => ("SupportAccessories", "Phụ kiện", true),
                 QuotaBasedMaterial.MineTimber => ("MineTimber", "Gỗ lò", false),
+                QuotaBasedMaterial.LiningPlate => ("LiningPlate", "Tấm chèn", false),
                 _ => ("VTK", "Vật tư khác", false)
             };
 
@@ -565,7 +566,8 @@ public class GetProductionOutputDetailQueryHandler(IUnitOfWork unitOfWork)
         return groups.Values
             .OrderBy(g => g.GroupCode == "MineSupport" ? 0
                         : g.GroupCode == "SupportAccessories" ? 1
-                        : g.GroupCode == "MineTimber" ? 2 : 3)
+                        : g.GroupCode == "MineTimber" ? 2
+                        : g.GroupCode == "LiningPlate" ? 3 : 4)
             .ToList();
     }
 

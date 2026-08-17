@@ -29,6 +29,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useEffect, useState } from 'react';
 import { FixedColumnDataTable } from './datatable';
+import { TrackingOnlyTable } from './tracking-only-table';
 
 export function LongTermMaterialCosts({
 	id,
@@ -72,8 +73,26 @@ export function LongTermMaterialCosts({
 	}, [isOpen, output?.acceptanceReportId, reloadKey]);
 
 	const groupedItems: LongTermTrackingProcessGroup[] = (() => {
+		const trackingOnlyItems = additionalCostData?.trackingOnlyItems ?? [];
+		const trackingByProcessGroup = (processGroupId: string) =>
+			trackingOnlyItems.filter(
+				(item) => (item.processGroupId || 'ungrouped') === processGroupId,
+			);
+
 		if (!additionalCostData?.items?.length) {
-			return [];
+			// Không có dòng hạch toán nào nhưng vẫn có thể có dòng theo dõi (Xuất khác/Bổ sung
+			// chi phí) — vẫn cần hiện khối "Vật tư theo dõi" riêng, không phụ thuộc bảng chính.
+			return trackingOnlyItems.length
+				? [
+						{
+							processGroupId: 'all',
+							processGroupCode: '',
+							processGroupName: 'Tất cả nhóm công đoạn',
+							items: [],
+							trackingOnlyItems,
+						},
+					]
+				: [];
 		}
 
 		const processGroups = additionalCostData.processGroups ?? [];
@@ -84,6 +103,7 @@ export function LongTermMaterialCosts({
 					processGroupCode: '',
 					processGroupName: 'Tất cả nhóm công đoạn',
 					items: additionalCostData.items,
+					trackingOnlyItems,
 				},
 			];
 		}
@@ -92,17 +112,25 @@ export function LongTermMaterialCosts({
 			(item) => !item.processGroupId,
 		);
 
-		return ungroupedItems.length
+		const groupsWithTracking = processGroups.map((group) => ({
+			...group,
+			trackingOnlyItems: trackingByProcessGroup(group.processGroupId),
+		}));
+
+		const ungroupedTrackingOnlyItems = trackingByProcessGroup('ungrouped');
+
+		return ungroupedItems.length || ungroupedTrackingOnlyItems.length
 			? [
-					...processGroups,
+					...groupsWithTracking,
 					{
 						processGroupId: 'ungrouped',
 						processGroupCode: '',
 						processGroupName: 'Chưa có nhóm công đoạn',
 						items: ungroupedItems,
+						trackingOnlyItems: ungroupedTrackingOnlyItems,
 					},
 				]
-			: processGroups;
+			: groupsWithTracking;
 	})();
 
 	return (
@@ -201,10 +229,15 @@ export function LongTermMaterialCosts({
 									</Item>
 									<AccordionContent className='p-0 pt-2'>
 										<div className='w-full min-w-0 overflow-x-auto'>
-											<FixedColumnDataTable
-												items={group.items}
-												compact={true}
-												loading={loading}
+											{group.items.length > 0 && (
+												<FixedColumnDataTable
+													items={group.items}
+													compact={true}
+													loading={loading}
+												/>
+											)}
+											<TrackingOnlyTable
+												items={group.trackingOnlyItems ?? []}
 											/>
 										</div>
 									</AccordionContent>

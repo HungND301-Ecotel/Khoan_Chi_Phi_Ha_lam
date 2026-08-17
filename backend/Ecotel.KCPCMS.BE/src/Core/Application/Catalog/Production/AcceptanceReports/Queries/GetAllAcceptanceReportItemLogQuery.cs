@@ -18,6 +18,7 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
     private readonly IWriteRepository<AcceptanceReport> _acceptanceReportRepository = unitOfWork.GetRepository<AcceptanceReport>();
     private readonly IWriteRepository<AcceptanceReportItemLog> _logRepository = unitOfWork.GetRepository<AcceptanceReportItemLog>();
     private readonly IWriteRepository<LongTermAnchorSeedItemLog> _anchorSeedLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
+    private readonly IWriteRepository<AcceptanceReportItem> _acceptanceReportItemRepository = unitOfWork.GetRepository<AcceptanceReportItem>();
 
     public async Task<GetAllAcceptanceReportItemLogResponseDto> Handle(GetAllAcceptanceReportItemLogQuery request, CancellationToken cancellationToken)
     {
@@ -394,15 +395,81 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
             .OrderByCodeNatural(g => g.ProcessGroupCode)
             .ToList();
 
+        var trackingOnlyItems = await BuildTrackingOnlyItems(request.AcceptanceReportId, cancellationToken);
+
         return new GetAllAcceptanceReportItemLogResponseDto
         {
             AcceptanceReportId = acceptanceReport.Id,
             PeriodStartMonth = productionOutput.StartMonth,
             PeriodEndMonth = productionOutput.EndMonth,
             Items = sortedItems,
-            ProcessGroups = groupedByProcessGroup
+            ProcessGroups = groupedByProcessGroup,
+            TrackingOnlyItems = trackingOnlyItems
         };
     }
+
+    // Vật tư theo dõi = phải có ĐỒNG THỜI cả 2: tick "Xuất khác" VÀ có "Bổ sung chi phí" — không
+    // đi qua ShouldDisplayLongTermTracking (không cần PartId/Maintain/IsLongTermTracking), chỉ để
+    // theo dõi, không phân bổ hạch toán.
+    private async Task<List<AcceptanceReportTrackingOnlyItemDto>> BuildTrackingOnlyItems(
+        Guid acceptanceReportId,
+        CancellationToken cancellationToken)
+    {
+        var items = await _acceptanceReportItemRepository.GetAllAsync(
+            predicate: i => i.AcceptanceReportId == acceptanceReportId
+                && i.AdditionalCost != AdditionalCost.None
+                && i.ShippedDetails.Any(sd => sd.Type == ShippedQuantityType.XuatKhac && sd.Quantity > 0),
+            include: q => q
+                .Include(i => i.ProcessGroup)
+                    .ThenInclude(pg => pg!.Code)
+                .Include(i => i.Material)
+                    .ThenInclude(m => m!.Code)
+                .Include(i => i.Material)
+                    .ThenInclude(m => m!.UnitOfMeasure)
+                .Include(i => i.Part)
+                    .ThenInclude(p => p!.Code)
+                .Include(i => i.Part)
+                    .ThenInclude(p => p!.UnitOfMeasure)
+                .Include(i => i.ShippedDetails),
+            disableTracking: true);
+
+        var result = new List<AcceptanceReportTrackingOnlyItemDto>();
+
+        foreach (var item in items)
+        {
+            var processGroupCode = item.ProcessGroup?.Code?.Value ?? item.ProcessGroup?.FixedKey?.Key;
+
+            var xuatKhacQuantity = item.ShippedDetails
+                .Where(sd => sd.Type == ShippedQuantityType.XuatKhac)
+                .Sum(sd => sd.Quantity);
+
+            result.Add(new AcceptanceReportTrackingOnlyItemDto
+            {
+                AcceptanceReportItemId = item.Id,
+                ProcessGroupId = item.ProcessGroupId,
+                ProcessGroupCode = processGroupCode,
+                ProcessGroupName = item.ProcessGroup?.Name,
+                MaterialCode = ResolveTrackedMaterialCode(item),
+                MaterialName = ResolveTrackedMaterialName(item),
+                UnitOfMeasureName = ResolveTrackedUnitOfMeasureName(item),
+                Quantity = xuatKhacQuantity,
+                TrackingType = $"Xuất khác - {ResolveAdditionalCostLabel(item.AdditionalCost)}"
+            });
+        }
+
+        return result
+            .OrderByCodeNatural(x => x.ProcessGroupCode ?? string.Empty)
+            .ThenBy(x => x.MaterialCode)
+            .ToList();
+    }
+
+    private static string ResolveAdditionalCostLabel(AdditionalCost additionalCost) => additionalCost switch
+    {
+        AdditionalCost.Material => "Vật liệu",
+        AdditionalCost.Maintain => "Chi phí SCTX",
+        AdditionalCost.SafeAndWelfare => "Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão",
+        _ => "Bổ sung chi phí"
+    };
 
     private static (Guid AcceptanceReportItemId, Guid? AcceptanceReportItemCategoryAllocationId) GetTrackingKey(AcceptanceReportItemLog log)
         => (log.AcceptanceReportItemId, log.AcceptanceReportItemCategoryAllocationId);

@@ -52,8 +52,7 @@ public class TransportPlanLineItemDto
 public class TransportPlanLineMonthDto
 {
     public DateOnly Month { get; set; }
-    // Tick "Chi phí vật tư mau hỏng rẻ tiền" đã lưu cho (Đơn vị, Tháng) này — bên Vận hành sản xuất
-    // tự đọc cờ này để rollup LowValuePerishableSupplyUnitPrice(Type=Transport) khi cần.
+
     public bool LowValuePerishableSupply { get; set; }
     public IList<TransportPlanLineItemDto> Items { get; set; } = new List<TransportPlanLineItemDto>();
 }
@@ -64,6 +63,49 @@ public class TransportPlanLineByDepartmentDetailDto
     public string DepartmentCode { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
     public IList<TransportPlanLineMonthDto> Months { get; set; } = new List<TransportPlanLineMonthDto>();
+}
+
+
+public class TransportPlanLineAdjustmentItemDto
+{
+    public Guid Id { get; set; }
+    public Guid ProductionProcessId { get; set; }
+    public string ProductionProcessCode { get; set; } = string.Empty;
+    public string ProductionProcessName { get; set; } = string.Empty;
+    public Guid? TransportRouteId { get; set; }
+    public string? TransportRouteCode { get; set; }
+    public string? TransportRouteName { get; set; }
+    public Guid? RouteDepartmentId { get; set; }
+    public string? RouteDepartmentCode { get; set; }
+    public string? RouteDepartmentName { get; set; }
+    public Guid? EquipmentId { get; set; }
+    public string? EquipmentCode { get; set; }
+    public string? EquipmentName { get; set; }
+    public string? EquipmentQuality { get; set; }
+    public double ActualProductionMeters { get; set; }
+    public Guid? UnitOfMeasureId { get; set; }
+    public string? UnitOfMeasureName { get; set; }
+    public AdjustmentFactorSelectionDto? K1 { get; set; }
+    public AdjustmentFactorSelectionDto? K2 { get; set; }
+    public bool IsLowVolumeCase { get; set; }
+    public TransportCostComponentDto Material { get; set; } = new();
+    public TransportCostComponentDto Maintenance { get; set; } = new();
+    public TransportCostComponentDto Power { get; set; } = new();
+    public double AdjustmentTotalCost { get; set; }
+}
+
+public class TransportPlanLineAdjustmentMonthDto
+{
+    public DateOnly Month { get; set; }
+    public IList<TransportPlanLineAdjustmentItemDto> Items { get; set; } = new List<TransportPlanLineAdjustmentItemDto>();
+}
+
+public class TransportPlanLineAdjustmentByDepartmentDetailDto
+{
+    public Guid DepartmentId { get; set; }
+    public string DepartmentCode { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public IList<TransportPlanLineAdjustmentMonthDto> Months { get; set; } = new List<TransportPlanLineAdjustmentMonthDto>();
 }
 
 

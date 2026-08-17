@@ -218,6 +218,7 @@ public enum QuotaBasedMaterial
     MineSupport = 2,
     SupportAccessories = 3,
     MineTimber = 4,
+    LiningPlate = 5,
 }
 
 public enum QuotaBasedMaterialType

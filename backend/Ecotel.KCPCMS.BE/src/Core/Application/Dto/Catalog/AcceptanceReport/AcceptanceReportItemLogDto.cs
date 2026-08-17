@@ -93,4 +93,22 @@ public record GetAllAcceptanceReportItemLogResponseDto
     public DateOnly PeriodEndMonth { get; init; }
     public List<AcceptanceReportItemLogDto> Items { get; init; } = new();
     public List<AcceptanceReportItemLogProcessGroupDto> ProcessGroups { get; init; } = new();
+    // Vật tư vừa tick "Xuất khác" VỪA có "Bổ sung chi phí" (cả 2 điều kiện đi cùng nhau) — chỉ
+    // mang tính theo dõi, không cộng vào bất kỳ giá trị hạch toán/phân bổ nào ở trên.
+    public List<AcceptanceReportTrackingOnlyItemDto> TrackingOnlyItems { get; init; } = new();
+}
+
+public record AcceptanceReportTrackingOnlyItemDto
+{
+    public Guid AcceptanceReportItemId { get; init; }
+    public Guid? ProcessGroupId { get; init; }
+    public string? ProcessGroupCode { get; init; }
+    public string? ProcessGroupName { get; init; }
+    public string? MaterialCode { get; init; }
+    public string? MaterialName { get; init; }
+    public string? UnitOfMeasureName { get; init; }
+    public double Quantity { get; init; }
+    // "Xuất khác" | "Bổ sung chi phí"
+    public string TrackingType { get; init; } = string.Empty;
+    public string? Note { get; init; }
 }

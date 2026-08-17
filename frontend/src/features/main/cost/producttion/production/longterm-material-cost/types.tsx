@@ -37,11 +37,27 @@ export type LongtermMaterialDetailItem = {
 	note?: string; // Ghi chú
 };
 
+// Vật tư vừa tick "Xuất khác" vừa có "Bổ sung chi phí" (cả 2 điều kiện đi cùng nhau) — chỉ mang
+// tính theo dõi, không cộng vào bất kỳ giá trị hạch toán/phân bổ nào của bảng chính.
+export type LongTermTrackingOnlyItem = {
+	acceptanceReportItemId: string;
+	processGroupId?: string;
+	processGroupCode?: string;
+	processGroupName?: string;
+	materialCode?: string;
+	materialName?: string;
+	unitOfMeasureName?: string;
+	quantity: number;
+	trackingType: string; // 'Xuất khác' | 'Bổ sung chi phí'
+	note?: string;
+};
+
 export type LongTermTrackingProcessGroup = {
 	processGroupId: string;
 	processGroupCode?: string;
 	processGroupName?: string;
 	items: LongtermMaterialDetailItem[];
+	trackingOnlyItems?: LongTermTrackingOnlyItem[];
 };
 
 // API Response type
@@ -51,6 +67,7 @@ export type LongTermTrackingResponse = {
 	periodEndMonth: string;
 	items: LongtermMaterialDetailItem[];
 	processGroups?: LongTermTrackingProcessGroup[];
+	trackingOnlyItems?: LongTermTrackingOnlyItem[];
 };
 
 export type LongtermMaterialCostDetail = {
@@ -59,6 +76,7 @@ export type LongtermMaterialCostDetail = {
 	periodEndMonth: string;
 	items: LongtermMaterialDetailItem[];
 	processGroups?: LongTermTrackingProcessGroup[];
+	trackingOnlyItems?: LongTermTrackingOnlyItem[];
 };
 
 // Danh sách vật tư có thể select (giống Asset trong material-cost)

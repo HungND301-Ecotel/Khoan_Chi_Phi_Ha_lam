@@ -601,6 +601,8 @@ export const API = {
 				`/v1/pricing/TransportPlanLine/Planned/Department/${departmentId}`,
 			DETAIL_PLANNED_BY_ID: (id: string) =>
 				`/v1/pricing/TransportPlanLine/Planned/${id}`,
+			DETAIL_ADJUSTMENT_BY_DEPARTMENT: (departmentId: string) =>
+				`/v1/pricing/TransportPlanLine/Adjustment/Department/${departmentId}`,
 			CREATE_PLANNED_BY_DEPARTMENT:
 				'/v1/pricing/TransportPlanLine/Planned-By-Department',
 			UPDATE_PLANNED_BY_DEPARTMENT:
