@@ -80,7 +80,7 @@ const transportProcessEntrySchema = z.object({
 	productionProcessId: z.string().nullable().optional().default(''),
 	// Tuyến vận tải: dùng cho Vận tải than/đá qua băng tải, Vận tải trục
 	routeIds: z.array(z.string()).nullable().optional().default([]),
-	// Đơn vị áp dụng theo từng tuyến: chỉ dùng cho Vận tải than/đá qua băng tải
+	// Đơn vị áp dụng theo từng tuyến: dùng cho Băng tải và Trục tải/Tời cáp (route-based)
 	routeDepartmentIds: z
 		.record(z.string(), z.array(z.string()))
 		.nullable()

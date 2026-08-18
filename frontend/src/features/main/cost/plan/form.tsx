@@ -281,12 +281,13 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							departmentId: string;
 							months: {
 								month: string;
+								lowValuePerishableSupply?: boolean;
 								items: {
 									id: string;
 									productionProcessId?: string;
 									transportRouteId?: string;
 									routeDepartmentId?: string;
-									contractCodeId?: string;
+									equipmentId?: string;
 									equipmentQuality?: string;
 									productionMeters?: number;
 									unitOfMeasureId?: string;
@@ -334,16 +335,16 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 								const contractCodeQualityIdsMap: Record<string, string[]> = {};
 								pItems.forEach((it) => {
-									if (it.contractCodeId && it.equipmentQuality) {
-										if (!contractCodeQualityIdsMap[it.contractCodeId]) {
-											contractCodeQualityIdsMap[it.contractCodeId] = [];
+									if (it.equipmentId && it.equipmentQuality) {
+										if (!contractCodeQualityIdsMap[it.equipmentId]) {
+											contractCodeQualityIdsMap[it.equipmentId] = [];
 										}
 										if (
-											!contractCodeQualityIdsMap[it.contractCodeId].includes(
+											!contractCodeQualityIdsMap[it.equipmentId].includes(
 												it.equipmentQuality,
 											)
 										) {
-											contractCodeQualityIdsMap[it.contractCodeId].push(
+											contractCodeQualityIdsMap[it.equipmentId].push(
 												it.equipmentQuality,
 											);
 										}
@@ -360,7 +361,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									routeDepartmentIds: routeDepartmentIdsMap,
 									contractCodeIds: [
 										...new Set(
-											pItems.map((it) => it.contractCodeId).filter(Boolean),
+											pItems.map((it) => it.equipmentId).filter(Boolean),
 										),
 									] as string[],
 									contractCodeQualityIds: contractCodeQualityIdsMap,
@@ -368,7 +369,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 										id: it.id,
 										transportRouteId: it.transportRouteId,
 										departmentId: it.routeDepartmentId,
-										contractCodeId: it.contractCodeId,
+										contractCodeId: it.equipmentId,
 										equipmentQuality: it.equipmentQuality,
 										productionMeters: it.productionMeters,
 										unitOfMeasureId: it.unitOfMeasureId,
@@ -394,7 +395,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 							return {
 								month: m.month.substring(0, 10),
-								lowValuePerishableSupply: false,
+								lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
 								processIds,
 								processes,
 							};

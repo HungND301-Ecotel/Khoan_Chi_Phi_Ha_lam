@@ -13,6 +13,27 @@ public class LumpSumFinalSettlementDto
     public double PlannedQuantity { get; set; }
     public double ActualQuantity { get; set; }
 
+    // VTL/VTCG — chỉ set khi dòng đến từ TransportPlanLine, dùng để FE tự gộp cây
+    // Tuyến vận tải > Đơn vị (Băng tải/Trục) hoặc Thiết bị > Chất lượng (Monoray) ở Bảng
+    // Thanh toán/Quyết toán giao khoán, xem grouping.ts groupByProcessGroup.
+    public string? ProductionProcessCode { get; set; }
+    public string? ProductionProcessName { get; set; }
+    public Guid? TransportRouteId { get; set; }
+    public string? TransportRouteCode { get; set; }
+    public string? TransportRouteName { get; set; }
+    public Guid? RouteDepartmentId { get; set; }
+    public string? RouteDepartmentCode { get; set; }
+    public string? RouteDepartmentName { get; set; }
+    public Guid? EquipmentId { get; set; }
+    public string? EquipmentCode { get; set; }
+    public string? EquipmentName { get; set; }
+    public string? EquipmentQuality { get; set; }
+
+    // VTL/VTCG — dòng "Chi phí vật tư mau hỏng rẻ tiền": khoản trọn gói theo THÁNG (1 dòng cho cả
+    // Đơn vị+Nhóm công đoạn+Tháng, không nhân theo số dòng Tuyến/Thiết bị) — FE hiển thị phẳng,
+    // không gộp cây theo Tuyến/Thiết bị như các dòng VTL khác. Xem grouping.ts groupByProcessGroup.
+    public bool IsLowValuePerishableSupplyRow { get; set; }
+
     public double PlanAshContent { get; set; }
     public double ActualAshContent { get; set; }
     public double AshContentDeltaPercent { get; set; }

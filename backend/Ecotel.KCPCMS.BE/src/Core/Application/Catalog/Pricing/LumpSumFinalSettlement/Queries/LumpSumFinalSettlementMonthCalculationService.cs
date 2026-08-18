@@ -4,11 +4,13 @@ using Application.Catalog.Pricing.Common;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
+using Application.Dto.Catalog.TransportPlanLine;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 using Domain.Entities.Production;
 using Microsoft.EntityFrameworkCore;
+using TransportPlanLineEntity = Domain.Entities.Pricing.TransportPlanLine;
 
 namespace Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 
@@ -23,6 +25,15 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     private readonly IWriteRepository<RevenueCostAdjustmentConfig> _revenueCostAdjustmentConfigRepository = unitOfWork.GetRepository<RevenueCostAdjustmentConfig>();
     private readonly IWriteRepository<AkFactorConfig> _akFactorConfigRepository = unitOfWork.GetRepository<AkFactorConfig>();
     private readonly IWriteRepository<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
+    private readonly IWriteRepository<TransportPlanLineEntity> _transportPlanLineRepository = unitOfWork.GetRepository<TransportPlanLineEntity>();
+
+    private readonly record struct TransportLineKey(
+        Guid ProcessGroupId,
+        Guid ProductionProcessId,
+        Guid? EquipmentId,
+        string? EquipmentQuality,
+        Guid? TransportRouteId,
+        Guid? RouteDepartmentId);
 
     public async Task<LumpSumFinalSettlementMonthResponseDto> CalculateAsync(
         int month,
@@ -42,8 +53,19 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             include: q => q.AsSplitQuery()
                 .Include(po => po.AcceptanceReport)
                 .Include(po => po.ProductionOutputProcessGroups)
-                    .ThenInclude(pg => pg.ProductionOutputProducts),
+                    .ThenInclude(pg => pg.ProductionOutputProducts)
+                .Include(po => po.ProductionOutputProcessGroups)
+                    .ThenInclude(pg => pg.ProductionOutputTransportLines),
             disableTracking: true);
+
+        var actualByTransportLine = productionOutputs
+            .SelectMany(po => po.ProductionOutputProcessGroups)
+            .Where(pg => !hasProcessGroupFilter || pg.ProcessGroupId == processGroupId)
+            .SelectMany(pg => pg.ProductionOutputTransportLines
+                .Select(tl => new { pg.ProcessGroupId, Line = tl }))
+            .GroupBy(x => new TransportLineKey(
+                x.ProcessGroupId, x.Line.ProductionProcessId, x.Line.EquipmentId, x.Line.EquipmentQuality, x.Line.TransportRouteId, x.Line.RouteDepartmentId))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Line.ProductionMeters));
 
         var actualByProduct = productionOutputs
             .SelectMany(po => po.ProductionOutputProcessGroups)
@@ -257,6 +279,12 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }
         }
 
+        // VTL/VTCG — song song khối Khai thác ở trên, xem claude/plan-dong-bo-van-tai.md mục 5.2.
+        // Không có khái niệm Ak (độ tro) nên không cộng thêm AshContent*.
+        var transportItems = await BuildTransportItemsAsync(
+            month, year, processGroupId, departmentId, actualByTransportLine, cancellationToken);
+        items.AddRange(transportItems);
+
         var revenueMaterialTotal = 0.0;
         var revenueMaintainTotal = 0.0;
         var revenueElectricityTotal = 0.0;
@@ -304,6 +332,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         revenueMaterialTotal += items.Sum(x => x.AshContentMaterials.TotalAmount);
         revenueMaintainTotal += items.Sum(x => x.AshContentMaintains.TotalAmount);
         revenueElectricityTotal += items.Sum(x => x.AshContentElectricities.TotalAmount);
+
+        revenueMaterialTotal += transportItems.Sum(x => x.Materials.TotalAmount);
+        revenueMaintainTotal += transportItems.Sum(x => x.Maintains.TotalAmount);
+        revenueElectricityTotal += transportItems.Sum(x => x.Electricities.TotalAmount);
 
         var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
             .Where(po => po.StartMonth.Year == year
@@ -535,6 +567,176 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 })
                 .ToList()
         };
+    }
+
+    // VTL/VTCG — song song khối "items" Khai thác ở CalculateAsync, dùng chung 1 dòng =
+    // (ProcessGroupId, ProductionProcessId, TransportRouteId/RouteDepartmentId hoặc
+    // EquipmentId/EquipmentQuality) thay cho (ProcessGroupId, ProductId). Đơn giá + K1/K2 lấy
+    // nguyên từ Kế hoạch ban đầu (TransportPlanLine), TH lấy từ ProductionOutputTransportLine.
+    private async Task<List<LumpSumFinalSettlementDto>> BuildTransportItemsAsync(
+        int month,
+        int year,
+        Guid? processGroupId,
+        Guid? departmentId,
+        Dictionary<TransportLineKey, double> actualByTransportLine,
+        CancellationToken cancellationToken)
+    {
+        var hasProcessGroupFilter = processGroupId.HasValue;
+        var hasDepartmentFilter = departmentId.HasValue;
+
+        var lines = await _transportPlanLineRepository.GetAll()
+            .Where(x =>
+                x.ScenarioType == ProductUnitPriceScenarioType.Plan &&
+                x.OutputType == OutputType.PlanOutput &&
+                x.StartMonth.Month == month &&
+                x.StartMonth.Year == year &&
+                (!hasProcessGroupFilter || x.ProductionProcess!.ProcessGroupId == processGroupId) &&
+                (!hasDepartmentFilter || x.DepartmentId == departmentId))
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.Code)
+            .Include(x => x.UnitOfMeasure)
+            .Include(x => x.Equipment)
+                .ThenInclude(e => e!.Code)
+            .Include(x => x.TransportRoute)
+                .ThenInclude(r => r!.Code)
+            .Include(x => x.RouteDepartment)
+                .ThenInclude(rd => rd!.Code)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.AdjustmentFactors)
+                    .ThenInclude(f => f.AdjustmentFactor)
+                        .ThenInclude(a => a!.FixedKey)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.AdjustmentFactors)
+                    .ThenInclude(f => f.AdjustmentFactor)
+                        .ThenInclude(a => a!.Code)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.AdjustmentFactors)
+                    .ThenInclude(f => f.AdjustmentFactorDescription)
+                        .ThenInclude(d => d!.AdjustmentFactor)
+                            .ThenInclude(a => a.FixedKey)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.AdjustmentFactors)
+                    .ThenInclude(f => f.AdjustmentFactorDescription)
+                        .ThenInclude(d => d!.AdjustmentFactor)
+                            .ThenInclude(a => a.Code)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.TransportUnitPrice)
+            .Include(x => x.PlannedTransportCost)
+                .ThenInclude(c => c!.MechanizedTransportUnitPriceDetail)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var result = new List<LumpSumFinalSettlementDto>();
+
+        foreach (var line in lines)
+        {
+            var planItem = Application.Catalog.Pricing.TransportPlanLine.Queries
+                .GetTransportPlanLineByDepartmentQueryHandler.ToItemDto(line);
+
+            var key = new TransportLineKey(
+                line.ProductionProcess?.ProcessGroupId ?? Guid.Empty,
+                line.ProductionProcessId,
+                line.EquipmentId,
+                line.EquipmentQuality,
+                line.TransportRouteId,
+                line.RouteDepartmentId);
+            var actualQuantity = actualByTransportLine.TryGetValue(key, out var meters) ? meters : 0;
+
+            double ComponentTotal(TransportCostComponentDto component) => planItem.IsLowVolumeCase
+                ? component.EffectiveUnitPrice
+                : component.EffectiveUnitPrice * actualQuantity;
+
+            var nameParts = new List<string?>
+            {
+                planItem.ProductionProcessName,
+                !string.IsNullOrEmpty(planItem.EquipmentName) ? $"TB: {planItem.EquipmentName}" : null,
+                !string.IsNullOrEmpty(planItem.EquipmentQuality) ? $"Loại {planItem.EquipmentQuality}" : null,
+                !string.IsNullOrEmpty(planItem.TransportRouteName) ? $"Tuyến: {planItem.TransportRouteName}" : null,
+            }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+
+            var materialTotal = ComponentTotal(planItem.Material);
+            var maintainTotal = ComponentTotal(planItem.Maintenance);
+            var electricityTotal = ComponentTotal(planItem.Power);
+
+            result.Add(new LumpSumFinalSettlementDto
+            {
+                Id = planItem.Id,
+                ProcessGroupId = key.ProcessGroupId,
+                ProcessGroupCode = line.ProductionProcess?.ProcessGroup?.Code?.Value
+                    ?? line.ProductionProcess?.ProcessGroup?.FixedKey?.Key
+                    ?? "VTL",
+                ProcessGroupName = line.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
+                ProductCode = !string.IsNullOrEmpty(planItem.ProductionProcessCode)
+                    ? planItem.ProductionProcessCode
+                    : (planItem.EquipmentCode ?? planItem.TransportRouteCode ?? "VTL"),
+                ProductName = nameParts.Count > 0 ? string.Join(" - ", nameParts) : "Vận tải lò",
+                ProductionProcessCode = planItem.ProductionProcessCode,
+                ProductionProcessName = planItem.ProductionProcessName,
+                TransportRouteId = planItem.TransportRouteId,
+                TransportRouteCode = planItem.TransportRouteCode,
+                TransportRouteName = planItem.TransportRouteName,
+                RouteDepartmentId = planItem.RouteDepartmentId,
+                RouteDepartmentCode = planItem.RouteDepartmentCode,
+                RouteDepartmentName = planItem.RouteDepartmentName,
+                EquipmentId = planItem.EquipmentId,
+                EquipmentCode = planItem.EquipmentCode,
+                EquipmentName = planItem.EquipmentName,
+                EquipmentQuality = planItem.EquipmentQuality,
+                UnitOfMeasureId = planItem.UnitOfMeasureId ?? Guid.Empty,
+                UnitOfMeasureName = planItem.UnitOfMeasureName ?? string.Empty,
+                PlannedQuantity = planItem.ProductionMeters,
+                ActualQuantity = actualQuantity,
+                Materials = new LumpSumCostDetailDto { UnitPrice = planItem.Material.EffectiveUnitPrice, TotalAmount = materialTotal },
+                Maintains = new LumpSumCostDetailDto { UnitPrice = planItem.Maintenance.EffectiveUnitPrice, TotalAmount = maintainTotal },
+                Electricities = new LumpSumCostDetailDto { UnitPrice = planItem.Power.EffectiveUnitPrice, TotalAmount = electricityTotal },
+                TotalAmount = materialTotal + maintainTotal + electricityTotal,
+            });
+        }
+
+        // Chi phí vật tư mau hỏng rẻ tiền — khoản TRỌN GÓI THEO THÁNG (tick 1 lần áp dụng đồng
+        // loạt cho cả tháng, không phải theo từng dòng Tuyến/Thiết bị — xem TransportMonthSection
+        // FE), nên KHÔNG cộng vào đơn giá Vật liệu của từng dòng ở trên (sẽ bị nhân sai theo số
+        // dòng nếu tháng có nhiều dòng) mà tách thành 1 dòng riêng cho mỗi (Đơn vị, Nhóm công đoạn).
+        var lowValueLookup = await TransportLowValuePerishableSupplyCostResolver.ResolveAsync(
+            lines, _lowValuePerishableSupplyUnitPriceRepository, cancellationToken);
+
+        var lowValueGroups = lines
+            .Where(x => x.PlannedTransportCost?.LowValuePerishableSupplyInclusion == LowValuePerishableSupplyInclusion.Include
+                && x.ProductionProcess?.ProcessGroupId != null)
+            .GroupBy(x => new { x.DepartmentId, ProcessGroupId = x.ProductionProcess!.ProcessGroupId });
+
+        foreach (var group in lowValueGroups)
+        {
+            var first = group.First();
+            var key = new TransportLowValuePerishableSupplyCostResolver.Key(
+                group.Key.DepartmentId, group.Key.ProcessGroupId, first.StartMonth);
+            var price = lowValueLookup.TryGetValue(key, out var resolvedPrice) ? resolvedPrice : 0;
+            if (price <= 0)
+            {
+                continue;
+            }
+
+            result.Add(new LumpSumFinalSettlementDto
+            {
+                Id = Guid.NewGuid(),
+                ProcessGroupId = group.Key.ProcessGroupId,
+                ProcessGroupCode = first.ProductionProcess?.ProcessGroup?.Code?.Value
+                    ?? first.ProductionProcess?.ProcessGroup?.FixedKey?.Key
+                    ?? "VTL",
+                ProcessGroupName = first.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
+                ProductCode = "RTMH-VTL",
+                ProductName = "Chi phí vật tư mau hỏng rẻ tiền",
+                UnitOfMeasureName = "Đồng/tháng",
+                IsLowValuePerishableSupplyRow = true,
+                Materials = new LumpSumCostDetailDto { TotalAmount = price },
+                TotalAmount = price,
+            });
+        }
+
+        return result;
     }
 
     public static double ResolveSavingsValue(

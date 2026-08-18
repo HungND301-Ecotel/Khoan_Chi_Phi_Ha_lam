@@ -151,6 +151,24 @@ export interface LumpSumFinalSettlement {
 	productCode?: string;
 	unitOfMeasureId?: string;
 	unitOfMeasureName?: string;
+	// VTL/VTCG — chỉ set khi dòng đến từ TransportPlanLine, dùng để gộp cây
+	// Tuyến vận tải > Đơn vị (Băng tải/Trục) hoặc Thiết bị > Chất lượng (Monoray).
+	// Xem grouping.ts groupByProcessGroup.
+	productionProcessCode?: string;
+	productionProcessName?: string;
+	transportRouteId?: string;
+	transportRouteCode?: string;
+	transportRouteName?: string;
+	routeDepartmentId?: string;
+	routeDepartmentCode?: string;
+	routeDepartmentName?: string;
+	equipmentId?: string;
+	equipmentCode?: string;
+	equipmentName?: string;
+	equipmentQuality?: string;
+	// Dòng "Chi phí vật tư mau hỏng rẻ tiền" — khoản trọn gói theo tháng, hiển thị phẳng, không
+	// gộp cây theo Tuyến/Thiết bị như các dòng VTL khác. Xem grouping.ts groupByProcessGroup.
+	isLowValuePerishableSupplyRow?: boolean;
 	plannedQuantity?: number;
 	actualQuantity?: number;
 	planAshContent?: number;

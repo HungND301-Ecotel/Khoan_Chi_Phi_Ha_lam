@@ -102,7 +102,11 @@ public static class LumpSumFinalSettlementQuarterAggregator
                 x.ProductCode,
                 x.ProductName,
                 x.UnitOfMeasureId,
-                x.UnitOfMeasureName
+                x.UnitOfMeasureName,
+                x.TransportRouteId,
+                x.RouteDepartmentId,
+                x.EquipmentId,
+                x.EquipmentQuality
             })
             .Select(group =>
             {
@@ -122,6 +126,19 @@ public static class LumpSumFinalSettlementQuarterAggregator
                     ProductName = group.Key.ProductName,
                     UnitOfMeasureId = group.Key.UnitOfMeasureId,
                     UnitOfMeasureName = group.Key.UnitOfMeasureName,
+                    ProductionProcessCode = group.Select(x => x.ProductionProcessCode).FirstOrDefault(x => x != null),
+                    ProductionProcessName = group.Select(x => x.ProductionProcessName).FirstOrDefault(x => x != null),
+                    TransportRouteId = group.Key.TransportRouteId,
+                    TransportRouteCode = group.Select(x => x.TransportRouteCode).FirstOrDefault(x => x != null),
+                    TransportRouteName = group.Select(x => x.TransportRouteName).FirstOrDefault(x => x != null),
+                    RouteDepartmentId = group.Key.RouteDepartmentId,
+                    RouteDepartmentCode = group.Select(x => x.RouteDepartmentCode).FirstOrDefault(x => x != null),
+                    RouteDepartmentName = group.Select(x => x.RouteDepartmentName).FirstOrDefault(x => x != null),
+                    EquipmentId = group.Key.EquipmentId,
+                    EquipmentCode = group.Select(x => x.EquipmentCode).FirstOrDefault(x => x != null),
+                    EquipmentName = group.Select(x => x.EquipmentName).FirstOrDefault(x => x != null),
+                    EquipmentQuality = group.Key.EquipmentQuality,
+                    IsLowValuePerishableSupplyRow = group.Any(x => x.IsLowValuePerishableSupplyRow),
                     PlannedQuantity = plannedQuantity,
                     ActualQuantity = actualQuantity,
                     Materials = new LumpSumCostDetailDto
