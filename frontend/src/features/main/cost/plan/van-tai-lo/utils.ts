@@ -78,7 +78,7 @@ export function buildTransportMonthsPayload(
 						productionProcessId: processId,
 						transportRouteId: item.transportRouteId || undefined,
 						routeDepartmentId: item.departmentId || undefined,
-						contractCodeId: item.contractCodeId || undefined,
+						equipmentId: item.contractCodeId || undefined,
 						equipmentQuality: item.equipmentQuality || undefined,
 						productionMeters: item.productionMeters,
 						unitOfMeasureId: item.unitOfMeasureId || undefined,

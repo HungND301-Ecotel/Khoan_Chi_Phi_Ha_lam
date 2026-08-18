@@ -108,6 +108,12 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
     {
         var cost = line.PlannedTransportCost;
 
+        var materialEffectiveUnitPrice = (double)(cost?.MaterialFuelUnitPrice ?? 0);
+        var maintenanceEffectiveUnitPrice = (double)(cost?.MaintenanceUnitPrice ?? 0) * (cost?.MaintenanceCoefficient ?? 1);
+        var powerEffectiveUnitPrice = (double)(cost?.PowerUnitPrice ?? 0) * (cost?.PowerCoefficient ?? 1);
+        var isLowVolumeCase = cost?.IsLowVolumeCase ?? false;
+        var unitTotal = materialEffectiveUnitPrice + maintenanceEffectiveUnitPrice + powerEffectiveUnitPrice;
+
         return new TransportPlanLineItemDto
         {
             Id = line.Id,
@@ -130,29 +136,29 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             UnitOfMeasureName = line.UnitOfMeasure?.Name,
             K1 = ToSelectionDto(cost, FixedKeyType.K1, "K1"),
             K2 = ToSelectionDto(cost, FixedKeyType.K2, "K2"),
-            IsLowVolumeCase = cost?.IsLowVolumeCase ?? false,
+            IsLowVolumeCase = isLowVolumeCase,
             Material = new TransportCostComponentDto
             {
                 BaseUnitPrice = cost?.MaterialFuelUnitPrice,
                 K1Coefficient = null,
                 K2Coefficient = null,
-                EffectiveUnitPrice = (double)(cost?.MaterialFuelUnitPrice ?? 0),
+                EffectiveUnitPrice = materialEffectiveUnitPrice,
             },
             Maintenance = new TransportCostComponentDto
             {
                 BaseUnitPrice = cost?.MaintenanceUnitPrice,
                 K1Coefficient = GetFactorEffectiveValue(cost, FixedKeyType.K1, "K1", forMaintenance: true),
                 K2Coefficient = GetFactorEffectiveValue(cost, FixedKeyType.K2, "K2", forMaintenance: true),
-                EffectiveUnitPrice = (double)(cost?.MaintenanceUnitPrice ?? 0) * (cost?.MaintenanceCoefficient ?? 1),
+                EffectiveUnitPrice = maintenanceEffectiveUnitPrice,
             },
             Power = new TransportCostComponentDto
             {
                 BaseUnitPrice = cost?.PowerUnitPrice,
                 K1Coefficient = GetFactorEffectiveValue(cost, FixedKeyType.K1, "K1", forMaintenance: false),
                 K2Coefficient = GetFactorEffectiveValue(cost, FixedKeyType.K2, "K2", forMaintenance: false),
-                EffectiveUnitPrice = (double)(cost?.PowerUnitPrice ?? 0) * (cost?.PowerCoefficient ?? 1),
+                EffectiveUnitPrice = powerEffectiveUnitPrice,
             },
-            PlannedTotalCost = cost?.GetPlannedTotalPrice() ?? 0,
+            PlannedTotalCost = isLowVolumeCase ? unitTotal : line.ProductionMeters * unitTotal,
         };
     }
 

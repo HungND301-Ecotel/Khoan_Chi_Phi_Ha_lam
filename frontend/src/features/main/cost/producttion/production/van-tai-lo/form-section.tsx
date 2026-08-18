@@ -42,9 +42,9 @@ type VanTaiLoProcessEntryCardProps = {
 // (Tuyến vận tải / Nhóm vật tư) theo loại vận tải của công đoạn đó — không có K1/K2, không có
 // ĐVT, vì ProductionOutputTransportLine chỉ ghi nhận sản lượng thực tế, không cần đủ field để dò
 // đơn giá như Kế hoạch. Riêng 2 chiều khoán chi tiết thật sự vẫn giữ nguyên vì Kế hoạch định giá
-// riêng theo đó: công đoạn Băng tải giữ "Đơn vị áp dụng cho tuyến này", công đoạn Monoray giữ
-// "Chất lượng thiết bị" (A/B/C) — để sản lượng thực tế đối chiếu/quyết toán đúng theo từng đơn
-// vị/chất lượng thiết bị.
+// riêng theo đó: công đoạn theo Tuyến (Băng tải, Trục tải/Tời cáp) giữ "Đơn vị áp dụng cho
+// tuyến này", công đoạn Monoray giữ "Chất lượng thiết bị" (A/B/C) — để sản lượng thực tế đối
+// chiếu/quyết toán đúng theo từng đơn vị/chất lượng thiết bị.
 function VanTaiLoProcessEntryCard({
 	form,
 	groupIndex,
@@ -90,7 +90,7 @@ function VanTaiLoProcessEntryCard({
 
 		const removedIds = prev.filter((id) => !routeIds.includes(id));
 		if (removedIds.length > 0) {
-			if (isConveyor) {
+			if (isConveyor || isShaft) {
 				const nextRouteDept = { ...routeDepartmentIds };
 				removedIds.forEach((id) => delete nextRouteDept[id]);
 				form.setValue(`${entryPath}.routeDepartmentIds` as any, nextRouteDept);
@@ -114,7 +114,7 @@ function VanTaiLoProcessEntryCard({
 		const prev = prevRouteDepartmentIdsRef.current;
 		if (JSON.stringify(prev) === JSON.stringify(routeDepartmentIds)) return;
 
-		if (isConveyor) {
+		if (isConveyor || isShaft) {
 			const currentItems = form.getValues(`${entryPath}.items` as any) || [];
 			const filtered = (currentItems as typeof items).filter((item) => {
 				if (!item.transportRouteId) return true;
@@ -184,7 +184,7 @@ function VanTaiLoProcessEntryCard({
 				{process.code ? `${process.code} - ${process.name}` : process.name}
 			</div>
 
-			{isConveyor && (
+			{(isConveyor || isShaft) && (
 				<>
 					<FormMultiSelect
 						control={formControl}
@@ -280,75 +280,6 @@ function VanTaiLoProcessEntryCard({
 							</div>
 						);
 					})}
-				</>
-			)}
-
-			{isShaft && (
-				<>
-					<FormMultiSelect
-						control={formControl}
-						name={`${entryPath}.routeIds` as any}
-						label='Tuyến vận tải'
-						placeholder='Chọn Tuyến vận tải'
-						options={transportRoutes.map((r) => ({
-							value: r.id,
-							label: `${r.code} - ${r.name}`,
-						}))}
-					/>
-
-					{routeIds.length > 0 && (
-						<div className='overflow-hidden rounded-md border border-gray-200'>
-							<table className='w-full text-left text-sm'>
-								<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-									<tr>
-										<th className='min-w-[220px] px-4 py-3'>Tuyến vận tải</th>
-										<th className='min-w-[140px] px-4 py-3'>
-											Sản lượng thực tế
-										</th>
-									</tr>
-								</thead>
-								<tbody className='divide-y divide-gray-100'>
-									{routeIds.map((routeId) => {
-										const route = transportRoutes.find((r) => r.id === routeId);
-										const itemIndex = items.findIndex(
-											(it) => it.transportRouteId === routeId,
-										);
-
-										return (
-											<tr key={routeId} className='hover:bg-gray-50/50'>
-												<td className='px-4 py-2'>
-													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
-														{route ? `${route.code} - ${route.name}` : routeId}
-													</div>
-												</td>
-												<td className='px-4 py-2'>
-													<FormNumberInput
-														value={items[itemIndex]?.productionMeters}
-														onValueChange={(value) => {
-															const next = [...items];
-															if (itemIndex >= 0) {
-																next[itemIndex] = {
-																	...next[itemIndex],
-																	productionMeters: value ?? Number.NaN,
-																};
-															} else {
-																next.push({
-																	transportRouteId: routeId,
-																	productionMeters: value ?? Number.NaN,
-																});
-															}
-															setItems(next);
-														}}
-														placeholder='Nhập sản lượng thực tế'
-													/>
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
-						</div>
-					)}
 				</>
 			)}
 

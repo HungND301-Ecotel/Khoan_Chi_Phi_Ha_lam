@@ -214,21 +214,10 @@ export function TransportProcessEntryCard({
 		if (JSON.stringify(prev) === JSON.stringify(routeIds)) return;
 
 		const removedIds = prev.filter((id) => !routeIds.includes(id));
-		if (removedIds.length > 0) {
-			if (isConveyor) {
-				const newRouteDept = { ...routeDepartmentIds };
-				removedIds.forEach((id) => delete newRouteDept[id]);
-				form.setValue(`${entryPath}.routeDepartmentIds` as any, newRouteDept);
-			}
-			if (isShaft) {
-				const currentItems = form.getValues(`${entryPath}.items` as any) || [];
-				const filtered = (currentItems as any[]).filter(
-					(item: any) => !removedIds.includes(item.transportRouteId || ''),
-				);
-				if (filtered.length !== currentItems.length) {
-					form.setValue(`${entryPath}.items` as any, filtered);
-				}
-			}
+		if (removedIds.length > 0 && (isConveyor || isShaft)) {
+			const newRouteDept = { ...routeDepartmentIds };
+			removedIds.forEach((id) => delete newRouteDept[id]);
+			form.setValue(`${entryPath}.routeDepartmentIds` as any, newRouteDept);
 		}
 		prevRouteIdsRef.current = [...routeIds];
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -293,8 +282,8 @@ export function TransportProcessEntryCard({
 				{process.code ? `${process.code} - ${process.name}` : process.name}
 			</div>
 
-			{/* ================= MODE 1: CONVEYOR (Vận tải đá / than qua băng tải) ================= */}
-			{isConveyor && (
+			{/* ================= MODE 1: CONVEYOR / SHAFT (route-based: Băng tải, Trục tải/Tời cáp) ================= */}
+			{(isConveyor || isShaft) && (
 				<div className='flex flex-col gap-4'>
 					<FormMultiSelect
 						control={formControl}
@@ -513,98 +502,6 @@ export function TransportProcessEntryCard({
 							</div>
 						);
 					})}
-				</div>
-			)}
-
-			{/* ================= MODE 2: SHAFT (Vận tải trục đá / đá lẫn than) ================= */}
-			{isShaft && (
-				<div className='flex flex-col gap-3'>
-					<FormMultiSelect
-						control={formControl}
-						name={`${entryPath}.routeIds` as any}
-						label='Tuyến vận tải'
-						placeholder='Chọn tuyến vận tải'
-						options={transportRoutes.map((r) => ({
-							value: r.id,
-							label: r.code ? `${r.code} - ${r.name}` : r.name,
-						}))}
-					/>
-
-					{routeIds.length > 0 && (
-						<div className='overflow-x-auto rounded-sm border border-[#e0e0e0] bg-white'>
-							<table className='w-full text-left text-sm'>
-								<thead className='border-b border-[#e0e0e0] bg-[#f5f5f5] text-xs font-semibold text-gray-700 uppercase'>
-									<tr>
-										<th className='px-4 py-2.5'>Tuyến vận tải</th>
-										<th className='min-w-[180px] px-4 py-2.5'>Sản lượng</th>
-										<th className='min-w-[140px] px-4 py-2.5'>ĐVT</th>
-									</tr>
-								</thead>
-								<tbody className='divide-y divide-[#e0e0e0]'>
-									{routeIds.map((routeId: string) => {
-										const routeObj = transportRoutes.find((r: any) => r.id === routeId);
-										const itemIndex = items.findIndex((it: any) => it.transportRouteId === routeId);
-										const currentItem: any =
-											itemIndex >= 0 ? items[itemIndex] : { transportRouteId: routeId };
-
-										return (
-											<tr key={routeId} className='hover:bg-gray-50'>
-												<td className='px-4 py-2.5'>
-													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
-														{routeObj?.code ? `${routeObj.code} - ${routeObj.name}` : routeObj?.name}
-													</div>
-												</td>
-												<td className='px-4 py-2.5'>
-													<NumericFormat
-														className='h-9 w-full rounded-sm border border-[#999999] px-3 text-sm focus:border-primary focus:outline-none'
-														placeholder='Nhập sản lượng'
-														decimalSeparator=','
-														thousandSeparator='.'
-														value={currentItem.productionMeters ?? ''}
-														onValueChange={(values) => {
-															const meters = values.floatValue ?? 0;
-															const next = [...items];
-															if (itemIndex >= 0) {
-																next[itemIndex] = { ...next[itemIndex], productionMeters: meters };
-															} else {
-																next.push({
-																	transportRouteId: routeId,
-																	productionMeters: meters,
-																});
-															}
-															setItems(next);
-														}}
-													/>
-												</td>
-												<td className='px-4 py-2.5'>
-													<FormSelectInput
-														value={currentItem.unitOfMeasureId || ''}
-														onValueChange={(unitId: string) => {
-															const next = [...items];
-															if (itemIndex >= 0) {
-																next[itemIndex] = { ...next[itemIndex], unitOfMeasureId: unitId };
-															} else {
-																next.push({
-																	transportRouteId: routeId,
-																	unitOfMeasureId: unitId,
-																});
-															}
-															setItems(next);
-														}}
-														placeholder='Chọn ĐVT'
-														options={units.map((u: any) => ({
-															value: u.id,
-															label: u.name,
-														}))}
-													/>
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
-						</div>
-					)}
 				</div>
 			)}
 

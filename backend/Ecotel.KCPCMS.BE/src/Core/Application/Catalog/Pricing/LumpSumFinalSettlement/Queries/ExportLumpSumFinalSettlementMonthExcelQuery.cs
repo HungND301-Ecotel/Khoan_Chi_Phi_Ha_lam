@@ -1,4 +1,5 @@
 using Application.Common.Exceptions;
+using Application.Common.Models;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
 using ClosedXML.Excel;
 using MediatR;
@@ -104,31 +105,197 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 IsProcessGroupRow = true
             });
 
-            for (var index = 0; index < groupItems.Count; index++)
+            var isTransportGroup = groupItems.Any(x => x.TransportRouteId.HasValue || x.EquipmentId.HasValue);
+
+            if (isTransportGroup)
             {
-                var item = groupItems[index];
-                result.Add(new ExportRow
+                PushTransportGroupItems(result, groupItems, stt);
+            }
+            else
+            {
+                for (var index = 0; index < groupItems.Count; index++)
                 {
-                    SttLabel = $"{stt}.{index + 1}",
-                    ProductCode = item.ProductCode,
-                    ProductName = item.ProductName,
-                    UnitOfMeasureName = item.UnitOfMeasureName,
-                    PlannedQuantity = item.PlannedQuantity,
-                    ActualQuantity = item.ActualQuantity,
-                    MaterialsUnitPrice = item.Materials?.UnitPrice,
-                    MaterialsTotalAmount = item.Materials?.TotalAmount ?? 0,
-                    MaintainsUnitPrice = item.Maintains?.UnitPrice,
-                    MaintainsTotalAmount = item.Maintains?.TotalAmount ?? 0,
-                    ElectricitiesUnitPrice = item.Electricities?.UnitPrice,
-                    ElectricitiesTotalAmount = item.Electricities?.TotalAmount ?? 0,
-                    TotalAmount = item.TotalAmount
-                });
+                    var item = groupItems[index];
+                    result.Add(new ExportRow
+                    {
+                        SttLabel = $"{stt}.{index + 1}",
+                        ProductCode = item.ProductCode,
+                        ProductName = item.ProductName,
+                        UnitOfMeasureName = item.UnitOfMeasureName,
+                        PlannedQuantity = item.PlannedQuantity,
+                        ActualQuantity = item.ActualQuantity,
+                        MaterialsUnitPrice = item.Materials?.UnitPrice,
+                        MaterialsTotalAmount = item.Materials?.TotalAmount ?? 0,
+                        MaintainsUnitPrice = item.Maintains?.UnitPrice,
+                        MaintainsTotalAmount = item.Maintains?.TotalAmount ?? 0,
+                        ElectricitiesUnitPrice = item.Electricities?.UnitPrice,
+                        ElectricitiesTotalAmount = item.Electricities?.TotalAmount ?? 0,
+                        TotalAmount = item.TotalAmount
+                    });
+                }
             }
 
             stt++;
         }
 
         return result;
+    }
+
+    // VTL/VTCG — 3 cap: Cong doan san xuat > Tuyen van tai/Thiet bi > Don vi/Chat luong (khong
+    // danh so, chi "-"), khop voi FE grouping.ts (cost/lump-sum-final-settlement/grouping.ts).
+    // Dong "Chi phi vat tu mau hong re tien" (IsLowValuePerishableSupplyRow) tach rieng phang,
+    // khong thuoc Cong doan/Tuyen/Thiet bi nao.
+    private static void PushTransportGroupItems(
+        List<ExportRow> result, List<LumpSumFinalSettlementDto> groupItems, int stt)
+    {
+        var lowValueRows = groupItems.Where(x => x.IsLowValuePerishableSupplyRow).ToList();
+        var regularItems = groupItems.Where(x => !x.IsLowValuePerishableSupplyRow).ToList();
+
+        var processGroups = regularItems
+            .GroupBy(x => x.ProductionProcessCode ?? x.ProductionProcessName ?? "process")
+            .Select(g => g.ToList())
+            .OrderByCodeNatural(g => g[0].ProductionProcessCode ?? g[0].ProductionProcessName)
+            .ToList();
+
+        var processStt = 1;
+        foreach (var processItems in processGroups)
+        {
+            var first = processItems[0];
+            var processLabel = CombineCodeName(
+                first.ProductionProcessCode, first.ProductionProcessName, "Cong doan chua xac dinh");
+            var processSttLabel = $"{stt}.{processStt}";
+
+            result.Add(BuildSubHeaderRow(processSttLabel, processLabel, processItems));
+
+            PushRouteOrEquipmentGroups(result, processItems, processSttLabel);
+            processStt++;
+        }
+
+        foreach (var item in lowValueRows)
+        {
+            result.Add(BuildLeafRow($"{stt}.{processStt}", item.ProductName, item));
+            processStt++;
+        }
+    }
+
+    private static void PushRouteOrEquipmentGroups(
+        List<ExportRow> result, List<LumpSumFinalSettlementDto> items, string sttPrefix)
+    {
+        var subGroups = new Dictionary<string, List<LumpSumFinalSettlementDto>>();
+        var subGroupOrder = new List<string>();
+        var flatItems = new List<LumpSumFinalSettlementDto>();
+
+        foreach (var item in items)
+        {
+            string? key = null;
+            if (item.TransportRouteId.HasValue && item.RouteDepartmentId.HasValue)
+            {
+                key = $"route:{item.TransportRouteId}";
+            }
+            else if (item.EquipmentId.HasValue && !string.IsNullOrEmpty(item.EquipmentQuality))
+            {
+                key = $"equipment:{item.EquipmentId}";
+            }
+
+            if (key == null)
+            {
+                flatItems.Add(item);
+                continue;
+            }
+
+            if (!subGroups.TryGetValue(key, out var list))
+            {
+                list = [];
+                subGroups[key] = list;
+                subGroupOrder.Add(key);
+            }
+            list.Add(item);
+        }
+
+        var orderedKeys = subGroupOrder
+            .OrderByCodeNatural(key => key.StartsWith("route:")
+                ? subGroups[key][0].TransportRouteCode
+                : subGroups[key][0].EquipmentCode)
+            .ToList();
+
+        var subStt = 1;
+        foreach (var key in orderedKeys)
+        {
+            var isRoute = key.StartsWith("route:");
+            var children = isRoute
+                ? subGroups[key].OrderByCodeNatural(c => c.RouteDepartmentCode).ToList()
+                : subGroups[key].OrderByCodeNatural(c => c.EquipmentQuality).ToList();
+            var first = children[0];
+
+            var parentLabel = isRoute
+                ? CombineCodeName(first.TransportRouteCode, first.TransportRouteName, "Tuyen chua xac dinh")
+                : CombineCodeName(first.EquipmentCode, first.EquipmentName, "Thiet bi chua xac dinh");
+
+            result.Add(BuildSubHeaderRow($"{sttPrefix}.{subStt}", parentLabel, children));
+
+            foreach (var child in children)
+            {
+                var leafLabel = isRoute
+                    ? CombineCodeName(child.RouteDepartmentCode, child.RouteDepartmentName, "Don vi chua xac dinh")
+                    : $"Loai {child.EquipmentQuality}";
+
+                result.Add(BuildLeafRow("-", leafLabel, child));
+            }
+
+            subStt++;
+        }
+
+        foreach (var item in flatItems.OrderByCodeNatural(x => x.EquipmentCode ?? x.TransportRouteCode))
+        {
+            result.Add(BuildLeafRow($"{sttPrefix}.{subStt}", item.ProductName, item));
+            subStt++;
+        }
+    }
+
+    private static ExportRow BuildSubHeaderRow(
+        string sttLabel, string productName, List<LumpSumFinalSettlementDto> items)
+    {
+        return new ExportRow
+        {
+            SttLabel = sttLabel,
+            ProductName = productName,
+            UnitOfMeasureName = items[0].UnitOfMeasureName,
+            IsBold = true,
+            ExcludeFromSummary = true,
+            PlannedQuantity = items.Sum(x => x.PlannedQuantity),
+            ActualQuantity = items.Sum(x => x.ActualQuantity),
+            MaterialsTotalAmount = items.Sum(x => x.Materials?.TotalAmount ?? 0),
+            MaintainsTotalAmount = items.Sum(x => x.Maintains?.TotalAmount ?? 0),
+            ElectricitiesTotalAmount = items.Sum(x => x.Electricities?.TotalAmount ?? 0),
+            TotalAmount = items.Sum(x => x.TotalAmount)
+        };
+    }
+
+    private static ExportRow BuildLeafRow(string sttLabel, string? productName, LumpSumFinalSettlementDto item)
+    {
+        return new ExportRow
+        {
+            SttLabel = sttLabel,
+            ProductCode = item.ProductCode,
+            ProductName = productName,
+            UnitOfMeasureName = item.UnitOfMeasureName,
+            PlannedQuantity = item.PlannedQuantity,
+            ActualQuantity = item.ActualQuantity,
+            MaterialsUnitPrice = item.Materials?.UnitPrice,
+            MaterialsTotalAmount = item.Materials?.TotalAmount ?? 0,
+            MaintainsUnitPrice = item.Maintains?.UnitPrice,
+            MaintainsTotalAmount = item.Maintains?.TotalAmount ?? 0,
+            ElectricitiesUnitPrice = item.Electricities?.UnitPrice,
+            ElectricitiesTotalAmount = item.Electricities?.TotalAmount ?? 0,
+            TotalAmount = item.TotalAmount
+        };
+    }
+
+    private static string CombineCodeName(string? code, string? name, string fallback)
+    {
+        var parts = new[] { code?.Trim(), name?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x));
+        var joined = string.Join(" - ", parts);
+        return string.IsNullOrWhiteSpace(joined) ? fallback : joined;
     }
 
     private static List<ExportRow> BuildReportRows(
