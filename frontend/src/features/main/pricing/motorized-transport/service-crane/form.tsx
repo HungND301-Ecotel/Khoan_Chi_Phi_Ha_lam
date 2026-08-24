@@ -5,7 +5,6 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
-import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -79,11 +78,11 @@ export function MotorizedServiceCraneForm({
 			name: 'assignmentCodeIds',
 		}) || [];
 
-	const selectedEquipmentQualities =
+	const watchedEquipmentQualities =
 		useWatch({
 			control: form.control as any,
 			name: 'equipmentQualities',
-		}) || [];
+		}) || {};
 
 	const watchedEquipmentProcesses =
 		useWatch({
@@ -103,9 +102,7 @@ export function MotorizedServiceCraneForm({
 			name: 'items',
 		}) || [];
 
-	const showBottomSection =
-		selectedAssignmentCodeIds.length > 0 &&
-		selectedEquipmentQualities.length > 0;
+	const showBottomSection = selectedAssignmentCodeIds.length > 0;
 
 	useEffect(() => {
 		Promise.all([
@@ -114,10 +111,8 @@ export function MotorizedServiceCraneForm({
 			fetchCatalogList(API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.LIST),
 		])
 			.then(([acList, procList, distList]) => {
-				// 1. Nhóm vật tư, tài sản (AssignmentCode)
 				setAssignmentCodes(acList);
 
-				// 2. Công đoạn sản xuất (ProductionProcess)
 				const procOpts = procList.map((item: any) => ({
 					label: item.name || item.code,
 					value: item.id,
@@ -125,7 +120,6 @@ export function MotorizedServiceCraneForm({
 				}));
 				setProcessOptions(procOpts);
 
-				// 3. Cung độ vận tải (HaulDistance)
 				const distOpts = distList.map((item: any) => ({
 					label: item.value || item.name || item.distanceRange || item.code,
 					value: item.id,
@@ -135,15 +129,14 @@ export function MotorizedServiceCraneForm({
 
 				if (!row) return;
 
-				// Map row data to form format
 				const allProcs: MotorizedServiceCraneUnitPrice[] = (row as any)
 					.allProcesses || [row];
 				const initialAcId =
 					row.assignmentCodeId || (row as any).equipmentId || '';
 
-				const initialQualitiesList: string[] = [];
 				const initialProcsList: string[] = [];
-				const initialDistsList: string[] = [];
+				const initialQualitiesMap: Record<string, string[]> = {};
+				const initialDistsMap: Record<string, string[]> = {};
 				const initialItems: any[] = [];
 
 				allProcs.forEach((p) => {
@@ -151,9 +144,6 @@ export function MotorizedServiceCraneForm({
 						.replace(/^Thiết bị loại\s*/i, '')
 						.replace(/^Loại\s*/i, '')
 						.trim();
-					if (q && !initialQualitiesList.includes(q)) {
-						initialQualitiesList.push(q);
-					}
 
 					if (
 						p.productionProcessId &&
@@ -162,12 +152,24 @@ export function MotorizedServiceCraneForm({
 						initialProcsList.push(p.productionProcessId);
 					}
 
+					const scopeKey = `${initialAcId}_${p.productionProcessId}`;
+					if (!initialQualitiesMap[scopeKey]) {
+						initialQualitiesMap[scopeKey] = [];
+					}
+					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
+						initialQualitiesMap[scopeKey].push(q);
+					}
+
+					if (!initialDistsMap[scopeKey]) {
+						initialDistsMap[scopeKey] = [];
+					}
+
 					(p.details || []).forEach((d) => {
 						if (
 							d.haulDistanceId &&
-							!initialDistsList.includes(d.haulDistanceId)
+							!initialDistsMap[scopeKey].includes(d.haulDistanceId)
 						) {
-							initialDistsList.push(d.haulDistanceId);
+							initialDistsMap[scopeKey].push(d.haulDistanceId);
 						}
 
 						initialItems.push({
@@ -180,6 +182,7 @@ export function MotorizedServiceCraneForm({
 								p.productionProcessName || p.productionProcess || '',
 							haulDistanceId: d.haulDistanceId || null,
 							haulDistanceValue: d.haulDistanceValue || '',
+							title: p.assignmentCodeName || initialAcId,
 							fuelUnitPrice: d.fuelUnitPrice ?? 0,
 							maintenanceUnitPrice: d.maintenanceUnitPrice ?? 0,
 						});
@@ -190,13 +193,11 @@ export function MotorizedServiceCraneForm({
 					startMonth: row.startMonth?.substring(0, 7),
 					endMonth: row.endMonth?.substring(0, 7),
 					assignmentCodeIds: initialAcId ? [initialAcId] : [],
-					equipmentQualities: initialQualitiesList,
+					equipmentQualities: initialQualitiesMap,
 					equipmentProcesses: initialAcId
 						? { [initialAcId]: initialProcsList }
 						: {},
-					equipmentDistances: initialAcId
-						? { [initialAcId]: initialDistsList }
-						: {},
+					equipmentDistances: initialDistsMap,
 					items: initialItems,
 				});
 			})
@@ -205,8 +206,9 @@ export function MotorizedServiceCraneForm({
 			});
 	}, [form, row]);
 
-	// Auto sync items matrix when inputs change
 	useEffect(() => {
+		if (row && !isDuplicate) return;
+
 		if (!showBottomSection) {
 			form.setValue('items', []);
 			return;
@@ -223,15 +225,19 @@ export function MotorizedServiceCraneForm({
 				: acId;
 
 			const selectedProcs: string[] = watchedEquipmentProcesses[acId] || [];
-			const selectedDists: string[] = watchedEquipmentDistances[acId] || [];
 
 			selectedProcs.forEach((procId: string) => {
+				const scopeKey = `${acId}_${procId}`;
 				const procObj = processOptions.find((p) => p.value === procId);
 				const procName = procObj ? procObj.label : procId;
 				const isWatering = procName.toLowerCase().includes('tưới đường mỏ');
 
-				selectedEquipmentQualities.forEach((qual: string) => {
-					// Nếu là "Tưới đường mỏ" và có chọn cung độ → tạo item cho mỗi cung độ
+				const selectedQualities: string[] =
+					watchedEquipmentQualities[scopeKey] || [];
+				const selectedDists: string[] =
+					watchedEquipmentDistances[scopeKey] || [];
+
+				selectedQualities.forEach((qual: string) => {
 					if (isWatering && selectedDists.length > 0) {
 						selectedDists.forEach((distId: string) => {
 							const distObj = distanceOptions.find((d) => d.value === distId);
@@ -262,7 +268,6 @@ export function MotorizedServiceCraneForm({
 							});
 						});
 					} else {
-						// Không có cung độ → item đơn giản
 						const existing = items.find(
 							(it: any) =>
 								it.assignmentCodeId === acId &&
@@ -291,26 +296,11 @@ export function MotorizedServiceCraneForm({
 			});
 		});
 
-		const isSameLength = items.length === newItems.length;
-		const isSameContent =
-			isSameLength &&
-			items.every((it: any, idx: number) => {
-				const nIt = newItems[idx];
-				return (
-					it?.assignmentCodeId === nIt?.assignmentCodeId &&
-					it?.equipmentQuality === nIt?.equipmentQuality &&
-					it?.productionProcessId === nIt?.productionProcessId &&
-					it?.haulDistanceId === nIt?.haulDistanceId
-				);
-			});
-
-		if (!isSameContent) {
-			form.setValue('items', newItems);
-		}
+		form.setValue('items', newItems);
 	}, [
 		showBottomSection,
 		JSON.stringify(selectedAssignmentCodeIds),
-		JSON.stringify(selectedEquipmentQualities),
+		JSON.stringify(watchedEquipmentQualities),
 		JSON.stringify(watchedEquipmentProcesses),
 		JSON.stringify(watchedEquipmentDistances),
 	]);
@@ -319,7 +309,9 @@ export function MotorizedServiceCraneForm({
 		try {
 			const itemsToSubmit = values.items || [];
 			if (itemsToSubmit.length === 0) {
-				popup.error('Vui lòng chọn công đoạn sản xuất và nhập đơn giá');
+				popup.error(
+					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá',
+				);
 				return;
 			}
 
@@ -332,7 +324,6 @@ export function MotorizedServiceCraneForm({
 					? `${values.endMonth}-01`
 					: values.endMonth;
 
-			// Group items by (assignmentCodeId, equipmentQuality, productionProcessId)
 			const groupedHeaders: Record<
 				string,
 				{
@@ -418,8 +409,18 @@ export function MotorizedServiceCraneForm({
 	};
 
 	return (
-		<FormProvider context={form as any} onSubmit={handleSubmit}>
-			{/* FORM TRÊN */}
+		<FormProvider
+			context={form as any}
+			onSubmit={handleSubmit}
+			onInvalid={(errors) => {
+				console.error('Form Validation Errors:', errors);
+				const firstErr = Object.values(errors)[0];
+				const msg =
+					(firstErr as any)?.message ||
+					'Vui lòng điền đầy đủ các thông tin bắt buộc';
+				popup.error(msg);
+			}}
+		>
 			<FormRow>
 				<FormMonthYear
 					control={form.control as any}
@@ -435,204 +436,235 @@ export function MotorizedServiceCraneForm({
 				/>
 			</FormRow>
 
-			<FormRow>
-				<div className='flex-1'>
-					<FormMultiSelect
-						control={form.control as any}
-						name='assignmentCodeIds'
-						label='Nhóm vật tư, tài sản'
-						placeholder='Chọn nhóm vật tư, tài sản'
-						options={assignmentCodes.map((item) => ({
-							label: item.code
-								? `${item.code} - ${item.name}`
-								: item.name || item.id,
-							value: item.id,
-						}))}
-					/>
+			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
+				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
+					<span className='h-2.5 w-2.5 rounded-full bg-blue-600' />
+					<span>Phục vụ (Xe cẩu, xe téc nước, xe chở người, xe tải)</span>
 				</div>
-				<div className='flex-1'>
-					<FormMultiSelect
-						control={form.control as any}
-						name='equipmentQualities'
-						label='Chất lượng thiết bị'
-						placeholder='Chọn chất lượng thiết bị'
-						options={[
-							{ label: 'Thiết bị loại A', value: 'A' },
-							{ label: 'Thiết bị loại B', value: 'B' },
-							{ label: 'Thiết bị loại C', value: 'C' },
-						]}
-					/>
-				</div>
-			</FormRow>
 
-			{showBottomSection && <FormSeparator />}
+				<FormMultiSelect
+					control={form.control as any}
+					name='assignmentCodeIds'
+					label='1. Nhóm vật tư, tài sản (Xe cẩu / phục vụ)'
+					placeholder='Chọn nhóm xe cẩu / phục vụ'
+					options={assignmentCodes.map((item) => ({
+						label: item.code
+							? `${item.code} - ${item.name}`
+							: item.name || item.id,
+						value: item.id,
+					}))}
+					disabled={!!row && !isDuplicate}
+				/>
 
-			{/* FORM DƯỚI - Matrix nhập đơn giá */}
-			{showBottomSection && (
-				<div className='space-y-4'>
-					<div className='text-xs font-semibold text-gray-500 uppercase'>
-						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm
-						vật tư )
-					</div>
+				{selectedAssignmentCodeIds.map((acId: string) => {
+					const acObj = assignmentCodes.find((a) => a.id === acId);
+					const title = acObj
+						? acObj.code
+							? `${acObj.code} - ${acObj.name}`
+							: acObj.name
+						: acId;
+					const selectedProcList: string[] =
+						watchedEquipmentProcesses?.[acId] || [];
 
-					{selectedAssignmentCodeIds.map((acId: string) => {
-						const acObj = assignmentCodes.find((a) => a.id === acId);
-						const title = acObj
-							? acObj.code
-								? `${acObj.code} - ${acObj.name}`
-								: acObj.name
-							: acId;
-						const selectedProcList: string[] =
-							watchedEquipmentProcesses?.[acId] || [];
-						const selectedDistList: string[] =
-							watchedEquipmentDistances?.[acId] || [];
+					return (
+						<div
+							key={acId}
+							className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						>
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>{title}</span>
+							</div>
 
-						return (
-							<div
-								key={acId}
-								className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs'
-							>
-								<div className='text-sm font-semibold text-gray-800'>
-									{title}
-								</div>
+							<FormMultiSelect
+								control={form.control as any}
+								name={`equipmentProcesses.${acId}`}
+								label={`2. Công đoạn sản xuất áp dụng cho [${title}]`}
+								placeholder='Chọn các công đoạn sản xuất'
+								options={processOptions}
+							/>
 
-								<FormRow>
-									<div className='flex-1'>
-										<FormMultiSelect
-											control={form.control as any}
-											name={`equipmentProcesses.${acId}`}
-											label='Công đoạn sản xuất'
-											placeholder='Chọn các công đoạn sản xuất'
-											options={processOptions}
-										/>
-									</div>
-								</FormRow>
+							{selectedProcList.map((procId: string) => {
+								const scopeKey = `${acId}_${procId}`;
+								const procObj = processOptions.find((p) => p.value === procId);
+								const procName = procObj ? procObj.label : procId;
+								const isWatering = procName
+									.toLowerCase()
+									.includes('tưới đường mỏ');
+								const isHourly =
+									procName.toLowerCase().includes('phục vụ') ||
+									procName.toLowerCase().includes('di chuyển');
+								const itemUnitLabel = isWatering
+									? '(đ/tkm)'
+									: isHourly
+										? '(đ/h)'
+										: '(đ/km)';
 
-								{/* VỚI MỖI CÔNG ĐOẠN ĐƯỢC CHỌN -> HIỂN THỊ BẢNG ĐƠN GIÁ TƯƠNG ỨNG */}
-								{selectedProcList.map((procId: string) => {
-									const procObj = processOptions.find(
-										(p) => p.value === procId,
-									);
-									const procName = procObj ? procObj.label : procId;
-									const isWatering = procName
-										.toLowerCase()
-										.includes('tưới đường mỏ');
-									const isHourly =
-										procName.toLowerCase().includes('phục vụ') ||
-										procName.toLowerCase().includes('di chuyển');
-									const itemUnitLabel = isWatering
-										? '(đ/tkm)'
-										: isHourly
-											? '(đ/h)'
-											: '(đ/km)';
+								const currentQualities: string[] =
+									watchedEquipmentQualities[scopeKey] || [];
 
-									const filteredItems = items.filter(
-										(it: any) =>
-											it.assignmentCodeId === acId &&
-											it.productionProcessId === procId,
-									);
+								const filteredItems = items.filter(
+									(it: any) =>
+										it.assignmentCodeId === acId &&
+										it.productionProcessId === procId,
+								);
 
-									if (filteredItems.length === 0) return null;
-
-									return (
-										<div
-											key={procId}
-											className='space-y-2 rounded-md border border-gray-100 bg-gray-50/50 p-3'
-										>
-											<div className='text-primary text-sm font-semibold'>
+								return (
+									<div
+										key={procId}
+										className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
+									>
+										<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
+											<span className='h-2 w-2 rounded-full bg-blue-500' />
+											<span className='text-xs font-semibold text-blue-800 uppercase'>
 												{procName}
-											</div>
+											</span>
+										</div>
 
-											{/* Nếu là "Tưới đường mỏ" → hiển thị dropdown chọn cung độ */}
-											{isWatering && (
-												<div className='mb-3'>
-													<FormMultiSelect
-														control={form.control as any}
-														name={`equipmentDistances.${acId}`}
-														label='Cung độ vận tải'
-														placeholder='Chọn các cung độ vận tải'
-														options={distanceOptions}
-													/>
+										{isWatering ? (
+											<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentQualities.${scopeKey}`}
+													label='Chất lượng thiết bị'
+													placeholder='Chọn chất lượng thiết bị'
+													options={[
+														{ label: 'Thiết bị loại A', value: 'A' },
+														{ label: 'Thiết bị loại B', value: 'B' },
+														{ label: 'Thiết bị loại C', value: 'C' },
+													]}
+												/>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentDistances.${scopeKey}`}
+													label='Cung độ vận tải'
+													placeholder='Chọn các cung độ vận tải'
+													options={distanceOptions}
+												/>
+											</div>
+										) : (
+											<div className='w-full'>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentQualities.${scopeKey}`}
+													label='Chất lượng thiết bị'
+													placeholder='Chọn chất lượng thiết bị'
+													options={[
+														{ label: 'Thiết bị loại A', value: 'A' },
+														{ label: 'Thiết bị loại B', value: 'B' },
+														{ label: 'Thiết bị loại C', value: 'C' },
+													]}
+												/>
+											</div>
+										)}
+
+										{currentQualities.length > 0 &&
+											filteredItems.length > 0 && (
+												<div className='space-y-2 pt-2'>
+													<div className='text-xs font-semibold text-gray-700'>
+														Bảng đơn giá ({filteredItems.length} tổ hợp)
+													</div>
+
+													<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
+														<table className='w-full text-left text-sm'>
+															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
+																<tr>
+																	<th
+																		className={
+																			isWatering
+																				? 'w-[30%] px-3 py-2'
+																				: 'w-[40%] px-3 py-2'
+																		}
+																	>
+																		Chất lượng
+																	</th>
+																	{isWatering && (
+																		<th className='w-[30%] px-3 py-2'>
+																			Cung độ
+																		</th>
+																	)}
+																	<th
+																		className={
+																			isWatering
+																				? 'w-[20%] px-3 py-2'
+																				: 'w-[30%] px-3 py-2'
+																		}
+																	>
+																		Đơn giá Nhiên liệu {itemUnitLabel}
+																	</th>
+																	<th
+																		className={
+																			isWatering
+																				? 'w-[20%] px-3 py-2'
+																				: 'w-[30%] px-3 py-2'
+																		}
+																	>
+																		Đơn giá SCTX {itemUnitLabel}
+																	</th>
+																</tr>
+															</thead>
+															<tbody className='divide-y divide-gray-100'>
+																{filteredItems.map((item: any, idx: number) => {
+																	const itemIndex = items.findIndex(
+																		(it: any) =>
+																			it.assignmentCodeId ===
+																				item.assignmentCodeId &&
+																			it.productionProcessId ===
+																				item.productionProcessId &&
+																			it.equipmentQuality ===
+																				item.equipmentQuality &&
+																			it.haulDistanceId === item.haulDistanceId,
+																	);
+
+																	if (itemIndex === -1) return null;
+
+																	return (
+																		<tr
+																			key={`${item.equipmentQuality}-${item.haulDistanceId || idx}`}
+																			className='hover:bg-gray-50/50'
+																		>
+																			<td className='px-3 py-2'>
+																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																					Thiết bị loại {item.equipmentQuality}
+																				</div>
+																			</td>
+																			{isWatering && (
+																				<td className='px-3 py-2'>
+																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																						{item.haulDistanceValue
+																							? ` ${item.haulDistanceValue} km`
+																							: '-'}
+																					</div>
+																				</td>
+																			)}
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.fuelUnitPrice`}
+																					placeholder='Nhập đơn giá nhiên liệu'
+																				/>
+																			</td>
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.maintenanceUnitPrice`}
+																					placeholder='Nhập đơn giá SCTX'
+																				/>
+																			</td>
+																		</tr>
+																	);
+																})}
+															</tbody>
+														</table>
+													</div>
 												</div>
 											)}
-
-											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-														<tr>
-															<th className='min-w-[140px] px-4 py-3'>
-																Chất lượng
-															</th>
-															{isWatering && selectedDistList.length > 0 && (
-																<th className='min-w-[140px] px-4 py-3'>
-																	Cung độ
-																</th>
-															)}
-															<th className='px-4 py-3'>
-																Đơn giá Nhiên liệu {itemUnitLabel}
-															</th>
-															<th className='px-4 py-3'>
-																Đơn giá SCTX {itemUnitLabel}
-															</th>
-														</tr>
-													</thead>
-													<tbody className='divide-y divide-gray-100'>
-														{filteredItems.map((item: any) => {
-															const itemIndex = items.findIndex(
-																(it: any) =>
-																	it.assignmentCodeId ===
-																		item.assignmentCodeId &&
-																	it.productionProcessId ===
-																		item.productionProcessId &&
-																	it.equipmentQuality ===
-																		item.equipmentQuality &&
-																	it.haulDistanceId === item.haulDistanceId,
-															);
-
-															const qText = `Thiết bị loại ${item.equipmentQuality}`;
-
-															return (
-																<tr
-																	key={`${item.assignmentCodeId}-${item.productionProcessId}-${item.equipmentQuality}-${item.haulDistanceId || 'no-dist'}`}
-																	className='hover:bg-gray-50/50'
-																>
-																	<td className='px-4 py-2 text-sm font-medium text-gray-700'>
-																		{qText}
-																	</td>
-																	{isWatering &&
-																		selectedDistList.length > 0 && (
-																			<td className='px-4 py-2 text-sm font-medium text-gray-700'>
-																				{item.haulDistanceValue || '-'}
-																			</td>
-																		)}
-																	<td className='px-4 py-2'>
-																		<FormNumber
-																			control={form.control as any}
-																			name={`items.${itemIndex}.fuelUnitPrice`}
-																			placeholder='Nhập đơn giá nhiên liệu'
-																		/>
-																	</td>
-																	<td className='px-4 py-2'>
-																		<FormNumber
-																			control={form.control as any}
-																			name={`items.${itemIndex}.maintenanceUnitPrice`}
-																			placeholder='Nhập đơn giá SCTX'
-																		/>
-																	</td>
-																</tr>
-															);
-														})}
-													</tbody>
-												</table>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						);
-					})}
-				</div>
-			)}
+									</div>
+								);
+							})}
+						</div>
+					);
+				})}
+			</div>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
