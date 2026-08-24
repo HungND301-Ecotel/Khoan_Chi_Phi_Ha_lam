@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 
 export { MAIN_COST_PLAN_COLUMNS } from './khai-thac/columns';
 export { VTL_COST_PLAN_COLUMNS } from './van-tai-lo/columns';
+export { VTCG_COST_PLAN_COLUMNS } from './van-tai-co-gioi/columns';
 
 export type DepartmentPlanGroup = {
 	id: string;
@@ -11,6 +12,7 @@ export type DepartmentPlanGroup = {
 	name: string;
 	hasKhaiThac?: boolean;
 	hasVanTaiLo?: boolean;
+	hasVanTaiCoGioi?: boolean;
 	startMonth?: string;
 	endMonth?: string;
 	productUnitPriceIds: string[];

@@ -107,6 +107,62 @@ const transportPlannedMonthSchema = z.object({
 	processes: z.array(transportProcessEntrySchema).nullable().optional().default([]),
 });
 
+// --- Motorized transport plan schema (dùng cho vận tải cơ giới) ---
+const motorizedPlanItemSchema = z.object({
+	id: z.string().nullable().optional(),
+	equipmentId: z.string().nullable().optional(),
+	equipmentCode: z.string().nullable().optional(),
+	equipmentName: z.string().nullable().optional(),
+	equipmentQuality: z.string().nullable().optional(),
+	productionProcessId: z.string().nullable().optional(),
+	productionProcessCode: z.string().nullable().optional(),
+	productionProcessName: z.string().nullable().optional(),
+	haulDistanceId: z.string().nullable().optional(),
+	haulDistanceValue: z.string().nullable().optional(),
+	cargoTypeId: z.string().nullable().optional(),
+	cargoTypeName: z.string().nullable().optional(),
+	receivingLocationId: z.string().nullable().optional(),
+	receivingLocationName: z.string().nullable().optional(),
+	dumpingLocationId: z.string().nullable().optional(),
+	dumpingLocationName: z.string().nullable().optional(),
+	productionMeters: z.preprocess(
+		(val) =>
+			val === '' || Number.isNaN(val) || val === null || val === undefined || val === 0
+				? undefined
+				: val,
+		z.coerce
+			.number<number>({ error: 'Sản lượng kế hoạch ban đầu phải là số' })
+			.gt(0, { error: 'Sản lượng kế hoạch ban đầu phải lớn hơn 0' })
+			.optional(),
+	),
+	fuelAdjustmentFactor: z.preprocess(
+		(val) => (val === '' || val === null || val === undefined ? 1.0 : val),
+		z.coerce.number().optional().default(1.0),
+	),
+	unitOfMeasureId: z.string().nullable().optional(),
+	unitName: z.string().nullable().optional(),
+});
+
+const motorizedPlannedMonthSchema = z.object({
+	month: z.string().nullable().optional().default(''),
+	lowValuePerishableSupply: z.boolean().nullable().optional().default(false),
+	motorizedCategory: z
+		.enum(['scania', 'excavator_dozer', 'service_crane', 'vacuum_truck'])
+		.optional()
+		.default('scania'),
+	assignmentCodeIds: z.array(z.string()).optional().default([]),
+	equipmentQualities: z.record(z.string(), z.any()).optional().default({}),
+	equipmentProcesses: z
+		.record(z.string(), z.array(z.string()))
+		.optional()
+		.default({}),
+	equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
+	processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
+	processPickupLocations: z.record(z.string(), z.any()).optional().default({}),
+	processDropoffLocations: z.record(z.string(), z.any()).optional().default({}),
+	items: z.array(motorizedPlanItemSchema).optional().default([]),
+});
+
 export const planFormSchema = z.object({
 	productId: z.string().nonempty({
 		error: 'Mã sản phẩm không được để trống',
@@ -125,11 +181,12 @@ export const departmentPlanFormSchema = z
 		departmentId: z.string().nonempty({
 			error: 'Đơn vị không được để trống',
 		}),
-		planMode: z.enum(['khaithac', 'vantailo']).default('khaithac'),
+		planMode: z.enum(['khaithac', 'vantailo', 'vantaicogioi']).default('khaithac'),
 		months: z.array(departmentPlannedMonthSchema).optional().default([]),
-		// --- Transport fields (dùng cho vận tải lò): mỗi tháng là 1 khối lặp lại,
-		// giống cấu trúc "months" của Khai thác, để đồng bộ 2 chế độ kế hoạch ---
+		// --- Transport fields (dùng cho vận tải lò): mỗi tháng là 1 khối lặp lại ---
 		transportMonths: z.array(transportPlannedMonthSchema).optional().default([]),
+		// --- Motorized fields (dùng cho vận tải cơ giới) ---
+		motorizedMonths: z.array(motorizedPlannedMonthSchema).optional().default([]),
 	})
 	.superRefine((data, ctx) => {
 		// ========== Khối Khai thác ==========
@@ -303,6 +360,37 @@ export const departmentPlanFormSchema = z
 				});
 			});
 		}
+
+		// ========== Khối Vận tải cơ giới ==========
+		if (data.planMode === 'vantaicogioi') {
+			if (data.motorizedMonths.length < 1) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Danh sách thời gian không được để trống',
+					path: ['motorizedMonths'],
+				});
+			}
+
+			const monthIndexes = new Map<string, number>();
+
+			data.motorizedMonths.forEach((month, monthIndex) => {
+				if (!month.month) {
+					ctx.addIssue({
+						code: 'custom',
+						message: 'Thời gian không được để trống',
+						path: ['motorizedMonths', monthIndex, 'month'],
+					});
+				} else if (monthIndexes.has(month.month)) {
+					ctx.addIssue({
+						code: 'custom',
+						message: 'Thời gian không được trùng',
+						path: ['motorizedMonths', monthIndex, 'month'],
+					});
+				} else {
+					monthIndexes.set(month.month, monthIndex);
+				}
+			});
+		}
 	});
 
 export type PlanFormSchema = z.infer<typeof planFormSchema>;
@@ -310,6 +398,7 @@ export type DepartmentPlanFormSchema = z.infer<typeof departmentPlanFormSchema>;
 export type TransportPlanItemSchema = z.infer<typeof transportPlanItemSchema>;
 export type TransportProcessEntrySchema = z.infer<typeof transportProcessEntrySchema>;
 export type TransportPlannedMonthSchema = z.infer<typeof transportPlannedMonthSchema>;
+export type MotorizedPlannedMonthSchema = z.infer<typeof motorizedPlannedMonthSchema>;
 
 export const TRANSPORT_PROCESS_ENTRY_DEFAULT: TransportProcessEntrySchema = {
 	productionProcessId: '',
@@ -357,6 +446,21 @@ export const DEPARTMENT_PLAN_FORM_DEFAULT: DepartmentPlanFormSchema = {
 			lowValuePerishableSupply: false,
 			processIds: [],
 			processes: [],
+		},
+	],
+	motorizedMonths: [
+		{
+			month: '',
+			lowValuePerishableSupply: false,
+			motorizedCategory: 'scania',
+			assignmentCodeIds: [],
+			equipmentQualities: {},
+			equipmentProcesses: {},
+			equipmentDistances: {},
+			processCargoTypes: {},
+			processPickupLocations: {},
+			processDropoffLocations: {},
+			items: [],
 		},
 	],
 };

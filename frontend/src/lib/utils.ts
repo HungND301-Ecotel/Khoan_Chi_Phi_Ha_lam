@@ -14,8 +14,13 @@ export function formatNumber(
 	return value.toLocaleString('vi-VN', options);
 }
 
-export function formatDate(value: string) {
-	return format(value, 'MM/yyyy', { locale: vi });
+export function formatDate(value?: string | null) {
+	if (!value) return '-';
+	try {
+		return format(value, 'MM/yyyy', { locale: vi });
+	} catch {
+		return value;
+	}
 }
 
 export const formatYAxisValue = (value: number): string => {

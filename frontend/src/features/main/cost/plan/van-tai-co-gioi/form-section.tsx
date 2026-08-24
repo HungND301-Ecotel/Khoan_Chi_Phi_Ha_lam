@@ -1,0 +1,251 @@
+import { FormCheckBox } from '@/components/form/form-check-box';
+import { FormMonthYear } from '@/components/form/form-month-year';
+import { Button } from '@/components/ui/button';
+import { FieldError } from '@/components/ui/field';
+import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
+import { XCircleIcon } from 'lucide-react';
+import { useWatch, type UseFormReturn } from 'react-hook-form';
+import { ExcavatorMonthSection } from './components/excavator-month-section';
+import { ScaniaMonthSection } from './components/scania-month-section';
+import { ServiceCraneMonthSection } from './components/service-crane-month-section';
+import { VacuumTruckMonthSection } from './components/vacuum-truck-month-section';
+import { MOTORIZED_PLAN_CATEGORIES, MotorizedCategory } from './types';
+import {
+	MOCK_PLAN_CARGO_TYPES,
+	MOCK_PLAN_HAUL_DISTANCES,
+	MOCK_PLAN_LOCATIONS,
+	MOCK_PLAN_VTCG_EQUIPMENTS,
+	MOCK_PLAN_VTCG_PROCESSES,
+} from './utils';
+
+type MotorizedMonthSectionProps = {
+	form: UseFormReturn<DepartmentPlanFormSchema>;
+	monthIndex: number;
+	assignmentCodes?: any[];
+	productionProcesses?: any[];
+	distances?: any[];
+	cargoTypes?: any[];
+	locations?: any[];
+	onRemoveMonth: () => void;
+	canRemove: boolean;
+};
+
+export function MotorizedMonthSection({
+	form,
+	monthIndex,
+	assignmentCodes = [],
+	productionProcesses = [],
+	distances = [],
+	cargoTypes = [],
+	locations = [],
+	onRemoveMonth,
+	canRemove,
+}: MotorizedMonthSectionProps) {
+	const monthPath = `motorizedMonths.${monthIndex}` as const;
+
+	const watchedMonth = useWatch({
+		control: form.control,
+		name: monthPath,
+	}) as any;
+
+	const activeCategory: MotorizedCategory =
+		watchedMonth?.motorizedCategory || 'scania';
+
+	const handleCategoryChange = (category: MotorizedCategory) => {
+		form.setValue(`${monthPath}.motorizedCategory` as any, category);
+		form.setValue(`${monthPath}.assignmentCodeIds` as any, []);
+		form.setValue(`${monthPath}.equipmentQualities` as any, {});
+		form.setValue(`${monthPath}.equipmentProcesses` as any, {});
+		form.setValue(`${monthPath}.equipmentDistances` as any, {});
+		form.setValue(`${monthPath}.processCargoTypes` as any, {});
+		form.setValue(`${monthPath}.processPickupLocations` as any, {});
+		form.setValue(`${monthPath}.processDropoffLocations` as any, {});
+		form.setValue(`${monthPath}.items` as any, []);
+	};
+
+	const currentEquipments = (() => {
+		const filtered = assignmentCodes.filter((a) => {
+			const c = (a.code || '').toLowerCase();
+			const n = (a.name || a.label || '').toLowerCase();
+			if (activeCategory === 'scania')
+				return c.includes('scania') || n.includes('scania');
+			if (activeCategory === 'excavator_dozer')
+				return c.includes('komatsu') || n.includes('xúc') || n.includes('gạt');
+			if (activeCategory === 'service_crane')
+				return (
+					n.includes('cẩu') ||
+					n.includes('tưới') ||
+					n.includes('tải') ||
+					n.includes('vụ')
+				);
+			if (activeCategory === 'vacuum_truck')
+				return n.includes('hút') || n.includes('thải');
+			return true;
+		});
+		return filtered.length > 0
+			? filtered
+			: MOCK_PLAN_VTCG_EQUIPMENTS.filter((e) => e.category === activeCategory);
+	})();
+
+	const currentProcesses = (() => {
+		const filtered = productionProcesses.filter((p) => {
+			const n = (p.name || p.label || '').toLowerCase();
+			if (activeCategory === 'scania')
+				return (
+					n.includes('vận chuyển') &&
+					(n.includes('than') || n.includes('đất') || n.includes('bùn'))
+				);
+			if (activeCategory === 'excavator_dozer')
+				return n.includes('xúc') || n.includes('gạt') || n.includes('giờ');
+			if (activeCategory === 'service_crane')
+				return n.includes('cẩu') || n.includes('tưới') || n.includes('giờ');
+			if (activeCategory === 'vacuum_truck')
+				return n.includes('hút') || n.includes('thải');
+			return true;
+		});
+		return filtered.length > 0
+			? filtered
+			: MOCK_PLAN_VTCG_PROCESSES.filter((p) => p.category === activeCategory);
+	})();
+
+	const currentDistances =
+		distances.length > 0 ? distances : MOCK_PLAN_HAUL_DISTANCES;
+	const currentCargoTypes =
+		cargoTypes.length > 0 ? cargoTypes : MOCK_PLAN_CARGO_TYPES;
+	const currentLocations =
+		locations.length > 0 ? locations : MOCK_PLAN_LOCATIONS;
+
+	const pickupLocations = currentLocations.filter(
+		(l) =>
+			l.locationType === 1 ||
+			(l.name || '').toLowerCase().includes('khai trường') ||
+			(l.name || '').toLowerCase().includes('máng') ||
+			(l.name || '').toLowerCase().includes('xúc'),
+	);
+	const dropoffLocations = currentLocations.filter(
+		(l) =>
+			l.locationType === 2 ||
+			(l.name || '').toLowerCase().includes('kho') ||
+			(l.name || '').toLowerCase().includes('thải'),
+	);
+
+	return (
+		<div className='flex flex-col gap-4 rounded-sm border border-[#999999] p-4'>
+			<div className='flex items-center justify-between gap-4'>
+				<FormMonthYear
+					control={form.control}
+					name={`motorizedMonths.${monthIndex}.month`}
+					label='Thời gian'
+					className='flex-1'
+				/>
+				<Button
+					type='button'
+					variant='ghost'
+					size='sm'
+					className='text-error hover:text-error-muted mt-7 bg-transparent'
+					onClick={onRemoveMonth}
+					disabled={!canRemove}
+				>
+					<XCircleIcon className='size-4' />
+					<span>Xóa tháng</span>
+				</Button>
+			</div>
+
+			{typeof (form.formState.errors as any).motorizedMonths?.[monthIndex]
+				?.month?.message === 'string' && (
+				<FieldError
+					errors={[
+						(form.formState.errors as any).motorizedMonths?.[monthIndex]?.month,
+					]}
+				/>
+			)}
+
+			<FormCheckBox
+				control={form.control}
+				name={`motorizedMonths.${monthIndex}.lowValuePerishableSupply`}
+				label='Chi phí vật tư mau hỏng rẻ tiền (đồng/tháng)'
+			/>
+
+			{/* CẤP 1: 4 LOẠI PHƯƠNG TIỆN VẬN TẢI CƠ GIỚI */}
+			<div className='space-y-1.5'>
+				<div className='text-xs font-bold text-gray-700 uppercase'>
+					Nhóm Vận tải cơ giới
+				</div>
+				<div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
+					{MOTORIZED_PLAN_CATEGORIES.map((cat) => {
+						const isSelected = activeCategory === cat.id;
+						return (
+							<Button
+								key={cat.id}
+								type='button'
+								variant={isSelected ? 'default' : 'outline'}
+								className={`h-auto flex-col items-start gap-1 p-3 text-left transition-all ${
+									isSelected
+										? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+										: 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50'
+								}`}
+								onClick={() => handleCategoryChange(cat.id)}
+							>
+								<div className='text-xs font-bold'>{cat.name}</div>
+								<div
+									className={`line-clamp-1 text-[11px] ${
+										isSelected ? 'text-blue-100' : 'text-gray-500'
+									}`}
+								>
+									{cat.description}
+								</div>
+							</Button>
+						);
+					})}
+				</div>
+			</div>
+
+			{/* RENDER FORM SECTION THEO TỪNG LOẠI PHƯƠNG TIỆN */}
+			{activeCategory === 'scania' && (
+				<ScaniaMonthSection
+					form={form}
+					monthIndex={monthIndex}
+					assignmentCodes={currentEquipments}
+					processes={currentProcesses}
+					cargoTypes={currentCargoTypes}
+					pickupLocations={
+						pickupLocations.length > 0 ? pickupLocations : currentLocations
+					}
+					dropoffLocations={
+						dropoffLocations.length > 0 ? dropoffLocations : currentLocations
+					}
+					distances={currentDistances}
+				/>
+			)}
+
+			{activeCategory === 'excavator_dozer' && (
+				<ExcavatorMonthSection
+					form={form}
+					monthIndex={monthIndex}
+					assignmentCodes={currentEquipments}
+					processes={currentProcesses}
+				/>
+			)}
+
+			{activeCategory === 'service_crane' && (
+				<ServiceCraneMonthSection
+					form={form}
+					monthIndex={monthIndex}
+					assignmentCodes={currentEquipments}
+					processes={currentProcesses}
+					distances={currentDistances}
+				/>
+			)}
+
+			{activeCategory === 'vacuum_truck' && (
+				<VacuumTruckMonthSection
+					form={form}
+					monthIndex={monthIndex}
+					assignmentCodes={currentEquipments}
+					processes={currentProcesses}
+					distances={currentDistances}
+				/>
+			)}
+		</div>
+	);
+}

@@ -30,9 +30,13 @@ export type CostProduct = {
 	endMonth: string;
 	productionProcessCode?: string;
 	productionProcessName?: string;
+	processGroupName?: string;
 	contractCodeCode?: string;
 	contractCodeName?: string;
 	equipmentQuality?: string;
+	haulDistanceValue?: string | number;
+	fuelAdjustmentFactor?: number;
+	cargoTypeName?: string;
 	material?: TransportCostComponent;
 	maintenance?: TransportCostComponent;
 	power?: TransportCostComponent;
