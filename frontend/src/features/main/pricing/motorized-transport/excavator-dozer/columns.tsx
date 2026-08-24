@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export type MotorizedExcavatorDozerUnitPrice = {
@@ -26,13 +27,15 @@ export type MotorizedExcavatorDozerUnitPrice = {
 export const MOTORIZED_EXCAVATOR_DOZER_COLUMNS: ColumnDef<MotorizedExcavatorDozerUnitPrice>[] = [
 	{
 		accessorKey: 'startMonth',
-		header: 'Thời gian bắt đầu',
-		cell: ({ row }) => row.original.startMonth?.substring(0, 7) || row.original.startMonth,
-	},
-	{
-		accessorKey: 'endMonth',
-		header: 'Thời gian kết thúc',
-		cell: ({ row }) => row.original.endMonth?.substring(0, 7) || row.original.endMonth,
+		header: 'Thời gian',
+		cell: ({ row }) => (
+			<div className='flex flex-col text-xs font-medium'>
+				<span>{formatDate(row.original.startMonth)}</span>
+				<span className='text-gray-500'>
+					{formatDate(row.original.endMonth)}
+				</span>
+			</div>
+		),
 	},
 	{
 		accessorKey: 'assignmentCodeName',

@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export type MotorizedLowValueSupplyElectricityUnitPrice = {
@@ -15,15 +16,15 @@ export const MOTORIZED_LOW_VALUE_SUPPLY_ELECTRICITY_COLUMNS: ColumnDef<Motorized
 	[
 		{
 			accessorKey: 'startMonth',
-			header: 'Thời gian bắt đầu',
-			cell: ({ row }) =>
-				row.original.startMonth?.substring(0, 7) || row.original.startMonth,
-		},
-		{
-			accessorKey: 'endMonth',
-			header: 'Thời gian kết thúc',
-			cell: ({ row }) =>
-				row.original.endMonth?.substring(0, 7) || row.original.endMonth,
+			header: 'Thời gian',
+			cell: ({ row }) => (
+				<div className='flex flex-col text-xs font-medium'>
+					<span>{formatDate(row.original.startMonth)}</span>
+					<span className='text-black-600'>
+						{formatDate(row.original.endMonth)}
+					</span>
+				</div>
+			),
 		},
 		{
 			accessorKey: 'processGroupName',

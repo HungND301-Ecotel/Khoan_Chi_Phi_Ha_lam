@@ -52,6 +52,8 @@ import {
 	TransportMonthSection,
 } from './van-tai-lo/form-section';
 import { buildTransportMonthsPayload } from './van-tai-lo/utils';
+import { MotorizedMonthSection } from './van-tai-co-gioi/form-section';
+import { buildMotorizedTransportMonthsPayload } from './van-tai-co-gioi/utils';
 
 const getPersistedItemKey = (
 	item: DepartmentPlanFormSchema['months'][number]['items'][number],
@@ -77,6 +79,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const [productionProcesses, setProductionProcesses] = useState<
 		ProductionProcessOption[]
 	>([]);
+	const [distances, setDistances] = useState<any[]>([]);
+	const [cargoTypes, setCargoTypes] = useState<any[]>([]);
+	const [locations, setLocations] = useState<any[]>([]);
 	const [adjustments, setAdjustments] = useState<AdjustmentDetail[]>([]);
 	// K1 (Hệ số chất lượng thiết bị) và K2 (Hệ số điều kiện môi trường), lấy từ Danh mục Hệ số điều chỉnh
 	const [k1Adjustment, setK1Adjustment] = useState<AdjustmentDetail | null>(
@@ -111,6 +116,15 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		name: 'transportMonths',
 	});
 
+	const {
+		fields: motorizedMonthFields,
+		append: appendMotorizedMonth,
+		remove: removeMotorizedMonth,
+	} = useFieldArray({
+		control: form.control,
+		name: 'motorizedMonths',
+	});
+
 	const watchedMonths = useWatch({
 		control: form.control,
 		name: 'months',
@@ -124,7 +138,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 	const prevPlanModeRef = useRef<string | undefined>(undefined);
 
-	// Làm mới dữ liệu Vận tải lò hoặc Khai thác khi đổi chế độ kế hoạch
+	// Làm mới dữ liệu Vận tải lò / Vận tải cơ giới / Khai thác khi đổi chế độ kế hoạch
 	useEffect(() => {
 		if (
 			prevPlanModeRef.current !== undefined &&
@@ -132,15 +146,13 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		) {
 			if (watchedPlanMode === 'vantailo') {
 				form.setValue('months', []);
+				form.setValue('motorizedMonths', []);
+			} else if (watchedPlanMode === 'vantaicogioi') {
+				form.setValue('months', []);
+				form.setValue('transportMonths', []);
 			} else {
-				form.setValue('transportMonths', [
-					{
-						month: '',
-						lowValuePerishableSupply: false,
-						processIds: [],
-						processes: [],
-					},
-				]);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', []);
 			}
 		}
 		prevPlanModeRef.current = watchedPlanMode;
@@ -273,9 +285,94 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				const targetDeptId = (row as any)?.departmentId || row?.id;
 				const targetPlanMode =
 					(row as any)?.planMode ||
-					(row?.hasVanTaiLo && !row?.hasKhaiThac ? 'vantailo' : 'khaithac');
+					((row as any)?.hasVanTaiCoGioi
+						? 'vantaicogioi'
+						: row?.hasVanTaiLo && !row?.hasKhaiThac
+							? 'vantailo'
+							: 'khaithac');
 
-				if (targetPlanMode === 'vantailo') {
+				if (targetPlanMode === 'vantaicogioi') {
+					try {
+						const detailRes = await api.get<{
+							departmentId: string;
+							months: {
+								month: string;
+								lowValuePerishableSupply?: boolean;
+								items: {
+									id: string;
+									productionProcessId?: string;
+									equipmentId?: string;
+									equipmentQuality?: string;
+									haulDistanceId?: string;
+									productionMeters?: number;
+									unitOfMeasureId?: string;
+								}[];
+							}[];
+						}>(
+							API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
+								targetDeptId,
+							),
+						);
+						const detail = detailRes.result;
+
+						const months = (detail.months || []).map((m) => {
+							const items = (m.items || []).map((it) => ({
+								id: it.id,
+								equipmentId: it.equipmentId,
+								equipmentQuality: it.equipmentQuality,
+								productionProcessId: it.productionProcessId,
+								haulDistanceId: it.haulDistanceId,
+								productionMeters: it.productionMeters,
+								unitOfMeasureId: it.unitOfMeasureId,
+							}));
+
+							const eqIds = [
+								...new Set(items.map((it) => it.equipmentId).filter(Boolean)),
+							] as string[];
+							const eqQualitiesMap: Record<string, string[]> = {};
+							items.forEach((it) => {
+								if (it.equipmentId && it.equipmentQuality) {
+									if (!eqQualitiesMap[it.equipmentId]) {
+										eqQualitiesMap[it.equipmentId] = [];
+									}
+									if (!eqQualitiesMap[it.equipmentId].includes(it.equipmentQuality)) {
+										eqQualitiesMap[it.equipmentId].push(it.equipmentQuality);
+									}
+								}
+							});
+
+							return {
+								month: m.month.substring(0, 10),
+								lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
+								motorizedCategory: 'scania' as const,
+								assignmentCodeIds: eqIds,
+								equipmentQualities: eqQualitiesMap,
+								equipmentProcesses: {},
+								equipmentDistances: {},
+								processCargoTypes: {},
+								processPickupLocations: {},
+								processDropoffLocations: {},
+								items,
+							};
+						});
+
+						form.reset({
+							departmentId: detail.departmentId || targetDeptId,
+							planMode: 'vantaicogioi',
+							months: [],
+							transportMonths: [],
+							motorizedMonths: months,
+						});
+					} catch {
+						form.reset({
+							departmentId: targetDeptId,
+							planMode: 'vantaicogioi',
+							months: [],
+							transportMonths: [],
+							motorizedMonths: [],
+						});
+					}
+				} else if (targetPlanMode === 'vantailo') {
 					try {
 						const detailRes = await api.get<{
 							departmentId: string;
@@ -406,6 +503,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							planMode: 'vantailo',
 							months: [],
 							transportMonths: months,
+							motorizedMonths: [],
 						});
 					} catch {
 						form.reset({
@@ -413,6 +511,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							planMode: 'vantailo',
 							months: [],
 							transportMonths: [],
+							motorizedMonths: [],
 						});
 					}
 				} else {
@@ -435,6 +534,8 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								planAshContent: item.planAshContent ?? 0,
 							})),
 						})),
+						transportMonths: [],
+						motorizedMonths: [],
 					});
 					setLegacyProductIds(
 						new Map(
@@ -450,6 +551,26 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				}
 			},
 		);
+
+		// Fetch VTCG catalogs
+		api
+			.pagging(API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.LIST, {
+				ignorePagination: true,
+			})
+			.then((res: any) => setDistances(res?.result?.data || res?.data || []))
+			.catch(() => {});
+
+		api
+			.pagging(API.CATALOG.CARGO_TYPE.LIST, { ignorePagination: true })
+			.then((res: any) => setCargoTypes(res?.result?.data || res?.data || []))
+			.catch(() => {});
+
+		api
+			.pagging(API.CATALOG.TRANSPORT_LOCATION.LIST, {
+				ignorePagination: true,
+			})
+			.then((res: any) => setLocations(res?.result?.data || res?.data || []))
+			.catch(() => {});
 	}, [form, row]);
 
 	// Lấy K1 (Hệ số chất lượng thiết bị) và K2 (Hệ số điều kiện môi trường)
@@ -590,7 +711,24 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 	const handleSubmit = async (values: DepartmentPlanFormSchema) => {
 		try {
-			if (values.planMode === 'vantailo') {
+			if (values.planMode === 'vantaicogioi') {
+				const motorizedPayload = {
+					departmentId: values.departmentId,
+					months: buildMotorizedTransportMonthsPayload(values.motorizedMonths),
+				};
+
+				if (isEdit) {
+					await api.put(
+						API.COST.TRANSPORT_PLAN_LINE.UPDATE_PLANNED_BY_DEPARTMENT,
+						motorizedPayload,
+					);
+				} else {
+					await api.post(
+						API.COST.TRANSPORT_PLAN_LINE.CREATE_PLANNED_BY_DEPARTMENT,
+						motorizedPayload,
+					);
+				}
+			} else if (values.planMode === 'vantailo') {
 				const transportPayload = {
 					departmentId: values.departmentId,
 					months: buildTransportMonthsPayload(values.transportMonths),
@@ -697,7 +835,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				/>
 			</FormRow>
 
-			{/* Chọn chế độ: Khai thác / Vận tải lò */}
+			{/* Chọn chế độ: Khai thác / Vận tải lò / Vận tải cơ giới */}
 			<FormRow>
 				<FormSelect
 					control={form.control}
@@ -707,6 +845,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 					options={[
 						{ value: 'khaithac', label: 'Khai thác' },
 						{ value: 'vantailo', label: 'Vận tải lò' },
+						{ value: 'vantaicogioi', label: 'Vận tải cơ giới' },
 					]}
 				/>
 			</FormRow>
@@ -822,6 +961,60 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								lowValuePerishableSupply: false,
 								processIds: [],
 								processes: [],
+							})
+						}
+					>
+						<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+						<span>Thêm thời gian</span>
+					</Button>
+				</>
+			)}
+
+			{/* ========== FORM VẬN TẢI CƠ GIỚI ========== */}
+			{watchedPlanMode === 'vantaicogioi' && (
+				<>
+					<div className='flex flex-col gap-4'>
+						{motorizedMonthFields.map((field, monthIndex) => (
+							<MotorizedMonthSection
+								key={field.id}
+								form={form}
+								monthIndex={monthIndex}
+								canRemove={motorizedMonthFields.length > 1}
+								onRemoveMonth={() => removeMotorizedMonth(monthIndex)}
+								productionProcesses={productionProcesses}
+								assignmentCodes={contractCodes}
+								distances={distances}
+								cargoTypes={cargoTypes}
+								locations={locations}
+							/>
+						))}
+					</div>
+
+					{typeof (form.formState.errors as any).motorizedMonths?.message ===
+						'string' && (
+						<FieldError
+							errors={[(form.formState.errors as any).motorizedMonths]}
+						/>
+					)}
+
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						className='h-fit w-fit bg-transparent'
+						onClick={() =>
+							appendMotorizedMonth({
+								month: '',
+								lowValuePerishableSupply: false,
+								motorizedCategory: 'scania',
+								assignmentCodeIds: [],
+								equipmentQualities: {},
+								equipmentProcesses: {},
+								equipmentDistances: {},
+								processCargoTypes: {},
+								processPickupLocations: {},
+								processDropoffLocations: {},
+								items: [],
 							})
 						}
 					>

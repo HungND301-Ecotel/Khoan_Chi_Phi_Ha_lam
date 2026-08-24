@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export type TransportMode =
@@ -49,7 +50,10 @@ export const formatMoney = (value?: number) => {
 
 // Đúng logic suy luận trong form.tsx (tạo mới/sửa) — giữ riêng ở đây (file không phải
 // component) để bảng Xem (expand.tsx) chỉ đọc, không cần state/effect như form.
-export function detectTransportMode(code?: string, name?: string): TransportMode {
+export function detectTransportMode(
+	code?: string,
+	name?: string,
+): TransportMode {
 	const c = (code || '').toUpperCase();
 	const n = (name || '').toLowerCase();
 
@@ -69,8 +73,10 @@ export const MAIN_PRICING_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitP
 			header: 'Thời gian',
 			cell: ({ row }) => (
 				<div className='flex flex-col text-xs font-medium'>
-					<span>{row.original.startMonth}</span>
-					<span className='text-gray-500'>{row.original.endMonth}</span>
+					<span>{formatDate(row.original.startMonth)}</span>
+					<span className='text-black-500'>
+						{formatDate(row.original.endMonth)}
+					</span>
 				</div>
 			),
 		},

@@ -22,15 +22,28 @@ const productionGroupProductSchema = z.object({
 });
 
 // --- Vận tải lò/Vận tải cơ giới: 1 dòng sản lượng thực tế theo (Tuyến + Đơn vị áp dụng cho tuyến
-// — chỉ công đoạn Băng tải) HOẶC (Thiết bị + Chất lượng thiết bị — chỉ công đoạn Monoray). Cả 2
-// chiều đều giữ đúng khoá tra giá bên Kế hoạch (TransportUnitPrice) để sau này đối chiếu/quyết
-// toán theo từng đơn vị/chất lượng thiết bị. Vận tải trục (Shaft) và Thiết bị khác không có thêm
-// chiều này. ---
+// — chỉ công đoạn Băng tải) HOẶC (Thiết bị + Chất lượng thiết bị — chỉ công đoạn Monoray/VTCG). Cả 2
+// chiều đều giữ đúng khoá tra giá bên Kế hoạch (TransportUnitPrice / MechanizedTransportUnitPriceDetail)
+// để sau này đối chiếu/quyết toán theo từng đơn vị/chất lượng thiết bị/cung độ.
 const transportLineItemSchema = z.object({
 	transportRouteId: z.string().optional(),
 	routeDepartmentId: z.string().optional(),
 	equipmentId: z.string().optional(),
+	equipmentCode: z.string().optional(),
+	equipmentName: z.string().optional(),
 	equipmentQuality: z.string().optional(),
+	productionProcessId: z.string().optional(),
+	productionProcessCode: z.string().optional(),
+	productionProcessName: z.string().optional(),
+	haulDistanceId: z.string().optional(),
+	haulDistanceValue: z.string().optional(),
+	cargoTypeId: z.string().optional(),
+	cargoTypeName: z.string().optional(),
+	receivingLocationId: z.string().optional(),
+	receivingLocationName: z.string().optional(),
+	dumpingLocationId: z.string().optional(),
+	dumpingLocationName: z.string().optional(),
+	unitName: z.string().optional(),
 	productionMeters: z.coerce
 		.number<number>({ error: 'Sản lượng thực tế phải là số' })
 		.min(0, { error: 'Sản lượng thực tế không được âm' }),
@@ -51,9 +64,12 @@ const transportProcessEntrySchema = z.object({
 
 const productionGroupSchema = z
 	.object({
-		// 'khaithac' | 'vantailo' — set tự động theo fixedKeyType của processGroupId đã chọn
+		// 'khaithac' | 'vantailo' | 'vantaicogioi' — set tự động theo fixedKeyType của processGroupId đã chọn
 		// (xem production-form.tsx), không phải người dùng tự chọn.
-		groupType: z.enum(['khaithac', 'vantailo']).optional().default('khaithac'),
+		groupType: z
+			.enum(['khaithac', 'vantailo', 'vantaicogioi'])
+			.optional()
+			.default('khaithac'),
 		processGroupId: z.string().nonempty({
 			error: 'Nhóm công đoạn sản xuất không được để trống',
 		}),
@@ -69,12 +85,28 @@ const productionGroupSchema = z
 			}),
 		productIds: z.array(z.string()).optional().default([]),
 		products: z.array(productionGroupProductSchema).optional().default([]),
-		// Vận tải lò/Vận tải cơ giới
+		// Vận tải lò
 		processIds: z.array(z.string()).optional().default([]),
 		transportProcesses: z
 			.array(transportProcessEntrySchema)
 			.optional()
 			.default([]),
+		// Vận tải cơ giới
+		motorizedCategory: z
+			.enum(['scania', 'excavator_dozer', 'service_crane', 'vacuum_truck'])
+			.optional()
+			.default('scania'),
+		assignmentCodeIds: z.array(z.string()).optional().default([]),
+		equipmentQualities: z.record(z.string(), z.any()).optional().default({}),
+		equipmentProcesses: z
+			.record(z.string(), z.array(z.string()))
+			.optional()
+			.default({}),
+		equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
+		processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
+		processPickupLocations: z.record(z.string(), z.any()).optional().default({}),
+		processDropoffLocations: z.record(z.string(), z.any()).optional().default({}),
+		motorizedItems: z.array(transportLineItemSchema).optional().default([]),
 	})
 	.superRefine((data, ctx) => {
 		if (data.groupType === 'vantailo') {
@@ -85,6 +117,10 @@ const productionGroupSchema = z
 					path: ['processIds'],
 				});
 			}
+			return;
+		}
+
+		if (data.groupType === 'vantaicogioi') {
 			return;
 		}
 
@@ -176,6 +212,15 @@ export const PRODUCTION_GROUP_DEFAULT: NonNullable<
 	products: [],
 	processIds: [],
 	transportProcesses: [],
+	motorizedCategory: 'scania',
+	assignmentCodeIds: [],
+	equipmentQualities: {},
+	equipmentProcesses: {},
+	equipmentDistances: {},
+	processCargoTypes: {},
+	processPickupLocations: {},
+	processDropoffLocations: {},
+	motorizedItems: [],
 };
 
 export function getProductionFormDefault(

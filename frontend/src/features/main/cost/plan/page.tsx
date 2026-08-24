@@ -21,6 +21,7 @@ import {
 	MAIN_COST_PLAN_COLUMNS,
 	PLAN_DEPARTMENT_COLUMNS,
 	VTL_COST_PLAN_COLUMNS,
+	VTCG_COST_PLAN_COLUMNS,
 } from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
@@ -78,6 +79,50 @@ function DepartmentPlanProductsTable({
 		},
 		[monthId, onSelectedRowsChange],
 	);
+
+	const isVTCG =
+		items[0]?.fixedKeyType === ProcessGroupType.VTCG ||
+		(items[0]?.fixedKeyType as any) === 13 ||
+		(items[0]?.fixedKeyType as any) === '13' ||
+		items[0]?.processGroupCode === 'VTCG' ||
+		(items[0]?.processGroupName || '').toLowerCase().includes('cơ giới');
+
+	if (isVTCG) {
+		return (
+			<DataTable
+				columns={VTCG_COST_PLAN_COLUMNS}
+				items={items}
+				getRowId={(item) => item.id}
+				filters={[
+					{ key: 'productionProcessCode', label: 'Mã CĐSX' },
+					{ key: 'productionProcessName', label: 'Tên CĐSX' },
+					{ key: 'contractCodeCode', label: 'Mã nhóm xe/VTTS' },
+					{ key: 'contractCodeName', label: 'Tên nhóm xe/VTTS' },
+				]}
+				onExpand={(props) => (
+					<PlanExpand
+						{...props}
+						monthId={monthId}
+						data={{
+							...props.data,
+							refresh: async () => {
+								await props.data.refresh();
+							},
+						}}
+						key={`${monthId}-${reloadKey}-${props.row?.id ?? ''}`}
+					/>
+				)}
+				onDelete={async () => undefined}
+				showCreateAction={false}
+				showFilterAction={false}
+				showDeleteAction={false}
+				showUtilityActions={false}
+				onSelectedRowsChange={handleSelectedRowsChange}
+				selectAllPageRows={selectAllRows}
+				hasPagination={false}
+			/>
+		);
+	}
 
 	const isVTL = items[0]?.fixedKeyType === ProcessGroupType.VTL;
 

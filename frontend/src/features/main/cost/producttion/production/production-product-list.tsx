@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/item';
 import { API } from '@/constants/api-enpoint';
 import type { Product } from '@/features/main/catalog/product/columns';
+import { Motorized3TierTreeList } from '@/features/main/cost/producttion/production/van-tai-co-gioi/motorized-line-list';
 import {
 	Vtl3TierTreeList,
 	type ProductionOutputTransportLineRow,
@@ -106,24 +107,20 @@ export function ProductionProductList({
 					}),
 				]);
 
-				setProcessGroups(detailRes.result.processGroups ?? []);
-				setProducts(productRes.result.data ?? []);
-			} catch (err) {
+				setProcessGroups(detailRes.result?.processGroups ?? []);
+				setProducts(productRes.result?.data ?? []);
+			} catch (err: any) {
 				console.error('Failed to load production output products:', err);
-				setError(
-					err instanceof Error
-						? err.message
-						: 'Không thể tải danh sách sản phẩm',
-				);
+				setError(err?.message ?? 'Không thể tải danh sách sản phẩm');
 				setProcessGroups([]);
 			}
 		};
 
 		fetchData();
-	}, [isOpen, productionOutputId, reloadKey]);
+	}, [productionOutputId, isOpen, reloadKey]);
 
 	const productMap = useMemo(
-		() => new Map(products.map((product) => [product.id, product])),
+		() => new Map(products.map((p) => [p.id, p])),
 		[products],
 	);
 
@@ -174,11 +171,13 @@ export function ProductionProductList({
 							onValueChange={setOpenedGroups}
 						>
 							{processGroups.map((processGroup, index) => {
-								const isVanTaiLo =
-									(processGroup.transportLines ?? []).length > 0 ||
-									(processGroup.processGroupCode || '').toUpperCase().includes('VTL') ||
+								const isVTCG =
 									(processGroup.processGroupCode || '').toUpperCase().includes('VTCG') ||
-									(processGroup.processGroupName || '').toLowerCase().includes('vận tải');
+									(processGroup.processGroupName || '').toLowerCase().includes('cơ giới');
+								const isVanTaiLo =
+									(processGroup.processGroupCode || '').toUpperCase().includes('VTL') ||
+									((processGroup.processGroupName || '').toLowerCase().includes('vận tải') && !isVTCG) ||
+									(!isVTCG && (processGroup.transportLines ?? []).length > 0);
 								const totalProductionMeters =
 									processGroup.productionMeters ??
 									(processGroup.products ?? []).reduce(
@@ -248,7 +247,11 @@ export function ProductionProductList({
 
 										<AccordionContent className='p-0 pt-2'>
 											<div className='w-full min-w-0 overflow-x-auto'>
-												{isVanTaiLo ? (
+												{isVTCG ? (
+													<Motorized3TierTreeList
+														motorizedLines={(processGroup.transportLines ?? []) as any}
+													/>
+												) : isVanTaiLo ? (
 													<Vtl3TierTreeList
 														transportLines={processGroup.transportLines ?? []}
 													/>

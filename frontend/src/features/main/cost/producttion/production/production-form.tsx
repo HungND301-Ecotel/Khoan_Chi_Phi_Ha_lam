@@ -42,6 +42,7 @@ import {
 	VanTaiLoGroupFields,
 	type ProductionProcessOption,
 } from './van-tai-lo/form-section';
+import { VanTaiCoGioiGroupFields } from './van-tai-co-gioi/form-section';
 
 type ProductionOutputDetailProduct = {
 	productId: string;
@@ -55,6 +56,7 @@ type ProductionOutputDetailTransportLine = {
 	equipmentQuality?: string | null;
 	transportRouteId?: string | null;
 	routeDepartmentId?: string | null;
+	haulDistanceId?: string | null;
 	productionMeters: number;
 };
 
@@ -95,23 +97,29 @@ function createGroupDefault(): ProductionGroupSchema {
 function resolveGroupType(
 	processGroupId: string,
 	processGroupsById: Map<string, ProcessGroup>,
-): 'khaithac' | 'vantailo' {
+): 'khaithac' | 'vantailo' | 'vantaicogioi' {
 	const processGroup = processGroupsById.get(processGroupId);
 	if (!processGroup) return 'khaithac';
 	const code = (processGroup.code || '').trim().toUpperCase();
-	if (code === 'VTL' || code === 'VTCG') return 'vantailo';
+	if (code === 'VTCG') return 'vantaicogioi';
+	if (code === 'VTL') return 'vantailo';
 	const fixedKeyType = processGroup.fixedKeyType ?? (processGroup as any).type;
 	if (
-		fixedKeyType === ProcessGroupType.VTL ||
 		fixedKeyType === ProcessGroupType.VTCG ||
-		fixedKeyType === 4 ||
 		fixedKeyType === 5 ||
-		fixedKeyType === 12 ||
 		fixedKeyType === 13
+	) {
+		return 'vantaicogioi';
+	}
+	if (
+		fixedKeyType === ProcessGroupType.VTL ||
+		fixedKeyType === 4 ||
+		fixedKeyType === 12
 	) {
 		return 'vantailo';
 	}
 	const name = (processGroup.name || '').toLowerCase();
+	if (name.includes('cơ giới')) return 'vantaicogioi';
 	if (name.includes('vận tải')) return 'vantailo';
 	return 'khaithac';
 }
@@ -165,7 +173,14 @@ function calculateTotals(groups: ProductionGroupSchema[] = []) {
 					),
 				0,
 			);
-			return sum + productMeters + transportMeters;
+			const motorizedMeters = (group.motorizedItems || []).reduce(
+				(mSum, item) =>
+					Number.isNaN(item.productionMeters)
+						? mSum
+						: mSum + (item.productionMeters || 0),
+				0,
+			);
+			return sum + productMeters + transportMeters + motorizedMeters;
 		}, 0),
 		standardProductionMeters: groups.reduce(
 			(sum, group) => sum + (group.standardProductionMeters || 0),
@@ -189,22 +204,38 @@ function buildProcessGroupPayload(
 				? (product.actualAshContent ?? 0)
 				: 0,
 		})),
-		transportLines: (group.transportProcesses || []).flatMap((process) =>
-			(process.items || [])
+		transportLines: [
+			...(group.transportProcesses || []).flatMap((process) =>
+				(process.items || [])
+					.filter(
+						(item) =>
+							typeof item.productionMeters === 'number' &&
+							!Number.isNaN(item.productionMeters),
+					)
+					.map((item) => ({
+						productionProcessId: process.productionProcessId,
+						equipmentId: item.equipmentId || undefined,
+						equipmentQuality: item.equipmentQuality || undefined,
+						transportRouteId: item.transportRouteId || undefined,
+						routeDepartmentId: item.routeDepartmentId || undefined,
+						haulDistanceId: item.haulDistanceId || undefined,
+						productionMeters: item.productionMeters,
+					})),
+			),
+			...(group.motorizedItems || [])
 				.filter(
 					(item) =>
 						typeof item.productionMeters === 'number' &&
 						!Number.isNaN(item.productionMeters),
 				)
 				.map((item) => ({
-					productionProcessId: process.productionProcessId,
+					productionProcessId: item.productionProcessId || '',
 					equipmentId: item.equipmentId || undefined,
 					equipmentQuality: item.equipmentQuality || undefined,
-					transportRouteId: item.transportRouteId || undefined,
-					routeDepartmentId: item.routeDepartmentId || undefined,
+					haulDistanceId: item.haulDistanceId || undefined,
 					productionMeters: item.productionMeters,
 				})),
-		),
+		],
 	}));
 }
 
@@ -301,6 +332,9 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 	const [productionProcesses, setProductionProcesses] = useState<
 		(ProductionProcessOption & { processGroupId: string })[]
 	>([]);
+	const [distances, setDistances] = useState<any[]>([]);
+	const [cargoTypes, setCargoTypes] = useState<any[]>([]);
+	const [locations, setLocations] = useState<any[]>([]);
 	const [akProcessGroupIds, setAkProcessGroupIds] = useState<Set<string>>(
 		new Set(),
 	);
@@ -346,6 +380,10 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					standardProductionMeters,
 				} = res.result;
 
+				const processGroupsById = new Map(
+					processGroups?.map((g) => [g.processGroupId, g as any]) || [],
+				);
+
 				const mappedGroups: ProductionGroupSchema[] = (
 					processGroups || []
 				).map((group) => {
@@ -354,11 +392,58 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 						productionMeters: product.productionMeters,
 						actualAshContent: product.actualAshContent ?? 0,
 					}));
+					const groupType = resolveGroupType(
+						group.processGroupId,
+						processGroupsById,
+					);
+
+					if (groupType === 'vantaicogioi') {
+						const motorizedItems = (group.transportLines || []).map((line) => ({
+							equipmentId: line.equipmentId || undefined,
+							equipmentQuality: line.equipmentQuality || undefined,
+							productionProcessId: line.productionProcessId,
+							haulDistanceId: line.haulDistanceId || undefined,
+							productionMeters: line.productionMeters,
+						}));
+
+						const eqIds = Array.from(
+							new Set(
+								motorizedItems.map((it) => it.equipmentId).filter(Boolean),
+							),
+						) as string[];
+						const eqQualities = Array.from(
+							new Set(
+								motorizedItems.map((it) => it.equipmentQuality).filter(Boolean),
+							),
+						) as string[];
+
+						return {
+							groupType: 'vantaicogioi',
+							processGroupId: group.processGroupId,
+							planProductionMeters: group.planProductionMeters ?? 0,
+							standardProductionMeters: group.standardProductionMeters,
+							productIds: [],
+							products: [],
+							processIds: [],
+							transportProcesses: [],
+							motorizedCategory: 'scania',
+							assignmentCodeIds: eqIds,
+							equipmentQualities: eqQualities,
+							equipmentProcesses: {},
+							equipmentDistances: {},
+							processCargoTypes: {},
+							processPickupLocations: {},
+							processDropoffLocations: {},
+							motorizedItems,
+						};
+					}
+
 					const { processIds, transportProcesses } =
 						mapTransportLinesToFormState(group.transportLines);
 
 					return {
-						groupType: transportProcesses.length > 0 ? 'vantailo' : 'khaithac',
+						groupType:
+							transportProcesses.length > 0 ? 'vantailo' : 'khaithac',
 						processGroupId: group.processGroupId,
 						planProductionMeters: group.planProductionMeters ?? 0,
 						standardProductionMeters: group.standardProductionMeters,
@@ -366,6 +451,15 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 						products: mappedProducts,
 						processIds,
 						transportProcesses,
+						motorizedCategory: 'scania',
+						assignmentCodeIds: [],
+						equipmentQualities: [],
+						equipmentProcesses: {},
+						equipmentDistances: {},
+						processCargoTypes: {},
+						processPickupLocations: {},
+						processDropoffLocations: {},
+						motorizedItems: [],
 					};
 				});
 
@@ -449,6 +543,26 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 				setProductionProcesses(processesRes.result.data ?? []);
 			},
 		);
+
+		// Fetch VTCG Catalogs
+		api
+			.pagging(API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.LIST, {
+				ignorePagination: true,
+			})
+			.then((res: any) => setDistances(res?.result?.data || res?.data || []))
+			.catch(() => {});
+
+		api
+			.pagging(API.CATALOG.CARGO_TYPE.LIST, { ignorePagination: true })
+			.then((res: any) => setCargoTypes(res?.result?.data || res?.data || []))
+			.catch(() => {});
+
+		api
+			.pagging(API.CATALOG.TRANSPORT_LOCATION.LIST, {
+				ignorePagination: true,
+			})
+			.then((res: any) => setLocations(res?.result?.data || res?.data || []))
+			.catch(() => {});
 	}, []);
 
 	const processGroupsById = new Map(processGroups.map((g) => [g.id, g]));
@@ -484,6 +598,14 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			form.setValue(`groups.${groupIndex}.products`, []);
 			form.setValue(`groups.${groupIndex}.processIds`, []);
 			form.setValue(`groups.${groupIndex}.transportProcesses`, []);
+			form.setValue(`groups.${groupIndex}.motorizedItems`, []);
+			form.setValue(`groups.${groupIndex}.assignmentCodeIds`, []);
+			form.setValue(`groups.${groupIndex}.equipmentQualities`, []);
+			form.setValue(`groups.${groupIndex}.equipmentProcesses`, {});
+			form.setValue(`groups.${groupIndex}.equipmentDistances`, {});
+			form.setValue(`groups.${groupIndex}.processCargoTypes`, {});
+			form.setValue(`groups.${groupIndex}.processPickupLocations`, {});
+			form.setValue(`groups.${groupIndex}.processDropoffLocations`, {});
 		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [
@@ -656,11 +778,9 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 				{groupFields.map((field, groupIndex) => {
 					const group = watchedGroups[groupIndex] || createGroupDefault();
 					// Tính thẳng từ processGroupId đang chọn — không đợi useEffect đồng bộ
-					// group.groupType (chỉ dùng field đó để validate lúc submit).
-					const isVanTaiLo = group.processGroupId
-						? resolveGroupType(group.processGroupId, processGroupsById) ===
-							'vantailo'
-						: false;
+					const groupType = group.processGroupId
+						? resolveGroupType(group.processGroupId, processGroupsById)
+						: 'khaithac';
 					const isAkApplicableForGroup =
 						!!group.processGroupId &&
 						akProcessGroupIds.has(group.processGroupId);
@@ -684,7 +804,15 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 							),
 						0,
 					);
-					const totalProductionMeters = groupProductMeters + groupTransportMeters;
+					const groupMotorizedMeters = (group.motorizedItems || []).reduce(
+						(sum, item) =>
+							Number.isNaN(item.productionMeters)
+								? sum
+								: sum + (item.productionMeters || 0),
+						0,
+					);
+					const totalProductionMeters =
+						groupProductMeters + groupTransportMeters + groupMotorizedMeters;
 
 					const groupProcessesForGroup = productionProcesses.filter(
 						(p) => p.processGroupId === group.processGroupId,
@@ -752,7 +880,17 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 								</div>
 							</FormRow>
 
-							{isVanTaiLo ? (
+							{groupType === 'vantaicogioi' ? (
+								<VanTaiCoGioiGroupFields
+									form={form}
+									groupIndex={groupIndex}
+									assignmentCodes={contractCodes}
+									productionProcesses={availableProcesses}
+									distances={distances}
+									cargoTypes={cargoTypes}
+									locations={locations}
+								/>
+							) : groupType === 'vantailo' ? (
 								<VanTaiLoGroupFields
 									form={form}
 									groupIndex={groupIndex}
