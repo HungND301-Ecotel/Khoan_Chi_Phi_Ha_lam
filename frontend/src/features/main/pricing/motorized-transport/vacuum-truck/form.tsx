@@ -5,7 +5,6 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
-import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -79,11 +78,11 @@ export function MotorizedVacuumTruckForm({
 			name: 'assignmentCodeIds',
 		}) || [];
 
-	const selectedEquipmentQualities =
+	const watchedEquipmentQualities =
 		useWatch({
 			control: form.control as any,
 			name: 'equipmentQualities',
-		}) || [];
+		}) || {};
 
 	const watchedEquipmentProcesses =
 		useWatch({
@@ -102,10 +101,6 @@ export function MotorizedVacuumTruckForm({
 			control: form.control as any,
 			name: 'items',
 		}) || [];
-
-	const showBottomSection =
-		selectedAssignmentCodeIds.length > 0 &&
-		selectedEquipmentQualities.length > 0;
 
 	useEffect(() => {
 		Promise.all([
@@ -139,9 +134,9 @@ export function MotorizedVacuumTruckForm({
 					.allProcesses || [row];
 				const initialAcId = row.assignmentCodeId || '';
 
-				const initialQualitiesList: string[] = [];
 				const initialProcsList: string[] = [];
-				const initialDistsList: string[] = [];
+				const initialQualitiesMap: Record<string, string[]> = {};
+				const initialDistsMap: Record<string, string[]> = {};
 				const initialItems: any[] = [];
 
 				allProcs.forEach((p) => {
@@ -149,9 +144,6 @@ export function MotorizedVacuumTruckForm({
 						.replace(/^Thiết bị loại\s*/i, '')
 						.replace(/^Loại\s*/i, '')
 						.trim();
-					if (q && !initialQualitiesList.includes(q)) {
-						initialQualitiesList.push(q);
-					}
 
 					if (
 						p.productionProcessId &&
@@ -160,12 +152,24 @@ export function MotorizedVacuumTruckForm({
 						initialProcsList.push(p.productionProcessId);
 					}
 
+					const scopeKey = `${initialAcId}_${p.productionProcessId}`;
+					if (!initialQualitiesMap[scopeKey]) {
+						initialQualitiesMap[scopeKey] = [];
+					}
+					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
+						initialQualitiesMap[scopeKey].push(q);
+					}
+
+					if (!initialDistsMap[scopeKey]) {
+						initialDistsMap[scopeKey] = [];
+					}
+
 					(p.details || []).forEach((d) => {
 						if (
 							d.haulDistanceId &&
-							!initialDistsList.includes(d.haulDistanceId)
+							!initialDistsMap[scopeKey].includes(d.haulDistanceId)
 						) {
-							initialDistsList.push(d.haulDistanceId);
+							initialDistsMap[scopeKey].push(d.haulDistanceId);
 						}
 
 						initialItems.push({
@@ -177,6 +181,7 @@ export function MotorizedVacuumTruckForm({
 							productionProcessName: p.productionProcessName,
 							haulDistanceId: d.haulDistanceId || null,
 							haulDistanceValue: d.haulDistanceValue || '',
+							title: p.assignmentCodeName || initialAcId,
 							fuelUnitPrice: d.fuelUnitPrice ?? null,
 							maintenanceUnitPrice: d.maintenanceUnitPrice ?? null,
 						});
@@ -187,13 +192,11 @@ export function MotorizedVacuumTruckForm({
 					startMonth: row.startMonth?.substring(0, 7),
 					endMonth: row.endMonth?.substring(0, 7),
 					assignmentCodeIds: initialAcId ? [initialAcId] : [],
-					equipmentQualities: initialQualitiesList,
+					equipmentQualities: initialQualitiesMap,
 					equipmentProcesses: initialAcId
 						? { [initialAcId]: initialProcsList }
 						: {},
-					equipmentDistances: initialAcId
-						? { [initialAcId]: initialDistsList }
-						: {},
+					equipmentDistances: initialDistsMap,
 					items: initialItems,
 				});
 			})
@@ -204,7 +207,9 @@ export function MotorizedVacuumTruckForm({
 
 	// Auto sync items matrix when inputs change
 	useEffect(() => {
-		if (!showBottomSection) {
+		if (row && !isDuplicate) return;
+
+		if (selectedAssignmentCodeIds.length === 0) {
 			form.setValue('items', []);
 			return;
 		}
@@ -220,16 +225,21 @@ export function MotorizedVacuumTruckForm({
 				: acId;
 
 			const selectedProcs: string[] = watchedEquipmentProcesses[acId] || [];
-			const selectedDists: string[] = watchedEquipmentDistances[acId] || [];
 
 			selectedProcs.forEach((procId: string) => {
+				const scopeKey = `${acId}_${procId}`;
 				const procObj = processOptions.find((p) => p.value === procId);
 				const procName = procObj ? procObj.label : procId;
 				const isHourly =
 					procName.toLowerCase().includes('phục vụ') ||
 					procName.toLowerCase().includes('di chuyển');
 
-				selectedEquipmentQualities.forEach((qual: string) => {
+				const selectedQualities: string[] =
+					watchedEquipmentQualities[scopeKey] || [];
+				const selectedDists: string[] =
+					watchedEquipmentDistances[scopeKey] || [];
+
+				selectedQualities.forEach((qual: string) => {
 					if (isHourly || selectedDists.length === 0) {
 						const existing = items.find(
 							(it: any) =>
@@ -288,26 +298,10 @@ export function MotorizedVacuumTruckForm({
 			});
 		});
 
-		const isSameLength = items.length === newItems.length;
-		const isSameContent =
-			isSameLength &&
-			items.every((it: any, idx: number) => {
-				const nIt = newItems[idx];
-				return (
-					it?.assignmentCodeId === nIt?.assignmentCodeId &&
-					it?.equipmentQuality === nIt?.equipmentQuality &&
-					it?.productionProcessId === nIt?.productionProcessId &&
-					it?.haulDistanceId === nIt?.haulDistanceId
-				);
-			});
-
-		if (!isSameContent) {
-			form.setValue('items', newItems);
-		}
+		form.setValue('items', newItems);
 	}, [
-		showBottomSection,
 		JSON.stringify(selectedAssignmentCodeIds),
-		JSON.stringify(selectedEquipmentQualities),
+		JSON.stringify(watchedEquipmentQualities),
 		JSON.stringify(watchedEquipmentProcesses),
 		JSON.stringify(watchedEquipmentDistances),
 	]);
@@ -316,7 +310,9 @@ export function MotorizedVacuumTruckForm({
 		try {
 			const itemsToSubmit = values.items || [];
 			if (itemsToSubmit.length === 0) {
-				popup.error('Vui lòng chọn công đoạn sản xuất và nhập đơn giá');
+				popup.error(
+					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá',
+				);
 				return;
 			}
 
@@ -415,7 +411,18 @@ export function MotorizedVacuumTruckForm({
 	};
 
 	return (
-		<FormProvider context={form as any} onSubmit={handleSubmit}>
+		<FormProvider
+			context={form as any}
+			onSubmit={handleSubmit}
+			onInvalid={(errors) => {
+				console.error('Form Validation Errors:', errors);
+				const firstErr = Object.values(errors)[0];
+				const msg =
+					(firstErr as any)?.message ||
+					'Vui lòng điền đầy đủ các thông tin bắt buộc';
+				popup.error(msg);
+			}}
+		>
 			{/* FORM TRÊN */}
 			<FormRow>
 				<FormMonthYear
@@ -432,187 +439,229 @@ export function MotorizedVacuumTruckForm({
 				/>
 			</FormRow>
 
-			<FormRow>
-				<div className='flex-1'>
-					<FormMultiSelect
-						control={form.control as any}
-						name='assignmentCodeIds'
-						label='Nhóm vật tư, tài sản'
-						placeholder='Chọn nhóm vật tư, tài sản'
-						options={assignmentCodes.map((item) => ({
-							label: item.code
-								? `${item.code} - ${item.name}`
-								: item.name || item.id,
-							value: item.id,
-						}))}
-					/>
+			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
+				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
+					<span className='h-2.5 w-2.5 rounded-full bg-blue-600' />
+					<span>Hút bùn, chất thải (Xe hút bùn, chất thải)</span>
 				</div>
-				<div className='flex-1'>
-					<FormMultiSelect
-						control={form.control as any}
-						name='equipmentQualities'
-						label='Chất lượng thiết bị'
-						placeholder='Chọn chất lượng thiết bị'
-						options={[
-							{ label: 'Thiết bị loại A', value: 'A' },
-							{ label: 'Thiết bị loại B', value: 'B' },
-							{ label: 'Thiết bị loại C', value: 'C' },
-						]}
-					/>
-				</div>
-			</FormRow>
 
-			{showBottomSection && <FormSeparator />}
+				{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
+				<FormMultiSelect
+					control={form.control as any}
+					name='assignmentCodeIds'
+					label='1. Nhóm vật tư, tài sản (Xe hút bùn, chất thải)'
+					placeholder='Chọn nhóm xe hút bùn, chất thải'
+					options={assignmentCodes.map((item) => ({
+						label: item.code
+							? `${item.code} - ${item.name}`
+							: item.name || item.id,
+						value: item.id,
+					}))}
+					disabled={!!row && !isDuplicate}
+				/>
 
-			{/* FORM DƯỚI */}
-			{showBottomSection && (
-				<div className='space-y-4'>
-					<div className='text-xs font-semibold text-gray-500 uppercase'>
-						Danh sách các mục đã chọn ( {selectedAssignmentCodeIds.length} nhóm
-						vật tư )
-					</div>
+				{/* LẶP QUA TỪNG NHÓM XE ĐƯỢC CHỌN */}
+				{selectedAssignmentCodeIds.map((acId: string) => {
+					const acObj = assignmentCodes.find((a) => a.id === acId);
+					const title = acObj
+						? acObj.code
+							? `${acObj.code} - ${acObj.name}`
+							: acObj.name
+						: acId;
+					const selectedProcList: string[] =
+						watchedEquipmentProcesses?.[acId] || [];
 
-					{selectedAssignmentCodeIds.map((acId: string) => {
-						const acObj = assignmentCodes.find((a) => a.id === acId);
-						const title = acObj
-							? acObj.code
-								? `${acObj.code} - ${acObj.name}`
-								: acObj.name
-							: acId;
-						const selectedProcList: string[] =
-							watchedEquipmentProcesses?.[acId] || [];
-
-						return (
-							<div
-								key={acId}
-								className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs'
-							>
-								<div className='text-sm font-semibold text-gray-800'>
-									{title}
-								</div>
-
-								<FormRow>
-									<div className='flex-1'>
-										<FormMultiSelect
-											control={form.control as any}
-											name={`equipmentProcesses.${acId}`}
-											label='Công đoạn sản xuất'
-											placeholder='Chọn các công đoạn sản xuất'
-											options={processOptions}
-										/>
-									</div>
-									<div className='flex-1'>
-										<FormMultiSelect
-											control={form.control as any}
-											name={`equipmentDistances.${acId}`}
-											label='Cung độ vận tải'
-											placeholder='Chọn các cung độ vận tải'
-											options={distanceOptions}
-										/>
-									</div>
-								</FormRow>
-
-								{/* VỚI MỖI CÔNG ĐOẠN ĐƯỢC CHỌN -> HIỂN THỊ BẢNG ĐƠN GIÁ TƯƠNG ỨNG */}
-								{selectedProcList.map((procId: string) => {
-									const procObj = processOptions.find(
-										(p) => p.value === procId,
-									);
-									const procName = procObj ? procObj.label : procId;
-									const isHourly =
-										procName.toLowerCase().includes('phục vụ') ||
-										procName.toLowerCase().includes('di chuyển');
-									const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tkm)';
-
-									const filteredItems = items.filter(
-										(it: any) =>
-											it.assignmentCodeId === acId &&
-											it.productionProcessId === procId,
-									);
-
-									if (filteredItems.length === 0) return null;
-
-									return (
-										<div
-											key={procId}
-											className='space-y-2 rounded-md border border-gray-100 bg-gray-50/50 p-3'
-										>
-											<div className='text-primary text-sm font-semibold'>
-												{procName}
-											</div>
-
-											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-														<tr>
-															<th className='min-w-[140px] px-4 py-3'>
-																Chất lượng
-															</th>
-															{!isHourly && (
-																<th className='min-w-[140px] px-4 py-3'>
-																	Cung độ
-																</th>
-															)}
-															<th className='px-4 py-3'>
-																Đơn giá Nhiên liệu {itemUnitLabel}
-															</th>
-															<th className='px-4 py-3'>
-																Đơn giá SCTX {itemUnitLabel}
-															</th>
-														</tr>
-													</thead>
-													<tbody className='divide-y divide-gray-100'>
-														{filteredItems.map((item: any, idx: number) => {
-															const itemIndex = items.findIndex(
-																(it: any) =>
-																	it.assignmentCodeId ===
-																		item.assignmentCodeId &&
-																	it.productionProcessId ===
-																		item.productionProcessId &&
-																	it.equipmentQuality ===
-																		item.equipmentQuality &&
-																	it.haulDistanceId === item.haulDistanceId,
-															);
-
-															const qText = `Thiết bị loại ${item.equipmentQuality}`;
-
-															return (
-																<tr key={idx} className='hover:bg-gray-50/50'>
-																	<td className='px-4 py-2 text-sm font-medium text-gray-700'>
-																		{qText}
-																	</td>
-																	{!isHourly && (
-																		<td className='px-4 py-2 text-sm font-medium text-gray-700'>
-																			{item.haulDistanceValue || '-'}
-																		</td>
-																	)}
-																	<td className='px-4 py-2'>
-																		<FormNumber
-																			control={form.control as any}
-																			name={`items.${itemIndex}.fuelUnitPrice`}
-																			placeholder='Nhập đơn giá nhiên liệu'
-																		/>
-																	</td>
-																	<td className='px-4 py-2'>
-																		<FormNumber
-																			control={form.control as any}
-																			name={`items.${itemIndex}.maintenanceUnitPrice`}
-																			placeholder='Nhập đơn giá SCTX'
-																		/>
-																	</td>
-																</tr>
-															);
-														})}
-													</tbody>
-												</table>
-											</div>
-										</div>
-									);
-								})}
+					return (
+						<div
+							key={acId}
+							className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						>
+							{/* HEADER NHÓM XE */}
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>{title}</span>
 							</div>
-						);
-					})}
-				</div>
-			)}
+
+							{/* CẤP 2: CHỌN CÔNG ĐOẠN SẢN XUẤT */}
+							<FormMultiSelect
+								control={form.control as any}
+								name={`equipmentProcesses.${acId}`}
+								label={`2. Công đoạn sản xuất áp dụng cho [${title}]`}
+								placeholder='Chọn công đoạn sản xuất'
+								options={processOptions}
+							/>
+
+							{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
+							{selectedProcList.map((procId: string) => {
+								const scopeKey = `${acId}_${procId}`;
+								const procObj = processOptions.find((p) => p.value === procId);
+								const procName = procObj ? procObj.label : procId;
+								const isHourly =
+									procName.toLowerCase().includes('phục vụ') ||
+									procName.toLowerCase().includes('di chuyển');
+								const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tkm)';
+
+								const currentQualities: string[] =
+									watchedEquipmentQualities[scopeKey] || [];
+
+								const filteredItems = items.filter(
+									(it: any) =>
+										it.assignmentCodeId === acId &&
+										it.productionProcessId === procId,
+								);
+
+								return (
+									<div
+										key={procId}
+										className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
+									>
+										{/* HEADER CỤM CÔNG ĐOẠN */}
+										<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
+											<span className='h-2 w-2 rounded-full bg-blue-500' />
+											<span className='text-xs font-semibold text-blue-800 uppercase'>
+												{procName}
+											</span>
+										</div>
+
+										{/* THÔNG SỐ ĐIỀU KIỆN TRONG CÔNG ĐOẠN */}
+										{isHourly ? (
+											<div className='w-full'>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentQualities.${scopeKey}`}
+													label='Chất lượng thiết bị'
+													placeholder='Chọn chất lượng thiết bị'
+													options={[
+														{ label: 'Thiết bị loại A', value: 'A' },
+														{ label: 'Thiết bị loại B', value: 'B' },
+														{ label: 'Thiết bị loại C', value: 'C' },
+													]}
+												/>
+											</div>
+										) : (
+											<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentQualities.${scopeKey}`}
+													label='Chất lượng thiết bị'
+													placeholder='Chọn chất lượng thiết bị'
+													options={[
+														{ label: 'Thiết bị loại A', value: 'A' },
+														{ label: 'Thiết bị loại B', value: 'B' },
+														{ label: 'Thiết bị loại C', value: 'C' },
+													]}
+												/>
+												<FormMultiSelect
+													control={form.control as any}
+													name={`equipmentDistances.${scopeKey}`}
+													label='Cung độ vận tải'
+													placeholder='Chọn các cung độ vận tải'
+													options={distanceOptions}
+												/>
+											</div>
+										)}
+
+										{currentQualities.length > 0 &&
+											filteredItems.length > 0 && (
+												<div className='space-y-2 pt-2'>
+													<div className='text-xs font-semibold text-gray-700'>
+														Bảng đơn giá ({filteredItems.length} tổ hợp)
+													</div>
+
+													<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
+														<table className='w-full text-left text-sm'>
+															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
+																<tr>
+																	<th className='w-[30%] px-3 py-2'>
+																		Chất lượng
+																	</th>
+																	{!isHourly && (
+																		<th className='w-[30%] px-3 py-2'>
+																			Cung độ
+																		</th>
+																	)}
+																	<th
+																		className={
+																			isHourly
+																				? 'w-[35%] px-3 py-2'
+																				: 'w-[20%] px-3 py-2'
+																		}
+																	>
+																		Đơn giá Nhiên liệu {itemUnitLabel}
+																	</th>
+																	<th
+																		className={
+																			isHourly
+																				? 'w-[35%] px-3 py-2'
+																				: 'w-[20%] px-3 py-2'
+																		}
+																	>
+																		Đơn giá SCTX {itemUnitLabel}
+																	</th>
+																</tr>
+															</thead>
+															<tbody className='divide-y divide-gray-100'>
+																{filteredItems.map((item: any, idx: number) => {
+																	const itemIndex = items.findIndex(
+																		(it: any) =>
+																			it.assignmentCodeId ===
+																				item.assignmentCodeId &&
+																			it.productionProcessId ===
+																				item.productionProcessId &&
+																			it.equipmentQuality ===
+																				item.equipmentQuality &&
+																			it.haulDistanceId === item.haulDistanceId,
+																	);
+
+																	if (itemIndex === -1) return null;
+
+																	return (
+																		<tr
+																			key={`${item.equipmentQuality}-${item.haulDistanceId || idx}`}
+																			className='hover:bg-gray-50/50'
+																		>
+																			<td className='px-3 py-2'>
+																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																					Thiết bị loại {item.equipmentQuality}
+																				</div>
+																			</td>
+																			{!isHourly && (
+																				<td className='px-3 py-2'>
+																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																						{item.haulDistanceValue
+																							? `${item.haulDistanceValue} km`
+																							: '-'}
+																					</div>
+																				</td>
+																			)}
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.fuelUnitPrice`}
+																					placeholder='Nhập đơn giá nhiên liệu'
+																				/>
+																			</td>
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.maintenanceUnitPrice`}
+																					placeholder='Nhập đơn giá SCTX'
+																				/>
+																			</td>
+																		</tr>
+																	);
+																})}
+															</tbody>
+														</table>
+													</div>
+												</div>
+											)}
+									</div>
+								);
+							})}
+						</div>
+					);
+				})}
+			</div>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

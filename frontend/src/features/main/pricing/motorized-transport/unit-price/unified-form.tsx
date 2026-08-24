@@ -39,8 +39,8 @@ export function UnifiedMotorizedTransportForm(
 	// Map group row to format expected by individual forms
 	const mappedRow = row ? {
 		...row,
-		allProcesses: (row.sections || []).flatMap((section) =>
-			section.rows.map((r) => ({
+		allProcesses: (row.sections || []).flatMap((section: any) =>
+			(section.rows || []).map((r: any) => ({
 				id: r.headerId,
 				vehicleType: section.vehicleType,
 				productionProcessId: section.productionProcessId,
@@ -60,23 +60,34 @@ export function UnifiedMotorizedTransportForm(
 
 	return (
 		<div className='space-y-4'>
-			{/* Dropdown Chọn Loại phương tiện nếu tạo mới */}
+			{/* Chọn Nhóm Vận tải cơ giới (Tab Buttons như bên Kế hoạch) */}
 			{!row && (
-				<div className='border-primary/20 bg-primary/5 rounded-lg border p-4'>
-					<label className='mb-2 block text-sm font-semibold text-gray-800'>
-						Nhóm :
-					</label>
-					<select
-						value={vehicleType}
-						onChange={(e) => setVehicleType(e.target.value)}
-						className='focus:border-primary focus:ring-primary w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-2xs focus:ring-1 focus:outline-hidden'
-					>
-						{VEHICLE_TYPE_OPTIONS.map((opt) => (
-							<option key={opt.value} value={opt.value}>
-								{opt.label}
-							</option>
-						))}
-					</select>
+				<div className='space-y-1.5 rounded-lg border border-gray-200 bg-white p-3 shadow-2xs'>
+					<div className='text-xs font-bold uppercase text-gray-700'>
+						Nhóm Vận tải cơ giới
+					</div>
+					<div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
+						{VEHICLE_TYPE_OPTIONS.map((cat) => {
+							const isSelected = activeVehicleType === cat.value;
+							return (
+								<button
+									key={cat.value}
+									type='button'
+									className={`flex h-auto min-h-[44px] items-center justify-between rounded-md border px-3 py-2 text-left text-xs font-semibold whitespace-normal transition-all ${
+										isSelected
+											? 'border-primary bg-primary text-white shadow-xs'
+											: 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+									}`}
+									onClick={() => setVehicleType(cat.value)}
+								>
+									<span>{cat.label}</span>
+									{isSelected && (
+										<span className='ml-2 h-2 w-2 shrink-0 rounded-full bg-white' />
+									)}
+								</button>
+							);
+						})}
+					</div>
 				</div>
 			)}
 

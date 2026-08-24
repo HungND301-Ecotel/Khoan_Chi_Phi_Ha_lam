@@ -5,7 +5,6 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
-import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -70,11 +69,11 @@ export function MotorizedExcavatorDozerForm({
 			name: 'contractCodeIds',
 		}) || [];
 
-	const selectedEquipmentQualities =
+	const watchedEquipmentQualities =
 		useWatch({
 			control: form.control as any,
 			name: 'equipmentQualities',
-		}) || [];
+		}) || {};
 
 	const watchedEquipmentProcesses =
 		useWatch({
@@ -87,10 +86,6 @@ export function MotorizedExcavatorDozerForm({
 			control: form.control as any,
 			name: 'items',
 		}) || [];
-
-	// Flow: Show bottom section ONLY when both contractCodeIds and equipmentQualities are selected
-	const showBottomSection =
-		selectedContractCodeIds.length > 0 && selectedEquipmentQualities.length > 0;
 
 	// Fetch Catalogs (ContractCode & ProcessStep)
 	useEffect(() => {
@@ -121,8 +116,8 @@ export function MotorizedExcavatorDozerForm({
 				const allProcs: any[] = (row as any).allProcesses || [row];
 				const initialCcId =
 					row.assignmentCodeId || row.equipmentId || row.equipmentName || '';
-				const initialQualitiesList: string[] = [];
 				const initialProcsList: string[] = [];
+				const initialQualitiesMap: Record<string, string[]> = {};
 				const initialItems: any[] = [];
 
 				allProcs.forEach((p: any) => {
@@ -130,9 +125,6 @@ export function MotorizedExcavatorDozerForm({
 						.replace(/^Thiết bị loại\s*/i, '')
 						.replace(/^Loại\s*/i, '')
 						.trim();
-					if (q && !initialQualitiesList.includes(q)) {
-						initialQualitiesList.push(q);
-					}
 
 					const procId =
 						p.productionProcessId ||
@@ -141,6 +133,14 @@ export function MotorizedExcavatorDozerForm({
 						'';
 					if (procId && !initialProcsList.includes(procId)) {
 						initialProcsList.push(procId);
+					}
+
+					const scopeKey = `${initialCcId}_${procId}`;
+					if (!initialQualitiesMap[scopeKey]) {
+						initialQualitiesMap[scopeKey] = [];
+					}
+					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
+						initialQualitiesMap[scopeKey].push(q);
 					}
 
 					const firstDetail = p.details?.[0];
@@ -160,7 +160,7 @@ export function MotorizedExcavatorDozerForm({
 					startMonth: row.startMonth?.substring(0, 7),
 					endMonth: row.endMonth?.substring(0, 7),
 					contractCodeIds: initialCcId ? [initialCcId] : [],
-					equipmentQualities: initialQualitiesList.length > 0 ? initialQualitiesList : ['A'],
+					equipmentQualities: initialQualitiesMap,
 					equipmentProcesses: initialCcId ? { [initialCcId]: initialProcsList } : {},
 					items: initialItems,
 				});
@@ -175,10 +175,7 @@ export function MotorizedExcavatorDozerForm({
 		if (row && !isDuplicate) return;
 
 		let newItems: any[] = [];
-		if (
-			selectedContractCodeIds.length > 0 &&
-			selectedEquipmentQualities.length > 0
-		) {
+		if (selectedContractCodeIds.length > 0) {
 			selectedContractCodeIds.forEach((ccId: string) => {
 				const cc = contractCodes.find((c) => c.id === ccId);
 				const title = cc
@@ -189,7 +186,10 @@ export function MotorizedExcavatorDozerForm({
 				const selectedProcs: string[] = watchedEquipmentProcesses?.[ccId] || [];
 
 				selectedProcs.forEach((procValue: string) => {
-					selectedEquipmentQualities.forEach((quality: string) => {
+					const scopeKey = `${ccId}_${procValue}`;
+					const qualities: string[] = watchedEquipmentQualities?.[scopeKey] || [];
+
+					qualities.forEach((quality: string) => {
 						const existing = items.find(
 							(it: any) =>
 								it.assignmentCodeId === ccId &&
@@ -212,7 +212,7 @@ export function MotorizedExcavatorDozerForm({
 		form.setValue('items', newItems);
 	}, [
 		JSON.stringify(selectedContractCodeIds),
-		JSON.stringify(selectedEquipmentQualities),
+		JSON.stringify(watchedEquipmentQualities),
 		JSON.stringify(watchedEquipmentProcesses),
 		contractCodes,
 		row,
@@ -226,7 +226,7 @@ export function MotorizedExcavatorDozerForm({
 
 			if (itemsToSubmit.length === 0) {
 				popup.error(
-					'Vui lòng chọn công đoạn sản xuất cho các nhóm vật tư đã chọn',
+					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị cho các nhóm vật tư đã chọn',
 				);
 				return;
 			}
@@ -309,7 +309,6 @@ export function MotorizedExcavatorDozerForm({
 				popup.error(msg);
 			}}
 		>
-			{/* FORM TRÊN */}
 			<FormRow>
 				<FormMonthYear
 					control={form.control as any}
@@ -325,159 +324,179 @@ export function MotorizedExcavatorDozerForm({
 				/>
 			</FormRow>
 
-			<FormMultiSelect
-				control={form.control as any}
-				name='contractCodeIds'
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn Nhóm vật tư, tài sản'
-				options={contractCodes.map((item) => ({
-					label: item.code ? `${item.code} - ${item.name}` : item.name,
-					value: item.id,
-				}))}
-				disabled={!!row && !isDuplicate}
-			/>
-
-			<FormMultiSelect
-				control={form.control as any}
-				name='equipmentQualities'
-				label='Chất lượng thiết bị'
-				placeholder='Chọn Chất lượng thiết bị'
-				options={[
-					{ label: 'Thiết bị loại A', value: 'A' },
-					{ label: 'Thiết bị loại B', value: 'B' },
-					{ label: 'Thiết bị loại C', value: 'C' },
-				]}
-				disabled={!!row && !isDuplicate}
-			/>
-
-			{showBottomSection && <FormSeparator />}
-
-			{/* FORM DƯỚI */}
-			{showBottomSection && (
-				<div className='space-y-4'>
-					<div className='text-xs font-semibold text-gray-500 uppercase'>
-						Danh sách các mục đã chọn ( {selectedContractCodeIds.length} nhóm
-						vật tư )
-					</div>
-
-					{selectedContractCodeIds.map((ccId: string) => {
-						const cc = contractCodes.find((c) => c.id === ccId);
-						const title = cc
-							? cc.code
-								? `${cc.code} - ${cc.name}`
-								: cc.name
-							: ccId;
-						const selectedProcList: string[] =
-							watchedEquipmentProcesses?.[ccId] || [];
-
-						return (
-							<div
-								key={ccId}
-								className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-xs'
-							>
-								<div className='text-sm font-semibold text-gray-800'>
-									{title}
-								</div>
-
-								{/* COMBOBOX CHỌN NHIỀU CÔNG ĐOẠN SẢN XUẤT */}
-								<FormMultiSelect
-									control={form.control as any}
-									name={`equipmentProcesses.${ccId}`}
-									label='Công đoạn sản xuất'
-									placeholder='Chọn các công đoạn sản xuất'
-									options={processOptions.map((opt) => ({
-										label: opt.label,
-										value: opt.value,
-									}))}
-								/>
-
-								{/* VỚI MỖI CÔNG ĐOẠN ĐƯỢC CHỌN -> HIỂN THỊ BẢNG ĐƠN GIÁ TƯƠNG ỨNG */}
-								{selectedProcList.map((procValue: string) => {
-									const procObj = processOptions.find(
-										(p) => p.value === procValue || p.label === procValue,
-									);
-									const procText = procObj?.label || procValue || '';
-									const isHourly =
-										procText === 'Giờ phục vụ' ||
-										procText === 'Giờ di chuyển' ||
-										procText === 'Giờ gạt phục vụ' ||
-										procText === 'Giờ gạt di chuyển' ||
-										procText.toLowerCase().includes('giờ');
-
-									const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tấn)';
-
-									return (
-										<div
-											key={procValue}
-											className='space-y-2 rounded-md border border-gray-100 bg-gray-50/50 p-3'
-										>
-											<div className='text-sm font-semibold text-primary'>
-												{procText}
-											</div>
-
-											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-														<tr>
-															<th className='min-w-[180px] px-4 py-3'>
-																Chất lượng thiết bị
-															</th>
-															<th className='min-w-[200px] px-4 py-3'>
-																Đơn giá Nhiên liệu {itemUnitLabel}
-															</th>
-															<th className='min-w-[200px] px-4 py-3'>
-																Đơn giá SCTX {itemUnitLabel}
-															</th>
-														</tr>
-													</thead>
-													<tbody className='divide-y divide-gray-100'>
-														{selectedEquipmentQualities.map(
-															(quality: string) => {
-																const itemIndex = items.findIndex(
-																	(it: any) =>
-																		it.assignmentCodeId === ccId &&
-																		it.productionProcessId === procValue &&
-																		it.equipmentQuality === quality,
-																);
-																if (itemIndex === -1) return null;
-
-																return (
-																	<tr
-																		key={quality}
-																		className='hover:bg-gray-50/50'
-																	>
-																		<td className='px-4 py-3 font-semibold whitespace-nowrap text-gray-800'>
-																			Thiết bị loại {quality}
-																		</td>
-																		<td className='px-4 py-2'>
-																			<FormNumber
-																				control={form.control as any}
-																				name={`items.${itemIndex}.fuelUnitPrice`}
-																				placeholder='Nhập đơn giá'
-																			/>
-																		</td>
-																		<td className='px-4 py-2'>
-																			<FormNumber
-																				control={form.control as any}
-																				name={`items.${itemIndex}.maintenanceUnitPrice`}
-																				placeholder='Nhập đơn giá'
-																			/>
-																		</td>
-																	</tr>
-																);
-															},
-														)}
-													</tbody>
-												</table>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						);
-					})}
+			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
+				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
+					<span className='h-2.5 w-2.5 rounded-full bg-blue-600' />
+					<span>Máy xúc, máy gạt</span>
 				</div>
-			)}
+
+				{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
+				<FormMultiSelect
+					control={form.control as any}
+					name='contractCodeIds'
+					label='1. Nhóm vật tư, tài sản (Máy xúc / Máy gạt)'
+					placeholder='Chọn nhóm máy xúc/gạt'
+					options={contractCodes.map((item) => ({
+						label: item.code ? `${item.code} - ${item.name}` : item.name,
+						value: item.id,
+					}))}
+					disabled={!!row && !isDuplicate}
+				/>
+
+				{/* LẶP QUA TỪNG NHÓM THIẾT BỊ */}
+				{selectedContractCodeIds.map((ccId: string) => {
+					const cc = contractCodes.find((c) => c.id === ccId);
+					const title = cc
+						? cc.code
+							? `${cc.code} - ${cc.name}`
+							: cc.name
+						: ccId;
+					const selectedProcList: string[] =
+						watchedEquipmentProcesses?.[ccId] || [];
+
+					return (
+						<div
+							key={ccId}
+							className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						>
+							{/* HEADER THIẾT BỊ */}
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>
+									{title}
+								</span>
+							</div>
+
+							{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO THIẾT BỊ NÀY */}
+							<FormMultiSelect
+								control={form.control as any}
+								name={`equipmentProcesses.${ccId}`}
+								label={`2. Công đoạn sản xuất áp dụng cho [${title}]`}
+								placeholder='Chọn công đoạn sản xuất'
+								options={processOptions.map((opt) => ({
+									label: opt.label,
+									value: opt.value,
+								}))}
+							/>
+
+							{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
+							{selectedProcList.map((procValue: string) => {
+								const scopeKey = `${ccId}_${procValue}`;
+								const procObj = processOptions.find(
+									(p) => p.value === procValue || p.label === procValue,
+								);
+								const procText = procObj?.label || procValue || '';
+								const isHourly =
+									procText === 'Giờ phục vụ' ||
+									procText === 'Giờ di chuyển' ||
+									procText === 'Giờ gạt phục vụ' ||
+									procText === 'Giờ gạt di chuyển' ||
+									procText.toLowerCase().includes('giờ');
+
+								const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tấn)';
+								const currentQualities: string[] =
+									watchedEquipmentQualities?.[scopeKey] || [];
+
+								return (
+									<div
+										key={procValue}
+										className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
+									>
+										{/* HEADER CỤM CÔNG ĐOẠN */}
+										<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
+											<span className='h-2 w-2 rounded-full bg-blue-500' />
+											<span className='text-xs font-semibold uppercase text-blue-800'>
+												{procText}
+											</span>
+										</div>
+
+										{/* CHỌN CHẤT LƯỢNG THIẾT BỊ CHO CÔNG ĐOẠN NÀY (DÀI HẾT TRANG) */}
+										<div className='w-full'>
+											<FormMultiSelect
+												control={form.control as any}
+												name={`equipmentQualities.${scopeKey}`}
+												label='Chất lượng thiết bị'
+												placeholder='Chọn chất lượng thiết bị'
+												options={[
+													{ label: 'Thiết bị loại A', value: 'A' },
+													{ label: 'Thiết bị loại B', value: 'B' },
+													{ label: 'Thiết bị loại C', value: 'C' },
+												]}
+											/>
+										</div>
+
+										{/* BẢNG ĐƠN GIÁ */}
+										{currentQualities.length > 0 && (
+											<div className='space-y-2 pt-2'>
+												<div className='text-xs font-semibold text-gray-700'>
+													Bảng đơn giá ({currentQualities.length} tổ hợp)
+												</div>
+
+												<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
+													<table className='w-full text-left text-sm'>
+														<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
+															<tr>
+																<th className='w-[40%] px-3 py-2'>
+																	Chất lượng thiết bị
+																</th>
+																<th className='w-[30%] px-3 py-2'>
+																	Đơn giá Nhiên liệu {itemUnitLabel}
+																</th>
+																<th className='w-[30%] px-3 py-2'>
+																	Đơn giá SCTX {itemUnitLabel}
+																</th>
+															</tr>
+														</thead>
+														<tbody className='divide-y divide-gray-100'>
+															{currentQualities.map(
+																(quality: string) => {
+																	const itemIndex = items.findIndex(
+																		(it: any) =>
+																			it.assignmentCodeId === ccId &&
+																			it.productionProcessId === procValue &&
+																			it.equipmentQuality === quality,
+																	);
+																	if (itemIndex === -1) return null;
+
+																	return (
+																		<tr
+																			key={quality}
+																			className='hover:bg-gray-50/50'
+																		>
+																			<td className='px-3 py-2'>
+																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																					Thiết bị loại {quality}
+																				</div>
+																			</td>
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.fuelUnitPrice`}
+																					placeholder='Nhập đơn giá nhiên liệu'
+																				/>
+																			</td>
+																			<td className='px-3 py-2'>
+																				<FormNumber
+																					control={form.control as any}
+																					name={`items.${itemIndex}.maintenanceUnitPrice`}
+																					placeholder='Nhập đơn giá SCTX'
+																				/>
+																			</td>
+																		</tr>
+																	);
+																},
+															)}
+														</tbody>
+													</table>
+												</div>
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
+					);
+				})}
+			</div>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

@@ -16,9 +16,7 @@ export const motorizedExcavatorDozerFormSchema = z.object({
 	contractCodeIds: z
 		.array(z.string())
 		.min(1, 'Vui lòng chọn ít nhất 1 nhóm vật tư, tài sản'),
-	equipmentQualities: z
-		.array(z.string())
-		.min(1, 'Vui lòng chọn ít nhất 1 chất lượng thiết bị'),
+	equipmentQualities: z.record(z.string(), z.array(z.string())).optional(),
 	equipmentProcesses: z.any().optional(),
 	items: z.array(motorizedExcavatorDozerItemSchema).optional(),
 });
@@ -31,7 +29,7 @@ export const MOTORIZED_EXCAVATOR_DOZER_FORM_DEFAULT: MotorizedExcavatorDozerForm
 	startMonth: new Date().toISOString().substring(0, 7),
 	endMonth: new Date().toISOString().substring(0, 7),
 	contractCodeIds: [],
-	equipmentQualities: [],
+	equipmentQualities: {},
 	equipmentProcesses: {},
 	items: [],
 };

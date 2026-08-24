@@ -4,7 +4,7 @@ export const motorizedScaniaFormSchema = z.object({
 	startMonth: z.string().min(1, 'Vui lòng chọn thời gian bắt đầu'),
 	endMonth: z.string().min(1, 'Vui lòng chọn thời gian kết thúc'),
 	assignmentCodeIds: z.array(z.string()).min(1, 'Vui lòng chọn ít nhất 1 nhóm vật tư, tài sản'),
-	equipmentQualities: z.array(z.string()).min(1, 'Vui lòng chọn ít nhất 1 chất lượng thiết bị'),
+	equipmentQualities: z.record(z.string(), z.array(z.string())).optional(),
 	equipmentProcesses: z.record(z.string(), z.array(z.string())).optional(),
 	equipmentDistances: z.record(z.string(), z.array(z.string())).optional(),
 	// Per-process fields (keyed by processId)
@@ -20,7 +20,7 @@ export const MOTORIZED_SCANIA_FORM_DEFAULT: MotorizedScaniaFormSchema = {
 	startMonth: new Date().toISOString().substring(0, 7),
 	endMonth: new Date().toISOString().substring(0, 7),
 	assignmentCodeIds: [],
-	equipmentQualities: [],
+	equipmentQualities: {},
 	equipmentProcesses: {},
 	equipmentDistances: {},
 	processCargoTypes: {},
