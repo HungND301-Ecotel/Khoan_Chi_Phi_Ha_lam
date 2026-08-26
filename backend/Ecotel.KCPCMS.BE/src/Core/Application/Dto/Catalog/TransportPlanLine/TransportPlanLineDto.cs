@@ -22,6 +22,9 @@ public class TransportPlanLineItemDto
 {
     public Guid Id { get; set; }
     public Guid? PlannedTransportCostId { get; set; }
+    public Guid? ProcessGroupId { get; set; }
+    public string? ProcessGroupCode { get; set; }
+    public string? ProcessGroupName { get; set; }
     public Guid ProductionProcessId { get; set; }
     public string ProductionProcessCode { get; set; } = string.Empty;
     public string ProductionProcessName { get; set; } = string.Empty;
@@ -35,6 +38,17 @@ public class TransportPlanLineItemDto
     public string? EquipmentCode { get; set; }
     public string? EquipmentName { get; set; }
     public string? EquipmentQuality { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public string? HaulDistanceValue { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public string? CargoTypeCode { get; set; }
+    public string? CargoTypeName { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public string? ReceivingLocationCode { get; set; }
+    public string? ReceivingLocationName { get; set; }
+    public Guid? DumpingLocationId { get; set; }
+    public string? DumpingLocationCode { get; set; }
+    public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public string? UnitOfMeasureName { get; set; }
@@ -69,6 +83,9 @@ public class TransportPlanLineByDepartmentDetailDto
 public class TransportPlanLineAdjustmentItemDto
 {
     public Guid Id { get; set; }
+    public Guid? ProcessGroupId { get; set; }
+    public string? ProcessGroupCode { get; set; }
+    public string? ProcessGroupName { get; set; }
     public Guid ProductionProcessId { get; set; }
     public string ProductionProcessCode { get; set; } = string.Empty;
     public string ProductionProcessName { get; set; } = string.Empty;
@@ -82,6 +99,17 @@ public class TransportPlanLineAdjustmentItemDto
     public string? EquipmentCode { get; set; }
     public string? EquipmentName { get; set; }
     public string? EquipmentQuality { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public string? HaulDistanceValue { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public string? CargoTypeCode { get; set; }
+    public string? CargoTypeName { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public string? ReceivingLocationCode { get; set; }
+    public string? ReceivingLocationName { get; set; }
+    public Guid? DumpingLocationId { get; set; }
+    public string? DumpingLocationCode { get; set; }
+    public string? DumpingLocationName { get; set; }
     public double ActualProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public string? UnitOfMeasureName { get; set; }
@@ -129,6 +157,10 @@ public class CreateTransportPlanLineItemDto
     public Guid? RouteDepartmentId { get; set; }
     public Guid? EquipmentId { get; set; }
     public string? EquipmentQuality { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public Guid? DumpingLocationId { get; set; }
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }
@@ -157,6 +189,10 @@ public class UpdateTransportPlanLineItemDto
     public Guid? RouteDepartmentId { get; set; }
     public Guid? EquipmentId { get; set; }
     public string? EquipmentQuality { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public Guid? DumpingLocationId { get; set; }
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }

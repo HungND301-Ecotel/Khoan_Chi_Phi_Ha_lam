@@ -79,6 +79,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 	const [productionProcesses, setProductionProcesses] = useState<
 		ProductionProcessOption[]
 	>([]);
+	const [vtcgProductionProcesses, setVtcgProductionProcesses] = useState<
+		ProductionProcessOption[]
+	>([]);
 	const [distances, setDistances] = useState<any[]>([]);
 	const [cargoTypes, setCargoTypes] = useState<any[]>([]);
 	const [locations, setLocations] = useState<any[]>([]);
@@ -136,7 +139,400 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		name: 'planMode',
 	});
 
+	const targetDeptId = (row as any)?.departmentId || row?.id;
 	const prevPlanModeRef = useRef<string | undefined>(undefined);
+
+	const loadPlanDataByMode = async (mode: string, deptId: string) => {
+		if (!deptId) return;
+
+		if (mode === 'vantaicogioi') {
+			try {
+				const detailRes = await api.get<{
+					departmentId: string;
+					months: {
+						month: string;
+						lowValuePerishableSupply?: boolean;
+						items: {
+							id: string;
+							productionProcessId?: string;
+							productionProcessCode?: string;
+							productionProcessName?: string;
+							equipmentId?: string;
+							equipmentQuality?: string;
+							haulDistanceId?: string;
+							haulDistanceValue?: string;
+							productionMeters?: number;
+							unitOfMeasureId?: string;
+						}[];
+					}[];
+				}>(
+					API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId),
+				);
+				const detail = detailRes.result;
+
+				const months = (detail.months || [])
+					.map((m) => {
+						const vtcgItems = (m.items || []).filter(
+							(it: any) =>
+								it.haulDistanceId ||
+								it.haulDistanceValue ||
+								it.processGroupCode === 'VTCG' ||
+								(it.processGroupName || '').toLowerCase().includes('cơ giới') ||
+								(it.productionProcessName || '').toLowerCase().includes('cơ giới') ||
+								!it.transportRouteId,
+						);
+						if (!vtcgItems.length) return null;
+
+						const items = vtcgItems.map((it: any) => ({
+							id: it.id,
+							equipmentId: it.equipmentId,
+							equipmentCode: it.equipmentCode,
+							equipmentName: it.equipmentName,
+							equipmentQuality: it.equipmentQuality,
+							productionProcessId: it.productionProcessId,
+							productionProcessCode: it.productionProcessCode,
+							productionProcessName: it.productionProcessName,
+							haulDistanceId: it.haulDistanceId,
+							haulDistanceValue: it.haulDistanceValue,
+							cargoTypeId: it.cargoTypeId,
+							cargoTypeName: it.cargoTypeName,
+							receivingLocationId: it.receivingLocationId,
+							receivingLocationName: it.receivingLocationName,
+							dumpingLocationId: it.dumpingLocationId,
+							dumpingLocationName: it.dumpingLocationName,
+							productionMeters: it.productionMeters,
+							fuelAdjustmentFactor: it.fuelAdjustmentFactor ?? 1.0,
+							unitOfMeasureId: it.unitOfMeasureId,
+							unitName: it.unitOfMeasureName,
+						}));
+
+						const eqIds = [
+							...new Set(items.map((it) => it.equipmentId).filter(Boolean)),
+						] as string[];
+
+						const eqProcessesMap: Record<string, string[]> = {};
+						const eqQualitiesMap: Record<string, string[]> = {};
+						const eqDistancesMap: Record<string, string[]> = {};
+						const procCargoTypesMap: Record<string, string[]> = {};
+						const procPickupLocationsMap: Record<string, string[]> = {};
+						const procDropoffLocationsMap: Record<string, string[]> = {};
+
+						items.forEach((it) => {
+							if (it.equipmentId) {
+								// 1. Equipment -> Processes
+								if (it.productionProcessId) {
+									if (!eqProcessesMap[it.equipmentId]) {
+										eqProcessesMap[it.equipmentId] = [];
+									}
+									if (!eqProcessesMap[it.equipmentId].includes(it.productionProcessId)) {
+										eqProcessesMap[it.equipmentId].push(it.productionProcessId);
+									}
+								}
+
+								// 2. Equipment / Scope -> Qualities
+								if (it.equipmentQuality) {
+									if (!eqQualitiesMap[it.equipmentId]) {
+										eqQualitiesMap[it.equipmentId] = [];
+									}
+									if (!eqQualitiesMap[it.equipmentId].includes(it.equipmentQuality)) {
+										eqQualitiesMap[it.equipmentId].push(it.equipmentQuality);
+									}
+
+									if (it.productionProcessId) {
+										const scopeKey = `${it.equipmentId}_${it.productionProcessId}`;
+										if (!eqQualitiesMap[scopeKey]) {
+											eqQualitiesMap[scopeKey] = [];
+										}
+										if (!eqQualitiesMap[scopeKey].includes(it.equipmentQuality)) {
+											eqQualitiesMap[scopeKey].push(it.equipmentQuality);
+										}
+									}
+								}
+
+								// 3. Equipment / Scope -> Distances
+								if (it.haulDistanceId) {
+									if (!eqDistancesMap[it.equipmentId]) {
+										eqDistancesMap[it.equipmentId] = [];
+									}
+									if (!eqDistancesMap[it.equipmentId].includes(it.haulDistanceId)) {
+										eqDistancesMap[it.equipmentId].push(it.haulDistanceId);
+									}
+
+									if (it.productionProcessId) {
+										const scopeKey = `${it.equipmentId}_${it.productionProcessId}`;
+										if (!eqDistancesMap[scopeKey]) {
+											eqDistancesMap[scopeKey] = [];
+										}
+										if (!eqDistancesMap[scopeKey].includes(it.haulDistanceId)) {
+											eqDistancesMap[scopeKey].push(it.haulDistanceId);
+										}
+									}
+								}
+							}
+
+							// 4. Process & Scope -> CargoTypes, Locations
+							if (it.productionProcessId) {
+								const scopeKey = it.equipmentId
+									? `${it.equipmentId}_${it.productionProcessId}`
+									: undefined;
+
+								if (it.cargoTypeId) {
+									if (!procCargoTypesMap[it.productionProcessId]) {
+										procCargoTypesMap[it.productionProcessId] = [];
+									}
+									if (!procCargoTypesMap[it.productionProcessId].includes(it.cargoTypeId)) {
+										procCargoTypesMap[it.productionProcessId].push(it.cargoTypeId);
+									}
+									if (scopeKey) {
+										if (!procCargoTypesMap[scopeKey]) {
+											procCargoTypesMap[scopeKey] = [];
+										}
+										if (!procCargoTypesMap[scopeKey].includes(it.cargoTypeId)) {
+											procCargoTypesMap[scopeKey].push(it.cargoTypeId);
+										}
+									}
+								}
+								if (it.receivingLocationId) {
+									if (!procPickupLocationsMap[it.productionProcessId]) {
+										procPickupLocationsMap[it.productionProcessId] = [];
+									}
+									if (!procPickupLocationsMap[it.productionProcessId].includes(it.receivingLocationId)) {
+										procPickupLocationsMap[it.productionProcessId].push(it.receivingLocationId);
+									}
+									if (scopeKey) {
+										if (!procPickupLocationsMap[scopeKey]) {
+											procPickupLocationsMap[scopeKey] = [];
+										}
+										if (!procPickupLocationsMap[scopeKey].includes(it.receivingLocationId)) {
+											procPickupLocationsMap[scopeKey].push(it.receivingLocationId);
+										}
+									}
+								}
+								if (it.dumpingLocationId) {
+									if (!procDropoffLocationsMap[it.productionProcessId]) {
+										procDropoffLocationsMap[it.productionProcessId] = [];
+									}
+									if (!procDropoffLocationsMap[it.productionProcessId].includes(it.dumpingLocationId)) {
+										procDropoffLocationsMap[it.productionProcessId].push(it.dumpingLocationId);
+									}
+									if (scopeKey) {
+										if (!procDropoffLocationsMap[scopeKey]) {
+											procDropoffLocationsMap[scopeKey] = [];
+										}
+										if (!procDropoffLocationsMap[scopeKey].includes(it.dumpingLocationId)) {
+											procDropoffLocationsMap[scopeKey].push(it.dumpingLocationId);
+										}
+									}
+								}
+							}
+						});
+
+						return {
+							month: m.month.substring(0, 10),
+							lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
+							motorizedCategory: 'scania' as const,
+							assignmentCodeIds: eqIds,
+							equipmentQualities: eqQualitiesMap,
+							equipmentProcesses: eqProcessesMap,
+							equipmentDistances: eqDistancesMap,
+							processCargoTypes: procCargoTypesMap,
+							processPickupLocations: procPickupLocationsMap,
+							processDropoffLocations: procDropoffLocationsMap,
+							items,
+						};
+					})
+					.filter((m): m is NonNullable<typeof m> => m !== null);
+
+				form.setValue('months', []);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', months);
+			} catch {
+				form.setValue('months', []);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', []);
+			}
+		} else if (mode === 'vantailo') {
+			try {
+				const detailRes = await api.get<{
+					departmentId: string;
+					months: {
+						month: string;
+						lowValuePerishableSupply?: boolean;
+						items: {
+							id: string;
+							productionProcessId?: string;
+							transportRouteId?: string;
+							routeDepartmentId?: string;
+							equipmentId?: string;
+							equipmentQuality?: string;
+							productionMeters?: number;
+							unitOfMeasureId?: string;
+							k1?: any;
+							k2?: any;
+						}[];
+					}[];
+				}>(
+					API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId),
+				);
+				const detail = detailRes.result;
+
+				const months = (detail.months || [])
+					.map((m) => {
+						const vtlItems = (m.items || []).filter(
+							(it: any) =>
+								it.transportRouteId ||
+								(!it.haulDistanceId && !it.haulDistanceValue && !it.processGroupCode?.includes('VTCG')),
+						);
+						if (!vtlItems.length) return null;
+
+						const processIds = [
+							...new Set(
+								vtlItems.map((it) => it.productionProcessId).filter(Boolean),
+							),
+						] as string[];
+
+						const processes = processIds.map((pId) => {
+							const pItems = vtlItems.filter(
+								(it) => it.productionProcessId === pId,
+							);
+
+							const routeDepartmentIdsMap: Record<string, string[]> = {};
+							pItems.forEach((it) => {
+								if (it.transportRouteId && it.routeDepartmentId) {
+									if (!routeDepartmentIdsMap[it.transportRouteId]) {
+										routeDepartmentIdsMap[it.transportRouteId] = [];
+									}
+									if (
+										!routeDepartmentIdsMap[it.transportRouteId].includes(
+											it.routeDepartmentId,
+										)
+									) {
+										routeDepartmentIdsMap[it.transportRouteId].push(
+											it.routeDepartmentId,
+										);
+									}
+								}
+							});
+
+							const contractCodeQualityIdsMap: Record<string, string[]> = {};
+							pItems.forEach((it) => {
+								if (it.equipmentId && it.equipmentQuality) {
+									if (!contractCodeQualityIdsMap[it.equipmentId]) {
+										contractCodeQualityIdsMap[it.equipmentId] = [];
+									}
+									if (
+										!contractCodeQualityIdsMap[it.equipmentId].includes(
+											it.equipmentQuality,
+										)
+									) {
+										contractCodeQualityIdsMap[it.equipmentId].push(
+											it.equipmentQuality,
+										);
+									}
+								}
+							});
+
+							return {
+								productionProcessId: pId,
+								routeIds: [
+									...new Set(
+										pItems.map((it) => it.transportRouteId).filter(Boolean),
+									),
+								] as string[],
+								routeDepartmentIds: routeDepartmentIdsMap,
+								contractCodeIds: [
+									...new Set(
+										pItems.map((it) => it.equipmentId).filter(Boolean),
+									),
+								] as string[],
+								contractCodeQualityIds: contractCodeQualityIdsMap,
+								items: pItems.map((it: any) => ({
+									id: it.id,
+									transportRouteId: it.transportRouteId,
+									departmentId: it.routeDepartmentId,
+									contractCodeId: it.equipmentId,
+									equipmentQuality: it.equipmentQuality,
+									productionMeters: it.productionMeters,
+									unitOfMeasureId: it.unitOfMeasureId,
+									k1Factor: it.k1
+										? {
+												adjustmentFactorId: it.k1.adjustmentFactorId,
+												adjustmentFactorDescriptionId:
+													it.k1.adjustmentFactorDescriptionId,
+												customValue: it.k1.customValue,
+											}
+										: undefined,
+									k2Factor: it.k2
+										? {
+												adjustmentFactorId: it.k2.adjustmentFactorId,
+												adjustmentFactorDescriptionId:
+													it.k2.adjustmentFactorDescriptionId,
+												customValue: it.k2.customValue,
+											}
+										: undefined,
+								})),
+							};
+						});
+
+						return {
+							month: m.month.substring(0, 10),
+							lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
+							processIds,
+							processes,
+						};
+					})
+					.filter((m): m is NonNullable<typeof m> => m !== null);
+
+				form.setValue('months', []);
+				form.setValue('transportMonths', months);
+				form.setValue('motorizedMonths', []);
+			} catch {
+				form.setValue('months', []);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', []);
+			}
+		} else {
+			try {
+				const detail = await api.get<DepartmentPlannedDetail>(
+					API.COST.PRODUCT.DETAIL_PLANNED_BY_DEPARTMENT(deptId),
+				);
+				const mappedDetail = mapDepartmentPlannedDetail(detail.result);
+
+				form.setValue(
+					'months',
+					mappedDetail.months.map((month) => ({
+						month: month.month.substring(0, 10),
+						items: month.items.map((item) => ({
+							productUnitPriceId: item.productUnitPriceId,
+							outputId: item.outputId,
+							productId: item.productId,
+							unitOfMeasureId: item.unitOfMeasureId,
+							productionMeters: item.productionMeters,
+							planAshContent: item.planAshContent ?? 0,
+						})),
+					})),
+				);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', []);
+
+				setLegacyProductIds(
+					new Map(
+						mappedDetail.months.flatMap((month) =>
+							month.items.flatMap((item) => {
+								const itemKey = item.outputId || item.productUnitPriceId;
+								if (!itemKey) return [];
+								return [[itemKey, item.productId] as const];
+							}),
+						),
+					),
+				);
+			} catch {
+				form.setValue('months', []);
+				form.setValue('transportMonths', []);
+				form.setValue('motorizedMonths', []);
+			}
+		}
+	};
 
 	// Làm mới dữ liệu Vận tải lò / Vận tải cơ giới / Khai thác khi đổi chế độ kế hoạch
 	useEffect(() => {
@@ -144,19 +540,23 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 			prevPlanModeRef.current !== undefined &&
 			prevPlanModeRef.current !== watchedPlanMode
 		) {
-			if (watchedPlanMode === 'vantailo') {
-				form.setValue('months', []);
-				form.setValue('motorizedMonths', []);
-			} else if (watchedPlanMode === 'vantaicogioi') {
-				form.setValue('months', []);
-				form.setValue('transportMonths', []);
+			if (isEdit && targetDeptId) {
+				loadPlanDataByMode(watchedPlanMode, targetDeptId);
 			} else {
-				form.setValue('transportMonths', []);
-				form.setValue('motorizedMonths', []);
+				if (watchedPlanMode === 'vantailo') {
+					form.setValue('months', []);
+					form.setValue('motorizedMonths', []);
+				} else if (watchedPlanMode === 'vantaicogioi') {
+					form.setValue('months', []);
+					form.setValue('transportMonths', []);
+				} else {
+					form.setValue('transportMonths', []);
+					form.setValue('motorizedMonths', []);
+				}
 			}
 		}
 		prevPlanModeRef.current = watchedPlanMode;
-	}, [watchedPlanMode, form]);
+	}, [watchedPlanMode, form, isEdit, targetDeptId]);
 
 	const invalidLegacySelections = useMemo(() => {
 		if (!isEdit) return [];
@@ -249,7 +649,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				setContractCodes(contractsRes.result.data ?? []);
 				setAdjustments((adjustmentsRes as any)?.result || []);
 
-				// Lọc các Công đoạn sản xuất thuộc Vận tải lò (loại trừ công đoạn của Vận tải cơ giới)
+				// Lọc các Công đoạn sản xuất thuộc Vận tải lò và Vận tải cơ giới
 				const allProcesses = processesRes.result.data || [];
 				const vtlProcesses = allProcesses.filter((p) => {
 					const group = (p.processGroupName || '').toLowerCase();
@@ -258,6 +658,8 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 					if (
 						group.includes('cơ giới') ||
+						group.includes('vtcg') ||
+						code.startsWith('VC_') ||
 						code === 'GDC' ||
 						code === 'GPV' ||
 						code === 'GGDC' ||
@@ -276,13 +678,36 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						group.includes('vận tải')
 					);
 				});
+
+				const vtcgProcesses = allProcesses.filter((p) => {
+					const group = (p.processGroupName || '').toLowerCase();
+					const name = (p.name || '').toLowerCase();
+					const code = (p.code || '').toUpperCase();
+
+					return (
+						group.includes('cơ giới') ||
+						group.includes('vtcg') ||
+						code.startsWith('VC_') ||
+						code === 'GDC' ||
+						code === 'GPV' ||
+						code === 'GGDC' ||
+						code === 'GGPV' ||
+						name.startsWith('giờ phục vụ') ||
+						name.startsWith('giờ di chuyển') ||
+						name.startsWith('giờ gạt') ||
+						name.includes('vận chuyển')
+					);
+				});
+
 				setProductionProcesses(
 					vtlProcesses.length > 0 ? vtlProcesses : allProcesses,
+				);
+				setVtcgProductionProcesses(
+					vtcgProcesses.length > 0 ? vtcgProcesses : allProcesses,
 				);
 
 				if (!row) return;
 
-				const targetDeptId = (row as any)?.departmentId || row?.id;
 				const targetPlanMode =
 					(row as any)?.planMode ||
 					((row as any)?.hasVanTaiCoGioi
@@ -291,264 +716,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							? 'vantailo'
 							: 'khaithac');
 
-				if (targetPlanMode === 'vantaicogioi') {
-					try {
-						const detailRes = await api.get<{
-							departmentId: string;
-							months: {
-								month: string;
-								lowValuePerishableSupply?: boolean;
-								items: {
-									id: string;
-									productionProcessId?: string;
-									equipmentId?: string;
-									equipmentQuality?: string;
-									haulDistanceId?: string;
-									productionMeters?: number;
-									unitOfMeasureId?: string;
-								}[];
-							}[];
-						}>(
-							API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
-								targetDeptId,
-							),
-						);
-						const detail = detailRes.result;
-
-						const months = (detail.months || []).map((m) => {
-							const items = (m.items || []).map((it) => ({
-								id: it.id,
-								equipmentId: it.equipmentId,
-								equipmentQuality: it.equipmentQuality,
-								productionProcessId: it.productionProcessId,
-								haulDistanceId: it.haulDistanceId,
-								productionMeters: it.productionMeters,
-								unitOfMeasureId: it.unitOfMeasureId,
-							}));
-
-							const eqIds = [
-								...new Set(items.map((it) => it.equipmentId).filter(Boolean)),
-							] as string[];
-							const eqQualitiesMap: Record<string, string[]> = {};
-							items.forEach((it) => {
-								if (it.equipmentId && it.equipmentQuality) {
-									if (!eqQualitiesMap[it.equipmentId]) {
-										eqQualitiesMap[it.equipmentId] = [];
-									}
-									if (!eqQualitiesMap[it.equipmentId].includes(it.equipmentQuality)) {
-										eqQualitiesMap[it.equipmentId].push(it.equipmentQuality);
-									}
-								}
-							});
-
-							return {
-								month: m.month.substring(0, 10),
-								lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
-								motorizedCategory: 'scania' as const,
-								assignmentCodeIds: eqIds,
-								equipmentQualities: eqQualitiesMap,
-								equipmentProcesses: {},
-								equipmentDistances: {},
-								processCargoTypes: {},
-								processPickupLocations: {},
-								processDropoffLocations: {},
-								items,
-							};
-						});
-
-						form.reset({
-							departmentId: detail.departmentId || targetDeptId,
-							planMode: 'vantaicogioi',
-							months: [],
-							transportMonths: [],
-							motorizedMonths: months,
-						});
-					} catch {
-						form.reset({
-							departmentId: targetDeptId,
-							planMode: 'vantaicogioi',
-							months: [],
-							transportMonths: [],
-							motorizedMonths: [],
-						});
-					}
-				} else if (targetPlanMode === 'vantailo') {
-					try {
-						const detailRes = await api.get<{
-							departmentId: string;
-							months: {
-								month: string;
-								lowValuePerishableSupply?: boolean;
-								items: {
-									id: string;
-									productionProcessId?: string;
-									transportRouteId?: string;
-									routeDepartmentId?: string;
-									equipmentId?: string;
-									equipmentQuality?: string;
-									productionMeters?: number;
-									unitOfMeasureId?: string;
-									k1?: any;
-									k2?: any;
-								}[];
-							}[];
-						}>(
-							API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
-								targetDeptId,
-							),
-						);
-						const detail = detailRes.result;
-
-						const months = (detail.months || []).map((m) => {
-							const items = m.items || [];
-							const processIds = [
-								...new Set(
-									items.map((it) => it.productionProcessId).filter(Boolean),
-								),
-							] as string[];
-
-							const processes = processIds.map((pId) => {
-								const pItems = items.filter(
-									(it) => it.productionProcessId === pId,
-								);
-
-								const routeDepartmentIdsMap: Record<string, string[]> = {};
-								pItems.forEach((it) => {
-									if (it.transportRouteId && it.routeDepartmentId) {
-										if (!routeDepartmentIdsMap[it.transportRouteId]) {
-											routeDepartmentIdsMap[it.transportRouteId] = [];
-										}
-										if (
-											!routeDepartmentIdsMap[it.transportRouteId].includes(
-												it.routeDepartmentId,
-											)
-										) {
-											routeDepartmentIdsMap[it.transportRouteId].push(
-												it.routeDepartmentId,
-											);
-										}
-									}
-								});
-
-								const contractCodeQualityIdsMap: Record<string, string[]> = {};
-								pItems.forEach((it) => {
-									if (it.equipmentId && it.equipmentQuality) {
-										if (!contractCodeQualityIdsMap[it.equipmentId]) {
-											contractCodeQualityIdsMap[it.equipmentId] = [];
-										}
-										if (
-											!contractCodeQualityIdsMap[it.equipmentId].includes(
-												it.equipmentQuality,
-											)
-										) {
-											contractCodeQualityIdsMap[it.equipmentId].push(
-												it.equipmentQuality,
-											);
-										}
-									}
-								});
-
-								return {
-									productionProcessId: pId,
-									routeIds: [
-										...new Set(
-											pItems.map((it) => it.transportRouteId).filter(Boolean),
-										),
-									] as string[],
-									routeDepartmentIds: routeDepartmentIdsMap,
-									contractCodeIds: [
-										...new Set(
-											pItems.map((it) => it.equipmentId).filter(Boolean),
-										),
-									] as string[],
-									contractCodeQualityIds: contractCodeQualityIdsMap,
-									items: pItems.map((it: any) => ({
-										id: it.id,
-										transportRouteId: it.transportRouteId,
-										departmentId: it.routeDepartmentId,
-										contractCodeId: it.equipmentId,
-										equipmentQuality: it.equipmentQuality,
-										productionMeters: it.productionMeters,
-										unitOfMeasureId: it.unitOfMeasureId,
-										k1Factor: it.k1
-											? {
-													adjustmentFactorId: it.k1.adjustmentFactorId,
-													adjustmentFactorDescriptionId:
-														it.k1.adjustmentFactorDescriptionId,
-													customValue: it.k1.customValue,
-												}
-											: undefined,
-										k2Factor: it.k2
-											? {
-													adjustmentFactorId: it.k2.adjustmentFactorId,
-													adjustmentFactorDescriptionId:
-														it.k2.adjustmentFactorDescriptionId,
-													customValue: it.k2.customValue,
-												}
-											: undefined,
-									})),
-								};
-							});
-
-							return {
-								month: m.month.substring(0, 10),
-								lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
-								processIds,
-								processes,
-							};
-						});
-
-						form.reset({
-							departmentId: detail.departmentId || targetDeptId,
-							planMode: 'vantailo',
-							months: [],
-							transportMonths: months,
-							motorizedMonths: [],
-						});
-					} catch {
-						form.reset({
-							departmentId: targetDeptId,
-							planMode: 'vantailo',
-							months: [],
-							transportMonths: [],
-							motorizedMonths: [],
-						});
-					}
-				} else {
-					const detail = await api.get<DepartmentPlannedDetail>(
-						API.COST.PRODUCT.DETAIL_PLANNED_BY_DEPARTMENT(targetDeptId),
-					);
-					const mappedDetail = mapDepartmentPlannedDetail(detail.result);
-
-					form.reset({
-						departmentId: mappedDetail.departmentId,
-						planMode: 'khaithac',
-						months: mappedDetail.months.map((month) => ({
-							month: month.month.substring(0, 10),
-							items: month.items.map((item) => ({
-								productUnitPriceId: item.productUnitPriceId,
-								outputId: item.outputId,
-								productId: item.productId,
-								unitOfMeasureId: item.unitOfMeasureId,
-								productionMeters: item.productionMeters,
-								planAshContent: item.planAshContent ?? 0,
-							})),
-						})),
-						transportMonths: [],
-						motorizedMonths: [],
-					});
-					setLegacyProductIds(
-						new Map(
-							mappedDetail.months.flatMap((month) =>
-								month.items.flatMap((item) => {
-									const itemKey = item.outputId || item.productUnitPriceId;
-									if (!itemKey) return [];
-									return [[itemKey, item.productId] as const];
-								}),
-							),
-						),
-					);
-				}
+				form.setValue('departmentId', targetDeptId);
+				form.setValue('planMode', targetPlanMode as any);
+				await loadPlanDataByMode(targetPlanMode, targetDeptId);
 			},
 		);
 
@@ -981,7 +1151,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								monthIndex={monthIndex}
 								canRemove={motorizedMonthFields.length > 1}
 								onRemoveMonth={() => removeMotorizedMonth(monthIndex)}
-								productionProcesses={productionProcesses}
+								productionProcesses={vtcgProductionProcesses}
 								assignmentCodes={contractCodes}
 								distances={distances}
 								cargoTypes={cargoTypes}

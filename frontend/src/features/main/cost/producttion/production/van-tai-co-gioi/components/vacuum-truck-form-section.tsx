@@ -59,8 +59,11 @@ export function VacuumTruckFormSection({
 					(p) => p.id === procId || p.value === procId,
 				);
 				const scopeKey = `${eqId}_${procId}`;
-				const procQualities =
-					equipmentQualities[scopeKey] || equipmentQualities[eqId] || [];
+				const procQualities = [
+					...(equipmentQualities[scopeKey] ||
+						equipmentQualities[eqId] ||
+						[]),
+				].sort((a, b) => a.localeCompare(b));
 				const dists = equipmentDistances[scopeKey] ||
 					equipmentDistances[eqId] || [''];
 
@@ -118,8 +121,8 @@ export function VacuumTruckFormSection({
 			<FormMultiSelect
 				control={formControl}
 				name={`${groupPath}.assignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản (Xe hút chất thải)'
-				placeholder='Chọn nhóm xe hút chất thải'
+				label='1. Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code

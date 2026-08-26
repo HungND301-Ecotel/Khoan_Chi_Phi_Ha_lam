@@ -47,8 +47,12 @@ export const VTL_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 	},
 	{
 		accessorKey: 'equipmentQuality',
-		header: () => <span className='whitespace-normal'>Loại</span>,
-		cell: ({ row }) => row.original.equipmentQuality || '-',
+		header: () => <span className='whitespace-normal'>Chất lượng</span>,
+		cell: ({ row }) => {
+			const quality = row.original.equipmentQuality;
+			if (!quality || quality === '-') return '-';
+			return quality.startsWith('Loại') ? quality : `Loại ${quality}`;
+		},
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

@@ -149,7 +149,10 @@ function pushRouteOrEquipmentGroups(
 		let key: string | null = null;
 		if (item.transportRouteId && item.routeDepartmentId) {
 			key = `route:${item.transportRouteId}`;
-		} else if (item.equipmentId && item.equipmentQuality) {
+		} else if (
+			item.equipmentId &&
+			(item.equipmentQuality || item.haulDistanceId || item.haulDistanceValue)
+		) {
 			key = `equipment:${item.equipmentId}`;
 		}
 
@@ -186,7 +189,10 @@ function pushRouteOrEquipmentGroups(
 		children.sort((a, b) =>
 			isRoute
 				? compareLabel(a.routeDepartmentCode, b.routeDepartmentCode)
-				: compareLabel(a.equipmentQuality, b.equipmentQuality),
+				: compareLabel(
+						a.haulDistanceValue || a.equipmentQuality,
+						b.haulDistanceValue || b.equipmentQuality,
+					),
 		);
 
 		const parentLabel = isRoute
@@ -218,7 +224,12 @@ function pushRouteOrEquipmentGroups(
 						child.routeDepartmentName,
 						'Đơn vị chưa xác định',
 					)
-				: `Loại ${child.equipmentQuality}`;
+				: [
+						child.haulDistanceValue && `Cung độ: ${child.haulDistanceValue}`,
+						child.equipmentQuality && `Loại ${child.equipmentQuality}`,
+					]
+						.filter(Boolean)
+						.join(' - ') || child.productName || 'Chi tiết';
 
 			result.push({
 				...child,
@@ -322,7 +333,11 @@ export function groupByProcessGroup(
 		});
 
 		const isTransportGroup = groupItems.some(
-			(item) => item.transportRouteId || item.equipmentId,
+			(item) =>
+				item.transportRouteId ||
+				item.equipmentId ||
+				item.haulDistanceId ||
+				item.isLowValuePerishableSupplyRow,
 		);
 
 		if (isTransportGroup) {

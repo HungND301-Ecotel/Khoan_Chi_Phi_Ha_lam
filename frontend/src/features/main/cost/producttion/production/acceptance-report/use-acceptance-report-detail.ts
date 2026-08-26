@@ -34,6 +34,7 @@ export function useAcceptanceReportDetail(
 	reportId: string | undefined,
 	enabled: boolean = true,
 	reloadKey?: number,
+	isMotorized?: boolean,
 ): UseAcceptanceReportDetailResult {
 	const [data, setData] = useState<HierarchicalAcceptanceReport | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -56,7 +57,10 @@ export function useAcceptanceReportDetail(
 			]);
 
 			if (response && response.result) {
-				const hierarchicData = transformApiResponseToHierarchical(response.result);
+				const hierarchicData = transformApiResponseToHierarchical(
+					response.result,
+					isMotorized,
+				);
 				const productionOrderById = Object.fromEntries(
 					(productionOrderResponse.result.data ?? []).map((item) => [
 						item.id,
@@ -82,7 +86,7 @@ export function useAcceptanceReportDetail(
 
 	useEffect(() => {
 		fetchData();
-	}, [reportId, enabled, reloadKey]);
+	}, [reportId, enabled, reloadKey, isMotorized]);
 
 	const refetch = () => {
 		fetchData();

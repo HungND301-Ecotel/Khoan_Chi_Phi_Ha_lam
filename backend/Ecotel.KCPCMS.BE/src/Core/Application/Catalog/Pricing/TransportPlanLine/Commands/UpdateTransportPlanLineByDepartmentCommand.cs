@@ -10,6 +10,7 @@ using PlannedTransportCostAdjustmentFactorEntity = Domain.Entities.Index.Planned
 using PlannedTransportCostEntity = Domain.Entities.Pricing.PlannedTransportCost;
 using TransportPlanLineEntity = Domain.Entities.Pricing.TransportPlanLine;
 using TransportUnitPriceEntity = Domain.Entities.Pricing.TransportUnitPrice;
+using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
 
 namespace Application.Catalog.Pricing.TransportPlanLine.Commands;
 
@@ -30,6 +31,10 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
         unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<TransportUnitPriceEntity> _transportUnitPriceRepository =
         unitOfWork.GetRepository<TransportUnitPriceEntity>();
+    private readonly IWriteRepository<MechanizedTransportUnitPrice> _mechanizedTransportUnitPriceRepository =
+        unitOfWork.GetRepository<MechanizedTransportUnitPrice>();
+    private readonly IWriteRepository<ProductionProcess> _productionProcessRepository =
+        unitOfWork.GetRepository<ProductionProcess>();
 
     public async Task<bool> Handle(
         UpdateTransportPlanLineByDepartmentCommand request,
@@ -38,7 +43,9 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
         var payload = await TransportPlanLineByDepartmentCommandHelper.BuildUpdatePayloadAsync(
             request.UpdateModel,
             _departmentRepository,
-            _transportUnitPriceRepository);
+            _transportUnitPriceRepository,
+            _mechanizedTransportUnitPriceRepository,
+            _productionProcessRepository);
 
         var existingLines = await _transportPlanLineRepository.GetAll()
             .Where(x =>
@@ -90,7 +97,10 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                         item.EquipmentQuality,
                         item.TransportRouteId,
                         item.RouteDepartmentId,
-                        haulDistanceId: null);
+                        item.HaulDistanceId,
+                        item.CargoTypeId,
+                        item.ReceivingLocationId,
+                        item.DumpingLocationId);
                     _transportPlanLineRepository.Update(existingLine);
 
                     UpdateCost(existingLine.PlannedTransportCost, item, lowValuePerishableSupplyInclusion);
@@ -110,12 +120,15 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                     item.EquipmentQuality,
                     item.TransportRouteId,
                     item.RouteDepartmentId,
-                    haulDistanceId: null);
+                    item.HaulDistanceId,
+                    item.CargoTypeId,
+                    item.ReceivingLocationId,
+                    item.DumpingLocationId);
 
                 await _transportPlanLineRepository.InsertAsync(newLine, cancellationToken);
 
                 var newCost = PlannedTransportCostEntity.Create(
-                    newLine.Id, item.TransportUnitPriceId, null, lowValuePerishableSupplyInclusion);
+                    newLine.Id, item.TransportUnitPriceId, item.MechanizedTransportUnitPriceDetailId, lowValuePerishableSupplyInclusion);
                 await _plannedTransportCostRepository.InsertAsync(newCost, cancellationToken);
                 newCost.AddAdjustmentFactors(BuildAdjustmentFactors(newCost.Id, item));
             }
@@ -143,7 +156,7 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
             return;
         }
 
-        cost.Update(item.TransportUnitPriceId, null, lowValuePerishableSupplyInclusion);
+        cost.Update(item.TransportUnitPriceId, item.MechanizedTransportUnitPriceDetailId, lowValuePerishableSupplyInclusion);
         _plannedTransportCostRepository.Update(cost);
 
         cost.ClearAdjustmentFactors();

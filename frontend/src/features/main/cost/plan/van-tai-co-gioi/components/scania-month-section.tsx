@@ -8,7 +8,6 @@ import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema'
 import {
 	getSuggestedFuelAdjustmentFactor,
 	getUnitForMotorizedProcess,
-	MOCK_UNITS_OF_MEASURE,
 } from '../utils';
 
 type ScaniaMonthSectionProps = {
@@ -16,9 +15,9 @@ type ScaniaMonthSectionProps = {
 	monthIndex: number;
 	assignmentCodes: any[];
 	processes: any[];
-	cargoTypes: any[];
-	pickupLocations: any[];
-	dropoffLocations: any[];
+	cargoTypes?: any[];
+	pickupLocations?: any[];
+	dropoffLocations?: any[];
 	distances: any[];
 };
 
@@ -27,13 +26,13 @@ export function ScaniaMonthSection({
 	monthIndex,
 	assignmentCodes,
 	processes,
-	cargoTypes,
-	pickupLocations,
-	dropoffLocations,
+	cargoTypes = [],
+	pickupLocations = [],
+	dropoffLocations = [],
 	distances,
 }: ScaniaMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
-	const unitOptions = uomList.length > 0 ? uomList : MOCK_UNITS_OF_MEASURE;
+	const unitOptions = uomList || [];
 	const monthPath = `motorizedMonths.${monthIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const formControl = form.control as any;
@@ -80,7 +79,6 @@ export function ScaniaMonthSection({
 				);
 				const scopeKey = `${eqId}_${procId}`;
 
-				// Fallback to eqId if scopeKey is not yet set
 				const procQualities =
 					equipmentQualities[scopeKey] || equipmentQualities[eqId] || [];
 				const dists = equipmentDistances[scopeKey] ||
@@ -128,6 +126,20 @@ export function ScaniaMonthSection({
 										dist?.value,
 									);
 
+									const defaultUnitName =
+										existing?.unitName ||
+										getUnitForMotorizedProcess(
+											proc?.name || proc?.label,
+											'scania',
+										);
+
+									const matchedUnit = unitOptions.find(
+										(u) =>
+											u.name?.toLowerCase() === defaultUnitName.toLowerCase() ||
+											u.value?.toLowerCase() === defaultUnitName.toLowerCase() ||
+											u.id === existing?.unitOfMeasureId,
+									);
+
 									newRows.push({
 										id: existing?.id,
 										equipmentId: eqId,
@@ -148,10 +160,9 @@ export function ScaniaMonthSection({
 										productionMeters: existing?.productionMeters ?? Number.NaN,
 										fuelAdjustmentFactor:
 											existing?.fuelAdjustmentFactor ?? suggestedFactor,
-										unitName: getUnitForMotorizedProcess(
-											proc?.name || proc?.label,
-											'scania',
-										),
+										unitName: defaultUnitName,
+										unitOfMeasureId:
+											existing?.unitOfMeasureId || matchedUnit?.id || undefined,
 									});
 								});
 							});
@@ -171,6 +182,7 @@ export function ScaniaMonthSection({
 		JSON.stringify(processCargoTypes),
 		JSON.stringify(processPickupLocations),
 		JSON.stringify(processDropoffLocations),
+		unitOptions.length,
 	]);
 
 	return (
@@ -180,12 +192,12 @@ export function ScaniaMonthSection({
 				<span>Vận chuyển (Xe Scania)</span>
 			</div>
 
-			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN (XE SCANIA) */}
+			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
 			<FormMultiSelect
 				control={formControl}
 				name={`${monthPath}.assignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản (Xe Scania)'
-				placeholder='Chọn nhóm xe Scania'
+				label='1. Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code
@@ -344,18 +356,15 @@ export function ScaniaMonthSection({
 													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
 														<tr>
 															<th className='w-[14%] px-3 py-2'>Chất lượng</th>
-															<th className='w-[18%] px-3 py-2'>Loại hàng</th>
-															<th className='w-[24%] px-3 py-2'>
+															<th className='w-[20%] px-3 py-2'>Loại hàng</th>
+															<th className='w-[26%] px-3 py-2'>
 																Vị trí nhận → Đổ
 															</th>
-															<th className='w-[12%] px-3 py-2'>Cung độ</th>
-															<th className='w-[12%] px-3 py-2 text-center'>
+															<th className='w-[14%] px-3 py-2'>Cung độ</th>
+															<th className='w-[14%] px-3 py-2 text-center'>
 																Đơn vị tính
 															</th>
-															<th className='w-[10%] px-3 py-2'>
-																Hệ số điều chỉnh
-															</th>
-															<th className='w-[10%] px-3 py-2'>
+															<th className='w-[12%] px-3 py-2'>
 																Sản lượng kế hoạch
 															</th>
 														</tr>
@@ -404,10 +413,17 @@ export function ScaniaMonthSection({
 																				onValueChange={(val) => {
 																					const next = [...items];
 																					if (globalIdx >= 0) {
+																						const matched = unitOptions.find(
+																							(u) =>
+																								u.value === val ||
+																								u.name === val ||
+																								u.id === val,
+																						);
 																						next[globalIdx] = {
 																							...next[globalIdx],
-																							unitName: val,
-																							unitOfMeasureId: val,
+																							unitName: matched?.name || val,
+																							unitOfMeasureId:
+																								matched?.id || val,
 																						};
 																						setItems(next);
 																					}
@@ -416,22 +432,6 @@ export function ScaniaMonthSection({
 																				placeholder='Chọn ĐVT'
 																			/>
 																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<FormNumberInput
-																			value={row.fuelAdjustmentFactor ?? 1.0}
-																			onValueChange={(val) => {
-																				const next = [...items];
-																				if (globalIdx >= 0) {
-																					next[globalIdx] = {
-																						...next[globalIdx],
-																						fuelAdjustmentFactor: val ?? 1.0,
-																					};
-																					setItems(next);
-																				}
-																			}}
-																			placeholder='1.0'
-																		/>
 																	</td>
 																	<td className='px-3 py-2'>
 																		<FormNumberInput

@@ -89,7 +89,7 @@ export function VtlPlanExpand({ row }: PlanExpandProps) {
 				<AccordionContent className='p-4 pt-2'>
 					<div className='overflow-x-auto rounded-md border border-gray-200 bg-white p-4 shadow-xs'>
 						<table className='w-full text-left text-sm text-gray-700'>
-							<thead className='bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
+							<thead className='bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
 								<tr>
 									<th className='px-4 py-2'>Thành phần chi phí</th>
 									<th className='px-4 py-2 text-right'>Đơn giá gốc (đ)</th>

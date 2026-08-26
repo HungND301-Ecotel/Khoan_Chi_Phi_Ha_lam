@@ -11,13 +11,13 @@ import {
 	ItemContent,
 	ItemTitle,
 } from '@/components/ui/item';
-import { CostProduct } from '@/features/main/cost/plan/types';
+import { ProductionAdjustment } from '@/features/main/cost/producttion/adjustment/columns';
 import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useState } from 'react';
 
-type PlanExpandProps = ActionDialogProps<CostProduct> & {
+type VtcgAdjustmentExpandProps = ActionDialogProps<ProductionAdjustment> & {
 	monthId?: string;
 };
 
@@ -26,22 +26,13 @@ const renderPrice = (val?: number | null) => {
 	return formatNumber(val);
 };
 
-const renderFactor = (
-	coeff?: number | null,
-	selection?: {
-		adjustmentFactorId?: string;
-		adjustmentFactorDescriptionId?: string;
-		customValue?: number | null;
-	} | null,
-) => {
-	if (!selection && (coeff === null || coeff === undefined)) return '-';
-	const val = coeff ?? selection?.customValue;
-	if (val === null || val === undefined) return '-';
-	return formatNumber(val);
+const renderFactor = (coeff?: number | null) => {
+	if (coeff === null || coeff === undefined) return '-';
+	return formatNumber(coeff);
 };
 
-export function VtcgPlanExpand({ row }: PlanExpandProps) {
-	const [opened, setOpened] = useState<string[]>(['vtcg-cost']);
+export function VtcgAdjustmentExpand({ row }: VtcgAdjustmentExpandProps) {
+	const [opened, setOpened] = useState<string[]>(['vtcg-adjustment']);
 	const product = (row as any)?.original ?? row;
 
 	const material = product?.material;
@@ -56,7 +47,7 @@ export function VtcgPlanExpand({ row }: PlanExpandProps) {
 			onValueChange={setOpened}
 		>
 			<AccordionItem
-				value='vtcg-cost'
+				value='vtcg-adjustment'
 				className='rounded-sm border-none bg-[#f5f5f5]'
 			>
 				<Item
@@ -65,13 +56,13 @@ export function VtcgPlanExpand({ row }: PlanExpandProps) {
 				>
 					<ItemContent>
 						<ItemTitle className='text-sm font-medium text-gray-800'>
-							Doanh thu kế hoạch ban đầu
+							Doanh thu điều chỉnh (Vận tải cơ giới)
 						</ItemTitle>
 					</ItemContent>
 
 					<div className='flex items-center gap-12 text-sm font-semibold text-gray-700'>
 						<div>{formatNumber(product?.totalProductionMeters ?? 0)}</div>
-						<div>{formatNumber(product?.plannedTotalCost ?? 0)}</div>
+						<div>{formatNumber(product?.adjustmentTotalCost ?? 0)}</div>
 
 						<ItemActions className='flex items-center gap-2'>
 							<AccordionTrigger className='group p-0 hover:no-underline'>
@@ -89,25 +80,21 @@ export function VtcgPlanExpand({ row }: PlanExpandProps) {
 				<AccordionContent className='p-4 pt-2'>
 					<div className='overflow-x-auto rounded-md border border-gray-200 bg-white p-4 shadow-xs'>
 						<table className='w-full text-left text-sm text-gray-700'>
-							<thead className='bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+							<thead className='bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
 								<tr>
 									<th className='px-4 py-2'>Thành phần chi phí</th>
 									<th className='px-4 py-2 text-right'>Đơn giá gốc (đ)</th>
-									<th className='px-4 py-2 text-center'>
-										Hệ số điều chỉnh định mức
-									</th>
+									<th className='px-4 py-2 text-center'>Hệ số điều chỉnh</th>
 									<th className='px-4 py-2 text-right'>Đơn giá (đ)</th>
 								</tr>
 							</thead>
 							<tbody className='divide-y divide-gray-200'>
 								<tr>
-									<td className='px-4 py-2 font-medium'>Vật liệu</td>
+									<td className='px-4 py-2 font-medium'>Vật liệu / Nhiên liệu</td>
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(material?.baseUnitPrice)}
 									</td>
-									<td className='px-4 py-2 text-center'>
-										{renderFactor(material?.k1Coefficient, product?.k1)}
-									</td>
+									<td className='px-4 py-2 text-center'>-</td>
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(material?.effectiveUnitPrice)}
 									</td>
@@ -120,7 +107,7 @@ export function VtcgPlanExpand({ row }: PlanExpandProps) {
 										{renderPrice(maintenance?.baseUnitPrice)}
 									</td>
 									<td className='px-4 py-2 text-center'>
-										{renderFactor(maintenance?.k1Coefficient, product?.k1)}
+										{renderFactor(maintenance?.k1Coefficient)}
 									</td>
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(maintenance?.effectiveUnitPrice)}
@@ -134,7 +121,7 @@ export function VtcgPlanExpand({ row }: PlanExpandProps) {
 										{renderPrice(power?.baseUnitPrice)}
 									</td>
 									<td className='px-4 py-2 text-center'>
-										{renderFactor(power?.k1Coefficient, product?.k1)}
+										{renderFactor(power?.k1Coefficient)}
 									</td>
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(power?.effectiveUnitPrice)}

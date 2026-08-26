@@ -6,13 +6,6 @@ import { ScaniaFormSection } from './components/scania-form-section';
 import { ServiceCraneFormSection } from './components/service-crane-form-section';
 import { VacuumTruckFormSection } from './components/vacuum-truck-form-section';
 import { MOTORIZED_CATEGORIES, MotorizedCategory } from './types';
-import {
-	MOCK_CARGO_TYPES,
-	MOCK_HAUL_DISTANCES,
-	MOCK_LOCATIONS,
-	MOCK_VTCG_EQUIPMENTS,
-	MOCK_VTCG_PROCESSES,
-} from './utils';
 
 type VanTaiCoGioiGroupFieldsProps = {
 	form: UseFormReturn<ProductionFormSchema>;
@@ -56,57 +49,12 @@ export function VanTaiCoGioiGroupFields({
 		form.setValue(`${groupPath}.motorizedItems` as any, []);
 	};
 
-	// Use API list if available and matches category, or fallback to mock data
-	const currentEquipments = (() => {
-		const filtered = assignmentCodes.filter((a) => {
-			const c = (a.code || '').toLowerCase();
-			const n = (a.name || a.label || '').toLowerCase();
-			if (activeCategory === 'scania')
-				return c.includes('scania') || n.includes('scania');
-			if (activeCategory === 'excavator_dozer')
-				return c.includes('komatsu') || n.includes('xúc') || n.includes('gạt');
-			if (activeCategory === 'service_crane')
-				return (
-					n.includes('cẩu') ||
-					n.includes('tưới') ||
-					n.includes('tải') ||
-					n.includes('vụ')
-				);
-			if (activeCategory === 'vacuum_truck')
-				return n.includes('hút') || n.includes('thải');
-			return true;
-		});
-		return filtered.length > 0
-			? filtered
-			: MOCK_VTCG_EQUIPMENTS.filter((e) => e.category === activeCategory);
-	})();
+	const currentEquipments = assignmentCodes;
+	const currentProcesses = productionProcesses;
 
-	const currentProcesses = (() => {
-		const filtered = productionProcesses.filter((p) => {
-			const n = (p.name || p.label || '').toLowerCase();
-			if (activeCategory === 'scania')
-				return (
-					n.includes('vận chuyển') &&
-					(n.includes('than') || n.includes('đất') || n.includes('bùn'))
-				);
-			if (activeCategory === 'excavator_dozer')
-				return n.includes('xúc') || n.includes('gạt') || n.includes('giờ');
-			if (activeCategory === 'service_crane')
-				return n.includes('cẩu') || n.includes('tưới') || n.includes('giờ');
-			if (activeCategory === 'vacuum_truck')
-				return n.includes('hút') || n.includes('thải');
-			return true;
-		});
-		return filtered.length > 0
-			? filtered
-			: MOCK_VTCG_PROCESSES.filter((p) => p.category === activeCategory);
-	})();
-
-	const currentDistances =
-		distances.length > 0 ? distances : MOCK_HAUL_DISTANCES;
-	const currentCargoTypes =
-		cargoTypes.length > 0 ? cargoTypes : MOCK_CARGO_TYPES;
-	const currentLocations = locations.length > 0 ? locations : MOCK_LOCATIONS;
+	const currentDistances = distances;
+	const currentCargoTypes = cargoTypes;
+	const currentLocations = locations;
 
 	const pickupLocations = currentLocations.filter(
 		(l) =>

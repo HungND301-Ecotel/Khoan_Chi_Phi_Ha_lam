@@ -3,6 +3,7 @@ import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export { VTL_COST_ADJUSTMENT_COLUMNS } from './van-tai-lo/columns';
+export { VTCG_COST_ADJUSTMENT_COLUMNS } from './van-tai-co-gioi/columns';
 
 export type ProductionAdjustment = {
 	id: string;
@@ -32,7 +33,7 @@ export type ProductionAdjustment = {
 	actualAshContent?: number;
 	akRate?: number;
 	akRatePercent?: number;
-	// Vận tải lò — song song CostProduct bên Kế hoạch sản xuất
+	// Vận tải lò & Vận tải cơ giới
 	routeDepartmentId?: string;
 	routeDepartmentCode?: string;
 	routeDepartmentName?: string;
@@ -41,6 +42,14 @@ export type ProductionAdjustment = {
 	contractCodeCode?: string;
 	contractCodeName?: string;
 	equipmentQuality?: string;
+	haulDistanceId?: string;
+	haulDistanceValue?: string;
+	cargoTypeId?: string;
+	cargoTypeName?: string;
+	receivingLocationId?: string;
+	receivingLocationName?: string;
+	dumpingLocationId?: string;
+	dumpingLocationName?: string;
 	material?: TransportCostComponent;
 	maintenance?: TransportCostComponent;
 	power?: TransportCostComponent;
@@ -53,6 +62,7 @@ export type DepartmentAdjustmentGroup = {
 	name: string;
 	hasKhaiThac?: boolean;
 	hasVanTaiLo?: boolean;
+	hasVanTaiCoGioi?: boolean;
 	startMonth?: string;
 	endMonth?: string;
 	productUnitPriceIds: string[];

@@ -152,10 +152,7 @@ const motorizedPlannedMonthSchema = z.object({
 		.default('scania'),
 	assignmentCodeIds: z.array(z.string()).optional().default([]),
 	equipmentQualities: z.record(z.string(), z.any()).optional().default({}),
-	equipmentProcesses: z
-		.record(z.string(), z.array(z.string()))
-		.optional()
-		.default({}),
+	equipmentProcesses: z.record(z.string(), z.any()).optional().default({}),
 	equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
 	processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
 	processPickupLocations: z.record(z.string(), z.any()).optional().default({}),

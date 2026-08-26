@@ -19,6 +19,11 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
     // "Đơn vị áp dụng cho tuyến này" — chỉ công đoạn Vận tải qua băng tải (VTDQBT/VTTQBT) dùng,
     // đúng field RouteDepartmentId bên Kế hoạch (TransportPlanLine).
     public Guid? RouteDepartmentId { get; protected set; }
+    // Chỉ dùng khi ProductionProcess thuộc VTCG
+    public Guid? HaulDistanceId { get; protected set; }
+    public Guid? CargoTypeId { get; protected set; }
+    public Guid? ReceivingLocationId { get; protected set; }
+    public Guid? DumpingLocationId { get; protected set; }
     public double ProductionMeters { get; protected set; }
 
     // Navigation properties
@@ -27,6 +32,10 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
     public virtual AssignmentCode? Equipment { get; protected set; }
     public virtual TransportRoute? TransportRoute { get; protected set; }
     public virtual Department? RouteDepartment { get; protected set; }
+    public virtual HaulDistance? HaulDistance { get; protected set; }
+    public virtual CargoType? CargoType { get; protected set; }
+    public virtual TransportLocation? ReceivingLocation { get; protected set; }
+    public virtual TransportLocation? DumpingLocation { get; protected set; }
 
     public static ProductionOutputTransportLine Create(
         Guid productionProcessId,
@@ -34,7 +43,11 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
         string? equipmentQuality,
         Guid? transportRouteId,
         Guid? routeDepartmentId,
-        double productionMeters)
+        double productionMeters,
+        Guid? haulDistanceId = null,
+        Guid? cargoTypeId = null,
+        Guid? receivingLocationId = null,
+        Guid? dumpingLocationId = null)
     {
         return new ProductionOutputTransportLine
         {
@@ -43,6 +56,10 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
             EquipmentQuality = equipmentQuality,
             TransportRouteId = transportRouteId,
             RouteDepartmentId = routeDepartmentId,
+            HaulDistanceId = haulDistanceId,
+            CargoTypeId = cargoTypeId,
+            ReceivingLocationId = receivingLocationId,
+            DumpingLocationId = dumpingLocationId,
             ProductionMeters = productionMeters,
         };
     }

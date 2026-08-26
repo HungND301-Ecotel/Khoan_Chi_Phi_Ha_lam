@@ -37,6 +37,7 @@ import {
 interface RawAcceptanceReportDataTableProps {
 	items: RawAcceptanceReportItem[];
 	largeText?: boolean;
+	isMotorized?: boolean;
 }
 
 const DEFAULT_CATEGORY_ASSIGNMENT_LABEL = 'Không thuộc nhóm vật tư, tài sản';
@@ -77,16 +78,18 @@ function OverflowTooltipText({
 
 const getMaterialsIncludedTypeLabel = (
 	item: RawAcceptanceReportItem,
+	isMotorized?: boolean,
 ): string => {
+	const materialLabel = isMotorized ? 'Nhiên liệu, dầu nhờn, mỡ máy' : 'Vật liệu';
 	switch (item.materialsIncludedInContractRevenueType) {
 		case MaterialType.Material:
-			return 'Vật liệu';
+			return materialLabel;
 		case MaterialType.SparePart:
 			return 'SCTX';
 		default:
 			switch (item.materialsIncludedInContractRevenue) {
 				case MaterialsIncludedInContractRevenue.Material:
-					return 'Vật liệu';
+					return materialLabel;
 				case MaterialsIncludedInContractRevenue.Maintain:
 					return 'SCTX';
 				default:
@@ -95,14 +98,17 @@ const getMaterialsIncludedTypeLabel = (
 	}
 };
 
-const getAdditionalCostLabel = (value: number): string => {
+const getAdditionalCostLabel = (
+	value: number,
+	isMotorized?: boolean,
+): string => {
 	switch (value) {
 		case AdditionalCost.Material:
-			return 'Vật liệu';
+			return isMotorized ? 'Nhiên liệu, dầu nhờn, mỡ máy' : 'Vật liệu';
 		case AdditionalCost.Maintain:
 			return 'Chi phí SCTX';
-	case AdditionalCost.OtherMaterial:
-		return 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão';
+		case AdditionalCost.OtherMaterial:
+			return 'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão';
 		default:
 			return '';
 	}
@@ -145,10 +151,20 @@ const getQuotaBasedMaterialTotalQuantity = (item: RawAcceptanceReportItem): numb
 export function RawAcceptanceReportDataTable({
 	items,
 	largeText = false,
+	isMotorized: isMotorizedProp,
 }: RawAcceptanceReportDataTableProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+
+	const isMotorized =
+		Boolean(isMotorizedProp) ||
+		items.some(
+			(item) =>
+				(item.processGroupCode || '').toUpperCase().includes('VTCG') ||
+				(item.processGroupName || '').toLowerCase().includes('cơ giới') ||
+				(item.processGroupName || '').toLowerCase().includes('vtcg'),
+		);
 
 	const pageCount = Math.ceil(items.length / pageSize);
 	const safePageIndex = Math.min(pageIndex, Math.max(pageCount - 1, 0));
@@ -385,7 +401,7 @@ export function RawAcceptanceReportDataTable({
 									<TooltipTrigger asChild>
 										<div className='flex cursor-default flex-col gap-0.5'>
 											<Badge variant='secondary' className='w-fit text-sm'>
-												{getMaterialsIncludedTypeLabel(item)}
+												{getMaterialsIncludedTypeLabel(item, isMotorized)}
 											</Badge>
 											<span className='truncate text-sm text-slate-600'>
 												{item.categoryAssignmentCodeLabel?.trim() ||
@@ -406,7 +422,7 @@ export function RawAcceptanceReportDataTable({
 									<TooltipContent side='top' align='start' className='max-w-96'>
 										<div className='flex flex-col gap-1 text-sm'>
 											<Badge variant='secondary' className='w-fit text-sm'>
-												{getMaterialsIncludedTypeLabel(item)}
+												{getMaterialsIncludedTypeLabel(item, isMotorized)}
 											</Badge>
 											<span>
 												{item.categoryAssignmentCodeLabel?.trim() ||
@@ -438,7 +454,7 @@ export function RawAcceptanceReportDataTable({
 									<TooltipTrigger asChild>
 										<div className='flex cursor-default flex-col gap-0.5'>
 											<Badge variant='secondary' className='w-fit text-sm'>
-												{getAdditionalCostLabel(item.additionalCost)}
+												{getAdditionalCostLabel(item.additionalCost, isMotorized)}
 											</Badge>
 											<span className='text-sm font-medium text-slate-700'>
 												SL: {formatNumber(item.additionalCostQuantity || 0)}
@@ -448,7 +464,7 @@ export function RawAcceptanceReportDataTable({
 									<TooltipContent side='top' align='start' className='max-w-96'>
 										<div className='flex flex-col gap-1 text-sm'>
 											<Badge variant='secondary' className='w-fit text-sm'>
-												{getAdditionalCostLabel(item.additionalCost)}
+												{getAdditionalCostLabel(item.additionalCost, isMotorized)}
 											</Badge>
 											<span className='font-medium'>
 												SL: {formatNumber(item.additionalCostQuantity || 0)}

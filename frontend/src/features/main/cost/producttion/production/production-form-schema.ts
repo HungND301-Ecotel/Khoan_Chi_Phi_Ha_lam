@@ -54,11 +54,11 @@ const transportProcessEntrySchema = z.object({
 	productionProcessId: z.string().optional().default(''),
 	routeIds: z.array(z.string()).optional().default([]),
 	// Đơn vị áp dụng cho từng Tuyến (công đoạn Băng tải) — key là routeId
-	routeDepartmentIds: z.record(z.string(), z.array(z.string())).optional().default({}),
+	routeDepartmentIds: z.record(z.string(), z.any()).optional().default({}),
 	equipmentIds: z.array(z.string()).optional().default([]),
 	equipmentQualities: z.array(z.string()).optional().default([]),
 	// Chất lượng thiết bị cho từng Nhóm VTTS (công đoạn Monoray) — key là equipmentId
-	equipmentQualitiesMap: z.record(z.string(), z.array(z.string())).optional().default({}),
+	equipmentQualitiesMap: z.record(z.string(), z.any()).optional().default({}),
 	items: z.array(transportLineItemSchema).optional().default([]),
 });
 
@@ -98,10 +98,7 @@ const productionGroupSchema = z
 			.default('scania'),
 		assignmentCodeIds: z.array(z.string()).optional().default([]),
 		equipmentQualities: z.record(z.string(), z.any()).optional().default({}),
-		equipmentProcesses: z
-			.record(z.string(), z.array(z.string()))
-			.optional()
-			.default({}),
+		equipmentProcesses: z.record(z.string(), z.any()).optional().default({}),
 		equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
 		processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
 		processPickupLocations: z.record(z.string(), z.any()).optional().default({}),

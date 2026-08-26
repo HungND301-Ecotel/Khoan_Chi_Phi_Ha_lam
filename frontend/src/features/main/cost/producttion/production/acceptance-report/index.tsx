@@ -22,16 +22,18 @@ import { useAcceptanceReportDetail } from './use-acceptance-report-detail';
 
 export function AcceptanceReport({
 	id,
+	output,
 	isOpen,
 	reloadKey,
 }: ProductCostExpandProps) {
 	const { hasPermission } = usePermission();
+	const isMotorized = Boolean((output as any)?.isMotorized);
 	// Fetch data from API
 	const {
 		data: hierarchicalData,
 		loading,
 		error,
-	} = useAcceptanceReportDetail(id, !!id, reloadKey);
+	} = useAcceptanceReportDetail(id, !!id, reloadKey, isMotorized);
 
 	const { materialCost, sctxCost } = useMemo(() => {
 		const normalize = (value?: string | null) =>
@@ -55,7 +57,9 @@ export function AcceptanceReport({
 		}
 
 		const materialType = contractedRevenueCategory.types.find(
-			(type) => normalize(type.typeName) === 'vat lieu',
+			(type) =>
+				normalize(type.typeName) === 'vat lieu' ||
+				normalize(type.typeName).includes('nhien lieu'),
 		);
 		const sparePartType = contractedRevenueCategory.types.find(
 			(type) =>

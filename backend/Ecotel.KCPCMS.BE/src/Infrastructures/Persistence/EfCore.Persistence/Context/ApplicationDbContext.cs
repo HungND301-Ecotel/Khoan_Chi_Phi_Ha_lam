@@ -1105,6 +1105,37 @@ public class ApplicationDbContext(
             .WithMany()
             .HasForeignKey(t => t.HaulDistanceId)
             .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.CargoType)
+            .WithMany()
+            .HasForeignKey(t => t.CargoTypeId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.ReceivingLocation)
+            .WithMany()
+            .HasForeignKey(t => t.ReceivingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<TransportPlanLine>()
+            .HasOne(t => t.DumpingLocation)
+            .WithMany()
+            .HasForeignKey(t => t.DumpingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.CargoType)
+            .WithMany()
+            .HasForeignKey(t => t.CargoTypeId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.ReceivingLocation)
+            .WithMany()
+            .HasForeignKey(t => t.ReceivingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.DumpingLocation)
+            .WithMany()
+            .HasForeignKey(t => t.DumpingLocationId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         //PlannedTransportCost table
         modelBuilder.Entity<TransportPlanLine>()
@@ -1489,6 +1520,12 @@ public class ApplicationDbContext(
             .HasOne(t => t.RouteDepartment)
             .WithMany()
             .HasForeignKey(t => t.RouteDepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ProductionOutputTransportLine>()
+            .HasOne(t => t.HaulDistance)
+            .WithMany()
+            .HasForeignKey(t => t.HaulDistanceId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // ProductionOutput table

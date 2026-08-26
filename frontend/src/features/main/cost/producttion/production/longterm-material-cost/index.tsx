@@ -72,54 +72,99 @@ export function LongTermMaterialCosts({
 		fetchLongTermTracking();
 	}, [isOpen, output?.acceptanceReportId, reloadKey]);
 
-	const groupedItems: LongTermTrackingProcessGroup[] = (() => {
-		const trackingOnlyItems = additionalCostData?.trackingOnlyItems ?? [];
-		const trackingByProcessGroup = (processGroupId: string) =>
-			trackingOnlyItems.filter(
-				(item) => (item.processGroupId || 'ungrouped') === processGroupId,
-			);
+	const isVtlCodeOrName = (code?: string | null, name?: string | null): boolean => {
+		const c = (code || '').toUpperCase();
+		const n = (name || '').toLowerCase();
+		return c.includes('VTL') || n.includes('vận tải lò') || n.includes('vtl');
+	};
 
-		if (!additionalCostData?.items?.length) {
-			// Không có dòng hạch toán nào nhưng vẫn có thể có dòng theo dõi (Xuất khác/Bổ sung
-			// chi phí) — vẫn cần hiện khối "Vật tư theo dõi" riêng, không phụ thuộc bảng chính.
-			return trackingOnlyItems.length
-				? [
-						{
-							processGroupId: 'all',
-							processGroupCode: '',
-							processGroupName: 'Tất cả nhóm công đoạn',
-							items: [],
-							trackingOnlyItems,
-						},
-					]
-				: [];
+	const isVtlGroup = (group?: { processGroupCode?: string; processGroupName?: string; departmentCode?: string; departmentName?: string } | null): boolean => {
+		if (!group) return false;
+		return (
+			isVtlCodeOrName(group.processGroupCode, group.processGroupName) ||
+			isVtlCodeOrName(group.departmentCode, group.departmentName)
+		);
+	};
+
+	const isDeptVtl = Boolean(
+		isVtlCodeOrName(output?.departmentCode, output?.departmentName) ||
+		(output as any)?.isTunnelTransport
+	);
+
+	const groupedItems: LongTermTrackingProcessGroup[] = (() => {
+		const rawTrackingOnlyItems = additionalCostData?.trackingOnlyItems ?? [];
+		const processGroups = additionalCostData?.processGroups ?? [];
+		const allItems = additionalCostData?.items ?? [];
+
+		// "VẬT TƯ THEO DÕI" chỉ áp dụng cho Vận tải lò (VTL)
+		const vtlTrackingItems = rawTrackingOnlyItems.filter(
+			(item) => isVtlGroup(item) || isDeptVtl,
+		);
+
+		const getTrackingForGroup = (group: { processGroupId: string; processGroupCode?: string; processGroupName?: string }) => {
+			if (!isVtlGroup(group) && !isDeptVtl) {
+				return [];
+			}
+			return vtlTrackingItems.filter(
+				(item) =>
+					item.processGroupId === group.processGroupId ||
+					(!item.processGroupId && (isVtlGroup(group) || isDeptVtl)),
+			);
+		};
+
+		// TRƯỜNG HỢP 1: Không có dòng hạch toán dài kỳ nào (allItems.length === 0)
+		if (!allItems.length) {
+			if (vtlTrackingItems.length > 0) {
+				const vtlGroups = processGroups
+					.filter((g) => isVtlGroup(g) || isDeptVtl)
+					.map((g) => ({
+						...g,
+						items: [],
+						trackingOnlyItems: getTrackingForGroup(g),
+					}))
+					.filter((g) => (g.trackingOnlyItems?.length ?? 0) > 0);
+
+				if (vtlGroups.length > 0) {
+					return vtlGroups;
+				}
+
+				return [
+					{
+						processGroupId: 'vtl',
+						processGroupCode: 'VTL',
+						processGroupName: output?.departmentName || 'Vận tải lò',
+						items: [],
+						trackingOnlyItems: vtlTrackingItems,
+					},
+				];
+			}
+			return [];
 		}
 
-		const processGroups = additionalCostData.processGroups ?? [];
+		// TRƯỜNG HỢP 2: Có dòng hạch toán dài kỳ (allItems.length > 0)
 		if (!processGroups.length) {
 			return [
 				{
 					processGroupId: 'all',
 					processGroupCode: '',
 					processGroupName: 'Tất cả nhóm công đoạn',
-					items: additionalCostData.items,
-					trackingOnlyItems,
+					items: allItems,
+					trackingOnlyItems: isDeptVtl ? vtlTrackingItems : [],
 				},
 			];
 		}
 
-		const ungroupedItems = additionalCostData.items.filter(
+		const ungroupedItems = allItems.filter(
 			(item) => !item.processGroupId,
 		);
 
 		const groupsWithTracking = processGroups.map((group) => ({
 			...group,
-			trackingOnlyItems: trackingByProcessGroup(group.processGroupId),
+			trackingOnlyItems: getTrackingForGroup(group),
 		}));
 
-		const ungroupedTrackingOnlyItems = trackingByProcessGroup('ungrouped');
-
-		return ungroupedItems.length || ungroupedTrackingOnlyItems.length
+		// Nhóm "Chưa có nhóm công đoạn" CHỈ hiển thị khi có dòng vật tư hạch toán dài kỳ chưa phân nhóm
+		return ungroupedItems.length > 0
 			? [
 					...groupsWithTracking,
 					{
@@ -127,7 +172,7 @@ export function LongTermMaterialCosts({
 						processGroupCode: '',
 						processGroupName: 'Chưa có nhóm công đoạn',
 						items: ungroupedItems,
-						trackingOnlyItems: ungroupedTrackingOnlyItems,
+						trackingOnlyItems: [],
 					},
 				]
 			: groupsWithTracking;
@@ -236,9 +281,13 @@ export function LongTermMaterialCosts({
 													loading={loading}
 												/>
 											)}
-											<TrackingOnlyTable
-												items={group.trackingOnlyItems ?? []}
-											/>
+											{isVtlGroup(group) &&
+												group.trackingOnlyItems &&
+												group.trackingOnlyItems.length > 0 && (
+													<TrackingOnlyTable
+														items={group.trackingOnlyItems}
+													/>
+												)}
 										</div>
 									</AccordionContent>
 								</AccordionItem>

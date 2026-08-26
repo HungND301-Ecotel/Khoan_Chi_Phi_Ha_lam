@@ -46,9 +46,7 @@ import { Path, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { MaterialFormSchema } from './schema';
 import {
 	AdditionalCost,
-	ADDITIONAL_COST_OPTIONS,
 	type AcceptanceReportEditorMode,
-	CATEGORY_OPTIONS,
 	CategoryAllocation,
 	CONTRACT_LIMIT_OPTIONS,
 	CONTRACT_LIMIT_SECONDARY_OPTIONS,
@@ -104,6 +102,7 @@ function parseAssignmentCodeOptionId(value: string): string {
 
 type AcceptanceReportEditorProps = {
 	mode: AcceptanceReportEditorMode;
+	isMotorized?: boolean;
 	onCancel?: () => void;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
@@ -324,6 +323,7 @@ function CreateMaterialDialogContent({
 
 export function AcceptanceReportEditor({
 	mode,
+	isMotorized = false,
 	onCancel,
 	processGroupOptions,
 	productionOrderOptions,
@@ -756,6 +756,7 @@ export function AcceptanceReportEditor({
 									index={index}
 									displayIndex={safePageIndex * pageSize + displayIndex + 1}
 									mode={mode}
+									isMotorized={isMotorized}
 									processGroupOptions={processGroupOptions}
 									productionOrderOptions={productionOrderOptions}
 									assignmentCodeOptions={assignmentCodeOptions}
@@ -935,6 +936,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index,
 	displayIndex,
 	mode,
+	isMotorized = false,
 	processGroupOptions,
 	productionOrderOptions,
 	assignmentCodeOptions,
@@ -947,6 +949,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 	index: number;
 	displayIndex?: number;
 	mode: AcceptanceReportEditorMode;
+	isMotorized?: boolean;
 	processGroupOptions: ProcessGroupOption[];
 	productionOrderOptions: ProductionOrderOption[];
 	assignmentCodeOptions: ProductionOrderOption[];
@@ -1070,7 +1073,36 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			}));
 	})();
 
-	const additionalCostOptionsByType = ADDITIONAL_COST_OPTIONS;
+	const categoryOptions = useMemo(
+		() => [
+			{
+				value: MaterialType.Material,
+				label: isMotorized
+					? 'Nhiên liệu, dầu nhờn, mỡ máy'
+					: 'Vật liệu',
+			},
+			{ value: MaterialType.SparePart, label: 'SCTX' },
+		],
+		[isMotorized],
+	);
+
+	const additionalCostOptionsByType = useMemo(
+		() => [
+			{
+				value: AdditionalCost.Material,
+				label: isMotorized
+					? 'Nhiên liệu, dầu nhờn, mỡ máy'
+					: 'Vật liệu',
+			},
+			{ value: AdditionalCost.Maintain, label: 'SCTX' },
+			{
+				value: AdditionalCost.OtherMaterial,
+				label:
+					'Vật tư theo chế độ người lao động, phòng cháy chữa cháy, phòng chống mưa bão',
+			},
+		],
+		[isMotorized],
+	);
 
 	const needsSecondComboBox =
 		contractLimitCategoryValue === QuotaBasedMaterial.MineSupport ||
@@ -1133,7 +1165,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		for (const key of receivedTypes) next[key] = divided;
 		set('receivedBreakdown', next);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [receivedTypes, receivedBreakdown, quantityReceived]);
+	}, [receivedTypes, quantityReceived]);
 
 	useEffect(() => {
 		if (!exportedTypes) return;
@@ -1149,7 +1181,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 		for (const key of exportedTypes) next[key] = divided;
 		set('exportedBreakdown', next);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [exportedTypes, exportedBreakdown, quantityExported]);
+	}, [exportedTypes, quantityExported]);
 
 	// ── Checkbox toggle effects ──────────────────────────────────────────────
 	const prevState = useRef({
@@ -1389,10 +1421,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 				(option) => option.value === categoryAssignmentCodeId,
 			);
 		if (!hasValidAssignmentCodeSelection) {
-			set(
-				'categoryAssignmentCodeId',
-				categoryAssignmentCodeOptions[0]?.value ?? null,
-			);
+			const nextAssignment = categoryAssignmentCodeOptions[0]?.value ?? null;
+			if (categoryAssignmentCodeId !== nextAssignment) {
+				set('categoryAssignmentCodeId', nextAssignment);
+			}
 			return;
 		}
 		if ((categoryEquipmentId ?? null) !== (categoryAssignmentCodeId ?? null)) {
@@ -1437,10 +1469,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 			);
 
 		if (!hasValidProcessGroupSelection) {
-			set(
-				'categoryProcessGroup',
-				categoryProcessGroupOptions[0]?.value ?? null,
-			);
+			const nextProcessGroup = categoryProcessGroupOptions[0]?.value ?? null;
+			if (categoryProcessGroup !== nextProcessGroup) {
+				set('categoryProcessGroup', nextProcessGroup);
+			}
 		}
 	}, [
 		showCategoryDropdown,
@@ -1472,10 +1504,10 @@ const MaterialImportRow = memo(function MaterialImportRow({
 					(option) => option.value === additionalCostAssignmentCodeId,
 				);
 			if (!hasValidAssignmentSelection) {
-				set(
-					'additionalCostAssignmentCodeId',
-					additionalCostAssignmentCodeOptions[0]?.value ?? null,
-				);
+				const nextAssignment = additionalCostAssignmentCodeOptions[0]?.value ?? null;
+				if (additionalCostAssignmentCodeId !== nextAssignment) {
+					set('additionalCostAssignmentCodeId', nextAssignment);
+				}
 			}
 		}
 		if (!requiresProductionOrder) {
@@ -1488,10 +1520,11 @@ const MaterialImportRow = memo(function MaterialImportRow({
 					(option) => option.value === additionalCostProductionOrderId,
 				);
 			if (!hasValidSelection) {
-				set(
-					'additionalCostProductionOrderId',
-					additionalCostProductionOrderOptions[0]?.value ?? null,
-				);
+				const nextOrder =
+					additionalCostProductionOrderOptions[0]?.value ?? null;
+				if (additionalCostProductionOrderId !== nextOrder) {
+					set('additionalCostProductionOrderId', nextOrder);
+				}
 			}
 		}
 
@@ -2167,7 +2200,7 @@ const MaterialImportRow = memo(function MaterialImportRow({
 										<FormComboBox
 											control={form.control}
 											name={`${basename}.categoryType` as RowPath}
-											options={CATEGORY_OPTIONS}
+											options={categoryOptions}
 											placeholder='Chọn loại vật tư'
 										/>
 									</div>

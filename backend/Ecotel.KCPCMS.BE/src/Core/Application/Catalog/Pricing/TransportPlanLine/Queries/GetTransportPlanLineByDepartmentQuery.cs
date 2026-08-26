@@ -32,6 +32,12 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                 .ThenInclude(d => d!.Code)
             .Include(x => x.ProductionProcess)
                 .ThenInclude(p => p!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.FixedKey)
             .Include(x => x.UnitOfMeasure)
             .Include(x => x.Equipment)
                 .ThenInclude(e => e!.Code)
@@ -63,6 +69,13 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                 .ThenInclude(c => c!.TransportUnitPrice)
             .Include(x => x.PlannedTransportCost)
                 .ThenInclude(c => c!.MechanizedTransportUnitPriceDetail)
+            .Include(x => x.HaulDistance)
+            .Include(x => x.CargoType)
+                .ThenInclude(c => c!.Code)
+            .Include(x => x.ReceivingLocation)
+                .ThenInclude(l => l!.Code)
+            .Include(x => x.DumpingLocation)
+                .ThenInclude(l => l!.Code)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -96,6 +109,9 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                             == LowValuePerishableSupplyInclusion.Include),
                     Items = monthGroup
                         .OrderBy(x => x.ProductionProcess?.Code?.Value ?? string.Empty)
+                        .ThenBy(x => x.Equipment?.Code?.Value ?? string.Empty)
+                        .ThenBy(x => x.EquipmentQuality ?? string.Empty)
+                        .ThenBy(x => x.TransportRoute?.Code?.Value ?? string.Empty)
                         .Select(ToItemDto)
                         .ToList(),
                 })
@@ -118,6 +134,9 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
         {
             Id = line.Id,
             PlannedTransportCostId = cost?.Id,
+            ProcessGroupId = line.ProductionProcess?.ProcessGroupId,
+            ProcessGroupCode = line.ProductionProcess?.ProcessGroup?.Code?.Value ?? line.ProductionProcess?.ProcessGroup?.FixedKey?.Key,
+            ProcessGroupName = line.ProductionProcess?.ProcessGroup?.Name,
             ProductionProcessId = line.ProductionProcessId,
             ProductionProcessCode = line.ProductionProcess?.Code?.Value ?? string.Empty,
             ProductionProcessName = line.ProductionProcess?.Name ?? string.Empty,
@@ -131,6 +150,17 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             EquipmentCode = line.Equipment?.Code?.Value,
             EquipmentName = line.Equipment?.Name,
             EquipmentQuality = line.EquipmentQuality,
+            HaulDistanceId = line.HaulDistanceId,
+            HaulDistanceValue = line.HaulDistance?.Value,
+            CargoTypeId = line.CargoTypeId,
+            CargoTypeCode = line.CargoType?.Code?.Value,
+            CargoTypeName = line.CargoType?.Name,
+            ReceivingLocationId = line.ReceivingLocationId,
+            ReceivingLocationCode = line.ReceivingLocation?.Code?.Value,
+            ReceivingLocationName = line.ReceivingLocation?.Name,
+            DumpingLocationId = line.DumpingLocationId,
+            DumpingLocationCode = line.DumpingLocation?.Code?.Value,
+            DumpingLocationName = line.DumpingLocation?.Name,
             ProductionMeters = line.ProductionMeters,
             UnitOfMeasureId = line.UnitOfMeasureId,
             UnitOfMeasureName = line.UnitOfMeasure?.Name,

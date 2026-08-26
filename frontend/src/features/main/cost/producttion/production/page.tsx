@@ -33,7 +33,10 @@ function DepartmentProductionOutputsTable({
 }: DepartmentProductionOutputsTableProps) {
 	const { hasPermission } = usePermission();
 	const departmentProductions = useMemo(
-		() => productions.filter((item) => item.departmentId === departmentId),
+		() =>
+			productions
+				.filter((item) => item.departmentId === departmentId)
+				.sort((a, b) => (a.startMonth || '').localeCompare(b.startMonth || '')),
 		[productions, departmentId],
 	);
 

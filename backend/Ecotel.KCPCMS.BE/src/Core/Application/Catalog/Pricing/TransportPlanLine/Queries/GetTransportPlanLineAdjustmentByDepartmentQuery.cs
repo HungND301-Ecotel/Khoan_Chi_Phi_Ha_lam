@@ -26,7 +26,11 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
         Guid? EquipmentId,
         string? EquipmentQuality,
         Guid? TransportRouteId,
-        Guid? RouteDepartmentId);
+        Guid? RouteDepartmentId,
+        Guid? HaulDistanceId,
+        Guid? CargoTypeId,
+        Guid? ReceivingLocationId,
+        Guid? DumpingLocationId);
 
     public async Task<TransportPlanLineAdjustmentByDepartmentDetailDto> Handle(
         GetTransportPlanLineAdjustmentByDepartmentQuery request,
@@ -41,6 +45,12 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
                 .ThenInclude(d => d!.Code)
             .Include(x => x.ProductionProcess)
                 .ThenInclude(p => p!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.FixedKey)
             .Include(x => x.UnitOfMeasure)
             .Include(x => x.Equipment)
                 .ThenInclude(e => e!.Code)
@@ -70,6 +80,13 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
                 .ThenInclude(c => c!.TransportUnitPrice)
             .Include(x => x.PlannedTransportCost)
                 .ThenInclude(c => c!.MechanizedTransportUnitPriceDetail)
+            .Include(x => x.HaulDistance)
+            .Include(x => x.CargoType)
+                .ThenInclude(c => c!.Code)
+            .Include(x => x.ReceivingLocation)
+                .ThenInclude(l => l!.Code)
+            .Include(x => x.DumpingLocation)
+                .ThenInclude(l => l!.Code)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -98,6 +115,10 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
                         tl.EquipmentQuality,
                         tl.TransportRouteId,
                         tl.RouteDepartmentId,
+                        tl.HaulDistanceId,
+                        tl.CargoTypeId,
+                        tl.ReceivingLocationId,
+                        tl.DumpingLocationId,
                         tl.ProductionMeters,
                     })))
             .AsNoTracking()
@@ -105,7 +126,7 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
 
         var actualByKey = actualLines
             .GroupBy(x => new ActualLineKey(
-                x.StartMonth, x.ProductionProcessId, x.EquipmentId, x.EquipmentQuality, x.TransportRouteId, x.RouteDepartmentId))
+                x.StartMonth, x.ProductionProcessId, x.EquipmentId, x.EquipmentQuality, x.TransportRouteId, x.RouteDepartmentId, x.HaulDistanceId, x.CargoTypeId, x.ReceivingLocationId, x.DumpingLocationId))
             .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
 
         var department = lines.First();
@@ -122,6 +143,9 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
                     Month = monthGroup.Key,
                     Items = monthGroup
                         .OrderBy(x => x.ProductionProcess?.Code?.Value ?? string.Empty)
+                        .ThenBy(x => x.Equipment?.Code?.Value ?? string.Empty)
+                        .ThenBy(x => x.EquipmentQuality ?? string.Empty)
+                        .ThenBy(x => x.TransportRoute?.Code?.Value ?? string.Empty)
                         .Select(line => ToAdjustmentItemDto(line, actualByKey))
                         .ToList(),
                 })
@@ -136,7 +160,7 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
         var planItem = GetTransportPlanLineByDepartmentQueryHandler.ToItemDto(line);
 
         var key = new ActualLineKey(
-            line.StartMonth, line.ProductionProcessId, line.EquipmentId, line.EquipmentQuality, line.TransportRouteId, line.RouteDepartmentId);
+            line.StartMonth, line.ProductionProcessId, line.EquipmentId, line.EquipmentQuality, line.TransportRouteId, line.RouteDepartmentId, line.HaulDistanceId, line.CargoTypeId, line.ReceivingLocationId, line.DumpingLocationId);
         var actualProductionMeters = actualByKey.TryGetValue(key, out var meters) ? meters : 0;
 
         var unitTotal = planItem.Material.EffectiveUnitPrice
@@ -149,6 +173,9 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
         return new TransportPlanLineAdjustmentItemDto
         {
             Id = planItem.Id,
+            ProcessGroupId = planItem.ProcessGroupId,
+            ProcessGroupCode = planItem.ProcessGroupCode,
+            ProcessGroupName = planItem.ProcessGroupName,
             ProductionProcessId = planItem.ProductionProcessId,
             ProductionProcessCode = planItem.ProductionProcessCode,
             ProductionProcessName = planItem.ProductionProcessName,
@@ -162,6 +189,17 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
             EquipmentCode = planItem.EquipmentCode,
             EquipmentName = planItem.EquipmentName,
             EquipmentQuality = planItem.EquipmentQuality,
+            HaulDistanceId = planItem.HaulDistanceId,
+            HaulDistanceValue = planItem.HaulDistanceValue,
+            CargoTypeId = planItem.CargoTypeId,
+            CargoTypeCode = planItem.CargoTypeCode,
+            CargoTypeName = planItem.CargoTypeName,
+            ReceivingLocationId = planItem.ReceivingLocationId,
+            ReceivingLocationCode = planItem.ReceivingLocationCode,
+            ReceivingLocationName = planItem.ReceivingLocationName,
+            DumpingLocationId = planItem.DumpingLocationId,
+            DumpingLocationCode = planItem.DumpingLocationCode,
+            DumpingLocationName = planItem.DumpingLocationName,
             ActualProductionMeters = actualProductionMeters,
             UnitOfMeasureId = planItem.UnitOfMeasureId,
             UnitOfMeasureName = planItem.UnitOfMeasureName,

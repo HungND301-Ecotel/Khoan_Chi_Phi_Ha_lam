@@ -111,24 +111,28 @@ function resolveSectionAType(materialGroup: MaterialGroupDto): number | null {
 function resolveTypeName(
 	materialGroup: MaterialGroupDto,
 	sectionKey: AcceptanceReportSectionKey,
+	isMotorized?: boolean,
 ): string {
+	const materialLabel = isMotorized ? 'Nhiên liệu, dầu nhờn, mỡ máy' : 'Vật liệu';
 	if (sectionKey === 'sectionA') {
 		const sectionAType = resolveSectionAType(materialGroup);
+		if (sectionAType === 1) return materialLabel;
 		return (
 			(sectionAType != null ? SECTION_A_TYPE_LABELS[sectionAType] : null) ??
-			getMaterialType(materialGroup.materialType)
+			getMaterialType(materialGroup.materialType, isMotorized)
 		);
 	}
 
 	if (sectionKey === 'sectionB') {
+		if (materialGroup.additionalCostType === 2) return materialLabel;
 		return (
 			(materialGroup.additionalCostType != null
 				? ADDITIONAL_COST_TYPE_LABELS[materialGroup.additionalCostType]
-				: null) ?? getMaterialType(materialGroup.materialType)
+				: null) ?? getMaterialType(materialGroup.materialType, isMotorized)
 		);
 	}
 
-	return getMaterialType(materialGroup.materialType);
+	return getMaterialType(materialGroup.materialType, isMotorized);
 }
 
 function resolveTypeOrder(
@@ -563,12 +567,15 @@ function groupMaterials(
 /**
  * Determine material type ("Vật liệu", "SCTX", etc.) from materialType field
  */
-function getMaterialType(materialType: string): string {
+function getMaterialType(materialType: string, isMotorized?: boolean): string {
 	if (materialType && materialType.trim()) {
+		if (materialType.trim() === 'Vật liệu' && isMotorized) {
+			return 'Nhiên liệu, dầu nhờn, mỡ máy';
+		}
 		return materialType;
 	}
 	// Fallback to default
-	return 'Vật liệu';
+	return isMotorized ? 'Nhiên liệu, dầu nhờn, mỡ máy' : 'Vật liệu';
 }
 
 /**
@@ -578,6 +585,7 @@ function createMaterialTypeGroups(
 	categoryItem: ProductionOutputDetailItemDto,
 	categoryType: number,
 	sectionKey: AcceptanceReportSectionKey,
+	isMotorized?: boolean,
 ): TypeGroup[] {
 	const typeGroups = new Map<
 		string,
@@ -610,7 +618,7 @@ function createMaterialTypeGroups(
 
 	// Group materials by materialType
 	orderedMaterialGroups.forEach((matGroup) => {
-		const matType = resolveTypeName(matGroup, sectionKey);
+		const matType = resolveTypeName(matGroup, sectionKey, isMotorized);
 		const order = resolveTypeOrder(matGroup, sectionKey);
 
 		if (!typeGroups.has(matType)) {
@@ -694,6 +702,7 @@ const SECTION_CATEGORY_CONFIG: SectionCategoryConfig[] = [
 function buildCategoryFromSection(
 	sectionGroups: MaterialGroupDto[],
 	config: SectionCategoryConfig,
+	isMotorized?: boolean,
 ): CategoryGroup {
 	const categoryItem: ProductionOutputDetailItemDto = {
 		categoryType: config.categoryType,
@@ -707,6 +716,7 @@ function buildCategoryFromSection(
 			categoryItem,
 			categoryItem.categoryType,
 			config.key,
+			isMotorized,
 		),
 	};
 }
@@ -737,6 +747,7 @@ function getLegacySectionKey(categoryType: number): AcceptanceReportSectionKey {
  */
 export function transformApiResponseToHierarchical(
 	apiResponse: ProductionOutputDto,
+	isMotorized?: boolean,
 ): HierarchicalAcceptanceReport {
 	let categories: CategoryGroup[] = [];
 
@@ -744,7 +755,7 @@ export function transformApiResponseToHierarchical(
 	if (hasSectionData(apiResponse)) {
 		categories = SECTION_CATEGORY_CONFIG.map((config) => {
 			const sectionGroups = apiResponse[config.key] ?? [];
-			return buildCategoryFromSection(sectionGroups, config);
+			return buildCategoryFromSection(sectionGroups, config, isMotorized);
 		}).filter((category) => category.types.length > 0);
 	} else {
 		// Backward compatibility with legacy shape: items[]
@@ -754,6 +765,7 @@ export function transformApiResponseToHierarchical(
 				item,
 				item.categoryType,
 				getLegacySectionKey(item.categoryType),
+				isMotorized,
 			),
 		}));
 	}

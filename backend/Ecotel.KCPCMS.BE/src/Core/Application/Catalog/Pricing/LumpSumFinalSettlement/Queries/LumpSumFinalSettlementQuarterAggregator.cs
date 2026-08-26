@@ -1,4 +1,4 @@
-﻿using Application.Dto.Catalog.LumpSumFinalSettlement;
+using Application.Dto.Catalog.LumpSumFinalSettlement;
 
 namespace Application.Catalog.Pricing.LumpSumFinalSettlement.Queries;
 
@@ -106,7 +106,8 @@ public static class LumpSumFinalSettlementQuarterAggregator
                 x.TransportRouteId,
                 x.RouteDepartmentId,
                 x.EquipmentId,
-                x.EquipmentQuality
+                x.EquipmentQuality,
+                x.HaulDistanceId
             })
             .Select(group =>
             {
@@ -138,6 +139,8 @@ public static class LumpSumFinalSettlementQuarterAggregator
                     EquipmentCode = group.Select(x => x.EquipmentCode).FirstOrDefault(x => x != null),
                     EquipmentName = group.Select(x => x.EquipmentName).FirstOrDefault(x => x != null),
                     EquipmentQuality = group.Key.EquipmentQuality,
+                    HaulDistanceId = group.Key.HaulDistanceId,
+                    HaulDistanceValue = group.Select(x => x.HaulDistanceValue).FirstOrDefault(x => x != null),
                     IsLowValuePerishableSupplyRow = group.Any(x => x.IsLowValuePerishableSupplyRow),
                     PlannedQuantity = plannedQuantity,
                     ActualQuantity = actualQuantity,
