@@ -8,7 +8,6 @@ import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema'
 import {
 	getSuggestedFuelAdjustmentFactor,
 	getUnitForMotorizedProcess,
-	MOCK_UNITS_OF_MEASURE,
 } from '../utils';
 
 type ExcavatorMonthSectionProps = {
@@ -25,7 +24,7 @@ export function ExcavatorMonthSection({
 	processes,
 }: ExcavatorMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
-	const unitOptions = uomList.length > 0 ? uomList : MOCK_UNITS_OF_MEASURE;
+	const unitOptions = uomList || [];
 	const monthPath = `motorizedMonths.${monthIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const formControl = form.control as any;
@@ -80,26 +79,39 @@ export function ExcavatorMonthSection({
 						eq?.code,
 					);
 
-					newRows.push({
-						id: existing?.id,
-						equipmentId: eqId,
-						equipmentCode: eq?.code,
-						equipmentName: eq?.name || eq?.label,
-						equipmentQuality: quality,
-						productionProcessId: procId,
-						productionProcessCode: proc?.code,
-						productionProcessName: proc?.name || proc?.label,
-						productionMeters: existing?.productionMeters ?? Number.NaN,
-						fuelAdjustmentFactor:
-							existing?.fuelAdjustmentFactor ?? suggestedFactor,
-						unitName: getUnitForMotorizedProcess(
-							proc?.name || proc?.label,
-							'excavator_dozer',
-						),
+						const defaultUnitName =
+							existing?.unitName ||
+							getUnitForMotorizedProcess(
+								proc?.name || proc?.label,
+								'excavator_dozer',
+							);
+
+						const matchedUnit = unitOptions.find(
+							(u) =>
+								u.name?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.value?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.id === existing?.unitOfMeasureId,
+						);
+
+						newRows.push({
+							id: existing?.id,
+							equipmentId: eqId,
+							equipmentCode: eq?.code,
+							equipmentName: eq?.name || eq?.label,
+							equipmentQuality: quality,
+							productionProcessId: procId,
+							productionProcessCode: proc?.code,
+							productionProcessName: proc?.name || proc?.label,
+							productionMeters: existing?.productionMeters ?? Number.NaN,
+							fuelAdjustmentFactor:
+								existing?.fuelAdjustmentFactor ?? suggestedFactor,
+							unitName: defaultUnitName,
+							unitOfMeasureId:
+								existing?.unitOfMeasureId || matchedUnit?.id || undefined,
+						});
 					});
 				});
 			});
-		});
 
 		setItems(newRows);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,6 +119,7 @@ export function ExcavatorMonthSection({
 		JSON.stringify(assignmentCodeIds),
 		JSON.stringify(equipmentProcesses),
 		JSON.stringify(equipmentQualities),
+		unitOptions.length,
 	]);
 
 	return (
@@ -120,8 +133,8 @@ export function ExcavatorMonthSection({
 			<FormMultiSelect
 				control={formControl}
 				name={`${monthPath}.assignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản (Máy xúc / Máy gạt)'
-				placeholder='Chọn nhóm máy xúc/gạt'
+				label='1. Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code
@@ -219,14 +232,11 @@ export function ExcavatorMonthSection({
 												<table className='w-full text-left text-sm'>
 													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
 														<tr>
-															<th className='w-[30%] px-3 py-2'>Chất lượng</th>
-															<th className='w-[20%] px-3 py-2 text-center'>
+															<th className='w-[35%] px-3 py-2'>Chất lượng</th>
+															<th className='w-[25%] px-3 py-2 text-center'>
 																Đơn vị tính
 															</th>
-															<th className='w-[20%] px-3 py-2'>
-																Hệ số điều chỉnh
-															</th>
-															<th className='w-[30%] px-3 py-2'>
+															<th className='w-[40%] px-3 py-2'>
 																Sản lượng kế hoạch
 															</th>
 														</tr>
@@ -255,10 +265,17 @@ export function ExcavatorMonthSection({
 																				onValueChange={(val) => {
 																					const next = [...items];
 																					if (globalIdx >= 0) {
+																						const matched = unitOptions.find(
+																							(u) =>
+																								u.value === val ||
+																								u.name === val ||
+																								u.id === val,
+																						);
 																						next[globalIdx] = {
 																							...next[globalIdx],
-																							unitName: val,
-																							unitOfMeasureId: val,
+																							unitName: matched?.name || val,
+																							unitOfMeasureId:
+																								matched?.id || val,
 																						};
 																						setItems(next);
 																					}
@@ -267,22 +284,6 @@ export function ExcavatorMonthSection({
 																				placeholder='Chọn ĐVT'
 																			/>
 																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<FormNumberInput
-																			value={row.fuelAdjustmentFactor ?? 1.0}
-																			onValueChange={(val) => {
-																				const next = [...items];
-																				if (globalIdx >= 0) {
-																					next[globalIdx] = {
-																						...next[globalIdx],
-																						fuelAdjustmentFactor: val ?? 1.0,
-																					};
-																					setItems(next);
-																				}
-																			}}
-																			placeholder='1.0'
-																		/>
 																	</td>
 																	<td className='px-3 py-2'>
 																		<FormNumberInput

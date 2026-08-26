@@ -32,6 +32,9 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
 
     // Chỉ dùng khi ProductionProcess thuộc VTCG
     public Guid? HaulDistanceId { get; protected set; }
+    public Guid? CargoTypeId { get; protected set; }
+    public Guid? ReceivingLocationId { get; protected set; }
+    public Guid? DumpingLocationId { get; protected set; }
 
     // Navigation properties
     public virtual Department? Department { get; protected set; }
@@ -41,6 +44,9 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
     public virtual TransportRoute? TransportRoute { get; protected set; }
     public virtual Department? RouteDepartment { get; protected set; }
     public virtual HaulDistance? HaulDistance { get; protected set; }
+    public virtual CargoType? CargoType { get; protected set; }
+    public virtual TransportLocation? ReceivingLocation { get; protected set; }
+    public virtual TransportLocation? DumpingLocation { get; protected set; }
     public virtual PlannedTransportCost? PlannedTransportCost { get; protected set; }
 
     public static TransportPlanLine Create(
@@ -56,7 +62,10 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         string? equipmentQuality,
         Guid? transportRouteId,
         Guid? routeDepartmentId,
-        Guid? haulDistanceId)
+        Guid? haulDistanceId,
+        Guid? cargoTypeId = null,
+        Guid? receivingLocationId = null,
+        Guid? dumpingLocationId = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
@@ -75,6 +84,9 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
             TransportRouteId = transportRouteId,
             RouteDepartmentId = routeDepartmentId,
             HaulDistanceId = haulDistanceId,
+            CargoTypeId = cargoTypeId,
+            ReceivingLocationId = receivingLocationId,
+            DumpingLocationId = dumpingLocationId,
         };
     }
 
@@ -89,7 +101,10 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         string? equipmentQuality,
         Guid? transportRouteId,
         Guid? routeDepartmentId,
-        Guid? haulDistanceId)
+        Guid? haulDistanceId,
+        Guid? cargoTypeId = null,
+        Guid? receivingLocationId = null,
+        Guid? dumpingLocationId = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
@@ -104,6 +119,9 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         TransportRouteId = transportRouteId;
         RouteDepartmentId = routeDepartmentId;
         HaulDistanceId = haulDistanceId;
+        CargoTypeId = cargoTypeId;
+        ReceivingLocationId = receivingLocationId;
+        DumpingLocationId = dumpingLocationId;
     }
 
     private static void Validate(

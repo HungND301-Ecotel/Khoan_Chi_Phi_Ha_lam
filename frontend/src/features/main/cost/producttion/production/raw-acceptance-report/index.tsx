@@ -217,7 +217,10 @@ export function RawAcceptanceReport({
 								</div>
 							</div>
 						) : (
-							<RawAcceptanceReportDataTable items={rawAcceptanceData || []} />
+							<RawAcceptanceReportDataTable
+								items={rawAcceptanceData || []}
+								isMotorized={Boolean((output as any)?.isMotorized)}
+							/>
 						)}
 					</div>
 				</AccordionContent>

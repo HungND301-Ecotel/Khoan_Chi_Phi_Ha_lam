@@ -9,6 +9,7 @@ using PlannedTransportCostAdjustmentFactorEntity = Domain.Entities.Index.Planned
 using PlannedTransportCostEntity = Domain.Entities.Pricing.PlannedTransportCost;
 using TransportPlanLineEntity = Domain.Entities.Pricing.TransportPlanLine;
 using TransportUnitPriceEntity = Domain.Entities.Pricing.TransportUnitPrice;
+using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
 
 namespace Application.Catalog.Pricing.TransportPlanLine.Commands;
 
@@ -29,6 +30,10 @@ public class CreateTransportPlanLineByDepartmentCommandHandler(
         unitOfWork.GetRepository<Department>();
     private readonly IWriteRepository<TransportUnitPriceEntity> _transportUnitPriceRepository =
         unitOfWork.GetRepository<TransportUnitPriceEntity>();
+    private readonly IWriteRepository<MechanizedTransportUnitPrice> _mechanizedTransportUnitPriceRepository =
+        unitOfWork.GetRepository<MechanizedTransportUnitPrice>();
+    private readonly IWriteRepository<ProductionProcess> _productionProcessRepository =
+        unitOfWork.GetRepository<ProductionProcess>();
 
     public async Task<bool> Handle(
         CreateTransportPlanLineByDepartmentCommand request,
@@ -37,7 +42,9 @@ public class CreateTransportPlanLineByDepartmentCommandHandler(
         var payload = await TransportPlanLineByDepartmentCommandHelper.BuildCreatePayloadAsync(
             request.CreateModel,
             _departmentRepository,
-            _transportUnitPriceRepository);
+            _transportUnitPriceRepository,
+            _mechanizedTransportUnitPriceRepository,
+            _productionProcessRepository);
 
         foreach (var month in payload.Months)
         {
@@ -56,14 +63,17 @@ public class CreateTransportPlanLineByDepartmentCommandHandler(
                     item.EquipmentQuality,
                     item.TransportRouteId,
                     item.RouteDepartmentId,
-                    haulDistanceId: null);
+                    item.HaulDistanceId,
+                    item.CargoTypeId,
+                    item.ReceivingLocationId,
+                    item.DumpingLocationId);
 
                 await _transportPlanLineRepository.InsertAsync(line, cancellationToken);
 
                 var cost = PlannedTransportCostEntity.Create(
                     line.Id,
                     item.TransportUnitPriceId,
-                    null,
+                    item.MechanizedTransportUnitPriceDetailId,
                     month.LowValuePerishableSupply
                         ? LowValuePerishableSupplyInclusion.Include
                         : LowValuePerishableSupplyInclusion.Exclude);

@@ -217,7 +217,11 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                         transportLineDto.EquipmentQuality,
                         transportLineDto.TransportRouteId,
                         transportLineDto.RouteDepartmentId,
-                        transportLineDto.ProductionMeters));
+                        transportLineDto.ProductionMeters,
+                        transportLineDto.HaulDistanceId,
+                        transportLineDto.CargoTypeId,
+                        transportLineDto.ReceivingLocationId,
+                        transportLineDto.DumpingLocationId));
                 }
             }
 

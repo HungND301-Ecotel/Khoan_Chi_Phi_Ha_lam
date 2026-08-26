@@ -5,7 +5,7 @@ import { useUnitsOfMeasure } from '@/hooks/use-units-of-measure';
 import { useEffect } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
-import { getUnitForMotorizedProcess, MOCK_UNITS_OF_MEASURE } from '../utils';
+import { getUnitForMotorizedProcess } from '../utils';
 
 type VacuumTruckMonthSectionProps = {
 	form: UseFormReturn<DepartmentPlanFormSchema>;
@@ -23,7 +23,7 @@ export function VacuumTruckMonthSection({
 	distances,
 }: VacuumTruckMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
-	const unitOptions = uomList.length > 0 ? uomList : MOCK_UNITS_OF_MEASURE;
+	const unitOptions = uomList || [];
 	const monthPath = `motorizedMonths.${monthIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const formControl = form.control as any;
@@ -81,6 +81,20 @@ export function VacuumTruckMonthSection({
 								(it.haulDistanceId || '') === (distId || ''),
 						);
 
+						const defaultUnitName =
+							existing?.unitName ||
+							getUnitForMotorizedProcess(
+								proc?.name || proc?.label,
+								'vacuum_truck',
+							);
+
+						const matchedUnit = unitOptions.find(
+							(u) =>
+								u.name?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.value?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.id === existing?.unitOfMeasureId,
+						);
+
 						newRows.push({
 							id: existing?.id,
 							equipmentId: eqId,
@@ -94,10 +108,9 @@ export function VacuumTruckMonthSection({
 							haulDistanceValue: dist?.value || dist?.name || dist?.label,
 							productionMeters: existing?.productionMeters ?? Number.NaN,
 							fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1.0,
-							unitName: getUnitForMotorizedProcess(
-								proc?.name || proc?.label,
-								'vacuum_truck',
-							),
+							unitName: defaultUnitName,
+							unitOfMeasureId:
+								existing?.unitOfMeasureId || matchedUnit?.id || undefined,
 						});
 					});
 				});
@@ -111,6 +124,7 @@ export function VacuumTruckMonthSection({
 		JSON.stringify(equipmentProcesses),
 		JSON.stringify(equipmentQualities),
 		JSON.stringify(equipmentDistances),
+		unitOptions.length,
 	]);
 
 	return (
@@ -124,8 +138,8 @@ export function VacuumTruckMonthSection({
 			<FormMultiSelect
 				control={formControl}
 				name={`${monthPath}.assignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản (Xe hút chất thải)'
-				placeholder='Chọn nhóm xe hút chất thải'
+				label='1. Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code
@@ -236,15 +250,12 @@ export function VacuumTruckMonthSection({
 												<table className='w-full text-left text-sm'>
 													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
 														<tr>
-															<th className='w-[25%] px-3 py-2'>Chất lượng</th>
-															<th className='w-[20%] px-3 py-2'>Cung độ</th>
-															<th className='w-[18%] px-3 py-2 text-center'>
+															<th className='w-[30%] px-3 py-2'>Chất lượng</th>
+															<th className='w-[25%] px-3 py-2'>Cung độ</th>
+															<th className='w-[20%] px-3 py-2 text-center'>
 																Đơn vị tính
 															</th>
-															<th className='w-[15%] px-3 py-2'>
-																Hệ số điều chỉnh
-															</th>
-															<th className='w-[22%] px-3 py-2'>
+															<th className='w-[25%] px-3 py-2'>
 																Sản lượng kế hoạch
 															</th>
 														</tr>
@@ -280,10 +291,17 @@ export function VacuumTruckMonthSection({
 																				onValueChange={(val) => {
 																					const next = [...items];
 																					if (globalIdx >= 0) {
+																						const matched = unitOptions.find(
+																							(u) =>
+																								u.value === val ||
+																								u.name === val ||
+																								u.id === val,
+																						);
 																						next[globalIdx] = {
 																							...next[globalIdx],
-																							unitName: val,
-																							unitOfMeasureId: val,
+																							unitName: matched?.name || val,
+																							unitOfMeasureId:
+																								matched?.id || val,
 																						};
 																						setItems(next);
 																					}
@@ -292,22 +310,6 @@ export function VacuumTruckMonthSection({
 																				placeholder='Chọn ĐVT'
 																			/>
 																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<FormNumberInput
-																			value={row.fuelAdjustmentFactor ?? 1.0}
-																			onValueChange={(val) => {
-																				const next = [...items];
-																				if (globalIdx >= 0) {
-																					next[globalIdx] = {
-																						...next[globalIdx],
-																						fuelAdjustmentFactor: val ?? 1.0,
-																					};
-																					setItems(next);
-																				}
-																			}}
-																			placeholder='1.0'
-																		/>
 																	</td>
 																	<td className='px-3 py-2'>
 																		<FormNumberInput

@@ -31,7 +31,7 @@ public class GetAllProductionOutputsQueryHandler(IPaginationService paginationSe
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderByDescending(d => d.StartMonth).ToList();
+        result.Data = result.Data.OrderBy(d => d.StartMonth).ToList();
         return result;
     }
 }

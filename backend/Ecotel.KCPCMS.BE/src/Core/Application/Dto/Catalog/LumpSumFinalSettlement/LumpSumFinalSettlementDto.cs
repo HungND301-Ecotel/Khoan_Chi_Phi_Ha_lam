@@ -28,6 +28,8 @@ public class LumpSumFinalSettlementDto
     public string? EquipmentCode { get; set; }
     public string? EquipmentName { get; set; }
     public string? EquipmentQuality { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public string? HaulDistanceValue { get; set; }
 
     // VTL/VTCG — dòng "Chi phí vật tư mau hỏng rẻ tiền": khoản trọn gói theo THÁNG (1 dòng cho cả
     // Đơn vị+Nhóm công đoạn+Tháng, không nhân theo số dòng Tuyến/Thiết bị) — FE hiển thị phẳng,

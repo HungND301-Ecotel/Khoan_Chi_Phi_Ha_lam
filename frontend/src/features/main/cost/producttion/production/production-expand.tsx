@@ -21,12 +21,16 @@ type ProductionOutputExpandData = {
 	id: string;
 	acceptanceReportId?: string;
 	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	productionMeters: number;
 	standardProductionMeters: number;
 	outputType: number;
 	startMonth: string;
 	endMonth: string;
 	totalPrice: number;
+	isMotorized?: boolean;
+	isTunnelTransport?: boolean;
 };
 
 type ProductionOutputExpandDetail = {
@@ -36,6 +40,11 @@ type ProductionOutputExpandDetail = {
 	standardProductionMeters?: number;
 	startMonth?: string;
 	endMonth?: string;
+	processGroups?: {
+		processGroupId: string;
+		processGroupCode?: string;
+		processGroupName?: string;
+	}[];
 };
 
 function mapRowToOutput(
@@ -43,16 +52,32 @@ function mapRowToOutput(
 ): ProductionOutputExpandData | null {
 	if (!row) return null;
 
+	const isMotorized =
+		(row.departmentCode || '').toUpperCase().includes('VTCG') ||
+		(row.departmentName || '').toLowerCase().includes('cơ giới') ||
+		(row.departmentName || '').toLowerCase().includes('vtcg') ||
+		Boolean((row as any).isMotorized);
+
+	const isTunnelTransport =
+		(row.departmentCode || '').toUpperCase().includes('VTL') ||
+		(row.departmentName || '').toLowerCase().includes('vận tải lò') ||
+		(row.departmentName || '').toLowerCase().includes('vtl') ||
+		Boolean((row as any).isTunnelTransport);
+
 	return {
 		id: row.id,
 		acceptanceReportId: row.acceptanceReportId ?? undefined,
 		departmentId: row.departmentId,
+		departmentCode: row.departmentCode,
+		departmentName: row.departmentName,
 		productionMeters: row.productionMeters ?? 0,
 		standardProductionMeters: row.standardProductionMeters ?? 0,
 		outputType: 1,
 		startMonth: row.startMonth ?? '',
 		endMonth: row.endMonth ?? '',
 		totalPrice: 0,
+		isMotorized,
+		isTunnelTransport,
 	};
 }
 
@@ -73,17 +98,35 @@ export function ProductionExpand({
 			API.PRODUCTION.PRODUCTION_OUTPUT.RAW_DETAIL(row.id),
 		);
 
-			setOutput((current) => ({
-				...(current ?? mapRowToOutput(row)!),
-				id: res.result.id,
-				acceptanceReportId: res.result.acceptanceReportId ?? undefined,
-				departmentId: row.departmentId,
-				productionMeters: res.result.productionMeters ?? 0,
-				standardProductionMeters: res.result.standardProductionMeters ?? 0,
+		const isMotorized = (res.result.processGroups || []).some(
+			(g) =>
+				(g.processGroupCode || '').toUpperCase().includes('VTCG') ||
+				(g.processGroupName || '').toLowerCase().includes('cơ giới') ||
+				(g.processGroupName || '').toLowerCase().includes('vtcg'),
+		);
+
+		const isTunnelTransport = (res.result.processGroups || []).some(
+			(g) =>
+				(g.processGroupCode || '').toUpperCase().includes('VTL') ||
+				(g.processGroupName || '').toLowerCase().includes('vận tải lò') ||
+				(g.processGroupName || '').toLowerCase().includes('vtl'),
+		);
+
+		setOutput((current) => ({
+			...(current ?? mapRowToOutput(row)!),
+			id: res.result.id,
+			acceptanceReportId: res.result.acceptanceReportId ?? undefined,
+			departmentId: row.departmentId,
+			departmentCode: row.departmentCode,
+			departmentName: row.departmentName,
+			productionMeters: res.result.productionMeters ?? 0,
+			standardProductionMeters: res.result.standardProductionMeters ?? 0,
 			startMonth: res.result.startMonth ?? row.startMonth ?? '',
 			endMonth: res.result.endMonth ?? row.endMonth ?? '',
 			outputType: 1,
 			totalPrice: 0,
+			isMotorized,
+			isTunnelTransport,
 		}));
 	}, [row]);
 

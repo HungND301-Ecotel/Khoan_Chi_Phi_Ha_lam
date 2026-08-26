@@ -166,6 +166,8 @@ export interface LumpSumFinalSettlement {
 	equipmentCode?: string;
 	equipmentName?: string;
 	equipmentQuality?: string;
+	haulDistanceId?: string;
+	haulDistanceValue?: string;
 	// Dòng "Chi phí vật tư mau hỏng rẻ tiền" — khoản trọn gói theo tháng, hiển thị phẳng, không
 	// gộp cây theo Tuyến/Thiết bị như các dòng VTL khác. Xem grouping.ts groupByProcessGroup.
 	isLowValuePerishableSupplyRow?: boolean;

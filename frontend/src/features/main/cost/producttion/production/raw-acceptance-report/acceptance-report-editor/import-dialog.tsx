@@ -154,6 +154,7 @@ export function MaterialImportDialog({
 		useState<AcceptanceReportDetail | null>(
 			currentAcceptanceReportDetail ?? null,
 		);
+	const [isMotorized, setIsMotorized] = useState(false);
 	const popup = usePopup();
 	const { setOpen } = useDialog();
 
@@ -314,6 +315,14 @@ export function MaterialImportDialog({
 				]);
 
 				if (!isMounted) return;
+
+				const isMot = (outputRes.result.processGroups || []).some(
+					(group: any) =>
+						(group.processGroupCode || '').toUpperCase().includes('VTCG') ||
+						(group.processGroupName || '').toLowerCase().includes('cơ giới') ||
+						(group.processGroupName || '').toLowerCase().includes('vtcg'),
+				);
+				setIsMotorized(isMot);
 
 				const allowedIds = new Set(
 					(outputRes.result.processGroups || []).map(
@@ -628,6 +637,7 @@ export function MaterialImportDialog({
 				>
 					<AcceptanceReportEditor
 						mode='import'
+						isMotorized={isMotorized}
 						onCancel={() => setShowForm(false)}
 						processGroupOptions={processGroupOptions}
 						productionOrderOptions={productionOrderOptions}

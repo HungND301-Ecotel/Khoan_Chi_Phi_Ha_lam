@@ -422,7 +422,11 @@ export function AdditionalCost({
 								<div className='flex flex-col gap-2'>
 									{displayedMaterials.length > 0 && (
 										<>
-											<h4 className='text-sm font-semibold'>Vật liệu</h4>
+											<h4 className='text-sm font-semibold'>
+												{Boolean((output as any)?.isMotorized)
+													? 'Nhiên liệu, dầu nhờn, mỡ máy'
+													: 'Vật liệu'}
+											</h4>
 											<DataTable
 												columns={ADDITIONAL_COST_COLUMNS}
 												items={displayedMaterials}

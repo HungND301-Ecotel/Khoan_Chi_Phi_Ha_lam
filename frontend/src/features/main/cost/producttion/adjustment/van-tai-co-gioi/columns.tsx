@@ -1,8 +1,8 @@
 import { type ColumnDef } from '@tanstack/react-table';
-import { CostProduct } from '@/features/main/cost/plan/types';
+import { ProductionAdjustment } from '@/features/main/cost/producttion/adjustment/columns';
 import { formatDate, formatNumber } from '@/lib/utils';
 
-export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
+export const VTCG_COST_ADJUSTMENT_COLUMNS: ColumnDef<ProductionAdjustment>[] = [
 	{
 		accessorKey: 'productionProcessCode',
 		header: () => <span className='whitespace-normal'>Mã CĐSX</span>,
@@ -35,7 +35,9 @@ export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'equipmentQuality',
 		header: () => <span className='whitespace-normal'>Chất lượng</span>,
 		cell: ({ row }) =>
-			row.original.equipmentQuality ? `Loại ${row.original.equipmentQuality}` : '-',
+			row.original.equipmentQuality
+				? `Loại ${row.original.equipmentQuality}`
+				: '-',
 	},
 	{
 		accessorKey: 'cargoTypeName',
@@ -55,7 +57,9 @@ export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'haulDistanceValue',
 		header: () => <span className='whitespace-normal'>Cung độ</span>,
 		cell: ({ row }) =>
-			row.original.haulDistanceValue ? `${row.original.haulDistanceValue} km` : '-',
+			row.original.haulDistanceValue
+				? `${row.original.haulDistanceValue} km`
+				: '-',
 	},
 	{
 		accessorKey: 'unitOfMeasureName',
@@ -71,18 +75,18 @@ export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'totalProductionMeters',
 		header: () => (
 			<span>
-				Sản lượng <br /> kế hoạch <br /> ban đầu
+				Sản lượng <br /> thực tế
 			</span>
 		),
 		cell: ({ row }) => formatNumber(row.original.totalProductionMeters),
 	},
 	{
-		accessorKey: 'plannedTotalCost',
+		accessorKey: 'adjustmentTotalCost',
 		header: () => (
 			<span>
-				Doanh thu <br /> kế hoạch <br /> ban đầu (đ)
+				Doanh thu <br /> điều chỉnh (đ)
 			</span>
 		),
-		cell: ({ row }) => formatNumber(row.original.plannedTotalCost),
+		cell: ({ row }) => formatNumber(row.original.adjustmentTotalCost),
 	},
 ];

@@ -127,6 +127,7 @@ export function AcceptanceReportEditForm({
 	const [assignmentCodeOptions, setAssignmentCodeOptions] = useState<
 		ProductionOrderOption[]
 	>([]);
+	const [isMotorized, setIsMotorized] = useState(false);
 	const [importedItems, setImportedItems] = useState<ImportedItemMeta[]>([]);
 	const [
 		orderOrAssignmentCodeOptionsByItemId,
@@ -292,6 +293,16 @@ export function AcceptanceReportEditForm({
 
 				if (!isMounted) return;
 
+				const isMot =
+					Boolean((output as any)?.isMotorized) ||
+					(outputRes.result.processGroups || []).some(
+						(group: any) =>
+							(group.processGroupCode || '').toUpperCase().includes('VTCG') ||
+							(group.processGroupName || '').toLowerCase().includes('cơ giới') ||
+							(group.processGroupName || '').toLowerCase().includes('vtcg'),
+					);
+				setIsMotorized(isMot);
+
 				const allowedIds = new Set(
 					(outputRes.result.processGroups || []).map(
 						(group) => group.processGroupId,
@@ -319,7 +330,7 @@ export function AcceptanceReportEditForm({
 		return () => {
 			isMounted = false;
 		};
-	}, [id]);
+	}, [id, (output as any)?.isMotorized]);
 
 	useEffect(() => {
 		if (output?.acceptanceReportId) {
@@ -434,6 +445,7 @@ export function AcceptanceReportEditForm({
 			) : (
 				<AcceptanceReportEditor
 					mode='edit'
+					isMotorized={isMotorized}
 					onCancel={() => setOpen(false)}
 					processGroupOptions={processGroupOptions}
 					productionOrderOptions={productionOrderOptions}

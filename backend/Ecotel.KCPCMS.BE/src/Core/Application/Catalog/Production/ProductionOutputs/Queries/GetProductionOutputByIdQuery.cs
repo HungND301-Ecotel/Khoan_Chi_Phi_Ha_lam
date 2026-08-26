@@ -45,7 +45,22 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                 .Include(p => p.ProductionOutputProcessGroups)
                     .ThenInclude(g => g.ProductionOutputTransportLines)
                         .ThenInclude(tl => tl.RouteDepartment)
-                            .ThenInclude(d => d!.Code),
+                            .ThenInclude(d => d!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.HaulDistance)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.CargoType)
+                            .ThenInclude(c => c!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.ReceivingLocation)
+                            .ThenInclude(l => l!.Code)
+                .Include(p => p.ProductionOutputProcessGroups)
+                    .ThenInclude(g => g.ProductionOutputTransportLines)
+                        .ThenInclude(tl => tl.DumpingLocation)
+                            .ThenInclude(l => l!.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
         return new ProductionOutputDto
@@ -95,6 +110,14 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             RouteDepartmentId = tl.RouteDepartmentId,
                             RouteDepartmentCode = tl.RouteDepartment?.Code?.Value,
                             RouteDepartmentName = tl.RouteDepartment?.Name,
+                            HaulDistanceId = tl.HaulDistanceId,
+                            HaulDistanceValue = tl.HaulDistance?.Value,
+                            CargoTypeId = tl.CargoTypeId,
+                            CargoTypeName = tl.CargoType?.Name,
+                            ReceivingLocationId = tl.ReceivingLocationId,
+                            ReceivingLocationName = tl.ReceivingLocation?.Name,
+                            DumpingLocationId = tl.DumpingLocationId,
+                            DumpingLocationName = tl.DumpingLocation?.Name,
                             ProductionMeters = tl.ProductionMeters
                         }).ToList()
                 }).ToList()

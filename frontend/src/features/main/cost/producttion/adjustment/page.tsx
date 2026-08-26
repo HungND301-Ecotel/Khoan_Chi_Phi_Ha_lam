@@ -22,6 +22,7 @@ import {
 	MAIN_COST_ADJUSTMENT_COLUMNS,
 	ProductionAdjustment,
 	VTL_COST_ADJUSTMENT_COLUMNS,
+	VTCG_COST_ADJUSTMENT_COLUMNS,
 } from '@/features/main/cost/producttion/adjustment/columns';
 import {
 	type DepartmentAdjustmentDetail,
@@ -29,6 +30,7 @@ import {
 	mapDepartmentAdjustmentDetail,
 } from '@/features/main/cost/producttion/adjustment/type';
 import { VtlAdjustmentExpand } from '@/features/main/cost/producttion/adjustment/van-tai-lo/expand';
+import { VtcgAdjustmentExpand } from '@/features/main/cost/producttion/adjustment/van-tai-co-gioi/expand';
 import { TransportCostComponent } from '@/features/main/cost/plan/types';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -83,59 +85,147 @@ function DepartmentAdjustmentProductsTable({
 		[monthId, onSelectedRowsChange],
 	);
 
-	const isVTL = items[0]?.fixedKeyType === ProcessGroupType.VTL;
+	const vtcgItems = useMemo(
+		() =>
+			items.filter(
+				(item) =>
+					item.fixedKeyType === ProcessGroupType.VTCG ||
+					(item.fixedKeyType as any) === 13 ||
+					(item.fixedKeyType as any) === '13' ||
+					item.processGroupCode === 'VTCG' ||
+					(item.processGroupName || '').toLowerCase().includes('cơ giới') ||
+					item.haulDistanceId ||
+					item.haulDistanceValue,
+			),
+		[items],
+	);
 
-	if (isVTL) {
-		return (
-			<DataTable
-				columns={VTL_COST_ADJUSTMENT_COLUMNS}
-				items={items}
-				getRowId={(item) => item.id}
-				importCrumb='Doanh thu điều chỉnh'
-				filters={[
-					{ key: 'productionProcessCode', label: 'Mã CĐSX' },
-					{ key: 'productionProcessName', label: 'Tên CĐSX' },
-					{ key: 'contractCodeCode', label: 'Mã nhóm VTTS' },
-					{ key: 'contractCodeName', label: 'Tên nhóm VTTS' },
-					{ key: 'routeDepartmentCode', label: 'Mã đơn vị' },
-					{ key: 'routeDepartmentName', label: 'Tên đơn vị' },
-				]}
-				onExpand={(props) => (
-					<VtlAdjustmentExpand {...props} monthId={monthId} />
-				)}
-				showCreateAction={false}
-				showFilterAction={false}
-				showDeleteAction={false}
-				showUtilityActions={false}
-				onDelete={async () => undefined}
-				onSelectedRowsChange={handleSelectedRowsChange}
-				selectAllPageRows={selectAllRows}
-				hasPagination={false}
-			/>
-		);
-	}
+	const vtlItems = useMemo(
+		() =>
+			items.filter(
+				(item) =>
+					!vtcgItems.includes(item) &&
+					(item.fixedKeyType === ProcessGroupType.VTL ||
+						item.processGroupCode === 'VTL' ||
+						(item.processGroupName || '').toLowerCase().includes('vận tải lò')),
+			),
+		[items, vtcgItems],
+	);
+
+	const khaiThacItems = useMemo(
+		() =>
+			items.filter(
+				(item) => !vtcgItems.includes(item) && !vtlItems.includes(item),
+			),
+		[items, vtcgItems, vtlItems],
+	);
 
 	return (
-		<DataTable
-			columns={MAIN_COST_ADJUSTMENT_COLUMNS}
-			items={items}
-			getRowId={(item) => item.id}
-			importCrumb='Doanh thu điều chỉnh'
-			filters={[
-				{ key: 'productCode', label: 'Mã sản phẩm' },
-				{ key: 'productName', label: 'Tên sản phẩm' },
-				{ key: 'processGroupCode', label: 'Mã nhóm công đoạn sản xuất' },
-			]}
-			onExpand={(props) => <AdjustmentExpand {...props} monthId={monthId} />}
-			showCreateAction={false}
-			showFilterAction={false}
-			showDeleteAction={false}
-			showUtilityActions={false}
-			onDelete={async () => undefined}
-			onSelectedRowsChange={handleSelectedRowsChange}
-			selectAllPageRows={selectAllRows}
-			hasPagination={false}
-		/>
+		<div className='space-y-4'>
+			{khaiThacItems.length > 0 && (
+				<div>
+					{(vtlItems.length > 0 || vtcgItems.length > 0) && (
+						<div className='mb-2 px-1 text-xs font-bold text-gray-700 uppercase'>
+							1. Khai thác
+						</div>
+					)}
+					<DataTable
+						columns={MAIN_COST_ADJUSTMENT_COLUMNS}
+						items={khaiThacItems}
+						getRowId={(item) => item.id}
+						importCrumb='Doanh thu điều chỉnh'
+						filters={[
+							{ key: 'productCode', label: 'Mã sản phẩm' },
+							{ key: 'productName', label: 'Tên sản phẩm' },
+							{ key: 'processGroupCode', label: 'Mã nhóm CĐSX' },
+						]}
+						onExpand={(props) => (
+							<AdjustmentExpand {...props} monthId={monthId} />
+						)}
+						showCreateAction={false}
+						showFilterAction={false}
+						showDeleteAction={false}
+						showUtilityActions={false}
+						onDelete={async () => undefined}
+						onSelectedRowsChange={handleSelectedRowsChange}
+						selectAllPageRows={selectAllRows}
+						hasPagination={false}
+					/>
+				</div>
+			)}
+
+			{vtlItems.length > 0 && (
+				<div>
+					{(khaiThacItems.length > 0 || vtcgItems.length > 0) && (
+						<div className='mb-2 px-1 text-xs font-bold text-gray-700 uppercase'>
+							{khaiThacItems.length > 0 ? '2. Vận tải lò' : 'Vận tải lò'}
+						</div>
+					)}
+					<DataTable
+						columns={VTL_COST_ADJUSTMENT_COLUMNS}
+						items={vtlItems}
+						getRowId={(item) => item.id}
+						importCrumb='Doanh thu điều chỉnh'
+						filters={[
+							{ key: 'productionProcessCode', label: 'Mã CĐSX' },
+							{ key: 'productionProcessName', label: 'Tên CĐSX' },
+							{ key: 'contractCodeCode', label: 'Mã nhóm VTTS' },
+							{ key: 'contractCodeName', label: 'Tên nhóm VTTS' },
+							{ key: 'routeDepartmentCode', label: 'Mã đơn vị' },
+							{ key: 'routeDepartmentName', label: 'Tên đơn vị' },
+						]}
+						onExpand={(props) => (
+							<VtlAdjustmentExpand {...props} monthId={monthId} />
+						)}
+						showCreateAction={false}
+						showFilterAction={false}
+						showDeleteAction={false}
+						showUtilityActions={false}
+						onDelete={async () => undefined}
+						onSelectedRowsChange={handleSelectedRowsChange}
+						selectAllPageRows={selectAllRows}
+						hasPagination={false}
+					/>
+				</div>
+			)}
+
+			{vtcgItems.length > 0 && (
+				<div>
+					{(khaiThacItems.length > 0 || vtlItems.length > 0) && (
+						<div className='mb-2 px-1 text-xs font-bold text-gray-700 uppercase'>
+							{khaiThacItems.length > 0 && vtlItems.length > 0
+								? '3. Vận tải cơ giới'
+								: khaiThacItems.length > 0
+									? '2. Vận tải cơ giới'
+									: 'Vận tải cơ giới'}
+						</div>
+					)}
+					<DataTable
+						columns={VTCG_COST_ADJUSTMENT_COLUMNS}
+						items={vtcgItems}
+						getRowId={(item) => item.id}
+						importCrumb='Doanh thu điều chỉnh'
+						filters={[
+							{ key: 'productionProcessCode', label: 'Mã CĐSX' },
+							{ key: 'productionProcessName', label: 'Tên CĐSX' },
+							{ key: 'contractCodeCode', label: 'Mã nhóm xe/VTTS' },
+							{ key: 'contractCodeName', label: 'Tên nhóm xe/VTTS' },
+						]}
+						onExpand={(props) => (
+							<VtcgAdjustmentExpand {...props} monthId={monthId} />
+						)}
+						showCreateAction={false}
+						showFilterAction={false}
+						showDeleteAction={false}
+						showUtilityActions={false}
+						onDelete={async () => undefined}
+						onSelectedRowsChange={handleSelectedRowsChange}
+						selectAllPageRows={selectAllRows}
+						hasPagination={false}
+					/>
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -143,6 +233,7 @@ type DepartmentAdjustmentMonthsTableProps = {
 	departmentId: string;
 	hasKhaiThac?: boolean;
 	hasVanTaiLo?: boolean;
+	hasVanTaiCoGioi?: boolean;
 	reloadKey: number;
 	selectAllRows: boolean;
 	onSelectedProductIdsChange: (
@@ -196,6 +287,7 @@ function DepartmentAdjustmentMonthsTable({
 	departmentId,
 	hasKhaiThac,
 	hasVanTaiLo,
+	hasVanTaiCoGioi,
 	reloadKey,
 	selectAllRows,
 	onSelectedProductIdsChange,
@@ -235,8 +327,14 @@ function DepartmentAdjustmentMonthsTable({
 							.catch(() => null)
 					: Promise.resolve(null);
 
+			const shouldFetchTransport =
+				hasVanTaiLo !== false ||
+				hasVanTaiCoGioi !== false ||
+				hasVanTaiLo ||
+				hasVanTaiCoGioi;
+
 			const vanTaiLoPromise =
-				hasVanTaiLo !== false
+				shouldFetchTransport
 					? api
 							.get<{
 								departmentId: string;
@@ -302,11 +400,27 @@ function DepartmentAdjustmentMonthsTable({
 					const monthKey = vtlMonth.month.substring(0, 10);
 					const vtlProducts: ProductionAdjustment[] = (
 						vtlMonth.items || []
-					).map((item) => {
+					).map((item: any) => {
+						const isVtcg =
+							item.haulDistanceId ||
+							item.haulDistanceValue ||
+							item.processGroupCode === 'VTCG' ||
+							(item.processGroupName || '').toLowerCase().includes('cơ giới') ||
+							(item.productionProcessName || '').toLowerCase().includes('cơ giới') ||
+							(item.productionProcessCode || '').startsWith('VC_') ||
+							(item.equipmentCode || '').includes('SCANIA') ||
+							(item.equipmentCode || '').includes('KOMATSU') ||
+							(item.equipmentCode || '').includes('FORKLIFT');
+
+						const defaultCode = isVtcg ? 'VTCG' : 'VTL';
+						const defaultName = isVtcg ? 'Vận tải cơ giới' : 'Vận tải lò';
+						const defaultGroupType = isVtcg ? ProcessGroupType.VTCG : ProcessGroupType.VTL;
+
 						const nameParts = [
 							item.productionProcessName,
 							item.equipmentName && `TB: ${item.equipmentName}`,
 							item.equipmentQuality && `Loại ${item.equipmentQuality}`,
+							item.haulDistanceValue && `Cung độ: ${item.haulDistanceValue}`,
 							item.transportRouteName && `Tuyến: ${item.transportRouteName}`,
 						].filter(Boolean);
 
@@ -317,11 +431,12 @@ function DepartmentAdjustmentMonthsTable({
 								item.productionProcessCode ||
 								item.equipmentCode ||
 								item.transportRouteCode ||
-								'VTL',
-							productName: nameParts.join(' - ') || 'Vận tải lò',
-							processGroupId: '',
-							processGroupCode: 'VTL',
-							fixedKeyType: ProcessGroupType.VTL,
+								defaultCode,
+							productName: nameParts.join(' - ') || defaultName,
+							processGroupId: item.processGroupId || '',
+							processGroupCode: item.processGroupCode || defaultCode,
+							processGroupName: item.processGroupName || defaultName,
+							fixedKeyType: defaultGroupType,
 							unitOfMeasureId: item.unitOfMeasureId || '',
 							unitOfMeasureName: item.unitOfMeasureName || '-',
 							departmentId: vanTaiLoDetail.departmentId,
@@ -330,6 +445,13 @@ function DepartmentAdjustmentMonthsTable({
 							routeDepartmentId: item.routeDepartmentId,
 							routeDepartmentCode: item.routeDepartmentCode || '-',
 							routeDepartmentName: item.routeDepartmentName || '-',
+							haulDistanceId: item.haulDistanceId,
+							haulDistanceValue: item.haulDistanceValue,
+							fuelAdjustmentFactor:
+								item.fuelAdjustmentFactor ??
+								item.k1?.customValue ??
+								item.k2?.customValue ??
+								1.0,
 							totalProductionMeters: item.actualProductionMeters ?? 0,
 							plannedTotalCost: 0,
 							actualTotalCost: 0,
@@ -343,6 +465,12 @@ function DepartmentAdjustmentMonthsTable({
 							contractCodeName:
 								item.equipmentName || item.transportRouteName || '-',
 							equipmentQuality: item.equipmentQuality || '-',
+							cargoTypeId: item.cargoTypeId,
+							cargoTypeName: item.cargoTypeName,
+							receivingLocationId: item.receivingLocationId,
+							receivingLocationName: item.receivingLocationName,
+							dumpingLocationId: item.dumpingLocationId,
+							dumpingLocationName: item.dumpingLocationName,
 							material: item.material,
 							maintenance: item.maintenance,
 							power: item.power,
@@ -368,9 +496,30 @@ function DepartmentAdjustmentMonthsTable({
 				});
 			}
 
-			const mergedMonthGroups = Array.from(mergedMap.values()).sort((a, b) =>
-				a.time.localeCompare(b.time),
-			);
+			const sortProducts = (items: ProductionAdjustment[]) => {
+				return [...items].sort((a, b) => {
+					const procCompare = (a.productionProcessCode || '').localeCompare(
+						b.productionProcessCode || '',
+					);
+					if (procCompare !== 0) return procCompare;
+					const eqCompare = (a.contractCodeCode || '').localeCompare(
+						b.contractCodeCode || '',
+					);
+					if (eqCompare !== 0) return eqCompare;
+					const qualA = (a.equipmentQuality || '').replace(/^Loại\s*/i, '');
+					const qualB = (b.equipmentQuality || '').replace(/^Loại\s*/i, '');
+					const qualCompare = qualA.localeCompare(qualB);
+					if (qualCompare !== 0) return qualCompare;
+					return (a.productName || '').localeCompare(b.productName || '');
+				});
+			};
+
+			const mergedMonthGroups = Array.from(mergedMap.values())
+				.map((group) => ({
+					...group,
+					products: sortProducts(group.products),
+				}))
+				.sort((a, b) => a.time.localeCompare(b.time));
 			setMonthGroups(mergedMonthGroups);
 		};
 
@@ -581,10 +730,27 @@ export function MainCostProductionRevenueAdjustmentPage() {
 
 					const deptInfo = deptsMap.get(detail.departmentId);
 
+					const hasVtcg = allItems.some(
+						(it: any) =>
+							it.haulDistanceId ||
+							it.haulDistanceValue ||
+							it.processGroupCode === 'VTCG' ||
+							(it.productionProcessName || '').toLowerCase().includes('cơ giới'),
+					);
+					const hasVtl = allItems.some(
+						(it: any) =>
+							!it.haulDistanceId &&
+							!it.haulDistanceValue &&
+							it.processGroupCode !== 'VTCG' &&
+							!(it.productionProcessName || '').toLowerCase().includes('cơ giới'),
+					);
+
 					vtlGroups.push({
 						id: detail.departmentId,
 						code: detail.departmentCode || deptInfo?.code || '',
 						name: detail.departmentName || deptInfo?.name || '',
+						hasVanTaiLo: hasVtl || !hasVtcg,
+						hasVanTaiCoGioi: hasVtcg,
 						startMonth: monthDates[0],
 						endMonth: monthDates[monthDates.length - 1],
 						productUnitPriceIds: allItems.map((it) => it.id),
@@ -612,13 +778,16 @@ export function MainCostProductionRevenueAdjustmentPage() {
 					...g,
 					hasKhaiThac: true,
 					hasVanTaiLo: false,
+					hasVanTaiCoGioi: false,
 				}),
 			);
 
 			vtlDepartmentGroups.forEach((vtlGroup) => {
 				const existed = map.get(vtlGroup.id);
 				if (existed) {
-					existed.hasVanTaiLo = true;
+					existed.hasVanTaiLo = existed.hasVanTaiLo || vtlGroup.hasVanTaiLo;
+					existed.hasVanTaiCoGioi =
+						existed.hasVanTaiCoGioi || vtlGroup.hasVanTaiCoGioi;
 					// Không gộp productUnitPriceIds VTL vào tập xoá được — Doanh thu điều chỉnh VTL
 					// chỉ là view tính toán (Kế hoạch + Sản lượng thực tế), không có bản ghi riêng để
 					// xoá; gộp id TransportPlanLine vào đây sẽ bị gửi nhầm sang API xoá ProductUnitPrice.
@@ -638,7 +807,8 @@ export function MainCostProductionRevenueAdjustmentPage() {
 					map.set(vtlGroup.id, {
 						...vtlGroup,
 						hasKhaiThac: false,
-						hasVanTaiLo: true,
+						hasVanTaiLo: vtlGroup.hasVanTaiLo,
+						hasVanTaiCoGioi: vtlGroup.hasVanTaiCoGioi,
 						productUnitPriceIds: [],
 					});
 				}
@@ -730,6 +900,7 @@ export function MainCostProductionRevenueAdjustmentPage() {
 					departmentId={row?.id ?? ''}
 					hasKhaiThac={row?.hasKhaiThac}
 					hasVanTaiLo={row?.hasVanTaiLo}
+					hasVanTaiCoGioi={row?.hasVanTaiCoGioi}
 					reloadKey={reloadKey}
 					selectAllRows={selectedDepartmentIds.includes(row?.id ?? '')}
 					onSelectedProductIdsChange={handleProductSelectionChange}

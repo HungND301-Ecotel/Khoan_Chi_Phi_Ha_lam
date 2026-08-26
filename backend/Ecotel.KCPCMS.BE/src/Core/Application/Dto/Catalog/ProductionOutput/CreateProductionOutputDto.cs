@@ -33,5 +33,9 @@ public class CreateProductionOutputTransportLineDto
     public string? EquipmentQuality { get; set; }
     public Guid? TransportRouteId { get; set; }
     public Guid? RouteDepartmentId { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public Guid? DumpingLocationId { get; set; }
     public double ProductionMeters { get; set; }
 }

@@ -19,6 +19,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     private readonly IWriteRepository<Domain.Entities.Pricing.ProductUnitPrice> _productUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.ProductUnitPrice>();
     private readonly IWriteRepository<TunnelExcavationMaterialUnitPrice> _tunnelMaterialUnitPriceRepository = unitOfWork.GetRepository<TunnelExcavationMaterialUnitPrice>();
     private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.MechanizedTransportUnitPrice.MechanizedTransportOverheadUnitPrice> _mechanizedTransportOverheadUnitPriceRepository = unitOfWork.GetRepository<Domain.Entities.Pricing.MechanizedTransportUnitPrice.MechanizedTransportOverheadUnitPrice>();
     private readonly IWriteRepository<ProductionOutput> _productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
     private readonly IWriteRepository<LumpSumQuarterCustomCost> _customCostRepository = unitOfWork.GetRepository<LumpSumQuarterCustomCost>();
     private readonly IWriteRepository<SavingsRateConfig> _savingsRateConfigRepository = unitOfWork.GetRepository<SavingsRateConfig>();
@@ -33,7 +34,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         Guid? EquipmentId,
         string? EquipmentQuality,
         Guid? TransportRouteId,
-        Guid? RouteDepartmentId);
+        Guid? RouteDepartmentId,
+        Guid? HaulDistanceId);
 
     public async Task<LumpSumFinalSettlementMonthResponseDto> CalculateAsync(
         int month,
@@ -64,7 +66,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .SelectMany(pg => pg.ProductionOutputTransportLines
                 .Select(tl => new { pg.ProcessGroupId, Line = tl }))
             .GroupBy(x => new TransportLineKey(
-                x.ProcessGroupId, x.Line.ProductionProcessId, x.Line.EquipmentId, x.Line.EquipmentQuality, x.Line.TransportRouteId, x.Line.RouteDepartmentId))
+                x.ProcessGroupId, x.Line.ProductionProcessId, x.Line.EquipmentId, x.Line.EquipmentQuality, x.Line.TransportRouteId, x.Line.RouteDepartmentId, x.Line.HaulDistanceId))
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Line.ProductionMeters));
 
         var actualByProduct = productionOutputs
@@ -597,6 +599,9 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .Include(x => x.ProductionProcess)
                 .ThenInclude(p => p!.ProcessGroup)
                     .ThenInclude(pg => pg!.Code)
+            .Include(x => x.ProductionProcess)
+                .ThenInclude(p => p!.ProcessGroup)
+                    .ThenInclude(pg => pg!.FixedKey)
             .Include(x => x.UnitOfMeasure)
             .Include(x => x.Equipment)
                 .ThenInclude(e => e!.Code)
@@ -626,6 +631,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 .ThenInclude(c => c!.TransportUnitPrice)
             .Include(x => x.PlannedTransportCost)
                 .ThenInclude(c => c!.MechanizedTransportUnitPriceDetail)
+            .Include(x => x.HaulDistance)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -642,7 +648,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 line.EquipmentId,
                 line.EquipmentQuality,
                 line.TransportRouteId,
-                line.RouteDepartmentId);
+                line.RouteDepartmentId,
+                line.HaulDistanceId);
             var actualQuantity = actualByTransportLine.TryGetValue(key, out var meters) ? meters : 0;
 
             double ComponentTotal(TransportCostComponentDto component) => planItem.IsLowVolumeCase
@@ -654,6 +661,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 planItem.ProductionProcessName,
                 !string.IsNullOrEmpty(planItem.EquipmentName) ? $"TB: {planItem.EquipmentName}" : null,
                 !string.IsNullOrEmpty(planItem.EquipmentQuality) ? $"Loại {planItem.EquipmentQuality}" : null,
+                !string.IsNullOrEmpty(planItem.HaulDistanceValue) ? $"Cung độ: {planItem.HaulDistanceValue}" : null,
                 !string.IsNullOrEmpty(planItem.TransportRouteName) ? $"Tuyến: {planItem.TransportRouteName}" : null,
             }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
@@ -661,18 +669,23 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             var maintainTotal = ComponentTotal(planItem.Maintenance);
             var electricityTotal = ComponentTotal(planItem.Power);
 
+            var isVtcg = line.ProductionProcess?.ProcessGroup?.Type == ProcessGroupType.VTCG
+                || line.ProductionProcess?.ProcessGroup?.FixedKey?.Key == "VTCG";
+            var defaultGroupCode = isVtcg ? "VTCG" : "VTL";
+            var defaultGroupName = isVtcg ? "Vận tải cơ giới" : "Vận tải lò";
+
             result.Add(new LumpSumFinalSettlementDto
             {
                 Id = planItem.Id,
                 ProcessGroupId = key.ProcessGroupId,
                 ProcessGroupCode = line.ProductionProcess?.ProcessGroup?.Code?.Value
                     ?? line.ProductionProcess?.ProcessGroup?.FixedKey?.Key
-                    ?? "VTL",
+                    ?? defaultGroupCode,
                 ProcessGroupName = line.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
                 ProductCode = !string.IsNullOrEmpty(planItem.ProductionProcessCode)
                     ? planItem.ProductionProcessCode
-                    : (planItem.EquipmentCode ?? planItem.TransportRouteCode ?? "VTL"),
-                ProductName = nameParts.Count > 0 ? string.Join(" - ", nameParts) : "Vận tải lò",
+                    : (planItem.EquipmentCode ?? planItem.TransportRouteCode ?? defaultGroupCode),
+                ProductName = nameParts.Count > 0 ? string.Join(" - ", nameParts) : defaultGroupName,
                 ProductionProcessCode = planItem.ProductionProcessCode,
                 ProductionProcessName = planItem.ProductionProcessName,
                 TransportRouteId = planItem.TransportRouteId,
@@ -685,6 +698,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 EquipmentCode = planItem.EquipmentCode,
                 EquipmentName = planItem.EquipmentName,
                 EquipmentQuality = planItem.EquipmentQuality,
+                HaulDistanceId = planItem.HaulDistanceId,
+                HaulDistanceValue = planItem.HaulDistanceValue,
                 UnitOfMeasureId = planItem.UnitOfMeasureId ?? Guid.Empty,
                 UnitOfMeasureName = planItem.UnitOfMeasureName ?? string.Empty,
                 PlannedQuantity = planItem.ProductionMeters,
@@ -701,7 +716,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         // FE), nên KHÔNG cộng vào đơn giá Vật liệu của từng dòng ở trên (sẽ bị nhân sai theo số
         // dòng nếu tháng có nhiều dòng) mà tách thành 1 dòng riêng cho mỗi (Đơn vị, Nhóm công đoạn).
         var lowValueLookup = await TransportLowValuePerishableSupplyCostResolver.ResolveAsync(
-            lines, _lowValuePerishableSupplyUnitPriceRepository, cancellationToken);
+            lines, _lowValuePerishableSupplyUnitPriceRepository, _mechanizedTransportOverheadUnitPriceRepository, cancellationToken);
 
         var lowValueGroups = lines
             .Where(x => x.PlannedTransportCost?.LowValuePerishableSupplyInclusion == LowValuePerishableSupplyInclusion.Include
@@ -719,15 +734,19 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 continue;
             }
 
+            var isVtcg = first.ProductionProcess?.ProcessGroup?.Type == ProcessGroupType.VTCG
+                || first.ProductionProcess?.ProcessGroup?.FixedKey?.Key == "VTCG";
+            var defaultGroupCode = isVtcg ? "VTCG" : "VTL";
+
             result.Add(new LumpSumFinalSettlementDto
             {
                 Id = Guid.NewGuid(),
                 ProcessGroupId = group.Key.ProcessGroupId,
                 ProcessGroupCode = first.ProductionProcess?.ProcessGroup?.Code?.Value
                     ?? first.ProductionProcess?.ProcessGroup?.FixedKey?.Key
-                    ?? "VTL",
+                    ?? defaultGroupCode,
                 ProcessGroupName = first.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
-                ProductCode = "RTMH-VTL",
+                ProductCode = isVtcg ? "RTMH-VTCG" : "RTMH-VTL",
                 ProductName = "Chi phí vật tư mau hỏng rẻ tiền",
                 UnitOfMeasureName = "Đồng/tháng",
                 IsLowValuePerishableSupplyRow = true,

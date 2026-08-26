@@ -53,5 +53,13 @@ public class ProductionOutputTransportLineDto
     public Guid? RouteDepartmentId { get; set; }
     public string? RouteDepartmentCode { get; set; }
     public string? RouteDepartmentName { get; set; }
+    public Guid? HaulDistanceId { get; set; }
+    public string? HaulDistanceValue { get; set; }
+    public Guid? CargoTypeId { get; set; }
+    public string? CargoTypeName { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public string? ReceivingLocationName { get; set; }
+    public Guid? DumpingLocationId { get; set; }
+    public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
 }

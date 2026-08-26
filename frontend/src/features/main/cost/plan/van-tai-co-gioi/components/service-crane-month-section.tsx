@@ -8,7 +8,6 @@ import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema'
 import {
 	getSuggestedFuelAdjustmentFactor,
 	getUnitForMotorizedProcess,
-	MOCK_UNITS_OF_MEASURE,
 } from '../utils';
 
 type ServiceCraneMonthSectionProps = {
@@ -27,7 +26,7 @@ export function ServiceCraneMonthSection({
 	distances,
 }: ServiceCraneMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
-	const unitOptions = uomList.length > 0 ? uomList : MOCK_UNITS_OF_MEASURE;
+	const unitOptions = uomList || [];
 	const monthPath = `motorizedMonths.${monthIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const formControl = form.control as any;
@@ -103,6 +102,20 @@ export function ServiceCraneMonthSection({
 							isWatering ? dist?.value : undefined,
 						);
 
+						const defaultUnitName =
+							existing?.unitName ||
+							getUnitForMotorizedProcess(
+								proc?.name || proc?.label,
+								'service_crane',
+							);
+
+						const matchedUnit = unitOptions.find(
+							(u) =>
+								u.name?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.value?.toLowerCase() === defaultUnitName.toLowerCase() ||
+								u.id === existing?.unitOfMeasureId,
+						);
+
 						newRows.push({
 							id: existing?.id,
 							equipmentId: eqId,
@@ -119,10 +132,9 @@ export function ServiceCraneMonthSection({
 							productionMeters: existing?.productionMeters ?? Number.NaN,
 							fuelAdjustmentFactor:
 								existing?.fuelAdjustmentFactor ?? suggestedFactor,
-							unitName: getUnitForMotorizedProcess(
-								proc?.name || proc?.label,
-								'service_crane',
-							),
+							unitName: defaultUnitName,
+							unitOfMeasureId:
+								existing?.unitOfMeasureId || matchedUnit?.id || undefined,
 						});
 					});
 				});
@@ -136,6 +148,7 @@ export function ServiceCraneMonthSection({
 		JSON.stringify(equipmentProcesses),
 		JSON.stringify(equipmentQualities),
 		JSON.stringify(equipmentDistances),
+		unitOptions.length,
 	]);
 
 	return (
@@ -149,8 +162,8 @@ export function ServiceCraneMonthSection({
 			<FormMultiSelect
 				control={formControl}
 				name={`${monthPath}.assignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản (Xe cẩu / Xe dịch vụ / Xe nâng)'
-				placeholder='Chọn nhóm xe cẩu, xe dịch vụ'
+				label='1. Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code
@@ -280,20 +293,20 @@ export function ServiceCraneMonthSection({
 															<th
 																className={
 																	isWatering
-																		? 'w-[25%] px-3 py-2'
-																		: 'w-[30%] px-3 py-2'
+																		? 'w-[30%] px-3 py-2'
+																		: 'w-[40%] px-3 py-2'
 																}
 															>
 																Chất lượng
 															</th>
 															{isWatering && (
-																<th className='w-[20%] px-3 py-2'>Cung độ</th>
+																<th className='w-[25%] px-3 py-2'>Cung độ</th>
 															)}
 															<th
 																className={
 																	isWatering
-																		? 'w-[18%] px-3 py-2 text-center'
-																		: 'w-[20%] px-3 py-2 text-center'
+																		? 'w-[20%] px-3 py-2 text-center'
+																		: 'w-[25%] px-3 py-2 text-center'
 																}
 															>
 																Đơn vị tính
@@ -301,17 +314,8 @@ export function ServiceCraneMonthSection({
 															<th
 																className={
 																	isWatering
-																		? 'w-[15%] px-3 py-2'
-																		: 'w-[20%] px-3 py-2'
-																}
-															>
-																Hệ số điều chỉnh
-															</th>
-															<th
-																className={
-																	isWatering
-																		? 'w-[22%] px-3 py-2'
-																		: 'w-[30%] px-3 py-2'
+																		? 'w-[25%] px-3 py-2'
+																		: 'w-[35%] px-3 py-2'
 																}
 															>
 																Sản lượng kế hoạch
@@ -354,10 +358,17 @@ export function ServiceCraneMonthSection({
 																				onValueChange={(val) => {
 																					const next = [...items];
 																					if (globalIdx >= 0) {
+																						const matched = unitOptions.find(
+																							(u) =>
+																								u.value === val ||
+																								u.name === val ||
+																								u.id === val,
+																						);
 																						next[globalIdx] = {
 																							...next[globalIdx],
-																							unitName: val,
-																							unitOfMeasureId: val,
+																							unitName: matched?.name || val,
+																							unitOfMeasureId:
+																								matched?.id || val,
 																						};
 																						setItems(next);
 																					}
@@ -366,22 +377,6 @@ export function ServiceCraneMonthSection({
 																				placeholder='Chọn ĐVT'
 																			/>
 																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<FormNumberInput
-																			value={row.fuelAdjustmentFactor ?? 1.0}
-																			onValueChange={(val) => {
-																				const next = [...items];
-																				if (globalIdx >= 0) {
-																					next[globalIdx] = {
-																						...next[globalIdx],
-																						fuelAdjustmentFactor: val ?? 1.0,
-																					};
-																					setItems(next);
-																				}
-																			}}
-																			placeholder='1.0'
-																		/>
 																	</td>
 																	<td className='px-3 py-2'>
 																		<FormNumberInput

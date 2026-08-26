@@ -34,9 +34,15 @@ export type CostProduct = {
 	contractCodeCode?: string;
 	contractCodeName?: string;
 	equipmentQuality?: string;
+	haulDistanceId?: string;
 	haulDistanceValue?: string | number;
 	fuelAdjustmentFactor?: number;
+	cargoTypeId?: string;
 	cargoTypeName?: string;
+	receivingLocationId?: string;
+	receivingLocationName?: string;
+	dumpingLocationId?: string;
+	dumpingLocationName?: string;
 	material?: TransportCostComponent;
 	maintenance?: TransportCostComponent;
 	power?: TransportCostComponent;
@@ -81,6 +87,10 @@ export type CostProductDetailOutput = {
 	totalPrice: number;
 	adjTotalPrice?: number;
 	planAshContent?: number;
+	departmentCode?: string;
+	departmentName?: string;
+	isMotorized?: boolean;
+	isTunnelTransport?: boolean;
 };
 
 export type DepartmentPlannedItem = {

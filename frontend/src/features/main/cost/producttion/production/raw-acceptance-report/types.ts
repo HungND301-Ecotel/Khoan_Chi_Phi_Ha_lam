@@ -270,16 +270,3 @@ export const SHIPPED_DETAIL_KEY_BY_TYPE: Record<number, string> = {
 	[ShippedQuantityType.XuatKhac]: 'other_export',
 	[ShippedQuantityType.QuyetToanGiaoKhoan]: 'settlement',
 };
-
-// export const ASSET_OPTIONS = [
-// 	{ value: 'Vật liệu', label: 'Vật liệu' },
-// 	{ value: 'SCTX', label: 'SCTX' },
-
-// Mock data for testing (no longer needed as we use API)
-export const MOCK_RAW_ACCEPTANCE_REPORT_ITEMS: RawAcceptanceReportItem[] = [];
-
-export const MOCK_RAW_ACCEPTANCE_REPORT_DETAIL: RawAcceptanceReportDetail = {
-	id: 'raw-001',
-	productionId: 'prod-001',
-	items: MOCK_RAW_ACCEPTANCE_REPORT_ITEMS,
-};
