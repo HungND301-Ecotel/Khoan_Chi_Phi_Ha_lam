@@ -33,7 +33,8 @@ export function VacuumTruckMonthSection({
 		name: monthPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] = watchedMonth?.assignmentCodeIds || [];
+	const assignmentCodeIds: string[] =
+		watchedMonth?.vacuumTruckAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedMonth?.equipmentProcesses || {};
 	const equipmentQualities: Record<string, string[]> =
@@ -42,8 +43,13 @@ export function VacuumTruckMonthSection({
 		watchedMonth?.equipmentDistances || {};
 	const items: any[] = watchedMonth?.items || [];
 
-	const setItems = (newItems: typeof items) => {
-		form.setValue(`${monthPath}.items` as any, newItems);
+	const setItems = (newRows: typeof items) => {
+		const currentItems: any[] =
+			form.getValues(`${monthPath}.items` as any) || [];
+		const otherItems = currentItems.filter(
+			(it) => !assignmentCodeIds.includes(it.equipmentId),
+		);
+		form.setValue(`${monthPath}.items` as any, [...otherItems, ...newRows]);
 	};
 
 	useEffect(() => {
@@ -137,7 +143,7 @@ export function VacuumTruckMonthSection({
 			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
 			<FormMultiSelect
 				control={formControl}
-				name={`${monthPath}.assignmentCodeIds` as any}
+				name={`${monthPath}.vacuumTruckAssignmentCodeIds` as any}
 				label='1. Nhóm vật tư, tài sản'
 				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({

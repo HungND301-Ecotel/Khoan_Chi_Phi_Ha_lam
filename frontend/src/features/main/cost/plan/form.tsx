@@ -3,7 +3,6 @@ import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
-import { FormSelect } from '@/components/form/form-select';
 import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -54,6 +53,49 @@ import {
 import { buildTransportMonthsPayload } from './van-tai-lo/utils';
 import { MotorizedMonthSection } from './van-tai-co-gioi/form-section';
 import { buildMotorizedTransportMonthsPayload } from './van-tai-co-gioi/utils';
+
+export function detectPlanModeFromDepartment(
+	dept?: { code?: string; name?: string } | null,
+): 'khaithac' | 'vantailo' | 'vantaicogioi' {
+	if (!dept) return 'khaithac';
+	const text = `${dept.code || ''} ${dept.name || ''}`.toLowerCase();
+
+	// 1. Kiểm tra Vận tải cơ giới
+	if (
+		text.includes('cơ giới') ||
+		text.includes('vtcg') ||
+		text.includes('xe máy') ||
+		text.includes('scania')
+	) {
+		return 'vantaicogioi';
+	}
+
+	// 2. Kiểm tra Vận tải lò
+	if (
+		text.includes('vận tải lò') ||
+		text.includes('vận tải hầm lò') ||
+		text.includes('vtl')
+	) {
+		return 'vantailo';
+	}
+
+	// 3. Kiểm tra Khai thác / Đào lò / Xén lò / Lò chợ
+	if (
+		text.includes('khai thác') ||
+		text.includes('đào lò') ||
+		text.includes('xén lò') ||
+		text.includes('lò chợ')
+	) {
+		return 'khaithac';
+	}
+
+	// 4. Nếu có từ "vận tải" chung chung
+	if (text.includes('vận tải')) {
+		return 'vantailo';
+	}
+
+	return 'khaithac';
+}
 
 const getPersistedItemKey = (
 	item: DepartmentPlanFormSchema['months'][number]['items'][number],
@@ -139,8 +181,31 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 		name: 'planMode',
 	});
 
+	const watchedDepartmentId = useWatch({
+		control: form.control,
+		name: 'departmentId',
+	});
+
 	const targetDeptId = (row as any)?.departmentId || row?.id;
 	const prevPlanModeRef = useRef<string | undefined>(undefined);
+
+	// Tự động nhận diện chế độ kế hoạch (Khai thác / Vận tải lò / Vận tải cơ giới) từ Tên/Mã đơn vị
+	useEffect(() => {
+		if (!watchedDepartmentId || departments.length === 0) return;
+		const dept = departments.find((d) => d.id === watchedDepartmentId);
+		if (dept) {
+			const detectedMode = detectPlanModeFromDepartment(dept);
+			if (detectedMode !== form.getValues('planMode')) {
+				form.setValue('planMode', detectedMode, {
+					shouldValidate: true,
+					shouldDirty: true,
+				});
+				if (isEdit) {
+					loadPlanDataByMode(detectedMode, watchedDepartmentId);
+				}
+			}
+		}
+	}, [watchedDepartmentId, departments, form, isEdit]);
 
 	const loadPlanDataByMode = async (mode: string, deptId: string) => {
 		if (!deptId) return;
@@ -327,11 +392,122 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							}
 						});
 
+						const classifyEq = (
+							eqCode?: string,
+							eqName?: string,
+							procName?: string,
+						) => {
+							const text = `${eqCode || ''} ${eqName || ''} ${procName || ''}`.toLowerCase();
+							if (
+								text.includes('hút bùn') ||
+								text.includes('chất thải') ||
+								text.includes('xe bồn') ||
+								text.includes('bồn hút')
+							) {
+								return 'vacuum_truck';
+							}
+							if (
+								text.includes('xúc') ||
+								text.includes('gạt') ||
+								text.includes('ủi') ||
+								text.includes('lu') ||
+								text.includes('dx210') ||
+								text.includes('jcb') ||
+								text.includes('d7r') ||
+								text.includes('cat') ||
+								text.includes('komatsu') ||
+								text.includes('pc')
+							) {
+								return 'excavator_dozer';
+							}
+							if (
+								text.includes('cẩu') ||
+								text.includes('nâng') ||
+								text.includes('forklift') ||
+								text.includes('dịch vụ') ||
+								text.includes('ds') ||
+								text.includes('tưới') ||
+								text.includes('cứu hỏa') ||
+								text.includes('phục vụ')
+							) {
+								return 'service_crane';
+							}
+							return 'scania';
+						};
+
+						const scaniaEqIds = [
+							...new Set(
+								items
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'scania',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const excavatorEqIds = [
+							...new Set(
+								items
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'excavator_dozer',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const serviceCraneEqIds = [
+							...new Set(
+								items
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'service_crane',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const vacuumTruckEqIds = [
+							...new Set(
+								items
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'vacuum_truck',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
 						return {
 							month: m.month.substring(0, 10),
 							lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
 							motorizedCategory: 'scania' as const,
 							assignmentCodeIds: eqIds,
+							scaniaAssignmentCodeIds: scaniaEqIds,
+							excavatorAssignmentCodeIds: excavatorEqIds,
+							serviceCraneAssignmentCodeIds: serviceCraneEqIds,
+							vacuumTruckAssignmentCodeIds: vacuumTruckEqIds,
 							equipmentQualities: eqQualitiesMap,
 							equipmentProcesses: eqProcessesMap,
 							equipmentDistances: eqDistancesMap,
@@ -708,8 +884,12 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 				if (!row) return;
 
+				const dept =
+					departmentsRes.result.data?.find((d: any) => d.id === targetDeptId) ||
+					(row as any);
 				const targetPlanMode =
 					(row as any)?.planMode ||
+					detectPlanModeFromDepartment(dept) ||
 					((row as any)?.hasVanTaiCoGioi
 						? 'vantaicogioi'
 						: row?.hasVanTaiLo && !row?.hasKhaiThac
@@ -1005,21 +1185,6 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 				/>
 			</FormRow>
 
-			{/* Chọn chế độ: Khai thác / Vận tải lò / Vận tải cơ giới */}
-			<FormRow>
-				<FormSelect
-					control={form.control}
-					name='planMode'
-					label='Chọn'
-					placeholder='Chọn chế độ kế hoạch'
-					options={[
-						{ value: 'khaithac', label: 'Khai thác' },
-						{ value: 'vantailo', label: 'Vận tải lò' },
-						{ value: 'vantaicogioi', label: 'Vận tải cơ giới' },
-					]}
-				/>
-			</FormRow>
-
 			<FormSeparator />
 
 			{/* ========== FORM KHAI THÁC ========== */}
@@ -1178,6 +1343,10 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								lowValuePerishableSupply: false,
 								motorizedCategory: 'scania',
 								assignmentCodeIds: [],
+								scaniaAssignmentCodeIds: [],
+								excavatorAssignmentCodeIds: [],
+								serviceCraneAssignmentCodeIds: [],
+								vacuumTruckAssignmentCodeIds: [],
 								equipmentQualities: {},
 								equipmentProcesses: {},
 								equipmentDistances: {},

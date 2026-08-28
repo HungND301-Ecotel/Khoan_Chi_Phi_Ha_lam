@@ -34,6 +34,7 @@ export interface LumpSumFinalSettlementQuarterResponse {
 	savingsValue?: number;
 	revenueAdjustmentRate?: number;
 	savingAddedToIncomeQuarter?: number;
+	revenueCostAdjustmentConfigs?: RevenueCostAdjustmentConfig[];
 }
 
 export interface LumpSumFinalSettlementMonthResponse {
@@ -55,6 +56,7 @@ export interface LumpSumFinalSettlementMonthResponse {
 	savingAddedToIncomeMonth?: number;
 	savingCarryForwardByMonths?: LumpSumSavingCarryForwardByMonth[];
 	savingCarryForwardToNextMonths?: number;
+	revenueCostAdjustmentConfigs?: RevenueCostAdjustmentConfig[];
 	quarterBreakdown?: LumpSumFinalSettlementQuarterResponse | null;
 }
 
@@ -168,6 +170,19 @@ export interface LumpSumFinalSettlement {
 	equipmentQuality?: string;
 	haulDistanceId?: string;
 	haulDistanceValue?: string;
+	cargoTypeId?: string;
+	cargoTypeCode?: string;
+	cargoTypeName?: string;
+	receivingLocationId?: string;
+	receivingLocationName?: string;
+	dumpingLocationId?: string;
+	dumpingLocationName?: string;
+	vehicleTransferredMaterialAmount?: number;
+	vehicleTransferredMaintainAmount?: number;
+	vehicleTransferredElectricityAmount?: number;
+	vehicleTotalTransferredCost?: number;
+	isVehicleHeaderRow?: boolean;
+	isVehicleSummaryRow?: boolean;
 	// Dòng "Chi phí vật tư mau hỏng rẻ tiền" — khoản trọn gói theo tháng, hiển thị phẳng, không
 	// gộp cây theo Tuyến/Thiết bị như các dòng VTL khác. Xem grouping.ts groupByProcessGroup.
 	isLowValuePerishableSupplyRow?: boolean;
@@ -204,4 +219,14 @@ export interface ProcessGroup {
 	id: string;
 	code: string;
 	name: string;
+}
+
+export interface RevenueCostAdjustmentConfig {
+	id?: string;
+	profitConditionDisplay?: string;
+	minProfit?: number | null;
+	maxProfit?: number | null;
+	rateDisplay?: string;
+	rate?: number;
+	description?: string;
 }

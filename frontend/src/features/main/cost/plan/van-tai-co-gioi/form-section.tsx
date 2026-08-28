@@ -46,14 +46,6 @@ export function MotorizedMonthSection({
 
 	const handleCategoryChange = (category: MotorizedCategory) => {
 		form.setValue(`${monthPath}.motorizedCategory` as any, category);
-		form.setValue(`${monthPath}.assignmentCodeIds` as any, []);
-		form.setValue(`${monthPath}.equipmentQualities` as any, {});
-		form.setValue(`${monthPath}.equipmentProcesses` as any, {});
-		form.setValue(`${monthPath}.equipmentDistances` as any, {});
-		form.setValue(`${monthPath}.processCargoTypes` as any, {});
-		form.setValue(`${monthPath}.processPickupLocations` as any, {});
-		form.setValue(`${monthPath}.processDropoffLocations` as any, {});
-		form.setValue(`${monthPath}.items` as any, []);
 	};
 
 	const currentEquipments = assignmentCodes;
@@ -127,21 +119,14 @@ export function MotorizedMonthSection({
 								key={cat.id}
 								type='button'
 								variant={isSelected ? 'default' : 'outline'}
-								className={`h-auto flex-col items-start gap-1 p-3 text-left transition-all ${
+								className={`h-auto min-h-[44px] flex-col items-center justify-center gap-1 p-3 text-center transition-all ${
 									isSelected
 										? 'border-blue-600 bg-blue-600 text-white shadow-sm'
 										: 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50'
 								}`}
 								onClick={() => handleCategoryChange(cat.id)}
 							>
-								<div className='text-xs font-bold'>{cat.name}</div>
-								<div
-									className={`line-clamp-1 text-[11px] ${
-										isSelected ? 'text-blue-100' : 'text-gray-500'
-									}`}
-								>
-									{cat.description}
-								</div>
+								<div className='w-full text-center font-bold'>{cat.name}</div>
 							</Button>
 						);
 					})}
@@ -149,7 +134,7 @@ export function MotorizedMonthSection({
 			</div>
 
 			{/* RENDER FORM SECTION THEO TỪNG LOẠI PHƯƠNG TIỆN */}
-			{activeCategory === 'scania' && (
+			<div className={activeCategory === 'scania' ? 'block' : 'hidden'}>
 				<ScaniaMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -164,18 +149,18 @@ export function MotorizedMonthSection({
 					}
 					distances={currentDistances}
 				/>
-			)}
+			</div>
 
-			{activeCategory === 'excavator_dozer' && (
+			<div className={activeCategory === 'excavator_dozer' ? 'block' : 'hidden'}>
 				<ExcavatorMonthSection
 					form={form}
 					monthIndex={monthIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 				/>
-			)}
+			</div>
 
-			{activeCategory === 'service_crane' && (
+			<div className={activeCategory === 'service_crane' ? 'block' : 'hidden'}>
 				<ServiceCraneMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -183,9 +168,9 @@ export function MotorizedMonthSection({
 					processes={currentProcesses}
 					distances={currentDistances}
 				/>
-			)}
+			</div>
 
-			{activeCategory === 'vacuum_truck' && (
+			<div className={activeCategory === 'vacuum_truck' ? 'block' : 'hidden'}>
 				<VacuumTruckMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -193,7 +178,7 @@ export function MotorizedMonthSection({
 					processes={currentProcesses}
 					distances={currentDistances}
 				/>
-			)}
+			</div>
 		</div>
 	);
 }

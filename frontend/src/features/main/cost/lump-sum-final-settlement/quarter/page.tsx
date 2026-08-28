@@ -101,7 +101,14 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					LumpSumFinalSettlementQuarterResponse,
 					LumpSumFinalSettlementQuarterListRequest
 				>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload);
-				setFilteredData(groupByProcessGroup(res.result.items ?? [], 5));
+				setFilteredData(
+					groupByProcessGroup(
+						res.result.items ?? [],
+						5,
+						Number(payload.quarter),
+						res.result.revenueCostAdjustmentConfigs,
+					),
+				);
 				setQuarterSpecialQuantities({
 					coalExcavationActualQuantity:
 						res.result.coalExcavationActualQuantity ?? 0,

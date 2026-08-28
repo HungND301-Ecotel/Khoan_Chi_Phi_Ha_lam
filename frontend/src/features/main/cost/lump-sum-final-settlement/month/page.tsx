@@ -127,7 +127,14 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					LumpSumFinalSettlementMonthResponse,
 					LumpSumFinalSettlementListRequest
 				>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.LIST, payload);
-				setFilteredData(groupByProcessGroup(monthRes.result.items ?? [], 5));
+				setFilteredData(
+					groupByProcessGroup(
+						monthRes.result.items ?? [],
+						5,
+						Number(payload.month),
+						monthRes.result.revenueCostAdjustmentConfigs,
+					),
+				);
 				setQuarterSpecialQuantities({
 					coalExcavationActualQuantity:
 						monthRes.result.coalExcavationActualQuantity ?? 0,

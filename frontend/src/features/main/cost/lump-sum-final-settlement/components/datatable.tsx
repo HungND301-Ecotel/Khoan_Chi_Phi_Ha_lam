@@ -648,7 +648,11 @@ export function LumpSumDataTable({
 							return (
 								<TableRow
 									key={row.id}
-									className='border-b border-gray-200 hover:bg-gray-50'
+									className={cn(
+										'border-b border-gray-200 hover:bg-gray-50',
+										row.original.isVehicleHeaderRow && 'bg-amber-50/40 font-bold',
+										row.original.isVehicleSummaryRow && 'bg-slate-50/70',
+									)}
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell

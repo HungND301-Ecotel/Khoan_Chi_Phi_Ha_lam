@@ -1,3 +1,5 @@
+using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
+
 namespace Application.Dto.Catalog.LumpSumFinalSettlement;
 
 public class LumpSumFinalSettlementDto
@@ -30,6 +32,21 @@ public class LumpSumFinalSettlementDto
     public string? EquipmentQuality { get; set; }
     public Guid? HaulDistanceId { get; set; }
     public string? HaulDistanceValue { get; set; }
+
+    // VTCG — Thông số công đoạn (Chủng loại hàng, Vị trí nhận, Vị trí đổ)
+    public Guid? CargoTypeId { get; set; }
+    public string? CargoTypeCode { get; set; }
+    public string? CargoTypeName { get; set; }
+    public Guid? ReceivingLocationId { get; set; }
+    public string? ReceivingLocationName { get; set; }
+    public Guid? DumpingLocationId { get; set; }
+    public string? DumpingLocationName { get; set; }
+
+    // VTCG — Kết chuyển chi phí xuất trong kỳ theo xe (EquipmentId)
+    public double VehicleTransferredMaterialAmount { get; set; }
+    public double VehicleTransferredMaintainAmount { get; set; }
+    public double VehicleTransferredElectricityAmount { get; set; }
+    public double VehicleTotalTransferredCost { get; set; }
 
     // VTL/VTCG — dòng "Chi phí vật tư mau hỏng rẻ tiền": khoản trọn gói theo THÁNG (1 dòng cho cả
     // Đơn vị+Nhóm công đoạn+Tháng, không nhân theo số dòng Tuyến/Thiết bị) — FE hiển thị phẳng,
@@ -80,6 +97,7 @@ public class LumpSumFinalSettlementQuarterResponseDto
     public double SavingsValue { get; set; }
     public double RevenueAdjustmentRate { get; set; }
     public double SavingAddedToIncomeQuarter { get; set; }
+    public List<RevenueCostAdjustmentConfigDto> RevenueCostAdjustmentConfigs { get; set; } = new();
 }
 
 public class LumpSumFinalSettlementMonthResponseDto
@@ -102,6 +120,7 @@ public class LumpSumFinalSettlementMonthResponseDto
     public double SavingAddedToIncomeMonth { get; set; }
     public List<LumpSumSavingCarryForwardByMonthDto> SavingCarryForwardByMonths { get; set; } = new();
     public double SavingCarryForwardToNextMonths { get; set; }
+    public List<RevenueCostAdjustmentConfigDto> RevenueCostAdjustmentConfigs { get; set; } = new();
     public LumpSumFinalSettlementQuarterResponseDto? QuarterBreakdown { get; set; }
 }
 

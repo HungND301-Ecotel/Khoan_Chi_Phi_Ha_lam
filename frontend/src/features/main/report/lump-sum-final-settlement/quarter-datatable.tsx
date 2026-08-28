@@ -308,7 +308,14 @@ export function LumpSumFinalSettlementReportTable({
 				LumpSumFinalSettlementQuarterListRequest
 			>(API.COST.LUMP_SUM_FINAL_SETTLEMENT.QUARTER_LIST, payload);
 
-			setRows(groupByProcessGroup(response.result.items ?? [], 5));
+			setRows(
+				groupByProcessGroup(
+					response.result.items ?? [],
+					5,
+					Number(quarter),
+					response.result.revenueCostAdjustmentConfigs,
+				),
+			);
 			setQuarterSpecialQuantities({
 				coalExcavationActualQuantity:
 					response.result.coalExcavationActualQuantity ?? 0,
