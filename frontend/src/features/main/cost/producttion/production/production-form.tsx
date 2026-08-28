@@ -418,19 +418,31 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 
 					if (groupType === 'vantaicogioi') {
 						const rawLines = group.transportLines || [];
-						const motorizedItems = rawLines.map((line) => ({
-							equipmentId: line.equipmentId || undefined,
-							equipmentQuality: line.equipmentQuality || undefined,
-							productionProcessId: line.productionProcessId,
-							haulDistanceId: line.haulDistanceId || undefined,
-							cargoTypeId: line.cargoTypeId || undefined,
-							cargoTypeName: line.cargoTypeName || undefined,
-							receivingLocationId: line.receivingLocationId || undefined,
-							receivingLocationName: line.receivingLocationName || undefined,
-							dumpingLocationId: line.dumpingLocationId || undefined,
-							dumpingLocationName: line.dumpingLocationName || undefined,
-							productionMeters: line.productionMeters,
-						}));
+						const motorizedItems: ProductionGroupSchema['motorizedItems'] =
+							rawLines.map((line) => {
+								const eq = contractCodes.find((c) => c.id === line.equipmentId);
+								const proc = productionProcesses.find(
+									(p) => p.id === line.productionProcessId,
+								);
+								return {
+									equipmentId: line.equipmentId || undefined,
+									equipmentCode: eq?.code || undefined,
+									equipmentName: eq?.name || undefined,
+									equipmentQuality: line.equipmentQuality || undefined,
+									productionProcessId: line.productionProcessId,
+									productionProcessCode: proc?.code || undefined,
+									productionProcessName: proc?.name || undefined,
+									haulDistanceId: line.haulDistanceId || undefined,
+									haulDistanceValue: undefined,
+									cargoTypeId: line.cargoTypeId || undefined,
+									cargoTypeName: line.cargoTypeName || undefined,
+									receivingLocationId: line.receivingLocationId || undefined,
+									receivingLocationName: line.receivingLocationName || undefined,
+									dumpingLocationId: line.dumpingLocationId || undefined,
+									dumpingLocationName: line.dumpingLocationName || undefined,
+									productionMeters: line.productionMeters,
+								};
+							});
 
 						const eqIds = Array.from(
 							new Set(
@@ -541,6 +553,120 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 							}
 						});
 
+						const classifyEq = (
+							eqCode?: string,
+							eqName?: string,
+							procName?: string,
+						) => {
+							const text = `${eqCode || ''} ${eqName || ''} ${procName || ''}`.toLowerCase();
+							if (
+								text.includes('hút bùn') ||
+								text.includes('chất thải') ||
+								text.includes('xe bồn') ||
+								text.includes('bồn hút')
+							) {
+								return 'vacuum_truck';
+							}
+							if (
+								text.includes('xúc') ||
+								text.includes('gạt') ||
+								text.includes('ủi') ||
+								text.includes('lu') ||
+								text.includes('dx210') ||
+								text.includes('jcb') ||
+								text.includes('d7r') ||
+								text.includes('cat') ||
+								text.includes('komatsu') ||
+								text.includes('pc')
+							) {
+								return 'excavator_dozer';
+							}
+							if (
+								text.includes('cẩu') ||
+								text.includes('nâng') ||
+								text.includes('forklift') ||
+								text.includes('dịch vụ') ||
+								text.includes('ds') ||
+								text.includes('tưới') ||
+								text.includes('cứu hỏa') ||
+								text.includes('phục vụ')
+							) {
+								return 'service_crane';
+							}
+							return 'scania';
+						};
+
+						const scaniaEqIds = [
+							...new Set(
+								motorizedItems
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'scania',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const excavatorEqIds = [
+							...new Set(
+								motorizedItems
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'excavator_dozer',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const serviceCraneEqIds = [
+							...new Set(
+								motorizedItems
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'service_crane',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const vacuumTruckEqIds = [
+							...new Set(
+								motorizedItems
+									.filter(
+										(it) =>
+											classifyEq(
+												it.equipmentCode,
+												it.equipmentName,
+												it.productionProcessName,
+											) === 'vacuum_truck',
+									)
+									.map((it) => it.equipmentId)
+									.filter(Boolean),
+							),
+						] as string[];
+
+						const activeCategories: string[] = [];
+						if (scaniaEqIds.length > 0) activeCategories.push('scania');
+						if (excavatorEqIds.length > 0) activeCategories.push('excavator_dozer');
+						if (serviceCraneEqIds.length > 0) activeCategories.push('service_crane');
+						if (vacuumTruckEqIds.length > 0) activeCategories.push('vacuum_truck');
+						if (activeCategories.length === 0) activeCategories.push('scania');
+
 						return {
 							groupType: 'vantaicogioi',
 							processGroupId: group.processGroupId,
@@ -550,8 +676,13 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 							products: [],
 							processIds: [],
 							transportProcesses: [],
-							motorizedCategory: 'scania',
+							motorizedCategory: (activeCategories[0] || 'scania') as any,
+							motorizedCategories: activeCategories,
 							assignmentCodeIds: eqIds,
+							scaniaAssignmentCodeIds: scaniaEqIds,
+							excavatorAssignmentCodeIds: excavatorEqIds,
+							serviceCraneAssignmentCodeIds: serviceCraneEqIds,
+							vacuumTruckAssignmentCodeIds: vacuumTruckEqIds,
 							equipmentQualities,
 							equipmentProcesses,
 							equipmentDistances,
@@ -576,7 +707,12 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 						processIds,
 						transportProcesses,
 						motorizedCategory: 'scania',
+						motorizedCategories: ['scania'],
 						assignmentCodeIds: [],
+						scaniaAssignmentCodeIds: [],
+						excavatorAssignmentCodeIds: [],
+						serviceCraneAssignmentCodeIds: [],
+						vacuumTruckAssignmentCodeIds: [],
 						equipmentQualities: {},
 						equipmentProcesses: {},
 						equipmentDistances: {},

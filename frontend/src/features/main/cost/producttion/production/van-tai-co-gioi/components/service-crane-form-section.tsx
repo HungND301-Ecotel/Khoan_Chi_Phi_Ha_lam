@@ -29,7 +29,8 @@ export function ServiceCraneFormSection({
 		name: groupPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] = watchedGroup?.assignmentCodeIds || [];
+	const assignmentCodeIds: string[] =
+		watchedGroup?.serviceCraneAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedGroup?.equipmentProcesses || {};
 	const equipmentQualities: Record<string, string[]> =
@@ -38,8 +39,16 @@ export function ServiceCraneFormSection({
 		watchedGroup?.equipmentDistances || {};
 	const items: any[] = watchedGroup?.motorizedItems || [];
 
-	const setItems = (newItems: typeof items) => {
-		form.setValue(`${groupPath}.motorizedItems` as any, newItems);
+	const setItems = (newRows: typeof items) => {
+		const currentItems: any[] =
+			form.getValues(`${groupPath}.motorizedItems` as any) || [];
+		const otherItems = currentItems.filter(
+			(it) => !assignmentCodeIds.includes(it.equipmentId),
+		);
+		form.setValue(`${groupPath}.motorizedItems` as any, [
+			...otherItems,
+			...newRows,
+		]);
 	};
 
 	useEffect(() => {
@@ -133,7 +142,7 @@ export function ServiceCraneFormSection({
 			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
 			<FormMultiSelect
 				control={formControl}
-				name={`${groupPath}.assignmentCodeIds` as any}
+				name={`${groupPath}.serviceCraneAssignmentCodeIds` as any}
 				label='1. Nhóm vật tư, tài sản'
 				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({

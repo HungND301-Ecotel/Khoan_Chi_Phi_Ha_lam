@@ -499,10 +499,18 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							),
 						] as string[];
 
+						const activeCategories: string[] = [];
+						if (scaniaEqIds.length > 0) activeCategories.push('scania');
+						if (excavatorEqIds.length > 0) activeCategories.push('excavator_dozer');
+						if (serviceCraneEqIds.length > 0) activeCategories.push('service_crane');
+						if (vacuumTruckEqIds.length > 0) activeCategories.push('vacuum_truck');
+						if (activeCategories.length === 0) activeCategories.push('scania');
+
 						return {
 							month: m.month.substring(0, 10),
 							lowValuePerishableSupply: m.lowValuePerishableSupply ?? false,
-							motorizedCategory: 'scania' as const,
+							motorizedCategory: (activeCategories[0] || 'scania') as any,
+							motorizedCategories: activeCategories,
 							assignmentCodeIds: eqIds,
 							scaniaAssignmentCodeIds: scaniaEqIds,
 							excavatorAssignmentCodeIds: excavatorEqIds,
@@ -1342,6 +1350,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								month: '',
 								lowValuePerishableSupply: false,
 								motorizedCategory: 'scania',
+								motorizedCategories: ['scania'],
 								assignmentCodeIds: [],
 								scaniaAssignmentCodeIds: [],
 								excavatorAssignmentCodeIds: [],
