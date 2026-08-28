@@ -75,7 +75,12 @@ public static class LumpSumFinalSettlementQuarterAggregator
             AcceptedSavingQuarter = acceptedSavingQuarter,
             SavingsValue = savingsValue,
             RevenueAdjustmentRate = revenueAdjustmentRate,
-            SavingAddedToIncomeQuarter = savingAddedToIncomeQuarter
+            SavingAddedToIncomeQuarter = savingAddedToIncomeQuarter,
+            RevenueCostAdjustmentConfigs = monthBreakdowns
+                .SelectMany(x => x.RevenueCostAdjustmentConfigs)
+                .GroupBy(x => x.Id)
+                .Select(g => g.First())
+                .ToList()
         };
     }
 

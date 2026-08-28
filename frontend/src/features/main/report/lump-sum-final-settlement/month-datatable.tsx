@@ -309,7 +309,14 @@ export function LumpSumFinalSettlementMonthReportTable({
 			const items =
 				monthData?.items ??
 				(Array.isArray(response.result) ? response.result : []);
-			setRows(groupByProcessGroup(items));
+			setRows(
+				groupByProcessGroup(
+					items,
+					1,
+					Number(month),
+					monthData?.revenueCostAdjustmentConfigs,
+				),
+			);
 			setQuarterSpecialQuantities({
 				coalExcavationActualQuantity:
 					monthData?.coalExcavationActualQuantity ?? 0,

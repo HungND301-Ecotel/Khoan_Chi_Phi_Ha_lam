@@ -1,6 +1,7 @@
 using Application.Common.Exceptions;
 using Application.Common.Models;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
+using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
 using ClosedXML.Excel;
 using MediatR;
 
@@ -45,7 +46,7 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 request.DepartmentId),
             cancellationToken);
 
-        var groupedRows = GroupByProcessGroup(response.Items);
+        var groupedRows = GroupByProcessGroup(response.Items, quarter, response.RevenueCostAdjustmentConfigs);
         var reportRows = BuildReportRows(
             groupedRows,
             response,
@@ -59,7 +60,10 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         return new ExportLumpSumFinalSettlementQuarterExcelResponse(fileBytes, fileName);
     }
 
-    private static List<ExportRow> GroupByProcessGroup(IReadOnlyCollection<LumpSumFinalSettlementDto> items)
+    private static List<ExportRow> GroupByProcessGroup(
+        IReadOnlyCollection<LumpSumFinalSettlementDto> items,
+        int quarter,
+        IReadOnlyCollection<RevenueCostAdjustmentConfigDto>? revenueCostAdjustmentConfigs = null)
     {
         var groups = new List<(string Key, List<LumpSumFinalSettlementDto> Items)>();
 
@@ -85,12 +89,39 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         foreach (var (_, groupItems) in groups)
         {
             var first = groupItems[0];
-            var code = first.ProcessGroupCode?.Trim() ?? string.Empty;
-            var name = first.ProcessGroupName?.Trim() ?? string.Empty;
-            var groupTitle = string.Join(" - ", new[] { code, name }.Where(x => !string.IsNullOrWhiteSpace(x)));
-            if (string.IsNullOrWhiteSpace(groupTitle))
+            var isVtcg = groupItems.Any(x => (x.ProcessGroupCode != null && x.ProcessGroupCode.Contains("VTCG"))
+                || (x.ProcessGroupName != null && x.ProcessGroupName.ToLower().Contains("co gioi")));
+            var isVtl = groupItems.Any(x => (x.ProcessGroupCode != null && x.ProcessGroupCode.Contains("VTL"))
+                || (x.ProcessGroupName != null && x.ProcessGroupName.ToLower().Contains("van tai lo")));
+
+            var rawName = first.ProcessGroupName?.Trim() ?? string.Empty;
+            if (rawName.StartsWith("VTCG - ", StringComparison.OrdinalIgnoreCase))
             {
-                groupTitle = "Chua phan nhom";
+                rawName = rawName.Substring(7).Trim();
+            }
+            else if (rawName.StartsWith("VTL - ", StringComparison.OrdinalIgnoreCase))
+            {
+                rawName = rawName.Substring(6).Trim();
+            }
+
+            string groupTitle;
+            if (isVtcg)
+            {
+                groupTitle = !string.IsNullOrWhiteSpace(rawName)
+                    ? rawName.ToUpper()
+                    : "VAN TAI CO GIOI";
+            }
+            else if (isVtl)
+            {
+                groupTitle = !string.IsNullOrWhiteSpace(rawName)
+                    ? rawName.ToUpper()
+                    : "VAN TAI LO";
+            }
+            else
+            {
+                groupTitle = !string.IsNullOrWhiteSpace(rawName)
+                    ? rawName.ToUpper()
+                    : (!string.IsNullOrWhiteSpace(first.ProcessGroupCode) ? first.ProcessGroupCode.Trim().ToUpper() : "CHƯA PHÂN NHÓM");
             }
 
             result.Add(new ExportRow
@@ -110,9 +141,13 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 IsProcessGroupRow = true
             });
 
-            var isTransportGroup = groupItems.Any(x => x.TransportRouteId.HasValue || x.EquipmentId.HasValue);
+            var isTransportGroup = groupItems.Any(x => x.TransportRouteId.HasValue || x.EquipmentId.HasValue || x.IsLowValuePerishableSupplyRow);
 
-            if (isTransportGroup)
+            if (isVtcg)
+            {
+                PushVtcgGroupItems(result, groupItems, stt, quarter, revenueCostAdjustmentConfigs);
+            }
+            else if (isTransportGroup)
             {
                 PushTransportGroupItems(result, groupItems, stt);
             }
@@ -166,8 +201,8 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         foreach (var processItems in processGroups)
         {
             var first = processItems[0];
-            var processLabel = CombineCodeName(
-                first.ProductionProcessCode, first.ProductionProcessName, "Cong doan chua xac dinh");
+            var processLabel = GetNameOnly(
+                first.ProductionProcessCode, first.ProductionProcessName, "Cong doan chua xac dinh").ToUpper();
             var processSttLabel = $"{stt}.{processStt}";
 
             result.Add(BuildSubHeaderRow(processSttLabel, processLabel, processItems));
@@ -181,6 +216,298 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
             result.Add(BuildLeafRow($"{stt}.{processStt}", item.ProductName, item));
             processStt++;
         }
+    }
+
+    private static void PushVtcgGroupItems(
+        List<ExportRow> result,
+        List<LumpSumFinalSettlementDto> groupItems,
+        int stt,
+        int quarter,
+        IReadOnlyCollection<RevenueCostAdjustmentConfigDto>? revenueCostAdjustmentConfigs = null)
+    {
+        var lowValueRows = groupItems.Where(x => x.IsLowValuePerishableSupplyRow).ToList();
+        var regularItems = groupItems.Where(x => !x.IsLowValuePerishableSupplyRow).ToList();
+
+        var vehicleGroups = regularItems
+            .GroupBy(x => $"{x.EquipmentId?.ToString() ?? x.EquipmentCode ?? x.EquipmentName ?? "vehicle"}__{x.EquipmentQuality?.Trim()}")
+            .Select(g => g.ToList())
+            .OrderByCodeNatural(g =>
+            {
+                var first = g[0];
+                var quality = !string.IsNullOrWhiteSpace(first.EquipmentQuality)
+                    ? (first.EquipmentQuality.StartsWith("LOAI", StringComparison.OrdinalIgnoreCase)
+                        ? first.EquipmentQuality
+                        : $"LOAI {first.EquipmentQuality}")
+                    : null;
+                var baseName = first.EquipmentName ?? first.EquipmentCode ?? "Thiet bi";
+                return !string.IsNullOrEmpty(quality) ? $"{baseName} ({quality})" : baseName;
+            })
+            .ToList();
+
+        var vehicleIdx = 0;
+        foreach (var vItems in vehicleGroups)
+        {
+            vehicleIdx++;
+            var firstVehicle = vItems[0];
+            var vehicleSttLabel = $"{stt}.{vehicleIdx}";
+            var vehicleQuality = !string.IsNullOrWhiteSpace(firstVehicle.EquipmentQuality)
+                ? (firstVehicle.EquipmentQuality.StartsWith("LOAI", StringComparison.OrdinalIgnoreCase)
+                    ? firstVehicle.EquipmentQuality
+                    : $"LOAI {firstVehicle.EquipmentQuality}")
+                : null;
+            var vehicleBaseName = firstVehicle.EquipmentName ?? firstVehicle.EquipmentCode ?? "Thiet bi";
+            var vehicleTitle = !string.IsNullOrEmpty(vehicleQuality)
+                ? $"{vehicleBaseName} ({vehicleQuality})"
+                : vehicleBaseName;
+
+            // Cấp 1 Header
+            result.Add(BuildSubHeaderRow(vehicleSttLabel, vehicleTitle, vItems));
+
+            // Cấp 2: Process Groups
+            var processGroups = vItems
+                .GroupBy(x => x.ProductionProcessCode ?? x.ProductionProcessName ?? "process")
+                .Select(g => g.ToList())
+                .OrderByCodeNatural(g => g[0].ProductionProcessName ?? g[0].ProductionProcessCode)
+                .ToList();
+
+            var processIdx = 1;
+            foreach (var pItems in processGroups)
+            {
+                var firstP = pItems[0];
+                var processSttLabel = $"{stt}.{vehicleIdx}.${processIdx}";
+                var processTitle = (firstP.ProductionProcessName ?? firstP.ProductionProcessCode ?? "Công đoạn chưa xác định").ToUpper();
+
+                // Cấp 2 Header
+                result.Add(BuildSubHeaderRow(processSttLabel, processTitle, pItems));
+
+                // Cấp 3: Parameters
+                var paramGroups = pItems
+                    .GroupBy(x => FormatVtcgParameterName(x.CargoTypeName, x.ReceivingLocationName, x.DumpingLocationName))
+                    .Select(g => new { ParamName = g.Key, Items = g.ToList() })
+                    .ToList();
+
+                foreach (var paramGroup in paramGroups)
+                {
+                    var isNamedParam = !string.IsNullOrWhiteSpace(paramGroup.ParamName);
+                    var hasSubBreakdown = paramGroup.Items.Count > 1 ||
+                        paramGroup.Items.Any(x => !string.IsNullOrWhiteSpace(x.HaulDistanceValue) || !string.IsNullOrWhiteSpace(x.TransportRouteName));
+                    var hasParamHeader = isNamedParam && hasSubBreakdown;
+
+                    if (hasParamHeader)
+                    {
+                        result.Add(BuildSubHeaderRow(string.Empty, paramGroup.ParamName, paramGroup.Items));
+                    }
+
+                    foreach (var child in paramGroup.Items)
+                    {
+                        var leafTitle = child.HaulDistanceValue?.Trim();
+                        if (!string.IsNullOrEmpty(leafTitle))
+                        {
+                            if (!leafTitle.StartsWith("L", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (leafTitle.StartsWith("≤") || leafTitle.StartsWith("<="))
+                                {
+                                    leafTitle = $"L {leafTitle}";
+                                }
+                                else
+                                {
+                                    leafTitle = $"L ≤ {leafTitle}";
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(child.TransportRouteName))
+                        {
+                            leafTitle = child.TransportRouteName.Trim();
+                        }
+                        else if (!string.IsNullOrWhiteSpace(child.RouteDepartmentName))
+                        {
+                            leafTitle = child.RouteDepartmentName.Trim();
+                        }
+                        else if (isNamedParam)
+                        {
+                            leafTitle = paramGroup.ParamName;
+                        }
+                        else if (!string.IsNullOrWhiteSpace(child.ProductionProcessName))
+                        {
+                            leafTitle = child.ProductionProcessName.Trim();
+                        }
+                        else
+                        {
+                            leafTitle = child.ProductName ?? "Chi tiet";
+                        }
+
+                        result.Add(BuildLeafRow(string.Empty, leafTitle, child));
+                    }
+                }
+
+                processIdx++;
+            }
+
+            // 6 Dòng tổng kết tài chính cho xe
+            var vehicleRevenue = vItems.Sum(x => x.TotalAmount);
+            var vehicleMaterialRevenue = vItems.Sum(x => x.Materials?.TotalAmount ?? 0);
+            var vehicleMaintainRevenue = vItems.Sum(x => x.Maintains?.TotalAmount ?? 0);
+            var vehicleElectricityRevenue = vItems.Sum(x => x.Electricities?.TotalAmount ?? 0);
+
+            var vehicleCost = firstVehicle.VehicleTotalTransferredCost;
+            var vehicleMaterialCost = firstVehicle.VehicleTransferredMaterialAmount;
+            var vehicleMaintainCost = firstVehicle.VehicleTransferredMaintainAmount;
+            var vehicleElectricityCost = firstVehicle.VehicleTransferredElectricityAmount;
+
+            double CalcAcceptedSaving(double rev, double cost)
+            {
+                var sav = rev - cost;
+                return (rev > 0 && sav / rev >= 0.08) ? rev * 0.08 : sav;
+            }
+
+            double CalcIncomeAdjustment(double accepted)
+            {
+                var r = ResolveVehicleRevenueCostAdjustmentRate(accepted, revenueCostAdjustmentConfigs);
+                return accepted * r;
+            }
+
+            var vehicleMaterialSaving = vehicleMaterialRevenue - vehicleMaterialCost;
+            var vehicleMaintainSaving = vehicleMaintainRevenue - vehicleMaintainCost;
+            var vehicleElectricitySaving = vehicleElectricityRevenue - vehicleElectricityCost;
+            var vehicleSaving = vehicleRevenue - vehicleCost;
+
+            var acceptedMaterialSaving = CalcAcceptedSaving(vehicleMaterialRevenue, vehicleMaterialCost);
+            var acceptedMaintainSaving = CalcAcceptedSaving(vehicleMaintainRevenue, vehicleMaintainCost);
+            var acceptedElectricitySaving = CalcAcceptedSaving(vehicleElectricityRevenue, vehicleElectricityCost);
+            var acceptedSaving = (vehicleRevenue > 0 && vehicleSaving / vehicleRevenue >= 0.08)
+                ? vehicleRevenue * 0.08
+                : vehicleSaving;
+
+            var incomeAdjustmentMaterial = CalcIncomeAdjustment(acceptedMaterialSaving);
+            var incomeAdjustmentMaintain = CalcIncomeAdjustment(acceptedMaintainSaving);
+            var incomeAdjustmentElectricity = CalcIncomeAdjustment(acceptedElectricitySaving);
+            var rate = ResolveVehicleRevenueCostAdjustmentRate(acceptedSaving, revenueCostAdjustmentConfigs);
+            var incomeAdjustment = acceptedSaving * rate;
+
+            // 1. Doanh thu xe theo giá khoán
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = "Doanh thu xe theo gia khoan",
+                MaterialsTotalAmount = vehicleMaterialRevenue,
+                MaintainsTotalAmount = vehicleMaintainRevenue,
+                ElectricitiesTotalAmount = vehicleElectricityRevenue,
+                TotalAmount = vehicleRevenue,
+                IsBold = true
+            });
+
+            // 2. Tổng doanh thu xe quý X
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = $"Tong doanh thu xe quy {quarter}",
+                MaterialsTotalAmount = vehicleMaterialRevenue,
+                MaintainsTotalAmount = vehicleMaintainRevenue,
+                ElectricitiesTotalAmount = vehicleElectricityRevenue,
+                TotalAmount = vehicleRevenue,
+                IsBold = true
+            });
+
+            // 3. Tổng chi phí xe quý X
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = $"Tong chi phi xe quy {quarter}",
+                MaterialsTotalAmount = vehicleMaterialCost,
+                MaintainsTotalAmount = vehicleMaintainCost,
+                ElectricitiesTotalAmount = vehicleElectricityCost,
+                TotalAmount = vehicleCost,
+                IsBold = true
+            });
+
+            // 4. Tiết kiệm(+) bội chi (-) quý X
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = $"Tiet kiem(+) boi chi (-) quy {quarter}",
+                MaterialsTotalAmount = vehicleMaterialSaving,
+                MaintainsTotalAmount = vehicleMaintainSaving,
+                ElectricitiesTotalAmount = vehicleElectricitySaving,
+                TotalAmount = vehicleSaving,
+                IsBold = true
+            });
+
+            // 5. Tiết kiệm(+) bội chi (-) được chấp nhận quý X
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = $"Tiet kiem(+) boi chi (-) đuoc chap nhan quy {quarter}",
+                MaterialsTotalAmount = acceptedMaterialSaving,
+                MaintainsTotalAmount = acceptedMaintainSaving,
+                ElectricitiesTotalAmount = acceptedElectricitySaving,
+                TotalAmount = acceptedSaving,
+                IsBold = true
+            });
+
+            // 6. Cộng trừ vào thu nhập quý X
+            result.Add(new ExportRow
+            {
+                SttLabel = string.Empty,
+                ProductName = $"Cong tru vao thu nhap quy {quarter}",
+                MaterialsTotalAmount = incomeAdjustmentMaterial,
+                MaintainsTotalAmount = incomeAdjustmentMaintain,
+                ElectricitiesTotalAmount = incomeAdjustmentElectricity,
+                TotalAmount = incomeAdjustment,
+                IsBold = true
+            });
+        }
+
+        foreach (var item in lowValueRows)
+        {
+            result.Add(BuildLeafRow($"{stt}.{vehicleIdx + 1}", item.ProductName, item));
+            vehicleIdx++;
+        }
+    }
+
+    private static string FormatVtcgParameterName(string? cargo, string? rec, string? dump)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(cargo))
+        {
+            parts.Add(cargo.Trim());
+        }
+        var locs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(rec))
+        {
+            locs.Add(rec.Trim());
+        }
+        if (!string.IsNullOrWhiteSpace(dump))
+        {
+            locs.Add($"về {dump.Trim()}");
+        }
+        if (locs.Count > 0)
+        {
+            parts.Add($"({string.Join(" ", locs)})");
+        }
+        return parts.Count > 0 ? string.Join(" ", parts) : string.Empty;
+    }
+
+    private static double ResolveVehicleRevenueCostAdjustmentRate(
+        double profit,
+        IReadOnlyCollection<RevenueCostAdjustmentConfigDto>? configs)
+    {
+        if (configs != null && configs.Count > 0)
+        {
+            var matched = configs
+                .Where(x =>
+                    (!x.MinProfit.HasValue || profit >= (double)x.MinProfit.Value) &&
+                    (!x.MaxProfit.HasValue || profit <= (double)x.MaxProfit.Value))
+                .OrderByDescending(x => x.MinProfit ?? decimal.MinValue)
+                .ThenBy(x => x.MaxProfit ?? decimal.MaxValue)
+                .FirstOrDefault();
+
+            if (matched != null)
+            {
+                return matched.Rate > 1 ? (double)(matched.Rate / 100m) : (double)matched.Rate;
+            }
+        }
+
+        return profit >= 0 ? 0.6 : 1.0;
     }
 
     private static void PushRouteOrEquipmentGroups(
@@ -233,15 +560,15 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
             var first = children[0];
 
             var parentLabel = isRoute
-                ? CombineCodeName(first.TransportRouteCode, first.TransportRouteName, "Tuyen chua xac dinh")
-                : CombineCodeName(first.EquipmentCode, first.EquipmentName, "Thiet bi chua xac dinh");
+                ? GetNameOnly(first.TransportRouteCode, first.TransportRouteName, "Tuyen chua xac dinh")
+                : GetNameOnly(first.EquipmentCode, first.EquipmentName, "Thiet bi chua xac dinh");
 
             result.Add(BuildSubHeaderRow($"{sttPrefix}.{subStt}", parentLabel, children));
 
             foreach (var child in children)
             {
                 var leafLabel = isRoute
-                    ? CombineCodeName(child.RouteDepartmentCode, child.RouteDepartmentName, "Don vi chua xac dinh")
+                    ? GetNameOnly(child.RouteDepartmentCode, child.RouteDepartmentName, "Don vi chua xac dinh")
                     : $"Loai {child.EquipmentQuality}";
 
                 result.Add(BuildLeafRow("-", leafLabel, child));
@@ -296,11 +623,17 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
         };
     }
 
-    private static string CombineCodeName(string? code, string? name, string fallback)
+    private static string GetNameOnly(string? code, string? name, string fallback)
     {
-        var parts = new[] { code?.Trim(), name?.Trim() }.Where(x => !string.IsNullOrWhiteSpace(x));
-        var joined = string.Join(" - ", parts);
-        return string.IsNullOrWhiteSpace(joined) ? fallback : joined;
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return name.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            return code.Trim();
+        }
+        return fallback;
     }
 
     private static List<ExportRow> BuildReportRows(

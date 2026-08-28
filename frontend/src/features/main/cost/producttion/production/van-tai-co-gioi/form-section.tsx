@@ -93,13 +93,6 @@ export function VanTaiCoGioiGroupFields({
 								onClick={() => handleCategoryChange(cat.id)}
 							>
 								<div className='text-xs font-bold'>{cat.name}</div>
-								<div
-									className={`line-clamp-1 text-[11px] ${
-										isSelected ? 'text-blue-100' : 'text-gray-500'
-									}`}
-								>
-									{cat.description}
-								</div>
 							</Button>
 						);
 					})}

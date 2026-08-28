@@ -18,7 +18,9 @@ export const LUMP_SUM_FINAL_SETTLEMENT_COLUMNS: ColumnDef<LumpSumFinalSettlement
 			header: () => <div className='text-center font-bold'>STT</div>,
 			cell: ({ row }) => (
 				<div className='text-center'>
-					{row.original.sttLabel || row.index + 1}
+					{row.original.sttLabel !== undefined
+						? row.original.sttLabel
+						: row.index + 1}
 				</div>
 			),
 			size: 50,

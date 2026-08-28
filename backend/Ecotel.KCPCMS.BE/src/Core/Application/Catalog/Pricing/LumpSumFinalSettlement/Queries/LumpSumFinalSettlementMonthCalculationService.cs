@@ -4,6 +4,7 @@ using Application.Catalog.Pricing.Common;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.LumpSumFinalSettlement;
+using Application.Dto.Catalog.RevenueCostAdjustmentConfig;
 using Application.Dto.Catalog.TransportPlanLine;
 using Domain.Common.Enums;
 using Domain.Entities.Index;
@@ -28,6 +29,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
     private readonly IWriteRepository<LongTermAnchorSeedItemLog> _longTermAnchorSeedItemLogRepository = unitOfWork.GetRepository<LongTermAnchorSeedItemLog>();
     private readonly IWriteRepository<TransportPlanLineEntity> _transportPlanLineRepository = unitOfWork.GetRepository<TransportPlanLineEntity>();
 
+    private readonly record struct VehicleTransferredCost(decimal Material, decimal Maintain, decimal Electricity);
+
     private readonly record struct TransportLineKey(
         Guid ProcessGroupId,
         Guid ProductionProcessId,
@@ -35,7 +38,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         string? EquipmentQuality,
         Guid? TransportRouteId,
         Guid? RouteDepartmentId,
-        Guid? HaulDistanceId);
+        Guid? HaulDistanceId,
+        Guid? CargoTypeId,
+        Guid? ReceivingLocationId,
+        Guid? DumpingLocationId);
 
     public async Task<LumpSumFinalSettlementMonthResponseDto> CalculateAsync(
         int month,
@@ -66,7 +72,16 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             .SelectMany(pg => pg.ProductionOutputTransportLines
                 .Select(tl => new { pg.ProcessGroupId, Line = tl }))
             .GroupBy(x => new TransportLineKey(
-                x.ProcessGroupId, x.Line.ProductionProcessId, x.Line.EquipmentId, x.Line.EquipmentQuality, x.Line.TransportRouteId, x.Line.RouteDepartmentId, x.Line.HaulDistanceId))
+                x.ProcessGroupId,
+                x.Line.ProductionProcessId,
+                x.Line.EquipmentId,
+                x.Line.EquipmentQuality,
+                x.Line.TransportRouteId,
+                x.Line.RouteDepartmentId,
+                x.Line.HaulDistanceId,
+                x.Line.CargoTypeId,
+                x.Line.ReceivingLocationId,
+                x.Line.DumpingLocationId))
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Line.ProductionMeters));
 
         var actualByProduct = productionOutputs
@@ -281,10 +296,108 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }
         }
 
+        var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
+            .Where(po => po.StartMonth.Year == year
+                && po.StartMonth.Month == month
+                && (!hasDepartmentFilter || po.DepartmentId == departmentId)
+                && po.AcceptanceReport != null)
+            .AsSplitQuery()
+            .Include(po => po.ProductionOutputProcessGroups)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Material)
+                        .ThenInclude(m => m!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.Part)
+                        .ThenInclude(part => part!.Costs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.ShippedDetails)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.AcceptanceReportItemLogs)
+            .Include(po => po.AcceptanceReport!)
+                .ThenInclude(ar => ar.AcceptanceReportItems)
+                    .ThenInclude(i => i.CategoryAllocations)
+                        .ThenInclude(ca => ca.Equipments)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var transferredMaterial = 0m;
+        var transferredMaintain = 0m;
+        var maintainExportedToProduction = 0m;
+        var anchorTransferredMaintainByReportId = await BuildAnchorTransferredMaintainByReportIdAsync(
+            outputsWithAcceptanceReport,
+            processGroupId,
+            cancellationToken);
+
+        var vehicleTransferredCosts = new Dictionary<Guid, VehicleTransferredCost>();
+
+        foreach (var output in outputsWithAcceptanceReport)
+        {
+            if (hasProcessGroupFilter && !output.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId))
+            {
+                continue;
+            }
+
+            var report = output.AcceptanceReport;
+            if (report == null)
+            {
+                continue;
+            }
+
+            var sectionAItems = report.AcceptanceReportItems
+                .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
+                .Where(i => !hasProcessGroupFilter || i.ProcessGroupId == processGroupId)
+                .ToList();
+
+            foreach (var item in sectionAItems.Where(i => i.MaterialId.HasValue && i.Material != null))
+            {
+                var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
+                var exportedToProductionQty = item.ShippedDetails
+                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                    .Sum(d => d.Quantity);
+                var amount = (decimal)exportedToProductionQty * unitPrice;
+                transferredMaterial += amount;
+
+                var vehicleId = item.EquipmentId ?? item.CategoryAllocations.FirstOrDefault()?.FirstAssignmentCodeId;
+                if (vehicleId.HasValue)
+                {
+                    var current = vehicleTransferredCosts.GetValueOrDefault(vehicleId.Value, new VehicleTransferredCost(0m, 0m, 0m));
+                    vehicleTransferredCosts[vehicleId.Value] = new VehicleTransferredCost(current.Material + amount, current.Maintain, current.Electricity);
+                }
+            }
+
+            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
+            {
+                var maintainUnitPrice = GetPlannedUnitPrice(item.Part!.Costs, output.StartMonth);
+                var exportedToProductionQty = item.ShippedDetails
+                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
+                    .Sum(d => d.Quantity);
+                var expAmount = (decimal)exportedToProductionQty * maintainUnitPrice;
+                maintainExportedToProduction += expAmount;
+
+                var logsOfCurrentReport = item.AcceptanceReportItemLogs
+                    .Where(l => l.AcceptanceReportId == report.Id);
+                var logAmount = logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
+                transferredMaintain += logAmount;
+
+                var vehicleId = item.EquipmentId ?? item.CategoryAllocations.FirstOrDefault()?.FirstAssignmentCodeId;
+                if (vehicleId.HasValue)
+                {
+                    var current = vehicleTransferredCosts.GetValueOrDefault(vehicleId.Value, new VehicleTransferredCost(0m, 0m, 0m));
+                    vehicleTransferredCosts[vehicleId.Value] = new VehicleTransferredCost(current.Material, current.Maintain + expAmount + logAmount, current.Electricity);
+                }
+            }
+
+            transferredMaintain += anchorTransferredMaintainByReportId.GetValueOrDefault(report.Id, 0m);
+        }
+
         // VTL/VTCG — song song khối Khai thác ở trên, xem claude/plan-dong-bo-van-tai.md mục 5.2.
         // Không có khái niệm Ak (độ tro) nên không cộng thêm AshContent*.
         var transportItems = await BuildTransportItemsAsync(
-            month, year, processGroupId, departmentId, actualByTransportLine, cancellationToken);
+            month, year, processGroupId, departmentId, actualByTransportLine, vehicleTransferredCosts, cancellationToken);
         items.AddRange(transportItems);
 
         var revenueMaterialTotal = 0.0;
@@ -338,80 +451,6 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         revenueMaterialTotal += transportItems.Sum(x => x.Materials.TotalAmount);
         revenueMaintainTotal += transportItems.Sum(x => x.Maintains.TotalAmount);
         revenueElectricityTotal += transportItems.Sum(x => x.Electricities.TotalAmount);
-
-        var outputsWithAcceptanceReport = await _productionOutputRepository.GetAll()
-            .Where(po => po.StartMonth.Year == year
-                && po.StartMonth.Month == month
-                && (!hasDepartmentFilter || po.DepartmentId == departmentId)
-                && po.AcceptanceReport != null)
-            .AsSplitQuery()
-            .Include(po => po.ProductionOutputProcessGroups)
-            .Include(po => po.AcceptanceReport!)
-                .ThenInclude(ar => ar.AcceptanceReportItems)
-                    .ThenInclude(i => i.Material)
-                        .ThenInclude(m => m!.Costs)
-            .Include(po => po.AcceptanceReport!)
-                .ThenInclude(ar => ar.AcceptanceReportItems)
-                    .ThenInclude(i => i.Part)
-                        .ThenInclude(part => part!.Costs)
-            .Include(po => po.AcceptanceReport!)
-                .ThenInclude(ar => ar.AcceptanceReportItems)
-                    .ThenInclude(i => i.ShippedDetails)
-            .Include(po => po.AcceptanceReport!)
-                .ThenInclude(ar => ar.AcceptanceReportItems)
-                    .ThenInclude(i => i.AcceptanceReportItemLogs)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var transferredMaterial = 0m;
-        var transferredMaintain = 0m;
-        var maintainExportedToProduction = 0m;
-        var anchorTransferredMaintainByReportId = await BuildAnchorTransferredMaintainByReportIdAsync(
-            outputsWithAcceptanceReport,
-            processGroupId,
-            cancellationToken);
-        foreach (var output in outputsWithAcceptanceReport)
-        {
-            if (hasProcessGroupFilter && !output.ProductionOutputProcessGroups.Any(pg => pg.ProcessGroupId == processGroupId))
-            {
-                continue;
-            }
-
-            var report = output.AcceptanceReport;
-            if (report == null)
-            {
-                continue;
-            }
-
-            var sectionAItems = report.AcceptanceReportItems
-                .Where(i => i.MaterialsIncludedInContractRevenue != MaterialsIncludedInContractRevenue.None)
-                .Where(i => !hasProcessGroupFilter || i.ProcessGroupId == processGroupId)
-                .ToList();
-
-            foreach (var item in sectionAItems.Where(i => i.MaterialId.HasValue && i.Material != null))
-            {
-                var unitPrice = GetPlannedUnitPrice(item.Material!.Costs, output.StartMonth);
-                var exportedToProductionQty = item.ShippedDetails
-                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
-                    .Sum(d => d.Quantity);
-                transferredMaterial += (decimal)exportedToProductionQty * unitPrice;
-            }
-
-            foreach (var item in sectionAItems.Where(i => i.PartId.HasValue && i.Part != null))
-            {
-                var maintainUnitPrice = GetPlannedUnitPrice(item.Part!.Costs, output.StartMonth);
-                var exportedToProductionQty = item.ShippedDetails
-                    .Where(d => d.Type == ShippedQuantityType.XuatChoSanXuat)
-                    .Sum(d => d.Quantity);
-                maintainExportedToProduction += (decimal)exportedToProductionQty * maintainUnitPrice;
-
-                var logsOfCurrentReport = item.AcceptanceReportItemLogs
-                    .Where(l => l.AcceptanceReportId == report.Id);
-                transferredMaintain += logsOfCurrentReport.Sum(l => l.AccountedValueThisPeriod);
-            }
-
-            transferredMaintain += anchorTransferredMaintainByReportId.GetValueOrDefault(report.Id, 0m);
-        }
 
         var customCosts = await _customCostRepository.GetAllAsync(
             predicate: x => x.Month == month
@@ -553,6 +592,19 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             SavingAddedToIncomeMonth = savingAddedToIncomeMonth,
             SavingCarryForwardByMonths = savingCarryForwardByMonths,
             SavingCarryForwardToNextMonths = savingCarryForwardToNextMonths,
+            RevenueCostAdjustmentConfigs = revenueCostAdjustmentConfigs
+                .OrderBy(x => x.MinProfit ?? decimal.MinValue)
+                .Select(x => new RevenueCostAdjustmentConfigDto
+                {
+                    Id = x.Id,
+                    ProfitConditionDisplay = x.ProfitConditionDisplay,
+                    MinProfit = x.MinProfit,
+                    MaxProfit = x.MaxProfit,
+                    RateDisplay = x.RateDisplay,
+                    Rate = x.Rate,
+                    Description = x.Description
+                })
+                .ToList(),
             CustomCosts = customCosts
                 .OrderBy(x => x.CreatedOn)
                 .Select(x => new LumpSumQuarterCustomCostDto
@@ -581,6 +633,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         Guid? processGroupId,
         Guid? departmentId,
         Dictionary<TransportLineKey, double> actualByTransportLine,
+        Dictionary<Guid, VehicleTransferredCost> vehicleTransferredCosts,
         CancellationToken cancellationToken)
     {
         var hasProcessGroupFilter = processGroupId.HasValue;
@@ -609,6 +662,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 .ThenInclude(r => r!.Code)
             .Include(x => x.RouteDepartment)
                 .ThenInclude(rd => rd!.Code)
+            .Include(x => x.CargoType)
+                .ThenInclude(c => c!.Code)
+            .Include(x => x.ReceivingLocation)
+            .Include(x => x.DumpingLocation)
             .Include(x => x.PlannedTransportCost)
                 .ThenInclude(c => c!.AdjustmentFactors)
                     .ThenInclude(f => f.AdjustmentFactor)
@@ -649,7 +706,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 line.EquipmentQuality,
                 line.TransportRouteId,
                 line.RouteDepartmentId,
-                line.HaulDistanceId);
+                line.HaulDistanceId,
+                line.CargoTypeId,
+                line.ReceivingLocationId,
+                line.DumpingLocationId);
             var actualQuantity = actualByTransportLine.TryGetValue(key, out var meters) ? meters : 0;
 
             double ComponentTotal(TransportCostComponentDto component) => planItem.IsLowVolumeCase
@@ -674,6 +734,13 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             var defaultGroupCode = isVtcg ? "VTCG" : "VTL";
             var defaultGroupName = isVtcg ? "Vận tải cơ giới" : "Vận tải lò";
 
+            var vCost = line.EquipmentId.HasValue && vehicleTransferredCosts.TryGetValue(line.EquipmentId.Value, out var cost)
+                ? cost
+                : new VehicleTransferredCost(0m, 0m, 0m);
+            var vMaterial = (double)vCost.Material;
+            var vMaintain = (double)vCost.Maintain;
+            var vElectricity = (double)vCost.Electricity;
+
             result.Add(new LumpSumFinalSettlementDto
             {
                 Id = planItem.Id,
@@ -681,7 +748,9 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 ProcessGroupCode = line.ProductionProcess?.ProcessGroup?.Code?.Value
                     ?? line.ProductionProcess?.ProcessGroup?.FixedKey?.Key
                     ?? defaultGroupCode,
-                ProcessGroupName = line.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
+                ProcessGroupName = !string.IsNullOrWhiteSpace(line.ProductionProcess?.ProcessGroup?.Name)
+                    ? line.ProductionProcess.ProcessGroup.Name
+                    : defaultGroupName,
                 ProductCode = !string.IsNullOrEmpty(planItem.ProductionProcessCode)
                     ? planItem.ProductionProcessCode
                     : (planItem.EquipmentCode ?? planItem.TransportRouteCode ?? defaultGroupCode),
@@ -700,6 +769,17 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 EquipmentQuality = planItem.EquipmentQuality,
                 HaulDistanceId = planItem.HaulDistanceId,
                 HaulDistanceValue = planItem.HaulDistanceValue,
+                CargoTypeId = line.CargoTypeId,
+                CargoTypeCode = line.CargoType?.Code?.Value,
+                CargoTypeName = line.CargoType?.Name,
+                ReceivingLocationId = line.ReceivingLocationId,
+                ReceivingLocationName = line.ReceivingLocation?.Name,
+                DumpingLocationId = line.DumpingLocationId,
+                DumpingLocationName = line.DumpingLocation?.Name,
+                VehicleTransferredMaterialAmount = vMaterial,
+                VehicleTransferredMaintainAmount = vMaintain,
+                VehicleTransferredElectricityAmount = vElectricity,
+                VehicleTotalTransferredCost = vMaterial + vMaintain + vElectricity,
                 UnitOfMeasureId = planItem.UnitOfMeasureId ?? Guid.Empty,
                 UnitOfMeasureName = planItem.UnitOfMeasureName ?? string.Empty,
                 PlannedQuantity = planItem.ProductionMeters,
@@ -737,6 +817,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             var isVtcg = first.ProductionProcess?.ProcessGroup?.Type == ProcessGroupType.VTCG
                 || first.ProductionProcess?.ProcessGroup?.FixedKey?.Key == "VTCG";
             var defaultGroupCode = isVtcg ? "VTCG" : "VTL";
+            var defaultGroupName = isVtcg ? "Vận tải cơ giới" : "Vận tải lò";
 
             result.Add(new LumpSumFinalSettlementDto
             {
@@ -745,7 +826,9 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 ProcessGroupCode = first.ProductionProcess?.ProcessGroup?.Code?.Value
                     ?? first.ProductionProcess?.ProcessGroup?.FixedKey?.Key
                     ?? defaultGroupCode,
-                ProcessGroupName = first.ProductionProcess?.ProcessGroup?.Name ?? string.Empty,
+                ProcessGroupName = !string.IsNullOrWhiteSpace(first.ProductionProcess?.ProcessGroup?.Name)
+                    ? first.ProductionProcess.ProcessGroup.Name
+                    : defaultGroupName,
                 ProductCode = isVtcg ? "RTMH-VTCG" : "RTMH-VTL",
                 ProductName = "Chi phí vật tư mau hỏng rẻ tiền",
                 UnitOfMeasureName = "Đồng/tháng",
