@@ -11,7 +11,7 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { MotorizedServiceCraneUnitPrice } from './columns';
 import {
@@ -19,10 +19,15 @@ import {
 	motorizedServiceCraneFormSchema,
 	MotorizedServiceCraneFormSchema,
 } from './schema';
+import { MotorizedSubFormHandle } from '../scania/form';
 
-type MotorizedServiceCraneFormProps =
+export type MotorizedServiceCraneFormProps =
 	ActionDialogProps<MotorizedServiceCraneUnitPrice> & {
 		isDuplicate?: boolean;
+		hideTimeRow?: boolean;
+		hideConfirmButton?: boolean;
+		sharedStartMonth?: string;
+		sharedEndMonth?: string;
 	};
 
 const extractData = (res: any): any[] => {
@@ -53,11 +58,21 @@ const fetchCatalogList = async (url: string) => {
 	}
 };
 
-export function MotorizedServiceCraneForm({
-	data,
-	row,
-	isDuplicate = false,
-}: MotorizedServiceCraneFormProps) {
+export const MotorizedServiceCraneForm = forwardRef<
+	MotorizedSubFormHandle,
+	MotorizedServiceCraneFormProps
+>(function MotorizedServiceCraneForm(
+	{
+		data,
+		row,
+		isDuplicate = false,
+		hideTimeRow = false,
+		hideConfirmButton = false,
+		sharedStartMonth,
+		sharedEndMonth,
+	}: MotorizedServiceCraneFormProps,
+	ref,
+) {
 	useMeta();
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -71,6 +86,18 @@ export function MotorizedServiceCraneForm({
 		mode: 'onSubmit',
 		defaultValues: MOTORIZED_SERVICE_CRANE_FORM_DEFAULT,
 	});
+
+	useEffect(() => {
+		if (sharedStartMonth !== undefined) {
+			form.setValue('startMonth', sharedStartMonth);
+		}
+	}, [sharedStartMonth, form]);
+
+	useEffect(() => {
+		if (sharedEndMonth !== undefined) {
+			form.setValue('endMonth', sharedEndMonth);
+		}
+	}, [sharedEndMonth, form]);
 
 	const selectedAssignmentCodeIds =
 		useWatch({
@@ -305,24 +332,41 @@ export function MotorizedServiceCraneForm({
 		JSON.stringify(watchedEquipmentDistances),
 	]);
 
-	const handleSubmit = async (values: MotorizedServiceCraneFormSchema) => {
+	const submitInternal = async (
+		startM?: string,
+		endM?: string,
+	): Promise<boolean> => {
 		try {
-			const itemsToSubmit = values.items || [];
+			const values = form.getValues();
+			const itemsToSubmit = (values.items || []).filter(
+				(item: any) =>
+					item.assignmentCodeId &&
+					(Number(item.fuelUnitPrice) > 0 ||
+						Number(item.maintenanceUnitPrice) > 0),
+			);
+
 			if (itemsToSubmit.length === 0) {
-				popup.error(
-					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá',
-				);
-				return;
+				if (selectedAssignmentCodeIds.length > 0) {
+					popup.error(
+						'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá Xe phục vụ',
+					);
+					return false;
+				}
+				return true;
+			}
+
+			const rawStart = startM || values.startMonth;
+			const rawEnd = endM || values.endMonth;
+
+			if (!rawStart) {
+				popup.error('Vui lòng chọn Thời gian bắt đầu cho Xe phục vụ');
+				return false;
 			}
 
 			const startMonth =
-				values.startMonth.length === 7
-					? `${values.startMonth}-01`
-					: values.startMonth;
+				rawStart.length === 7 ? `${rawStart}-01` : rawStart;
 			const endMonth =
-				values.endMonth.length === 7
-					? `${values.endMonth}-01`
-					: values.endMonth;
+				rawEnd.length === 7 ? `${rawEnd}-01` : rawEnd;
 
 			const groupedHeaders: Record<
 				string,
@@ -393,7 +437,20 @@ export function MotorizedServiceCraneForm({
 			});
 
 			await Promise.all(promises);
+			return true;
+		} catch (error) {
+			popup.error(error);
+			return false;
+		}
+	};
 
+	useImperativeHandle(ref, () => ({
+		submit: submitInternal,
+	}));
+
+	const handleSubmit = async () => {
+		const ok = await submitInternal();
+		if (ok) {
 			popup.success(
 				row && !isDuplicate
 					? 'Cập nhật đơn giá thành công'
@@ -403,8 +460,6 @@ export function MotorizedServiceCraneForm({
 			setOpen(false);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
 		}
 	};
 
@@ -421,20 +476,22 @@ export function MotorizedServiceCraneForm({
 				popup.error(msg);
 			}}
 		>
-			<FormRow>
-				<FormMonthYear
-					control={form.control as any}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control as any}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
+			{!hideTimeRow && (
+				<FormRow>
+					<FormMonthYear
+						control={form.control as any}
+						name='startMonth'
+						label='Thời gian bắt đầu'
+						className='flex-1'
+					/>
+					<FormMonthYear
+						control={form.control as any}
+						name='endMonth'
+						label='Thời gian kết thúc'
+						className='flex-1'
+					/>
+				</FormRow>
+			)}
 
 			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
 				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
@@ -564,40 +621,22 @@ export function MotorizedServiceCraneForm({
 														Bảng đơn giá ({filteredItems.length} tổ hợp)
 													</div>
 
-													<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-														<table className='w-full text-left text-sm'>
-															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
+													<div className='w-full overflow-x-auto rounded-md border border-gray-200 bg-white'>
+														<table className='w-full min-w-[700px] text-left text-sm'>
+															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
 																<tr>
-																	<th
-																		className={
-																			isWatering
-																				? 'w-[30%] px-3 py-2'
-																				: 'w-[40%] px-3 py-2'
-																		}
-																	>
+																	<th className='whitespace-nowrap px-3 py-2'>
 																		Chất lượng
 																	</th>
 																	{isWatering && (
-																		<th className='w-[30%] px-3 py-2'>
+																		<th className='whitespace-nowrap px-3 py-2'>
 																			Cung độ
 																		</th>
 																	)}
-																	<th
-																		className={
-																			isWatering
-																				? 'w-[20%] px-3 py-2'
-																				: 'w-[30%] px-3 py-2'
-																		}
-																	>
+																	<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
 																		Đơn giá Nhiên liệu {itemUnitLabel}
 																	</th>
-																	<th
-																		className={
-																			isWatering
-																				? 'w-[20%] px-3 py-2'
-																				: 'w-[30%] px-3 py-2'
-																		}
-																	>
+																	<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
 																		Đơn giá SCTX {itemUnitLabel}
 																	</th>
 																</tr>
@@ -622,28 +661,28 @@ export function MotorizedServiceCraneForm({
 																			key={`${item.equipmentQuality}-${item.haulDistanceId || idx}`}
 																			className='hover:bg-gray-50/50'
 																		>
-																			<td className='px-3 py-2'>
-																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																			<td className='whitespace-nowrap px-3 py-2'>
+																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																					Thiết bị loại {item.equipmentQuality}
 																				</div>
 																			</td>
 																			{isWatering && (
-																				<td className='px-3 py-2'>
-																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																				<td className='whitespace-nowrap px-3 py-2'>
+																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																						{item.haulDistanceValue
 																							? ` ${item.haulDistanceValue} km`
 																							: '-'}
 																					</div>
 																				</td>
 																			)}
-																			<td className='px-3 py-2'>
+																			<td className='w-40 min-w-[140px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.fuelUnitPrice`}
 																					placeholder='Nhập đơn giá nhiên liệu'
 																				/>
 																			</td>
-																			<td className='px-3 py-2'>
+																			<td className='w-40 min-w-[140px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.maintenanceUnitPrice`}
@@ -666,7 +705,9 @@ export function MotorizedServiceCraneForm({
 				})}
 			</div>
 
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			{!hideConfirmButton && (
+				<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			)}
 		</FormProvider>
 	);
-}
+});

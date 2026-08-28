@@ -1,5 +1,6 @@
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormMonthYear } from '@/components/form/form-month-year';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
@@ -9,7 +10,7 @@ import { ExcavatorMonthSection } from './components/excavator-month-section';
 import { ScaniaMonthSection } from './components/scania-month-section';
 import { ServiceCraneMonthSection } from './components/service-crane-month-section';
 import { VacuumTruckMonthSection } from './components/vacuum-truck-month-section';
-import { MOTORIZED_PLAN_CATEGORIES, MotorizedCategory } from './types';
+import { MOTORIZED_PLAN_CATEGORIES } from './types';
 
 type MotorizedMonthSectionProps = {
 	form: UseFormReturn<DepartmentPlanFormSchema>;
@@ -41,12 +42,11 @@ export function MotorizedMonthSection({
 		name: monthPath,
 	}) as any;
 
-	const activeCategory: MotorizedCategory =
-		watchedMonth?.motorizedCategory || 'scania';
-
-	const handleCategoryChange = (category: MotorizedCategory) => {
-		form.setValue(`${monthPath}.motorizedCategory` as any, category);
-	};
+	const selectedCategories: string[] =
+		watchedMonth?.motorizedCategories ||
+		(watchedMonth?.motorizedCategory
+			? [watchedMonth.motorizedCategory]
+			: ['scania']);
 
 	const currentEquipments = assignmentCodes;
 	const currentProcesses = productionProcesses;
@@ -106,35 +106,20 @@ export function MotorizedMonthSection({
 				label='Chi phí vật tư mau hỏng rẻ tiền (đồng/tháng)'
 			/>
 
-			{/* CẤP 1: 4 LOẠI PHƯƠNG TIỆN VẬN TẢI CƠ GIỚI */}
-			<div className='space-y-1.5'>
-				<div className='text-xs font-bold text-gray-700 uppercase'>
-					Nhóm Vận tải cơ giới
-				</div>
-				<div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
-					{MOTORIZED_PLAN_CATEGORIES.map((cat) => {
-						const isSelected = activeCategory === cat.id;
-						return (
-							<Button
-								key={cat.id}
-								type='button'
-								variant={isSelected ? 'default' : 'outline'}
-								className={`h-auto min-h-[44px] flex-col items-center justify-center gap-1 p-3 text-center transition-all ${
-									isSelected
-										? 'border-blue-600 bg-blue-600 text-white shadow-sm'
-										: 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50'
-								}`}
-								onClick={() => handleCategoryChange(cat.id)}
-							>
-								<div className='w-full text-center font-bold'>{cat.name}</div>
-							</Button>
-						);
-					})}
-				</div>
-			</div>
+			{/* CẤP 1: CHỌN NHÓM VẬN TẢI CƠ GIỚI (MULTI-SELECT) */}
+			<FormMultiSelect
+				control={form.control as any}
+				name={`${monthPath}.motorizedCategories` as any}
+				label='Nhóm Vận tải cơ giới'
+				placeholder='Chọn nhóm vận tải cơ giới'
+				options={MOTORIZED_PLAN_CATEGORIES.map((cat) => ({
+					value: cat.id,
+					label: cat.name,
+				}))}
+			/>
 
-			{/* RENDER FORM SECTION THEO TỪNG LOẠI PHƯƠNG TIỆN */}
-			<div className={activeCategory === 'scania' ? 'block' : 'hidden'}>
+			{/* RENDER DÃY FORM THEO TỪNG NHÓM ĐƯỢC CHỌN */}
+			{selectedCategories.includes('scania') && (
 				<ScaniaMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -149,18 +134,18 @@ export function MotorizedMonthSection({
 					}
 					distances={currentDistances}
 				/>
-			</div>
+			)}
 
-			<div className={activeCategory === 'excavator_dozer' ? 'block' : 'hidden'}>
+			{selectedCategories.includes('excavator_dozer') && (
 				<ExcavatorMonthSection
 					form={form}
 					monthIndex={monthIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 				/>
-			</div>
+			)}
 
-			<div className={activeCategory === 'service_crane' ? 'block' : 'hidden'}>
+			{selectedCategories.includes('service_crane') && (
 				<ServiceCraneMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -168,9 +153,9 @@ export function MotorizedMonthSection({
 					processes={currentProcesses}
 					distances={currentDistances}
 				/>
-			</div>
+			)}
 
-			<div className={activeCategory === 'vacuum_truck' ? 'block' : 'hidden'}>
+			{selectedCategories.includes('vacuum_truck') && (
 				<VacuumTruckMonthSection
 					form={form}
 					monthIndex={monthIndex}
@@ -178,7 +163,7 @@ export function MotorizedMonthSection({
 					processes={currentProcesses}
 					distances={currentDistances}
 				/>
-			</div>
+			)}
 		</div>
 	);
 }

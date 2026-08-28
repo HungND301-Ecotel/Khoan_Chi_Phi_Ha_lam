@@ -12,7 +12,7 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { InfoIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { CargoType } from '@/features/main/catalog/cargo-type/columns';
 import {
@@ -26,9 +26,21 @@ import {
 	MotorizedScaniaFormSchema,
 } from './schema';
 
-type MotorizedScaniaFormProps = ActionDialogProps<MotorizedScaniaUnitPrice> & {
-	isDuplicate?: boolean;
+export type MotorizedSubFormHandle = {
+	submit: (
+		sharedStartMonth?: string,
+		sharedEndMonth?: string,
+	) => Promise<boolean>;
 };
+
+export type MotorizedScaniaFormProps =
+	ActionDialogProps<MotorizedScaniaUnitPrice> & {
+		isDuplicate?: boolean;
+		hideTimeRow?: boolean;
+		hideConfirmButton?: boolean;
+		sharedStartMonth?: string;
+		sharedEndMonth?: string;
+	};
 
 const extractData = (res: any): any[] => {
 	if (!res) return [];
@@ -58,11 +70,21 @@ const fetchCatalogList = async (url: string) => {
 	}
 };
 
-export function MotorizedScaniaForm({
-	data,
-	row,
-	isDuplicate = false,
-}: MotorizedScaniaFormProps) {
+export const MotorizedScaniaForm = forwardRef<
+	MotorizedSubFormHandle,
+	MotorizedScaniaFormProps
+>(function MotorizedScaniaForm(
+	{
+		data,
+		row,
+		isDuplicate = false,
+		hideTimeRow = false,
+		hideConfirmButton = false,
+		sharedStartMonth,
+		sharedEndMonth,
+	}: MotorizedScaniaFormProps,
+	ref,
+) {
 	useMeta();
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -78,6 +100,18 @@ export function MotorizedScaniaForm({
 		mode: 'onSubmit',
 		defaultValues: MOTORIZED_SCANIA_FORM_DEFAULT,
 	});
+
+	useEffect(() => {
+		if (sharedStartMonth !== undefined) {
+			form.setValue('startMonth', sharedStartMonth);
+		}
+	}, [sharedStartMonth, form]);
+
+	useEffect(() => {
+		if (sharedEndMonth !== undefined) {
+			form.setValue('endMonth', sharedEndMonth);
+		}
+	}, [sharedEndMonth, form]);
 
 	const selectedAssignmentCodeIds =
 		useWatch({ control: form.control as any, name: 'assignmentCodeIds' }) || [];
@@ -207,31 +241,49 @@ export function MotorizedScaniaForm({
 						if (!initialProcCargoTypes[scopeKey]) {
 							initialProcCargoTypes[scopeKey] = [];
 						}
+						const resolvedCargoId =
+							p.cargoTypeId ||
+							cargoList.find(
+								(c: any) =>
+									c.name === p.cargoTypeName ||
+									c.code === p.cargoTypeName,
+							)?.id;
 						if (
-							p.cargoTypeId &&
-							!initialProcCargoTypes[scopeKey].includes(p.cargoTypeId)
+							resolvedCargoId &&
+							!initialProcCargoTypes[scopeKey].includes(resolvedCargoId)
 						) {
-							initialProcCargoTypes[scopeKey].push(p.cargoTypeId);
+							initialProcCargoTypes[scopeKey].push(resolvedCargoId);
 						}
 
 						if (!initialProcPickups[scopeKey]) {
 							initialProcPickups[scopeKey] = [];
 						}
+						const resolvedPickupId =
+							p.receivingLocationId ||
+							locList.find(
+								(l: any) => l.name === p.receivingLocationName,
+							)?.id ||
+							p.receivingLocationName;
 						if (
-							p.receivingLocationId &&
-							!initialProcPickups[scopeKey].includes(p.receivingLocationId)
+							resolvedPickupId &&
+							!initialProcPickups[scopeKey].includes(resolvedPickupId)
 						) {
-							initialProcPickups[scopeKey].push(p.receivingLocationId);
+							initialProcPickups[scopeKey].push(resolvedPickupId);
 						}
 
 						if (!initialProcDropoffs[scopeKey]) {
 							initialProcDropoffs[scopeKey] = [];
 						}
+						const resolvedDropoffId =
+							p.dumpingLocationId ||
+							locList.find((l: any) => l.name === p.dumpingLocationName)
+								?.id ||
+							p.dumpingLocationName;
 						if (
-							p.dumpingLocationId &&
-							!initialProcDropoffs[scopeKey].includes(p.dumpingLocationId)
+							resolvedDropoffId &&
+							!initialProcDropoffs[scopeKey].includes(resolvedDropoffId)
 						) {
-							initialProcDropoffs[scopeKey].push(p.dumpingLocationId);
+							initialProcDropoffs[scopeKey].push(resolvedDropoffId);
 						}
 					}
 
@@ -414,24 +466,42 @@ export function MotorizedScaniaForm({
 		JSON.stringify(watchedProcessDropoffLocations),
 	]);
 
-	const handleSubmit = async (values: MotorizedScaniaFormSchema) => {
+	const submitInternal = async (
+		startM?: string,
+		endM?: string,
+	): Promise<boolean> => {
 		try {
-			const itemsToSubmit = values.items || [];
+			const values = form.getValues();
+			const itemsToSubmit = (values.items || []).filter(
+				(item: any) =>
+					item.assignmentCodeId &&
+					(Number(item.fuelUnitPrice) > 0 ||
+						Number(item.powerUnitPrice) > 0 ||
+						Number(item.maintenanceUnitPrice) > 0),
+			);
+
 			if (itemsToSubmit.length === 0) {
-				popup.error(
-					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá',
-				);
-				return;
+				if (selectedAssignmentCodeIds.length > 0) {
+					popup.error(
+						'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá Xe Scania',
+					);
+					return false;
+				}
+				return true;
+			}
+
+			const rawStart = startM || values.startMonth;
+			const rawEnd = endM || values.endMonth;
+
+			if (!rawStart) {
+				popup.error('Vui lòng chọn Thời gian bắt đầu cho Xe Scania');
+				return false;
 			}
 
 			const startMonth =
-				values.startMonth.length === 7
-					? `${values.startMonth}-01`
-					: values.startMonth;
+				rawStart.length === 7 ? `${rawStart}-01` : rawStart;
 			const endMonth =
-				values.endMonth.length === 7
-					? `${values.endMonth}-01`
-					: values.endMonth;
+				rawEnd.length === 7 ? `${rawEnd}-01` : rawEnd;
 
 			const groupedHeaders: Record<
 				string,
@@ -506,7 +576,20 @@ export function MotorizedScaniaForm({
 			});
 
 			await Promise.all(promises);
+			return true;
+		} catch (error) {
+			popup.error(error);
+			return false;
+		}
+	};
 
+	useImperativeHandle(ref, () => ({
+		submit: submitInternal,
+	}));
+
+	const handleSubmit = async () => {
+		const ok = await submitInternal();
+		if (ok) {
 			popup.success(
 				row && !isDuplicate
 					? 'Cập nhật đơn giá Xe Scania thành công'
@@ -516,8 +599,6 @@ export function MotorizedScaniaForm({
 			setOpen(false);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
 		}
 	};
 
@@ -535,20 +616,22 @@ export function MotorizedScaniaForm({
 			}}
 		>
 			{/* FORM TRÊN */}
-			<FormRow>
-				<FormMonthYear
-					control={form.control as any}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control as any}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
+			{!hideTimeRow && (
+				<FormRow>
+					<FormMonthYear
+						control={form.control as any}
+						name='startMonth'
+						label='Thời gian bắt đầu'
+						className='flex-1'
+					/>
+					<FormMonthYear
+						control={form.control as any}
+						name='endMonth'
+						label='Thời gian kết thúc'
+						className='flex-1'
+					/>
+				</FormRow>
+			)}
 
 			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
 				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
@@ -696,31 +779,35 @@ export function MotorizedScaniaForm({
 														Bảng đơn giá ({filteredItems.length} tổ hợp)
 													</div>
 
-													<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-														<table className='w-full text-left text-sm'>
-															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
+													<div className='w-full overflow-x-auto rounded-md border border-gray-200 bg-white'>
+														<table className='w-full min-w-[850px] text-left text-sm'>
+															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
 																<tr>
-																	<th className='px-3 py-2'>Chất lượng</th>
+																	<th className='whitespace-nowrap px-3 py-2'>
+																		Chất lượng
+																	</th>
 																	{currentCargoTypes.length > 0 && (
-																		<th className='px-3 py-2'>
+																		<th className='whitespace-nowrap px-3 py-2'>
 																			Chủng loại hàng
 																		</th>
 																	)}
 																	{hasLocation && (
-																		<th className='px-3 py-2'>
+																		<th className='whitespace-nowrap px-3 py-2'>
 																			Vị trí nhận → Đổ
 																		</th>
 																	)}
 																	{currentDists.length > 0 && (
-																		<th className='px-3 py-2'>Cung độ</th>
+																		<th className='whitespace-nowrap px-3 py-2'>
+																			Cung độ
+																		</th>
 																	)}
-																	<th className='px-3 py-2'>
+																	<th className='w-36 min-w-[130px] whitespace-nowrap px-3 py-2'>
 																		Đơn giá Nhiên liệu (đ/tkm)
 																	</th>
-																	<th className='px-3 py-2'>
+																	<th className='w-36 min-w-[130px] whitespace-nowrap px-3 py-2'>
 																		Đơn giá Động lực (đ/tkm)
 																	</th>
-																	<th className='px-3 py-2'>
+																	<th className='w-36 min-w-[130px] whitespace-nowrap px-3 py-2'>
 																		Đơn giá SCTX (đ/tkm)
 																	</th>
 																</tr>
@@ -752,21 +839,21 @@ export function MotorizedScaniaForm({
 																			key={`${item.equipmentQuality}-${item.cargoTypeId || ''}-${item.receivingLocationId || ''}-${item.dumpingLocationId || ''}-${item.haulDistanceId || idx}`}
 																			className='hover:bg-gray-50/50'
 																		>
-																			<td className='px-3 py-2'>
-																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																			<td className='whitespace-nowrap px-3 py-2'>
+																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																					Thiết bị loại {item.equipmentQuality}
 																				</div>
 																			</td>
 																			{currentCargoTypes.length > 0 && (
-																				<td className='px-3 py-2'>
-																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																				<td className='whitespace-nowrap px-3 py-2'>
+																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																						{item.cargoTypeName || '-'}
 																					</div>
 																				</td>
 																			)}
 																			{hasLocation && (
-																				<td className='px-3 py-2'>
-																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																				<td className='whitespace-nowrap px-3 py-2'>
+																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																						{item.receivingLocationName ||
 																						item.dumpingLocationName
 																							? `${item.receivingLocationName || '...'} → ${item.dumpingLocationName || '...'}`
@@ -775,29 +862,29 @@ export function MotorizedScaniaForm({
 																				</td>
 																			)}
 																			{currentDists.length > 0 && (
-																				<td className='px-3 py-2'>
-																					<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																				<td className='whitespace-nowrap px-3 py-2'>
+																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																						{item.haulDistanceValue
 																							? `${item.haulDistanceValue} km`
 																							: '-'}
 																					</div>
 																				</td>
 																			)}
-																			<td className='px-3 py-2'>
+																			<td className='w-36 min-w-[130px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.fuelUnitPrice`}
 																					placeholder='Nhập đơn giá nhiên liệu'
 																				/>
 																			</td>
-																			<td className='px-3 py-2'>
+																			<td className='w-36 min-w-[130px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.powerUnitPrice`}
 																					placeholder='Nhập đơn giá động lực'
 																				/>
 																			</td>
-																			<td className='px-3 py-2'>
+																			<td className='w-36 min-w-[130px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.maintenanceUnitPrice`}
@@ -820,27 +907,31 @@ export function MotorizedScaniaForm({
 				})}
 			</div>
 
-			<div className='mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300'>
-				<div className='flex items-center gap-1.5 font-semibold text-blue-900 dark:text-blue-200'>
-					<InfoIcon className='size-4 text-blue-600 dark:text-blue-400' />
-					Lưu ý về Hệ số điều chỉnh đơn giá định mức (Cấu hình ở Danh mục):
-				</div>
-				<ul className='mt-1 list-disc space-y-0.5 pl-5 text-slate-700 dark:text-slate-300'>
-					<li>
-						Đơn giá nhiên liệu, SCTX tăng 5% theo công đoạn sản xuất, mùa mưa và
-						loại hàng.
-					</li>
-					<li>
-						Áp dụng hệ số điều chỉnh khi sản phẩm là Than, bùn, bã sàng, đá sàng
-						đổ tại Kho 5 (Kho BHN) & Kho 6 (mức +75):
-						<span className='font-medium'> Mức ≤ +65 (K = 1)</span>;
-						<span className='font-medium'> +65 &lt; Mức ≤ +90 (K = 1,03)</span>;
-						<span className='font-medium'> Mức &gt; +90 (K = 1,06)</span>.
-					</li>
-				</ul>
-			</div>
+			{!hideConfirmButton && (
+				<>
+					<div className='mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300'>
+						<div className='flex items-center gap-1.5 font-semibold text-blue-900 dark:text-blue-200'>
+							<InfoIcon className='size-4 text-blue-600 dark:text-blue-400' />
+							Lưu ý về Hệ số điều chỉnh đơn giá định mức (Cấu hình ở Danh mục):
+						</div>
+						<ul className='mt-1 list-disc space-y-0.5 pl-5 text-slate-700 dark:text-slate-300'>
+							<li>
+								Đơn giá nhiên liệu, SCTX tăng 5% theo công đoạn sản xuất, mùa mưa và
+								loại hàng.
+							</li>
+							<li>
+								Áp dụng hệ số điều chỉnh khi sản phẩm là Than, bùn, bã sàng, đá sàng
+								đổ tại Kho 5 (Kho BHN) & Kho 6 (mức +75):
+								<span className='font-medium'> Mức ≤ +65 (K = 1)</span>;
+								<span className='font-medium'> +65 &lt; Mức ≤ +90 (K = 1,03)</span>;
+								<span className='font-medium'> Mức &gt; +90 (K = 1,06)</span>.
+							</li>
+						</ul>
+					</div>
 
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+					<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+				</>
+			)}
 		</FormProvider>
 	);
-}
+});

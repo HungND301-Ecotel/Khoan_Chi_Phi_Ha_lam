@@ -150,6 +150,7 @@ const motorizedPlannedMonthSchema = z.object({
 		.enum(['scania', 'excavator_dozer', 'service_crane', 'vacuum_truck'])
 		.optional()
 		.default('scania'),
+	motorizedCategories: z.array(z.string()).optional().default(['scania']),
 	assignmentCodeIds: z.array(z.string()).optional().default([]),
 	scaniaAssignmentCodeIds: z.array(z.string()).optional().default([]),
 	excavatorAssignmentCodeIds: z.array(z.string()).optional().default([]),
@@ -454,6 +455,7 @@ export const DEPARTMENT_PLAN_FORM_DEFAULT: DepartmentPlanFormSchema = {
 			month: '',
 			lowValuePerishableSupply: false,
 			motorizedCategory: 'scania',
+			motorizedCategories: ['scania'],
 			assignmentCodeIds: [],
 			scaniaAssignmentCodeIds: [],
 			excavatorAssignmentCodeIds: [],

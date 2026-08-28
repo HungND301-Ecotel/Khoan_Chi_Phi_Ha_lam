@@ -11,7 +11,7 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { MotorizedExcavatorDozerUnitPrice } from './columns';
 import {
@@ -19,10 +19,15 @@ import {
 	motorizedExcavatorDozerFormSchema,
 	MotorizedExcavatorDozerFormSchema,
 } from './schema';
+import { MotorizedSubFormHandle } from '../scania/form';
 
-type MotorizedExcavatorDozerFormProps =
+export type MotorizedExcavatorDozerFormProps =
 	ActionDialogProps<MotorizedExcavatorDozerUnitPrice> & {
 		isDuplicate?: boolean;
+		hideTimeRow?: boolean;
+		hideConfirmButton?: boolean;
+		sharedStartMonth?: string;
+		sharedEndMonth?: string;
 	};
 
 const DEFAULT_PROCESS_OPTIONS = [
@@ -44,11 +49,21 @@ const DEFAULT_PROCESS_OPTIONS = [
 	{ label: 'Giờ gạt di chuyển', value: 'Giờ gạt di chuyển' },
 ];
 
-export function MotorizedExcavatorDozerForm({
-	data,
-	row,
-	isDuplicate = false,
-}: MotorizedExcavatorDozerFormProps) {
+export const MotorizedExcavatorDozerForm = forwardRef<
+	MotorizedSubFormHandle,
+	MotorizedExcavatorDozerFormProps
+>(function MotorizedExcavatorDozerForm(
+	{
+		data,
+		row,
+		isDuplicate = false,
+		hideTimeRow = false,
+		hideConfirmButton = false,
+		sharedStartMonth,
+		sharedEndMonth,
+	}: MotorizedExcavatorDozerFormProps,
+	ref,
+) {
 	useMeta();
 	const popup = usePopup();
 	const { setOpen } = useDialog();
@@ -62,6 +77,18 @@ export function MotorizedExcavatorDozerForm({
 		mode: 'onSubmit',
 		defaultValues: MOTORIZED_EXCAVATOR_DOZER_FORM_DEFAULT,
 	});
+
+	useEffect(() => {
+		if (sharedStartMonth !== undefined) {
+			form.setValue('startMonth', sharedStartMonth);
+		}
+	}, [sharedStartMonth, form]);
+
+	useEffect(() => {
+		if (sharedEndMonth !== undefined) {
+			form.setValue('endMonth', sharedEndMonth);
+		}
+	}, [sharedEndMonth, form]);
 
 	const selectedContractCodeIds =
 		useWatch({
@@ -219,17 +246,37 @@ export function MotorizedExcavatorDozerForm({
 		isDuplicate,
 	]);
 
-	const handleSubmit = async (values: MotorizedExcavatorDozerFormSchema) => {
+	const submitInternal = async (
+		startM?: string,
+		endM?: string,
+	): Promise<boolean> => {
 		try {
+			const values = form.getValues();
 			const itemsToSubmit =
 				values.items && values.items.length > 0 ? values.items : [];
 
 			if (itemsToSubmit.length === 0) {
-				popup.error(
-					'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị cho các nhóm vật tư đã chọn',
-				);
-				return;
+				if (selectedContractCodeIds.length > 0) {
+					popup.error(
+						'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị cho Xe xúc gạt nâng',
+					);
+					return false;
+				}
+				return true;
 			}
+
+			const rawStart = startM || values.startMonth;
+			const rawEnd = endM || values.endMonth;
+
+			if (!rawStart) {
+				popup.error('Vui lòng chọn Thời gian bắt đầu cho Xe xúc gạt nâng');
+				return false;
+			}
+
+			const startMonth =
+				rawStart.length === 7 ? `${rawStart}-01` : rawStart;
+			const endMonth =
+				rawEnd.length === 7 ? `${rawEnd}-01` : rawEnd;
 
 			for (const item of itemsToSubmit) {
 				const procObj = processOptions.find(
@@ -244,21 +291,15 @@ export function MotorizedExcavatorDozerForm({
 					popup.error(
 						`Vui lòng chọn công đoạn sản xuất cho ${item.title || 'mục đã chọn'}`,
 					);
-					return;
+					return false;
 				}
 
 				const payload = {
 					assignmentCodeId: item.assignmentCodeId,
 					equipmentQuality: item.equipmentQuality,
 					productionProcessId: procId,
-					startMonth:
-						values.startMonth.length === 7
-							? `${values.startMonth}-01`
-							: values.startMonth,
-					endMonth:
-						values.endMonth.length === 7
-							? `${values.endMonth}-01`
-							: values.endMonth,
+					startMonth,
+					endMonth,
 					details: [
 						{
 							fuelUnitPrice: Number(item.fuelUnitPrice) || 0,
@@ -283,6 +324,20 @@ export function MotorizedExcavatorDozerForm({
 				}
 			}
 
+			return true;
+		} catch (error) {
+			popup.error(error);
+			return false;
+		}
+	};
+
+	useImperativeHandle(ref, () => ({
+		submit: submitInternal,
+	}));
+
+	const handleSubmit = async () => {
+		const ok = await submitInternal();
+		if (ok) {
 			popup.success(
 				row && !isDuplicate
 					? 'Cập nhật đơn giá thành công'
@@ -291,8 +346,6 @@ export function MotorizedExcavatorDozerForm({
 			setOpen(false);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
 		}
 	};
 
@@ -309,20 +362,22 @@ export function MotorizedExcavatorDozerForm({
 				popup.error(msg);
 			}}
 		>
-			<FormRow>
-				<FormMonthYear
-					control={form.control as any}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control as any}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
+			{!hideTimeRow && (
+				<FormRow>
+					<FormMonthYear
+						control={form.control as any}
+						name='startMonth'
+						label='Thời gian bắt đầu'
+						className='flex-1'
+					/>
+					<FormMonthYear
+						control={form.control as any}
+						name='endMonth'
+						label='Thời gian kết thúc'
+						className='flex-1'
+					/>
+				</FormRow>
+			)}
 
 			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
 				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
@@ -431,17 +486,17 @@ export function MotorizedExcavatorDozerForm({
 													Bảng đơn giá ({currentQualities.length} tổ hợp)
 												</div>
 
-												<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-													<table className='w-full text-left text-sm'>
+												<div className='w-full overflow-x-auto rounded-md border border-gray-200 bg-white'>
+													<table className='w-full min-w-[600px] text-left text-sm'>
 														<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
 															<tr>
-																<th className='w-[40%] px-3 py-2'>
+																<th className='whitespace-nowrap px-3 py-2'>
 																	Chất lượng thiết bị
 																</th>
-																<th className='w-[30%] px-3 py-2'>
+																<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
 																	Đơn giá Nhiên liệu {itemUnitLabel}
 																</th>
-																<th className='w-[30%] px-3 py-2'>
+																<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
 																	Đơn giá SCTX {itemUnitLabel}
 																</th>
 															</tr>
@@ -462,19 +517,19 @@ export function MotorizedExcavatorDozerForm({
 																			key={quality}
 																			className='hover:bg-gray-50/50'
 																		>
-																			<td className='px-3 py-2'>
-																				<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
+																			<td className='whitespace-nowrap px-3 py-2'>
+																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																					Thiết bị loại {quality}
 																				</div>
 																			</td>
-																			<td className='px-3 py-2'>
+																			<td className='w-40 min-w-[140px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.fuelUnitPrice`}
 																					placeholder='Nhập đơn giá nhiên liệu'
 																				/>
 																			</td>
-																			<td className='px-3 py-2'>
+																			<td className='w-40 min-w-[140px] px-3 py-2'>
 																				<FormNumber
 																					control={form.control as any}
 																					name={`items.${itemIndex}.maintenanceUnitPrice`}
@@ -498,7 +553,9 @@ export function MotorizedExcavatorDozerForm({
 				})}
 			</div>
 
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			{!hideConfirmButton && (
+				<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			)}
 		</FormProvider>
 	);
-}
+});

@@ -1,11 +1,11 @@
-import { Button } from '@/components/ui/button';
+import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { ProductionFormSchema } from '../production-form-schema';
 import { ExcavatorFormSection } from './components/excavator-form-section';
 import { ScaniaFormSection } from './components/scania-form-section';
 import { ServiceCraneFormSection } from './components/service-crane-form-section';
 import { VacuumTruckFormSection } from './components/vacuum-truck-form-section';
-import { MOTORIZED_CATEGORIES, MotorizedCategory } from './types';
+import { MOTORIZED_CATEGORIES } from './types';
 
 type VanTaiCoGioiGroupFieldsProps = {
 	form: UseFormReturn<ProductionFormSchema>;
@@ -33,21 +33,11 @@ export function VanTaiCoGioiGroupFields({
 		name: groupPath,
 	}) as any;
 
-	const activeCategory: MotorizedCategory =
-		watchedGroup?.motorizedCategory || 'scania';
-
-	const handleCategoryChange = (category: MotorizedCategory) => {
-		form.setValue(`${groupPath}.motorizedCategory` as any, category);
-		// Reset selections for clean UI
-		form.setValue(`${groupPath}.assignmentCodeIds` as any, []);
-		form.setValue(`${groupPath}.equipmentQualities` as any, {});
-		form.setValue(`${groupPath}.equipmentProcesses` as any, {});
-		form.setValue(`${groupPath}.equipmentDistances` as any, {});
-		form.setValue(`${groupPath}.processCargoTypes` as any, {});
-		form.setValue(`${groupPath}.processPickupLocations` as any, {});
-		form.setValue(`${groupPath}.processDropoffLocations` as any, {});
-		form.setValue(`${groupPath}.motorizedItems` as any, []);
-	};
+	const selectedCategories: string[] =
+		watchedGroup?.motorizedCategories ||
+		(watchedGroup?.motorizedCategory
+			? [watchedGroup.motorizedCategory]
+			: ['scania']);
 
 	const currentEquipments = assignmentCodes;
 	const currentProcesses = productionProcesses;
@@ -72,35 +62,20 @@ export function VanTaiCoGioiGroupFields({
 
 	return (
 		<div className='space-y-4'>
-			{/* CẤP 1: 4 LOẠI PHƯƠNG TIỆN VẬN TẢI CƠ GIỚI */}
-			<div className='space-y-1.5'>
-				<div className='text-xs font-bold text-gray-700 uppercase'>
-					Nhóm Vận tải cơ giới
-				</div>
-				<div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
-					{MOTORIZED_CATEGORIES.map((cat) => {
-						const isSelected = activeCategory === cat.id;
-						return (
-							<Button
-								key={cat.id}
-								type='button'
-								variant={isSelected ? 'default' : 'outline'}
-								className={`h-auto flex-col items-start gap-1 p-3 text-left transition-all ${
-									isSelected
-										? 'border-blue-600 bg-blue-600 text-white shadow-sm'
-										: 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50'
-								}`}
-								onClick={() => handleCategoryChange(cat.id)}
-							>
-								<div className='text-xs font-bold'>{cat.name}</div>
-							</Button>
-						);
-					})}
-				</div>
-			</div>
+			{/* CẤP 1: CHỌN NHÓM VẬN TẢI CƠ GIỚI (MULTI-SELECT) */}
+			<FormMultiSelect
+				control={form.control as any}
+				name={`${groupPath}.motorizedCategories` as any}
+				label='Nhóm Vận tải cơ giới'
+				placeholder='Chọn nhóm vận tải cơ giới'
+				options={MOTORIZED_CATEGORIES.map((cat) => ({
+					value: cat.id,
+					label: cat.name,
+				}))}
+			/>
 
-			{/* RENDER FORM SECTION THEO TỪNG LOẠI PHƯƠNG TIỆN */}
-			{activeCategory === 'scania' && (
+			{/* RENDER DÃY FORM THEO TỪNG NHÓM ĐƯỢC CHỌN */}
+			{selectedCategories.includes('scania') && (
 				<ScaniaFormSection
 					form={form}
 					groupIndex={groupIndex}
@@ -117,7 +92,7 @@ export function VanTaiCoGioiGroupFields({
 				/>
 			)}
 
-			{activeCategory === 'excavator_dozer' && (
+			{selectedCategories.includes('excavator_dozer') && (
 				<ExcavatorFormSection
 					form={form}
 					groupIndex={groupIndex}
@@ -126,7 +101,7 @@ export function VanTaiCoGioiGroupFields({
 				/>
 			)}
 
-			{activeCategory === 'service_crane' && (
+			{selectedCategories.includes('service_crane') && (
 				<ServiceCraneFormSection
 					form={form}
 					groupIndex={groupIndex}
@@ -136,7 +111,7 @@ export function VanTaiCoGioiGroupFields({
 				/>
 			)}
 
-			{activeCategory === 'vacuum_truck' && (
+			{selectedCategories.includes('vacuum_truck') && (
 				<VacuumTruckFormSection
 					form={form}
 					groupIndex={groupIndex}
