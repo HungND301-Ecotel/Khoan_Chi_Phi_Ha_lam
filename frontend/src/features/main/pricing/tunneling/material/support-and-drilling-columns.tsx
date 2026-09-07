@@ -1,6 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { SupportAndDrillingMaterial } from './type';
-import { formatDate, formatNumber } from '@/lib/utils';
 
 export const MAIN_PRICING_SUPPORT_AND_DRILLING_COLUMNS: ColumnDef<SupportAndDrillingMaterial>[] =
 	[
@@ -24,20 +23,26 @@ export const MAIN_PRICING_SUPPORT_AND_DRILLING_COLUMNS: ColumnDef<SupportAndDril
 			accessorKey: 'hardnessName',
 			header: 'Độ kiên cố than đá',
 		},
+	];
+
+export type ExpandSupportAndDrillingDetail = {
+	technologyName?: string;
+	passportText?: string;
+	hardnessName?: string;
+};
+
+export const MAIN_PRICING_SUPPORT_AND_DRILLING_DETAIL_COLUMNS: ColumnDef<ExpandSupportAndDrillingDetail>[] =
+	[
 		{
-			id: 'time',
-			header: 'Thời gian',
-			cell: ({ row }) => (
-				<span>
-					<span>{formatDate(row.original.startMonth)}</span>
-					<br />
-					<span>{formatDate(row.original.endMonth)}</span>
-				</span>
-			),
+			accessorKey: 'technologyName',
+			header: 'Công nghệ',
 		},
 		{
-			accessorKey: 'totalPrice',
-			header: 'Đơn giá vật liệu (đ/m)',
-			cell: ({ row }) => formatNumber(row.original.totalPrice),
+			accessorKey: 'passportText',
+			header: 'Hộ chiếu, Sđ, Sc',
+		},
+		{
+			accessorKey: 'hardnessName',
+			header: 'Độ kiên cố than đá (f)',
 		},
 	];

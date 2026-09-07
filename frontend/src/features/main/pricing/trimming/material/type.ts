@@ -1,3 +1,10 @@
+export type MaterialPeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+};
+
 export type Material = {
 	id: string;
 	code: string;
@@ -12,9 +19,10 @@ export type Material = {
 	hardnessName: string;
 	insertItemName: string;
 	supportStepName: string;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
+	startMonth?: string;
+	endMonth?: string;
+	totalPrice?: number;
+	periods?: MaterialPeriod[];
 };
 
 export type MaterialDetailCost = {

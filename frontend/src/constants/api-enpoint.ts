@@ -356,6 +356,7 @@ export const API = {
 		MATERIAL: {
 			ALL: '/v1/pricing/materialunitprice/all',
 			TUNNELING: {
+				GROUPED_LIST: '/v1/pricing/materialunitprice/grouped',
 				LIST: '/v1/pricing/materialunitprice',
 				CREATE: '/v1/pricing/materialunitprice',
 				UPDATE: '/v1/pricing/materialunitprice',
@@ -366,6 +367,7 @@ export const API = {
 				EXPORT: '/v1/pricing/materialunitprice/export',
 			},
 			TRIMMING: {
+				GROUPED_LIST: '/v1/pricing/trimmingmaterialunitprice/grouped',
 				LIST: '/v1/pricing/trimmingmaterialunitprice',
 				CREATE: '/v1/pricing/trimmingmaterialunitprice',
 				UPDATE: '/v1/pricing/trimmingmaterialunitprice',
@@ -376,6 +378,7 @@ export const API = {
 				EXPORT: '/v1/pricing/trimmingmaterialunitprice/export',
 			},
 			LONGWALL_PANEL: {
+				GROUPED_LIST: '/v1/pricing/longwallmaterialunitprice/grouped',
 				LIST: '/v1/pricing/longwallmaterialunitprice',
 				CREATE: '/v1/pricing/longwallmaterialunitprice',
 				UPDATE: '/v1/pricing/longwallmaterialunitprice',
@@ -386,6 +389,8 @@ export const API = {
 				EXPORT: '/v1/pricing/longwallmaterialunitprice/export',
 			},
 			SUPPORT_AND_DRILLING: {
+				GROUPED_LIST:
+					'/v1/pricing/tunnelsupportanddrillingmaterialunitprice/grouped',
 				LIST: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
 				CREATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
 				UPDATE: '/v1/pricing/tunnelsupportanddrillingmaterialunitprice',
@@ -399,6 +404,7 @@ export const API = {
 			},
 		},
 		SLIDE: {
+			GROUPED_LIST: '/v1/pricing/slideunitprice/grouped',
 			LIST: '/v1/pricing/slideunitprice',
 			CREATE: '/v1/pricing/slideunitprice',
 			UPDATE: '/v1/pricing/slideunitprice',

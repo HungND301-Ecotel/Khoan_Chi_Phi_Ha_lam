@@ -47,12 +47,26 @@ export const slideFormSchema = z.object({
 
 export type SlideFormSchema = z.infer<typeof slideFormSchema>;
 
-export const SLIDE_FORM_DEFAULT: SlideFormSchema = {
-	startMonth: new Date().toISOString().substring(0, 10),
-	endMonth: new Date().toISOString().substring(0, 10),
+export const slideCommonFormSchema = z.object({
+	code: z
+		.string()
+		.nonempty({ error: 'Mã định mức máng trượt không được để trống' }),
+	processGroupId: z
+		.string()
+		.nonempty({ error: 'Nhóm công đoạn sản xuất không được để trống' }),
+	passportId: z
+		.string()
+		.nonempty({ error: 'Hộ chiếu, Sđ, Sc không được để trống' }),
+	hardnessId: z
+		.string()
+		.nonempty({ error: 'Độ kiên cố đá/ than (f) không được để trống' }),
+});
+
+export type SlideCommonFormSchema = z.infer<typeof slideCommonFormSchema>;
+
+export const SLIDE_COMMON_FORM_DEFAULT: SlideCommonFormSchema = {
 	code: '',
 	processGroupId: '',
 	passportId: '',
 	hardnessId: '',
-	costs: [],
 };

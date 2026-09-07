@@ -2,8 +2,8 @@ import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
-import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormNumber } from '@/components/form/form-number';
+import { MonthYearInput } from '@/components/form/form-month-year';
+import { FormNumberInput } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
@@ -12,6 +12,7 @@ import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
@@ -23,16 +24,17 @@ import type { Step } from '@/features/main/catalog/parameter/step/columns';
 import type { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import type { ProcessStep } from '@/features/main/catalog/process/step/columns';
 import {
-	MATERIAL_FORM_DEFAULT,
-	materialFormSchema,
+	TRIMMING_MATERIAL_COMMON_FORM_DEFAULT,
+	trimmingMaterialCommonFormSchema,
+	type TrimmingMaterialCommonFormSchema,
 	type MaterialFormSchema,
 } from '@/features/main/pricing/trimming/material/schema';
 import { api } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
+import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useForm, useFormContext, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import type { Material, MaterialDetail, MaterialDetailCost } from './type';
 
 type MaterialOption = MultiSelectOption & {
@@ -43,6 +45,18 @@ type MaterialOption = MultiSelectOption & {
 type MaterialAsset = Asset & {
 	materialType?: number;
 };
+
+interface PeriodItemData {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	otherMaterialValue?: number;
+	costs: MaterialFormSchema['costs'];
+	selectedAssignments: MultiSelectOption[];
+	selectedMaterials: MaterialOption[];
+	persistedCosts: MaterialDetailCost[];
+}
 
 const buildMaterialSelectionValue = (
 	assignmentCodeId: string,
@@ -75,10 +89,6 @@ const buildPersistedMaterialOption = (
 		materialId: cost.materialId,
 	};
 };
-
-const arraysEqual = (left: string[], right: string[]) =>
-	left.length === right.length &&
-	left.every((value, index) => value === right[index]);
 
 const getMaterialOptions = (
 	assets: MaterialAsset[],
@@ -118,11 +128,10 @@ const syncCostsWithSelections = (
 		selectedMaterialOptions.map((option) => option.value),
 	);
 	const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
-	const existingRows = costs.filter(
-		(cost) =>
-			selectedKeys.has(
-				buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-			),
+	const existingRows = costs.filter((cost) =>
+		selectedKeys.has(
+			buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
+		),
 	);
 	const existingKeys = new Set(
 		existingRows.map((cost) =>
@@ -151,7 +160,11 @@ const normalizeCostTotals = (
 ) => {
 	const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 	return costs.map((cost) => {
-		const unitPrice = assetMap.get(cost.materialId)?.costAmount ?? 0;
+		const asset = assetMap.get(cost.materialId);
+		if (!asset) {
+			return cost;
+		}
+		const unitPrice = asset.costAmount ?? 0;
 		const totalPrice = Number.isNaN(Number(cost.norm))
 			? unitPrice
 			: unitPrice * Number(cost.norm);
@@ -247,6 +260,72 @@ const groupCostsByAssignment = (
 	return Array.from(grouped.values());
 };
 
+const validatePeriods = (
+	allPeriods: PeriodItemData[],
+): { error: string } | null => {
+	if (allPeriods.length === 0) {
+		return { error: 'Cần ít nhất một khoảng thời gian áp dụng.' };
+	}
+
+	for (let i = 0; i < allPeriods.length; i++) {
+		const p = allPeriods[i];
+		if (!p.startMonth) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa chọn thời gian bắt đầu.`,
+			};
+		}
+		if (!p.endMonth) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa chọn thời gian kết thúc.`,
+			};
+		}
+		const s = new Date(p.startMonth).getTime();
+		const e = new Date(p.endMonth).getTime();
+		if (s > e) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Thời gian bắt đầu không được lớn hơn thời gian kết thúc.`,
+			};
+		}
+		if (!p.costs || p.costs.length === 0) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa có vật tư nào trong định mức. Vui lòng chọn nhóm vật tư và vật tư.`,
+			};
+		}
+		for (const c of p.costs) {
+			if (
+				c.norm === undefined ||
+				c.norm === null ||
+				Number.isNaN(Number(c.norm))
+			) {
+				return {
+					error: `Khoảng thời gian ${i + 1}: Có vật tư chưa nhập định mức.`,
+				};
+			}
+		}
+	}
+
+	for (let i = 0; i < allPeriods.length; i++) {
+		for (let j = i + 1; j < allPeriods.length; j++) {
+			const p1 = allPeriods[i];
+			const p2 = allPeriods[j];
+			const s1 = new Date(p1.startMonth).getTime();
+			const e1 = new Date(p1.endMonth).getTime();
+			const s2 = new Date(p2.startMonth).getTime();
+			const e2 = new Date(p2.endMonth).getTime();
+
+			if (s1 <= e2 && s2 <= e1) {
+				const label1 = `Khoảng thời gian ${i + 1} (${formatDate(p1.startMonth, 'MM/yyyy')} - ${formatDate(p1.endMonth, 'MM/yyyy')})`;
+				const label2 = `Khoảng thời gian ${j + 1} (${formatDate(p2.startMonth, 'MM/yyyy')} - ${formatDate(p2.endMonth, 'MM/yyyy')})`;
+				return {
+					error: `Thời gian áp dụng của ${label1} và ${label2} bị trùng lặp. Vui lòng kiểm tra lại.`,
+				};
+			}
+		}
+	}
+
+	return null;
+};
+
 export function MaterialForm({
 	data,
 	row,
@@ -260,37 +339,30 @@ export function MaterialForm({
 	const [strengths, setStrengths] = useState<Strength[]>([]);
 	const [inserts, setInserts] = useState<Insert[]>([]);
 	const [steps, setSteps] = useState<Step[]>([]);
-	const [assignments, setAssignments] = useState<ContractCode[]>([]);
-	const [assets, setAssets] = useState<MaterialAsset[]>([]);
-	const [selectedAssignments, setSelectedAssignments] = useState<
-		MultiSelectOption[]
-	>([]);
-	const [selectedMaterials, setSelectedMaterials] = useState<MaterialOption[]>(
-		[],
-	);
 
-	const persistedCostsRef = useRef<MaterialDetailCost[]>([]);
-	const form = useForm<MaterialFormSchema, unknown, MaterialFormSchema>({
-		resolver: zodResolver(materialFormSchema),
-		mode: 'onSubmit',
-		defaultValues: {
-			...MATERIAL_FORM_DEFAULT,
+	const [periods, setPeriods] = useState<PeriodItemData[]>([
+		{
+			tempId: `period_${Date.now()}`,
 			startMonth: new Date().toISOString().substring(0, 10),
 			endMonth: new Date().toISOString().substring(0, 10),
+			costs: [],
+			selectedAssignments: [],
+			selectedMaterials: [],
+			persistedCosts: [],
 		},
-	});
+	]);
+	const [deletedPeriodIds, setDeletedPeriodIds] = useState<string[]>([]);
+	const [isLoadingPeriods, setIsLoadingPeriods] = useState(false);
 
-	const watchedStartMonth = useWatch({
-		control: form.control,
-		name: 'startMonth',
-		defaultValue: MATERIAL_FORM_DEFAULT.startMonth,
+	const form = useForm<
+		TrimmingMaterialCommonFormSchema,
+		unknown,
+		TrimmingMaterialCommonFormSchema
+	>({
+		resolver: zodResolver(trimmingMaterialCommonFormSchema),
+		mode: 'onSubmit',
+		defaultValues: TRIMMING_MATERIAL_COMMON_FORM_DEFAULT,
 	});
-	const watchedCosts = useWatch({
-		control: form.control,
-		name: 'costs',
-		defaultValue: MATERIAL_FORM_DEFAULT.costs,
-	});
-	const selectedAssignmentIds = selectedAssignments.map((item) => item.value);
 
 	useEffect(() => {
 		Promise.all([
@@ -311,32 +383,22 @@ export function MaterialForm({
 	}, []);
 
 	useEffect(() => {
-		const effectiveStartMonth =
-			watchedStartMonth || form.getValues('startMonth') || '';
-		if (!effectiveStartMonth) return;
-
-		Promise.all([
-			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
-				ignorePagination: true,
-				date: effectiveStartMonth,
-			}),
-			api.pagging<MaterialAsset>(API.CATALOG.ASSET.LIST, {
-				ignorePagination: true,
-				date: effectiveStartMonth,
-			}),
-		]).then(([assignmentsRes, assetsRes]) => {
-			setAssignments(assignmentsRes.result.data);
-			setAssets(assetsRes.result.data);
-		});
-	}, [form, watchedStartMonth]);
-
-	useEffect(() => {
-		if (!row) return;
+		if (!row) {
+			setPeriods([
+				{
+					tempId: `period_${Date.now()}`,
+					startMonth: new Date().toISOString().substring(0, 10),
+					endMonth: new Date().toISOString().substring(0, 10),
+					costs: [],
+					selectedAssignments: [],
+					selectedMaterials: [],
+					persistedCosts: [],
+				},
+			]);
+			return;
+		}
 
 		form.reset({
-			...MATERIAL_FORM_DEFAULT,
-			startMonth: row.startMonth.substring(0, 10),
-			endMonth: row.endMonth.substring(0, 10),
 			code: isDuplicate ? '' : row.code,
 			processId: row.processId,
 			passportId: row.passportId,
@@ -345,15 +407,61 @@ export function MaterialForm({
 			supportStepId: row.supportStepId,
 		});
 
-		api
-			.get<MaterialDetail>(API.PRICING.MATERIAL.TRIMMING.DETAIL(row.id))
-			.then((res) => {
-				const detail = res.result;
-				persistedCostsRef.current = detail.costs ?? [];
-				setSelectedAssignments(
-					Array.from(
+		const rawPeriods =
+			row.periods && row.periods.length > 0
+				? row.periods
+				: row.id
+					? [
+							{
+								id: row.id,
+								startMonth: row.startMonth,
+								endMonth: row.endMonth,
+								totalPrice: row.totalPrice ?? 0,
+							},
+						]
+					: [];
+
+		if (rawPeriods.length === 0) {
+			setPeriods([
+				{
+					tempId: `period_${Date.now()}`,
+					startMonth: new Date().toISOString().substring(0, 10),
+					endMonth: new Date().toISOString().substring(0, 10),
+					costs: [],
+					selectedAssignments: [],
+					selectedMaterials: [],
+					persistedCosts: [],
+				},
+			]);
+			return;
+		}
+
+		setIsLoadingPeriods(true);
+		Promise.all(
+			rawPeriods.map(async (p, idx) => {
+				if (!p.id) {
+					return {
+						tempId: `period_${idx}_${Date.now()}`,
+						id: undefined,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (p.endMonth ?? new Date().toISOString()).substring(0, 10),
+						costs: [],
+						selectedAssignments: [],
+						selectedMaterials: [],
+						persistedCosts: [],
+					};
+				}
+				try {
+					const res = await api.get<MaterialDetail>(
+						API.PRICING.MATERIAL.TRIMMING.DETAIL(p.id),
+					);
+					const detail = res.result;
+					const persistedCosts = detail.costs ?? [];
+					const selectedAssignments = Array.from(
 						new Map(
-							(detail.costs ?? [])
+							persistedCosts
 								.filter((cost) => !!cost.assignmentCodeId)
 								.map((cost) => [
 									cost.assignmentCodeId,
@@ -363,213 +471,158 @@ export function MaterialForm({
 									},
 								]),
 						).values(),
-					),
-				);
-				setSelectedMaterials(
-					(detail.costs ?? [])
+					);
+					const selectedMaterials = persistedCosts
 						.map((cost) => buildPersistedMaterialOption(cost, undefined))
-						.filter((option): option is MaterialOption => !!option),
-				);
-				const normalizedCosts = (detail.costs ?? []).map((cost) => ({
-					assignmentCodeId: cost.assignmentCodeId,
-					materialId: cost.materialId,
-					norm: cost.norm,
-					totalPrice: cost.totalPrice,
-				}));
-				form.setValue('costs', normalizedCosts);
-				form.setValue(
-					'otherMaterialValue',
-					detail.otherMaterialValue || detail.otherMaterialValue === 0
-						? detail.otherMaterialValue
-						: undefined,
-				);
-			});
+						.filter((option): option is MaterialOption => !!option);
+					const normalizedCosts = persistedCosts.map((cost) => ({
+						assignmentCodeId: cost.assignmentCodeId,
+						materialId: cost.materialId,
+						norm: cost.norm,
+						totalPrice: cost.totalPrice,
+					}));
+
+					return {
+						tempId: p.id,
+						id: isDuplicate ? undefined : p.id,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (
+							p.endMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						otherMaterialValue:
+							detail.otherMaterialValue || detail.otherMaterialValue === 0
+								? detail.otherMaterialValue
+								: undefined,
+						costs: normalizedCosts,
+						selectedAssignments,
+						selectedMaterials,
+						persistedCosts,
+					};
+				} catch {
+					return {
+						tempId: p.id,
+						id: isDuplicate ? undefined : p.id,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (
+							p.endMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						costs: [],
+						selectedAssignments: [],
+						selectedMaterials: [],
+						persistedCosts: [],
+					};
+				}
+			}),
+		).then((loadedPeriods) => {
+			setIsLoadingPeriods(false);
+			setPeriods(loadedPeriods);
+		});
 	}, [form, isDuplicate, row]);
 
-	useEffect(() => {
-		if (assignments.length === 0 && assets.length === 0) return;
+	const handleUpdatePeriod = (index: number, updated: PeriodItemData) => {
+		setPeriods((prev) => {
+			const next = [...prev];
+			next[index] = updated;
+			return next;
+		});
+	};
 
-		const persistedCosts = persistedCostsRef.current;
-		const currentCosts = form.getValues('costs') ?? [];
-		const persistedCostMap = new Map(
-			persistedCosts.map((cost) => [
-				buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-				cost,
-			]),
-		);
-		const persistedAssignmentMap = new Map(
-			currentCosts.map((cost) => {
-				const persistedCost = persistedCostMap.get(
-					buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
+	const handleAddPeriod = () => {
+		let nextStart = new Date().toISOString().substring(0, 10);
+		let nextEnd = new Date().toISOString().substring(0, 10);
+
+		if (periods.length > 0) {
+			const sortedEndDates = periods
+				.map((p) => p.endMonth)
+				.filter(Boolean)
+				.sort();
+			const latestEnd = sortedEndDates[sortedEndDates.length - 1];
+			if (latestEnd) {
+				const date = new Date(latestEnd);
+				const nextStartDate = new Date(
+					date.getFullYear(),
+					date.getMonth() + 1,
+					1,
 				);
-				return [
-					cost.assignmentCodeId,
-					{
-						value: cost.assignmentCodeId,
-						label: `${persistedCost?.assignmentCode ?? ''} - ${persistedCost?.assignmentCodeName ?? ''}`,
-					},
-				] as const;
-			}),
-		);
-		const persistedAssignmentIds = Array.from(persistedAssignmentMap.keys());
-		const selectedAssignmentSet = new Set([
-			...selectedAssignmentIds,
-			...persistedAssignmentIds,
-		]);
-		const normalizedAssignments = Array.from(
-			new Map(
-				[
-					...assignments
-						.filter((assignment) => selectedAssignmentSet.has(assignment.id))
-						.map<MultiSelectOption>((assignment) => ({
-							value: assignment.id,
-							label: `${assignment.code} - ${assignment.name}`,
-						})),
-					...Array.from(persistedAssignmentMap.values()).filter(
-						(item) =>
-							!assignments.some((assignment) => assignment.id === item.value),
-					),
-				].map((item) => [item.value, item]),
-			).values(),
-		);
-
-		if (
-			!arraysEqual(
-				selectedAssignments.map((item) => item.value),
-				normalizedAssignments.map((item) => item.value),
-			)
-		) {
-			setSelectedAssignments(normalizedAssignments);
+				const nextEndDate = new Date(
+					date.getFullYear() + 1,
+					date.getMonth() + 1,
+					0,
+				);
+				nextStart = nextStartDate.toISOString().substring(0, 10);
+				nextEnd = nextEndDate.toISOString().substring(0, 10);
+			}
 		}
 
-		const currentOptions = getMaterialOptions(
-			assets,
-			assignments,
-			normalizedAssignments.map((item) => item.value),
-		);
-		const currentOptionMap = new Map(
-			currentOptions.map((option) => [option.value, option]),
-		);
-		const selectedMaterialMap = new Map(
-			selectedMaterials.map((option) => [option.value, option]),
-		);
-		const currentCostKeys = new Set(
-			currentCosts.map((cost) =>
-				buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-			),
-		);
-		const persistedSelectedOptions = Array.from(currentCostKeys)
-			.map((key) => persistedCostMap.get(key))
-			.filter((cost): cost is MaterialDetailCost => !!cost)
-			.map((cost) =>
-				buildPersistedMaterialOption(
-					cost,
-					assignments.find(
-						(assignment) => assignment.id === cost.assignmentCodeId,
-					),
-				),
-			)
-			.filter((option): option is MaterialOption => !!option);
+		const newPeriod: PeriodItemData = {
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			startMonth: nextStart,
+			endMonth: nextEnd,
+			otherMaterialValue: undefined,
+			costs: [],
+			selectedAssignments: [],
+			selectedMaterials: [],
+			persistedCosts: [],
+		};
 
-		const mergedSelectedMaterials = [
-			...selectedMaterials
-				.map(
-					(option) =>
-						currentOptionMap.get(option.value) ??
-						selectedMaterialMap.get(option.value),
-				)
-				.filter((option): option is MaterialOption => !!option),
-			...persistedSelectedOptions.filter(
-				(option) =>
-					!selectedMaterialMap.has(option.value) &&
-					!currentOptionMap.has(option.value),
-			),
-		];
-		const uniqueSelectedMaterials = Array.from(
-			new Map(
-				mergedSelectedMaterials.map((option) => [option.value, option]),
-			).values(),
-		);
+		setPeriods((prev) => [...prev, newPeriod]);
+	};
 
-		if (
-			!arraysEqual(
-				selectedMaterials.map((item) => item.value),
-				uniqueSelectedMaterials.map((item) => item.value),
-			)
-		) {
-			setSelectedMaterials(uniqueSelectedMaterials);
+	const handleDeletePeriod = (indexToDelete: number) => {
+		if (periods.length <= 1) {
+			popup.error('Mã định mức cần có ít nhất một khoảng thời gian.');
+			return;
 		}
-	}, [
-		assignments,
-		assets,
-		row,
-		selectedAssignments,
-		selectedAssignmentIds,
-		selectedMaterials,
-		form,
-	]);
 
-	useEffect(() => {
-		const isHydratingPersistedSelections =
-			selectedMaterials.length === 0 &&
-			persistedCostsRef.current.length > 0 &&
-			watchedCosts.length > 0;
-		if (isHydratingPersistedSelections) return;
-
-		const syncedCosts = sortCosts(
-			normalizeCostTotals(
-				syncCostsWithSelections(watchedCosts, selectedMaterials, assets),
-				assets,
-			),
-			assignments,
-			assets,
-		);
-
-		const currentKeys = watchedCosts.map(
-			(cost) =>
-				`${cost.assignmentCodeId}:${cost.materialId}:${cost.norm}:${cost.totalPrice}`,
-		);
-		const nextKeys = syncedCosts.map(
-			(cost) =>
-				`${cost.assignmentCodeId}:${cost.materialId}:${cost.norm}:${cost.totalPrice}`,
-		);
-
-		if (!arraysEqual(currentKeys, nextKeys)) {
-			form.setValue('costs', syncedCosts, {
-				shouldValidate: false,
-			});
+		const periodToDelete = periods[indexToDelete];
+		if (periodToDelete.id) {
+			setDeletedPeriodIds((prev) => [...prev, periodToDelete.id!]);
 		}
-	}, [assets, assignments, form, selectedMaterials, watchedCosts]);
 
-	const currentMaterialOptions = getMaterialOptions(
-		assets,
-		assignments,
-		selectedAssignmentIds,
-	);
-	const materialOptions = [
-		...currentMaterialOptions,
-		...selectedMaterials.filter(
-			(option) =>
-				!currentMaterialOptions.some(
-					(currentOption) => currentOption.value === option.value,
-				),
-		),
-	];
+		setPeriods((prev) => prev.filter((_, idx) => idx !== indexToDelete));
+	};
 
-	const handleSubmit = async (values: MaterialFormSchema) => {
+	const handleSubmit = async (values: TrimmingMaterialCommonFormSchema) => {
 		try {
-			const processedValues = {
-				...values,
-				costs: normalizeCostTotals(values.costs, assets),
-			};
+			const validationResult = validatePeriods(periods);
+			if (validationResult) {
+				popup.error(validationResult.error);
+				return;
+			}
 
-			if (row?.id && !isDuplicate) {
-				await api.put(API.PRICING.MATERIAL.TRIMMING.UPDATE, {
-					id: row.id,
-					...processedValues,
-				});
-			} else {
-				await api.post(API.PRICING.MATERIAL.TRIMMING.CREATE, processedValues);
+			if (deletedPeriodIds.length > 0) {
+				await api.delete(
+					API.PRICING.MATERIAL.TRIMMING.DELETES,
+					deletedPeriodIds,
+				);
+			}
+
+			for (const period of periods) {
+				const payload = {
+					code: values.code,
+					processId: values.processId,
+					passportId: values.passportId,
+					hardnessId: values.hardnessId,
+					insertItemId: values.insertItemId,
+					supportStepId: values.supportStepId,
+					startMonth: period.startMonth,
+					endMonth: period.endMonth,
+					otherMaterialValue: period.otherMaterialValue,
+					costs: period.costs,
+				};
+
+				if (period.id && !isDuplicate) {
+					await api.put(API.PRICING.MATERIAL.TRIMMING.UPDATE, {
+						id: period.id,
+						...payload,
+					});
+				} else {
+					await api.post(API.PRICING.MATERIAL.TRIMMING.CREATE, payload);
+				}
 			}
 
 			setOpen(false);
@@ -585,23 +638,7 @@ export function MaterialForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormRow>
-				<FormMonthYear
-					control={form.control}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
-
-			<FormSeparator />
-
+			{/* Thông tin chung định mức */}
 			<FormInput
 				control={form.control}
 				name='code'
@@ -664,93 +701,311 @@ export function MaterialForm({
 				}))}
 			/>
 
-			<MultiSelect
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn Nhóm vật tư, tài sản'
-				values={selectedAssignments}
-				onValuesChange={(nextValues) => {
-					setSelectedAssignments(nextValues);
+			<FormSeparator label='Danh sách khoảng thời gian áp dụng' />
 
-					const nextAssignmentIds = new Set(
-						nextValues.map((value) => value.value),
-					);
-					setSelectedMaterials((currentValues) =>
-						currentValues.filter((value) =>
-							nextAssignmentIds.has(value.assignmentCodeId),
-						),
-					);
-				}}
-				options={assignments.map((item) => ({
-					value: item.id,
-					label: `${item.code} - ${item.name}`,
-				}))}
-			/>
+			{/* Danh sách các form khoảng thời gian xếp dọc */}
+			{isLoadingPeriods ? (
+				<div className='flex items-center justify-center py-8 text-sm text-neutral-500'>
+					<Spinner className='mr-2 size-4' /> Đang tải dữ liệu các khoảng thời
+					gian...
+				</div>
+			) : (
+				<div className='flex flex-col gap-6'>
+					{periods.map((period, index) => (
+						<PeriodSection
+							key={period.tempId}
+							totalPeriods={periods.length}
+							period={period}
+							onUpdate={(updated) => handleUpdatePeriod(index, updated)}
+							onDelete={() => handleDeletePeriod(index)}
+						/>
+					))}
 
-			<MultiSelect
-				label='Vật tư theo nhóm'
-				placeholder='Chọn vật tư theo nhóm'
-				values={selectedMaterials}
-				onValuesChange={(nextValues) =>
-					setSelectedMaterials(nextValues as MaterialOption[])
-				}
-				options={materialOptions}
-			/>
-
-			<GroupedMaterialCosts
-				assignments={assignments}
-				assets={assets}
-				onRemove={(assignmentCodeId, materialId) => {
-					setSelectedMaterials((currentValues) =>
-						currentValues.filter(
-							(value) =>
-								value.value !==
-								buildMaterialSelectionValue(assignmentCodeId, materialId),
-						),
-					);
-					form.setValue(
-						'costs',
-						form
-							.getValues('costs')
-							.filter(
-								(cost) =>
-									!(
-										cost.assignmentCodeId === assignmentCodeId &&
-										cost.materialId === materialId
-									),
-							),
-						{
-							shouldValidate: false,
-						},
-					);
-				}}
-			/>
+					{/* Nút Thêm thời gian ở dưới cùng bên trái */}
+					<div className='flex justify-start pt-1'>
+						<Button
+							type='button'
+							variant='ghost'
+							size='sm'
+							onClick={handleAddPeriod}
+							className='h-fit w-fit bg-transparent flex items-center gap-1.5 p-0 hover:bg-transparent'
+						>
+							<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+							<span className='text-sm text-black'>Thêm thời gian</span>
+						</Button>
+					</div>
+				</div>
+			)}
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
 
-function GroupedMaterialCosts({
+interface PeriodSectionProps {
+	totalPeriods: number;
+	period: PeriodItemData;
+	onUpdate: (updated: PeriodItemData) => void;
+	onDelete: () => void;
+}
+
+function PeriodSection({
+	totalPeriods,
+	period,
+	onUpdate,
+	onDelete,
+}: PeriodSectionProps) {
+	const [assignments, setAssignments] = useState<ContractCode[]>([]);
+	const [assets, setAssets] = useState<MaterialAsset[]>([]);
+	const isFirstLoadRef = useRef(true);
+
+	useEffect(() => {
+		if (!period.startMonth) return;
+		Promise.all([
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
+				ignorePagination: true,
+				date: period.startMonth,
+			}),
+			api.pagging<MaterialAsset>(API.CATALOG.ASSET.LIST, {
+				ignorePagination: true,
+				date: period.startMonth,
+			}),
+		]).then(([assignmentsRes, assetsRes]) => {
+			setAssignments(assignmentsRes.result.data);
+			setAssets(assetsRes.result.data);
+		});
+	}, [period.startMonth]);
+
+	// Sync costs with assets after catalog loads
+	useEffect(() => {
+		if (assets.length === 0) return;
+		if (isFirstLoadRef.current) {
+			isFirstLoadRef.current = false;
+			return;
+		}
+
+		const syncedCosts = sortCosts(
+			normalizeCostTotals(
+				syncCostsWithSelections(period.costs, period.selectedMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		const currentKeys = period.costs
+			.map((c) => `${c.assignmentCodeId}:${c.materialId}:${c.norm}:${c.totalPrice}`)
+			.join('|');
+		const nextKeys = syncedCosts
+			.map((c) => `${c.assignmentCodeId}:${c.materialId}:${c.norm}:${c.totalPrice}`)
+			.join('|');
+
+		if (currentKeys !== nextKeys) {
+			onUpdate({
+				...period,
+				costs: syncedCosts,
+			});
+		}
+	}, [assets, assignments]);
+
+	const selectedAssignmentIds = period.selectedAssignments.map(
+		(item) => item.value,
+	);
+	const currentMaterialOptions = getMaterialOptions(
+		assets,
+		assignments,
+		selectedAssignmentIds,
+	);
+	const materialOptions = [
+		...currentMaterialOptions,
+		...period.selectedMaterials.filter(
+			(option) =>
+				!currentMaterialOptions.some(
+					(currentOption) => currentOption.value === option.value,
+				),
+		),
+	];
+
+	const handleAssignmentsChange = (nextValues: MultiSelectOption[]) => {
+		const nextAssignmentIds = new Set(nextValues.map((value) => value.value));
+		const nextMaterials = period.selectedMaterials.filter((value) =>
+			nextAssignmentIds.has(value.assignmentCodeId),
+		);
+		const syncedCosts = sortCosts(
+			normalizeCostTotals(
+				syncCostsWithSelections(period.costs, nextMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		onUpdate({
+			...period,
+			selectedAssignments: nextValues,
+			selectedMaterials: nextMaterials,
+			costs: syncedCosts,
+		});
+	};
+
+	const handleMaterialsChange = (nextValues: MultiSelectOption[]) => {
+		const nextMaterials = nextValues as MaterialOption[];
+		const syncedCosts = sortCosts(
+			normalizeCostTotals(
+				syncCostsWithSelections(period.costs, nextMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		onUpdate({
+			...period,
+			selectedMaterials: nextMaterials,
+			costs: syncedCosts,
+		});
+	};
+
+	const handleNormChange = (costIndex: number, newNorm: number | undefined) => {
+		const targetCost = period.costs[costIndex];
+		if (!targetCost) return;
+
+		const asset = assets.find((a) => a.id === targetCost.materialId);
+		const unitPrice = asset?.costAmount ?? 0;
+		const normNumber =
+			newNorm === undefined ? Number.NaN : Number(newNorm);
+		const totalPrice = Number.isNaN(normNumber)
+			? unitPrice
+			: unitPrice * normNumber;
+
+		const nextCosts = [...period.costs];
+		nextCosts[costIndex] = {
+			...targetCost,
+			norm: normNumber,
+			totalPrice,
+		};
+
+		onUpdate({
+			...period,
+			costs: nextCosts,
+		});
+	};
+
+	const handleRemoveCost = (assignmentCodeId: string, materialId: string) => {
+		const nextMaterials = period.selectedMaterials.filter(
+			(value) =>
+				value.value !==
+				buildMaterialSelectionValue(assignmentCodeId, materialId),
+		);
+		const nextCosts = period.costs.filter(
+			(cost) =>
+				!(
+					cost.assignmentCodeId === assignmentCodeId &&
+					cost.materialId === materialId
+				),
+		);
+
+		onUpdate({
+			...period,
+			selectedMaterials: nextMaterials,
+			costs: nextCosts,
+		});
+	};
+
+	const handleOtherMaterialChange = (newVal: number | undefined) => {
+		onUpdate({
+			...period,
+			otherMaterialValue: newVal,
+		});
+	};
+
+	return (
+		<div className='bg-neutral-50/70 border-neutral-300 shadow-xs flex flex-col gap-4 rounded-xl border p-5'>
+			{/* Thời gian bắt đầu - Thời gian kết thúc & Nút xóa thời gian */}
+			<div className='flex items-end gap-4'>
+				<MonthYearInput
+					label='Thời gian bắt đầu'
+					value={period.startMonth}
+					onChange={(val) => onUpdate({ ...period, startMonth: val })}
+					className='flex-1'
+				/>
+				<MonthYearInput
+					label='Thời gian kết thúc'
+					value={period.endMonth}
+					onChange={(val) => onUpdate({ ...period, endMonth: val })}
+					className='flex-1'
+				/>
+				{totalPeriods > 1 && (
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						onClick={onDelete}
+						className='text-error hover:text-error-muted bg-transparent h-fit w-fit flex items-center gap-1 p-0 hover:bg-transparent mb-2.5'
+					>
+						<XCircleIcon className='size-4' />
+						<span>Xóa thời gian</span>
+					</Button>
+				)}
+			</div>
+
+			{/* Nhóm vật tư */}
+			<MultiSelect
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
+				values={period.selectedAssignments}
+				onValuesChange={handleAssignmentsChange}
+				options={assignments.map((item) => ({
+					value: item.id,
+					label: `${item.code} - ${item.name}`,
+				}))}
+			/>
+
+			{/* Vật tư theo nhóm */}
+			<MultiSelect
+				label='Vật tư theo nhóm'
+				placeholder='Chọn vật tư theo nhóm'
+				values={period.selectedMaterials}
+				onValuesChange={handleMaterialsChange}
+				options={materialOptions}
+			/>
+
+			{/* Bảng chi tiết vật tư của khoảng thời gian này */}
+			<GroupedPeriodCosts
+				costs={period.costs}
+				otherMaterialValue={period.otherMaterialValue}
+				assignments={assignments}
+				assets={assets}
+				onNormChange={handleNormChange}
+				onRemoveCost={handleRemoveCost}
+				onOtherMaterialChange={handleOtherMaterialChange}
+			/>
+		</div>
+	);
+}
+
+function GroupedPeriodCosts({
+	costs,
+	otherMaterialValue,
 	assignments,
 	assets,
-	onRemove,
+	onNormChange,
+	onRemoveCost,
+	onOtherMaterialChange,
 }: {
+	costs: MaterialFormSchema['costs'];
+	otherMaterialValue?: number;
 	assignments: ContractCode[];
 	assets: MaterialAsset[];
-	onRemove: (assignmentCodeId: string, materialId: string) => void;
+	onNormChange: (index: number, norm: number | undefined) => void;
+	onRemoveCost: (assignmentCodeId: string, materialId: string) => void;
+	onOtherMaterialChange: (val: number | undefined) => void;
 }) {
-	const { control } = useFormContext<MaterialFormSchema>();
-	const costs = useWatch({ control, name: 'costs' }) ?? [];
-	const otherMaterialPercent = useWatch({
-		control,
-		name: 'otherMaterialValue',
-	});
-
 	if (costs.length === 0) return null;
 
 	const materialTotal = sumMaterialCosts(costs);
 	const otherMaterialCost =
-		(materialTotal * (Number(otherMaterialPercent) || 0)) / 100;
+		(materialTotal * (Number(otherMaterialValue) || 0)) / 100;
 	const totalPrice =
 		materialTotal + (Number.isNaN(otherMaterialCost) ? 0 : otherMaterialCost);
 	const groupedCosts = groupCostsByAssignment(costs, assignments);
@@ -778,6 +1033,12 @@ function GroupedMaterialCosts({
 							/>
 							{group.indices.map((index) => {
 								const cost = costs[index];
+								const asset = assets.find(
+									(item) => item.id === cost.materialId,
+								);
+								const unitPrice = asset?.costAmount ?? 0;
+								const isLegacySummaryRow = !cost.materialId;
+
 								return (
 									<FormRow
 										key={buildMaterialSelectionValue(
@@ -785,224 +1046,191 @@ function GroupedMaterialCosts({
 											cost.materialId,
 										)}
 									>
-										<MaterialCostRow
-											index={index}
-											assets={assets}
-											onRemove={onRemove}
-										/>
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Mã vật tư</Label>
+											<Input
+												readOnly
+												value={
+													asset?.code ??
+													(isLegacySummaryRow ? 'Bản ghi cũ' : '')
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<div className='flex min-w-36 flex-1 flex-col gap-2'>
+											<Label>Tên vật tư</Label>
+											<Input
+												readOnly
+												value={
+													asset?.name ??
+													(isLegacySummaryRow
+														? 'Chọn lại vật tư theo nhóm trước khi lưu'
+														: '')
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Đơn giá (đ)</Label>
+											<Input
+												readOnly
+												value={formatNumber(unitPrice)}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<div className='flex min-w-24 flex-1 flex-col gap-2'>
+											<Label>Đơn vị tính</Label>
+											<Input
+												readOnly
+												value={asset?.unitOfMeasureName ?? ''}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Định mức</Label>
+											<FormNumberInput
+												value={
+													Number.isNaN(Number(cost.norm))
+														? undefined
+														: Number(cost.norm)
+												}
+												onValueChange={(val) => onNormChange(index, val)}
+												placeholder='Nhập định mức'
+											/>
+										</div>
+
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Đơn giá vật liệu (đ/m)</Label>
+											<Input
+												readOnly
+												value={
+													isLegacySummaryRow
+														? formatNumber(cost.totalPrice || 0)
+														: Number.isNaN(Number(cost.norm))
+															? formatNumber(unitPrice)
+															: formatNumber(cost.totalPrice || 0)
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<Button
+											type='button'
+											variant='ghost'
+											size='icon'
+											className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
+											onClick={() =>
+												onRemoveCost(
+													cost.assignmentCodeId,
+													cost.materialId,
+												)
+											}
+										>
+											<XCircleIcon className='size-6' />
+										</Button>
 									</FormRow>
 								);
 							})}
 						</div>
 					))}
 
-					{otherMaterialPercent !== undefined ? (
+					{otherMaterialValue !== undefined ? (
 						<div className='flex flex-col gap-4'>
 							<FormSeparator
 								className='w-full'
 								label={`VTK - Vật tư khác - ${formatNumber(otherMaterialCost)} (đ)`}
 							/>
-							<VtkRow materialTotal={materialTotal} />
+							<FormRow>
+								<div className='flex min-w-28 flex-1 flex-col gap-2'>
+									<Label>Mã vật tư</Label>
+									<Input
+										readOnly
+										value='VTK'
+										className='read-only:bg-transparent'
+									/>
+								</div>
+
+								<div className='flex min-w-36 flex-1 flex-col gap-2'>
+									<Label>Tên vật tư</Label>
+									<Input
+										readOnly
+										value='Vật tư khác'
+										className='read-only:bg-transparent'
+									/>
+								</div>
+
+								<div className='flex min-w-28 flex-1 flex-col gap-2'>
+									<Label>Đơn giá (đ)</Label>
+									<Input
+										readOnly
+										value=''
+										className='read-only:bg-transparent'
+									/>
+								</div>
+
+								<div className='flex min-w-24 flex-1 flex-col gap-2'>
+									<Label>Đơn vị tính</Label>
+									<Input
+										readOnly
+										value=''
+										className='read-only:bg-transparent'
+									/>
+								</div>
+
+								<div className='flex min-w-28 flex-1 flex-col gap-2'>
+									<Label>Định mức (%)</Label>
+									<FormNumberInput
+										value={otherMaterialValue}
+										onValueChange={onOtherMaterialChange}
+										placeholder='Nhập % từ 1 đến 100'
+									/>
+								</div>
+
+								<div className='flex min-w-28 flex-1 flex-col gap-2'>
+									<Label>Đơn giá vật liệu (đ/m)</Label>
+									<Input
+										readOnly
+										value={formatNumber(
+											isNaN(otherMaterialCost) ? 0 : otherMaterialCost,
+										)}
+										className='read-only:bg-transparent'
+									/>
+								</div>
+
+								<Button
+									type='button'
+									variant='ghost'
+									size='icon'
+									className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
+									onClick={() => onOtherMaterialChange(undefined)}
+								>
+									<XCircleIcon className='size-6' />
+								</Button>
+							</FormRow>
 						</div>
 					) : (
-						<OtherMaterialAddButton />
+						<div
+							className='flex cursor-pointer items-center gap-2'
+							onClick={() => onOtherMaterialChange(1)}
+						>
+							<Button
+								type='button'
+								variant='ghost'
+								size='icon'
+								className='bg-transparent text-cyan-600 hover:text-cyan-700'
+								title='Thêm vật tư khác'
+							>
+								<PlusCircleIcon className='size-6' />
+							</Button>
+							<span className='text-sm text-black'>Thêm vật tư khác</span>
+						</div>
 					)}
 				</div>
 			</div>
 		</div>
-	);
-}
-
-function MaterialCostRow({
-	index,
-	assets,
-	onRemove,
-}: {
-	index: number;
-	assets: MaterialAsset[];
-	onRemove: (assignmentCodeId: string, materialId: string) => void;
-}) {
-	const { control, getValues } = useFormContext<MaterialFormSchema>();
-	const assignmentCodeId = getValues(`costs.${index}.assignmentCodeId`);
-	const materialId = getValues(`costs.${index}.materialId`);
-	const asset = assets.find((item) => item.id === materialId);
-	const norm = useWatch({ control, name: `costs.${index}.norm` });
-	const totalPrice = useWatch({ control, name: `costs.${index}.totalPrice` });
-	const unitPrice = asset?.costAmount ?? 0;
-	const isLegacySummaryRow = !materialId;
-
-	return (
-		<>
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Mã vật tư</Label>
-				<Input
-					readOnly
-					value={asset?.code ?? (isLegacySummaryRow ? 'Bản ghi cũ' : '')}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex min-w-36 flex-1 flex-col gap-2'>
-				<Label>Tên vật tư</Label>
-				<Input
-					readOnly
-					value={
-						asset?.name ??
-						(isLegacySummaryRow
-							? 'Chọn lại vật tư theo nhóm trước khi lưu'
-							: '')
-					}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá (đ)</Label>
-				<Input
-					readOnly
-					value={formatNumber(unitPrice)}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex min-w-24 flex-1 flex-col gap-2'>
-				<Label>Đơn vị tính</Label>
-				<Input
-					readOnly
-					value={asset?.unitOfMeasureName ?? ''}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<FormNumber
-					control={control}
-					name={`costs.${index}.norm`}
-					label='Định mức'
-					placeholder='Nhập định mức'
-				/>
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá vật liệu (đ/m)</Label>
-				<Input
-					readOnly
-					value={
-						isLegacySummaryRow
-							? formatNumber(totalPrice || 0)
-							: Number.isNaN(Number(norm))
-								? formatNumber(unitPrice)
-								: formatNumber(totalPrice || 0)
-					}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
-				onClick={() => onRemove(assignmentCodeId, materialId)}
-			>
-				<XCircleIcon className='size-6' />
-			</Button>
-		</>
-	);
-}
-
-function OtherMaterialAddButton() {
-	const { setValue } = useFormContext<MaterialFormSchema>();
-
-	return (
-		<div
-			className='flex cursor-pointer items-center gap-2'
-			onClick={() =>
-				setValue('otherMaterialValue', 1, {
-					shouldValidate: false,
-				})
-			}
-		>
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='bg-transparent text-cyan-600 hover:text-cyan-700'
-				title='Thêm vật tư khác'
-			>
-				<PlusCircleIcon className='size-6' />
-			</Button>
-			<span className='text-sm text-black'>Thêm vật tư khác</span>
-		</div>
-	);
-}
-
-function VtkRow({ materialTotal }: { materialTotal: number }) {
-	const { control, setValue } = useFormContext<MaterialFormSchema>();
-	const otherMaterialPercent = useWatch({
-		control,
-		name: 'otherMaterialValue',
-	});
-	const otherMaterialCost =
-		(materialTotal * (Number(otherMaterialPercent) || 0)) / 100;
-
-	return (
-		<FormRow>
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Mã vật tư</Label>
-				<Input readOnly value='VTK' className='read-only:bg-transparent' />
-			</div>
-
-			<div className='flex min-w-36 flex-1 flex-col gap-2'>
-				<Label>Tên vật tư</Label>
-				<Input
-					readOnly
-					value='Vật tư khác'
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá (đ)</Label>
-				<Input readOnly value='' className='read-only:bg-transparent' />
-			</div>
-
-			<div className='flex min-w-24 flex-1 flex-col gap-2'>
-				<Label>Đơn vị tính</Label>
-				<Input readOnly value='' className='read-only:bg-transparent' />
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<FormNumber
-					control={control}
-					name='otherMaterialValue'
-					label='Định mức (%)'
-					placeholder='Nhập % từ 1 đến 100'
-				/>
-			</div>
-
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Đơn giá vật liệu (đ/m)</Label>
-				<Input
-					readOnly
-					value={formatNumber(isNaN(otherMaterialCost) ? 0 : otherMaterialCost)}
-					className='read-only:bg-transparent'
-				/>
-			</div>
-
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
-				onClick={() =>
-					setValue('otherMaterialValue', undefined, {
-						shouldValidate: false,
-					})
-				}
-			>
-				<XCircleIcon className='size-6' />
-			</Button>
-		</FormRow>
 	);
 }

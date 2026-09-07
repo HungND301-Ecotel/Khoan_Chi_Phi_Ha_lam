@@ -86,6 +86,20 @@ public class PricingController : BaseAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("MaterialUnitPrice/Grouped")]
+    [OpenApiOperation("Get Grouped MaterialUnitPrice (Đào lò - 3-Tier)", "")]
+    [HasPermission("pricing.materialunitprice.read","Đơn giá, định mức","Đơn giá định mức vật liệu (Đào lò)")]
+    public async Task<IActionResult> GetGroupedMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetGroupedMaterialUnitPriceQuery(
+            pageIndex,
+            pageSize,
+            search,
+            ignorePagination,
+            TunnelExcavationTrimingUnitPriceType.TunnelExcavation));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpGet("MaterialUnitPrice/All")]
     [OpenApiOperation("Get All MaterialUnitPrice (All Types - Longwall, TunnelExcavation)", "")]
     [HasPermission("pricing.materialunitprice.read", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
@@ -189,6 +203,20 @@ public class PricingController : BaseAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("TrimmingMaterialUnitPrice/Grouped")]
+    [OpenApiOperation("Get Grouped Trimming MaterialUnitPrice (Xén lò - 3-Tier)", "")]
+    [HasPermission("pricing.trimmingmaterialunitpricing.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    public async Task<IActionResult> GetGroupedTrimmingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetGroupedMaterialUnitPriceQuery(
+            pageIndex,
+            pageSize,
+            search,
+            ignorePagination,
+            TunnelExcavationTrimingUnitPriceType.Trimming));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpGet("TrimmingMaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Trimming MaterialUnitPrice By Id (Xén lò)", "")]
     [HasPermission("pricing.trimmingmaterialunitpricing.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
@@ -274,6 +302,15 @@ public class PricingController : BaseAuthController
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
+    [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/Grouped")]
+    [OpenApiOperation("Get Grouped Tunnel Support And Drilling MaterialUnitPrice (3-Tier)", "")]
+    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    public async Task<IActionResult> GetGroupedTunnelSupportAndDrillingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetGroupedTunnelSupportAndDrillingMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Tunnel Support And Drilling MaterialUnitPrice By Id", "")]
     [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
@@ -353,6 +390,15 @@ public class PricingController : BaseAuthController
     public async Task<IActionResult> GetAllLongwallMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLongwallMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("LongwallMaterialUnitPrice/Grouped")]
+    [OpenApiOperation("Get Grouped Longwall MaterialUnitPrice (Lò chợ - 3-Tier)", "")]
+    [HasPermission("pricing.longwallmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    public async Task<IActionResult> GetGroupedLongwallMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetGroupedLongwallMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -437,6 +483,15 @@ public class PricingController : BaseAuthController
     public async Task<IActionResult> GetAllSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
+        return Ok(result, MessageCommon.GetDataSuccess);
+    }
+
+    [HttpGet("SlideUnitPrice/Grouped")]
+    [OpenApiOperation("Get Grouped SlideUnitPrice (Máng trượt - 3-Tier)", "")]
+    [HasPermission("pricing.slideunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    public async Task<IActionResult> GetGroupedSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
+    {
+        var result = await Mediator.Send(new GetGroupedSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
         return Ok(result, MessageCommon.GetDataSuccess);
     }
 
@@ -866,17 +921,17 @@ public class PricingController : BaseAuthController
     }
 
     [HttpGet("TunnelElectricityUnitPriceEquipment/export")]
-    [OpenApiOperation("Export Tunnel ElectricityUnitPriceEquipment (Lò chợ)", "")]
+    [OpenApiOperation("Export Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     [HasPermission("pricing.tunnerelectricityunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
     public async Task<IActionResult> ExportTunnelElectricityUnitPriceEquipment()
     {
         var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery(ElectricityUnitPriceType.TunnelExcavation));
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dinh_muc_dien_lo_cho.xlsx");
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Dinh_muc_dien_dao_lo.xlsx");
         return result;
     }
 
     [HttpPost("TunnelElectricityUnitPriceEquipment/import")]
-    [OpenApiOperation("Import Tunnel ElectricityUnitPriceEquipment (Lò chợ)", "")]
+    [OpenApiOperation("Import Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
     [HasPermission("pricing.tunnerelectricityunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
     public async Task<IActionResult> ImportTunnelElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
     {
@@ -1269,8 +1324,7 @@ public class PricingController : BaseAuthController
     }
 
     [HttpDelete("LowValuePerishableSupplyUnitPrice")]
-    [OpenApiOperation("Delete LowValuePerishableSupplyUnitPrice List", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [OpenApiOperation("Delete LowValuePerishableSupplyUnitPrice List (All Types)", "")]
     public async Task<IActionResult> DeleteLowValuePerishableSupplyUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceListCommand(deleteIds));

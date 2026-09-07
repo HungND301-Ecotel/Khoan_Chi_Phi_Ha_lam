@@ -1,7 +1,8 @@
-﻿namespace Application.Interfaces.Services;
+namespace Application.Interfaces.Services;
 
 public interface ICodeService
 {
+    public Task<Domain.Entities.Index.Code> GetOrCreateCodeAsync(string code, CancellationToken cancellationToken = default);
     public Task<bool> IsCodeExisted(string code);
     public Task<bool> IsCodeExisted(string code, Guid curId);
     public Task<bool> IsEquipmentCodeExisted(string code);

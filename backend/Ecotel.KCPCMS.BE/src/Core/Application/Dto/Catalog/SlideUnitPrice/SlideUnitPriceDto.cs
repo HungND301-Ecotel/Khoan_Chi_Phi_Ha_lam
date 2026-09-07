@@ -1,4 +1,4 @@
-﻿using Application.Common.Interfaces;
+using Application.Common.Interfaces;
 using Application.Dto.Catalog.SlideUnitPriceAssignmentCode;
 
 namespace Application.Dto.Catalog.SlideUnitPrice
@@ -17,6 +17,28 @@ namespace Application.Dto.Catalog.SlideUnitPrice
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
     }
+
+    public class SlideUnitPricePeriodDto
+    {
+        public Guid Id { get; set; }
+        public DateOnly StartMonth { get; set; }
+        public DateOnly EndMonth { get; set; }
+        public double TotalPrice { get; set; }
+    }
+
+    public class GroupedSlideUnitPriceDto : IDto
+    {
+        public Guid Id { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public Guid ProcessGroupId { get; set; }
+        public string ProcessGroupName { get; set; } = string.Empty;
+        public Guid PassportId { get; set; }
+        public string PassportName { get; set; } = string.Empty;
+        public Guid HardnessId { get; set; }
+        public string HardnessName { get; set; } = string.Empty;
+        public List<SlideUnitPricePeriodDto> Periods { get; set; } = [];
+    }
+
     public class SlideUnitPriceAssignmentCodeDto : IDto
     {
         public Guid Id { get; set; }

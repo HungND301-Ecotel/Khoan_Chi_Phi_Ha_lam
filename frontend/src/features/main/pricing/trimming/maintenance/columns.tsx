@@ -1,5 +1,13 @@
-import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+import { formatNumber } from '@/lib/utils';
+
+export type MaintenancePeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+	otherMaterialValue?: number;
+};
 
 export type Trimming = {
 	id: string;
@@ -7,9 +15,10 @@ export type Trimming = {
 	equipmentCode: string;
 	equipmentName: string;
 	type: number;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
+	startMonth?: string;
+	endMonth?: string;
+	totalPrice?: number;
+	periods?: MaintenancePeriod[];
 };
 
 export const MAIN_PRICING_TRIMMING_COLUMNS: ColumnDef<Trimming>[] = [
@@ -18,22 +27,6 @@ export const MAIN_PRICING_TRIMMING_COLUMNS: ColumnDef<Trimming>[] = [
 		header: 'Nhóm vật tư, tài sản',
 		cell: ({ row }) =>
 			`${row.original.equipmentCode} - ${row.original.equipmentName}`,
-	},
-	{
-		accessorKey: 'time',
-		header: 'Thời gian',
-		cell: ({ row }) => (
-			<span>
-				<span>{formatDate(row.original.startMonth)}</span>
-				<br />
-				<span>{formatDate(row.original.endMonth)}</span>
-			</span>
-		),
-	},
-	{
-		accessorKey: 'totalPrice',
-		header: 'Chi phí vật tư SCTX cho 1 thiết bị/1 mét lò xén (đ/m)',
-		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 
@@ -117,7 +110,7 @@ export const MAIN_PRICING_TRIMMING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceEq
 			accessorKey: 'materialCostPerMetres',
 			header: () => (
 				<span className='h-fit whitespace-normal'>
-					{'Chi phí vật tư SCTX cho 1 vật tư/1 mét lò xén (đ/m)'}
+					{'Chi phí vật tư SCTX cho 1 vật tư/1 mét lò đào (đ/m)'}
 				</span>
 			),
 			cell: ({ row }) =>

@@ -1,7 +1,14 @@
 import { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+
+export type SlidePeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+};
 
 export type Slide = {
 	id: string;
@@ -13,9 +20,10 @@ export type Slide = {
 	passportName: string;
 	hardnessId: string;
 	hardnessName: string;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
+	startMonth?: string;
+	endMonth?: string;
+	totalPrice?: number;
+	periods?: SlidePeriod[];
 };
 
 const getSlideMaterialDetail = (slide: Slide) =>
@@ -47,22 +55,6 @@ export const MAIN_PRICING_SLIDE_COLUMNS: ColumnDef<Slide>[] = [
 			</div>
 		),
 	},
-	{
-		accessorKey: 'startMonth',
-		header: 'Thời gian',
-		cell: ({ row }) => (
-			<span>
-				<span>{formatDate(row.original.startMonth)}</span>
-				<br />
-				<span>{formatDate(row.original.endMonth)}</span>
-			</span>
-		),
-	},
-	{
-		accessorKey: 'totalPrice',
-		header: 'Đơn giá máng trượt (đ/m)',
-		cell: ({ row }) => formatNumber(row.original.totalPrice),
-	},
 ];
 
 export type ExpandSlideDetail = {
@@ -74,20 +66,22 @@ export const MAIN_PRICING_DETAIL_EXPAND_COLUMNS: ColumnDef<ExpandSlideDetail>[] 
 	[
 		{
 			accessorKey: 'passport',
-			header: 'Hộ chiếu, Sđ, Sc',
+			header: () => <span className='text-black font-semibold'>Hộ chiếu, Sđ, Sc</span>,
 			cell: ({ row }) => {
 				const { passport } = row.original;
 				return (
-					passport && `H/c ${passport.name}; ${passport.sd}; ${passport.sc}`
+					<span className='text-black'>
+						{passport ? `H/c ${passport.name}; ${passport.sd}; ${passport.sc}` : '-'}
+					</span>
 				);
 			},
 		},
 		{
 			accessorKey: 'strength',
-			header: 'Độ kiên cố đá, than (f)',
+			header: () => <span className='text-black font-semibold'>Độ kiên cố đá, than (f)</span>,
 			cell: ({ row }) => {
 				const { strength } = row.original;
-				return strength && strength.value;
+				return <span className='text-black'>{strength?.value ?? '-'}</span>;
 			},
 		},
 	];
@@ -136,35 +130,35 @@ export const MAIN_PRICING_SLIDE_EXPAND_COLUMNS: ColumnDef<ExpandSlideCostRow>[] 
 	[
 		{
 			accessorKey: 'assignmentCode',
-			header: () => <span>Mã nhóm vật tư, tài sản</span>,
+			header: () => <span className='text-black font-semibold'>Mã nhóm vật tư, tài sản</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary' ? (
-					<span className='font-semibold'>{row.original.assignmentCode}</span>
+					<span className='font-semibold text-black'>{row.original.assignmentCode}</span>
 				) : (
 					''
 				),
 		},
 		{
 			accessorKey: 'assignmentCodeName',
-			header: () => <span>Tên nhóm vật tư, tài sản</span>,
+			header: () => <span className='text-black font-semibold'>Tên nhóm vật tư, tài sản</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary'
-					? row.original.assignmentCodeName ?? ''
+					? <span className='font-semibold text-black'>{row.original.assignmentCodeName ?? ''}</span>
 					: '',
 		},
 		{
 			accessorKey: 'materialCode',
-			header: () => <span>Mã vật tư, tài sản</span>,
+			header: () => <span className='text-black font-semibold'>Mã vật tư, tài sản</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary'
 					? ''
-					: row.original.materialCode,
+					: <span className='text-black'>{row.original.materialCode}</span>,
 		},
 		{
 			accessorKey: 'materialName',
-			header: () => <span>Tên vật tư, tài sản</span>,
+			header: () => <span className='text-black font-semibold'>Tên vật tư, tài sản</span>,
 			cell: ({ row }) => (
-				<span className='whitespace-normal'>
+				<span className='whitespace-normal text-black'>
 					{row.original.rowType === 'group-summary'
 						? ''
 						: row.original.materialName}
@@ -173,40 +167,40 @@ export const MAIN_PRICING_SLIDE_EXPAND_COLUMNS: ColumnDef<ExpandSlideCostRow>[] 
 		},
 		{
 			accessorKey: 'unitOfMeasureName',
-			header: 'ĐVT',
+			header: () => <span className='text-black font-semibold'>ĐVT</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary'
 					? ''
-					: row.original.unitOfMeasureName ?? '',
+					: <span className='text-black'>{row.original.unitOfMeasureName ?? ''}</span>,
 		},
 		{
 			accessorKey: 'unitPrice',
-			header: 'Đơn giá (đ)',
+			header: () => <span className='text-black font-semibold'>Đơn giá (đ)</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary' ||
 				row.original.unitPrice === null ||
 				row.original.unitPrice === undefined
 					? ''
-					: formatNumber(row.original.unitPrice),
+					: <span className='text-black'>{formatNumber(row.original.unitPrice)}</span>,
 		},
 		{
 			accessorKey: 'norm',
-			header: 'Định mức',
+			header: () => <span className='text-black font-semibold'>Định mức</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary'
 					? ''
-					: String(row.original.norm),
+					: <span className='text-black'>{String(row.original.norm)}</span>,
 		},
 		{
 			accessorKey: 'totalPrice',
-			header: 'Đơn giá máng trượt (đ/m)',
+			header: () => <span className='text-black font-semibold'>Đơn giá máng trượt (đ/m)</span>,
 			cell: ({ row }) =>
 				row.original.rowType === 'group-summary' ? (
-					<span className='font-semibold'>
+					<span className='font-semibold text-black'>
 						{formatNumber(row.original.totalPrice)}
 					</span>
 				) : (
-					formatNumber(row.original.totalPrice)
+					<span className='text-black'>{formatNumber(row.original.totalPrice)}</span>
 				),
 		},
 	];

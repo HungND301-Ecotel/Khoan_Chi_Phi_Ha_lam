@@ -828,9 +828,9 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MaterialUnitPrice>()
             .HasOne(s => s.Code)
-            .WithOne(h => h.MaterialUnitPrice)
-            .HasForeignKey<MaterialUnitPrice>(s => s.CodeId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .WithMany(h => h.MaterialUnitPrices)
+            .HasForeignKey(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<MaterialUnitPrice>()
             .HasOne(s => s.ProductionProcess)
             .WithMany(h => h.MaterialUnitPrices)
@@ -921,9 +921,9 @@ public class ApplicationDbContext(
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SlideUnitPrice>()
             .HasOne(s => s.Code)
-            .WithOne(h => h.SlideUnitPrice)
-            .HasForeignKey<SlideUnitPrice>(s => s.CodeId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .WithMany(h => h.SlideUnitPrices)
+            .HasForeignKey(s => s.CodeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         //SlideUnitPriceAssignmentCode table
         modelBuilder.Entity<SlideUnitPriceAssignmentCode>()

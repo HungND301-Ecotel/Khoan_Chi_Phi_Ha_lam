@@ -1,9 +1,9 @@
 import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
-import { FormMonthYear } from '@/components/form/form-month-year';
 import { FormInput } from '@/components/form/form-input';
-import { FormNumber } from '@/components/form/form-number';
+import { MonthYearInput } from '@/components/form/form-month-year';
+import { FormNumberInput } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
@@ -12,26 +12,28 @@ import { usePopup } from '@/components/popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { Asset } from '@/features/main/catalog/asset/types';
+import type { Asset } from '@/features/main/catalog/asset/types';
 import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
 import type { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import type { Strength } from '@/features/main/catalog/parameter/strength/columns';
-import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
-import { Slide } from '@/features/main/pricing/tunneling/slide/columns';
+import type { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import type { Slide } from '@/features/main/pricing/tunneling/slide/columns';
 import {
-	SLIDE_FORM_DEFAULT,
-	slideFormSchema,
-	SlideFormSchema,
+	SLIDE_COMMON_FORM_DEFAULT,
+	slideCommonFormSchema,
+	type SlideCommonFormSchema,
+	type SlideFormSchema,
 } from '@/features/main/pricing/tunneling/slide/schema';
 import { api } from '@/lib/api';
-import { formatNumber } from '@/lib/utils';
+import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { XCircleIcon } from 'lucide-react';
+import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useForm, useFormContext, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 
 type SlideMaterialOption = MultiSelectOption & {
 	assignmentCodeId: string;
@@ -50,14 +52,6 @@ type PersistedSlideMaterialCost = {
 	amount: number;
 };
 
-type PersistedMaterialMetadata = {
-	assignmentCodeId: string;
-	materialId: string;
-	materialCode: string;
-	materialName: string;
-	unitOfMeasureName: string;
-};
-
 export type SlideDetail = {
 	id: string;
 	code: string;
@@ -67,7 +61,7 @@ export type SlideDetail = {
 	materialCost: Array<{
 		assignmentCodeId: string;
 		assignmentCode: string;
-		assignmentCodeName: string;
+		assignmentCodeName?: string;
 		costs: Array<{
 			materialId: string;
 			materialCode: string;
@@ -79,53 +73,46 @@ export type SlideDetail = {
 	}>;
 };
 
+interface PeriodItemData {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	costs: SlideFormSchema['costs'];
+	selectedAssignments: MultiSelectOption[];
+	selectedMaterials: SlideMaterialOption[];
+	persistedCosts: PersistedSlideMaterialCost[];
+}
+
 const buildMaterialSelectionValue = (
 	assignmentCodeId: string,
 	materialId: string,
 ) => `${assignmentCodeId}::${materialId}`;
 
 const buildMaterialOption = (
-	contract: ContractCode | undefined,
+	assignment: ContractCode | undefined,
 	asset: Asset | undefined,
 ): SlideMaterialOption | null => {
-	if (!contract || !asset) return null;
+	if (!assignment || !asset) return null;
 
 	return {
-		value: buildMaterialSelectionValue(contract.id, asset.id),
-		label: `[${contract.code}] ${asset.code} - ${asset.name}`,
-		assignmentCodeId: contract.id,
+		value: buildMaterialSelectionValue(assignment.id, asset.id),
+		label: `[${assignment.code}] ${asset.code} - ${asset.name}`,
+		assignmentCodeId: assignment.id,
 		materialId: asset.id,
 	};
 };
 
-const buildPersistedMaterialOption = (
-	cost: PersistedSlideMaterialCost,
-	contract: ContractCode | undefined,
-): SlideMaterialOption => {
-	const assignmentCode = contract?.code ?? cost.assignmentCode;
-
-	return {
-		value: buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-		label: `[${assignmentCode}] ${cost.materialCode} - ${cost.materialName}`,
-		assignmentCodeId: cost.assignmentCodeId,
-		materialId: cost.materialId,
-	};
-};
-
-const arraysEqual = (left: string[], right: string[]) =>
-	left.length === right.length &&
-	left.every((value, index) => value === right[index]);
-
 const getMaterialOptions = (
 	assets: Asset[],
-	contracts: ContractCode[],
-	selectedContractIds: string[],
+	assignments: ContractCode[],
+	selectedAssignmentIds: string[],
 ) => {
-	const contractMap = new Map(contracts.map((item) => [item.id, item]));
+	const assignmentMap = new Map(assignments.map((item) => [item.id, item]));
 	const options: SlideMaterialOption[] = [];
 
-	selectedContractIds.forEach((assignmentCodeId) => {
-		const contract = contractMap.get(assignmentCodeId);
+	selectedAssignmentIds.forEach((assignmentCodeId) => {
+		const assignment = assignmentMap.get(assignmentCodeId);
 		assets
 			.filter((asset) => asset.assignmentCodeIds.includes(assignmentCodeId))
 			.sort((left, right) =>
@@ -135,7 +122,7 @@ const getMaterialOptions = (
 				),
 			)
 			.forEach((asset) => {
-				const option = buildMaterialOption(contract, asset);
+				const option = buildMaterialOption(assignment, asset);
 				if (option) {
 					options.push(option);
 				}
@@ -143,6 +130,14 @@ const getMaterialOptions = (
 	});
 
 	return options;
+};
+
+const deriveNormFromAmount = (amount: number, unitPrice: number) => {
+	if (unitPrice > 0) {
+		return amount / unitPrice;
+	}
+
+	return amount === 0 ? 0 : amount;
 };
 
 const syncCostsWithSelections = (
@@ -167,22 +162,18 @@ const syncCostsWithSelections = (
 
 	const addedRows = selectedMaterialOptions
 		.filter((option) => !existingKeys.has(option.value))
-		.map((option) => ({
-			assignmentCodeId: option.assignmentCodeId,
-			materialId: option.materialId,
-			norm: Number.NaN,
-			amount: assetMap.get(option.materialId)?.costAmount ?? 0,
-		}));
+		.map((option) => {
+			const asset = assetMap.get(option.materialId);
+			const unitPrice = asset?.costAmount ?? 0;
+			return {
+				assignmentCodeId: option.assignmentCodeId,
+				materialId: option.materialId,
+				norm: Number.NaN,
+				amount: unitPrice,
+			};
+		});
 
 	return [...existingRows, ...addedRows];
-};
-
-const deriveNormFromAmount = (amount: number, unitPrice: number) => {
-	if (unitPrice > 0) {
-		return amount / unitPrice;
-	}
-
-	return amount === 0 ? 0 : amount;
 };
 
 const normalizeCostAmounts = (
@@ -192,29 +183,28 @@ const normalizeCostAmounts = (
 	const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 	return costs.map((cost) => {
 		const asset = assetMap.get(cost.materialId);
-		if (!asset) {
-			return cost;
+		if (asset) {
+			const unitPrice = asset.costAmount ?? 0;
+			const amount = Number.isNaN(Number(cost.norm))
+				? unitPrice
+				: unitPrice * Number(cost.norm);
+
+			return {
+				...cost,
+				amount,
+			};
 		}
-
-		const unitPrice = asset.costAmount ?? cost.amount ?? 0;
-		const amount = Number.isNaN(Number(cost.norm))
-			? unitPrice
-			: unitPrice * Number(cost.norm);
-
-		return {
-			...cost,
-			amount,
-		};
+		return cost;
 	});
 };
 
 const sortCosts = (
 	costs: SlideFormSchema['costs'],
-	contracts: ContractCode[],
+	assignments: ContractCode[],
 	assets: Asset[],
 ) => {
-	const contractOrder = new Map(
-		contracts.map((contract, index) => [contract.id, index]),
+	const assignmentOrder = new Map(
+		assignments.map((assignment, index) => [assignment.id, index]),
 	);
 	const assetOrder = new Map(
 		assets
@@ -229,10 +219,10 @@ const sortCosts = (
 	);
 
 	return [...costs].sort((left, right) => {
-		const contractCompare =
-			(contractOrder.get(left.assignmentCodeId) ?? Number.MAX_SAFE_INTEGER) -
-			(contractOrder.get(right.assignmentCodeId) ?? Number.MAX_SAFE_INTEGER);
-		if (contractCompare !== 0) return contractCompare;
+		const assignmentCompare =
+			(assignmentOrder.get(left.assignmentCodeId) ?? Number.MAX_SAFE_INTEGER) -
+			(assignmentOrder.get(right.assignmentCodeId) ?? Number.MAX_SAFE_INTEGER);
+		if (assignmentCompare !== 0) return assignmentCompare;
 
 		return (
 			(assetOrder.get(left.materialId) ?? Number.MAX_SAFE_INTEGER) -
@@ -241,66 +231,114 @@ const sortCosts = (
 	});
 };
 
-function groupCostsByAssignmentCode(
+const groupCostsByAssignment = (
 	costs: SlideFormSchema['costs'],
-	contracts: ContractCode[],
-): Array<{
-	assignmentCodeId: string;
-	assignmentCode: string;
-	assignmentCodeName: string;
-	indices: number[];
-	totalAmount: number;
-}> {
+	assignments: ContractCode[],
+) => {
 	const grouped = new Map<
 		string,
 		{
 			assignmentCodeId: string;
-			assignmentCode: string;
-			assignmentCodeName: string;
+			assignmentLabel: string;
 			indices: number[];
+			totalAmount: number;
 		}
 	>();
 
 	costs.forEach((cost, index) => {
-		const assignmentCodeId = cost.assignmentCodeId;
-		const contract = contracts.find((c) => c.id === assignmentCodeId);
+		const assignment = assignments.find(
+			(item) => item.id === cost.assignmentCodeId,
+		);
+		const assignmentLabel = assignment
+			? `${assignment.code} - ${assignment.name}`
+			: cost.assignmentCodeId;
+		const current = grouped.get(cost.assignmentCodeId);
+		const rowTotal = Number.isNaN(Number(cost.amount))
+			? 0
+			: Number(cost.amount);
 
-		if (!grouped.has(assignmentCodeId)) {
-			grouped.set(assignmentCodeId, {
-				assignmentCodeId,
-				assignmentCode: contract?.code || '',
-				assignmentCodeName: contract?.name || '',
-				indices: [],
+		if (!current) {
+			grouped.set(cost.assignmentCodeId, {
+				assignmentCodeId: cost.assignmentCodeId,
+				assignmentLabel,
+				indices: [index],
+				totalAmount: rowTotal,
 			});
+			return;
 		}
 
-		grouped.get(assignmentCodeId)?.indices.push(index);
+		current.indices.push(index);
+		current.totalAmount += rowTotal;
 	});
 
-	const groups = Array.from(grouped.values()).sort((a, b) =>
-		a.assignmentCode.localeCompare(b.assignmentCode),
-	);
+	return Array.from(grouped.values());
+};
 
-	// Calculate total amount for each group
-	return groups.map((group) => {
-		let totalAmount = 0;
+const validatePeriods = (
+	allPeriods: PeriodItemData[],
+): { error: string } | null => {
+	if (allPeriods.length === 0) {
+		return { error: 'Cần ít nhất một khoảng thời gian áp dụng.' };
+	}
 
-		group.indices.forEach((index) => {
-			const cost = costs[index];
-			if (!cost) return;
-
-			const amount = cost.amount || 0;
-			if (!isNaN(amount)) {
-				totalAmount += amount;
+	for (let i = 0; i < allPeriods.length; i++) {
+		const p = allPeriods[i];
+		if (!p.startMonth) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa chọn thời gian bắt đầu.`,
+			};
+		}
+		if (!p.endMonth) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa chọn thời gian kết thúc.`,
+			};
+		}
+		const s = new Date(p.startMonth).getTime();
+		const e = new Date(p.endMonth).getTime();
+		if (s > e) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Thời gian bắt đầu không được lớn hơn thời gian kết thúc.`,
+			};
+		}
+		if (!p.costs || p.costs.length === 0) {
+			return {
+				error: `Khoảng thời gian ${i + 1}: Chưa có vật tư nào trong định mức. Vui lòng chọn nhóm vật tư và vật tư.`,
+			};
+		}
+		for (const c of p.costs) {
+			if (
+				c.norm === undefined ||
+				c.norm === null ||
+				Number.isNaN(Number(c.norm))
+			) {
+				return {
+					error: `Khoảng thời gian ${i + 1}: Có vật tư chưa nhập định mức.`,
+				};
 			}
-		});
+		}
+	}
 
-		return {
-			...group,
-			totalAmount,
-		};
-	});
-}
+	for (let i = 0; i < allPeriods.length; i++) {
+		for (let j = i + 1; j < allPeriods.length; j++) {
+			const p1 = allPeriods[i];
+			const p2 = allPeriods[j];
+			const s1 = new Date(p1.startMonth).getTime();
+			const e1 = new Date(p1.endMonth).getTime();
+			const s2 = new Date(p2.startMonth).getTime();
+			const e2 = new Date(p2.endMonth).getTime();
+
+			if (s1 <= e2 && s2 <= e1) {
+				const label1 = `Khoảng thời gian ${i + 1} (${formatDate(p1.startMonth, 'MM/yyyy')} - ${formatDate(p1.endMonth, 'MM/yyyy')})`;
+				const label2 = `Khoảng thời gian ${j + 1} (${formatDate(p2.startMonth, 'MM/yyyy')} - ${formatDate(p2.endMonth, 'MM/yyyy')})`;
+				return {
+					error: `Thời gian áp dụng của ${label1} và ${label2} bị trùng lặp. Vui lòng kiểm tra lại.`,
+				};
+			}
+		}
+	}
+
+	return null;
+};
 
 export function SlideForm({
 	data,
@@ -313,329 +351,276 @@ export function SlideForm({
 	const [groups, setGroups] = useState<ProcessGroup[]>([]);
 	const [passports, setPassports] = useState<Passport[]>([]);
 	const [strengths, setStrengths] = useState<Strength[]>([]);
-	const [contracts, setContracts] = useState<ContractCode[]>([]);
-	const [assets, setAssets] = useState<Asset[]>([]);
-	const [selectedContracts, setSelectedContracts] = useState<
-		MultiSelectOption[]
-	>([]);
-	const [selectedMaterials, setSelectedMaterials] = useState<
-		SlideMaterialOption[]
-	>([]);
-	const persistedCostsRef = useRef<PersistedSlideMaterialCost[]>([]);
-	const persistedMaterialMetadataRef = useRef<
-		PersistedMaterialMetadata[]
-	>([]);
 
-	const form = useForm<SlideFormSchema>({
-		resolver: zodResolver(slideFormSchema),
+	const [periods, setPeriods] = useState<PeriodItemData[]>([
+		{
+			tempId: `period_${Date.now()}`,
+			startMonth: new Date().toISOString().substring(0, 10),
+			endMonth: new Date().toISOString().substring(0, 10),
+			costs: [],
+			selectedAssignments: [],
+			selectedMaterials: [],
+			persistedCosts: [],
+		},
+	]);
+	const [deletedPeriodIds, setDeletedPeriodIds] = useState<string[]>([]);
+	const [isLoadingPeriods, setIsLoadingPeriods] = useState(false);
+
+	const form = useForm<SlideCommonFormSchema, unknown, SlideCommonFormSchema>({
+		resolver: zodResolver(slideCommonFormSchema),
 		mode: 'onSubmit',
-		defaultValues: SLIDE_FORM_DEFAULT,
+		defaultValues: SLIDE_COMMON_FORM_DEFAULT,
 	});
-
-	const watchedStartMonth = useWatch({
-		control: form.control,
-		name: 'startMonth',
-		defaultValue: SLIDE_FORM_DEFAULT.startMonth,
-	});
-	const watchedCosts = useWatch({
-		control: form.control,
-		name: 'costs',
-		defaultValue: SLIDE_FORM_DEFAULT.costs,
-	});
-	const selectedContractIds = selectedContracts.map((item) => item.value);
 
 	useEffect(() => {
 		Promise.all([
 			api.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST),
 			api.pagging<Passport>(API.CATALOG.PARAMETER.PASSPORT.LIST),
 			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST),
-		]).then(([processesRes, passportsRes, strengthsRes]) => {
-			setGroups(processesRes.result.data);
+		]).then(([groupsRes, passportsRes, strengthsRes]) => {
+			setGroups(groupsRes.result.data);
 			setPassports(passportsRes.result.data);
 			setStrengths(strengthsRes.result.data);
 		});
 	}, []);
 
 	useEffect(() => {
-		const effectiveStartMonth =
-			watchedStartMonth || form.getValues('startMonth') || '';
-		if (!effectiveStartMonth) return;
-		let cancelled = false;
-
-		Promise.all([
-			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
-				ignorePagination: true,
-				date: effectiveStartMonth,
-			}),
-			api.pagging<Asset>(API.CATALOG.ASSET.LIST, {
-				ignorePagination: true,
-				date: effectiveStartMonth,
-			}),
-		]).then(([contractsRes, assetsRes]) => {
-			if (cancelled) return;
-			setContracts(contractsRes.result.data);
-			setAssets(assetsRes.result.data);
-		});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [form, watchedStartMonth]);
-
-	useEffect(() => {
-		if (!row) return;
+		if (!row) {
+			setPeriods([
+				{
+					tempId: `period_${Date.now()}`,
+					startMonth: new Date().toISOString().substring(0, 10),
+					endMonth: new Date().toISOString().substring(0, 10),
+					costs: [],
+					selectedAssignments: [],
+					selectedMaterials: [],
+					persistedCosts: [],
+				},
+			]);
+			return;
+		}
 
 		form.reset({
-			...SLIDE_FORM_DEFAULT,
-			startMonth: row.startMonth.substring(0, 10),
-			endMonth: row.endMonth.substring(0, 10),
 			code: isDuplicate ? '' : row.code,
 			processGroupId: row.processGroupId,
 			passportId: row.passportId,
 			hardnessId: row.hardnessId,
 		});
 
-		api.get<SlideDetail>(API.PRICING.SLIDE.DETAIL(row.id)).then((res) => {
-			const persistedCosts = res.result.materialCost.flatMap((group) =>
-				group.costs.map((cost) => ({
-					assignmentCodeId: group.assignmentCodeId,
-					assignmentCode: group.assignmentCode,
-					assignmentCodeName: group.assignmentCodeName ?? '',
-					materialId: cost.materialId,
-					materialCode: cost.materialCode,
-					materialName: cost.materialName,
-					unitOfMeasureName: cost.unitOfMeasureName,
-					unitPrice: cost.cost,
-					amount: cost.amount,
-				})),
-			);
-			const persistedMaterialMetadata = res.result.materialCost.flatMap(
-				(group) =>
-					group.costs.map((cost) => ({
-						assignmentCodeId: group.assignmentCodeId,
-						materialId: cost.materialId,
-						materialCode: cost.materialCode,
-						materialName: cost.materialName,
-						unitOfMeasureName: cost.unitOfMeasureName,
-					})),
-			);
+		const rawPeriods =
+			row.periods && row.periods.length > 0
+				? row.periods
+				: [
+						{
+							id: row.id,
+							startMonth: row.startMonth,
+							endMonth: row.endMonth,
+							totalPrice: row.totalPrice ?? 0,
+						},
+					];
 
-			persistedCostsRef.current = persistedCosts;
-			persistedMaterialMetadataRef.current = persistedMaterialMetadata;
-			setSelectedContracts(
-				Array.from(
-					new Map(
-						persistedCosts.map((cost) => [
+		setIsLoadingPeriods(true);
+		Promise.all(
+			rawPeriods.map(async (p, idx) => {
+				if (!p.id) {
+					return {
+						tempId: `period_${idx}_${Date.now()}`,
+						id: undefined,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (
+							p.endMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						costs: [],
+						selectedAssignments: [],
+						selectedMaterials: [],
+						persistedCosts: [],
+					};
+				}
+				try {
+					const res = await api.get<SlideDetail>(
+						API.PRICING.SLIDE.DETAIL(p.id),
+					);
+					const detail = res.result;
+					const persistedCosts: PersistedSlideMaterialCost[] = [];
+					const materialCosts = detail.materialCost ?? [];
+
+					materialCosts.forEach((group) => {
+						(group.costs ?? []).forEach((c) => {
+							persistedCosts.push({
+								assignmentCodeId: group.assignmentCodeId,
+								assignmentCode: group.assignmentCode,
+								assignmentCodeName: group.assignmentCodeName ?? '',
+								materialId: c.materialId,
+								materialCode: c.materialCode,
+								materialName: c.materialName,
+								unitOfMeasureName: c.unitOfMeasureName,
+								unitPrice: c.cost,
+								amount: c.amount,
+							});
+						});
+					});
+
+					const selectedAssignments = materialCosts.map((group) => ({
+						value: group.assignmentCodeId,
+						label: `${group.assignmentCode} - ${group.assignmentCodeName ?? ''}`,
+					}));
+
+					const selectedMaterials = persistedCosts.map((cost) => ({
+						value: buildMaterialSelectionValue(
 							cost.assignmentCodeId,
-							{
-								value: cost.assignmentCodeId,
-								label: `${cost.assignmentCode} - ${cost.assignmentCodeName}`,
-							},
-						]),
-					).values(),
-				),
-			);
-			setSelectedMaterials(
-				persistedCosts.map((cost) =>
-					buildPersistedMaterialOption(cost, undefined),
-				),
-			);
-			form.setValue(
-				'costs',
-				persistedCosts.map((cost) => ({
-					assignmentCodeId: cost.assignmentCodeId,
-					materialId: cost.materialId,
-					norm: deriveNormFromAmount(cost.amount, cost.unitPrice),
-					amount: cost.amount,
-				})),
-			);
+							cost.materialId,
+						),
+						label: `[${cost.assignmentCode}] ${cost.materialCode} - ${cost.materialName}`,
+						assignmentCodeId: cost.assignmentCodeId,
+						materialId: cost.materialId,
+					}));
+
+					const normalizedCosts = persistedCosts.map((cost) => ({
+						assignmentCodeId: cost.assignmentCodeId,
+						materialId: cost.materialId,
+						norm: deriveNormFromAmount(cost.amount, cost.unitPrice),
+						amount: cost.amount,
+					}));
+
+					return {
+						tempId: p.id,
+						id: isDuplicate ? undefined : p.id,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (
+							p.endMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						costs: normalizedCosts,
+						selectedAssignments,
+						selectedMaterials,
+						persistedCosts,
+					};
+				} catch {
+					return {
+						tempId: p.id,
+						id: isDuplicate ? undefined : p.id,
+						startMonth: (
+							p.startMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						endMonth: (
+							p.endMonth ?? new Date().toISOString()
+						).substring(0, 10),
+						costs: [],
+						selectedAssignments: [],
+						selectedMaterials: [],
+						persistedCosts: [],
+					};
+				}
+			}),
+		).then((loadedPeriods) => {
+			setIsLoadingPeriods(false);
+			setPeriods(loadedPeriods);
 		});
 	}, [form, isDuplicate, row]);
 
-	useEffect(() => {
-		if (contracts.length === 0 && assets.length === 0) return;
+	const handleUpdatePeriod = (index: number, updated: PeriodItemData) => {
+		setPeriods((prev) => {
+			const next = [...prev];
+			next[index] = updated;
+			return next;
+		});
+	};
 
-		const persistedCosts = persistedCostsRef.current;
-		const currentCosts = form.getValues('costs') ?? [];
-		const persistedCostMap = new Map(
-			persistedCosts.map((cost) => [
-				buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-				cost,
-			]),
-		);
-		const persistedContractMap = new Map(
-			currentCosts.map((cost) => {
-				const persistedCost = persistedCostMap.get(
-					buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
+	const handleAddPeriod = () => {
+		let nextStart = new Date().toISOString().substring(0, 10);
+		let nextEnd = new Date().toISOString().substring(0, 10);
+
+		if (periods.length > 0) {
+			const sortedEndDates = periods
+				.map((p) => p.endMonth)
+				.filter(Boolean)
+				.sort();
+			const latestEnd = sortedEndDates[sortedEndDates.length - 1];
+			if (latestEnd) {
+				const date = new Date(latestEnd);
+				const nextStartDate = new Date(
+					date.getFullYear(),
+					date.getMonth() + 1,
+					1,
 				);
-
-				return [
-					cost.assignmentCodeId,
-					{
-						value: cost.assignmentCodeId,
-						label: `${persistedCost?.assignmentCode ?? ''} - ${persistedCost?.assignmentCodeName ?? ''}`,
-					},
-				] as const;
-			}),
-		);
-		const persistedContractIds = Array.from(persistedContractMap.keys());
-		const selectedContractSet = new Set([
-			...selectedContractIds,
-			...persistedContractIds,
-		]);
-		const normalizedContracts = Array.from(
-			new Map(
-				[
-					...contracts
-						.filter((contract) => selectedContractSet.has(contract.id))
-						.map<MultiSelectOption>((contract) => ({
-							value: contract.id,
-							label: `${contract.code} - ${contract.name}`,
-						})),
-					...Array.from(persistedContractMap.values()).filter(
-						(item) => !contracts.some((contract) => contract.id === item.value),
-					),
-				].map((item) => [item.value, item]),
-			).values(),
-		);
-
-		if (
-			!arraysEqual(
-				selectedContracts.map((item) => item.value),
-				normalizedContracts.map((item) => item.value),
-			)
-		) {
-			setSelectedContracts(normalizedContracts);
+				const nextEndDate = new Date(
+					date.getFullYear() + 1,
+					date.getMonth() + 1,
+					0,
+				);
+				nextStart = nextStartDate.toISOString().substring(0, 10);
+				nextEnd = nextEndDate.toISOString().substring(0, 10);
+			}
 		}
 
-		const currentOptions = getMaterialOptions(
-			assets,
-			contracts,
-			normalizedContracts.map((item) => item.value),
-		);
-		const currentOptionMap = new Map(
-			currentOptions.map((option) => [option.value, option]),
-		);
-		const selectedMaterialMap = new Map(
-			selectedMaterials.map((option) => [option.value, option]),
-		);
-		const currentCostKeys = new Set(
-			currentCosts.map((cost) =>
-				buildMaterialSelectionValue(cost.assignmentCodeId, cost.materialId),
-			),
-		);
-		const persistedSelectedOptions = Array.from(currentCostKeys)
-			.map((key) => persistedCostMap.get(key))
-			.filter((cost): cost is PersistedSlideMaterialCost => !!cost)
-			.map((cost) =>
-				buildPersistedMaterialOption(
-					cost,
-					contracts.find(
-						(contract) => contract.id === cost.assignmentCodeId,
-					),
-				),
-			);
+		const newPeriod: PeriodItemData = {
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			startMonth: nextStart,
+			endMonth: nextEnd,
+			costs: [],
+			selectedAssignments: [],
+			selectedMaterials: [],
+			persistedCosts: [],
+		};
 
-		const mergedSelectedMaterials = [
-			...selectedMaterials
-				.map(
-					(option) =>
-						currentOptionMap.get(option.value) ??
-						selectedMaterialMap.get(option.value),
-				)
-				.filter((option): option is SlideMaterialOption => !!option),
-			...persistedSelectedOptions.filter(
-				(option) =>
-					!selectedMaterialMap.has(option.value) &&
-					!currentOptionMap.has(option.value),
-			),
-		];
-		const uniqueSelectedMaterials = Array.from(
-			new Map(
-				mergedSelectedMaterials.map((option) => [option.value, option]),
-			).values(),
-		);
+		setPeriods((prev) => [...prev, newPeriod]);
+	};
 
-		if (
-			!arraysEqual(
-				selectedMaterials.map((item) => item.value),
-				uniqueSelectedMaterials.map((item) => item.value),
-			)
-		) {
-			setSelectedMaterials(uniqueSelectedMaterials);
+	const handleDeletePeriod = (indexToDelete: number) => {
+		if (periods.length <= 1) {
+			popup.error('Mã định mức cần có ít nhất một khoảng thời gian.');
+			return;
 		}
-	}, [
-		assets,
-		contracts,
-		form,
-		selectedContractIds,
-		selectedContracts,
-		selectedMaterials,
-	]);
 
-	useEffect(() => {
-		const isHydratingPersistedSelections =
-			selectedMaterials.length === 0 &&
-			persistedCostsRef.current.length > 0 &&
-			watchedCosts.length > 0;
-		if (isHydratingPersistedSelections) return;
-
-		const syncedCosts = sortCosts(
-			normalizeCostAmounts(
-				syncCostsWithSelections(watchedCosts, selectedMaterials, assets),
-				assets,
-			),
-			contracts,
-			assets,
-		);
-		const currentKeys = watchedCosts.map(
-			(cost) =>
-				`${cost.assignmentCodeId}:${cost.materialId}:${cost.norm}:${cost.amount}`,
-		);
-		const nextKeys = syncedCosts.map(
-			(cost) =>
-				`${cost.assignmentCodeId}:${cost.materialId}:${cost.norm}:${cost.amount}`,
-		);
-
-		if (!arraysEqual(currentKeys, nextKeys)) {
-			form.setValue('costs', syncedCosts, {
-				shouldValidate: false,
-			});
+		const periodToDelete = periods[indexToDelete];
+		if (periodToDelete.id) {
+			setDeletedPeriodIds((prev) => [...prev, periodToDelete.id!]);
 		}
-	}, [assets, contracts, form, selectedMaterials, watchedCosts]);
 
-	const currentMaterialOptions = getMaterialOptions(
-		assets,
-		contracts,
-		selectedContractIds,
-	);
-	const materialOptions = [
-		...currentMaterialOptions,
-		...selectedMaterials.filter(
-			(option) =>
-				!currentMaterialOptions.some(
-					(currentOption) => currentOption.value === option.value,
-				),
-		),
-	];
+		setPeriods((prev) => prev.filter((_, idx) => idx !== indexToDelete));
+	};
 
-	const handleSubmit = async (values: SlideFormSchema) => {
+	const handleSubmit = async (values: SlideCommonFormSchema) => {
 		try {
-			const processedValues = {
-				...values,
-				costs: normalizeCostAmounts(values.costs, assets).map((cost) => ({
-					assignmentCodeId: cost.assignmentCodeId,
-					materialId: cost.materialId,
-					amount: cost.amount,
-				})),
-			};
-			if (row?.id && !isDuplicate) {
-				await api.put(API.PRICING.SLIDE.UPDATE, {
-					id: row.id,
-					...processedValues,
-				});
-			} else {
-				await api.post(API.PRICING.SLIDE.CREATE, processedValues);
+			const validationResult = validatePeriods(periods);
+			if (validationResult) {
+				popup.error(validationResult.error);
+				return;
+			}
+
+			if (deletedPeriodIds.length > 0) {
+				await api.delete(
+					API.PRICING.SLIDE.DELETES,
+					deletedPeriodIds,
+				);
+			}
+
+			for (const period of periods) {
+				const payload = {
+					code: values.code,
+					processGroupId: values.processGroupId,
+					passportId: values.passportId,
+					hardnessId: values.hardnessId,
+					startMonth: period.startMonth,
+					endMonth: period.endMonth,
+					costs: period.costs.map((cost) => ({
+						assignmentCodeId: cost.assignmentCodeId,
+						materialId: cost.materialId,
+						amount: cost.amount,
+					})),
+				};
+
+				if (period.id && !isDuplicate) {
+					await api.put(API.PRICING.SLIDE.UPDATE, {
+						id: period.id,
+						...payload,
+					});
+				} else {
+					await api.post(API.PRICING.SLIDE.CREATE, payload);
+				}
 			}
 
 			setOpen(false);
@@ -651,23 +636,7 @@ export function SlideForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormRow>
-				<FormMonthYear
-					control={form.control}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
-
-			<FormSeparator />
-
+			{/* Phần 1: Thông tin chung định mức */}
 			<FormInput
 				control={form.control}
 				name='code'
@@ -680,9 +649,9 @@ export function SlideForm({
 				name='processGroupId'
 				label='Nhóm công đoạn sản xuất'
 				placeholder='Chọn nhóm công đoạn sản xuất'
-				options={groups.map((process) => ({
-					label: process.name,
-					value: process.id,
+				options={groups.map((group) => ({
+					label: group.name,
+					value: group.id,
 				}))}
 			/>
 
@@ -708,71 +677,40 @@ export function SlideForm({
 				}))}
 			/>
 
-			<MultiSelect
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn Nhóm vật tư, tài sản'
-				values={selectedContracts}
-				onValuesChange={(nextValues) => {
-					setSelectedContracts(nextValues);
+			<FormSeparator label='Danh sách khoảng thời gian áp dụng' />
 
-					const nextContractIds = new Set(
-						nextValues.map((value) => value.value),
-					);
-					setSelectedMaterials((currentValues) =>
-						currentValues.filter((value) =>
-							nextContractIds.has(value.assignmentCodeId),
-						),
-					);
-				}}
-				options={contracts.map((item) => ({
-					value: item.id,
-					label: `${item.code} - ${item.name}`,
-				}))}
-			/>
+			{/* Phần 2: Danh sách các form khoảng thời gian xếp dọc */}
+			{isLoadingPeriods ? (
+				<div className='flex items-center justify-center py-8 text-sm text-neutral-500'>
+					<Spinner className='mr-2 size-4' /> Đang tải dữ liệu các khoảng thời
+					gian...
+				</div>
+			) : (
+				<div className='flex flex-col gap-6'>
+					{periods.map((period, index) => (
+						<PeriodSection
+							key={period.tempId}
+							totalPeriods={periods.length}
+							period={period}
+							onUpdate={(updated) => handleUpdatePeriod(index, updated)}
+							onDelete={() => handleDeletePeriod(index)}
+						/>
+					))}
 
-			<MultiSelect
-				label='Vật tư theo nhóm'
-				placeholder='Chọn vật tư theo nhóm'
-				values={selectedMaterials}
-				onValuesChange={(nextValues) =>
-					setSelectedMaterials(nextValues as SlideMaterialOption[])
-				}
-				options={materialOptions}
-			/>
-
-			{watchedCosts.length > 0 && (
-			<GroupedMaterialCosts
-				contracts={contracts}
-				assets={assets}
-				persistedMetadata={persistedMaterialMetadataRef.current}
-				onRemove={(assignmentCodeId, materialId) => {
-					setSelectedMaterials((currentValues) =>
-						currentValues.filter(
-								(value) =>
-									value.value !==
-									buildMaterialSelectionValue(
-										assignmentCodeId,
-										materialId,
-									),
-							),
-						);
-						form.setValue(
-							'costs',
-							form
-								.getValues('costs')
-								.filter(
-									(cost) =>
-										!(
-											cost.assignmentCodeId === assignmentCodeId &&
-											cost.materialId === materialId
-										),
-								),
-							{
-								shouldValidate: false,
-							},
-						);
-					}}
-				/>
+					{/* Nút Thêm thời gian ở dưới cùng bên trái */}
+					<div className='flex justify-start pt-1'>
+						<Button
+							type='button'
+							variant='ghost'
+							size='sm'
+							onClick={handleAddPeriod}
+							className='h-fit w-fit bg-transparent flex items-center gap-1.5 p-0 hover:bg-transparent'
+						>
+							<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+							<span className='text-sm text-black'>Thêm thời gian</span>
+						</Button>
+					</div>
+				</div>
 			)}
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
@@ -780,167 +718,389 @@ export function SlideForm({
 	);
 }
 
-function GroupedMaterialCosts({
-	contracts,
-	assets,
-	persistedMetadata,
-	onRemove,
-}: {
-	contracts: ContractCode[];
-	assets: Asset[];
-	persistedMetadata: PersistedMaterialMetadata[];
-	onRemove: (assignmentCodeId: string, materialId: string) => void;
-}) {
-	const { control } = useFormContext<SlideFormSchema>();
-	const costs =
-		useWatch({
-			control,
-			name: 'costs',
-		}) || [];
+interface PeriodSectionProps {
+	totalPeriods: number;
+	period: PeriodItemData;
+	onUpdate: (updated: PeriodItemData) => void;
+	onDelete: () => void;
+}
 
-	const groups = groupCostsByAssignmentCode(costs, contracts);
+function PeriodSection({
+	totalPeriods,
+	period,
+	onUpdate,
+	onDelete,
+}: PeriodSectionProps) {
+	const [assignments, setAssignments] = useState<ContractCode[]>([]);
+	const [assets, setAssets] = useState<Asset[]>([]);
+	const isFirstLoadRef = useRef(true);
 
-	if (groups.length === 0) return null;
+	useEffect(() => {
+		if (!period.startMonth) return;
+		Promise.all([
+			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
+				ignorePagination: true,
+				date: period.startMonth,
+			}),
+			api.pagging<Asset>(API.CATALOG.ASSET.LIST, {
+				ignorePagination: true,
+				date: period.startMonth,
+			}),
+		]).then(([assignmentsRes, assetsRes]) => {
+			setAssignments(assignmentsRes.result.data);
+			setAssets(assetsRes.result.data);
+		});
+	}, [period.startMonth]);
+
+	// Sync costs with assets after catalog loads
+	useEffect(() => {
+		if (assets.length === 0) return;
+		if (isFirstLoadRef.current) {
+			isFirstLoadRef.current = false;
+			return;
+		}
+
+		const syncedCosts = sortCosts(
+			normalizeCostAmounts(
+				syncCostsWithSelections(period.costs, period.selectedMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		const currentKeys = period.costs
+			.map((c) => `${c.assignmentCodeId}:${c.materialId}:${c.norm}:${c.amount}`)
+			.join('|');
+		const nextKeys = syncedCosts
+			.map((c) => `${c.assignmentCodeId}:${c.materialId}:${c.norm}:${c.amount}`)
+			.join('|');
+
+		if (currentKeys !== nextKeys) {
+			onUpdate({
+				...period,
+				costs: syncedCosts,
+			});
+		}
+	}, [assets, assignments]);
+
+	const selectedAssignmentIds = period.selectedAssignments.map(
+		(item) => item.value,
+	);
+	const currentMaterialOptions = getMaterialOptions(
+		assets,
+		assignments,
+		selectedAssignmentIds,
+	);
+	const materialOptions = [
+		...currentMaterialOptions,
+		...period.selectedMaterials.filter(
+			(option) =>
+				!currentMaterialOptions.some(
+					(currentOption) => currentOption.value === option.value,
+				),
+		),
+	];
+
+	const handleAssignmentsChange = (nextValues: MultiSelectOption[]) => {
+		const nextAssignmentIds = new Set(nextValues.map((value) => value.value));
+		const nextMaterials = period.selectedMaterials.filter((value) =>
+			nextAssignmentIds.has(value.assignmentCodeId),
+		);
+		const syncedCosts = sortCosts(
+			normalizeCostAmounts(
+				syncCostsWithSelections(period.costs, nextMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		onUpdate({
+			...period,
+			selectedAssignments: nextValues,
+			selectedMaterials: nextMaterials,
+			costs: syncedCosts,
+		});
+	};
+
+	const handleMaterialsChange = (nextValues: MultiSelectOption[]) => {
+		const nextMaterials = nextValues as SlideMaterialOption[];
+		const syncedCosts = sortCosts(
+			normalizeCostAmounts(
+				syncCostsWithSelections(period.costs, nextMaterials, assets),
+				assets,
+			),
+			assignments,
+			assets,
+		);
+
+		onUpdate({
+			...period,
+			selectedMaterials: nextMaterials,
+			costs: syncedCosts,
+		});
+	};
+
+	const handleNormChange = (costIndex: number, newNorm: number | undefined) => {
+		const targetCost = period.costs[costIndex];
+		if (!targetCost) return;
+
+		const asset = assets.find((a) => a.id === targetCost.materialId);
+		const unitPrice = asset?.costAmount ?? 0;
+		const normNumber =
+			newNorm === undefined ? Number.NaN : Number(newNorm);
+		const amount = Number.isNaN(normNumber)
+			? unitPrice
+			: unitPrice * normNumber;
+
+		const nextCosts = [...period.costs];
+		nextCosts[costIndex] = {
+			...targetCost,
+			norm: normNumber,
+			amount,
+		};
+
+		onUpdate({
+			...period,
+			costs: nextCosts,
+		});
+	};
+
+	const handleRemoveCost = (assignmentCodeId: string, materialId: string) => {
+		const nextMaterials = period.selectedMaterials.filter(
+			(value) =>
+				value.value !==
+				buildMaterialSelectionValue(assignmentCodeId, materialId),
+		);
+		const nextCosts = period.costs.filter(
+			(cost) =>
+				!(
+					cost.assignmentCodeId === assignmentCodeId &&
+					cost.materialId === materialId
+				),
+		);
+
+		onUpdate({
+			...period,
+			selectedMaterials: nextMaterials,
+			costs: nextCosts,
+		});
+	};
 
 	return (
-		<div className='scrollbar-sm max-h-100 overflow-auto'>
-			<div className='flex flex-col gap-4'>
-			{groups.map((group) => (
-				<div key={group.assignmentCodeId} className='flex flex-col gap-4'>
-					<FormSeparator
-						label={`${group.assignmentCode}${group.assignmentCodeName ? ` - ${group.assignmentCodeName}` : ''} - ${formatNumber(group.totalAmount)} (đ)`}
-					/>
-					{group.indices.map((index) => (
-						<FormRow
-							key={buildMaterialSelectionValue(
-								costs[index]?.assignmentCodeId ?? '',
-								costs[index]?.materialId ?? '',
-							)}
-						>
-							<PricingMaterialCosts
-								index={index}
-								assets={assets}
-								persistedMetadata={persistedMetadata.find(
-									(item) =>
-										item.assignmentCodeId ===
-											costs[index]?.assignmentCodeId &&
-										item.materialId === costs[index]?.materialId,
-								)}
-								onRemove={onRemove}
-							/>
-						</FormRow>
-					))}
-				</div>
-			))}
+		<div className='bg-neutral-50/70 border-neutral-300 shadow-xs flex flex-col gap-4 rounded-xl border p-5'>
+			{/* Thời gian bắt đầu - Thời gian kết thúc & Nút xóa thời gian */}
+			<div className='flex items-end gap-4'>
+				<MonthYearInput
+					label='Thời gian bắt đầu'
+					value={period.startMonth}
+					onChange={(val) => onUpdate({ ...period, startMonth: val })}
+					className='flex-1'
+				/>
+				<MonthYearInput
+					label='Thời gian kết thúc'
+					value={period.endMonth}
+					onChange={(val) => onUpdate({ ...period, endMonth: val })}
+					className='flex-1'
+				/>
+				{totalPeriods > 1 && (
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						onClick={onDelete}
+						className='text-error hover:text-error-muted bg-transparent h-fit w-fit flex items-center gap-1 p-0 hover:bg-transparent mb-2.5'
+					>
+						<XCircleIcon className='size-4' />
+						<span>Xóa thời gian</span>
+					</Button>
+				)}
 			</div>
+
+			{/* Nhóm vật tư */}
+			<MultiSelect
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn Nhóm vật tư, tài sản'
+				values={period.selectedAssignments}
+				onValuesChange={handleAssignmentsChange}
+				options={assignments.map((item) => ({
+					value: item.id,
+					label: `${item.code} - ${item.name}`,
+				}))}
+			/>
+
+			{/* Vật tư theo nhóm */}
+			<MultiSelect
+				label='Vật tư theo nhóm'
+				placeholder='Chọn vật tư theo nhóm'
+				values={period.selectedMaterials}
+				onValuesChange={handleMaterialsChange}
+				options={materialOptions}
+			/>
+
+			{/* Bảng chi tiết vật tư của khoảng thời gian này */}
+			<GroupedPeriodCosts
+				costs={period.costs}
+				assignments={assignments}
+				assets={assets}
+				onNormChange={handleNormChange}
+				onRemoveCost={handleRemoveCost}
+			/>
 		</div>
 	);
 }
 
-function PricingMaterialCosts({
-	index,
+function GroupedPeriodCosts({
+	costs,
+	assignments,
 	assets,
-	persistedMetadata,
-	onRemove,
+	onNormChange,
+	onRemoveCost,
 }: {
-	index: number;
+	costs: SlideFormSchema['costs'];
+	assignments: ContractCode[];
 	assets: Asset[];
-	persistedMetadata?: PersistedMaterialMetadata;
-	onRemove: (assignmentCodeId: string, materialId: string) => void;
+	onNormChange: (index: number, norm: number | undefined) => void;
+	onRemoveCost: (assignmentCodeId: string, materialId: string) => void;
 }) {
-	const { control, getValues } = useFormContext<SlideFormSchema>();
-	const currentCosts = useWatch({ control, name: 'costs' });
+	if (costs.length === 0) return null;
 
-	const assignmentCodeId = getValues(`costs.${index}.assignmentCodeId`);
-	const materialId = getValues(`costs.${index}.materialId`);
-	const cost = currentCosts[index];
-	const asset = assets.find((a) => a.id === materialId);
-	const norm = useWatch({ control, name: `costs.${index}.norm` });
-	const amount = useWatch({ control, name: `costs.${index}.amount` });
-	const unitPrice = asset?.costAmount ?? cost?.amount ?? 0;
-	const materialCode = asset?.code ?? persistedMetadata?.materialCode ?? '';
-	const materialName = asset?.name ?? persistedMetadata?.materialName ?? '';
-	const unitOfMeasureName =
-		asset?.unitOfMeasureName ?? persistedMetadata?.unitOfMeasureName ?? '';
+	const totalAmount = costs.reduce(
+		(sum, c) => sum + (Number.isNaN(Number(c.amount)) ? 0 : Number(c.amount)),
+		0,
+	);
+	const groupedCosts = groupCostsByAssignment(costs, assignments);
 
 	return (
-		<>
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<Label>Mã vật tư</Label>
+		<div className='flex flex-col gap-4'>
+			<FormSeparator />
+
+			<div className='flex flex-col gap-2'>
+				<Label>Tổng tiền (đ/m)</Label>
 				<Input
 					readOnly
-					value={materialCode}
-					className='read-only:bg-transparent'
+					value={formatNumber(totalAmount)}
+					className='font-semibold read-only:bg-transparent'
 				/>
 			</div>
 
-			<div className='flex min-w-36 flex-1 flex-col gap-2'>
-				<Label>Tên vật tư</Label>
-				<Input
-					readOnly
-					value={materialName}
-					className='read-only:bg-transparent'
-				/>
-			</div>
+			<div className='scrollbar-sm max-h-100 overflow-auto'>
+				<div className='flex flex-col gap-4'>
+					{groupedCosts.map((group) => (
+						<div key={group.assignmentCodeId} className='flex flex-col gap-4'>
+							<FormSeparator
+								className='w-full'
+								label={`${group.assignmentLabel} - ${formatNumber(group.totalAmount)} (đ)`}
+							/>
+							{group.indices.map((index) => {
+								const cost = costs[index];
+								const asset = assets.find(
+									(item) => item.id === cost.materialId,
+								);
+								const unitPrice = asset?.costAmount ?? 0;
+								const isLegacySummaryRow = !cost.materialId;
 
-			<div className='flex min-w-24 flex-1 flex-col gap-2'>
-				<Label>Đơn vị tính</Label>
-				<Input
-					readOnly
-					value={unitOfMeasureName}
-					className='read-only:bg-transparent'
-				/>
-			</div>
+								return (
+									<FormRow
+										key={buildMaterialSelectionValue(
+											cost.assignmentCodeId,
+											cost.materialId,
+										)}
+									>
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Mã vật tư</Label>
+											<Input
+												readOnly
+												value={
+													asset?.code ??
+													(isLegacySummaryRow ? 'Bản ghi cũ' : '')
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
 
-			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Đơn giá (đ)</Label>
-				<Input
-					readOnly
-					value={formatNumber(unitPrice)}
-					className='read-only:bg-transparent'
-				/>
-			</div>
+										<div className='flex min-w-36 flex-1 flex-col gap-2'>
+											<Label>Tên vật tư</Label>
+											<Input
+												readOnly
+												value={
+													asset?.name ??
+													(isLegacySummaryRow
+														? 'Chọn lại vật tư theo nhóm trước khi lưu'
+														: '')
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
 
-			<div className='flex min-w-28 flex-1 flex-col gap-2'>
-				<FormNumber
-					control={control}
-					name={`costs.${index}.norm`}
-					label='Định mức'
-					placeholder='Nhập định mức'
-				/>
-			</div>
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Đơn giá (đ)</Label>
+											<Input
+												readOnly
+												value={formatNumber(unitPrice)}
+												className='read-only:bg-transparent'
+											/>
+										</div>
 
-			<div className='flex min-w-32 flex-1 flex-col gap-2'>
-				<Label>Đơn giá máng trượt (đ/m)</Label>
-				<Input
-					readOnly
-					value={
-						Number.isNaN(Number(norm))
-							? formatNumber(unitPrice)
-							: formatNumber(amount || 0)
-					}
-					className='read-only:bg-transparent'
-				/>
-			</div>
+										<div className='flex min-w-24 flex-1 flex-col gap-2'>
+											<Label>Đơn vị tính</Label>
+											<Input
+												readOnly
+												value={asset?.unitOfMeasureName ?? ''}
+												className='read-only:bg-transparent'
+											/>
+										</div>
 
-			<div className='hidden'>
-				<FormNumber
-					control={control}
-					name={`costs.${index}.amount`}
-					label='Đơn giá máng trượt (đ/m)'
-					placeholder='Nhập đơn giá máng trượt (đ/m)'
-				/>
-			</div>
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Định mức</Label>
+											<FormNumberInput
+												value={
+													Number.isNaN(Number(cost.norm))
+														? undefined
+														: Number(cost.norm)
+												}
+												onValueChange={(val) => onNormChange(index, val)}
+												placeholder='Nhập định mức'
+											/>
+										</div>
 
-			<Button
-				type='button'
-				variant='ghost'
-				size='icon'
-				className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
-				onClick={() => onRemove(assignmentCodeId, materialId)}
-			>
-				<XCircleIcon className='size-6' />
-			</Button>
-		</>
+										<div className='flex min-w-28 flex-1 flex-col gap-2'>
+											<Label>Đơn giá máng trượt (đ/m)</Label>
+											<Input
+												readOnly
+												value={
+													isLegacySummaryRow
+														? formatNumber(cost.amount || 0)
+														: Number.isNaN(Number(cost.norm))
+															? formatNumber(unitPrice)
+															: formatNumber(cost.amount || 0)
+												}
+												className='read-only:bg-transparent'
+											/>
+										</div>
+
+										<Button
+											type='button'
+											variant='ghost'
+											size='icon'
+											className='text-error hover:text-error-muted disabled:text-muted-foreground mt-5.5 bg-transparent'
+											onClick={() =>
+												onRemoveCost(
+													cost.assignmentCodeId,
+													cost.materialId,
+												)
+											}
+										>
+											<XCircleIcon className='size-6' />
+										</Button>
+									</FormRow>
+								);
+							})}
+						</div>
+					))}
+				</div>
+			</div>
+		</div>
 	);
 }

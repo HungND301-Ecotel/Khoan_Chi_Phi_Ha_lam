@@ -74,3 +74,32 @@ export const MATERIAL_FORM_DEFAULT: MaterialFormSchema = {
 	costs: [],
 	otherMaterialValue: undefined,
 };
+
+export const materialCommonFormSchema = z.object({
+	code: z
+		.string()
+		.nonempty({ error: 'Mã định mức vật liệu không được để trống' }),
+	processId: z.string().nonempty({ error: 'Công đoạn không được để trống' }),
+	passportId: z
+		.string()
+		.nonempty({ error: 'Hộ chiếu, Sđ, Sc không được để trống' }),
+	hardnessId: z
+		.string()
+		.nonempty({ error: 'Độ kiên cố đá/ than (f) không được để trống' }),
+	insertItemId: z.string().nonempty({ error: 'Chèn không được để trống' }),
+	supportStepId: z
+		.string()
+		.nonempty({ error: 'Bước chống không được để trống' }),
+});
+
+export type MaterialCommonFormSchema = z.infer<typeof materialCommonFormSchema>;
+
+export const MATERIAL_COMMON_FORM_DEFAULT: MaterialCommonFormSchema = {
+	code: '',
+	processId: '',
+	passportId: '',
+	hardnessId: '',
+	insertItemId: '',
+	supportStepId: '',
+};
+

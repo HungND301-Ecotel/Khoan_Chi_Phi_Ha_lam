@@ -26,18 +26,39 @@ public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
     private readonly IWriteRepository<Domain.Entities.Index.Material> _materialRepository = unitOfWork.GetRepository<Domain.Entities.Index.Material>();
     public async Task<bool> Handle(CreateTunnelSupportAndDrillingMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
-        if (await codeService.IsCodeExisted(request.CreateModel.Code))
+        var normalizedCode = request.CreateModel.Code.Trim().ToUpper();
+        var normalizedStart = new DateOnly(request.CreateModel.StartMonth.Year, request.CreateModel.StartMonth.Month, 1);
+        var normalizedEnd = new DateOnly(request.CreateModel.EndMonth.Year, request.CreateModel.EndMonth.Month, 1);
+
+        var codeEntity = await codeService.GetOrCreateCodeAsync(normalizedCode, cancellationToken);
+
+        var existingWithSameCode = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: m => m.CodeId == codeEntity.Id && m.DeletedOn == null,
+            disableTracking: true);
+
+        if (existingWithSameCode.Any())
         {
-            throw new ConflictException(CustomResponseMessage.MaterialUnitPriceCodeAlreadyExists);
+            var mismatched = existingWithSameCode.FirstOrDefault(m =>
+                m.ProcessId != request.CreateModel.ProcessId ||
+                m.PassportId != request.CreateModel.PassportId ||
+                m.HardnessId != request.CreateModel.HardnessId ||
+                m.TechnologyId != request.CreateModel.TechnologyId);
+
+            if (mismatched != null)
+            {
+                throw new BadRequestException($"Mã định mức '{normalizedCode}' đã được thiết lập cho thông số kỹ thuật khác. Không thể gán mã này cho thông số kỹ thuật mới.");
+            }
         }
 
         if (await _materialUnitPriceRepository.AnyAsync(m =>
-            m.StartMonth < request.CreateModel.EndMonth &&
-            m.EndMonth > request.CreateModel.StartMonth &&
-            m.ProcessId == request.CreateModel.ProcessId &&
-            m.PassportId == request.CreateModel.PassportId &&
-            m.HardnessId == request.CreateModel.HardnessId &&
-            m.TechnologyId == request.CreateModel.TechnologyId))
+            m.DeletedOn == null &&
+            m.StartMonth <= normalizedEnd &&
+            m.EndMonth >= normalizedStart &&
+            ((m.CodeId == codeEntity.Id) ||
+             (m.ProcessId == request.CreateModel.ProcessId &&
+              m.PassportId == request.CreateModel.PassportId &&
+              m.HardnessId == request.CreateModel.HardnessId &&
+              m.TechnologyId == request.CreateModel.TechnologyId))))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -109,6 +130,7 @@ public class CreateTunnelSupportAndDrillingMaterialUnitPriceCommandHandler(
                         cost.Norm))
                     .ToList());
 
+            newMaterialUnitPrice.AssignCode(codeEntity);
             await _materialUnitPriceRepository.InsertAsync(newMaterialUnitPrice, cancellationToken);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);

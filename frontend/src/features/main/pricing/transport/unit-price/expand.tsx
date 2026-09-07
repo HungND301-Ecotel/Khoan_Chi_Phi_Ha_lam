@@ -1,4 +1,15 @@
-import { detectTransportMode, formatMoney, TransportUnitPrice } from './columns';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn, formatDate } from '@/lib/utils';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { Fragment, useState } from 'react';
+import {
+	detectTransportMode,
+	formatMoney,
+	TransportPeriod,
+	TransportUnitPrice,
+} from './columns';
 
 function DetailTable({
 	headers,
@@ -8,18 +19,20 @@ function DetailTable({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-			<table className='w-full text-left text-sm'>
-				<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+		<div className='scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
+			<table className='w-full min-w-max text-left text-sm text-black'>
+				<thead className='border-b border-neutral-200 bg-neutral-100 text-xs font-semibold uppercase text-black whitespace-nowrap'>
 					<tr>
 						{headers.map((h) => (
-							<th key={h} className='px-3 py-2'>
+							<th key={h} className='px-4 py-2.5'>
 								{h}
 							</th>
 						))}
 					</tr>
 				</thead>
-				<tbody className='divide-y divide-gray-100'>{children}</tbody>
+				<tbody className='divide-y divide-neutral-100 text-black whitespace-nowrap'>
+					{children}
+				</tbody>
 			</table>
 		</div>
 	);
@@ -28,9 +41,9 @@ function DetailTable({
 function PriceCells({ item }: { item: TransportUnitPrice }) {
 	return (
 		<>
-			<td className='px-3 py-2'>{formatMoney(item.materialFuelUnitPrice)}</td>
-			<td className='px-3 py-2'>{formatMoney(item.powerUnitPrice)}</td>
-			<td className='px-3 py-2'>{formatMoney(item.maintenanceUnitPrice)}</td>
+			<td className='px-4 py-2'>{formatMoney(item.materialFuelUnitPrice)}</td>
+			<td className='px-4 py-2'>{formatMoney(item.powerUnitPrice)}</td>
+			<td className='px-4 py-2'>{formatMoney(item.maintenanceUnitPrice)}</td>
 		</>
 	);
 }
@@ -52,15 +65,15 @@ function ConveyorDetail({ items }: { items: TransportUnitPrice[] }) {
 				return (
 					<div
 						key={routeId}
-						className='rounded-lg border border-gray-200 bg-[#fafafa] p-3'
+						className='rounded-lg border border-neutral-200 bg-[#fafafa] p-3'
 					>
-						<div className='mb-2 text-sm font-semibold text-gray-800'>
+						<div className='mb-2 text-sm font-semibold text-black'>
 							{routeLabel}
 						</div>
 						<DetailTable headers={['Đơn vị', ...PRICE_HEADERS]}>
 							{routeItems.map((item) => (
-								<tr key={item.id}>
-									<td className='px-3 py-2 font-medium text-gray-800'>
+								<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+									<td className='px-4 py-2 font-medium text-black'>
 										{item.departmentName || '-'}
 										{item.isLowVolumeCase && (
 											<span className='ml-1 text-xs text-amber-700'>
@@ -84,8 +97,8 @@ function RouteOnlyDetail({ items }: { items: TransportUnitPrice[] }) {
 	return (
 		<DetailTable headers={['Tuyến vận tải', ...PRICE_HEADERS]}>
 			{items.map((item) => (
-				<tr key={item.id}>
-					<td className='px-3 py-2 font-medium text-gray-800'>
+				<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+					<td className='px-4 py-2 font-medium text-black'>
 						{item.transportRouteName || '-'}
 						{item.isLowVolumeCase && (
 							<span className='ml-1 text-xs text-amber-700'>
@@ -125,15 +138,15 @@ function MonorailDetail({ items }: { items: TransportUnitPrice[] }) {
 				return (
 					<div
 						key={equipmentId}
-						className='rounded-lg border border-gray-200 bg-[#fafafa] p-3'
+						className='rounded-lg border border-neutral-200 bg-[#fafafa] p-3'
 					>
-						<div className='mb-2 text-sm font-semibold text-gray-800'>
+						<div className='mb-2 text-sm font-semibold text-black'>
 							{equipmentLabel}
 						</div>
 						<DetailTable headers={['Chất lượng thiết bị', ...PRICE_HEADERS]}>
 							{equipmentItems.map((item) => (
-								<tr key={item.id}>
-									<td className='px-3 py-2 font-medium text-gray-800'>
+								<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+									<td className='px-4 py-2 font-medium text-black'>
 										{item.equipmentQuality
 											? `Thiết bị loại ${item.equipmentQuality}`
 											: '-'}
@@ -154,15 +167,15 @@ function OtherDetail({ items }: { items: TransportUnitPrice[] }) {
 	return (
 		<DetailTable headers={['Nhóm vật tư', ...PRICE_HEADERS, 'Định mức']}>
 			{items.map((item) => (
-				<tr key={item.id}>
-					<td className='px-3 py-2 font-medium text-gray-800'>
+				<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+					<td className='px-4 py-2 font-medium text-black'>
 						{item.equipmentName ||
 							item.contractCodeName ||
 							item.materialName ||
 							'-'}
 					</td>
 					<PriceCells item={item} />
-					<td className='px-3 py-2'>{item.quantity ?? '-'}</td>
+					<td className='px-4 py-2'>{item.quantity ?? '-'}</td>
 				</tr>
 			))}
 		</DetailTable>
@@ -170,27 +183,151 @@ function OtherDetail({ items }: { items: TransportUnitPrice[] }) {
 }
 
 /**
- * Bảng Chi Tiết Mở Rộng khi nhấn nút Xem (Mắt 👁️) — tự nhận diện loại vận tải của nhóm
- * (theo mã/tên Công đoạn sản xuất) rồi gộp tiếp + ẩn cột không áp dụng cho loại đó, thay vì
- * dùng chung 1 bảng cột cố định cho mọi loại (gây nhiều ô "-" trống như trước).
+ * TẦNG 3: BẢNG CHI TIẾT ĐƠN GIÁ VÀ ĐỊNH MỨC THEO LOẠI VẬN TẢI
  */
-export function TransportDetailExpand({ row }: { row?: TransportUnitPrice }) {
+export function TransportDetailExpand({ row }: { row?: TransportUnitPrice | TransportPeriod }) {
 	if (!row) return null;
 
-	const items = row.items && row.items.length > 0 ? row.items : [row];
+	const items = row.items && row.items.length > 0 ? row.items : [row as TransportUnitPrice];
 	const mode = detectTransportMode(
 		row.productionProcessCode,
 		row.productionProcessName,
 	);
 
 	return (
-		<div className='my-2 rounded-md border border-gray-200 bg-[#fbfbfb] p-3 shadow-inner'>
+		<div className='w-full space-y-3'>
 			{mode === 'conveyor' && <ConveyorDetail items={items} />}
 			{mode === 'monorail' && <MonorailDetail items={items} />}
 			{mode === 'other' && <OtherDetail items={items} />}
 			{(mode === 'shaft' || mode === 'cable_winch') && (
 				<RouteOnlyDetail items={items} />
 			)}
+		</div>
+	);
+}
+
+/**
+ * TẦNG 2: DANH SÁCH CÁC KHOẢNG THỜI GIAN ÁP DỤNG CỦA CÔNG ĐOẠN SẢN XUẤT
+ */
+export function TransportProcessPeriodExpand({
+	row,
+	selectedPeriodIds,
+	onTogglePeriodSelect,
+}: {
+	row?: TransportUnitPrice;
+	selectedPeriodIds: string[];
+	onTogglePeriodSelect: (periodId: string) => void;
+}) {
+	const [expandedPeriodIds, setExpandedPeriodIds] = useState<string[]>([]);
+
+	const handleTogglePeriodDetails = (periodId: string) => {
+		setExpandedPeriodIds((prev) =>
+			prev.includes(periodId)
+				? prev.filter((id) => id !== periodId)
+				: [...prev, periodId],
+		);
+	};
+
+	const periods = row?.periods ?? [];
+
+	return (
+		<div className='mx-6 my-2 overflow-hidden rounded-md bg-white text-black'>
+			<table className='w-full table-fixed text-left text-sm text-black'>
+				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+					<tr>
+						<th scope='col' className='w-10 px-3 py-2.5 text-center' />
+						<th
+							scope='col'
+							className='w-12 px-3 py-2.5 text-center font-semibold text-black'
+						>
+							STT
+						</th>
+						<th scope='col' className='px-4 py-2.5 font-semibold text-black'>
+							Thời gian áp dụng
+						</th>
+						<th
+							scope='col'
+							className='w-20 px-4 py-2.5 text-center font-semibold text-black'
+						>
+							Xem
+						</th>
+					</tr>
+				</thead>
+				<tbody className='divide-y divide-neutral-200'>
+					{periods.length === 0 ? (
+						<tr>
+							<td colSpan={4} className='py-6 text-center text-sm text-black'>
+								Chưa có khoảng thời gian nào được thiết lập.
+							</td>
+						</tr>
+					) : (
+						periods.map((period, index) => {
+							const isSelected = expandedPeriodIds.includes(period.id);
+
+							return (
+								<Fragment key={period.id}>
+									<tr
+										className={cn(
+											'border-b border-neutral-200 transition-colors hover:bg-neutral-50/80',
+											isSelected && 'bg-neutral-50',
+										)}
+									>
+										<td className='w-10 px-3 py-2 text-center'>
+											<Checkbox
+												checked={selectedPeriodIds.includes(period.id)}
+												onCheckedChange={() => onTogglePeriodSelect(period.id)}
+												aria-label={`Chọn khoảng thời gian ${formatDate(period.startMonth)} - ${formatDate(period.endMonth)}`}
+											/>
+										</td>
+										<td className='w-12 px-3 py-2 text-center text-sm text-black'>
+											{index + 1}
+										</td>
+										<td className='px-4 py-2 text-sm text-black'>
+											{formatDate(period.startMonth)} -{' '}
+											{formatDate(period.endMonth)}
+										</td>
+										<td className='w-20 px-4 py-2 text-center'>
+											<div className='flex items-center justify-center'>
+												<Button
+													variant='ghost'
+													size='icon'
+													className={cn(
+														'h-8 w-8 rounded-full bg-transparent shadow-none hover:bg-neutral-100 hover:shadow-none',
+														isSelected
+															? 'font-semibold text-black'
+															: 'text-[#6e6e6e] hover:text-black',
+													)}
+													title={
+														isSelected ? 'Đóng chi tiết' : 'Xem chi tiết'
+													}
+													onClick={() => handleTogglePeriodDetails(period.id)}
+												>
+													{isSelected ? (
+														<VisibilityOffIcon fontSize='small' />
+													) : (
+														<VisibilityIcon fontSize='small' />
+													)}
+												</Button>
+											</div>
+										</td>
+									</tr>
+
+									{/* TẦNG 3: BẢNG CHI TIẾT ĐƠN GIÁ VÀ ĐỊNH MỨC */}
+									{isSelected && (
+										<tr className='border-b border-neutral-200 bg-neutral-50/50'>
+											<td colSpan={4} className='max-w-0 bg-neutral-50/40 p-3'>
+												<div className='scrollbar-sm w-full overflow-x-auto rounded-md border border-neutral-200 bg-white p-3 shadow-xs'>
+													<TransportDetailExpand row={period} />
+												</div>
+											</td>
+										</tr>
+									)}
+								</Fragment>
+							);
+						})
+					)}
+				</tbody>
+			</table>
 		</div>
 	);
 }

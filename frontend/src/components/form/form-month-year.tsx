@@ -25,42 +25,49 @@ export type FormMonthYearProps<T extends FieldValues> = FormControlProps<T> & {
 	className?: string;
 };
 
-/**
- * Component to select month and year with format: YYYY-MM-01
- * Value stored as string in format "2024-05-01"
- */
-export function FormMonthYear<T extends FieldValues>({
-	control,
-	name,
+export type MonthYearInputProps = {
+	value?: string;
+	onChange?: (value: string) => void;
+	label?: string;
+	placeholder?: string;
+	disabled?: boolean;
+	className?: string;
+	error?: string;
+	id?: string;
+};
+
+export function MonthYearInput({
+	value,
+	onChange,
 	label,
 	placeholder = 'MM/YYYY',
 	disabled,
 	className,
-}: FormMonthYearProps<T>) {
-	const { field, fieldState } = useController({ control, name });
-
+	error,
+	id,
+}: MonthYearInputProps) {
 	const currentYear = new Date().getFullYear();
 	const currentMonth = new Date().getMonth() + 1;
 
 	// Parse current value to extract month and year
-	const parseValue = (value: string) => {
-		if (!value) return { month: currentMonth, year: currentYear };
+	const parseValue = (val: string) => {
+		if (!val) return { month: currentMonth, year: currentYear };
 		try {
-			const match = value.match(/^(\d{4})-(\d{2})-/);
+			const match = val.match(/^(\d{4})-(\d{2})-/);
 			if (match) {
 				return {
 					month: parseInt(match[2], 10),
 					year: parseInt(match[1], 10),
 				};
 			}
-		} catch (e) {
+		} catch {
 			// Fall back to defaults
 		}
 		return { month: currentMonth, year: currentYear };
 	};
 
 	const { month: currentParsedMonth, year: currentParsedYear } = parseValue(
-		field.value || '',
+		value || '',
 	);
 
 	const [selectedYear, setSelectedYear] =
@@ -74,7 +81,7 @@ export function FormMonthYear<T extends FieldValues>({
 		setSelectedMonth(currentParsedMonth);
 	}, [currentParsedYear, currentParsedMonth]);
 
-	const displayValue = field.value
+	const displayValue = value
 		? `Tháng ${String(currentParsedMonth).padStart(2, '0')}/${currentParsedYear}`
 		: placeholder;
 
@@ -85,7 +92,7 @@ export function FormMonthYear<T extends FieldValues>({
 	const handleMonthClick = (monthNum: number) => {
 		setSelectedMonth(monthNum);
 		const formattedValue = `${selectedYear}-${String(monthNum).padStart(2, '0')}-01`;
-		field.onChange(formattedValue);
+		onChange?.(formattedValue);
 		setIsOpen(false);
 	};
 
@@ -95,11 +102,11 @@ export function FormMonthYear<T extends FieldValues>({
 
 	return (
 		<div
-			data-invalid={fieldState.invalid}
+			data-invalid={!!error}
 			className={cn('flex flex-col gap-2', className)}
 		>
 			{label && (
-				<Label htmlFor={name}>
+				<Label htmlFor={id}>
 					<span>{label}</span>
 				</Label>
 			)}
@@ -116,7 +123,7 @@ export function FormMonthYear<T extends FieldValues>({
 						<span
 							className={cn(
 								'truncate font-normal',
-								!field.value && 'text-muted-foreground',
+								!value && 'text-muted-foreground',
 							)}
 						>
 							{displayValue}
@@ -166,7 +173,35 @@ export function FormMonthYear<T extends FieldValues>({
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+			{error && <FieldError errors={[{ message: error }]} />}
 		</div>
+	);
+}
+
+/**
+ * Component to select month and year with format: YYYY-MM-01
+ * Value stored as string in format "2024-05-01"
+ */
+export function FormMonthYear<T extends FieldValues>({
+	control,
+	name,
+	label,
+	placeholder = 'MM/YYYY',
+	disabled,
+	className,
+}: FormMonthYearProps<T>) {
+	const { field, fieldState } = useController({ control, name });
+
+	return (
+		<MonthYearInput
+			id={name}
+			value={field.value}
+			onChange={field.onChange}
+			label={label}
+			placeholder={placeholder}
+			disabled={disabled}
+			className={className}
+			error={fieldState.error?.message}
+		/>
 	);
 }

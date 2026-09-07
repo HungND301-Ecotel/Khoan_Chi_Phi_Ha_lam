@@ -1,5 +1,11 @@
-import { formatDate, formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
+
+export type LowValuePerishablePeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+};
 
 export type LowValuePerishableSupplyUnitPrice = {
 	id: string;
@@ -9,9 +15,10 @@ export type LowValuePerishableSupplyUnitPrice = {
 	processGroupId: string;
 	processGroupCode: string;
 	processGroupName: string;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
+	startMonth?: string;
+	endMonth?: string;
+	totalPrice?: number;
+	periods?: LowValuePerishablePeriod[];
 };
 
 export const LOW_VALUE_PERISHABLE_SUPPLY_COLUMNS: ColumnDef<LowValuePerishableSupplyUnitPrice>[] =
@@ -31,21 +38,5 @@ export const LOW_VALUE_PERISHABLE_SUPPLY_COLUMNS: ColumnDef<LowValuePerishableSu
 		{
 			accessorKey: 'processGroupName',
 			header: 'Tên nhóm công đoạn',
-		},
-		{
-			accessorKey: 'totalPrice',
-			header: 'Đơn giá (đ/tháng)',
-			cell: ({ row }) => formatNumber(row.original.totalPrice),
-		},
-		{
-			accessorKey: 'time',
-			header: 'Thời gian',
-			cell: ({ row }) => (
-				<span>
-					<span>{formatDate(row.original.startMonth)}</span>
-					<br />
-					<span>{formatDate(row.original.endMonth)}</span>
-				</span>
-			),
 		},
 	];

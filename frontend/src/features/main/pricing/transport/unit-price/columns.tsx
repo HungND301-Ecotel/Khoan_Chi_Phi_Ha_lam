@@ -1,4 +1,3 @@
-import { formatDate } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
 export type TransportMode =
@@ -37,10 +36,20 @@ export type TransportUnitPrice = {
 	isLowVolumeCase?: boolean;
 	startMonth: string;
 	endMonth: string;
-	// Nhóm theo (Công đoạn sản xuất, Thời gian) — 1 hàng danh sách = 1 lần tạo mới trên form,
-	// gồm nhiều dòng Tuyến/Đơn vị/Nhóm vật tư/Chất lượng thiết bị con nằm trong items.
 	itemCount?: number;
 	items?: TransportUnitPrice[];
+	periods?: TransportPeriod[];
+};
+
+export type TransportPeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	itemCount?: number;
+	items: TransportUnitPrice[];
+	productionProcessId?: string;
+	productionProcessCode?: string;
+	productionProcessName?: string;
 };
 
 export const formatMoney = (value?: number) => {
@@ -69,19 +78,12 @@ export function detectTransportMode(
 export const MAIN_PRICING_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitPrice>[] =
 	[
 		{
-			accessorKey: 'startMonth',
-			header: 'Thời gian',
-			cell: ({ row }) => (
-				<div className='flex flex-col text-xs font-medium'>
-					<span>{formatDate(row.original.startMonth)}</span>
-					<span className='text-black-500'>
-						{formatDate(row.original.endMonth)}
-					</span>
-				</div>
-			),
-		},
-		{
 			accessorKey: 'productionProcessName',
 			header: 'Công đoạn sản xuất',
+			cell: ({ row }) => (
+				<span className='font-medium text-black'>
+					{row.original.productionProcessName || '-'}
+				</span>
+			),
 		},
 	];

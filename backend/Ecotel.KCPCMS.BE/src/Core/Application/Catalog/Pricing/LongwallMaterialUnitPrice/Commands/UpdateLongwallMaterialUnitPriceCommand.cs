@@ -90,29 +90,47 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
             throw new BadRequestException("Phải chọn Công suất hoặc Độ kiên cố than đá.");
         }
 
-        var a = await _materialUnitPriceRepository.GetAllAsync(predicate: m =>
-            m.Id != request.UpdateModel.Id &&
-            m.StartMonth < request.UpdateModel.EndMonth &&
-            m.EndMonth > request.UpdateModel.StartMonth &&
-            m.LongwallParametersId == request.UpdateModel.LongwallParametersId &&
-            m.CuttingThicknessId == request.UpdateModel.CuttingThicknessId &&
-            m.SeamFaceId == resolvedSeamFaceId.Value &&
-            m.PowerId == request.UpdateModel.PowerId &&
-            m.HardnessId == request.UpdateModel.HardnessId,
+        var normalizedCode = request.UpdateModel.Code.Trim().ToUpper();
+        var normalizedStart = new DateOnly(request.UpdateModel.StartMonth.Year, request.UpdateModel.StartMonth.Month, 1);
+        var normalizedEnd = new DateOnly(request.UpdateModel.EndMonth.Year, request.UpdateModel.EndMonth.Month, 1);
+
+        var codeEntity = await codeService.GetOrCreateCodeAsync(normalizedCode, cancellationToken);
+
+        // Kiểm tra tính nhất quán thông số kỹ thuật Lò chợ nếu cùng Mã
+        var existingWithSameCode = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: m => m.CodeId == codeEntity.Id && m.Id != request.UpdateModel.Id && m.DeletedOn == null,
             disableTracking: true);
+
+        if (existingWithSameCode.Any())
+        {
+            var mismatched = existingWithSameCode.FirstOrDefault(m =>
+                m.ProcessId != request.UpdateModel.ProcessId ||
+                m.LongwallParametersId != request.UpdateModel.LongwallParametersId ||
+                m.CuttingThicknessId != request.UpdateModel.CuttingThicknessId ||
+                m.SeamFaceId != resolvedSeamFaceId.Value ||
+                m.TechnologyId != request.UpdateModel.TechnologyId ||
+                m.PowerId != request.UpdateModel.PowerId ||
+                m.HardnessId != request.UpdateModel.HardnessId);
+
+            if (mismatched != null)
+            {
+                throw new BadRequestException($"Mã định mức '{normalizedCode}' đã được thiết lập cho thông số kỹ thuật khác. Không thể gán mã này cho thông số kỹ thuật mới.");
+            }
+        }
 
         if (await _materialUnitPriceRepository.AnyAsync(m =>
             m.Id != request.UpdateModel.Id &&
             m.DeletedOn == null &&
-            m.StartMonth < request.UpdateModel.EndMonth &&
-            m.EndMonth > request.UpdateModel.StartMonth &&
-            m.ProcessId == request.UpdateModel.ProcessId &&
-            m.LongwallParametersId == request.UpdateModel.LongwallParametersId &&
-            m.CuttingThicknessId == request.UpdateModel.CuttingThicknessId &&
-            m.SeamFaceId == resolvedSeamFaceId.Value &&
-            m.TechnologyId == request.UpdateModel.TechnologyId &&
-            m.PowerId == request.UpdateModel.PowerId &&
-            m.HardnessId == request.UpdateModel.HardnessId))
+            m.StartMonth <= normalizedEnd &&
+            m.EndMonth >= normalizedStart &&
+            ((m.CodeId == codeEntity.Id) ||
+             (m.ProcessId == request.UpdateModel.ProcessId &&
+              m.LongwallParametersId == request.UpdateModel.LongwallParametersId &&
+              m.CuttingThicknessId == request.UpdateModel.CuttingThicknessId &&
+              m.SeamFaceId == resolvedSeamFaceId.Value &&
+              m.TechnologyId == request.UpdateModel.TechnologyId &&
+              m.PowerId == request.UpdateModel.PowerId &&
+              m.HardnessId == request.UpdateModel.HardnessId))))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -128,11 +146,6 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
         }
 
         var costs = await ValidateAndMapCostsAsync(request.UpdateModel.Costs, cancellationToken);
-
-        if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
-        {
-            throw new ConflictException(CustomResponseMessage.MaterialUnitPriceCodeAlreadyExists);
-        }
 
         bool longwallParamsTask = await _longwallParametersRepository.AnyAsync(p => p.Id == request.UpdateModel.LongwallParametersId);
         bool cuttingThicknessTask = await _cuttingThicknessRepository.AnyAsync(p => p.Id == request.UpdateModel.CuttingThicknessId);
@@ -188,6 +201,8 @@ public class UpdateLongwallMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWor
                 request.UpdateModel.OtherMaterialValue,
                 costs
                 );
+
+            materialUnitPrice.AssignCode(codeEntity);
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);

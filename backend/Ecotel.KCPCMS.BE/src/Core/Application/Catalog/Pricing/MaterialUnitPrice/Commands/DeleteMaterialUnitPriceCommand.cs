@@ -1,4 +1,4 @@
-﻿using Application.Common.Caching;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -37,7 +37,16 @@ public class DeleteMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICach
                 .ToList();
 
             _materialUnitPriceRepository.Delete(existUnitOfMeasure);
-            _codeRepository.Delete(existUnitOfMeasure.Code);
+
+            // Only delete Code if no other MaterialUnitPrices are referencing it
+            var hasOtherMaterialUnitPricesWithSameCode = await _materialUnitPriceRepository.AnyAsync(
+                m => m.CodeId == existUnitOfMeasure.CodeId && m.Id != existUnitOfMeasure.Id && m.DeletedOn == null);
+
+            if (!hasOtherMaterialUnitPricesWithSameCode && existUnitOfMeasure.Code != null)
+            {
+                _codeRepository.Delete(existUnitOfMeasure.Code);
+            }
+
             await unitOfWork.SaveChangesAsync();
 
             // Check and delete ProductUnitPrice if they have no remaining PlannedCosts

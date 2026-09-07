@@ -379,7 +379,12 @@ export function PlanMaterialCostForm({
 			detailText = fields.filter(Boolean).join(' | ');
 		}
 
-		return detailText ? `${code} - ${detailText}` : code;
+		const dateRange =
+			material.startMonth && material.endMonth
+				? ` [${formatDate(material.startMonth, 'MM/yyyy')} - ${formatDate(material.endMonth, 'MM/yyyy')}]`
+				: '';
+
+		return detailText ? `${code}${dateRange} - ${detailText}` : `${code}${dateRange}`;
 	};
 
 	const materialOptions = useMemo(

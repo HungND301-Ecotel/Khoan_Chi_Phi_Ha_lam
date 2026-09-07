@@ -65,13 +65,14 @@ export function ElectricityForm({
 
 			form.reset({
 				equipmentIds: [row.equipmentId],
-				startMonth: row.startMonth.substring(0, 10),
-				endMonth: row.endMonth.substring(0, 10),
+				startMonth: (row.startMonth ?? '').substring(0, 10),
+				endMonth: (row.endMonth ?? '').substring(0, 10),
 				costs: [
 					{
 						equipmentId: row.equipmentId,
-						monthlyElectricityCost: row.monthlyElectricityCost,
-						averageMonthlyTunnelProduction: row.averageMonthlyTunnelProduction,
+						monthlyElectricityCost: row.monthlyElectricityCost ?? 1,
+						averageMonthlyTunnelProduction:
+							row.averageMonthlyTunnelProduction ?? 1,
 					},
 				],
 			});

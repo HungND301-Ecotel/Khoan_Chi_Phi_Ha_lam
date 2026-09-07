@@ -1,6 +1,6 @@
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
-import type { LongwallMaterialDetailCost } from './type';
+import type { LongwallMaterialDetailCost, LongwallMaterialPeriod } from './type';
 
 export type LongwallParameters = {
 	id: string;
@@ -27,9 +27,10 @@ export type LongwallMaterial = {
 	hardnessId?: string | null;
 	isLongwallMaterialUnitPriceCGH?: boolean;
 	processName?: string;
-	startMonth: string;
-	endMonth: string;
-	totalPrice: number;
+	startMonth?: string;
+	endMonth?: string;
+	totalPrice?: number;
+	periods?: LongwallMaterialPeriod[];
 	// Nested objects from API
 	longwallParameters?: LongwallParameters;
 	cuttingThickness?: CuttingThickness;
@@ -92,22 +93,6 @@ export const LONGWALL_MATERIAL_COLUMNS: ColumnDef<LongwallMaterial>[] = [
 					))}
 			</div>
 		),
-	},
-	{
-		accessorKey: 'startMonth',
-		header: 'Thời gian',
-		cell: ({ row }) => (
-			<span>
-				<span>{formatDate(row.original.startMonth)}</span>
-				<br />
-				<span>{formatDate(row.original.endMonth)}</span>
-			</span>
-		),
-	},
-	{
-		accessorKey: 'totalPrice',
-		header: 'Đơn giá vật liệu (đ/1000 tấn)',
-		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 

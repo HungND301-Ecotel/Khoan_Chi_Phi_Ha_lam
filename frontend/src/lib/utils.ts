@@ -14,10 +14,13 @@ export function formatNumber(
 	return value.toLocaleString('vi-VN', options);
 }
 
-export function formatDate(value?: string | null) {
+export function formatDate(
+	value?: string | null,
+	formatStr: string = 'MM/yyyy',
+) {
 	if (!value) return '-';
 	try {
-		return format(value, 'MM/yyyy', { locale: vi });
+		return format(value, formatStr, { locale: vi });
 	} catch {
 		return value;
 	}

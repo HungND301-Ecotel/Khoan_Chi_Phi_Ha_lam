@@ -59,14 +59,32 @@ public class DeleteTunnelSupportAndDrillingMaterialUnitPriceListCommandHandler(I
             .Distinct()
             .ToList();
 
-        var codes = itemsToDelete.Select(i => i.Code);
+        var deletedCodeIds = itemsToDelete.Select(i => i.CodeId).Distinct().ToList();
+
+        // Check which codeIds are still used by other MaterialUnitPrices not being deleted
+        var remainingCodeIds = await _repository.GetAllAsync(
+            predicate: m => deletedCodeIds.Contains(m.CodeId) && !distinctIds.Contains(m.Id) && m.DeletedOn == null,
+            selector: m => m.CodeId,
+            disableTracking: true);
+
+        var remainingCodeIdSet = remainingCodeIds.ToHashSet();
+
+        var orphanCodes = itemsToDelete
+            .Where(i => i.Code != null && !remainingCodeIdSet.Contains(i.CodeId))
+            .Select(i => i.Code!)
+            .GroupBy(c => c.Id)
+            .Select(g => g.First())
+            .ToList();
 
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
 
         try
         {
             _repository.Delete(itemsToDelete);
-            _codeRepository.Delete(codes);
+            if (orphanCodes.Any())
+            {
+                _codeRepository.Delete(orphanCodes);
+            }
             await unitOfWork.SaveChangesAsync();
 
             // Check and delete ProductUnitPrice if they have no remaining PlannedCosts

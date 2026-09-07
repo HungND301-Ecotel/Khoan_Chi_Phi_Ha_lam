@@ -33,6 +33,51 @@ export type MechanizedTransportUnitPriceGroupDto = {
 	sections: MechanizedTransportUnitPriceSectionDto[];
 };
 
+// ====== 4-Tier Types ======
+
+export type ExpandPriceRow = {
+	headerId: string;
+	detailId: string;
+	equipmentQuality: string;
+	haulDistanceValue?: string;
+	fuelUnitPrice?: number;
+	powerUnitPrice?: number;
+	maintenanceUnitPrice?: number;
+};
+
+// Cấp 3: Công đoạn sản xuất & Thông số
+export type MotorizedC3Item = {
+	id: string;
+	c2Id: string;
+	vehicleType: number;
+	productionProcessId: string;
+	productionProcessName: string;
+	cargoTypeName?: string;
+	receivingLocationName?: string;
+	dumpingLocationName?: string;
+	params: string;
+	headerIds: string[];
+	rows: ExpandPriceRow[];
+};
+
+// Cấp 2: Thời gian & Nhóm xe
+export type MotorizedC2Item = {
+	id: string;
+	parentAssignmentCodeId: string;
+	startMonth: string;
+	endMonth: string;
+	vehicleType: number;
+	vehicleLabel: string;
+	c3Items: MotorizedC3Item[];
+};
+
+// Cấp 1: Nhóm vật tư, tài sản
+export type MechanizedTransportAssignmentGroup = MechanizedTransportUnitPriceGroupDto & {
+	id?: string;
+	c2Items: MotorizedC2Item[];
+	rawGroups?: MechanizedTransportUnitPriceGroupDto[];
+};
+
 // ====== Frontend display types ======
 
 export type MechanizedTransportUnitPriceDetail = {

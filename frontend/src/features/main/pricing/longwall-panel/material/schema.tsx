@@ -67,6 +67,41 @@ export type LongwallMaterialFormSchema = z.infer<
 	typeof longwallMaterialFormSchema
 >;
 
+export const longwallMaterialCommonFormSchema = z.object({
+	code: z
+		.string()
+		.nonempty({ error: 'Mã định mức vật liệu không được để trống' }),
+	processId: z.string().nonempty({ error: 'Công đoạn không được để trống' }),
+	longwallParametersId: z
+		.string()
+		.nonempty({ error: 'Thông số lò chợ không được để trống' }),
+	cuttingThicknessId: z
+		.string()
+		.nonempty({ error: 'Chiều dày lớp khấu không được để trống' }),
+	seamFaceId: z.string().nullable().optional(),
+	technologyId: z
+		.string()
+		.nonempty({ error: 'Công nghệ khai thác không được để trống' }),
+	powerId: z.string().nullable().optional(),
+	hardnessId: z.string().nullable().optional(),
+});
+
+export type LongwallMaterialCommonFormSchema = z.infer<
+	typeof longwallMaterialCommonFormSchema
+>;
+
+export const LONGWALL_MATERIAL_COMMON_FORM_DEFAULT: LongwallMaterialCommonFormSchema =
+	{
+		code: '',
+		processId: '',
+		longwallParametersId: '',
+		cuttingThicknessId: '',
+		seamFaceId: '',
+		technologyId: '',
+		powerId: '',
+		hardnessId: '',
+	};
+
 export const LONGWALL_MATERIAL_FORM_DEFAULT: LongwallMaterialFormSchema = {
 	code: '',
 	processId: '',
@@ -81,3 +116,4 @@ export const LONGWALL_MATERIAL_FORM_DEFAULT: LongwallMaterialFormSchema = {
 	costs: [],
 	otherMaterialValue: undefined,
 };
+
