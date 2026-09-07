@@ -1,4 +1,4 @@
-﻿using Domain.Common.Contracts;
+using Domain.Common.Contracts;
 using Domain.Entities.Pricing;
 using Domain.Entities.Pricing.MaterialUnitPrice;
 
@@ -15,9 +15,12 @@ public class Code(string value) : AuditableEntity<Guid>, IAggregateRoot
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
     public virtual Product? Product { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
-    public virtual MaterialUnitPrice? MaterialUnitPrice { get; protected set; }
-    public virtual SlideUnitPrice? SlideUnitPrice { get; protected set; }
     public virtual ProductionOrder? ProductionOrder { get; protected set; }
+    private IList<MaterialUnitPrice> _materialUnitPrices = new List<MaterialUnitPrice>();
+    public virtual IReadOnlyCollection<MaterialUnitPrice> MaterialUnitPrices => _materialUnitPrices.AsReadOnly();
+
+    private IList<SlideUnitPrice> _slideUnitPrices = new List<SlideUnitPrice>();
+    public virtual IReadOnlyCollection<SlideUnitPrice> SlideUnitPrices => _slideUnitPrices.AsReadOnly();
     public virtual TransportRoute? TransportRoute { get; protected set; }
     public virtual CargoType? CargoType { get; protected set; }
     public virtual TransportLocation? TransportLocation { get; protected set; }

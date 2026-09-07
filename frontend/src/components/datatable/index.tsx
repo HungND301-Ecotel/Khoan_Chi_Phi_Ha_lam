@@ -44,7 +44,7 @@ import UploadIcon from '@mui/icons-material/Upload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { type ColumnDef, flexRender } from '@tanstack/react-table';
-import { Fragment, JSX, useEffect, useRef, useState } from 'react';
+import { Fragment, JSX, useEffect, useMemo, useRef, useState } from 'react';
 import { DataTableImport } from './import';
 
 const shadow = cn(
@@ -77,6 +77,10 @@ type DataTableProps<TData> = {
 	selectAllPageRows?: boolean;
 	deleteCountOverride?: number;
 	deleteDisabledOverride?: boolean;
+	isRowSelected?: (row: TData) => boolean | 'indeterminate';
+	onRowSelectChange?: (row: TData, checked: boolean) => void;
+	isAllRowsSelected?: boolean | 'indeterminate';
+	onSelectAllRowsChange?: (checked: boolean, rows: TData[]) => void;
 	importCrumb?: string;
 	hasActions?: boolean;
 	showCreateAction?: boolean;
@@ -86,6 +90,7 @@ type DataTableProps<TData> = {
 	hasPagination?: boolean;
 	hasSort?: boolean;
 	hasIndex?: boolean;
+	hideIndexHeader?: boolean;
 	compact?: boolean;
 };
 
@@ -110,6 +115,10 @@ export function DataTable<TData>({
 	selectAllPageRows,
 	deleteCountOverride,
 	deleteDisabledOverride,
+	isRowSelected,
+	onRowSelectChange,
+	isAllRowsSelected,
+	onSelectAllRowsChange,
 	importCrumb,
 	hasActions = true,
 	showCreateAction = true,
@@ -118,6 +127,7 @@ export function DataTable<TData>({
 	showUtilityActions = true,
 	hasPagination = true,
 	hasIndex = true,
+	hideIndexHeader = false,
 	hasSort = true,
 	compact = false,
 }: DataTableProps<TData>) {
@@ -147,6 +157,24 @@ export function DataTable<TData>({
 	const selectedCount = deleteCountOverride ?? selected.length;
 	const deleteDisabled = deleteDisabledOverride ?? !selected.length;
 	const rowSelection = table.getState().rowSelection;
+
+	const computedIsAllRowsSelected = useMemo(() => {
+		if (isAllRowsSelected !== undefined) return isAllRowsSelected;
+		if (isRowSelected) {
+			const rows = table.getFilteredRowModel().rows;
+			if (rows.length === 0) return false;
+			const states = rows.map((r) => isRowSelected(r.original));
+			const allChecked = states.every((s) => s === true);
+			if (allChecked) return true;
+			const anyChecked = states.some((s) => s === true || s === 'indeterminate');
+			if (anyChecked) return 'indeterminate';
+			return false;
+		}
+		return (
+			table.getIsAllPageRowsSelected() ||
+			(table.getIsSomePageRowsSelected() && 'indeterminate')
+		);
+	}, [isAllRowsSelected, isRowSelected, table.getFilteredRowModel().rows, rowSelection]);
 
 	useEffect(() => {
 		if (!onSelectedRowsChange) return;
@@ -342,13 +370,17 @@ export function DataTable<TData>({
 									{isFirstHeaderGroup && onDelete && (
 										<TableHead className='px-2' rowSpan={totalHeaderGroups}>
 											<Checkbox
-												checked={
-													table.getIsAllPageRowsSelected() ||
-													(table.getIsSomePageRowsSelected() && 'indeterminate')
-												}
-												onCheckedChange={(value) =>
-													table.toggleAllPageRowsSelected(!!value)
-												}
+												checked={computedIsAllRowsSelected}
+												onCheckedChange={(value) => {
+													if (onSelectAllRowsChange) {
+														onSelectAllRowsChange(
+															!!value,
+															table.getFilteredRowModel().rows.map((r) => r.original),
+														);
+													} else {
+														table.toggleAllPageRowsSelected(!!value);
+													}
+												}}
 												className='[&_.lucide-check]:text-white'
 											/>
 										</TableHead>
@@ -361,7 +393,7 @@ export function DataTable<TData>({
 											style={indexColumnStyle}
 										>
 											<div className='inline-flex h-6 w-full cursor-pointer flex-nowrap items-center justify-between gap-2 px-4'>
-												{!onDelete && 'STT'}
+												{!onDelete && !hideIndexHeader && 'STT'}
 											</div>
 										</TableHead>
 									)}
@@ -512,10 +544,18 @@ export function DataTable<TData>({
 										{onDelete && (
 											<TableCell className='w-4 py-0'>
 												<Checkbox
-													checked={row.getIsSelected()}
-													onCheckedChange={(value) =>
-														row.toggleSelected(!!value)
+													checked={
+														isRowSelected
+															? isRowSelected(row.original)
+															: row.getIsSelected()
 													}
+													onCheckedChange={(value) => {
+														if (onRowSelectChange) {
+															onRowSelectChange(row.original, !!value);
+														} else {
+															row.toggleSelected(!!value);
+														}
+													}}
 													aria-label='Select row'
 													className='me-2 [&_.lucide-check]:text-white'
 												/>

@@ -1,4 +1,4 @@
-﻿using Domain.Common.Contracts;
+using Domain.Common.Contracts;
 using Domain.Entities.Index;
 using Shared.Constants;
 
@@ -47,6 +47,12 @@ public abstract class MaterialUnitPrice : AuditableEntity<Guid>, IAggregateRoot
         {
             _materialUnitPriceAssignmentCodes.Add(item);
         }
+    }
+
+    public void AssignCode(Code code)
+    {
+        Code = code;
+        CodeId = code.Id;
     }
 
     protected static void ValidateCommonFields(string code, DateOnly startMonth, DateOnly endMonth)

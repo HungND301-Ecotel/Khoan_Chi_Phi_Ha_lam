@@ -47,6 +47,31 @@ export type SupportAndDrillingFormSchema = z.infer<
 	typeof supportAndDrillingFormSchema
 >;
 
+export const supportAndDrillingCommonFormSchema = z.object({
+	code: z.string().nonempty({ error: 'Mã đơn giá không được để trống' }),
+	processId: z
+		.string()
+		.nonempty({ error: 'Công đoạn sản xuất không được để trống' }),
+	technologyId: z.string().nonempty({ error: 'Công nghệ không được để trống' }),
+	passportId: z.string().nonempty({ error: 'Hộ chiếu không được để trống' }),
+	hardnessId: z
+		.string()
+		.nonempty({ error: 'Độ kiên cố than đá không được để trống' }),
+});
+
+export type SupportAndDrillingCommonFormSchema = z.infer<
+	typeof supportAndDrillingCommonFormSchema
+>;
+
+export const SUPPORT_AND_DRILLING_COMMON_FORM_DEFAULT: SupportAndDrillingCommonFormSchema =
+	{
+		code: '',
+		processId: '',
+		technologyId: '',
+		passportId: '',
+		hardnessId: '',
+	};
+
 export const SUPPORT_AND_DRILLING_FORM_DEFAULT: SupportAndDrillingFormSchema = {
 	startMonth: '',
 	endMonth: '',
@@ -58,3 +83,4 @@ export const SUPPORT_AND_DRILLING_FORM_DEFAULT: SupportAndDrillingFormSchema = {
 	costs: [],
 	otherMaterialValue: undefined,
 };
+

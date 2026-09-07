@@ -1,7 +1,8 @@
 import { ActionDialogProps, DataTable } from '@/components/datatable';
 import { usePopup } from '@/components/popup';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { API } from '@/constants/api-enpoint';
-import { useMeta } from '@/data/meta/meta-hook';
 import { Seamface } from '@/features/main/catalog/parameter/seamface/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import { Technology } from '@/features/main/catalog/parameter/technology/columns';
@@ -18,10 +19,14 @@ import {
 } from '@/features/main/pricing/longwall-panel/material/columns';
 import { api } from '@/lib/api';
 import { usePermission } from '@/hooks/use-permission';
-import { useEffect, useMemo, useState } from 'react';
+import { cn, formatDate, formatNumber } from '@/lib/utils';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import type {
 	LongwallMaterialDetail,
 	LongwallMaterialDetailCost,
+	LongwallMaterialPeriod,
 } from './type';
 
 function buildGroupedExpandRows(
@@ -123,20 +128,78 @@ function buildGroupedExpandRows(
 export function LongwallPanelMaterialPage() {
 	const { hasPermission } = usePermission();
 	const popup = usePopup();
-	const { breadcrumb } = useMeta();
+
+	const [selectedPeriodIds, setSelectedPeriodIds] = useState<string[]>([]);
+
+	const isRowSelected = (row: LongwallMaterial): boolean | 'indeterminate' => {
+		const periods = row.periods ?? [];
+		if (periods.length === 0) {
+			return selectedPeriodIds.includes(row.id);
+		}
+		const selectedCount = periods.filter((p) =>
+			selectedPeriodIds.includes(p.id),
+		).length;
+		if (selectedCount === 0) return false;
+		if (selectedCount === periods.length) return true;
+		return 'indeterminate';
+	};
+
+	const handleRowSelectChange = (row: LongwallMaterial, checked: boolean) => {
+		const periodIds =
+			row.periods && row.periods.length > 0
+				? row.periods.map((p) => p.id)
+				: [row.id];
+
+		setSelectedPeriodIds((prev) => {
+			if (checked) {
+				return Array.from(new Set([...prev, ...periodIds]));
+			} else {
+				return prev.filter((id) => !periodIds.includes(id));
+			}
+		});
+	};
+
+	const handleSelectAllRowsChange = (
+		checked: boolean,
+		rows: LongwallMaterial[],
+	) => {
+		const allPeriodIds = rows.flatMap((r) =>
+			r.periods && r.periods.length > 0 ? r.periods.map((p) => p.id) : [r.id],
+		);
+		setSelectedPeriodIds((prev) => {
+			if (checked) {
+				return Array.from(new Set([...prev, ...allPeriodIds]));
+			} else {
+				return prev.filter((id) => !allPeriodIds.includes(id));
+			}
+		});
+	};
+
+	const handleTogglePeriodSelect = (periodId: string) => {
+		setSelectedPeriodIds((prev) => {
+			if (prev.includes(periodId)) {
+				return prev.filter((id) => id !== periodId);
+			} else {
+				return [...prev, periodId];
+			}
+		});
+	};
 
 	const handleDelete = async ({
 		data,
 	}: ActionDialogProps<LongwallMaterial>) => {
+		if (selectedPeriodIds.length === 0) return;
 		try {
-			const selected = data.table.getFilteredSelectedRowModel();
-			const rows = selected.rows.map((row) => row.original.id);
+			await api.delete(
+				API.PRICING.MATERIAL.LONGWALL_PANEL.DELETES,
+				selectedPeriodIds,
+			);
 
-			await api.delete(API.PRICING.MATERIAL.LONGWALL_PANEL.DELETES, rows);
-
-			popup.success(`Đã xoá thành công ${rows.length} ${breadcrumb}.`);
+			popup.success(
+				`Đã xoá thành công ${selectedPeriodIds.length} khoảng thời gian định mức.`,
+			);
+			setSelectedPeriodIds([]);
 			await data.refresh();
-			data.table.toggleAllRowsSelected(false);
 		} catch (error) {
 			popup.error(error);
 		}
@@ -175,80 +238,112 @@ export function LongwallPanelMaterialPage() {
 
 	return (
 		<DataTable
-			url={API.PRICING.MATERIAL.LONGWALL_PANEL.LIST}
+			url={API.PRICING.MATERIAL.LONGWALL_PANEL.GROUPED_LIST}
 			columns={LONGWALL_MATERIAL_COLUMNS}
 			filters={[
 				{ key: 'code', label: 'Mã định mức vật liệu' },
 				{ key: 'processName', label: 'Công đoạn sản xuất' },
 				{ key: 'materialDetail', label: 'Thông số' },
 			]}
-			onCreate={hasPermission('pricing.longwallmaterialunitprice.create') ? hasPermission('pricing.longwallmaterialunitprice.create') ? (props) => <LongwallMaterialForm {...props} /> : undefined : undefined}
-			onDuplicate={hasPermission('pricing.longwallmaterialunitprice.create') ? hasPermission('pricing.longwallmaterialunitprice.create') ? (props) => <LongwallMaterialForm {...props} isDuplicate /> : undefined : undefined}
-			onUpdate={hasPermission('pricing.longwallmaterialunitprice.update') ? hasPermission('pricing.longwallmaterialunitprice.update') ? (props) => <LongwallMaterialForm {...props} /> : undefined : undefined}
-			onDelete={hasPermission('pricing.longwallmaterialunitprice.delete') ? handleDelete : undefined}
-			onExport={hasPermission('pricing.longwallmaterialunitprice.export') ? handleExport : undefined}
-			onImport={hasPermission('pricing.longwallmaterialunitprice.import') ? handleImport : undefined}
-			onExpand={(props) => <LongwallMaterialExpand {...props} />}
+			onCreate={
+				hasPermission('pricing.longwallmaterialunitprice.create')
+					? (props) => <LongwallMaterialForm {...props} />
+					: undefined
+			}
+			onDuplicate={
+				hasPermission('pricing.longwallmaterialunitprice.create')
+					? (props) => <LongwallMaterialForm {...props} isDuplicate />
+					: undefined
+			}
+			onUpdate={
+				hasPermission('pricing.longwallmaterialunitprice.update')
+					? (props) => <LongwallMaterialForm {...props} />
+					: undefined
+			}
+			onDelete={
+				hasPermission('pricing.longwallmaterialunitprice.delete')
+					? handleDelete
+					: undefined
+			}
+			deleteCountOverride={selectedPeriodIds.length}
+			deleteDisabledOverride={selectedPeriodIds.length === 0}
+			isRowSelected={isRowSelected}
+			onRowSelectChange={handleRowSelectChange}
+			onSelectAllRowsChange={handleSelectAllRowsChange}
+			onExport={
+				hasPermission('pricing.longwallmaterialunitprice.export')
+					? handleExport
+					: undefined
+			}
+			onImport={
+				hasPermission('pricing.longwallmaterialunitprice.import')
+					? handleImport
+					: undefined
+			}
+			onExpand={(props) => (
+				<LongwallMaterialExpand
+					{...props}
+					selectedPeriodIds={selectedPeriodIds}
+					onTogglePeriodSelect={handleTogglePeriodSelect}
+				/>
+			)}
 		/>
 	);
 }
 
-function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
+interface LongwallMaterialExpandProps extends ActionDialogProps<LongwallMaterial> {
+	selectedPeriodIds: string[];
+	onTogglePeriodSelect: (periodId: string) => void;
+}
+
+function LongwallMaterialExpand({
+	row,
+	selectedPeriodIds,
+	onTogglePeriodSelect,
+}: LongwallMaterialExpandProps) {
+	const popup = usePopup();
 	const [detail, setDetail] = useState<ExpandLongwallMaterialDetail>();
-	const [costs, setCosts] = useState<ExpandLongwallMaterialCostRow[]>([]);
+	const [expandedPeriodIds, setExpandedPeriodIds] = useState<string[]>([]);
+	const [periodCostsMap, setPeriodCostsMap] = useState<
+		Record<string, ExpandLongwallMaterialCostRow[]>
+	>({});
+	const [loadingPeriodMap, setLoadingPeriodMap] = useState<
+		Record<string, boolean>
+	>({});
 
 	useEffect(() => {
 		if (!row) return;
 
 		const load = async () => {
-			const [detailRes] = await Promise.all([
-				api.get<LongwallMaterialDetail>(
-					API.PRICING.MATERIAL.LONGWALL_PANEL.DETAIL(row.id),
-				),
-			]);
-
-			const materialDetail = detailRes.result;
-
 			const [technologyRes, powerRes, hardnessRes, seamFaceRes] =
 				await Promise.all([
-					materialDetail.technologyId
+					row.technologyId
 						? api.get<Technology>(
-								API.CATALOG.PARAMETER.TECHNOLOGY.DETAIL(
-									materialDetail.technologyId,
-								),
+								API.CATALOG.PARAMETER.TECHNOLOGY.DETAIL(row.technologyId),
 							)
 						: Promise.resolve(undefined),
-					materialDetail.powerId
-						? api.get<Power>(
-								API.CATALOG.PARAMETER.POWER.DETAIL(materialDetail.powerId),
-							)
+					row.powerId
+						? api.get<Power>(API.CATALOG.PARAMETER.POWER.DETAIL(row.powerId))
 						: Promise.resolve(undefined),
-					materialDetail.hardnessId
+					row.hardnessId
 						? api.get<Strength>(
-								API.CATALOG.PARAMETER.STRENGTH.DETAIL(
-									materialDetail.hardnessId,
-								),
+								API.CATALOG.PARAMETER.STRENGTH.DETAIL(row.hardnessId),
 							)
 						: Promise.resolve(undefined),
-					materialDetail.seamFaceId
+					row.seamFaceId
 						? api.get<Seamface>(
-								API.CATALOG.PARAMETER.SEAMFACE.DETAIL(
-									materialDetail.seamFaceId,
-								),
+								API.CATALOG.PARAMETER.SEAMFACE.DETAIL(row.seamFaceId),
 							)
 						: Promise.resolve(undefined),
 				]);
 
-			const longwallParametersValue = materialDetail.longwallParameters
-				? `Llc ${materialDetail.longwallParameters.llc}; Lkc ${materialDetail.longwallParameters.lkc}; Mk ${materialDetail.longwallParameters.mk}`
+			const longwallParametersValue = row.longwallParameters
+				? `Llc ${row.longwallParameters.llc}; Lkc ${row.longwallParameters.lkc}; Mk ${row.longwallParameters.mk}`
 				: '';
 
 			const cuttingThicknessValue =
-				materialDetail.cuttingThickness?.value ??
-				(materialDetail.cuttingThickness?.from &&
-				materialDetail.cuttingThickness?.to
-					? `${materialDetail.cuttingThickness.from} - ${materialDetail.cuttingThickness.to}`
-					: (row.cuttingThickness?.value ?? ''));
+				row.cuttingThickness?.value ??
+				(row.cuttingthicknessId ? String(row.cuttingthicknessId) : '');
 
 			const isCGH = !!row.isLongwallMaterialUnitPriceCGH;
 
@@ -262,16 +357,39 @@ function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
 				cuttingThicknessValue,
 				seamFaceValue: seamFaceRes?.result?.value ?? row.seamFaceName ?? '',
 			});
-			setCosts(
-				buildGroupedExpandRows(
-					materialDetail.costs ?? [],
-					materialDetail.otherMaterialValue,
-				),
-			);
 		};
 
 		load();
 	}, [row]);
+
+	const handleTogglePeriodDetails = async (period: LongwallMaterialPeriod) => {
+		const isCurrentlyExpanded = expandedPeriodIds.includes(period.id);
+
+		if (isCurrentlyExpanded) {
+			setExpandedPeriodIds((prev) => prev.filter((id) => id !== period.id));
+			return;
+		}
+
+		setExpandedPeriodIds((prev) => [...prev, period.id]);
+
+		if (!periodCostsMap[period.id]) {
+			setLoadingPeriodMap((prev) => ({ ...prev, [period.id]: true }));
+			try {
+				const res = await api.get<LongwallMaterialDetail>(
+					API.PRICING.MATERIAL.LONGWALL_PANEL.DETAIL(period.id),
+				);
+				const rows = buildGroupedExpandRows(
+					res.result.costs ?? [],
+					res.result.otherMaterialValue,
+				);
+				setPeriodCostsMap((prev) => ({ ...prev, [period.id]: rows }));
+			} catch (error) {
+				popup.error(error);
+			} finally {
+				setLoadingPeriodMap((prev) => ({ ...prev, [period.id]: false }));
+			}
+		}
+	};
 
 	const detailColumns = useMemo(
 		() =>
@@ -282,30 +400,152 @@ function LongwallMaterialExpand({ row }: ActionDialogProps<LongwallMaterial>) {
 	);
 
 	const detailItems = useMemo(() => [detail ?? {}], [detail]);
+	const periods = row?.periods ?? [];
 
 	return (
-		<div className='mx-32 flex flex-col gap-4'>
-			<DataTable
-				columns={detailColumns}
-				items={detailItems}
-				hasActions={false}
-				hasPagination={false}
-				hasSort={false}
-				hasIndex={false}
-				compact={true}
-			/>
+		<div className='mx-6 my-2 flex flex-col gap-3 text-black'>
+			{/* TẦNG 2: 1. BẢNG NHỎ THÔNG SỐ KỸ THUẬT */}
+			<div className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
+				<DataTable
+					columns={detailColumns}
+					items={detailItems}
+					hasActions={false}
+					hasPagination={false}
+					hasSort={false}
+					hasIndex={false}
+					compact={true}
+				/>
+			</div>
 
-			<div className='bg-border h-0.5' />
+			{/* TẦNG 2: 2. BẢNG THỜI GIAN VÀ ĐƠN GIÁ VẬT LIỆU */}
+			<div className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
+				<table className='w-full text-left text-sm text-black'>
+					<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+						<tr>
+							<th scope='col' className='w-10 px-3 py-2.5 text-center' />
+							<th
+								scope='col'
+								className='w-12 px-3 py-2.5 text-center font-semibold text-black'
+							>
+								STT
+							</th>
+							<th scope='col' className='px-4 py-2.5 font-semibold text-black'>
+								Thời gian áp dụng
+							</th>
+							<th
+								scope='col'
+								className='px-4 py-2.5 text-right font-semibold text-black'
+							>
+								Đơn giá vật liệu (đ/1000 tấn)
+							</th>
+							<th
+								scope='col'
+								className='w-20 px-4 py-2.5 text-center font-semibold text-black'
+							>
+								Xem
+							</th>
+						</tr>
+					</thead>
+					<tbody className='divide-y divide-neutral-200'>
+						{periods.length === 0 ? (
+							<tr>
+								<td colSpan={5} className='py-6 text-center text-sm text-black'>
+									Chưa có khoảng thời gian nào được thiết lập.
+								</td>
+							</tr>
+						) : (
+							periods.map((period, index) => {
+								const isSelected = expandedPeriodIds.includes(period.id);
+								const periodCosts = periodCostsMap[period.id] ?? [];
+								const isLoadingPeriodCosts =
+									loadingPeriodMap[period.id] ?? false;
 
-			<DataTable
-				columns={LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS}
-				items={costs}
-				hasActions={false}
-				hasPagination={false}
-				hasSort={false}
-				hasIndex={false}
-				compact={true}
-			/>
+								return (
+									<Fragment key={period.id}>
+										<tr
+											className={cn(
+												'border-b border-neutral-200 transition-colors hover:bg-neutral-50/80',
+												isSelected && 'bg-neutral-50',
+											)}
+										>
+											<td className='w-10 px-3 py-2 text-center'>
+												<Checkbox
+													checked={selectedPeriodIds.includes(period.id)}
+													onCheckedChange={() =>
+														onTogglePeriodSelect(period.id)
+													}
+													aria-label={`Chọn khoảng thời gian ${formatDate(period.startMonth)} - ${formatDate(period.endMonth)}`}
+												/>
+											</td>
+											<td className='w-12 px-3 py-2 text-center text-sm text-black'>
+												{index + 1}
+											</td>
+											<td className='px-4 py-2 text-sm text-black'>
+												{formatDate(period.startMonth)} -{' '}
+												{formatDate(period.endMonth)}
+											</td>
+											<td className='px-4 py-2 text-right text-sm font-semibold text-black'>
+												{formatNumber(period.totalPrice)} đ
+											</td>
+											<td className='px-4 py-2 text-center'>
+												<div className='flex items-center justify-center'>
+													<Button
+														variant='ghost'
+														size='icon'
+														className={cn(
+															'h-8 w-8 rounded-full bg-transparent shadow-none hover:bg-neutral-100 hover:shadow-none',
+															isSelected
+																? 'font-semibold text-black'
+																: 'text-[#6e6e6e] hover:text-black',
+														)}
+														title={
+															isSelected ? 'Đóng chi tiết' : 'Xem chi tiết'
+														}
+														onClick={() => handleTogglePeriodDetails(period)}
+													>
+														{isSelected ? (
+															<VisibilityOffIcon fontSize='small' />
+														) : (
+															<VisibilityIcon fontSize='small' />
+														)}
+													</Button>
+												</div>
+											</td>
+										</tr>
+
+										{/* TẦNG 3: BẢNG CHI TIẾT NGAY DƯỚI KHOẢNG THỜI GIAN ĐƯỢC CHỌN */}
+										{isSelected && (
+											<tr className='border-b border-neutral-200 bg-neutral-50/50'>
+												<td colSpan={5} className='bg-neutral-50/40 p-3'>
+													<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'>
+														{isLoadingPeriodCosts ? (
+															<div className='flex items-center justify-center py-6 text-sm text-black'>
+																Đang tải dữ liệu chi tiết vật tư...
+															</div>
+														) : (
+															<DataTable
+																columns={
+																	LONGWALL_MATERIAL_EXPAND_SUMMARY_COLUMNS
+																}
+																items={periodCosts}
+																hasActions={false}
+																hasPagination={false}
+																hasSort={false}
+																hasIndex={false}
+																compact={true}
+															/>
+														)}
+													</div>
+												</td>
+											</tr>
+										)}
+									</Fragment>
+								);
+							})
+						)}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	);
 }

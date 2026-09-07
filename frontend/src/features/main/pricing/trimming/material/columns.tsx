@@ -2,7 +2,7 @@ import { Insert } from '@/features/main/catalog/parameter/insert/columns';
 import { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import { Step } from '@/features/main/catalog/parameter/step/columns';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 import { Material } from './type';
 
@@ -41,22 +41,6 @@ export const MAIN_PRICING_MATERIAL_COLUMNS: ColumnDef<Material>[] = [
 					))}
 			</div>
 		),
-	},
-	{
-		accessorKey: 'startMonth',
-		header: 'Thời gian',
-		cell: ({ row }) => (
-			<span>
-				<span>{formatDate(row.original.startMonth)}</span>
-				<br />
-				<span>{formatDate(row.original.endMonth)}</span>
-			</span>
-		),
-	},
-	{
-		accessorKey: 'totalPrice',
-		header: 'Đơn giá vật liệu (đ/m)',
-		cell: ({ row }) => formatNumber(row.original.totalPrice),
 	},
 ];
 

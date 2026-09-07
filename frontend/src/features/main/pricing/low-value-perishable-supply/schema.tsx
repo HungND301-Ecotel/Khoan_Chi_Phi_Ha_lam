@@ -1,5 +1,29 @@
 import z from 'zod';
 
+export const lowValuePerishableCommonFormSchema = z.object({
+	departmentId: z.string().nonempty('Đơn vị không được để trống'),
+	processGroupId: z.string().nonempty('Nhóm công đoạn không được để trống'),
+});
+
+export type LowValuePerishableCommonFormSchema = z.infer<
+	typeof lowValuePerishableCommonFormSchema
+>;
+
+export const LOW_VALUE_PERISHABLE_COMMON_FORM_DEFAULT: LowValuePerishableCommonFormSchema =
+	{
+		departmentId: '',
+		processGroupId: '',
+	};
+
+export interface LowValuePerishablePeriodItem {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+}
+
+// Legacy schema kept for compatibility
 export const lowValuePerishableSupplyFormSchema = z
 	.object({
 		departmentId: z.string().nonempty('Đơn vị không được để trống'),

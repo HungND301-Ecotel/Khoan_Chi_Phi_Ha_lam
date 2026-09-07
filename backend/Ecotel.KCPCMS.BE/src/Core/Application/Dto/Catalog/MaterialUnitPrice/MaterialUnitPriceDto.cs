@@ -23,6 +23,32 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public TunnelExcavationTrimingUnitPriceType Type { get; set; }
     }
 
+    public class MaterialUnitPricePeriodDto
+    {
+        public DefaultIdType Id { get; set; }
+        public DateOnly StartMonth { get; set; }
+        public DateOnly EndMonth { get; set; }
+        public double TotalPrice { get; set; }
+    }
+
+    public class GroupedMaterialUnitPriceDto : IDto
+    {
+        public DefaultIdType Id { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public DefaultIdType ProcessId { get; set; }
+        public string ProcessName { get; set; } = string.Empty;
+        public DefaultIdType PassportId { get; set; }
+        public string PassportName { get; set; } = string.Empty;
+        public DefaultIdType HardnessId { get; set; }
+        public string HardnessName { get; set; } = string.Empty;
+        public DefaultIdType InsertItemId { get; set; }
+        public string InsertItemName { get; set; } = string.Empty;
+        public DefaultIdType SupportStepId { get; set; }
+        public string SupportStepName { get; set; } = string.Empty;
+        public TunnelExcavationTrimingUnitPriceType Type { get; set; }
+        public List<MaterialUnitPricePeriodDto> Periods { get; set; } = [];
+    }
+
     public class TunnelSupportAndDrillingMaterialUnitPriceDto : IDto
     {
         public DefaultIdType Id { get; set; }
@@ -38,6 +64,21 @@ namespace Application.Dto.Catalog.MaterialUnitPrice
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
         public double TotalPrice { get; set; }
+    }
+
+    public class GroupedTunnelSupportAndDrillingMaterialUnitPriceDto : IDto
+    {
+        public DefaultIdType Id { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public DefaultIdType ProcessId { get; set; }
+        public string ProcessName { get; set; } = string.Empty;
+        public DefaultIdType PassportId { get; set; }
+        public string PassportName { get; set; } = string.Empty;
+        public DefaultIdType HardnessId { get; set; }
+        public string HardnessName { get; set; } = string.Empty;
+        public DefaultIdType? TechnologyId { get; set; }
+        public string TechnologyName { get; set; } = string.Empty;
+        public List<MaterialUnitPricePeriodDto> Periods { get; set; } = [];
     }
 
     public class CreateMaterialUnitPriceDto

@@ -34,3 +34,10 @@ export type LongwallMaterialDetail = {
 	otherMaterialValue?: number;
 	costs: LongwallMaterialDetailCost[];
 };
+
+export type LongwallMaterialPeriod = {
+	id: string;
+	startMonth: string;
+	endMonth: string;
+	totalPrice: number;
+};

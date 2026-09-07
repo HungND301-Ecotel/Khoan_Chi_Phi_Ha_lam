@@ -8,7 +8,7 @@ import { MainPricingSlidePage } from '@/features/main/pricing/tunneling/slide/pa
 import { MainPricingTrimmingElectricityPage } from '@/features/main/pricing/trimming/electricity/page';
 import { MainPricingTrimmingMaterialPage } from '@/features/main/pricing/trimming/material/page';
 import { MainPricingMaintenanceTrimmingPage } from '@/features/main/pricing/trimming/maintenance/page';
-import { RouteObject } from 'react-router-dom';
+import { Navigate, RouteObject } from 'react-router-dom';
 import { MainPricingLongwallElectricityPage } from './longwall-panel/electricity/page';
 import { MainPricingMaintenanceLongwallPanelPage } from './longwall-panel/maintenance/page';
 import { MainPricingMaintenanceTunnelingPage } from './tunneling/maintenance/page';
@@ -71,6 +71,10 @@ const MainPricingRouter: RouteObject = {
 			path: 'longwall-panel',
 			handle: { breadcrumb: 'Lò chợ' },
 			children: [
+				{
+					index: true,
+					element: <Navigate to='electricity' replace />,
+				},
 				{
 					path: 'electricity',
 					element: <MainPricingLongwallElectricityPage />,

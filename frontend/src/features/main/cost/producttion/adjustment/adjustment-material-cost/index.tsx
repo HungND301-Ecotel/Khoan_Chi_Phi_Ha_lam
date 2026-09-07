@@ -130,6 +130,7 @@ export function AdjustmentMaterialCost({
 							selectedMaterial;
 
 						const matchedSlide = allSlides.find((slide) => {
+							if (!slide.startMonth || !slide.endMonth) return false;
 							const targetStart = new Date(startMonth.slice(0, 7));
 							const targetEnd = new Date(endMonth.slice(0, 7));
 							const slideStart = new Date(slide.startMonth.slice(0, 7));

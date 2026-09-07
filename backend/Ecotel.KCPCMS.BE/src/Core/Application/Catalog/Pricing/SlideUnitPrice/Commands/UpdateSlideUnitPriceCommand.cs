@@ -1,4 +1,4 @@
-﻿using Application.Common.Caching;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -33,20 +33,41 @@ public class UpdateSlideUnitPriceCommandHandler(
         var existedSlideUnitPrice = await _slideUnitPriceRepository.GetFirstOrDefaultAsync(
                                         predicate: s => s.Id == model.Id,
                                         include: s => s.Include(s => s.SlideUnitPriceAssignmentCodes).Include(s => s.Code),
-                                        disableTracking: true)
+                                        disableTracking: false)
                                     ?? throw new NotFoundException(CustomResponseMessage.SlideUnitPriceNotFound);
 
-        if (await codeService.IsCodeExisted(request.UpdateModel.Code, existedSlideUnitPrice.CodeId))
+        var normalizedCode = model.Code.Trim().ToUpper();
+        var normalizedStart = new DateOnly(model.StartMonth.Year, model.StartMonth.Month, 1);
+        var normalizedEnd = new DateOnly(model.EndMonth.Year, model.EndMonth.Month, 1);
+
+        var codeEntity = await codeService.GetOrCreateCodeAsync(normalizedCode, cancellationToken);
+
+        var existingWithSameCode = await _slideUnitPriceRepository.GetAllAsync(
+            predicate: m => m.CodeId == codeEntity.Id && m.Id != model.Id && m.DeletedOn == null,
+            disableTracking: true);
+
+        if (existingWithSameCode.Any())
         {
-            throw new ConflictException(CustomResponseMessage.SlideUnitPriceCodeAlreadyExists);
+            var mismatched = existingWithSameCode.FirstOrDefault(m =>
+                m.ProcessGroupId != model.ProcessGroupId ||
+                m.PassportId != model.PassportId ||
+                m.HardnessId != model.HardnessId);
+
+            if (mismatched != null)
+            {
+                throw new BadRequestException($"Mã định mức '{normalizedCode}' đã được thiết lập cho thông số kỹ thuật khác. Không thể gán mã này cho thông số kỹ thuật mới.");
+            }
         }
 
         if (await _slideUnitPriceRepository.AnyAsync(m =>
-            m.StartMonth < request.UpdateModel.EndMonth &&
-            m.EndMonth > request.UpdateModel.StartMonth &&
-            m.ProcessGroupId == request.UpdateModel.ProcessGroupId &&
-            m.PassportId == request.UpdateModel.PassportId &&
-            m.HardnessId == request.UpdateModel.HardnessId && m.Id != request.UpdateModel.Id))
+            m.Id != model.Id &&
+            m.DeletedOn == null &&
+            m.StartMonth <= normalizedEnd &&
+            m.EndMonth >= normalizedStart &&
+            ((m.CodeId == codeEntity.Id) ||
+             (m.ProcessGroupId == model.ProcessGroupId &&
+              m.PassportId == model.PassportId &&
+              m.HardnessId == model.HardnessId))))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -134,6 +155,7 @@ public class UpdateSlideUnitPriceCommandHandler(
                 request.UpdateModel.EndMonth,
                 unitPriceAssignmentCodes);
 
+            existedSlideUnitPrice.AssignCode(codeEntity);
             _slideUnitPriceRepository.Update(existedSlideUnitPrice);
 
             await unitOfWork.SaveChangesAsync();

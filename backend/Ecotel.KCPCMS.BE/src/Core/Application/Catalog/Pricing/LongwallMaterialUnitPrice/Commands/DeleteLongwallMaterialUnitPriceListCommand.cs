@@ -51,13 +51,31 @@ public class DeleteLongwallMaterialUnitPriceListCommandHandler(IUnitOfWork unitO
                 .Distinct()
                 .ToList();
 
+            var deletedCodeIds = materialsToDelete.Select(i => i.CodeId).Distinct().ToList();
+
+            // Check which codeIds are still used by other MaterialUnitPrices not being deleted
+            var remainingCodeIds = await _materialUnitPriceRepository.GetAllAsync(
+                predicate: m => deletedCodeIds.Contains(m.CodeId) && !request.DeleteIds.Contains(m.Id) && m.DeletedOn == null,
+                selector: m => m.CodeId,
+                disableTracking: true);
+
+            var remainingCodeIdSet = remainingCodeIds.ToHashSet();
+
+            var orphanCodes = materialsToDelete
+                .Where(i => i.Code != null && !remainingCodeIdSet.Contains(i.CodeId))
+                .Select(i => i.Code!)
+                .GroupBy(c => c.Id)
+                .Select(g => g.First())
+                .ToList();
+
             foreach (var material in materialsToDelete)
             {
                 _materialUnitPriceRepository.Delete(material);
-                if (material.Code != null)
-                {
-                    _codeRepository.Delete(material.Code);
-                }
+            }
+
+            if (orphanCodes.Any())
+            {
+                _codeRepository.Delete(orphanCodes);
             }
 
             await unitOfWork.SaveChangesAsync();

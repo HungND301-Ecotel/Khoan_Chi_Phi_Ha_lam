@@ -1,4 +1,4 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
@@ -28,6 +28,23 @@ public class CodeService(IUnitOfWork unitOfWork) : ICodeService
                             && p.CodeId != curId
                             && p.ProcessGroupId == processGroupId)
                 .AnyAsync();
+    }
+
+    public async Task<Code> GetOrCreateCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        var normalizedCode = code.Trim().ToUpper();
+        var existingCode = await _codeRepository.GetFirstOrDefaultAsync(
+            predicate: c => c.Value == normalizedCode,
+            disableTracking: false);
+
+        if (existingCode != null)
+        {
+            return existingCode;
+        }
+
+        var newCode = new Code(normalizedCode);
+        await _codeRepository.InsertAsync(newCode, cancellationToken);
+        return newCode;
     }
 
     public async Task<bool> IsCodeExisted(string code)

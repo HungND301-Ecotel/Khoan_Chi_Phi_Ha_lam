@@ -1,4 +1,4 @@
-﻿using Domain.Common.Contracts;
+using Domain.Common.Contracts;
 using Domain.Entities.Index;
 using Shared.Constants;
 
@@ -56,6 +56,12 @@ namespace Domain.Entities.Pricing
         public double GetCurrentTotalPrice()
         {
             return SlideUnitPriceAssignmentCodes.Sum(m => m.Amount);
+        }
+
+        public void AssignCode(Code code)
+        {
+            Code = code;
+            CodeId = code.Id;
         }
 
         public void Update

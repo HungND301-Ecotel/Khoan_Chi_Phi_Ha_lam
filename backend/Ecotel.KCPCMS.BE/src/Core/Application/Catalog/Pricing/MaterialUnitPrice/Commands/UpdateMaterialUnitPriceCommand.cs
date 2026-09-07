@@ -1,4 +1,4 @@
-﻿using Application.Common.Caching;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -31,16 +31,44 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
 
     public async Task<bool> Handle(UpdateMaterialUnitPriceCommand request, CancellationToken cancellationToken)
     {
+        var normalizedCode = request.UpdateModel.Code.Trim().ToUpper();
+        var normalizedStart = new DateOnly(request.UpdateModel.StartMonth.Year, request.UpdateModel.StartMonth.Month, 1);
+        var normalizedEnd = new DateOnly(request.UpdateModel.EndMonth.Year, request.UpdateModel.EndMonth.Month, 1);
+
+        var codeEntity = await codeService.GetOrCreateCodeAsync(normalizedCode, cancellationToken);
+
+        var existingWithSameCode = await _materialUnitPriceRepository.GetAllAsync(
+            predicate: m => m.CodeId == codeEntity.Id && m.Id != request.UpdateModel.Id && m.DeletedOn == null,
+            disableTracking: true);
+
+        if (existingWithSameCode.Any())
+        {
+            var mismatched = existingWithSameCode.FirstOrDefault(m =>
+                m.ProcessId != request.UpdateModel.ProcessId ||
+                m.PassportId != request.UpdateModel.PassportId ||
+                m.HardnessId != request.UpdateModel.HardnessId ||
+                m.InsertItemId != request.UpdateModel.InsertItemId ||
+                m.SupportStepId != request.UpdateModel.SupportStepId ||
+                m.Type != request.UpdateModel.Type);
+
+            if (mismatched != null)
+            {
+                throw new BadRequestException($"Mã định mức '{normalizedCode}' đã được thiết lập cho thông số kỹ thuật khác. Không thể gán mã này cho thông số kỹ thuật mới.");
+            }
+        }
+
         if (await _materialUnitPriceRepository.AnyAsync(m =>
-            m.StartMonth < request.UpdateModel.EndMonth &&
-            m.EndMonth > request.UpdateModel.StartMonth &&
-            m.ProcessId == request.UpdateModel.ProcessId &&
-            m.PassportId == request.UpdateModel.PassportId &&
-            m.HardnessId == request.UpdateModel.HardnessId &&
-            m.InsertItemId == request.UpdateModel.InsertItemId &&
-            m.SupportStepId == request.UpdateModel.SupportStepId &&
-            m.Type == request.UpdateModel.Type &&
-            m.Id != request.UpdateModel.Id))
+            m.Id != request.UpdateModel.Id &&
+            m.DeletedOn == null &&
+            m.StartMonth <= normalizedEnd &&
+            m.EndMonth >= normalizedStart &&
+            ((m.CodeId == codeEntity.Id) ||
+             (m.ProcessId == request.UpdateModel.ProcessId &&
+              m.PassportId == request.UpdateModel.PassportId &&
+              m.HardnessId == request.UpdateModel.HardnessId &&
+              m.InsertItemId == request.UpdateModel.InsertItemId &&
+              m.SupportStepId == request.UpdateModel.SupportStepId &&
+              m.Type == request.UpdateModel.Type))))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -86,11 +114,6 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
             include: m => m.Include(m => m.Code).Include(m => m.MaterialUnitPriceAssignmentCodes),
             disableTracking: false) ?? throw new NotFoundException(CustomResponseMessage.MaterialUnitPriceNotFound);
 
-        if (await codeService.IsCodeExisted(request.UpdateModel.Code, materialUnitPrice.CodeId))
-        {
-            throw new ConflictException(CustomResponseMessage.MaterialUnitPriceCodeAlreadyExists);
-        }
-
         bool processTask = await _productionProcessRepository.AnyAsync(p => p.Id == request.UpdateModel.ProcessId);
         bool passportTask = await _passportRepository.AnyAsync(p => p.Id == request.UpdateModel.PassportId);
         bool hardnessTask = await _hardnessRepository.AnyAsync(p => p.Id == request.UpdateModel.HardnessId);
@@ -127,6 +150,8 @@ public class UpdateMaterialUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICode
                     .ToList(),
                 request.UpdateModel.Type
                 );
+
+            materialUnitPrice.AssignCode(codeEntity);
 
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);

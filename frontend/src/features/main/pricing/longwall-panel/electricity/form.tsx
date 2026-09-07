@@ -85,19 +85,19 @@ export function ElectricityForm({
 
 				form.reset({
 					equipmentIds: [detail.equipmentId],
-					startMonth: detail.startMonth.substring(0, 10),
-					endMonth: detail.endMonth.substring(0, 10),
+					startMonth: (detail.startMonth ?? '').substring(0, 10),
+					endMonth: (detail.endMonth ?? '').substring(0, 10),
 					costs: [
 						{
 							equipmentId: detail.equipmentId,
-							quantity: detail.quantity,
-							pdm: detail.pdm,
-							kyc: detail.kyc,
-							kdt: detail.kdt,
-							workingHour: detail.workingHour,
-							workingDate: detail.workingDate,
+							quantity: detail.quantity ?? 1,
+							pdm: detail.pdm ?? 1,
+							kyc: detail.kyc ?? 1,
+							kdt: detail.kdt ?? 1,
+							workingHour: detail.workingHour ?? 1,
+							workingDate: detail.workingDate ?? 1,
 							averageMonthlyTunnelProduction:
-								detail.longwallAverageMonthlyTunnelProduction,
+								detail.longwallAverageMonthlyTunnelProduction ?? 1,
 						},
 					],
 				});

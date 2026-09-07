@@ -1,4 +1,4 @@
-﻿using Application.Common.Caching;
+using Application.Common.Caching;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -26,17 +26,37 @@ public class CreateSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeSer
     public async Task<bool> Handle(CreateSlideUnitPriceCommand request, CancellationToken cancellationToken)
     {
         var model = request.CreateModel;
-        if (await codeService.IsCodeExisted(request.CreateModel.Code))
+        var normalizedCode = model.Code.Trim().ToUpper();
+        var normalizedStart = new DateOnly(model.StartMonth.Year, model.StartMonth.Month, 1);
+        var normalizedEnd = new DateOnly(model.EndMonth.Year, model.EndMonth.Month, 1);
+
+        var codeEntity = await codeService.GetOrCreateCodeAsync(normalizedCode, cancellationToken);
+
+        var existingWithSameCode = await _slideUnitPriceRepository.GetAllAsync(
+            predicate: m => m.CodeId == codeEntity.Id && m.DeletedOn == null,
+            disableTracking: true);
+
+        if (existingWithSameCode.Any())
         {
-            throw new ConflictException(CustomResponseMessage.SlideUnitPriceCodeAlreadyExists);
+            var mismatched = existingWithSameCode.FirstOrDefault(m =>
+                m.ProcessGroupId != model.ProcessGroupId ||
+                m.PassportId != model.PassportId ||
+                m.HardnessId != model.HardnessId);
+
+            if (mismatched != null)
+            {
+                throw new BadRequestException($"Mã định mức '{normalizedCode}' đã được thiết lập cho thông số kỹ thuật khác. Không thể gán mã này cho thông số kỹ thuật mới.");
+            }
         }
 
         if (await _slideUnitPriceRepository.AnyAsync(m =>
-            m.StartMonth < request.CreateModel.EndMonth &&
-            m.EndMonth > request.CreateModel.StartMonth &&
-            m.ProcessGroupId == request.CreateModel.ProcessGroupId &&
-            m.PassportId == request.CreateModel.PassportId &&
-            m.HardnessId == request.CreateModel.HardnessId))
+            m.DeletedOn == null &&
+            m.StartMonth <= normalizedEnd &&
+            m.EndMonth >= normalizedStart &&
+            ((m.CodeId == codeEntity.Id) ||
+             (m.ProcessGroupId == model.ProcessGroupId &&
+              m.PassportId == model.PassportId &&
+              m.HardnessId == model.HardnessId))))
         {
             throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
         }
@@ -122,6 +142,7 @@ public class CreateSLideUnitPriceCommandHandler(IUnitOfWork unitOfWork, ICodeSer
                 request.CreateModel.EndMonth,
                 unitPriceAssignmentCodes);
 
+            newSlideUnitPrice.AssignCode(codeEntity);
             await _slideUnitPriceRepository.InsertAsync(newSlideUnitPrice, cancellationToken);
 
             await unitOfWork.SaveChangesAsync();
