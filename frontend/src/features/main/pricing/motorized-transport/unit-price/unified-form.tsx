@@ -1,13 +1,11 @@
 import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
-import { FormMonthYear } from '@/components/form/form-month-year';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormProvider } from '@/components/form/form-provider';
-import { FormRow } from '@/components/form/form-row';
 import { usePopup } from '@/components/popup';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { InfoIcon } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
 	VEHICLE_TYPE_OPTIONS,
@@ -51,6 +49,8 @@ const getMappedRowForVehicleType = (
 				cargoTypeName: section.cargoTypeName,
 				receivingLocationId: section.receivingLocationId,
 				receivingLocationName: section.receivingLocationName,
+				receivingLocationIds: section.receivingLocationIds,
+				receivingLocationNames: section.receivingLocationNames,
 				dumpingLocationId: section.dumpingLocationId,
 				dumpingLocationName: section.dumpingLocationName,
 				equipmentQuality: r.equipmentQuality,
@@ -96,27 +96,21 @@ export function UnifiedMotorizedTransportForm(
 		return keys.length > 0 ? keys : ['scania'];
 	}, [row]);
 
-	// Master form for common startMonth, endMonth, vehicleTypes
+	// Master form for vehicleTypes
 	const masterForm = useForm<{
-		startMonth: string;
-		endMonth: string;
 		vehicleTypes: string[];
 	}>({
 		defaultValues: {
-			startMonth: row?.startMonth?.substring(0, 7) || '',
-			endMonth: row?.endMonth?.substring(0, 7) || '',
 			vehicleTypes: row ? editVehicleKeys : ['scania'],
 		},
 	});
 
-	const watchedStartMonth = useWatch({
-		control: masterForm.control,
-		name: 'startMonth',
-	});
-	const watchedEndMonth = useWatch({
-		control: masterForm.control,
-		name: 'endMonth',
-	});
+	useEffect(() => {
+		masterForm.reset({
+			vehicleTypes: row ? editVehicleKeys : ['scania'],
+		});
+	}, [row, editVehicleKeys, masterForm]);
+
 	const watchedVehicleTypes =
 		useWatch({
 			control: masterForm.control,
@@ -150,44 +144,36 @@ export function UnifiedMotorizedTransportForm(
 	);
 
 	const handleMasterSubmit = async () => {
-		const { startMonth, endMonth } = masterForm.getValues();
-		if (!startMonth) {
-			popup.error('Vui lòng chọn Thời gian bắt đầu');
+		if (selectedVehicleKeys.length === 0) {
+			popup.error('Vui lòng chọn ít nhất một nhóm vận tải cơ giới');
 			return;
 		}
 
 		const promises: Promise<boolean>[] = [];
 		if (selectedVehicleKeys.includes('scania') && scaniaRef.current) {
-			promises.push(scaniaRef.current.submit(startMonth, endMonth));
+			promises.push(scaniaRef.current.submit());
 		}
 		if (
 			selectedVehicleKeys.includes('excavator-dozer') &&
 			excavatorDozerRef.current
 		) {
-			promises.push(excavatorDozerRef.current.submit(startMonth, endMonth));
+			promises.push(excavatorDozerRef.current.submit());
 		}
 		if (
 			selectedVehicleKeys.includes('service-crane') &&
 			serviceCraneRef.current
 		) {
-			promises.push(serviceCraneRef.current.submit(startMonth, endMonth));
+			promises.push(serviceCraneRef.current.submit());
 		}
 		if (
 			selectedVehicleKeys.includes('vacuum-truck') &&
 			vacuumTruckRef.current
 		) {
-			promises.push(vacuumTruckRef.current.submit(startMonth, endMonth));
-		}
-
-		if (promises.length === 0) {
-			popup.error('Vui lòng chọn ít nhất một nhóm vận tải cơ giới');
-			return;
+			promises.push(vacuumTruckRef.current.submit());
 		}
 
 		const results = await Promise.all(promises);
-		const allSuccess = results.every(Boolean);
-
-		if (allSuccess) {
+		if (results.every(Boolean)) {
 			popup.success(
 				row && !isDuplicate
 					? 'Cập nhật đơn giá định mức thành công'
@@ -212,23 +198,7 @@ export function UnifiedMotorizedTransportForm(
 			}}
 		>
 			<div className='space-y-4'>
-				{/* 1. THỜI GIAN CHUNG Ở ĐẦU FORM */}
-				<FormRow>
-					<FormMonthYear
-						control={masterForm.control as any}
-						name='startMonth'
-						label='Thời gian bắt đầu'
-						className='flex-1'
-					/>
-					<FormMonthYear
-						control={masterForm.control as any}
-						name='endMonth'
-						label='Thời gian kết thúc'
-						className='flex-1'
-					/>
-				</FormRow>
-
-				{/* 2. CHỌN NHÓM VẬN TẢI CƠ GIỚI (MULTI-SELECT CHO TẠO MỚI) */}
+				{/* 1. CHỌN NHÓM VẬN TẢI CƠ GIỚI (MULTI-SELECT CHO TẠO MỚI) - ĐƯỢC CHUYỂN LÊN ĐẦU */}
 				{!row && (
 					<FormMultiSelect
 						control={masterForm.control as any}
@@ -239,16 +209,13 @@ export function UnifiedMotorizedTransportForm(
 					/>
 				)}
 
-				{/* 3. DÃY KHỐI FORM NHẬP LIỆU NỐI TIẾP THEO TỪNG NHÓM XE */}
+				{/* 2. DÃY KHỐI FORM NHẬP LIỆU NỐI TIẾP THEO TỪNG NHÓM XE (BÊN TRONG CHỨA THỜI GIAN VÀ CHỌN VẬT TƯ) */}
 				{selectedVehicleKeys.includes('scania') && (
 					<MotorizedScaniaForm
 						{...(props as any)}
 						ref={scaniaRef}
 						row={mappedScaniaRow}
-						hideTimeRow={true}
 						hideConfirmButton={true}
-						sharedStartMonth={watchedStartMonth}
-						sharedEndMonth={watchedEndMonth}
 					/>
 				)}
 
@@ -257,10 +224,7 @@ export function UnifiedMotorizedTransportForm(
 						{...(props as any)}
 						ref={excavatorDozerRef}
 						row={mappedExcavatorRow}
-						hideTimeRow={true}
 						hideConfirmButton={true}
-						sharedStartMonth={watchedStartMonth}
-						sharedEndMonth={watchedEndMonth}
 					/>
 				)}
 
@@ -269,10 +233,7 @@ export function UnifiedMotorizedTransportForm(
 						{...(props as any)}
 						ref={serviceCraneRef}
 						row={mappedCraneRow}
-						hideTimeRow={true}
 						hideConfirmButton={true}
-						sharedStartMonth={watchedStartMonth}
-						sharedEndMonth={watchedEndMonth}
 					/>
 				)}
 
@@ -281,14 +242,11 @@ export function UnifiedMotorizedTransportForm(
 						{...(props as any)}
 						ref={vacuumTruckRef}
 						row={mappedVacuumRow}
-						hideTimeRow={true}
 						hideConfirmButton={true}
-						sharedStartMonth={watchedStartMonth}
-						sharedEndMonth={watchedEndMonth}
 					/>
 				)}
 
-				{/* 4. KHỐI LƯU Ý CHUNG Ở CUỐI FORM */}
+				{/* 3. KHỐI LƯU Ý CHUNG Ở CUỐI FORM */}
 				<div className='mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300'>
 					<div className='flex items-center gap-1.5 font-semibold text-blue-900 dark:text-blue-200'>
 						<InfoIcon className='size-4 text-blue-600 dark:text-blue-400' />
@@ -313,7 +271,7 @@ export function UnifiedMotorizedTransportForm(
 					</ul>
 				</div>
 
-				{/* 5. NÚT XÁC NHẬN / HUỶ DUY NHẤT Ở CUỐI FORM */}
+				{/* 4. NÚT XÁC NHẬN / HUỶ DUY NHẤT Ở CUỐI FORM */}
 				<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 			</div>
 		</FormProvider>

@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
@@ -166,21 +166,25 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
         var groups = validRows
             .GroupBy(r => r.HeaderId != Guid.Empty
                 ? $"ID:{r.HeaderId}"
-                : $"NEW:{r.AssignmentCodeId}|{r.EquipmentQuality}|{r.ProductionProcessId}|{r.CargoTypeId}|{r.ReceivingLocationId}|{r.DumpingLocationId}|{r.StartMonth}|{r.EndMonth}")
+                : $"NEW:{r.AssignmentCodeId}|{r.EquipmentQuality}|{r.ProductionProcessId}|{r.CargoTypeId}|{r.DumpingLocationId}|{r.StartMonth}|{r.EndMonth}")
             .ToList();
 
         foreach (var group in groups)
         {
-            var distanceIds = group.Select(r => r.HaulDistanceId).ToList();
-            if (distanceIds.Count != distanceIds.Distinct().Count())
+            var byReceivingLoc = group.GroupBy(r => r.ReceivingLocationId);
+            foreach (var locGroup in byReceivingLoc)
             {
-                importErrors.Add($"Nhóm '{group.First().AssignmentCodeId}': trùng cung độ vận tải trong cùng 1 header.");
+                var locDistances = locGroup.Select(r => r.HaulDistanceId).ToList();
+                if (locDistances.Count != locDistances.Distinct().Count())
+                {
+                    importErrors.Add($"Nhóm '{group.First().AssignmentCodeId}': trùng cung độ vận tải cho cùng một vị trí nhận.");
+                }
             }
         }
 
         ThrowIfImportErrors(importErrors);
 
-        var dbEntities = await _repository.GetAllAsync(include: q => q.Include(s => s.Details), disableTracking: false);
+        var dbEntities = await _repository.GetAllAsync(include: q => q.Include(s => s.Details).Include(s => s.ReceivingLocations), disableTracking: false);
 
         var deleteList = new List<Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice>();
         var updateList = new List<Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice>();
@@ -195,7 +199,16 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
         foreach (var group in groups)
         {
             var first = group.First();
-            var details = group.Select(r => new MechanizedTransportUnitPriceDetailInput(r.HaulDistanceId, r.FuelUnitPrice, r.PowerUnitPrice, r.MaintenanceUnitPrice));
+            var receivingLocationIds = group
+                .Where(r => r.ReceivingLocationId.HasValue)
+                .Select(r => r.ReceivingLocationId!.Value)
+                .Distinct()
+                .ToList();
+
+            var details = group
+                .GroupBy(r => r.HaulDistanceId)
+                .Select(g => new MechanizedTransportUnitPriceDetailInput(g.Key, g.First().FuelUnitPrice, g.First().PowerUnitPrice, g.First().MaintenanceUnitPrice))
+                .ToList();
 
             if (group.Key.StartsWith("ID:"))
             {
@@ -208,7 +221,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
 
                 entityToUpdate.Update(
                     first.AssignmentCodeId, first.EquipmentQuality, first.ProductionProcessId,
-                    first.CargoTypeId, first.ReceivingLocationId, first.DumpingLocationId,
+                    first.CargoTypeId, receivingLocationIds, first.DumpingLocationId,
                     first.StartMonth, first.EndMonth, details);
                 updateList.Add(entityToUpdate);
             }
@@ -219,20 +232,19 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
                     && x.EquipmentQuality == first.EquipmentQuality
                     && x.ProductionProcessId == first.ProductionProcessId
                     && x.CargoTypeId == first.CargoTypeId
-                    && x.ReceivingLocationId == first.ReceivingLocationId
                     && x.DumpingLocationId == first.DumpingLocationId
                     && x.StartMonth == first.StartMonth
                     && x.EndMonth == first.EndMonth);
 
                 if (isDuplicated)
                 {
-                    importErrors.Add($"Đã tồn tại đơn giá cho tổ hợp thiết bị/hàng/vị trí/thời gian này (thiếu HeaderId để cập nhật).");
+                    importErrors.Add($"Đã tồn tại đơn giá cho tổ hợp thiết bị/hàng/vị trí đổ/thời gian này (thiếu HeaderId để cập nhật).");
                     continue;
                 }
 
                 addList.Add(Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice.Create(
                     first.AssignmentCodeId, first.EquipmentQuality, first.ProductionProcessId,
-                    first.CargoTypeId, first.ReceivingLocationId, first.DumpingLocationId,
+                    first.CargoTypeId, receivingLocationIds, first.DumpingLocationId,
                     first.StartMonth, first.EndMonth, details));
             }
         }

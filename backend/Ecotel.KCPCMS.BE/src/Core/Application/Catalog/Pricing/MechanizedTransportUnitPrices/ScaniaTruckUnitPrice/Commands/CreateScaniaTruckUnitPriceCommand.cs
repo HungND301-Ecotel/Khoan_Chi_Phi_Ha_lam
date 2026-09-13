@@ -1,4 +1,4 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
 using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
@@ -17,12 +17,16 @@ public class CreateScaniaTruckUnitPriceCommandHandler(IUnitOfWork unitOfWork) : 
         var details = request.CreateModel.Details.Select(d =>
             new MechanizedTransportUnitPriceDetailInput(d.HaulDistanceId, d.FuelUnitPrice, d.PowerUnitPrice, d.MaintenanceUnitPrice));
 
+        var receivingLocationIds = request.CreateModel.ReceivingLocationIds?.Any() == true
+            ? request.CreateModel.ReceivingLocationIds
+            : (request.CreateModel.ReceivingLocationId.HasValue ? new List<Guid> { request.CreateModel.ReceivingLocationId.Value } : null);
+
         var entity = Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice.Create(
             request.CreateModel.AssignmentCodeId,
             request.CreateModel.EquipmentQuality,
             request.CreateModel.ProductionProcessId,
             request.CreateModel.CargoTypeId,
-            request.CreateModel.ReceivingLocationId,
+            receivingLocationIds,
             request.CreateModel.DumpingLocationId,
             request.CreateModel.StartMonth,
             request.CreateModel.EndMonth,

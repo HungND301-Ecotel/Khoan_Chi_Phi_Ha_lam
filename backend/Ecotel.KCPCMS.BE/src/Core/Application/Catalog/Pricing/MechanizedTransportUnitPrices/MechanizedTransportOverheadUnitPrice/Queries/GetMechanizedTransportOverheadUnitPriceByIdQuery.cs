@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -20,7 +20,7 @@ public class GetMechanizedTransportOverheadUnitPriceByIdQueryHandler(IUnitOfWork
     {
         var entity = await _repository.GetFirstOrDefaultAsync(
             predicate: x => x.Id == request.Id,
-            include: x => x.Include(m => m.ProcessGroup),
+            include: x => x.Include(m => m.ProcessGroup).Include(m => m.Department),
             disableTracking: true)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
@@ -29,6 +29,8 @@ public class GetMechanizedTransportOverheadUnitPriceByIdQueryHandler(IUnitOfWork
             Id = entity.Id,
             ProcessGroupId = entity.ProcessGroupId,
             ProcessGroupName = entity.ProcessGroup?.Name ?? string.Empty,
+            DepartmentId = entity.DepartmentId,
+            DepartmentName = entity.Department?.Name ?? string.Empty,
             StartMonth = entity.StartMonth,
             EndMonth = entity.EndMonth,
             LowValuePerishableSupplyUnitPrice = entity.LowValuePerishableSupplyUnitPrice,

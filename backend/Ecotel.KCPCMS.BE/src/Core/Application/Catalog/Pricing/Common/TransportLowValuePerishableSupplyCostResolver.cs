@@ -49,7 +49,8 @@ public static class TransportLowValuePerishableSupplyCostResolver
 
         // VTCG catalog
         var vtcgCatalog = await mechanizedTransportOverheadUnitPriceRepository.GetAll()
-            .Where(x => processGroupIds.Contains(x.ProcessGroupId)
+            .Where(x => departmentIds.Contains(x.DepartmentId)
+                && processGroupIds.Contains(x.ProcessGroupId)
                 && x.StartMonth <= maxMonth
                 && x.EndMonth >= minMonth)
             .AsNoTracking()
@@ -69,7 +70,8 @@ public static class TransportLowValuePerishableSupplyCostResolver
             if (isVtcg)
             {
                 var price = vtcgCatalog
-                    .Where(x => x.ProcessGroupId == key.ProcessGroupId
+                    .Where(x => x.DepartmentId == key.DepartmentId
+                        && x.ProcessGroupId == key.ProcessGroupId
                         && x.StartMonth <= key.Month
                         && x.EndMonth >= key.Month)
                     .OrderByDescending(x => x.StartMonth)

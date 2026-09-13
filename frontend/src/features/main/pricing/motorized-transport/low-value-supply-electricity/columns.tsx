@@ -1,50 +1,50 @@
-import { formatDate } from '@/lib/utils';
 import { ColumnDef } from '@tanstack/react-table';
 
-export type MotorizedLowValueSupplyElectricityUnitPrice = {
+export type MotorizedLowValuePeriod = {
 	id: string;
 	startMonth: string;
 	endMonth: string;
+	lowValueSupplyUnitPrice: number;
+	lowValuePerishableSupplyUnitPrice?: number;
+	electricityUnitPrice: number;
+};
+
+export type MotorizedLowValueSupplyElectricityUnitPrice = {
+	id: string;
+	departmentId?: string;
+	departmentCode?: string;
+	departmentName?: string;
 	processGroupId?: string;
-	processGroupName: string;
+	processGroupCode?: string;
+	processGroupName?: string;
+	startMonth?: string;
+	endMonth?: string;
 	lowValueSupplyUnitPrice?: number;
 	lowValuePerishableSupplyUnitPrice?: number;
 	electricityUnitPrice?: number;
+	periods?: MotorizedLowValuePeriod[];
 };
 
 export const MOTORIZED_LOW_VALUE_SUPPLY_ELECTRICITY_COLUMNS: ColumnDef<MotorizedLowValueSupplyElectricityUnitPrice>[] =
 	[
 		{
-			accessorKey: 'startMonth',
-			header: 'Thời gian',
-			cell: ({ row }) => (
-				<div className='flex flex-col text-xs font-medium'>
-					<span>{formatDate(row.original.startMonth)}</span>
-					<span className='text-black-600'>
-						{formatDate(row.original.endMonth)}
-					</span>
-				</div>
-			),
+			accessorKey: 'departmentCode',
+			header: 'Mã đơn vị',
+			cell: ({ row }) => row.original.departmentCode || '-',
+		},
+		{
+			accessorKey: 'departmentName',
+			header: 'Tên đơn vị',
+			cell: ({ row }) => row.original.departmentName || '-',
+		},
+		{
+			accessorKey: 'processGroupCode',
+			header: 'Mã nhóm công đoạn',
+			cell: ({ row }) => row.original.processGroupCode || '-',
 		},
 		{
 			accessorKey: 'processGroupName',
-			header: 'Nhóm công đoạn sản xuất',
+			header: 'Tên nhóm công đoạn',
 			cell: ({ row }) => row.original.processGroupName || '-',
-		},
-		{
-			accessorKey: 'lowValueSupplyUnitPrice',
-			header: 'Vật tư mau hỏng rẻ tiền (đ/tháng)',
-			cell: ({ row }) =>
-				(
-					row.original.lowValuePerishableSupplyUnitPrice ??
-					row.original.lowValueSupplyUnitPrice ??
-					0
-				).toLocaleString('vi-VN'),
-		},
-		{
-			accessorKey: 'electricityUnitPrice',
-			header: 'Điện năng (đ/tháng)',
-			cell: ({ row }) =>
-				(row.original.electricityUnitPrice ?? 0).toLocaleString('vi-VN'),
 		},
 	];

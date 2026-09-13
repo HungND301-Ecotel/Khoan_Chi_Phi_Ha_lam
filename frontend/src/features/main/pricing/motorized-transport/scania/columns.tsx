@@ -24,6 +24,8 @@ export type MotorizedScaniaUnitPrice = {
 	cargoTypeName?: string;
 	receivingLocationId?: string;
 	receivingLocationName?: string;
+	receivingLocationIds?: string[];
+	receivingLocationNames?: string[];
 	dumpingLocationId?: string;
 	dumpingLocationName?: string;
 	distanceRange?: string;

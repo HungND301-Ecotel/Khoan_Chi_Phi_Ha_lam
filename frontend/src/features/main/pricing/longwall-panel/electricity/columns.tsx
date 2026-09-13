@@ -58,7 +58,7 @@ export const LONGWALL_ELECTRICITY_COLUMNS: ColumnDef<LongwallElectricity>[] = [
 	},
 	{
 		accessorKey: 'unitOfMeasureName',
-		header: 'ĐVT',
+		header: 'Đơn vị tính',
 	},
 ];
 

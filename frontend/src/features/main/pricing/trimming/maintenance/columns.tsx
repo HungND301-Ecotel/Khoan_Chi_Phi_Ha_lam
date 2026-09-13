@@ -59,7 +59,7 @@ export const MAIN_PRICING_TRIMMING_EXPAND_COLUMNS: ColumnDef<MaintainUnitPriceEq
 		},
 		{
 			accessorKey: 'unitOfMeasureName',
-			header: () => <span className='h-fit whitespace-normal'>{'ĐVT'}</span>,
+			header: () => <span className='h-fit whitespace-normal'>{'Đơn vị tính'}</span>,
 		},
 		{
 			accessorKey: 'partCost',

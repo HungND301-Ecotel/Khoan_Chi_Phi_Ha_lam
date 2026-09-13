@@ -58,7 +58,7 @@ export const MAIN_PRICING_LONGWALL_PANEL_EXPAND_COLUMNS: ColumnDef<MaintainUnitP
 		},
 		{
 			accessorKey: 'unitOfMeasureName',
-			header: () => <span className='h-fit whitespace-normal'>{'ĐVT'}</span>,
+			header: () => <span className='h-fit whitespace-normal'>{'Đơn vị tính'}</span>,
 		},
 		{
 			accessorKey: 'partCost',

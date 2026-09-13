@@ -1,35 +1,33 @@
-import { ActionDialogProps } from '@/components/datatable';
+import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
-import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormMultiSelect } from '@/components/form/form-multi-select';
-import { FormNumber } from '@/components/form/form-number';
+import { FormComboBox } from '@/components/form/form-combo-box';
+import { MonthYearInput } from '@/components/form/form-month-year';
+import { FormNumberInput } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormRow } from '@/components/form/form-row';
 import { FormSeparator } from '@/components/form/form-separator';
 import { usePopup } from '@/components/popup';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
-import { ContractCode } from '@/features/main/catalog/contract-code/columns';
-import { Electricity } from '@/features/main/pricing/trimming/electricity/columns';
+import type { ContractCode } from '@/features/main/catalog/contract-code/columns';
+import type { Electricity } from '@/features/main/pricing/trimming/electricity/columns';
 import {
-	ELECTRICITY_FORM_DEFAULT,
-	electricityFormSchema,
-	ElectricityFormSchema,
+	ELECTRICITY_COMMON_FORM_DEFAULT,
+	electricityCommonFormSchema,
+	type ElectricityCommonFormSchema,
+	type ElectricityPeriodItem,
+	validateElectricityPeriods,
 } from '@/features/main/pricing/trimming/electricity/schema';
 import { api } from '@/lib/api';
 import { formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm, UseFormReturn } from 'react-hook-form';
+import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 export function ElectricityForm({
 	data,
@@ -41,126 +39,185 @@ export function ElectricityForm({
 	const { breadcrumb } = useMeta();
 
 	const [equipments, setEquipments] = useState<ContractCode[]>([]);
+	const [deletedPeriodIds, setDeletedPeriodIds] = useState<string[]>([]);
 
-	const form = useForm<ElectricityFormSchema>({
-		resolver: zodResolver(electricityFormSchema),
+	const [periods, setPeriods] = useState<ElectricityPeriodItem[]>([
+		{
+			tempId: `period_${Date.now()}`,
+			startMonth: new Date().toISOString().substring(0, 10),
+			endMonth: new Date().toISOString().substring(0, 10),
+			monthlyElectricityCost: 1,
+			averageMonthlyTunnelProduction: 1,
+		},
+	]);
+
+	const form = useForm<ElectricityCommonFormSchema>({
+		resolver: zodResolver(electricityCommonFormSchema),
 		mode: 'onSubmit',
-		defaultValues: ELECTRICITY_FORM_DEFAULT,
+		defaultValues: {
+			...ELECTRICITY_COMMON_FORM_DEFAULT,
+			equipmentId: row?.equipmentId || '',
+		},
 	});
 
-	const watchedEquipmentIds = form.watch('equipmentIds');
+	const watchedEquipmentId = form.watch('equipmentId');
+
+	const selectedEquipment = useMemo(() => {
+		const found = equipments.find((e) => e.id === watchedEquipmentId);
+		if (found) return found;
+		if (row && row.equipmentId === watchedEquipmentId) {
+			return {
+				id: row.equipmentId,
+				code: row.equipmentCode,
+				name: row.equipmentName,
+				unitOfMeasureName: row.unitOfMeasureName,
+				currentPrice: row.equipmentElectricityCost,
+			} as ContractCode;
+		}
+		return undefined;
+	}, [equipments, watchedEquipmentId, row]);
 
 	useEffect(() => {
-		const promises = Promise.all([
-			api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
-				...(row?.startMonth && { date: row.startMonth }),
-				ignorePagination: true,
-			}),
-		]);
+		api.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST, {
+			ignorePagination: true,
+		}).then((res) => {
+			setEquipments(res.result.data);
+		});
 
-		promises.then(([equipments]) => {
-			setEquipments(equipments.result.data);
-
-			if (!row) return;
-
+		if (row) {
 			form.reset({
-				equipmentIds: [row.equipmentId],
-				startMonth: (row.startMonth ?? '').substring(0, 10),
-				endMonth: (row.endMonth ?? '').substring(0, 10),
-				costs: [
+				equipmentId: row.equipmentId,
+			});
+
+			if (row.periods && row.periods.length > 0) {
+				setPeriods(
+					row.periods.map((p) => ({
+						tempId: p.id,
+						id: isDuplicate ? undefined : p.id,
+						startMonth: (p.startMonth ?? '').substring(0, 10),
+						endMonth: (p.endMonth ?? '').substring(0, 10),
+						monthlyElectricityCost: p.monthlyElectricityCost ?? 1,
+						averageMonthlyTunnelProduction:
+							p.averageMonthlyTunnelProduction ?? 1,
+					})),
+				);
+			} else {
+				setPeriods([
 					{
-						equipmentId: row.equipmentId,
+						tempId: row.id,
+						id: isDuplicate ? undefined : row.id,
+						startMonth: (row.startMonth ?? new Date().toISOString()).substring(0, 10),
+						endMonth: (row.endMonth ?? new Date().toISOString()).substring(0, 10),
 						monthlyElectricityCost: row.monthlyElectricityCost ?? 1,
 						averageMonthlyTunnelProduction:
 							row.averageMonthlyTunnelProduction ?? 1,
 					},
-				],
-			});
+				]);
+			}
+		}
+	}, [row, isDuplicate, form]);
+
+	const handleAddPeriod = () => {
+		setPeriods((prev) => [
+			...prev,
+			{
+				tempId: `period_${Date.now()}_${Math.random()}`,
+				startMonth: new Date().toISOString().substring(0, 10),
+				endMonth: new Date().toISOString().substring(0, 10),
+				monthlyElectricityCost: 1,
+				averageMonthlyTunnelProduction: 1,
+			},
+		]);
+	};
+
+	const handleCopyPeriod = (index: number) => {
+		const target = periods[index];
+		if (!target) return;
+		const copied: ElectricityPeriodItem = {
+			...target,
+			tempId: `period_${Date.now()}_${Math.random()}`,
+			id: undefined,
+		};
+		setPeriods((prev) => [
+			...prev.slice(0, index + 1),
+			copied,
+			...prev.slice(index + 1),
+		]);
+	};
+
+	const handleDeletePeriod = (index: number) => {
+		const target = periods[index];
+		if (!target) return;
+		if (target.id) {
+			setDeletedPeriodIds((prev) => [...prev, target.id!]);
+		}
+		setPeriods((prev) => prev.filter((_, i) => i !== index));
+	};
+
+	const handleUpdatePeriod = (
+		index: number,
+		updated: ElectricityPeriodItem,
+	) => {
+		setPeriods((prev) => {
+			const next = [...prev];
+			next[index] = updated;
+			return next;
 		});
-	}, [row, form]);
+	};
 
-	useEffect(() => {
-		if (!Array.isArray(watchedEquipmentIds)) return;
+	const handleSubmit = async (values: ElectricityCommonFormSchema) => {
+		const validationError = validateElectricityPeriods(periods);
+		if (validationError) {
+			popup.error(validationError);
+			return;
+		}
 
-		const existingEquipmentIdsInCosts = form
-			.getValues('costs')
-			.map(
-				(cost: {
-					equipmentId: string;
-					monthlyElectricityCost: number;
-					averageMonthlyTunnelProduction: number;
-				}) => cost.equipmentId,
-			);
-
-		const equipmentIdsToAdd = watchedEquipmentIds.filter(
-			(id) => !existingEquipmentIdsInCosts.includes(id),
-		);
-
-		const newCosts = equipmentIdsToAdd.map((equipmentId) => ({
-			equipmentId,
-			monthlyElectricityCost: 1,
-			averageMonthlyTunnelProduction: 1,
-		}));
-
-		const costsToKeep = form
-			.getValues('costs')
-			.filter(
-				(cost: {
-					equipmentId: string;
-					monthlyElectricityCost: number;
-					averageMonthlyTunnelProduction: number;
-				}) => watchedEquipmentIds.includes(cost.equipmentId),
-			);
-
-		const costs = [...costsToKeep, ...newCosts].sort((a, b) =>
-			a.equipmentId.localeCompare(b.equipmentId),
-		);
-
-		form.setValue('costs', costs, {
-			shouldValidate: false,
-		});
-	}, [form, watchedEquipmentIds]);
-
-	const handleSubmit = async (values: ElectricityFormSchema) => {
 		try {
-			const processedValues = {
-				...values,
-			};
+			const equipmentId = values.equipmentId;
 			if (row && !isDuplicate) {
-				const cost = processedValues.costs.find(
-					(c: {
-						equipmentId: string;
-						monthlyElectricityCost: number;
-						averageMonthlyTunnelProduction: number;
-					}) => c.equipmentId === row.equipmentId,
-				);
-				await api.put(API.PRICING.ELECTRICITY.TRIMMING.UPDATE, {
-					id: row.id,
-					equipmentId: row.equipmentId,
-					startMonth: processedValues.startMonth,
-					endMonth: processedValues.endMonth,
-					monthlyElectricityCost: cost?.monthlyElectricityCost ?? 0,
-					averageMonthlyTunnelProduction:
-						cost?.averageMonthlyTunnelProduction ?? 0,
-				});
-			} else {
-				const body = processedValues.equipmentIds.map((equipmentId: string) => {
-					const cost = processedValues.costs.find(
-						(c: {
-							equipmentId: string;
-							monthlyElectricityCost: number;
-							averageMonthlyTunnelProduction: number;
-						}) => c.equipmentId === equipmentId,
-					);
-					return {
+				// Cập nhật các khoảng thời gian đã tồn tại
+				for (const p of periods) {
+					if (p.id) {
+						await api.put(API.PRICING.ELECTRICITY.TRIMMING.UPDATE, {
+							id: p.id,
+							equipmentId,
+							startMonth: p.startMonth,
+							endMonth: p.endMonth,
+							monthlyElectricityCost: p.monthlyElectricityCost ?? 0,
+							averageMonthlyTunnelProduction:
+								p.averageMonthlyTunnelProduction ?? 0,
+						});
+					}
+				}
+
+				// Thêm mới các khoảng thời gian được tạo thêm
+				const newPeriods = periods.filter((p) => !p.id);
+				if (newPeriods.length > 0) {
+					const newBodies = newPeriods.map((p) => ({
 						equipmentId,
-						startMonth: processedValues.startMonth,
-						endMonth: processedValues.endMonth,
-						monthlyElectricityCost: cost?.monthlyElectricityCost ?? 0,
+						startMonth: p.startMonth,
+						endMonth: p.endMonth,
+						monthlyElectricityCost: p.monthlyElectricityCost ?? 0,
 						averageMonthlyTunnelProduction:
-							cost?.averageMonthlyTunnelProduction ?? 0,
-					};
-				});
+							p.averageMonthlyTunnelProduction ?? 0,
+					}));
+					await api.post(API.PRICING.ELECTRICITY.TRIMMING.CREATE, newBodies);
+				}
+
+				// Xóa các khoảng thời gian đã bị xóa
+				for (const deleteId of deletedPeriodIds) {
+					await api.delete(API.PRICING.ELECTRICITY.TRIMMING.DELETE(deleteId));
+				}
+			} else {
+				// Thêm mới hoàn toàn
+				const body = periods.map((p) => ({
+					equipmentId,
+					startMonth: p.startMonth,
+					endMonth: p.endMonth,
+					monthlyElectricityCost: p.monthlyElectricityCost ?? 0,
+					averageMonthlyTunnelProduction:
+						p.averageMonthlyTunnelProduction ?? 0,
+				}));
 				await api.post(API.PRICING.ELECTRICITY.TRIMMING.CREATE, body);
 			}
 
@@ -177,26 +234,9 @@ export function ElectricityForm({
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormRow>
-				<FormMonthYear
-					control={form.control}
-					name='startMonth'
-					label='Thời gian bắt đầu'
-					className='flex-1'
-				/>
-				<FormMonthYear
-					control={form.control}
-					name='endMonth'
-					label='Thời gian kết thúc'
-					className='flex-1'
-				/>
-			</FormRow>
-
-			<FormSeparator />
-
-			<FormMultiSelect
+			<FormComboBox
 				control={form.control}
-				name='equipmentIds'
+				name='equipmentId'
 				label='Nhóm vật tư, tài sản'
 				placeholder='Chọn Nhóm vật tư, tài sản'
 				options={equipments.map((item) => ({
@@ -206,73 +246,65 @@ export function ElectricityForm({
 				disabled={!!row && !isDuplicate}
 			/>
 
-			<ElectricityCost form={form} values={equipments} />
+			<FormSeparator label='Danh sách khoảng thời gian áp dụng' />
+
+			<div className='flex flex-col gap-5'>
+				{periods.map((period, index) => (
+					<ElectricityPeriodCard
+						key={period.tempId}
+						period={period}
+						totalPeriods={periods.length}
+						equipment={selectedEquipment}
+						onUpdate={(updated) => handleUpdatePeriod(index, updated)}
+						onDelete={() => handleDeletePeriod(index)}
+						onCopy={() => handleCopyPeriod(index)}
+					/>
+				))}
+
+				{/* Nút Thêm thời gian ở dưới cùng bên trái */}
+				<div className='flex justify-start pt-1'>
+					<Button
+						type='button'
+						variant='ghost'
+						size='sm'
+						onClick={handleAddPeriod}
+						className='flex h-fit w-fit items-center gap-1.5 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
+					>
+						<PlusCircleIcon className='size-4 text-primary' strokeWidth={2} />
+						<span className='text-sm text-black'>Thêm thời gian</span>
+					</Button>
+				</div>
+			</div>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);
 }
 
-function ElectricityCost({
-	form,
-	values,
-}: {
-	form: UseFormReturn<ElectricityFormSchema>;
-	values: ContractCode[];
-}) {
-	const watchedEquipmentIds = form.watch('equipmentIds');
-	const watchedCosts = form.watch('costs');
-
-	if (!watchedEquipmentIds || watchedEquipmentIds.length === 0) return null;
-
-	return (
-		<div className='scrollbar-sm max-h-100 overflow-auto pb-4'>
-			{watchedEquipmentIds.map((equipmentId: string) => {
-				const equipment = values.find((value) => value.id === equipmentId);
-				const costIndex = watchedCosts.findIndex(
-					(c: {
-						equipmentId: string;
-						monthlyElectricityCost: number;
-						averageMonthlyTunnelProduction: number;
-					}) => c.equipmentId === equipmentId,
-				);
-
-				if (costIndex === -1) return null;
-
-				return (
-					<div key={equipmentId} className='space-y-4 p-2'>
-						<ElectricityCostRow
-							form={form}
-							equipment={equipment}
-							costIndex={costIndex}
-						/>
-					</div>
-				);
-			})}
-		</div>
-	);
+interface ElectricityPeriodCardProps {
+	period: ElectricityPeriodItem;
+	totalPeriods: number;
+	equipment?: ContractCode;
+	onUpdate: (updated: ElectricityPeriodItem) => void;
+	onDelete: () => void;
+	onCopy: () => void;
 }
 
-function ElectricityCostRow({
-	form,
+function ElectricityPeriodCard({
+	period,
+	totalPeriods,
 	equipment,
-	costIndex,
-}: {
-	form: UseFormReturn<ElectricityFormSchema>;
-	equipment: ContractCode | undefined;
-	costIndex: number;
-}) {
-	const watchedAverageMonthlyTunnelProduction = form.watch(
-		`costs.${costIndex}.averageMonthlyTunnelProduction`,
-	);
-	const watchedMonthlyElectricityCost = form.watch(
-		`costs.${costIndex}.monthlyElectricityCost`,
-	);
+	onUpdate,
+	onDelete,
+	onCopy,
+}: ElectricityPeriodCardProps) {
+	const monthlyElectricityCost = period.monthlyElectricityCost ?? 0;
+	const averageMonthlyTunnelProduction =
+		period.averageMonthlyTunnelProduction ?? 0;
 
 	const powerRate =
-		watchedAverageMonthlyTunnelProduction &&
-		watchedAverageMonthlyTunnelProduction > 0
-			? watchedMonthlyElectricityCost / watchedAverageMonthlyTunnelProduction
+		averageMonthlyTunnelProduction > 0
+			? monthlyElectricityCost / averageMonthlyTunnelProduction
 			: 0;
 	const powerCost =
 		powerRate > 0
@@ -280,128 +312,134 @@ function ElectricityCostRow({
 			: 0;
 
 	return (
-		<FormRow>
-			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Nhóm vật tư, tài sản</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={equipment?.code}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{equipment?.code}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
+		<div className='bg-neutral-50/70 border-neutral-300 shadow-xs flex flex-col gap-4 rounded-xl border p-5 transition-all'>
+			{/* Hàng 1: Thời gian bắt đầu (50%), Thời gian kết thúc (50%), Action buttons */}
+			<div className='flex items-end gap-3'>
+				<MonthYearInput
+					label='Thời gian bắt đầu'
+					value={period.startMonth}
+					onChange={(val) => onUpdate({ ...period, startMonth: val })}
+					className='flex-1'
+				/>
+				<MonthYearInput
+					label='Thời gian kết thúc'
+					value={period.endMonth}
+					onChange={(val) => onUpdate({ ...period, endMonth: val })}
+					className='flex-1'
+				/>
+				<div className='mb-2 flex items-center gap-2'>
+					<Button
+						type='button'
+						variant='ghost'
+						size='icon'
+						onClick={onCopy}
+						className='h-fit w-fit border-0 bg-transparent p-0 text-neutral-500 shadow-none hover:bg-transparent hover:text-primary'
+						title='Sao chép'
+					>
+						<Copy className='size-5' />
+					</Button>
+					{totalPeriods > 1 && (
+						<Button
+							type='button'
+							variant='ghost'
+							size='icon'
+							onClick={onDelete}
+							className='h-fit w-fit border-0 bg-transparent p-0 text-red-500 shadow-none hover:bg-transparent hover:text-red-700'
+							title='Xóa'
+						>
+							<XCircleIcon className='size-5 text-red-500' />
+						</Button>
+					)}
+				</div>
 			</div>
 
-			<div className='min-w-30 flex-1 space-y-2'>
-				<Label>Tên nhóm vật tư, tài sản</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={equipment?.name}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{equipment?.name}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
+			{/* Hàng 2: FormRow các ô thông số điện năng */}
+			<div className='scrollbar-sm overflow-x-auto pb-2'>
+				<FormRow className='min-w-full w-max'>
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Nhóm vật tư, tài sản</Label>
+						<Input
+							readOnly
+							value={equipment?.code || ''}
+							className='read-only:bg-transparent'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Tên nhóm vật tư, tài sản</Label>
+						<Input
+							readOnly
+							value={equipment?.name || ''}
+							className='read-only:bg-transparent'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Đơn giá điện năng (đ)</Label>
+						<Input
+							readOnly
+							value={formatNumber(equipment?.currentPrice || 0)}
+							className='read-only:bg-transparent'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Đơn vị tính</Label>
+						<Input
+							readOnly
+							value={equipment?.unitOfMeasureName ?? ''}
+							className='read-only:bg-transparent'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Điện năng tiêu thụ/tháng (kWh)</Label>
+						<FormNumberInput
+							value={period.monthlyElectricityCost}
+							onValueChange={(val) =>
+								onUpdate({
+									...period,
+									monthlyElectricityCost: val ?? 0,
+								})
+							}
+							placeholder='Nhập điện năng tiêu thụ'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Sản lượng xén lò bình quân (m)</Label>
+						<FormNumberInput
+							value={period.averageMonthlyTunnelProduction}
+							onValueChange={(val) =>
+								onUpdate({
+									...period,
+									averageMonthlyTunnelProduction: val ?? 0,
+								})
+							}
+							placeholder='Nhập sản lượng'
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Định mức điện năng</Label>
+						<Input
+							readOnly
+							value={powerRate ? powerRate.toFixed(2) : '0'}
+							className='read-only:bg-transparent'
+							title={powerRate ? powerRate.toFixed(4) : '0'}
+						/>
+					</div>
+
+					<div className='flex min-w-max flex-1 flex-col gap-2'>
+						<Label>Chi phí điện năng (đ)</Label>
+						<Input
+							readOnly
+							value={formatNumber(powerCost)}
+							className='read-only:bg-transparent'
+						/>
+					</div>
+				</FormRow>
 			</div>
-
-			<div className='flex-1 space-y-2'>
-				<Label>Đơn giá điện năng (đ)</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={formatNumber(equipment?.currentPrice || 0)}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{formatNumber(equipment?.currentPrice || 0)}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</div>
-
-			<div className='flex-1 space-y-2'>
-				<Label>Đơn vị tính</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={equipment?.unitOfMeasureName ?? ''}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{equipment?.unitOfMeasureName}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</div>
-
-			<FormNumber
-				control={form.control}
-				name={`costs.${costIndex}.monthlyElectricityCost`}
-				label='Điện năng tiêu thụ/tháng (kWh)'
-				placeholder='Nhập điện năng tiêu thụ'
-			/>
-
-			<FormNumber
-				control={form.control}
-				name={`costs.${costIndex}.averageMonthlyTunnelProduction`}
-				label='Sản lượng mét lò bình quân (m)'
-				placeholder='Nhập sản lượng'
-			/>
-
-			<div className='flex-1 space-y-2'>
-				<Label>Định mức điện năng</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={powerRate ? powerRate.toFixed(2) : '0'}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{powerRate ? powerRate.toFixed(4) : '0'}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</div>
-
-			<div className='flex-1 space-y-2'>
-				<Label>Chi phí điện năng (đ)</Label>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Input
-								readOnly
-								value={formatNumber(powerCost)}
-								className='read-only:bg-transparent'
-							/>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{formatNumber(powerCost)}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</div>
-		</FormRow>
+		</div>
 	);
 }

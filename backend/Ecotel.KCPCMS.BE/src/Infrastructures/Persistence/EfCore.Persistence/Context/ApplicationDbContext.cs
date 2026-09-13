@@ -1332,10 +1332,21 @@ public class ApplicationDbContext(
             .HasForeignKey(s => s.CargoTypeId)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ScaniaTruckUnitPrice>()
-            .HasOne(s => s.ReceivingLocation)
+            .HasMany(s => s.ReceivingLocations)
+            .WithOne(r => r.ScaniaTruckUnitPrice)
+            .HasForeignKey(r => r.ScaniaTruckUnitPriceId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ScaniaTruckUnitPrice>()
+            .Navigation(s => s.ReceivingLocations)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        modelBuilder.Entity<ScaniaTruckUnitPriceReceivingLocation>()
+            .ToTable("ScaniaTruckUnitPriceReceivingLocations", "Pricing")
+            .HasOne(r => r.TransportLocation)
             .WithMany()
-            .HasForeignKey(s => s.ReceivingLocationId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(r => r.TransportLocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<ScaniaTruckUnitPrice>()
             .HasOne(s => s.DumpingLocation)
             .WithMany()
@@ -1352,6 +1363,12 @@ public class ApplicationDbContext(
             .HasOne(s => s.ProcessGroup)
             .WithMany()
             .HasForeignKey(s => s.ProcessGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MechanizedTransportOverheadUnitPrice>()
+            .HasOne(s => s.Department)
+            .WithMany()
+            .HasForeignKey(s => s.DepartmentId)
             .OnDelete(DeleteBehavior.Cascade);
         #endregion
 

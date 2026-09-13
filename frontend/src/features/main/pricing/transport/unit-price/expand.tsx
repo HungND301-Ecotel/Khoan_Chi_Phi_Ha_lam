@@ -21,7 +21,7 @@ function DetailTable({
 	return (
 		<div className='scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
 			<table className='w-full min-w-max text-left text-sm text-black'>
-				<thead className='border-b border-neutral-200 bg-neutral-100 text-xs font-semibold uppercase text-black whitespace-nowrap'>
+				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold whitespace-nowrap text-black'>
 					<tr>
 						{headers.map((h) => (
 							<th key={h} className='px-4 py-2.5'>
@@ -30,7 +30,7 @@ function DetailTable({
 						))}
 					</tr>
 				</thead>
-				<tbody className='divide-y divide-neutral-100 text-black whitespace-nowrap'>
+				<tbody className='divide-y divide-neutral-100 whitespace-nowrap text-black'>
 					{children}
 				</tbody>
 			</table>
@@ -48,7 +48,11 @@ function PriceCells({ item }: { item: TransportUnitPrice }) {
 	);
 }
 
-const PRICE_HEADERS = ['Đơn giá VL, NL', 'Đơn giá Động lực', 'Đơn giá SCTX'];
+const PRICE_HEADERS = [
+	'Đơn giá vật liệu, nhiên liệu',
+	'Đơn giá động lực',
+	'Đơn giá SCTX',
+];
 
 // Vận tải than/đá qua băng tải: gộp tiếp theo Tuyến vận tải, mỗi tuyến 1 khối liệt kê Đơn vị.
 function ConveyorDetail({ items }: { items: TransportUnitPrice[] }) {
@@ -72,12 +76,15 @@ function ConveyorDetail({ items }: { items: TransportUnitPrice[] }) {
 						</div>
 						<DetailTable headers={['Đơn vị', ...PRICE_HEADERS]}>
 							{routeItems.map((item) => (
-								<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+								<tr
+									key={item.id}
+									className='transition-colors hover:bg-neutral-50'
+								>
 									<td className='px-4 py-2 font-medium text-black'>
 										{item.departmentName || '-'}
 										{item.isLowVolumeCase && (
 											<span className='ml-1 text-xs text-amber-700'>
-												( &lt; 10.000t/tháng )
+												( &lt; 10.000 tấn/tháng )
 											</span>
 										)}
 									</td>
@@ -102,7 +109,7 @@ function RouteOnlyDetail({ items }: { items: TransportUnitPrice[] }) {
 						{item.transportRouteName || '-'}
 						{item.isLowVolumeCase && (
 							<span className='ml-1 text-xs text-amber-700'>
-								( &lt; 10.000t/tháng )
+								( &lt; 10.000 tấn/tháng )
 							</span>
 						)}
 					</td>
@@ -145,7 +152,10 @@ function MonorailDetail({ items }: { items: TransportUnitPrice[] }) {
 						</div>
 						<DetailTable headers={['Chất lượng thiết bị', ...PRICE_HEADERS]}>
 							{equipmentItems.map((item) => (
-								<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
+								<tr
+									key={item.id}
+									className='transition-colors hover:bg-neutral-50'
+								>
 									<td className='px-4 py-2 font-medium text-black'>
 										{item.equipmentQuality
 											? `Thiết bị loại ${item.equipmentQuality}`
@@ -165,7 +175,9 @@ function MonorailDetail({ items }: { items: TransportUnitPrice[] }) {
 // Thiết bị khác: không có Tuyến/Chất lượng thiết bị — chỉ Nhóm vật tư + Định mức.
 function OtherDetail({ items }: { items: TransportUnitPrice[] }) {
 	return (
-		<DetailTable headers={['Nhóm vật tư', ...PRICE_HEADERS, 'Định mức']}>
+		<DetailTable
+			headers={['Nhóm vật tư, tài sản', ...PRICE_HEADERS, 'Định mức']}
+		>
 			{items.map((item) => (
 				<tr key={item.id} className='transition-colors hover:bg-neutral-50'>
 					<td className='px-4 py-2 font-medium text-black'>
@@ -185,10 +197,15 @@ function OtherDetail({ items }: { items: TransportUnitPrice[] }) {
 /**
  * TẦNG 3: BẢNG CHI TIẾT ĐƠN GIÁ VÀ ĐỊNH MỨC THEO LOẠI VẬN TẢI
  */
-export function TransportDetailExpand({ row }: { row?: TransportUnitPrice | TransportPeriod }) {
+export function TransportDetailExpand({
+	row,
+}: {
+	row?: TransportUnitPrice | TransportPeriod;
+}) {
 	if (!row) return null;
 
-	const items = row.items && row.items.length > 0 ? row.items : [row as TransportUnitPrice];
+	const items =
+		row.items && row.items.length > 0 ? row.items : [row as TransportUnitPrice];
 	const mode = detectTransportMode(
 		row.productionProcessCode,
 		row.productionProcessName,
@@ -297,9 +314,7 @@ export function TransportProcessPeriodExpand({
 															? 'font-semibold text-black'
 															: 'text-[#6e6e6e] hover:text-black',
 													)}
-													title={
-														isSelected ? 'Đóng chi tiết' : 'Xem chi tiết'
-													}
+													title={isSelected ? 'Đóng chi tiết' : 'Xem chi tiết'}
 													onClick={() => handleTogglePeriodDetails(period.id)}
 												>
 													{isSelected ? (

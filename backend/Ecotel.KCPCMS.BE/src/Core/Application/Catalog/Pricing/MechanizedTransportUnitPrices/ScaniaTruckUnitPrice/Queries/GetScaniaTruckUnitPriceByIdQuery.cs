@@ -1,4 +1,4 @@
-﻿using Application.Common.Exceptions;
+using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
@@ -22,7 +22,7 @@ public class GetScaniaTruckUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : I
                 .Include(s => s.AssignmentCode)
                 .Include(s => s.ProductionProcess)
                 .Include(s => s.CargoType)
-                .Include(s => s.ReceivingLocation)
+                .Include(s => s.ReceivingLocations).ThenInclude(r => r.TransportLocation)
                 .Include(s => s.DumpingLocation)
                 .Include(s => s.Details).ThenInclude(d => d.HaulDistance),
             disableTracking: true)
@@ -38,8 +38,10 @@ public class GetScaniaTruckUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : I
             ProductionProcessName = entity.ProductionProcess?.Name ?? string.Empty,
             CargoTypeId = entity.CargoTypeId,
             CargoTypeName = entity.CargoType?.Name ?? string.Empty,
-            ReceivingLocationId = entity.ReceivingLocationId,
-            ReceivingLocationName = entity.ReceivingLocation?.Name,
+            ReceivingLocationIds = entity.ReceivingLocations.Select(r => r.TransportLocationId).ToList(),
+            ReceivingLocationNames = entity.ReceivingLocations.Where(r => r.TransportLocation != null).Select(r => r.TransportLocation!.Name).ToList(),
+            ReceivingLocationId = entity.ReceivingLocations.Select(r => (Guid?)r.TransportLocationId).FirstOrDefault(),
+            ReceivingLocationName = entity.ReceivingLocations.Where(r => r.TransportLocation != null).Select(r => r.TransportLocation!.Name).FirstOrDefault(),
             DumpingLocationId = entity.DumpingLocationId,
             DumpingLocationName = entity.DumpingLocation?.Name,
             StartMonth = entity.StartMonth,

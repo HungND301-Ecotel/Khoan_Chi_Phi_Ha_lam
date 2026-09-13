@@ -193,6 +193,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         var candidateVtcgPrices = await mechanizedTransportUnitPriceRepository.GetAll()
             .Where(x => processIds.Contains(x.ProductionProcessId))
             .Include(x => x.Details)
+            .Include(x => ((Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice)x).ReceivingLocations)
             .AsNoTracking()
             .ToListAsync();
 
@@ -305,14 +306,19 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         ItemInput item,
         DateOnly month)
     {
-        // 1. Khớp chính xác: Công đoạn + Nhóm xe + Chất lượng + Thời gian hiệu lực
+        // 1. Khớp chính xác: Công đoạn + Nhóm xe + Chất lượng + Thời gian hiệu lực + Vị trí / Hàng (nếu có)
         var matchedHeaders = candidates
             .Where(x =>
                 x.ProductionProcessId == item.ProductionProcessId &&
                 (item.EquipmentId == null || x.AssignmentCodeId == item.EquipmentId) &&
                 (string.IsNullOrEmpty(item.EquipmentQuality) || string.Equals(x.EquipmentQuality, item.EquipmentQuality, StringComparison.OrdinalIgnoreCase)) &&
                 x.StartMonth <= month &&
-                x.EndMonth >= month)
+                x.EndMonth >= month &&
+                (x is not Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice scania || (
+                    (item.CargoTypeId == null || scania.CargoTypeId == item.CargoTypeId) &&
+                    (item.DumpingLocationId == null || scania.DumpingLocationId == item.DumpingLocationId) &&
+                    (item.ReceivingLocationId == null || !scania.ReceivingLocations.Any() || scania.ReceivingLocations.Any(r => r.TransportLocationId == item.ReceivingLocationId.Value))
+                )))
             .ToList();
 
         // 2. Nếu không khớp thời gian, lấy theo Công đoạn + Nhóm xe + Chất lượng

@@ -33,6 +33,7 @@ import { api } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+	Copy,
 	PlusCircleIcon,
 	XCircleIcon,
 } from 'lucide-react';
@@ -575,6 +576,24 @@ export function MaterialForm({
 		setPeriods((prev) => [...prev, newPeriod]);
 	};
 
+	const handleCopyPeriod = (index: number) => {
+		const target = periods[index];
+		const newPeriod: PeriodItemData = {
+			...target,
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			id: undefined,
+			costs: (target.costs || []).map((c) => ({ ...c, id: undefined, periodId: undefined })),
+			selectedAssignments: [...(target.selectedAssignments || [])],
+			selectedMaterials: [...(target.selectedMaterials || [])],
+			persistedCosts: [],
+		};
+		setPeriods((prev) => {
+			const next = [...prev];
+			next.splice(index + 1, 0, newPeriod);
+			return next;
+		});
+	};
+
 	const handleDeletePeriod = (indexToDelete: number) => {
 		if (periods.length <= 1) {
 			popup.error('Mã định mức cần có ít nhất một khoảng thời gian.');
@@ -721,6 +740,7 @@ export function MaterialForm({
 							period={period}
 							onUpdate={(updated) => handleUpdatePeriod(index, updated)}
 							onDelete={() => handleDeletePeriod(index)}
+							onCopy={() => handleCopyPeriod(index)}
 						/>
 					))}
 
@@ -731,9 +751,9 @@ export function MaterialForm({
 							variant='ghost'
 							size='sm'
 							onClick={handleAddPeriod}
-							className='h-fit w-fit bg-transparent flex items-center gap-1.5 p-0 hover:bg-transparent'
+							className='flex h-fit w-fit items-center gap-1.5 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
 						>
-							<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+							<PlusCircleIcon className='size-4 text-primary' strokeWidth={2} />
 							<span className='text-sm text-black'>Thêm thời gian</span>
 						</Button>
 					</div>
@@ -750,6 +770,7 @@ interface PeriodSectionProps {
 	period: PeriodItemData;
 	onUpdate: (updated: PeriodItemData) => void;
 	onDelete: () => void;
+	onCopy: () => void;
 }
 
 function PeriodSection({
@@ -757,6 +778,7 @@ function PeriodSection({
 	period,
 	onUpdate,
 	onDelete,
+	onCopy,
 }: PeriodSectionProps) {
 	const [assignments, setAssignments] = useState<ContractCode[]>([]);
 	const [assets, setAssets] = useState<MaterialAsset[]>([]);
@@ -938,18 +960,30 @@ function PeriodSection({
 					onChange={(val) => onUpdate({ ...period, endMonth: val })}
 					className='flex-1'
 				/>
-				{totalPeriods > 1 && (
+				<div className='mb-2 flex items-center gap-2'>
 					<Button
 						type='button'
 						variant='ghost'
-						size='sm'
-						onClick={onDelete}
-						className='text-error hover:text-error-muted bg-transparent h-fit w-fit flex items-center gap-1 p-0 hover:bg-transparent mb-2.5'
+						size='icon'
+						onClick={onCopy}
+						className='h-fit w-fit border-0 bg-transparent p-0 text-neutral-500 shadow-none hover:bg-transparent hover:text-primary'
+						title='Sao chép'
 					>
-						<XCircleIcon className='size-4' />
-						<span>Xóa thời gian</span>
+						<Copy className='size-5' />
 					</Button>
-				)}
+					{totalPeriods > 1 && (
+						<Button
+							type='button'
+							variant='ghost'
+							size='icon'
+							onClick={onDelete}
+							className='h-fit w-fit border-0 bg-transparent p-0 text-red-500 shadow-none hover:bg-transparent hover:text-red-700'
+							title='Xóa'
+						>
+							<XCircleIcon className='size-5 text-red-500' />
+						</Button>
+					)}
+				</div>
 			</div>
 
 			{/* Nhóm vật tư */}

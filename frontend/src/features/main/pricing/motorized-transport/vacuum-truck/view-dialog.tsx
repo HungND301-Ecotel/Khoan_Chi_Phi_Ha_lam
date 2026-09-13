@@ -68,12 +68,12 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 					<div key={procName} className='space-y-3'>
 						<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
 							<span className='h-2.5 w-2.5 rounded-full bg-primary'></span>
-							<h4 className='text-sm font-bold uppercase text-gray-800'>{procName}</h4>
+							<h4 className='text-sm font-bold text-gray-800'>{procName}</h4>
 						</div>
 
 						<div className='overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs'>
 							<table className='w-full text-left text-sm'>
-								<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
+								<thead className='border-b border-gray-200 bg-gray-50 text-sm font-semibold text-gray-700'>
 									<tr>
 										<th className='min-w-[120px] px-4 py-3'>Chất lượng</th>
 										{!isHourly && <th className='min-w-[120px] px-4 py-3'>Cung độ</th>}

@@ -1,4 +1,4 @@
-﻿
+
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
@@ -18,13 +18,16 @@ public class ExportExcelMechanizedTransportOverheadUnitPriceQueryHandler(
 {
     private readonly IWriteRepository<MechanizedTransportOverheadUnitPriceEntity> _repository = unitOfWork.GetRepository<MechanizedTransportOverheadUnitPriceEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
 
     public async Task<byte[]> Handle(ExportExcelMechanizedTransportOverheadUnitPriceQuery request, CancellationToken cancellationToken)
     {
         List<string> hiddenProperties = [nameof(MechanizedTransportOverheadUnitPriceExcelDto.Id)];
 
         var list = await _repository.GetAllAsync(
-            include: query => query.Include(m => m.ProcessGroup).ThenInclude(p => p!.Code),
+            include: query => query
+                .Include(m => m.ProcessGroup).ThenInclude(p => p!.Code)
+                .Include(m => m.Department).ThenInclude(d => d!.Code),
             disableTracking: true);
 
         List<string> processGroupOptions = (await _processGroupRepository.GetAllAsync(
@@ -34,14 +37,25 @@ public class ExportExcelMechanizedTransportOverheadUnitPriceQueryHandler(
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
 
+        List<string> departmentOptions = (await _departmentRepository.GetAllAsync(
+                include: query => query.Include(d => d.Code),
+                selector: d => d.Code != null ? d.Code.Value + " - " + d.Name : string.Empty,
+                disableTracking: true))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+
         Dictionary<string, List<string>> dropdownConfigs = new()
         {
-            { nameof(MechanizedTransportOverheadUnitPriceExcelDto.ProcessGroupCode), processGroupOptions }
+            { nameof(MechanizedTransportOverheadUnitPriceExcelDto.ProcessGroupCode), processGroupOptions },
+            { nameof(MechanizedTransportOverheadUnitPriceExcelDto.DepartmentCode), departmentOptions }
         };
 
         IEnumerable<MechanizedTransportOverheadUnitPriceExcelDto> dtoList = list.Select(m => new MechanizedTransportOverheadUnitPriceExcelDto
         {
             Id = m.Id,
+            DepartmentCode = m.Department?.Code != null
+                ? $"{m.Department.Code.Value} - {m.Department.Name}"
+                : string.Empty,
             ProcessGroupCode = m.ProcessGroup?.Code != null
                 ? $"{m.ProcessGroup.Code.Value} - {m.ProcessGroup.Name}"
                 : string.Empty,

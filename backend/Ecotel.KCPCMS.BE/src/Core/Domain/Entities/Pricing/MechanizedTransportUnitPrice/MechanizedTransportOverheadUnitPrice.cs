@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Domain.Common.Contracts;
 using Domain.Entities.Index;
 
@@ -7,25 +7,29 @@ namespace Domain.Entities.Pricing.MechanizedTransportUnitPrice;
 public class MechanizedTransportOverheadUnitPrice : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid ProcessGroupId { get; protected set; }
+    public Guid DepartmentId { get; protected set; }
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
     public decimal LowValuePerishableSupplyUnitPrice { get; protected set; }
     public decimal? ElectricityUnitPrice { get; protected set; }
 
     public virtual ProcessGroup? ProcessGroup { get; protected set; }
+    public virtual Department? Department { get; protected set; }
 
     public static MechanizedTransportOverheadUnitPrice Create(
         Guid processGroupId,
+        Guid departmentId,
         DateOnly startMonth,
         DateOnly endMonth,
         decimal lowValuePerishableSupplyUnitPrice,
         decimal? electricityUnitPrice)
     {
-        Validate(processGroupId, startMonth, endMonth, lowValuePerishableSupplyUnitPrice, electricityUnitPrice);
+        Validate(processGroupId, departmentId, startMonth, endMonth, lowValuePerishableSupplyUnitPrice, electricityUnitPrice);
 
         return new MechanizedTransportOverheadUnitPrice
         {
             ProcessGroupId = processGroupId,
+            DepartmentId = departmentId,
             StartMonth = startMonth,
             EndMonth = endMonth,
             LowValuePerishableSupplyUnitPrice = lowValuePerishableSupplyUnitPrice,
@@ -35,14 +39,16 @@ public class MechanizedTransportOverheadUnitPrice : AuditableEntity<Guid>, IAggr
 
     public void Update(
         Guid processGroupId,
+        Guid departmentId,
         DateOnly startMonth,
         DateOnly endMonth,
         decimal lowValuePerishableSupplyUnitPrice,
         decimal? electricityUnitPrice)
     {
-        Validate(processGroupId, startMonth, endMonth, lowValuePerishableSupplyUnitPrice, electricityUnitPrice);
+        Validate(processGroupId, departmentId, startMonth, endMonth, lowValuePerishableSupplyUnitPrice, electricityUnitPrice);
 
         ProcessGroupId = processGroupId;
+        DepartmentId = departmentId;
         StartMonth = startMonth;
         EndMonth = endMonth;
         LowValuePerishableSupplyUnitPrice = lowValuePerishableSupplyUnitPrice;
@@ -51,6 +57,7 @@ public class MechanizedTransportOverheadUnitPrice : AuditableEntity<Guid>, IAggr
 
     private static void Validate(
         Guid processGroupId,
+        Guid departmentId,
         DateOnly startMonth,
         DateOnly endMonth,
         decimal lowValuePerishableSupplyUnitPrice,
@@ -59,6 +66,10 @@ public class MechanizedTransportOverheadUnitPrice : AuditableEntity<Guid>, IAggr
         if (processGroupId == Guid.Empty)
         {
             throw new ArgumentException("Nhóm công đoạn sản xuất không được để trống.");
+        }
+        if (departmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Đơn vị không được để trống.");
         }
         if (startMonth > endMonth)
         {

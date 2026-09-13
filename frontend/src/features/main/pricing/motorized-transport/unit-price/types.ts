@@ -20,6 +20,8 @@ export type MechanizedTransportUnitPriceSectionDto = {
 	cargoTypeName?: string;
 	receivingLocationId?: string;
 	receivingLocationName?: string;
+	receivingLocationIds?: string[];
+	receivingLocationNames?: string[];
 	dumpingLocationId?: string;
 	dumpingLocationName?: string;
 	rows: MechanizedTransportUnitPriceRowDto[];
@@ -136,4 +138,137 @@ export const getVehicleApi = (vehicleType: number, API: any) => {
 export const getVehicleLabel = (vehicleType: number) => {
 	const opt = VEHICLE_TYPE_OPTIONS.find((o) => o.apiType === vehicleType);
 	return opt?.label || 'Phương tiện';
+};
+
+export type PeriodItem = {
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+};
+
+export const getInitialPeriods = (
+	row: any,
+	isDuplicate?: boolean,
+): PeriodItem[] => {
+	const periodList: PeriodItem[] = [];
+	if (row) {
+		const anyRow = row as any;
+		const seen = new Set<string>();
+
+		if (anyRow.rawGroups && anyRow.rawGroups.length > 0) {
+			anyRow.rawGroups.forEach((rg: any) => {
+				const s = rg.startMonth?.substring(0, 7) || '';
+				const e = rg.endMonth?.substring(0, 7) || '';
+				const key = `${s}_${e}`;
+				if (s && !seen.has(key)) {
+					seen.add(key);
+					periodList.push({
+						id: isDuplicate ? undefined : rg.id,
+						startMonth: s,
+						endMonth: e,
+					});
+				}
+			});
+		} else if (anyRow.c2Items && anyRow.c2Items.length > 0) {
+			anyRow.c2Items.forEach((c2: any) => {
+				const s = c2.startMonth?.substring(0, 7) || '';
+				const e = c2.endMonth?.substring(0, 7) || '';
+				const key = `${s}_${e}`;
+				if (s && !seen.has(key)) {
+					seen.add(key);
+					periodList.push({
+						id: isDuplicate ? undefined : c2.id,
+						startMonth: s,
+						endMonth: e,
+					});
+				}
+			});
+		}
+
+		if (periodList.length === 0 && row.startMonth) {
+			periodList.push({
+				id: isDuplicate ? undefined : anyRow.id,
+				startMonth: row.startMonth.substring(0, 7),
+				endMonth: row.endMonth?.substring(0, 7) || '',
+			});
+		}
+	}
+
+	if (periodList.length === 0) {
+		periodList.push({
+			startMonth: '',
+			endMonth: '',
+		});
+	}
+
+	return periodList;
+};
+
+export type ScaniaPeriodData = {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	assignmentCodeIds: string[];
+	equipmentProcesses: Record<string, string[]>;
+	equipmentQualities: Record<string, string[]>;
+	equipmentDistances: Record<string, string[]>;
+	processCargoTypes: Record<string, string[]>;
+	processPickupLocations: Record<string, string[]>;
+	processDropoffLocations: Record<string, string[]>;
+	items: any[];
+};
+
+export type ExcavatorPeriodData = {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	assignmentCodeIds: string[];
+	equipmentProcesses: Record<string, string[]>;
+	equipmentQualities: Record<string, string[]>;
+	items: any[];
+};
+
+export type ServiceCranePeriodData = {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	assignmentCodeIds: string[];
+	equipmentProcesses: Record<string, string[]>;
+	equipmentQualities: Record<string, string[]>;
+	equipmentDistances: Record<string, string[]>;
+	items: any[];
+};
+
+export type VacuumTruckPeriodData = {
+	tempId: string;
+	id?: string;
+	startMonth: string;
+	endMonth: string;
+	assignmentCodeIds: string[];
+	equipmentProcesses: Record<string, string[]>;
+	equipmentQualities: Record<string, string[]>;
+	equipmentDistances: Record<string, string[]>;
+	items: any[];
+};
+
+export const computeNextPeriodMonths = (lastEndMonth?: string) => {
+	if (!lastEndMonth) {
+		const now = new Date();
+		const s = now.toISOString().substring(0, 7);
+		return { startMonth: s, endMonth: s };
+	}
+	try {
+		const [y, m] = lastEndMonth.split('-').map(Number);
+		if (!y || !m) return { startMonth: '', endMonth: '' };
+		const nextStart = new Date(y, m, 1);
+		const nextEnd = new Date(y + 1, m, 0);
+		const s = `${nextStart.getFullYear()}-${String(nextStart.getMonth() + 1).padStart(2, '0')}`;
+		const e = `${nextEnd.getFullYear()}-${String(nextEnd.getMonth() + 1).padStart(2, '0')}`;
+		return { startMonth: s, endMonth: e };
+	} catch {
+		return { startMonth: '', endMonth: '' };
+	}
 };

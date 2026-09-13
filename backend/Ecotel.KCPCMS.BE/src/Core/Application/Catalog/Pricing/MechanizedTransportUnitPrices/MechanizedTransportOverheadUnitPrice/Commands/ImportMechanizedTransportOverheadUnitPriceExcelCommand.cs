@@ -25,6 +25,7 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
 {
     private readonly IWriteRepository<MechanizedTransportOverheadUnitPriceEntity> _repository = unitOfWork.GetRepository<MechanizedTransportOverheadUnitPriceEntity>();
     private readonly IWriteRepository<ProcessGroup> _processGroupRepository = unitOfWork.GetRepository<ProcessGroup>();
+    private readonly IWriteRepository<Department> _departmentRepository = unitOfWork.GetRepository<Department>();
 
     public async Task<bool> Handle(ImportMechanizedTransportOverheadUnitPriceExcelCommand request, CancellationToken cancellationToken)
     {
@@ -41,9 +42,18 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
         var processGroups = await _processGroupRepository.GetAllAsync(
             include: query => query.Include(p => p.Code),
             disableTracking: true);
+
+        var departments = await _departmentRepository.GetAllAsync(
+            include: query => query.Include(d => d.Code),
+            disableTracking: true);
+
         Dictionary<string, ProcessGroup> processGroupMap = processGroups
             .Where(p => p.Code != null)
             .ToDictionary(p => p.Code!.Value.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
+
+        Dictionary<string, Department> departmentMap = departments
+            .Where(d => d.Code != null)
+            .ToDictionary(d => d.Code!.Value.Trim(), d => d, StringComparer.OrdinalIgnoreCase);
 
         var dbEntities = await _repository.GetAllAsync(disableTracking: false);
 
@@ -60,16 +70,25 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
                     continue;
                 }
 
+                string? departmentCode = ExtractCode(item.dto.DepartmentCode);
+                if (departmentCode == null ||
+                    !departmentMap.TryGetValue(departmentCode, out Department? department))
+                {
+                    importErrors.Add($"Dòng {item.rowNumber}: đơn vị '{item.dto.DepartmentCode}' không tồn tại.");
+                    continue;
+                }
                 DateOnly startMonth = ParseMonthYear(item.dto.StartMonth);
                 DateOnly endMonth = ParseMonthYear(item.dto.EndMonth);
 
                 bool isDuplicated = dbEntities.Any(x =>
                         x.ProcessGroupId == processGroup.Id
+                        && x.DepartmentId == department.Id
                         && x.StartMonth == startMonth
                         && x.EndMonth == endMonth
                         && x.Id != item.dto.Id)
                     || excelEntities.Any(x =>
                         x.ProcessGroupId == processGroup.Id
+                        && x.DepartmentId == department.Id
                         && x.StartMonth == startMonth
                         && x.EndMonth == endMonth);
 
@@ -81,6 +100,7 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
 
                 var entity = MechanizedTransportOverheadUnitPriceEntity.Create(
                     processGroup.Id,
+                    department.Id,
                     startMonth,
                     endMonth,
                     item.dto.LowValuePerishableSupplyUnitPrice,
@@ -115,6 +135,7 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
                 var entityToUpdate = dbEntities.First(x => x.Id == excelEntity.Id);
                 entityToUpdate.Update(
                     excelEntity.ProcessGroupId,
+                    excelEntity.DepartmentId,
                     excelEntity.StartMonth,
                     excelEntity.EndMonth,
                     excelEntity.LowValuePerishableSupplyUnitPrice,
