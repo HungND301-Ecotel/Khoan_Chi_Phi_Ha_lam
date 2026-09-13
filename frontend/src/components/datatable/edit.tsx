@@ -45,7 +45,7 @@ export function DataTableEditDialog({
 					'flex flex-col gap-6 px-0 pt-10 pb-0',
 					maximize
 						? 'h-screen max-h-screen max-w-screen min-w-screen rounded-none'
-						: 'w-200 sm:max-w-200 sm:min-w-200',
+						: 'w-205 sm:max-w-205 sm:min-w-205',
 				)}
 			>
 				<DialogHeader className='px-10'>
@@ -74,7 +74,7 @@ export function DataTableEditDialog({
 				<ScrollArea
 					className={cn(maximize ? 'h-[calc(100vh-8.8rem)]' : 'h-128')}
 				>
-					<div className={cn('px-10', maximize ? 'w-screen' : 'w-200')}>
+					<div className={cn('px-10', maximize ? 'w-screen' : 'w-205')}>
 						{children}
 					</div>
 				</ScrollArea>

@@ -171,8 +171,7 @@ export function ScaniaFormSection({
 
 	return (
 		<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-			<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
-				<span className='h-2.5 w-2.5 rounded-full bg-blue-600' />
+			<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
 				<span>Xe ô tô Scania</span>
 			</div>
 
@@ -180,7 +179,7 @@ export function ScaniaFormSection({
 			<FormMultiSelect
 				control={formControl}
 				name={`${groupPath}.scaniaAssignmentCodeIds` as any}
-				label='1. Nhóm vật tư, tài sản'
+				label='Nhóm vật tư, tài sản'
 				placeholder='Chọn nhóm vật tư, tài sản'
 				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
@@ -215,7 +214,7 @@ export function ScaniaFormSection({
 						<FormMultiSelect
 							control={formControl}
 							name={`${groupPath}.equipmentProcesses.${eqId}` as any}
-							label={`2. Công đoạn sản xuất áp dụng cho [${eq?.code || eq?.name || eq?.label}]`}
+							label='Công đoạn sản xuất'
 							placeholder='Chọn công đoạn sản xuất'
 							options={processes.map((p) => ({
 								value: p.id || p.value,
@@ -242,9 +241,8 @@ export function ScaniaFormSection({
 									className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
 								>
 									{/* HEADER CỤM CÔNG ĐOẠN */}
-									<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
-										<span className='h-2 w-2 rounded-full bg-blue-500' />
-										<span className='text-xs font-semibold text-blue-800 uppercase'>
+									<div className='border-b border-gray-200 pb-2'>
+										<span className='text-xs font-semibold text-black uppercase'>
 											{proc?.code
 												? `${proc.code} - ${proc.name || proc.label}`
 												: proc?.name || proc?.label || procId}

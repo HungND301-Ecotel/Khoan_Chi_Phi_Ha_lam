@@ -80,10 +80,10 @@ namespace Application.Dto.Catalog.TransportUnitPrice
         [Display(Name = "Chất lượng thiết bị")]
         public string? EquipmentQuality { get; set; }
 
-        [Display(Name = "Đơn giá Vật liệu, nhiên liệu")]
+        [Display(Name = "Đơn giá vật liệu, nhiên liệu")]
         public decimal? MaterialFuelUnitPrice { get; set; }
 
-        [Display(Name = "Đơn giá Động lực")]
+        [Display(Name = "Đơn giá động lực")]
         public decimal? PowerUnitPrice { get; set; }
 
         [Display(Name = "Đơn giá SCTX")]

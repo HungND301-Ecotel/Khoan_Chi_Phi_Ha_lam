@@ -1,33 +1,32 @@
 import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
-import { FormMonthYear } from '@/components/form/form-month-year';
-import { FormMultiSelect } from '@/components/form/form-multi-select';
-import { FormNumber } from '@/components/form/form-number';
-import { FormProvider } from '@/components/form/form-provider';
-import { FormRow } from '@/components/form/form-row';
+import { MonthYearInput } from '@/components/form/form-month-year';
+import { FormNumberInput } from '@/components/form/form-number';
+import { MultiSelect } from '@/components/multi-select';
 import { usePopup } from '@/components/popup';
+import { Button } from '@/components/ui/button';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { MotorizedServiceCraneUnitPrice } from './columns';
+import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import {
-	MOTORIZED_SERVICE_CRANE_FORM_DEFAULT,
-	motorizedServiceCraneFormSchema,
-	MotorizedServiceCraneFormSchema,
-} from './schema';
+	forwardRef,
+	useEffect,
+	useImperativeHandle,
+	useState,
+} from 'react';
+import { MotorizedServiceCraneUnitPrice } from './columns';
 import { MotorizedSubFormHandle } from '../scania/form';
+import {
+	computeNextPeriodMonths,
+	ServiceCranePeriodData,
+} from '../unit-price/types';
 
 export type MotorizedServiceCraneFormProps =
 	ActionDialogProps<MotorizedServiceCraneUnitPrice> & {
 		isDuplicate?: boolean;
-		hideTimeRow?: boolean;
 		hideConfirmButton?: boolean;
-		sharedStartMonth?: string;
-		sharedEndMonth?: string;
 	};
 
 const extractData = (res: any): any[] => {
@@ -58,6 +57,534 @@ const fetchCatalogList = async (url: string) => {
 	}
 };
 
+function computeItemsForServiceCranePeriod(
+	assignmentCodeIds: string[],
+	equipmentProcesses: Record<string, string[]>,
+	equipmentQualities: Record<string, string[]>,
+	equipmentDistances: Record<string, string[]>,
+	assignmentCodes: any[],
+	processOptions: any[],
+	distanceOptions: any[],
+	existingItems: any[] = [],
+): any[] {
+	const newItems: any[] = [];
+
+	assignmentCodeIds.forEach((acId: string) => {
+		const acObj = assignmentCodes.find((a) => a.id === acId);
+		const title = acObj
+			? acObj.code
+				? `${acObj.code} - ${acObj.name}`
+				: acObj.name
+			: acId;
+		const materialName = acObj ? acObj.name || acObj.code || acId : acId;
+		const selectedProcs: string[] = equipmentProcesses[acId] || [];
+
+		selectedProcs.forEach((procId: string) => {
+			const scopeKey = `${acId}_${procId}`;
+			const procObj = processOptions.find(
+				(p) => p.value === procId || p.label === procId,
+			);
+			const procName = procObj ? procObj.label : procId;
+			const isMoving =
+				procName.toLowerCase().includes('di chuyển') ||
+				procName.toLowerCase().includes('cung độ');
+
+			const selectedQualities: string[] = equipmentQualities[scopeKey] || [];
+			const selectedDists: string[] = equipmentDistances[scopeKey] || [];
+
+			selectedQualities.forEach((qual: string) => {
+				if (isMoving) {
+					if (selectedDists.length > 0) {
+						selectedDists.forEach((distId: string) => {
+							const distObj = distanceOptions.find(
+								(d: any) => d.value === distId || d.id === distId,
+							);
+							const distValue = distObj
+								? (distObj as any).label || (distObj as any).value
+								: '';
+
+							const existing = existingItems.find(
+								(it: any) =>
+									it.assignmentCodeId === acId &&
+									it.productionProcessId === procId &&
+									it.equipmentQuality === qual &&
+									it.haulDistanceId === distId,
+							);
+
+							newItems.push({
+								tempId:
+									existing?.tempId ||
+									`item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+								id: existing?.id,
+								detailId: existing?.detailId,
+								assignmentCodeId: acId,
+								equipmentQuality: qual,
+								productionProcessId: procId,
+								productionProcessName: procName,
+								title,
+								materialName,
+								haulDistanceId: distId,
+								haulDistanceValue: distValue,
+								fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
+								maintenanceUnitPrice: existing
+									? existing.maintenanceUnitPrice
+									: 0,
+							});
+						});
+					}
+				} else {
+					const existing = existingItems.find(
+						(it: any) =>
+							it.assignmentCodeId === acId &&
+							it.productionProcessId === procId &&
+							it.equipmentQuality === qual &&
+							!it.haulDistanceId,
+					);
+
+					newItems.push({
+						tempId:
+							existing?.tempId ||
+							`item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+						id: existing?.id,
+						detailId: existing?.detailId,
+						assignmentCodeId: acId,
+						equipmentQuality: qual,
+						productionProcessId: procId,
+						productionProcessName: procName,
+						title,
+						materialName,
+						haulDistanceId: null,
+						haulDistanceValue: '',
+						fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
+						maintenanceUnitPrice: existing
+							? existing.maintenanceUnitPrice
+							: 0,
+					});
+				}
+			});
+		});
+	});
+
+	return newItems;
+}
+
+interface ServiceCranePeriodSectionProps {
+	period: ServiceCranePeriodData;
+	totalPeriods: number;
+	assignmentCodes: any[];
+	processOptions: any[];
+	distanceOptions: any[];
+	onUpdate: (updated: ServiceCranePeriodData) => void;
+	onCopy: () => void;
+	onDelete: () => void;
+}
+
+function ServiceCranePeriodSection({
+	period,
+	totalPeriods,
+	assignmentCodes,
+	processOptions,
+	distanceOptions,
+	onUpdate,
+	onCopy,
+	onDelete,
+}: ServiceCranePeriodSectionProps) {
+	const handleAssignmentCodesChange = (newAcIds: string[]) => {
+		const nextItems = computeItemsForServiceCranePeriod(
+			newAcIds,
+			period.equipmentProcesses,
+			period.equipmentQualities,
+			period.equipmentDistances,
+			assignmentCodes,
+			processOptions,
+			distanceOptions,
+			period.items,
+		);
+		onUpdate({
+			...period,
+			assignmentCodeIds: newAcIds,
+			items: nextItems,
+		});
+	};
+
+	const handleProcessesChange = (acId: string, newProcs: string[]) => {
+		const nextProcs = { ...period.equipmentProcesses, [acId]: newProcs };
+		const nextItems = computeItemsForServiceCranePeriod(
+			period.assignmentCodeIds,
+			nextProcs,
+			period.equipmentQualities,
+			period.equipmentDistances,
+			assignmentCodes,
+			processOptions,
+			distanceOptions,
+			period.items,
+		);
+		onUpdate({
+			...period,
+			equipmentProcesses: nextProcs,
+			items: nextItems,
+		});
+	};
+
+	const handleScopeFieldChange = (
+		scopeKey: string,
+		fieldName: 'equipmentQualities' | 'equipmentDistances',
+		values: string[],
+	) => {
+		const nextField = { ...period[fieldName], [scopeKey]: values };
+		const nextPeriod = { ...period, [fieldName]: nextField };
+		const nextItems = computeItemsForServiceCranePeriod(
+			nextPeriod.assignmentCodeIds,
+			nextPeriod.equipmentProcesses,
+			nextPeriod.equipmentQualities,
+			nextPeriod.equipmentDistances,
+			assignmentCodes,
+			processOptions,
+			distanceOptions,
+			period.items,
+		);
+		onUpdate({
+			...nextPeriod,
+			items: nextItems,
+		});
+	};
+
+	const handleItemValueChange = (
+		tempId: string,
+		field: 'fuelUnitPrice' | 'maintenanceUnitPrice',
+		val: number | undefined,
+	) => {
+		const nextItems = period.items.map((it) => {
+			if (it.tempId === tempId || it.id === tempId) {
+				return { ...it, [field]: val ?? 0 };
+			}
+			return it;
+		});
+		onUpdate({
+			...period,
+			items: nextItems,
+		});
+	};
+
+	return (
+		<div className='flex flex-col gap-4 rounded-xl border border-neutral-300 bg-neutral-50/70 p-5 shadow-xs transition-all'>
+			{/* Hàng 1: Thời gian bắt đầu, kết thúc, Copy, Delete */}
+			<div className='flex items-end gap-3'>
+				<MonthYearInput
+					label='Thời gian bắt đầu'
+					value={period.startMonth}
+					onChange={(val) => onUpdate({ ...period, startMonth: val })}
+					className='flex-1'
+				/>
+				<MonthYearInput
+					label='Thời gian kết thúc'
+					value={period.endMonth}
+					onChange={(val) => onUpdate({ ...period, endMonth: val })}
+					className='flex-1'
+				/>
+				<div className='mb-2 flex items-center gap-2'>
+					<Button
+						type='button'
+						variant='ghost'
+						size='icon'
+						onClick={onCopy}
+						className='hover:text-primary h-fit w-fit border-0 bg-transparent p-0 text-neutral-500 shadow-none hover:bg-transparent'
+						title='Sao chép'
+					>
+						<Copy className='size-5' />
+					</Button>
+					{totalPeriods > 1 && (
+						<Button
+							type='button'
+							variant='ghost'
+							size='icon'
+							onClick={onDelete}
+							className='h-fit w-fit border-0 bg-transparent p-0 text-red-500 shadow-none hover:bg-transparent hover:text-red-700'
+							title='Xóa'
+						>
+							<XCircleIcon className='size-5 text-red-500' />
+						</Button>
+					)}
+				</div>
+			</div>
+
+			{/* Hàng 2: Nhóm vật tư, tài sản (Xe cẩu / phục vụ) */}
+			<MultiSelect
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm xe cẩu / phục vụ'
+				options={assignmentCodes.map((item) => ({
+					label: item.code
+						? `${item.code} - ${item.name}`
+						: item.name || item.id,
+					value: item.id,
+				}))}
+				values={(period.assignmentCodeIds || []).map((id) => {
+					const item = assignmentCodes.find((a) => a.id === id);
+					return {
+						value: id,
+						label: item
+							? item.code
+								? `${item.code} - ${item.name}`
+								: item.name || item.id
+							: id,
+					};
+				})}
+				onValuesChange={(selected) =>
+					handleAssignmentCodesChange(selected.map((s) => s.value))
+				}
+			/>
+
+			{/* Form chi tiết từng xe */}
+			{(period.assignmentCodeIds || []).map((acId: string) => {
+				const acObj = assignmentCodes.find((a) => a.id === acId);
+				const title = acObj
+					? acObj.code
+						? `${acObj.code} - ${acObj.name}`
+						: acObj.name
+					: acId;
+				const materialName = acObj ? acObj.name || acObj.code || acId : acId;
+				const selectedProcList: string[] =
+					period.equipmentProcesses?.[acId] || [];
+
+				return (
+					<div
+						key={acId}
+						className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs'
+					>
+						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
+							<span className='text-sm font-semibold text-black'>{title}</span>
+						</div>
+
+						{/* CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
+						<MultiSelect
+							label='Công đoạn sản xuất'
+							placeholder='Chọn các công đoạn sản xuất'
+							options={processOptions.map((opt) => ({
+								label: opt.label,
+								value: opt.value,
+							}))}
+							values={selectedProcList.map((id) => {
+								const p = processOptions.find((opt) => opt.value === id);
+								return { value: id, label: p ? p.label : id };
+							})}
+							onValuesChange={(selected) =>
+								handleProcessesChange(acId, selected.map((s) => s.value))
+							}
+						/>
+
+						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
+						{selectedProcList.map((procId: string) => {
+							const scopeKey = `${acId}_${procId}`;
+							const procObj = processOptions.find((p) => p.value === procId);
+							const procName = procObj ? procObj.label : procId;
+							const isMoving =
+								procName.toLowerCase().includes('di chuyển') ||
+								procName.toLowerCase().includes('cung độ');
+
+							const currentQualities: string[] =
+								period.equipmentQualities?.[scopeKey] || [];
+							const currentDists: string[] =
+								period.equipmentDistances?.[scopeKey] || [];
+
+							return (
+								<div
+									key={procId}
+									className='space-y-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs'
+								>
+									<div className='border-b border-neutral-200/80 pb-2'>
+										<span className='text-sm font-semibold text-black'>
+											{procName}
+										</span>
+									</div>
+
+									<div
+										className={`grid grid-cols-1 gap-3 ${
+											isMoving ? 'md:grid-cols-2' : ''
+										}`}
+									>
+										<MultiSelect
+											label='Chất lượng thiết bị'
+											placeholder='Chọn chất lượng thiết bị'
+											options={[
+												{ label: 'Thiết bị loại A', value: 'A' },
+												{ label: 'Thiết bị loại B', value: 'B' },
+												{ label: 'Thiết bị loại C', value: 'C' },
+											]}
+											values={currentQualities.map((q) => ({
+												label: `Thiết bị loại ${q}`,
+												value: q,
+											}))}
+											onValuesChange={(selected) =>
+												handleScopeFieldChange(
+													scopeKey,
+													'equipmentQualities',
+													selected.map((s) => s.value),
+												)
+											}
+										/>
+
+										{isMoving && (
+											<MultiSelect
+												label='Cung độ vận tải'
+												placeholder='Chọn cung độ vận tải'
+												options={distanceOptions.map((opt) => ({
+													label: opt.label,
+													value: opt.value,
+												}))}
+												values={currentDists.map((dId) => {
+													const d = distanceOptions.find(
+														(opt) => opt.value === dId || opt.id === dId,
+													);
+													return { value: dId, label: d ? d.label : dId };
+												})}
+												onValuesChange={(selected) =>
+													handleScopeFieldChange(
+														scopeKey,
+														'equipmentDistances',
+														selected.map((s) => s.value),
+													)
+												}
+											/>
+										)}
+									</div>
+
+									{/* BẢNG ĐƠN GIÁ */}
+									{currentQualities.length > 0 &&
+										(!isMoving || currentDists.length > 0) && (
+											<div className='space-y-2 pt-2'>
+												<div className='w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
+													<table className='w-full min-w-[600px] text-left text-sm'>
+														<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+															<tr>
+																<th className='whitespace-nowrap px-4 py-2.5'>
+																	{isMoving
+																		? 'Cung độ / Chất lượng thiết bị'
+																		: 'Chất lượng thiết bị'}
+																</th>
+																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
+																	Đơn giá Nhiên liệu (đ/ca)
+																</th>
+																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
+																	Đơn giá SCTX (đ/ca)
+																</th>
+															</tr>
+														</thead>
+														<tbody className='divide-y divide-neutral-100'>
+															{currentQualities.map((qual: string) => {
+																if (isMoving) {
+																	return currentDists.map((distId: string) => {
+																		const item = period.items.find(
+																			(it: any) =>
+																				it.assignmentCodeId === acId &&
+																				it.productionProcessId === procId &&
+																				it.equipmentQuality === qual &&
+																				it.haulDistanceId === distId,
+																		);
+																		if (!item) return null;
+
+																		return (
+																			<tr
+																				key={`${qual}_${distId}`}
+																				className='transition-colors hover:bg-neutral-50/50'
+																			>
+																				<td className='whitespace-nowrap px-4 py-2'>
+																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-black'>
+																						{item.haulDistanceValue
+																							? `${materialName} (Loại ${qual}) - ${item.haulDistanceValue} km`
+																							: `${materialName} (Loại ${qual})`}
+																					</div>
+																				</td>
+																				<td className='w-40 min-w-[140px] px-4 py-2'>
+																					<FormNumberInput
+																						value={item.fuelUnitPrice ?? 0}
+																						onValueChange={(val) =>
+																							handleItemValueChange(
+																								item.tempId || item.id,
+																								'fuelUnitPrice',
+																								val,
+																							)
+																						}
+																						placeholder='Nhập đơn giá'
+																					/>
+																				</td>
+																				<td className='w-40 min-w-[140px] px-4 py-2'>
+																					<FormNumberInput
+																						value={item.maintenanceUnitPrice ?? 0}
+																						onValueChange={(val) =>
+																							handleItemValueChange(
+																								item.tempId || item.id,
+																								'maintenanceUnitPrice',
+																								val,
+																							)
+																						}
+																						placeholder='Nhập đơn giá'
+																					/>
+																				</td>
+																			</tr>
+																		);
+																	});
+																} else {
+																	const item = period.items.find(
+																		(it: any) =>
+																			it.assignmentCodeId === acId &&
+																			it.productionProcessId === procId &&
+																			it.equipmentQuality === qual &&
+																			!it.haulDistanceId,
+																	);
+																	if (!item) return null;
+
+																	return (
+																		<tr key={qual} className='transition-colors hover:bg-neutral-50/50'>
+																			<td className='whitespace-nowrap px-4 py-2'>
+																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-black'>
+																					{materialName} (Loại {qual})
+																				</div>
+																			</td>
+																			<td className='w-40 min-w-[140px] px-4 py-2'>
+																				<FormNumberInput
+																					value={item.fuelUnitPrice ?? 0}
+																					onValueChange={(val) =>
+																						handleItemValueChange(
+																							item.tempId || item.id,
+																							'fuelUnitPrice',
+																							val,
+																						)
+																					}
+																					placeholder='Nhập đơn giá'
+																				/>
+																			</td>
+																			<td className='w-40 min-w-[140px] px-4 py-2'>
+																				<FormNumberInput
+																					value={item.maintenanceUnitPrice ?? 0}
+																					onValueChange={(val) =>
+																						handleItemValueChange(
+																							item.tempId || item.id,
+																							'maintenanceUnitPrice',
+																							val,
+																						)
+																					}
+																					placeholder='Nhập đơn giá'
+																				/>
+																			</td>
+																		</tr>
+																	);
+																}
+															})}
+														</tbody>
+													</table>
+												</div>
+											</div>
+										)}
+								</div>
+							);
+						})}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
 export const MotorizedServiceCraneForm = forwardRef<
 	MotorizedSubFormHandle,
 	MotorizedServiceCraneFormProps
@@ -66,10 +593,7 @@ export const MotorizedServiceCraneForm = forwardRef<
 		data,
 		row,
 		isDuplicate = false,
-		hideTimeRow = false,
 		hideConfirmButton = false,
-		sharedStartMonth,
-		sharedEndMonth,
 	}: MotorizedServiceCraneFormProps,
 	ref,
 ) {
@@ -81,55 +605,18 @@ export const MotorizedServiceCraneForm = forwardRef<
 	const [processOptions, setProcessOptions] = useState<any[]>([]);
 	const [distanceOptions, setDistanceOptions] = useState<any[]>([]);
 
-	const form = useForm<MotorizedServiceCraneFormSchema>({
-		resolver: zodResolver(motorizedServiceCraneFormSchema) as any,
-		mode: 'onSubmit',
-		defaultValues: MOTORIZED_SERVICE_CRANE_FORM_DEFAULT,
-	});
-
-	useEffect(() => {
-		if (sharedStartMonth !== undefined) {
-			form.setValue('startMonth', sharedStartMonth);
-		}
-	}, [sharedStartMonth, form]);
-
-	useEffect(() => {
-		if (sharedEndMonth !== undefined) {
-			form.setValue('endMonth', sharedEndMonth);
-		}
-	}, [sharedEndMonth, form]);
-
-	const selectedAssignmentCodeIds =
-		useWatch({
-			control: form.control as any,
-			name: 'assignmentCodeIds',
-		}) || [];
-
-	const watchedEquipmentQualities =
-		useWatch({
-			control: form.control as any,
-			name: 'equipmentQualities',
-		}) || {};
-
-	const watchedEquipmentProcesses =
-		useWatch({
-			control: form.control as any,
-			name: 'equipmentProcesses',
-		}) || {};
-
-	const watchedEquipmentDistances =
-		useWatch({
-			control: form.control as any,
-			name: 'equipmentDistances',
-		}) || {};
-
-	const items =
-		useWatch({
-			control: form.control as any,
-			name: 'items',
-		}) || [];
-
-	const showBottomSection = selectedAssignmentCodeIds.length > 0;
+	const [periods, setPeriods] = useState<ServiceCranePeriodData[]>([
+		{
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			startMonth: '',
+			endMonth: '',
+			assignmentCodeIds: [],
+			equipmentProcesses: {},
+			equipmentQualities: {},
+			equipmentDistances: {},
+			items: [],
+		},
+	]);
 
 	useEffect(() => {
 		Promise.all([
@@ -156,8 +643,7 @@ export const MotorizedServiceCraneForm = forwardRef<
 
 				if (!row) return;
 
-				const allProcs: MotorizedServiceCraneUnitPrice[] = (row as any)
-					.allProcesses || [row];
+				const allProcs: any[] = (row as any).allProcesses || [row];
 				const initialAcId =
 					row.assignmentCodeId || (row as any).equipmentId || '';
 
@@ -166,8 +652,8 @@ export const MotorizedServiceCraneForm = forwardRef<
 				const initialDistsMap: Record<string, string[]> = {};
 				const initialItems: any[] = [];
 
-				allProcs.forEach((p) => {
-					const q = (p.equipmentQuality || '')
+				allProcs.forEach((p: any) => {
+					const q = (p.equipmentQuality || 'A')
 						.replace(/^Thiết bị loại\s*/i, '')
 						.replace(/^Loại\s*/i, '')
 						.trim();
@@ -191,7 +677,7 @@ export const MotorizedServiceCraneForm = forwardRef<
 						initialDistsMap[scopeKey] = [];
 					}
 
-					(p.details || []).forEach((d) => {
+					(p.details || []).forEach((d: any) => {
 						if (
 							d.haulDistanceId &&
 							!initialDistsMap[scopeKey].includes(d.haulDistanceId)
@@ -200,8 +686,9 @@ export const MotorizedServiceCraneForm = forwardRef<
 						}
 
 						initialItems.push({
-							id: p.id,
-							detailId: d.id,
+							tempId: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+							id: isDuplicate ? undefined : p.id,
+							detailId: isDuplicate ? undefined : d.id,
 							assignmentCodeId: initialAcId,
 							equipmentQuality: q,
 							productionProcessId: p.productionProcessId,
@@ -216,227 +703,200 @@ export const MotorizedServiceCraneForm = forwardRef<
 					});
 				});
 
-				form.reset({
-					startMonth: row.startMonth?.substring(0, 7),
-					endMonth: row.endMonth?.substring(0, 7),
-					assignmentCodeIds: initialAcId ? [initialAcId] : [],
-					equipmentQualities: initialQualitiesMap,
-					equipmentProcesses: initialAcId
-						? { [initialAcId]: initialProcsList }
-						: {},
-					equipmentDistances: initialDistsMap,
-					items: initialItems,
-				});
+				setPeriods([
+					{
+						tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+						id: isDuplicate ? undefined : row.id,
+						startMonth: row.startMonth?.substring(0, 7) || '',
+						endMonth: row.endMonth?.substring(0, 7) || '',
+						assignmentCodeIds: initialAcId ? [initialAcId] : [],
+						equipmentProcesses: initialAcId
+							? { [initialAcId]: initialProcsList }
+							: {},
+						equipmentQualities: initialQualitiesMap,
+						equipmentDistances: initialDistsMap,
+						items: initialItems,
+					},
+				]);
 			})
 			.catch((err) => {
 				console.error(err);
 			});
-	}, [form, row]);
+	}, [row, isDuplicate]);
 
-	useEffect(() => {
-		if (row && !isDuplicate) return;
+	const handleAddPeriod = () => {
+		const lastPeriod = periods[periods.length - 1];
+		const nextMonths = computeNextPeriodMonths(lastPeriod?.endMonth);
+		const newPeriod: ServiceCranePeriodData = {
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			startMonth: nextMonths.startMonth,
+			endMonth: nextMonths.endMonth,
+			assignmentCodeIds: [],
+			equipmentProcesses: {},
+			equipmentQualities: {},
+			equipmentDistances: {},
+			items: [],
+		};
+		setPeriods((prev) => [...prev, newPeriod]);
+	};
 
-		if (!showBottomSection) {
-			form.setValue('items', []);
-			return;
-		}
-
-		const newItems: any[] = [];
-
-		selectedAssignmentCodeIds.forEach((acId: string) => {
-			const acObj = assignmentCodes.find((a) => a.id === acId);
-			const title = acObj
-				? acObj.code
-					? `${acObj.code} - ${acObj.name}`
-					: acObj.name
-				: acId;
-
-			const selectedProcs: string[] = watchedEquipmentProcesses[acId] || [];
-
-			selectedProcs.forEach((procId: string) => {
-				const scopeKey = `${acId}_${procId}`;
-				const procObj = processOptions.find((p) => p.value === procId);
-				const procName = procObj ? procObj.label : procId;
-				const isWatering = procName.toLowerCase().includes('tưới đường mỏ');
-
-				const selectedQualities: string[] =
-					watchedEquipmentQualities[scopeKey] || [];
-				const selectedDists: string[] =
-					watchedEquipmentDistances[scopeKey] || [];
-
-				selectedQualities.forEach((qual: string) => {
-					if (isWatering && selectedDists.length > 0) {
-						selectedDists.forEach((distId: string) => {
-							const distObj = distanceOptions.find((d) => d.value === distId);
-							const distValue = distObj ? distObj.label : distId;
-
-							const existing = items.find(
-								(it: any) =>
-									it.assignmentCodeId === acId &&
-									it.productionProcessId === procId &&
-									it.equipmentQuality === qual &&
-									it.haulDistanceId === distId,
-							);
-
-							newItems.push({
-								id: existing?.id,
-								detailId: existing?.detailId,
-								assignmentCodeId: acId,
-								equipmentQuality: qual,
-								productionProcessId: procId,
-								productionProcessName: procName,
-								title,
-								haulDistanceId: distId,
-								haulDistanceValue: distValue,
-								fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-								maintenanceUnitPrice: existing
-									? existing.maintenanceUnitPrice
-									: 0,
-							});
-						});
-					} else {
-						const existing = items.find(
-							(it: any) =>
-								it.assignmentCodeId === acId &&
-								it.productionProcessId === procId &&
-								it.equipmentQuality === qual &&
-								!it.haulDistanceId,
-						);
-
-						newItems.push({
-							id: existing?.id,
-							detailId: existing?.detailId,
-							assignmentCodeId: acId,
-							equipmentQuality: qual,
-							productionProcessId: procId,
-							productionProcessName: procName,
-							title,
-							haulDistanceId: null,
-							haulDistanceValue: '',
-							fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-							maintenanceUnitPrice: existing
-								? existing.maintenanceUnitPrice
-								: 0,
-						});
-					}
-				});
-			});
+	const handleCopyPeriod = (index: number) => {
+		const target = periods[index];
+		if (!target) return;
+		const nextMonths = computeNextPeriodMonths(target.endMonth);
+		const copiedPeriod: ServiceCranePeriodData = {
+			...target,
+			tempId: `period_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+			id: undefined,
+			startMonth: nextMonths.startMonth,
+			endMonth: nextMonths.endMonth,
+			assignmentCodeIds: [...target.assignmentCodeIds],
+			equipmentProcesses: JSON.parse(JSON.stringify(target.equipmentProcesses)),
+			equipmentQualities: JSON.parse(JSON.stringify(target.equipmentQualities)),
+			equipmentDistances: JSON.parse(JSON.stringify(target.equipmentDistances)),
+			items: target.items.map((it) => ({
+				...it,
+				tempId: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+				id: undefined,
+				detailId: undefined,
+			})),
+		};
+		setPeriods((prev) => {
+			const next = [...prev];
+			next.splice(index + 1, 0, copiedPeriod);
+			return next;
 		});
+	};
 
-		form.setValue('items', newItems);
-	}, [
-		showBottomSection,
-		JSON.stringify(selectedAssignmentCodeIds),
-		JSON.stringify(watchedEquipmentQualities),
-		JSON.stringify(watchedEquipmentProcesses),
-		JSON.stringify(watchedEquipmentDistances),
-	]);
+	const handleDeletePeriod = (index: number) => {
+		if (periods.length <= 1) return;
+		setPeriods((prev) => prev.filter((_, i) => i !== index));
+	};
 
-	const submitInternal = async (
-		startM?: string,
-		endM?: string,
-	): Promise<boolean> => {
+	const handleUpdatePeriod = (
+		index: number,
+		updated: ServiceCranePeriodData,
+	) => {
+		setPeriods((prev) => {
+			const next = [...prev];
+			next[index] = updated;
+			return next;
+		});
+	};
+
+	const submitInternal = async (forceCreate?: boolean): Promise<boolean> => {
 		try {
-			const values = form.getValues();
-			const itemsToSubmit = (values.items || []).filter(
-				(item: any) =>
-					item.assignmentCodeId &&
-					(Number(item.fuelUnitPrice) > 0 ||
-						Number(item.maintenanceUnitPrice) > 0),
-			);
-
-			if (itemsToSubmit.length === 0) {
-				if (selectedAssignmentCodeIds.length > 0) {
-					popup.error(
-						'Vui lòng chọn công đoạn sản xuất và chất lượng thiết bị để nhập đơn giá Xe phục vụ',
-					);
-					return false;
-				}
-				return true;
-			}
-
-			const rawStart = startM || values.startMonth;
-			const rawEnd = endM || values.endMonth;
-
-			if (!rawStart) {
-				popup.error('Vui lòng chọn Thời gian bắt đầu cho Xe phục vụ');
+			if (periods.length === 0) {
+				popup.error('Cần có ít nhất một khoảng thời gian áp dụng cho Xe phục vụ');
 				return false;
 			}
 
-			const startMonth =
-				rawStart.length === 7 ? `${rawStart}-01` : rawStart;
-			const endMonth =
-				rawEnd.length === 7 ? `${rawEnd}-01` : rawEnd;
-
-			const groupedHeaders: Record<
-				string,
-				{
-					id?: string;
-					assignmentCodeId: string;
-					equipmentQuality: string;
-					productionProcessId: string;
-					startMonth: string;
-					endMonth: string;
-					details: Array<{
-						haulDistanceId: string | null;
-						fuelUnitPrice: number;
-						maintenanceUnitPrice: number;
-					}>;
-				}
-			> = {};
-
-			itemsToSubmit.forEach((item: any) => {
-				const key = `${item.assignmentCodeId}_${item.equipmentQuality}_${item.productionProcessId}`;
-				if (!groupedHeaders[key]) {
-					groupedHeaders[key] = {
-						id: item.id,
-						assignmentCodeId: item.assignmentCodeId,
-						equipmentQuality: item.equipmentQuality,
-						productionProcessId: item.productionProcessId,
-						startMonth,
-						endMonth,
-						details: [],
-					};
-				}
-
-				groupedHeaders[key].details.push({
-					haulDistanceId: item.haulDistanceId || null,
-					fuelUnitPrice:
-						item.fuelUnitPrice !== null && item.fuelUnitPrice !== undefined
-							? Number(item.fuelUnitPrice)
-							: 0,
-					maintenanceUnitPrice:
-						item.maintenanceUnitPrice !== null &&
-						item.maintenanceUnitPrice !== undefined
-							? Number(item.maintenanceUnitPrice)
-							: 0,
-				});
-			});
-
-			const promises = Object.values(groupedHeaders).map((header) => {
-				const payload = {
-					assignmentCodeId: header.assignmentCodeId,
-					equipmentQuality: header.equipmentQuality,
-					productionProcessId: header.productionProcessId,
-					startMonth: header.startMonth,
-					endMonth: header.endMonth,
-					details: header.details,
-				};
-
-				if (header.id && !isDuplicate) {
-					return api.put(API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.UPDATE, {
-						id: header.id,
-						...payload,
-					});
-				} else {
-					return api.post(
-						API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.CREATE,
-						payload,
+			for (let i = 0; i < periods.length; i++) {
+				const p = periods[i];
+				const order = i + 1;
+				if (!p.startMonth || !p.startMonth.trim()) {
+					popup.error(
+						`Vui lòng chọn Thời gian bắt đầu ở khoảng thời gian thứ ${order} của Xe phục vụ`,
 					);
+					return false;
 				}
-			});
+				if (!p.endMonth || !p.endMonth.trim()) {
+					popup.error(
+						`Vui lòng chọn Thời gian kết thúc ở khoảng thời gian thứ ${order} của Xe phục vụ`,
+					);
+					return false;
+				}
+				if (p.startMonth > p.endMonth) {
+					popup.error(
+						`Thời gian bắt đầu không được lớn hơn thời gian kết thúc ở khoảng thời gian thứ ${order} của Xe phục vụ`,
+					);
+					return false;
+				}
+				if (p.assignmentCodeIds.length === 0) {
+					popup.error(
+						`Vui lòng chọn Nhóm xe phục vụ ở khoảng thời gian thứ ${order}`,
+					);
+					return false;
+				}
+			}
 
-			await Promise.all(promises);
+			for (let i = 0; i < periods.length; i++) {
+				const p = periods[i];
+				const isPeriodCreate =
+					forceCreate !== undefined ? forceCreate : isDuplicate || !p.id;
+
+				const startMonth =
+					p.startMonth.length === 7 ? `${p.startMonth}-01` : p.startMonth;
+				const endMonth =
+					p.endMonth.length === 7 ? `${p.endMonth}-01` : p.endMonth;
+
+				const groupedHeaders: Record<
+					string,
+					{
+						id?: string;
+						assignmentCodeId: string;
+						equipmentQuality: string;
+						productionProcessId: string;
+						startMonth: string;
+						endMonth: string;
+						details: Array<{
+							haulDistanceId: string | null;
+							fuelUnitPrice: number;
+							maintenanceUnitPrice: number;
+						}>;
+					}
+				> = {};
+
+				p.items.forEach((item: any) => {
+					const key = `${item.assignmentCodeId}_${item.equipmentQuality}_${item.productionProcessId}`;
+					if (!groupedHeaders[key]) {
+						groupedHeaders[key] = {
+							id: item.id,
+							assignmentCodeId: item.assignmentCodeId,
+							equipmentQuality: item.equipmentQuality,
+							productionProcessId: item.productionProcessId,
+							startMonth,
+							endMonth,
+							details: [],
+						};
+					}
+
+					groupedHeaders[key].details.push({
+						haulDistanceId: item.haulDistanceId || null,
+						fuelUnitPrice: Number(item.fuelUnitPrice) || 0,
+						maintenanceUnitPrice: Number(item.maintenanceUnitPrice) || 0,
+					});
+				});
+
+				const promises = Object.values(groupedHeaders).map((header) => {
+					const payload = {
+						assignmentCodeId: header.assignmentCodeId,
+						equipmentQuality: header.equipmentQuality,
+						productionProcessId: header.productionProcessId,
+						startMonth: header.startMonth,
+						endMonth: header.endMonth,
+						details: header.details,
+					};
+
+					if (header.id && !isDuplicate && !isPeriodCreate) {
+						return api.put(
+							API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.UPDATE,
+							{
+								id: header.id,
+								...payload,
+							},
+						);
+					} else {
+						return api.post(
+							API.PRICING.MOTORIZED_TRANSPORT.SERVICE_CRANE.CREATE,
+							payload,
+						);
+					}
+				});
+
+				await Promise.all(promises);
+			}
+
 			return true;
 		} catch (error) {
 			popup.error(error);
@@ -448,7 +908,8 @@ export const MotorizedServiceCraneForm = forwardRef<
 		submit: submitInternal,
 	}));
 
-	const handleSubmit = async () => {
+	const handleSubmit = async (e?: React.FormEvent) => {
+		e?.preventDefault();
 		const ok = await submitInternal();
 		if (ok) {
 			popup.success(
@@ -456,7 +917,6 @@ export const MotorizedServiceCraneForm = forwardRef<
 					? 'Cập nhật đơn giá thành công'
 					: 'Thêm mới đơn giá thành công',
 			);
-
 			setOpen(false);
 			await data?.refresh();
 			data?.table.toggleAllRowsSelected(false);
@@ -464,250 +924,49 @@ export const MotorizedServiceCraneForm = forwardRef<
 	};
 
 	return (
-		<FormProvider
-			context={form as any}
-			onSubmit={handleSubmit}
-			onInvalid={(errors) => {
-				console.error('Form Validation Errors:', errors);
-				const firstErr = Object.values(errors)[0];
-				const msg =
-					(firstErr as any)?.message ||
-					'Vui lòng điền đầy đủ các thông tin bắt buộc';
-				popup.error(msg);
-			}}
-		>
-			{!hideTimeRow && (
-				<FormRow>
-					<FormMonthYear
-						control={form.control as any}
-						name='startMonth'
-						label='Thời gian bắt đầu'
-						className='flex-1'
-					/>
-					<FormMonthYear
-						control={form.control as any}
-						name='endMonth'
-						label='Thời gian kết thúc'
-						className='flex-1'
-					/>
-				</FormRow>
-			)}
-
-			<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-				<div className='flex items-center gap-2 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-800'>
-					<span className='h-2.5 w-2.5 rounded-full bg-blue-600' />
+		<form onSubmit={handleSubmit}>
+			<div className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'>
+				<div className='border-b border-neutral-100 pb-2 text-sm font-semibold text-black'>
 					<span>Phục vụ (Xe cẩu, xe téc nước, xe chở người, xe tải)</span>
 				</div>
 
-				<FormMultiSelect
-					control={form.control as any}
-					name='assignmentCodeIds'
-					label='1. Nhóm vật tư, tài sản (Xe cẩu / phục vụ)'
-					placeholder='Chọn nhóm xe cẩu / phục vụ'
-					options={assignmentCodes.map((item) => ({
-						label: item.code
-							? `${item.code} - ${item.name}`
-							: item.name || item.id,
-						value: item.id,
-					}))}
-					disabled={!!row && !isDuplicate}
-				/>
+				{/* DANH SÁCH CÁC KHOẢNG THỜI GIAN */}
+				<div className='flex flex-col gap-5'>
+					{periods.map((period, index) => (
+						<ServiceCranePeriodSection
+							key={period.tempId}
+							period={period}
+							totalPeriods={periods.length}
+							assignmentCodes={assignmentCodes}
+							processOptions={processOptions}
+							distanceOptions={distanceOptions}
+							onUpdate={(updated) => handleUpdatePeriod(index, updated)}
+							onDelete={() => handleDeletePeriod(index)}
+							onCopy={() => handleCopyPeriod(index)}
+						/>
+					))}
 
-				{selectedAssignmentCodeIds.map((acId: string) => {
-					const acObj = assignmentCodes.find((a) => a.id === acId);
-					const title = acObj
-						? acObj.code
-							? `${acObj.code} - ${acObj.name}`
-							: acObj.name
-						: acId;
-					const selectedProcList: string[] =
-						watchedEquipmentProcesses?.[acId] || [];
-
-					return (
-						<div
-							key={acId}
-							className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+					{/* NÚT THÊM THỜI GIAN */}
+					<div className='flex justify-start pt-1'>
+						<Button
+							type='button'
+							variant='ghost'
+							size='sm'
+							onClick={handleAddPeriod}
+							className='flex h-fit w-fit items-center gap-1.5 border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
 						>
-							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
-								<span className='text-sm font-bold text-gray-900'>{title}</span>
-							</div>
+							<PlusCircleIcon className='text-primary size-4' strokeWidth={2} />
+							<span className='text-sm text-black'>Thêm thời gian</span>
+						</Button>
+					</div>
+				</div>
 
-							<FormMultiSelect
-								control={form.control as any}
-								name={`equipmentProcesses.${acId}`}
-								label={`2. Công đoạn sản xuất áp dụng cho [${title}]`}
-								placeholder='Chọn các công đoạn sản xuất'
-								options={processOptions}
-							/>
-
-							{selectedProcList.map((procId: string) => {
-								const scopeKey = `${acId}_${procId}`;
-								const procObj = processOptions.find((p) => p.value === procId);
-								const procName = procObj ? procObj.label : procId;
-								const isWatering = procName
-									.toLowerCase()
-									.includes('tưới đường mỏ');
-								const isHourly =
-									procName.toLowerCase().includes('phục vụ') ||
-									procName.toLowerCase().includes('di chuyển');
-								const itemUnitLabel = isWatering
-									? '(đ/tkm)'
-									: isHourly
-										? '(đ/h)'
-										: '(đ/km)';
-
-								const currentQualities: string[] =
-									watchedEquipmentQualities[scopeKey] || [];
-
-								const filteredItems = items.filter(
-									(it: any) =>
-										it.assignmentCodeId === acId &&
-										it.productionProcessId === procId,
-								);
-
-								return (
-									<div
-										key={procId}
-										className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
-									>
-										<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
-											<span className='h-2 w-2 rounded-full bg-blue-500' />
-											<span className='text-xs font-semibold text-blue-800 uppercase'>
-												{procName}
-											</span>
-										</div>
-
-										{isWatering ? (
-											<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-												<FormMultiSelect
-													control={form.control as any}
-													name={`equipmentQualities.${scopeKey}`}
-													label='Chất lượng thiết bị'
-													placeholder='Chọn chất lượng thiết bị'
-													options={[
-														{ label: 'Thiết bị loại A', value: 'A' },
-														{ label: 'Thiết bị loại B', value: 'B' },
-														{ label: 'Thiết bị loại C', value: 'C' },
-													]}
-												/>
-												<FormMultiSelect
-													control={form.control as any}
-													name={`equipmentDistances.${scopeKey}`}
-													label='Cung độ vận tải'
-													placeholder='Chọn các cung độ vận tải'
-													options={distanceOptions}
-												/>
-											</div>
-										) : (
-											<div className='w-full'>
-												<FormMultiSelect
-													control={form.control as any}
-													name={`equipmentQualities.${scopeKey}`}
-													label='Chất lượng thiết bị'
-													placeholder='Chọn chất lượng thiết bị'
-													options={[
-														{ label: 'Thiết bị loại A', value: 'A' },
-														{ label: 'Thiết bị loại B', value: 'B' },
-														{ label: 'Thiết bị loại C', value: 'C' },
-													]}
-												/>
-											</div>
-										)}
-
-										{currentQualities.length > 0 &&
-											filteredItems.length > 0 && (
-												<div className='space-y-2 pt-2'>
-													<div className='text-xs font-semibold text-gray-700'>
-														Bảng đơn giá ({filteredItems.length} tổ hợp)
-													</div>
-
-													<div className='w-full overflow-x-auto rounded-md border border-gray-200 bg-white'>
-														<table className='w-full min-w-[700px] text-left text-sm'>
-															<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
-																<tr>
-																	<th className='whitespace-nowrap px-3 py-2'>
-																		Chất lượng
-																	</th>
-																	{isWatering && (
-																		<th className='whitespace-nowrap px-3 py-2'>
-																			Cung độ
-																		</th>
-																	)}
-																	<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
-																		Đơn giá Nhiên liệu {itemUnitLabel}
-																	</th>
-																	<th className='w-40 min-w-[140px] whitespace-nowrap px-3 py-2'>
-																		Đơn giá SCTX {itemUnitLabel}
-																	</th>
-																</tr>
-															</thead>
-															<tbody className='divide-y divide-gray-100'>
-																{filteredItems.map((item: any, idx: number) => {
-																	const itemIndex = items.findIndex(
-																		(it: any) =>
-																			it.assignmentCodeId ===
-																				item.assignmentCodeId &&
-																			it.productionProcessId ===
-																				item.productionProcessId &&
-																			it.equipmentQuality ===
-																				item.equipmentQuality &&
-																			it.haulDistanceId === item.haulDistanceId,
-																	);
-
-																	if (itemIndex === -1) return null;
-
-																	return (
-																		<tr
-																			key={`${item.equipmentQuality}-${item.haulDistanceId || idx}`}
-																			className='hover:bg-gray-50/50'
-																		>
-																			<td className='whitespace-nowrap px-3 py-2'>
-																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																					Thiết bị loại {item.equipmentQuality}
-																				</div>
-																			</td>
-																			{isWatering && (
-																				<td className='whitespace-nowrap px-3 py-2'>
-																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																						{item.haulDistanceValue
-																							? ` ${item.haulDistanceValue} km`
-																							: '-'}
-																					</div>
-																				</td>
-																			)}
-																			<td className='w-40 min-w-[140px] px-3 py-2'>
-																				<FormNumber
-																					control={form.control as any}
-																					name={`items.${itemIndex}.fuelUnitPrice`}
-																					placeholder='Nhập đơn giá nhiên liệu'
-																				/>
-																			</td>
-																			<td className='w-40 min-w-[140px] px-3 py-2'>
-																				<FormNumber
-																					control={form.control as any}
-																					name={`items.${itemIndex}.maintenanceUnitPrice`}
-																					placeholder='Nhập đơn giá SCTX'
-																				/>
-																			</td>
-																		</tr>
-																	);
-																})}
-															</tbody>
-														</table>
-													</div>
-												</div>
-											)}
-									</div>
-								);
-							})}
-						</div>
-					);
-				})}
+				{!hideConfirmButton && (
+					<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+				)}
 			</div>
-
-			{!hideConfirmButton && (
-				<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
-			)}
-		</FormProvider>
+		</form>
 	);
 });
+
+export default MotorizedServiceCraneForm;

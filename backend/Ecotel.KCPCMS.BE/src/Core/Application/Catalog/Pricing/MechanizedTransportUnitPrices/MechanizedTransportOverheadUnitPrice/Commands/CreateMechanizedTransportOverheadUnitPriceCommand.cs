@@ -20,6 +20,7 @@ public class CreateMechanizedTransportOverheadUnitPriceCommandHandler(IUnitOfWor
     {
         var entity = Domain.Entities.Pricing.MechanizedTransportUnitPrice.MechanizedTransportOverheadUnitPrice.Create(
             request.CreateModel.ProcessGroupId,
+            request.CreateModel.DepartmentId,
             request.CreateModel.StartMonth,
             request.CreateModel.EndMonth,
             request.CreateModel.LowValuePerishableSupplyUnitPrice,

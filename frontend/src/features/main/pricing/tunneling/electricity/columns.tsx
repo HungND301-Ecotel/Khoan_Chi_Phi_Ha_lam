@@ -42,7 +42,7 @@ export const MAIN_PRICING_ELECTRICITY_COLUMNS: ColumnDef<Electricity>[] = [
 	},
 	{
 		accessorKey: 'unitOfMeasureName',
-		header: 'ĐVT',
+		header: 'Đơn vị tính',
 	},
 ];
 

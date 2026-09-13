@@ -27,6 +27,7 @@ public class UpdateMechanizedTransportOverheadUnitPriceCommandHandler(IUnitOfWor
 
         entity.Update(
             request.UpdateModel.ProcessGroupId,
+            request.UpdateModel.DepartmentId,
             request.UpdateModel.StartMonth,
             request.UpdateModel.EndMonth,
             request.UpdateModel.LowValuePerishableSupplyUnitPrice,

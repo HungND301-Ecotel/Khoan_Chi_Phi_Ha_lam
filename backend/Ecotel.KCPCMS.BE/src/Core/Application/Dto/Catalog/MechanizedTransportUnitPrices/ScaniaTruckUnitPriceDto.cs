@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Domain.Common.Enums;
 
@@ -19,6 +19,7 @@ public class CreateScaniaTruckUnitPriceDto
     public Guid ProductionProcessId { get; set; }
     public Guid CargoTypeId { get; set; }
     public Guid? ReceivingLocationId { get; set; }
+    public List<Guid> ReceivingLocationIds { get; set; } = new();
     public Guid? DumpingLocationId { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
@@ -33,6 +34,7 @@ public class UpdateScaniaTruckUnitPriceDto
     public Guid ProductionProcessId { get; set; }
     public Guid CargoTypeId { get; set; }
     public Guid? ReceivingLocationId { get; set; }
+    public List<Guid> ReceivingLocationIds { get; set; } = new();
     public Guid? DumpingLocationId { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
@@ -61,6 +63,8 @@ public class ScaniaTruckUnitPriceDto : IDto
     public string CargoTypeName { get; set; } = string.Empty;
     public Guid? ReceivingLocationId { get; set; }
     public string? ReceivingLocationName { get; set; }
+    public List<Guid> ReceivingLocationIds { get; set; } = new();
+    public List<string> ReceivingLocationNames { get; set; } = new();
     public Guid? DumpingLocationId { get; set; }
     public string? DumpingLocationName { get; set; }
     public DateOnly StartMonth { get; set; }
@@ -134,6 +138,8 @@ public class MechanizedTransportUnitPriceSectionDto
     public string? CargoTypeName { get; set; }
     public Guid? ReceivingLocationId { get; set; }
     public string? ReceivingLocationName { get; set; }
+    public List<Guid> ReceivingLocationIds { get; set; } = new();
+    public List<string> ReceivingLocationNames { get; set; } = new();
     public Guid? DumpingLocationId { get; set; }
     public string? DumpingLocationName { get; set; }
 

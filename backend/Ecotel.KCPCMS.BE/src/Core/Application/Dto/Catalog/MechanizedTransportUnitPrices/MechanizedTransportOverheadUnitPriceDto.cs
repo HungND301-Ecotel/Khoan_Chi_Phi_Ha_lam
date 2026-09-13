@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -11,6 +11,7 @@ namespace Application.Dto.Catalog.MechanizedTransportUnitPrices;
 public class CreateMechanizedTransportOverheadUnitPriceDto
 {
     public Guid ProcessGroupId { get; set; }
+    public Guid DepartmentId { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
     public decimal LowValuePerishableSupplyUnitPrice { get; set; }
@@ -21,6 +22,7 @@ public class UpdateMechanizedTransportOverheadUnitPriceDto
 {
     public Guid Id { get; set; }
     public Guid ProcessGroupId { get; set; }
+    public Guid DepartmentId { get; set; }
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
     public decimal LowValuePerishableSupplyUnitPrice { get; set; }
@@ -31,7 +33,11 @@ public class MechanizedTransportOverheadUnitPriceDto : IDto
 {
     public Guid Id { get; set; }
     public Guid ProcessGroupId { get; set; }
+    public Guid DepartmentId { get; set; }
+    public string ProcessGroupCode { get; set; } = string.Empty;
     public string ProcessGroupName { get; set; } = string.Empty;
+    public string DepartmentCode { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
     public decimal LowValuePerishableSupplyUnitPrice { get; set; }
@@ -50,6 +56,8 @@ public class MechanizedTransportOverheadUnitPriceExcelDto
 
     [Display(Name = "Nhóm công đoạn sản xuất")]
     public string ProcessGroupCode { get; set; } = string.Empty;
+    [Display(Name = "Đơn vị")]
+    public string DepartmentCode { get; set; } = string.Empty;
 
     [Display(Name = "Đơn giá vật tư mau hỏng rẻ tiền")]
     public decimal LowValuePerishableSupplyUnitPrice { get; set; }

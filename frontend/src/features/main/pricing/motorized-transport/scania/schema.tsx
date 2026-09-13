@@ -1,8 +1,17 @@
 import { z } from 'zod';
 
 export const motorizedScaniaFormSchema = z.object({
-	startMonth: z.string().min(1, 'Vui lòng chọn thời gian bắt đầu'),
-	endMonth: z.string().min(1, 'Vui lòng chọn thời gian kết thúc'),
+	startMonth: z.string().optional(),
+	endMonth: z.string().optional(),
+	periods: z
+		.array(
+			z.object({
+				id: z.string().optional(),
+				startMonth: z.string().min(1, 'Vui lòng chọn thời gian bắt đầu'),
+				endMonth: z.string().min(1, 'Vui lòng chọn thời gian kết thúc'),
+			}),
+		)
+		.optional(),
 	assignmentCodeIds: z.array(z.string()).min(1, 'Vui lòng chọn ít nhất 1 nhóm vật tư, tài sản'),
 	equipmentQualities: z.record(z.string(), z.array(z.string())).optional(),
 	equipmentProcesses: z.record(z.string(), z.array(z.string())).optional(),
@@ -17,8 +26,9 @@ export const motorizedScaniaFormSchema = z.object({
 export type MotorizedScaniaFormSchema = z.infer<typeof motorizedScaniaFormSchema>;
 
 export const MOTORIZED_SCANIA_FORM_DEFAULT: MotorizedScaniaFormSchema = {
-	startMonth: new Date().toISOString().substring(0, 7),
-	endMonth: new Date().toISOString().substring(0, 7),
+	startMonth: '',
+	endMonth: '',
+	periods: [],
 	assignmentCodeIds: [],
 	equipmentQualities: {},
 	equipmentProcesses: {},

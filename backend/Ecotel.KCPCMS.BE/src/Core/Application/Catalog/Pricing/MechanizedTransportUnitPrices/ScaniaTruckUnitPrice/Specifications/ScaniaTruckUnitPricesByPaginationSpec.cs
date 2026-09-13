@@ -1,4 +1,4 @@
-﻿using Application.Common.Models;
+using Application.Common.Models;
 using Application.Common.Specification;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +16,7 @@ public class ScaniaTruckUnitPricesByPaginationSpec : EntitiesByPaginationFilterS
             .Include(s => s.AssignmentCode)
             .Include(s => s.ProductionProcess)
             .Include(s => s.CargoType)
-            .Include(s => s.ReceivingLocation)
+            .Include(s => s.ReceivingLocations).ThenInclude(r => r.TransportLocation)
             .Include(s => s.DumpingLocation)
             .Include(s => s.Details).ThenInclude(d => d.HaulDistance)
             .Where(s =>
@@ -33,8 +33,10 @@ public class ScaniaTruckUnitPricesByPaginationSpec : EntitiesByPaginationFilterS
             ProductionProcessName = s.ProductionProcess != null ? s.ProductionProcess.Name : string.Empty,
             CargoTypeId = s.CargoTypeId,
             CargoTypeName = s.CargoType != null ? s.CargoType.Name : string.Empty,
-            ReceivingLocationId = s.ReceivingLocationId,
-            ReceivingLocationName = s.ReceivingLocation != null ? s.ReceivingLocation.Name : null,
+            ReceivingLocationIds = s.ReceivingLocations.Select(r => r.TransportLocationId).ToList(),
+            ReceivingLocationNames = s.ReceivingLocations.Where(r => r.TransportLocation != null).Select(r => r.TransportLocation!.Name).ToList(),
+            ReceivingLocationId = s.ReceivingLocations.Select(r => (Guid?)r.TransportLocationId).FirstOrDefault(),
+            ReceivingLocationName = s.ReceivingLocations.Where(r => r.TransportLocation != null).Select(r => r.TransportLocation!.Name).FirstOrDefault(),
             DumpingLocationId = s.DumpingLocationId,
             DumpingLocationName = s.DumpingLocation != null ? s.DumpingLocation.Name : null,
             StartMonth = s.StartMonth,

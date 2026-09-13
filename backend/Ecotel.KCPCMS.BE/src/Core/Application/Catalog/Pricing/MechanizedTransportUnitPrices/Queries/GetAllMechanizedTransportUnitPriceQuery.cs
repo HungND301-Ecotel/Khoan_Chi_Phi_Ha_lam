@@ -71,7 +71,7 @@ public class GetAllMechanizedTransportUnitPriceQueryHandler(IUnitOfWork unitOfWo
             .Include(x => x.ProductionProcess)
             .Include(x => x.Details).ThenInclude(d => d.HaulDistance)
             .Include(x => ((ScaniaTruckUnitPriceEntity)x).CargoType)
-            .Include(x => ((ScaniaTruckUnitPriceEntity)x).ReceivingLocation)
+            .Include(x => ((ScaniaTruckUnitPriceEntity)x).ReceivingLocations).ThenInclude(r => r.TransportLocation)
             .Include(x => ((ScaniaTruckUnitPriceEntity)x).DumpingLocation)
             .ToListAsync(cancellationToken);
 
@@ -93,42 +93,55 @@ public class GetAllMechanizedTransportUnitPriceQueryHandler(IUnitOfWork unitOfWo
                     e.ProductionProcessId,
                     // Scania-specific grouping
                     CargoTypeId = e is ScaniaTruckUnitPriceEntity scania ? scania.CargoTypeId : (Guid?)null,
-                    ReceivingLocationId = e is ScaniaTruckUnitPriceEntity scania2 ? scania2.ReceivingLocationId : (Guid?)null,
+                    ReceivingLocationKey = e is ScaniaTruckUnitPriceEntity scania2
+                        ? string.Join(",", scania2.ReceivingLocations.Select(r => r.TransportLocationId).OrderBy(id => id))
+                        : string.Empty,
                     DumpingLocationId = e is ScaniaTruckUnitPriceEntity scania3 ? scania3.DumpingLocationId : (Guid?)null,
                 })
-                .Select(sectionGroup => new MechanizedTransportUnitPriceSectionDto
+                .Select(sectionGroup =>
                 {
-                    VehicleType = sectionGroup.Key.VehicleType,
-                    ProductionProcessId = sectionGroup.Key.ProductionProcessId,
-                    ProductionProcessName = sectionGroup.First().ProductionProcess?.Name ?? string.Empty,
-                    // Scania-specific fields
-                    CargoTypeId = sectionGroup.Key.CargoTypeId,
-                    CargoTypeName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                        ? (sectionGroup.First() is ScaniaTruckUnitPriceEntity s && s.CargoType != null ? s.CargoType.Name : null)
-                        : null,
-                    ReceivingLocationId = sectionGroup.Key.ReceivingLocationId,
-                    ReceivingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                        ? (sectionGroup.First() is ScaniaTruckUnitPriceEntity s2 && s2.ReceivingLocation != null ? s2.ReceivingLocation.Name : null)
-                        : null,
-                    DumpingLocationId = sectionGroup.Key.DumpingLocationId,
-                    DumpingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                        ? (sectionGroup.First() is ScaniaTruckUnitPriceEntity s3 && s3.DumpingLocation != null ? s3.DumpingLocation.Name : null)
-                        : null,
-                    Rows = sectionGroup
-                        .SelectMany(header => header.Details.Select(detail => new MechanizedTransportUnitPriceRowDto
-                        {
-                            HeaderId = header.Id,
-                            DetailId = detail.Id,
-                            EquipmentQuality = header.EquipmentQuality,
-                            HaulDistanceId = detail.HaulDistanceId,
-                            HaulDistanceValue = detail.HaulDistance?.Value,
-                            FuelUnitPrice = detail.FuelUnitPrice,
-                            PowerUnitPrice = detail.PowerUnitPrice,
-                            MaintenanceUnitPrice = detail.MaintenanceUnitPrice
-                        }))
-                        .OrderBy(r => r.EquipmentQuality)
-                        .ThenBy(r => r.HaulDistanceValue)
-                        .ToList()
+                    var firstScania = sectionGroup.First() as ScaniaTruckUnitPriceEntity;
+                    var receivingNames = firstScania?.ReceivingLocations
+                        .Where(r => r.TransportLocation != null)
+                        .Select(r => r.TransportLocation!.Name)
+                        .ToList() ?? new List<string>();
+
+                    return new MechanizedTransportUnitPriceSectionDto
+                    {
+                        VehicleType = sectionGroup.Key.VehicleType,
+                        ProductionProcessId = sectionGroup.Key.ProductionProcessId,
+                        ProductionProcessName = sectionGroup.First().ProductionProcess?.Name ?? string.Empty,
+                        // Scania-specific fields
+                        CargoTypeId = sectionGroup.Key.CargoTypeId,
+                        CargoTypeName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                            ? (firstScania?.CargoType?.Name)
+                            : null,
+                        ReceivingLocationId = firstScania?.ReceivingLocations.Select(r => (Guid?)r.TransportLocationId).FirstOrDefault(),
+                        ReceivingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                            ? (receivingNames.Any() ? string.Join(", ", receivingNames) : null)
+                            : null,
+                        ReceivingLocationIds = firstScania?.ReceivingLocations.Select(r => r.TransportLocationId).ToList() ?? new List<Guid>(),
+                        ReceivingLocationNames = receivingNames,
+                        DumpingLocationId = sectionGroup.Key.DumpingLocationId,
+                        DumpingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                            ? (firstScania?.DumpingLocation?.Name)
+                            : null,
+                        Rows = sectionGroup
+                            .SelectMany(header => header.Details.Select(detail => new MechanizedTransportUnitPriceRowDto
+                            {
+                                HeaderId = header.Id,
+                                DetailId = detail.Id,
+                                EquipmentQuality = header.EquipmentQuality,
+                                HaulDistanceId = detail.HaulDistanceId,
+                                HaulDistanceValue = detail.HaulDistance?.Value,
+                                FuelUnitPrice = detail.FuelUnitPrice,
+                                PowerUnitPrice = detail.PowerUnitPrice,
+                                MaintenanceUnitPrice = detail.MaintenanceUnitPrice
+                            }))
+                            .OrderBy(r => r.EquipmentQuality)
+                            .ThenBy(r => r.HaulDistanceValue)
+                            .ToList()
+                    };
                 })
                 .OrderBy(s => s.VehicleType)
                 .ThenBy(s => s.ProductionProcessName)

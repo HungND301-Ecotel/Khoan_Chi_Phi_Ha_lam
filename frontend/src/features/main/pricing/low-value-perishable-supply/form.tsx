@@ -26,7 +26,7 @@ import {
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PlusCircleIcon, XCircleIcon } from 'lucide-react';
+import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { LowValuePerishableSupplyUnitPrice } from './columns';
@@ -174,6 +174,21 @@ export function LowValuePerishableSupplyForm({
 		]);
 	};
 
+	const handleCopyPeriod = (index: number) => {
+		const target = periods[index];
+		const newPeriod: LowValuePerishablePeriodItem = {
+			tempId: `period_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+			startMonth: target.startMonth,
+			endMonth: target.endMonth,
+			totalPrice: target.totalPrice,
+		};
+		setPeriods((prev) => {
+			const next = [...prev];
+			next.splice(index + 1, 0, newPeriod);
+			return next;
+		});
+	};
+
 	const handleDeletePeriod = (index: number) => {
 		const target = periods[index];
 		if (target?.id && !isDuplicate) {
@@ -286,8 +301,8 @@ export function LowValuePerishableSupplyForm({
 						key={period.tempId}
 						className='bg-neutral-50/70 border-neutral-300 shadow-xs flex flex-col gap-4 rounded-xl border p-5'
 					>
-						{/* Hàng 1: Thời gian bắt đầu (50%), Thời gian kết thúc (50%), Nút xóa thời gian */}
-						<div className='flex items-end gap-4'>
+						{/* Hàng 1: Thời gian bắt đầu (50%), Thời gian kết thúc (50%), Nút sao chép & xóa thời gian */}
+						<div className='flex items-end gap-3'>
 							<MonthYearInput
 								label='Thời gian bắt đầu'
 								value={period.startMonth}
@@ -310,18 +325,30 @@ export function LowValuePerishableSupplyForm({
 								}
 								className='flex-1'
 							/>
-							{periods.length > 1 && (
+							<div className='mb-2 flex items-center gap-2'>
 								<Button
 									type='button'
 									variant='ghost'
-									size='sm'
-									onClick={() => handleDeletePeriod(index)}
-									className='text-error hover:text-error-muted bg-transparent h-fit w-fit flex items-center gap-1 p-0 hover:bg-transparent mb-2.5'
+									size='icon'
+									onClick={() => handleCopyPeriod(index)}
+									className='h-fit w-fit border-0 bg-transparent p-0 text-neutral-500 shadow-none hover:bg-transparent hover:text-primary'
+									title='Sao chép'
 								>
-									<XCircleIcon className='size-4' />
-									<span>Xóa thời gian</span>
+									<Copy className='size-5' />
 								</Button>
-							)}
+								{periods.length > 1 && (
+									<Button
+										type='button'
+										variant='ghost'
+										size='icon'
+										onClick={() => handleDeletePeriod(index)}
+										className='h-fit w-fit border-0 bg-transparent p-0 text-red-500 shadow-none hover:bg-transparent hover:text-red-700'
+										title='Xóa'
+									>
+										<XCircleIcon className='size-5 text-red-500' />
+									</Button>
+								)}
+							</div>
 						</div>
 
 						{/* Hàng 2: Đơn giá (đ/tháng) */}

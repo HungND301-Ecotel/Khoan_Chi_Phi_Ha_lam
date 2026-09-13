@@ -1,4 +1,4 @@
-﻿using Application.Common.Repositories;
+using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.MechanizedTransportUnitPrices;
 using Application.Interfaces.Services;
@@ -32,7 +32,7 @@ public class ExportExcelScaniaTruckUnitPriceQueryHandler(
                 .Include(s => s.AssignmentCode).ThenInclude(a => a!.Code)
                 .Include(s => s.ProductionProcess).ThenInclude(p => p!.Code)
                 .Include(s => s.CargoType).ThenInclude(c => c!.Code)
-                .Include(s => s.ReceivingLocation).ThenInclude(r => r!.Code)
+                .Include(s => s.ReceivingLocations).ThenInclude(r => r.TransportLocation).ThenInclude(t => t!.Code)
                 .Include(s => s.DumpingLocation).ThenInclude(d => d!.Code)
                 .Include(s => s.Details).ThenInclude(d => d.HaulDistance),
             disableTracking: true);
@@ -95,29 +95,36 @@ public class ExportExcelScaniaTruckUnitPriceQueryHandler(
                 ? $"{header.ProductionProcess.Code.Value} - {header.ProductionProcess.Name}" : string.Empty;
             var cargoTypeText = header.CargoType?.Code != null
                 ? $"{header.CargoType.Code.Value} - {header.CargoType.Name}" : string.Empty;
-            var receivingText = header.ReceivingLocation?.Code != null
-                ? $"{header.ReceivingLocation.Code.Value} - {header.ReceivingLocation.Name}" : null;
             var dumpingText = header.DumpingLocation?.Code != null
                 ? $"{header.DumpingLocation.Code.Value} - {header.DumpingLocation.Name}" : null;
 
-            foreach (var detail in header.Details)
+            var receivingTexts = header.ReceivingLocations.Any()
+                ? header.ReceivingLocations
+                    .Select(r => r.TransportLocation?.Code != null ? $"{r.TransportLocation.Code.Value} - {r.TransportLocation.Name}" : null)
+                    .ToList()
+                : new List<string?> { null };
+
+            foreach (var receivingText in receivingTexts)
             {
-                dtoList.Add(new ScaniaTruckUnitPriceExcelDto
+                foreach (var detail in header.Details)
                 {
-                    HeaderId = header.Id,
-                    StartMonth = header.StartMonth.ToString("MM/yyyy"),
-                    EndMonth = header.EndMonth.ToString("MM/yyyy"),
-                    AssignmentCodeCode = assignmentCodeText,
-                    EquipmentQuality = header.EquipmentQuality,
-                    ProductionProcessCode = productionProcessText,
-                    CargoTypeCode = cargoTypeText,
-                    ReceivingLocationCode = receivingText,
-                    DumpingLocationCode = dumpingText,
-                    HaulDistanceValue = detail.HaulDistance?.Value ?? string.Empty,
-                    FuelUnitPrice = detail.FuelUnitPrice,
-                    PowerUnitPrice = detail.PowerUnitPrice ?? 0,
-                    MaintenanceUnitPrice = detail.MaintenanceUnitPrice
-                });
+                    dtoList.Add(new ScaniaTruckUnitPriceExcelDto
+                    {
+                        HeaderId = header.Id,
+                        StartMonth = header.StartMonth.ToString("MM/yyyy"),
+                        EndMonth = header.EndMonth.ToString("MM/yyyy"),
+                        AssignmentCodeCode = assignmentCodeText,
+                        EquipmentQuality = header.EquipmentQuality,
+                        ProductionProcessCode = productionProcessText,
+                        CargoTypeCode = cargoTypeText,
+                        ReceivingLocationCode = receivingText,
+                        DumpingLocationCode = dumpingText,
+                        HaulDistanceValue = detail.HaulDistance?.Value ?? string.Empty,
+                        FuelUnitPrice = detail.FuelUnitPrice,
+                        PowerUnitPrice = detail.PowerUnitPrice ?? 0,
+                        MaintenanceUnitPrice = detail.MaintenanceUnitPrice
+                    });
+                }
             }
         }
 

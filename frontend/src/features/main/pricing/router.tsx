@@ -147,8 +147,9 @@ const MainPricingRouter: RouteObject = {
 					path: 'unit-price',
 					element: <MainPricingTransportUnitPricePage />,
 					handle: {
-						breadcrumb: 'Đơn giá và định mức VL-NL, động lực, SCTX',
-						title: 'Đơn giá và định mức VL-NL, động lực, SCTX',
+						breadcrumb:
+							'Đơn giá và định mức vật liệu, nhiên liệu, động lực, SCTX',
+						title: 'Đơn giá và định mức vật liệu, nhiên liệu, động lực, SCTX',
 					},
 				},
 				{
