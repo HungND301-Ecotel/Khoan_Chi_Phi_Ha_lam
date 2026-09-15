@@ -21,7 +21,20 @@ public class ExcelService(IConfiguration configuration) : IExcelService
         foreach (var sheetEntry in sheets)
         {
             var worksheet = workbook.Worksheets.Add(sheetEntry.Key);
+            worksheet.Style.NumberFormat.Format = "@";
             // Gọi hàm Generic với kiểu object
+            WriteToWorksheet(worksheet, sheetEntry.Value, hiddenProperties, null);
+        }
+        return SaveWorkbook(workbook);
+    }
+
+    public byte[] ExportMultiSheet<T>(Dictionary<string, IEnumerable<T>> sheets, List<string>? hiddenProperties = null)
+    {
+        using var workbook = new XLWorkbook();
+        foreach (var sheetEntry in sheets)
+        {
+            var worksheet = workbook.Worksheets.Add(sheetEntry.Key);
+            worksheet.Style.NumberFormat.Format = "@";
             WriteToWorksheet(worksheet, sheetEntry.Value, hiddenProperties, null);
         }
         return SaveWorkbook(workbook);

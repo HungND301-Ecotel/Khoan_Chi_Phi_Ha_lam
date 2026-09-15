@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,6 +8,13 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
 import {
 	Table,
 	TableBody,
@@ -22,7 +29,7 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { DynamicIcon } from 'lucide-react/dynamic';
-import { XIcon } from 'lucide-react';
+import { FilterIcon, XIcon } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { RawAcceptanceReportItem } from './types';
 import { ClientPagination } from '@/components/datatable/client-pagination';
@@ -80,7 +87,9 @@ const getMaterialsIncludedTypeLabel = (
 	item: RawAcceptanceReportItem,
 	isMotorized?: boolean,
 ): string => {
-	const materialLabel = isMotorized ? 'Nhiên liệu, dầu nhờn, mỡ máy' : 'Vật liệu';
+	const materialLabel = isMotorized
+		? 'Nhiên liệu, dầu nhờn, mỡ máy'
+		: 'Vật liệu';
 	switch (item.materialsIncludedInContractRevenueType) {
 		case MaterialType.Material:
 			return materialLabel;
@@ -142,7 +151,9 @@ const getQuotaBasedMaterialTypeLabel = (value: number): string => {
 
 // BE (GetAcceptanceReportByIdQuery) chỉ trả về mảng chi tiết quotaBasedMaterialQuantities, không
 // có field tổng quotaBasedMaterialQuantity — phải tự cộng dồn ở đây, nếu không sẽ luôn ra 0.
-const getQuotaBasedMaterialTotalQuantity = (item: RawAcceptanceReportItem): number =>
+const getQuotaBasedMaterialTotalQuantity = (
+	item: RawAcceptanceReportItem,
+): number =>
 	(item.quotaBasedMaterialQuantities ?? []).reduce(
 		(sum, detail) => sum + (detail.quantity || 0),
 		0,
@@ -156,6 +167,8 @@ export function RawAcceptanceReportDataTable({
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [selectedMonth, setSelectedMonth] = useState<string>('all');
+	const [selectedDate, setSelectedDate] = useState<string>('all');
 
 	const isMotorized =
 		Boolean(isMotorizedProp) ||
@@ -166,9 +179,93 @@ export function RawAcceptanceReportDataTable({
 				(item.processGroupName || '').toLowerCase().includes('vtcg'),
 		);
 
-	const pageCount = Math.ceil(items.length / pageSize);
+	// Danh sách các tháng có trong dữ liệu
+	const availableMonths = useMemo(() => {
+		const monthMap = new Map<string, number>();
+		items.forEach((item) => {
+			if (item.postingDate) {
+				const monthKey = item.postingDate.slice(0, 7);
+				monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+			} else {
+				monthMap.set('undated', (monthMap.get('undated') || 0) + 1);
+			}
+		});
+		return Array.from(monthMap.entries())
+			.sort((a, b) => {
+				if (a[0] === 'undated') return 1;
+				if (b[0] === 'undated') return -1;
+				return a[0].localeCompare(b[0]);
+			})
+			.map(([monthKey, count]) => {
+				if (monthKey === 'undated') {
+					return { key: 'undated', label: 'Chưa có ngày', count };
+				}
+				const [year, month] = monthKey.split('-');
+				return {
+					key: monthKey,
+					label: `Tháng ${month}/${year}`,
+					count,
+				};
+			});
+	}, [items]);
+
+	// Danh sách các ngày (nếu đã chọn tháng thì chỉ lấy ngày trong tháng đó)
+	const availableDays = useMemo(() => {
+		const dateMap = new Map<string, number>();
+		items.forEach((item) => {
+			const dateStr = item.postingDate
+				? item.postingDate.split('T')[0]
+				: 'undated';
+			const monthKey = item.postingDate
+				? item.postingDate.slice(0, 7)
+				: 'undated';
+			if (selectedMonth !== 'all' && monthKey !== selectedMonth) {
+				return;
+			}
+			dateMap.set(dateStr, (dateMap.get(dateStr) || 0) + 1);
+		});
+		return Array.from(dateMap.entries())
+			.sort((a, b) => {
+				if (a[0] === 'undated') return 1;
+				if (b[0] === 'undated') return -1;
+				return a[0].localeCompare(b[0]);
+			})
+			.map(([dateKey, count]) => {
+				if (dateKey === 'undated') {
+					return { key: 'undated', label: 'Chưa có ngày', count };
+				}
+				return {
+					key: dateKey,
+					label: `Ngày ${formatPostingDate(dateKey)}`,
+					count,
+				};
+			});
+	}, [items, selectedMonth]);
+
+	// Lọc danh sách theo tháng và ngày
+	const filteredItems = useMemo(() => {
+		return items.filter((item) => {
+			const dateStr = item.postingDate
+				? item.postingDate.split('T')[0]
+				: 'undated';
+			const monthStr = item.postingDate
+				? item.postingDate.slice(0, 7)
+				: 'undated';
+			if (selectedMonth !== 'all' && monthStr !== selectedMonth) {
+				return false;
+			}
+			if (selectedDate !== 'all' && dateStr !== selectedDate) {
+				return false;
+			}
+			return true;
+		});
+	}, [items, selectedMonth, selectedDate]);
+
+	const hasFilter = selectedMonth !== 'all' || selectedDate !== 'all';
+
+	const pageCount = Math.ceil(filteredItems.length / pageSize);
 	const safePageIndex = Math.min(pageIndex, Math.max(pageCount - 1, 0));
-	const paginatedItems = items.slice(
+	const paginatedItems = filteredItems.slice(
 		safePageIndex * pageSize,
 		(safePageIndex + 1) * pageSize,
 	);
@@ -315,271 +412,419 @@ export function RawAcceptanceReportDataTable({
 			</TableHeader>
 
 			<TableBody className={cn(largeText && 'text-base')}>
-				{paginatedItems.map((item, index) => (
-					<TableRow key={item.id} className='h-9'>
+				{paginatedItems.length === 0 ? (
+					<TableRow>
 						<TableCell
-							className='left-0 z-10 bg-inherit px-3 py-1 text-center'
-							style={{ minWidth: '50px' }}
+							colSpan={13}
+							className='text-muted-foreground h-32 text-center'
 						>
-							{safePageIndex * pageSize + index + 1}
-						</TableCell>
-
-						<TableCell
-							className='z-10 bg-inherit px-3 py-1'
-							style={{ minWidth: '90px', maxWidth: '120px' }}
-						>
-							<OverflowTooltipText
-								text={getTrackedMaterialCode(item)}
-								className='w-24'
-							/>
-						</TableCell>
-
-						<TableCell
-							className='z-10 bg-inherit px-3 py-1'
-							style={{ minWidth: '150px', maxWidth: '200px' }}
-						>
-							<OverflowTooltipText
-								text={getTrackedMaterialName(item)}
-								className='w-44'
-							/>
-						</TableCell>
-
-						<TableCell
-							className='z-10 bg-inherit px-3 py-1 text-center'
-							style={{ minWidth: '60px' }}
-						>
-							{item.unitOfMeasureName || '-'}
-						</TableCell>
-
-						<TableCell
-							className='px-3 py-1 text-center'
-							style={{ minWidth: '120px' }}
-						>
-							{item.documentNumber || '-'}
-						</TableCell>
-
-						<TableCell
-							className='px-3 py-1 text-center'
-							style={{ minWidth: '100px' }}
-						>
-							{formatPostingDate(item.postingDate)}
-						</TableCell>
-
-						<TableCell
-							className='px-3 py-1 text-center'
-							style={{ minWidth: '80px' }}
-						>
-							{formatNumber(item.issuedQuantity || 0)}
-						</TableCell>
-
-						<TableCell
-							className='px-3 py-1 text-center'
-							style={{ minWidth: '80px' }}
-						>
-							{formatNumber(item.shippedQuantity || 0)}
-						</TableCell>
-
-						<TableCell
-							className='px-3 py-1 text-center'
-							style={{ minWidth: '70px' }}
-						>
-							<Checkbox
-								checked={Boolean(item.isLongTermTracking)}
-								disabled
-								className='[&_.lucide-check]:text-white'
-							/>
-						</TableCell>
-
-						{/* Vật tư tính vào doanh thu khoán */}
-						<TableCell
-							className='px-3 py-1'
-							style={{ minWidth: '140px', maxWidth: '200px' }}
-						>
-							{item.materialsIncludedInContractRevenue !==
-								MaterialsIncludedInContractRevenue.None && (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className='flex cursor-default flex-col gap-0.5'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getMaterialsIncludedTypeLabel(item, isMotorized)}
-											</Badge>
-											<span className='truncate text-sm text-slate-600'>
-												{item.categoryAssignmentCodeLabel?.trim() ||
-													DEFAULT_CATEGORY_ASSIGNMENT_LABEL}
-											</span>
-											<span className='truncate text-sm text-slate-600'>
-												{item.categoryProductionOrderLabel?.trim() ||
-													DEFAULT_PRODUCTION_ORDER_LABEL}
-											</span>
-											<span className='text-sm font-medium text-slate-700'>
-												SL:{' '}
-												{formatNumber(
-													item.materialsIncludedInContractRevenueQuantity || 0,
-												)}
-											</span>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent side='top' align='start' className='max-w-96'>
-										<div className='flex flex-col gap-1 text-sm'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getMaterialsIncludedTypeLabel(item, isMotorized)}
-											</Badge>
-											<span>
-												{item.categoryAssignmentCodeLabel?.trim() ||
-													DEFAULT_CATEGORY_ASSIGNMENT_LABEL}
-											</span>
-											<span>
-												{item.categoryProductionOrderLabel?.trim() ||
-													DEFAULT_PRODUCTION_ORDER_LABEL}
-											</span>
-											<span className='font-medium'>
-												SL:{' '}
-												{formatNumber(
-													item.materialsIncludedInContractRevenueQuantity || 0,
-												)}
-											</span>
-										</div>
-									</TooltipContent>
-								</Tooltip>
-							)}
-						</TableCell>
-
-						{/* Bổ sung chi phí */}
-						<TableCell
-							className='px-3 py-1'
-							style={{ minWidth: '140px', maxWidth: '200px' }}
-						>
-							{item.additionalCost !== AdditionalCost.None && (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className='flex cursor-default flex-col gap-0.5'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getAdditionalCostLabel(item.additionalCost, isMotorized)}
-											</Badge>
-											<span className='text-sm font-medium text-slate-700'>
-												SL: {formatNumber(item.additionalCostQuantity || 0)}
-											</span>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent side='top' align='start' className='max-w-96'>
-										<div className='flex flex-col gap-1 text-sm'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getAdditionalCostLabel(item.additionalCost, isMotorized)}
-											</Badge>
-											<span className='font-medium'>
-												SL: {formatNumber(item.additionalCostQuantity || 0)}
-											</span>
-										</div>
-									</TooltipContent>
-								</Tooltip>
-							)}
-						</TableCell>
-
-						{/* Vật tư theo hạn mức */}
-						<TableCell
-							className='px-3 py-1'
-							style={{ minWidth: '140px', maxWidth: '200px' }}
-						>
-							{item.quotaBasedMaterial !== QuotaBasedMaterial.None && (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className='flex cursor-default flex-col gap-0.5'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getQuotaBasedMaterialLabel(item.quotaBasedMaterial)}
-											</Badge>
-											{(item.quotaBasedMaterial ===
-												QuotaBasedMaterial.MineSupport ||
-												item.quotaBasedMaterial ===
-													QuotaBasedMaterial.SupportAccessories) && (
-												<span className='truncate text-sm text-slate-600'>
-													{getQuotaBasedMaterialTypeLabel(
-														item.quotaBasedMaterialType,
-													)}
-												</span>
-											)}
-											<span className='text-sm font-medium text-slate-700'>
-												SL: {formatNumber(getQuotaBasedMaterialTotalQuantity(item))}
-											</span>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent side='top' align='start' className='max-w-96'>
-										<div className='flex flex-col gap-1 text-sm'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												{getQuotaBasedMaterialLabel(item.quotaBasedMaterial)}
-											</Badge>
-											{(item.quotaBasedMaterial ===
-												QuotaBasedMaterial.MineSupport ||
-												item.quotaBasedMaterial ===
-													QuotaBasedMaterial.SupportAccessories) && (
-												<span>
-													{getQuotaBasedMaterialTypeLabel(
-														item.quotaBasedMaterialType,
-													)}
-												</span>
-											)}
-											<span className='font-medium'>
-												SL: {formatNumber(getQuotaBasedMaterialTotalQuantity(item))}
-											</span>
-										</div>
-									</TooltipContent>
-								</Tooltip>
-							)}
-						</TableCell>
-
-						{/* Tài sản */}
-						<TableCell
-							className='px-3 py-1'
-							style={{ minWidth: '100px', maxWidth: '140px' }}
-						>
-							{item.asset !== Asset.None && (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className='flex cursor-default flex-col gap-0.5'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												Tài sản
-											</Badge>
-											<span className='text-sm font-medium text-slate-700'>
-												SL: {formatNumber(item.assetMaterialQuantity || 0)}
-											</span>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent side='top' align='start' className='max-w-96'>
-										<div className='flex flex-col gap-1 text-sm'>
-											<Badge variant='secondary' className='w-fit text-sm'>
-												Tài sản
-											</Badge>
-											<span className='font-medium'>
-												SL: {formatNumber(item.assetMaterialQuantity || 0)}
-											</span>
-										</div>
-									</TooltipContent>
-								</Tooltip>
-							)}
+							Không tìm thấy dữ liệu phù hợp với bộ lọc
 						</TableCell>
 					</TableRow>
-				))}
+				) : (
+					paginatedItems.map((item, index) => (
+						<TableRow key={item.id} className='h-9'>
+							<TableCell
+								className='left-0 z-10 bg-inherit px-3 py-1 text-center'
+								style={{ minWidth: '50px' }}
+							>
+								{safePageIndex * pageSize + index + 1}
+							</TableCell>
+
+							<TableCell
+								className='z-10 bg-inherit px-3 py-1'
+								style={{ minWidth: '90px', maxWidth: '120px' }}
+							>
+								<OverflowTooltipText
+									text={getTrackedMaterialCode(item)}
+									className='w-24'
+								/>
+							</TableCell>
+
+							<TableCell
+								className='z-10 bg-inherit px-3 py-1'
+								style={{ minWidth: '150px', maxWidth: '200px' }}
+							>
+								<OverflowTooltipText
+									text={getTrackedMaterialName(item)}
+									className='w-44'
+								/>
+							</TableCell>
+
+							<TableCell
+								className='z-10 bg-inherit px-3 py-1 text-center'
+								style={{ minWidth: '60px' }}
+							>
+								{item.unitOfMeasureName || '-'}
+							</TableCell>
+
+							<TableCell
+								className='px-3 py-1 text-center'
+								style={{ minWidth: '120px' }}
+							>
+								{item.documentNumber || '-'}
+							</TableCell>
+
+							<TableCell
+								className='px-3 py-1 text-center'
+								style={{ minWidth: '100px' }}
+							>
+								{formatPostingDate(item.postingDate)}
+							</TableCell>
+
+							<TableCell
+								className='px-3 py-1 text-center'
+								style={{ minWidth: '80px' }}
+							>
+								{formatNumber(item.issuedQuantity || 0)}
+							</TableCell>
+
+							<TableCell
+								className='px-3 py-1 text-center'
+								style={{ minWidth: '80px' }}
+							>
+								{formatNumber(item.shippedQuantity || 0)}
+							</TableCell>
+
+							<TableCell
+								className='px-3 py-1 text-center'
+								style={{ minWidth: '70px' }}
+							>
+								<Checkbox
+									checked={Boolean(item.isLongTermTracking)}
+									disabled
+									className='[&_.lucide-check]:text-white'
+								/>
+							</TableCell>
+
+							{/* Vật tư tính vào doanh thu khoán */}
+							<TableCell
+								className='px-3 py-1'
+								style={{ minWidth: '140px', maxWidth: '200px' }}
+							>
+								{item.materialsIncludedInContractRevenue !==
+									MaterialsIncludedInContractRevenue.None && (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className='flex cursor-default flex-col gap-0.5'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getMaterialsIncludedTypeLabel(item, isMotorized)}
+												</Badge>
+												<span className='truncate text-sm text-slate-600'>
+													{item.categoryAssignmentCodeLabel?.trim() ||
+														DEFAULT_CATEGORY_ASSIGNMENT_LABEL}
+												</span>
+												<span className='truncate text-sm text-slate-600'>
+													{item.categoryProductionOrderLabel?.trim() ||
+														DEFAULT_PRODUCTION_ORDER_LABEL}
+												</span>
+												<span className='text-sm font-medium text-slate-700'>
+													SL:{' '}
+													{formatNumber(
+														item.materialsIncludedInContractRevenueQuantity ||
+															0,
+													)}
+												</span>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent
+											side='top'
+											align='start'
+											className='max-w-96'
+										>
+											<div className='flex flex-col gap-1 text-sm'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getMaterialsIncludedTypeLabel(item, isMotorized)}
+												</Badge>
+												<span>
+													{item.categoryAssignmentCodeLabel?.trim() ||
+														DEFAULT_CATEGORY_ASSIGNMENT_LABEL}
+												</span>
+												<span>
+													{item.categoryProductionOrderLabel?.trim() ||
+														DEFAULT_PRODUCTION_ORDER_LABEL}
+												</span>
+												<span className='font-medium'>
+													SL:{' '}
+													{formatNumber(
+														item.materialsIncludedInContractRevenueQuantity ||
+															0,
+													)}
+												</span>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								)}
+							</TableCell>
+
+							{/* Bổ sung chi phí */}
+							<TableCell
+								className='px-3 py-1'
+								style={{ minWidth: '140px', maxWidth: '200px' }}
+							>
+								{item.additionalCost !== AdditionalCost.None && (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className='flex cursor-default flex-col gap-0.5'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getAdditionalCostLabel(
+														item.additionalCost,
+														isMotorized,
+													)}
+												</Badge>
+												<span className='text-sm font-medium text-slate-700'>
+													SL: {formatNumber(item.additionalCostQuantity || 0)}
+												</span>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent
+											side='top'
+											align='start'
+											className='max-w-96'
+										>
+											<div className='flex flex-col gap-1 text-sm'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getAdditionalCostLabel(
+														item.additionalCost,
+														isMotorized,
+													)}
+												</Badge>
+												<span className='font-medium'>
+													SL: {formatNumber(item.additionalCostQuantity || 0)}
+												</span>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								)}
+							</TableCell>
+
+							{/* Vật tư theo hạn mức */}
+							<TableCell
+								className='px-3 py-1'
+								style={{ minWidth: '140px', maxWidth: '200px' }}
+							>
+								{item.quotaBasedMaterial !== QuotaBasedMaterial.None && (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className='flex cursor-default flex-col gap-0.5'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getQuotaBasedMaterialLabel(item.quotaBasedMaterial)}
+												</Badge>
+												{(item.quotaBasedMaterial ===
+													QuotaBasedMaterial.MineSupport ||
+													item.quotaBasedMaterial ===
+														QuotaBasedMaterial.SupportAccessories) && (
+													<span className='truncate text-sm text-slate-600'>
+														{getQuotaBasedMaterialTypeLabel(
+															item.quotaBasedMaterialType,
+														)}
+													</span>
+												)}
+												<span className='text-sm font-medium text-slate-700'>
+													SL:{' '}
+													{formatNumber(
+														getQuotaBasedMaterialTotalQuantity(item),
+													)}
+												</span>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent
+											side='top'
+											align='start'
+											className='max-w-96'
+										>
+											<div className='flex flex-col gap-1 text-sm'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													{getQuotaBasedMaterialLabel(item.quotaBasedMaterial)}
+												</Badge>
+												{(item.quotaBasedMaterial ===
+													QuotaBasedMaterial.MineSupport ||
+													item.quotaBasedMaterial ===
+														QuotaBasedMaterial.SupportAccessories) && (
+													<span>
+														{getQuotaBasedMaterialTypeLabel(
+															item.quotaBasedMaterialType,
+														)}
+													</span>
+												)}
+												<span className='font-medium'>
+													SL:{' '}
+													{formatNumber(
+														getQuotaBasedMaterialTotalQuantity(item),
+													)}
+												</span>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								)}
+							</TableCell>
+
+							{/* Tài sản */}
+							<TableCell
+								className='px-3 py-1'
+								style={{ minWidth: '100px', maxWidth: '140px' }}
+							>
+								{item.asset !== Asset.None && (
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<div className='flex cursor-default flex-col gap-0.5'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													Tài sản
+												</Badge>
+												<span className='text-sm font-medium text-slate-700'>
+													SL: {formatNumber(item.assetMaterialQuantity || 0)}
+												</span>
+											</div>
+										</TooltipTrigger>
+										<TooltipContent
+											side='top'
+											align='start'
+											className='max-w-96'
+										>
+											<div className='flex flex-col gap-1 text-sm'>
+												<Badge variant='secondary' className='w-fit text-sm'>
+													Tài sản
+												</Badge>
+												<span className='font-medium'>
+													SL: {formatNumber(item.assetMaterialQuantity || 0)}
+												</span>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								)}
+							</TableCell>
+						</TableRow>
+					))
+				)}
 			</TableBody>
 		</Table>
+	);
+
+	const renderToolbar = (isDialog = false) => (
+		<div className='flex flex-wrap items-center justify-between gap-3 border-b bg-gray-50/90 px-3 py-2 text-xs'>
+			<div className='flex flex-wrap items-center gap-3'>
+				<div className='text-muted-foreground flex items-center gap-1.5 font-medium'>
+					<FilterIcon className='size-3.5' />
+					<span>Bộ lọc:</span>
+				</div>
+
+				{/* Lọc theo tháng */}
+				<div className='flex items-center gap-1.5'>
+					<span className='text-muted-foreground'>Tháng:</span>
+					<Select
+						value={selectedMonth}
+						onValueChange={(val) => {
+							setSelectedMonth(val);
+							if (val === 'all') {
+								setSelectedDate('all');
+							} else if (
+								selectedDate !== 'all' &&
+								!selectedDate.startsWith(val)
+							) {
+								setSelectedDate('all');
+							}
+							setPageIndex(0);
+						}}
+					>
+						<SelectTrigger
+							size='sm'
+							className='h-8 min-w-[155px] bg-white text-xs font-normal'
+						>
+							<SelectValue placeholder='Tất cả các tháng' />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='all' className='text-xs'>
+								Tất cả các tháng
+							</SelectItem>
+							{availableMonths.map((m) => (
+								<SelectItem key={m.key} value={m.key} className='text-xs'>
+									{m.label} ({m.count})
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				{/* Lọc theo ngày */}
+				<div className='flex items-center gap-1.5'>
+					<span className='text-muted-foreground'>Ngày:</span>
+					<Select
+						value={selectedDate}
+						onValueChange={(val) => {
+							setSelectedDate(val);
+							if (val !== 'all' && val !== 'undated') {
+								const monthKey = val.slice(0, 7);
+								if (selectedMonth !== monthKey) {
+									setSelectedMonth(monthKey);
+								}
+							}
+							setPageIndex(0);
+						}}
+					>
+						<SelectTrigger
+							size='sm'
+							className='h-8 min-w-[155px] bg-white text-xs font-normal'
+						>
+							<SelectValue placeholder='Tất cả các ngày' />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='all' className='text-xs'>
+								Tất cả các ngày
+							</SelectItem>
+							{availableDays.map((d) => (
+								<SelectItem key={d.key} value={d.key} className='text-xs'>
+									{d.label} ({d.count})
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				{/* Nút Xóa lọc */}
+				{hasFilter && (
+					<Button
+						type='button'
+						variant='outline'
+						size='sm'
+						className='text-muted-foreground h-8 gap-1 bg-white px-2.5 text-xs font-normal hover:text-neutral-900'
+						onClick={() => {
+							setSelectedMonth('all');
+							setSelectedDate('all');
+							setPageIndex(0);
+						}}
+					>
+						<XIcon className='size-3.5' />
+						Xóa lọc
+					</Button>
+				)}
+			</div>
+
+			{/* Nút Phóng to ở giao diện thường (không phải dialog) */}
+			{!isDialog && (
+				<Button
+					variant='ghost'
+					size='sm'
+					className='text-muted-foreground hover:text-foreground h-8 w-8 shrink-0 p-0'
+					onClick={() => setIsExpanded(true)}
+					title='Phóng to'
+				>
+					<DynamicIcon name='maximize' className='size-4' />
+				</Button>
+			)}
+		</div>
 	);
 
 	return (
 		<>
 			<div className='relative overflow-x-hidden rounded-t-md border shadow'>
-				<Button
-					variant='ghost'
-					size='sm'
-					className='absolute top-2 left-2 z-30 h-8 w-8 p-0'
-					onClick={() => setIsExpanded(true)}
-				>
-					<DynamicIcon name='maximize' className='size-4' />
-				</Button>
+				{renderToolbar(false)}
 				<div className='w-full overflow-x-auto overflow-y-visible'>
 					{renderTableContent()}
 				</div>
 			</div>
-			{items.length > 0 && (
+			{filteredItems.length > 0 && (
 				<ClientPagination
-					totalItems={items.length}
+					totalItems={filteredItems.length}
 					pageIndex={safePageIndex}
 					pageSize={pageSize}
 					onPageIndexChange={setPageIndex}
@@ -612,15 +857,16 @@ export function RawAcceptanceReportDataTable({
 							onClick={() => setIsExpanded(false)}
 						/>
 					</div>
+					{renderToolbar(true)}
 					<div className='flex-1 overflow-auto bg-gray-50 p-6'>
 						<div className='inline-block min-w-full overflow-hidden rounded-t-md border shadow'>
 							{renderTableContent()}
 						</div>
 					</div>
-					{items.length > 0 && (
+					{filteredItems.length > 0 && (
 						<div className='shrink-0 border-t bg-white py-2'>
 							<ClientPagination
-								totalItems={items.length}
+								totalItems={filteredItems.length}
 								pageIndex={safePageIndex}
 								pageSize={pageSize}
 								onPageIndexChange={setPageIndex}

@@ -90,6 +90,17 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             };
         }
 
+        // Tự động quét và liên kết các dòng kế hoạch chưa có đơn giá nếu hiện tại đã có đơn giá mới được tạo bù
+        var unlinkedLines = lines.Where(x =>
+            x.PlannedTransportCost != null &&
+            !x.PlannedTransportCost.TransportUnitPriceId.HasValue &&
+            !x.PlannedTransportCost.MechanizedTransportUnitPriceDetailId.HasValue).ToList();
+
+        if (unlinkedLines.Any())
+        {
+            await TryAutoLinkUnpricedLinesAsync(unlinkedLines, unitOfWork, cancellationToken);
+        }
+
         var department = lines.First();
         return new TransportPlanLineByDepartmentDetailDto
         {
@@ -243,5 +254,102 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
 
             return string.Equals(adjustmentFactor?.Code?.Value, fixedKeyKey, StringComparison.OrdinalIgnoreCase);
         });
+    }
+
+    private static async Task TryAutoLinkUnpricedLinesAsync(
+        List<TransportPlanLineEntity> unlinkedLines,
+        IUnitOfWork unitOfWork,
+        CancellationToken cancellationToken)
+    {
+        var transportUnitPriceRepo = unitOfWork.GetRepository<Domain.Entities.Pricing.TransportUnitPrice>();
+        var mechUnitPriceRepo = unitOfWork.GetRepository<Domain.Entities.Pricing.MechanizedTransportUnitPrice.MechanizedTransportUnitPrice>();
+        var plannedCostRepo = unitOfWork.GetRepository<Domain.Entities.Pricing.PlannedTransportCost>();
+
+        var processIds = unlinkedLines.Select(x => x.ProductionProcessId).Distinct().ToList();
+        var candidateVtl = await transportUnitPriceRepo.GetAll()
+            .Where(x => processIds.Contains(x.ProductionProcessId))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var candidateVtcg = await mechUnitPriceRepo.GetAll()
+            .Where(x => processIds.Contains(x.ProductionProcessId))
+            .Include(x => x.Details)
+            .Include(x => ((Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice)x).ReceivingLocations)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var costIds = unlinkedLines.Select(x => x.PlannedTransportCost!.Id).Distinct().ToList();
+        var trackedCosts = await plannedCostRepo.GetAll()
+            .Where(x => costIds.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+        var trackedCostMap = trackedCosts.ToDictionary(x => x.Id, x => x);
+
+        var hasUpdated = false;
+
+        foreach (var line in unlinkedLines)
+        {
+            if (line.PlannedTransportCost == null)
+            {
+                continue;
+            }
+
+            var itemInput = new Commands.TransportPlanLineByDepartmentCommandHelper.ItemInput(
+                line.Id,
+                line.ProductionProcessId,
+                line.TransportRouteId,
+                line.RouteDepartmentId,
+                line.EquipmentId,
+                line.EquipmentQuality,
+                line.HaulDistanceId,
+                line.CargoTypeId,
+                line.ReceivingLocationId,
+                line.DumpingLocationId,
+                line.ProductionMeters,
+                line.UnitOfMeasureId,
+                null,
+                null);
+
+            var isVtcg = line.HaulDistanceId.HasValue
+                || candidateVtcg.Any(x => x.ProductionProcessId == line.ProductionProcessId)
+                || (line.ProductionProcess?.ProcessGroup?.Type == ProcessGroupType.VTCG)
+                || (line.TransportRouteId == null && line.RouteDepartmentId == null && !candidateVtl.Any(x => x.ProductionProcessId == line.ProductionProcessId));
+
+            if (isVtcg)
+            {
+                var detailId = Commands.TransportPlanLineByDepartmentCommandHelper.ResolveMechanizedTransportUnitPriceDetailId(candidateVtcg, itemInput, line.StartMonth);
+                if (detailId.HasValue)
+                {
+                    var allDetails = candidateVtcg.SelectMany(h => h.Details).ToList();
+                    var matchedDetail = allDetails.FirstOrDefault(d => d.Id == detailId.Value);
+
+                    line.PlannedTransportCost.SetResolvedUnitPrice(null, matchedDetail);
+                    if (trackedCostMap.TryGetValue(line.PlannedTransportCost.Id, out var dbCost))
+                    {
+                        dbCost.SetResolvedUnitPrice(null, matchedDetail);
+                        hasUpdated = true;
+                    }
+                }
+            }
+            else
+            {
+                var vtlId = Commands.TransportPlanLineByDepartmentCommandHelper.ResolveTransportUnitPriceId(candidateVtl, itemInput, line.StartMonth);
+                if (vtlId.HasValue)
+                {
+                    var matchedVtl = candidateVtl.FirstOrDefault(x => x.Id == vtlId.Value);
+
+                    line.PlannedTransportCost.SetResolvedUnitPrice(matchedVtl, null);
+                    if (trackedCostMap.TryGetValue(line.PlannedTransportCost.Id, out var dbCost))
+                    {
+                        dbCost.SetResolvedUnitPrice(matchedVtl, null);
+                        hasUpdated = true;
+                    }
+                }
+            }
+        }
+
+        if (hasUpdated)
+        {
+            await unitOfWork.SaveChangesAsync();
+        }
     }
 }

@@ -3,6 +3,7 @@ using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.AcceptanceReport;
 using Application.Interfaces.Services;
 using Domain.Entities.Index;
+using Domain.Entities.Production;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -17,9 +18,14 @@ public class UploadAcceptanceReportFileCommandHandler(
     : IRequestHandler<UploadAcceptanceReportFileCommand, UploadAcceptanceReportResponseDto>
 {
     private readonly IWriteRepository<Material> materialRepository = unitOfWork.GetRepository<Material>();
+    private readonly IWriteRepository<ProductionOutput> productionOutputRepository = unitOfWork.GetRepository<ProductionOutput>();
 
     public async Task<UploadAcceptanceReportResponseDto> Handle(UploadAcceptanceReportFileCommand request, CancellationToken cancellationToken)
     {
+        var productionOutput = await productionOutputRepository.GetFirstOrDefaultAsync(
+            predicate: p => p.Id == request.ProductionOutputId,
+            disableTracking: true);
+
         var materials = await materialRepository.GetAllAsync(
             include: p => p.Include(p => p.UnitOfMeasure).Include(p => p.Code),
             disableTracking: true);
@@ -29,6 +35,7 @@ public class UploadAcceptanceReportFileCommandHandler(
             request.ProductionOutputId,
             fileStream,
             request.File.FileName,
-            materials ?? new List<Material>());
+            materials ?? new List<Material>(),
+            productionOutput?.StartMonth);
     }
 }

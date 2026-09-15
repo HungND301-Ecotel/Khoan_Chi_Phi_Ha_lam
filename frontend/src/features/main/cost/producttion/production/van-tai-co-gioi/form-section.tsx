@@ -89,6 +89,7 @@ export function VanTaiCoGioiGroupFields({
 						dropoffLocations.length > 0 ? dropoffLocations : currentLocations
 					}
 					distances={currentDistances}
+					locations={currentLocations}
 				/>
 			)}
 

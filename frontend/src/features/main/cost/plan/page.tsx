@@ -20,11 +20,11 @@ import {
 	DepartmentPlanMonthGroup,
 	MAIN_COST_PLAN_COLUMNS,
 	PLAN_DEPARTMENT_COLUMNS,
-	VTL_COST_PLAN_COLUMNS,
 	VTCG_COST_PLAN_COLUMNS,
 } from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
+import { VtlPlanTreeTable } from '@/features/main/cost/plan/van-tai-lo/vtl-plan-tree-table';
 import {
 	CostProduct,
 	type DepartmentPlannedDetail,
@@ -36,7 +36,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 function areStringArraysEqual(a: string[], b: string[]) {
 	return a.length === b.length && a.every((value, index) => value === b[index]);
@@ -73,12 +73,34 @@ function DepartmentPlanProductsTable({
 	onSelectedRowsChange,
 	reloadKey,
 }: DepartmentPlanProductsTableProps) {
-	const handleSelectedRowsChange = useCallback(
-		(rows: unknown[]) => {
-			onSelectedRowsChange(monthId, rows as CostProduct[]);
-		},
-		[monthId, onSelectedRowsChange],
-	);
+	const [selectedKhaiThac, setSelectedKhaiThac] = useState<CostProduct[]>([]);
+	const [selectedVtl, setSelectedVtl] = useState<CostProduct[]>([]);
+	const [selectedVtcg, setSelectedVtcg] = useState<CostProduct[]>([]);
+
+	const handleKhaiThacSelectionChange = useCallback((rows: unknown[]) => {
+		setSelectedKhaiThac(rows as CostProduct[]);
+	}, []);
+
+	const handleVtlSelectionChange = useCallback((rows: CostProduct[]) => {
+		setSelectedVtl(rows);
+	}, []);
+
+	const handleVtcgSelectionChange = useCallback((rows: unknown[]) => {
+		setSelectedVtcg(rows as CostProduct[]);
+	}, []);
+
+	const lastSelectedIdsRef = useRef<string>('');
+	useEffect(() => {
+		const merged = [...selectedKhaiThac, ...selectedVtl, ...selectedVtcg];
+		const serialized = merged
+			.map((r) => r.id)
+			.sort()
+			.join(',');
+		if (lastSelectedIdsRef.current !== serialized) {
+			lastSelectedIdsRef.current = serialized;
+			onSelectedRowsChange(monthId, merged);
+		}
+	}, [monthId, selectedKhaiThac, selectedVtl, selectedVtcg, onSelectedRowsChange]);
 
 	const vtcgItems = useMemo(
 		() =>
@@ -151,7 +173,7 @@ function DepartmentPlanProductsTable({
 						showFilterAction={false}
 						showDeleteAction={false}
 						showUtilityActions={false}
-						onSelectedRowsChange={handleSelectedRowsChange}
+						onSelectedRowsChange={handleKhaiThacSelectionChange}
 						selectAllPageRows={selectAllRows}
 						hasPagination={false}
 					/>
@@ -165,39 +187,11 @@ function DepartmentPlanProductsTable({
 							{khaiThacItems.length > 0 ? '2. Vận tải lò' : 'Vận tải lò'}
 						</div>
 					)}
-					<DataTable
-						columns={VTL_COST_PLAN_COLUMNS}
+					<VtlPlanTreeTable
 						items={vtlItems}
-						getRowId={(item) => item.id}
-						filters={[
-							{ key: 'productionProcessCode', label: 'Mã CĐSX' },
-							{ key: 'productionProcessName', label: 'Tên CĐSX' },
-							{ key: 'contractCodeCode', label: 'Mã nhóm VTTS' },
-							{ key: 'contractCodeName', label: 'Tên nhóm VTTS' },
-							{ key: 'routeDepartmentCode', label: 'Mã đơn vị' },
-							{ key: 'routeDepartmentName', label: 'Tên đơn vị' },
-						]}
-						onExpand={(props) => (
-							<PlanExpand
-								{...props}
-								monthId={monthId}
-								data={{
-									...props.data,
-									refresh: async () => {
-										await props.data.refresh();
-									},
-								}}
-								key={`${monthId}-${reloadKey}-${props.row?.id ?? ''}`}
-							/>
-						)}
-						onDelete={async () => undefined}
-						showCreateAction={false}
-						showFilterAction={false}
-						showDeleteAction={false}
-						showUtilityActions={false}
-						onSelectedRowsChange={handleSelectedRowsChange}
-						selectAllPageRows={selectAllRows}
-						hasPagination={false}
+						monthId={monthId}
+						selectAllRows={selectAllRows}
+						onSelectedRowsChange={handleVtlSelectionChange}
 					/>
 				</div>
 			)}
@@ -241,7 +235,7 @@ function DepartmentPlanProductsTable({
 						showFilterAction={false}
 						showDeleteAction={false}
 						showUtilityActions={false}
-						onSelectedRowsChange={handleSelectedRowsChange}
+						onSelectedRowsChange={handleVtcgSelectionChange}
 						selectAllPageRows={selectAllRows}
 						hasPagination={false}
 					/>
@@ -475,6 +469,9 @@ function DepartmentPlanMonthsTable({
 								productionProcessName: item.productionProcessName || '-',
 								contractCodeCode: item.equipmentCode || item.transportRouteCode || '-',
 								contractCodeName: item.equipmentName || item.transportRouteName || '-',
+								transportRouteId: item.transportRouteId,
+								transportRouteCode: item.transportRouteCode,
+								transportRouteName: item.transportRouteName,
 								equipmentQuality: item.equipmentQuality || '-',
 								cargoTypeId: item.cargoTypeId,
 								cargoTypeName: item.cargoTypeName,

@@ -1,4 +1,4 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 
 namespace Application.Interfaces.Services;
 
@@ -9,6 +9,8 @@ public interface IExcelService
 
     // Xuất nhiều sheet (Cho quan hệ Cha-Con)
     byte[] ExportMultiSheet(Dictionary<string, IEnumerable<object>> sheets, List<string>? hiddenProperties = null);
+
+    byte[] ExportMultiSheet<T>(Dictionary<string, IEnumerable<T>> sheets, List<string>? hiddenProperties = null);
 
     // Import tổng quát (Tự động xử lý parse các cột đặc biệt nếu cần)
     List<T> ImportFromExcel<T>(Stream fileStream) where T : new();

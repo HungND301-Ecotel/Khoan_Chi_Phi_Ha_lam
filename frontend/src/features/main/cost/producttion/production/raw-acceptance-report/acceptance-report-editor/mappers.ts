@@ -69,6 +69,7 @@ export function mapResolvedImportItem(
 		partType: item.partType ?? null,
 		documentNumber: item.documentNumber ?? '',
 		postingDate: item.postingDate ?? null,
+		sheetName: item.sheetName ?? undefined,
 		materialCode:
 			item.type === MaterialType.Material
 				? (item.materialCode ?? item.trackedMaterialCode ?? '')
@@ -106,12 +107,13 @@ export function mapUnresolvedImportItem(
 ): AcceptanceReportEditorRow {
 	return {
 		...MATERIAL_FORM_DEFAULT,
-		id: `unresolved:${item.rowNumber}:${item.materialCode}`,
+		id: `unresolved:${item.sheetName ?? ''}:${item.rowNumber}:${item.materialCode}`,
 		acceptanceReportItemId: item.reportItemId || undefined,
 		materialOrPartId: undefined,
 		resolutionStatus: ImportResolutionStatus.Unresolved,
 		unresolvedReason: item.unresolvedReason,
 		sourceRowNumber: item.rowNumber,
+		sheetName: item.sheetName ?? undefined,
 		documentNumber: item.documentNumber ?? '',
 		postingDate: item.postingDate ?? null,
 		materialCode: item.materialCode,

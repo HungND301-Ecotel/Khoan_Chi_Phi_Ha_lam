@@ -5,6 +5,7 @@ public static class LumpSumFinalSettlementSpecialQuantityKeys
     public const string CoalExcavation = "__SPECIAL_COAL_EXCAVATION__";
     public const string CoalCrosscut = "__SPECIAL_COAL_CROSSCUT__";
     public const string SavingCarryForward = "__SPECIAL_SAVING_CARRY_FORWARD__";
+    public const string SpecialProductionRowPrefix = "__SPECIAL_PROD_ROW__::";
 
     public static bool IsSpecialQuantityKey(string? value)
     {

@@ -20,6 +20,7 @@ public record AcceptanceReportItemDto
     /// </summary>
     public Guid? ReportItemId { get; init; }
     public int RowNumber { get; init; }
+    public string? SheetName { get; init; }
     public string? DocumentNumber { get; init; }
     public DateOnly? PostingDate { get; init; }
 
@@ -72,6 +73,7 @@ public record AcceptanceReportItemDto
 public record UnresolvedAcceptanceReportItemDto
 {
     public int RowNumber { get; init; }
+    public string? SheetName { get; init; }
     public Guid? ReportItemId { get; init; }
     public string? DocumentNumber { get; init; }
     public DateOnly? PostingDate { get; init; }

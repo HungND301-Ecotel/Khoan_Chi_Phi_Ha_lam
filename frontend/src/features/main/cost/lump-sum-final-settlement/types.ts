@@ -145,6 +145,8 @@ export interface LumpSumFinalSettlement {
 	isEditing?: boolean;
 	isTransferredDefaultRow?: boolean;
 	isSpecialQuantityRow?: boolean;
+	canAddSpecialProductionRow?: boolean;
+	isSpecialProductionRow?: boolean;
 	specialQuantityField?:
 		| 'coalExcavationActualQuantity'
 		| 'coalCrosscutActualQuantity';

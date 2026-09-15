@@ -864,6 +864,10 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			form.setValue(`groups.${groupIndex}.transportProcesses`, []);
 			form.setValue(`groups.${groupIndex}.motorizedItems`, []);
 			form.setValue(`groups.${groupIndex}.assignmentCodeIds`, []);
+			form.setValue(`groups.${groupIndex}.scaniaAssignmentCodeIds`, []);
+			form.setValue(`groups.${groupIndex}.excavatorAssignmentCodeIds`, []);
+			form.setValue(`groups.${groupIndex}.serviceCraneAssignmentCodeIds`, []);
+			form.setValue(`groups.${groupIndex}.vacuumTruckAssignmentCodeIds`, []);
 			form.setValue(`groups.${groupIndex}.equipmentQualities`, {});
 			form.setValue(`groups.${groupIndex}.equipmentProcesses`, {});
 			form.setValue(`groups.${groupIndex}.equipmentDistances`, {});

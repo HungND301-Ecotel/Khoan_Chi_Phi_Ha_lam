@@ -36,6 +36,7 @@ export type AssignmentCodeOption = {
 export type AcceptanceReportItemDto = {
 	reportItemId: string | null;
 	rowNumber: number;
+	sheetName?: string | null;
 	documentNumber?: string | null;
 	postingDate?: string | null;
 	trackedMaterialId?: string | null;
@@ -57,6 +58,7 @@ export type AcceptanceReportItemDto = {
 
 export type UnresolvedAcceptanceReportItemDto = {
 	rowNumber: number;
+	sheetName?: string | null;
 	reportItemId: string | null;
 	documentNumber?: string | null;
 	postingDate?: string | null;

@@ -672,6 +672,11 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
 
         foreach (var item in response.CustomCosts)
         {
+            if ((item.CustomName ?? "").StartsWith(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix))
+            {
+                continue;
+            }
+
             var month = item.Month;
             if (month <= 0)
             {
@@ -789,6 +794,33 @@ public class ExportLumpSumFinalSettlementQuarterExcelQueryHandler(IMediator medi
                 ExcludeFromSummary = true
             }
         };
+
+        var specialProdCosts = response.CustomCosts
+            .Where(x => (x.CustomName ?? "").StartsWith(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix))
+            .GroupBy(x => x.CustomName)
+            .Select(g => new
+            {
+                CustomName = g.Key,
+                TotalQuantity = g.Sum(x => x.ActualQuantity)
+            });
+
+        foreach (var item in specialProdCosts)
+        {
+            var raw = item.CustomName.Substring(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix.Length);
+            var parts = raw.Split("::", 2);
+            var unit = parts.Length > 0 ? parts[0] : "m";
+            var name = parts.Length > 1 ? parts[1] : raw;
+            specialRows.Add(new ExportRow
+            {
+                SttLabel = "-",
+                ProductName = name,
+                UnitOfMeasureName = unit,
+                PlannedQuantity = null,
+                ActualQuantity = item.TotalQuantity,
+                IsBold = true,
+                ExcludeFromSummary = true
+            });
+        }
 
         var defaultRows = new List<ExportRow>
         {

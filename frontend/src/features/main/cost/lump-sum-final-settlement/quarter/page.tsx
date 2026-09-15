@@ -201,6 +201,9 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 
 		const customCostRowsByMonth = new Map<number, LumpSumFinalSettlement[]>();
 		for (const item of customCosts) {
+			if ((item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+				continue;
+			}
 			const month = Number(item.month ?? 0);
 			if (!month) continue;
 			const rows = customCostRowsByMonth.get(month) ?? [];
@@ -498,18 +501,85 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				productName: 'Mét xén lò',
 				unitOfMeasureName: 'm',
 				isBold: true,
+				isSpecialQuantityRow: true,
+				canAddSpecialProductionRow: true,
 				plannedQuantity: undefined,
 				actualQuantity: quarterSpecialQuantities.meterCrosscutActualQuantity,
 				excludeFromSummary: true,
 			},
 		];
 
-		return [...specialRows, ...filteredData, ...defaultRows];
+		const specialProdMap = new Map<string, LumpSumQuarterCustomCost[]>();
+		for (const item of customCosts) {
+			if (!(item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+				continue;
+			}
+			const list = specialProdMap.get(item.customName!) ?? [];
+			list.push(item);
+			specialProdMap.set(item.customName!, list);
+		}
+
+		const specialProductionRows: LumpSumFinalSettlement[] = [];
+		for (const [customName, items] of specialProdMap.entries()) {
+			const raw = customName.replace('__SPECIAL_PROD_ROW__::', '');
+			const parts = raw.split('::');
+			const unit = parts[0] || 'm';
+			const name = parts.slice(1).join('::') || '';
+
+			const hasEditing = items.some(
+				(x) => x.id.startsWith('temp-') || editingSnapshot[x.id] !== undefined,
+			);
+
+			if (hasEditing) {
+				for (const item of items) {
+					const isEditing =
+						item.id.startsWith('temp-') ||
+						editingSnapshot[item.id] !== undefined;
+					specialProductionRows.push({
+						id: item.id,
+						month: Number(item.month),
+						sttLabel: '-',
+						productName: name,
+						unitOfMeasureName: unit,
+						actualQuantity: item.actualQuantity ?? 0,
+						isSpecialProductionRow: true,
+						isEditing,
+						isBold: true,
+						excludeFromSummary: true,
+					});
+				}
+			} else {
+				const totalQty = items.reduce(
+					(sum, x) => sum + (x.actualQuantity ?? 0),
+					0,
+				);
+				specialProductionRows.push({
+					id: items[0].id,
+					month: Number(items[0].month),
+					sttLabel: '-',
+					productName: name,
+					unitOfMeasureName: unit,
+					actualQuantity: totalQty,
+					isSpecialProductionRow: true,
+					isEditing: false,
+					isBold: true,
+					excludeFromSummary: true,
+				});
+			}
+		}
+
+		return [
+			...specialRows,
+			...specialProductionRows,
+			...filteredData,
+			...defaultRows,
+		];
 	}, [
 		buildCustomCostRow,
 		customCosts,
 		defaultQuarter,
 		defaultYear,
+		editingSnapshot,
 		filteredData,
 		monthBreakdowns,
 		quarterAcceptedSaving,
@@ -653,6 +723,25 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 		[getCurrentFilter],
 	);
 
+	const addSpecialProductionRow = useCallback(() => {
+		const { month, year, processGroupId } = getCurrentFilter();
+		const tempId = `temp-${Date.now()}`;
+		setCustomCosts((prev) => [
+			...prev,
+			{
+				id: tempId,
+				month: String(month),
+				year,
+				processGroupId: processGroupId ?? '',
+				customName: '__SPECIAL_PROD_ROW__::m::',
+				actualQuantity: 0,
+				materialUnitPrice: 0,
+				maintainUnitPrice: 0,
+				electricityUnitPrice: 0,
+			},
+		]);
+	}, [getCurrentFilter]);
+
 	const editCustomCost = useCallback(
 		(row: LumpSumFinalSettlement) => {
 			if (!row.id || row.id.startsWith('temp-')) return;
@@ -692,13 +781,33 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 				| 'actualQuantity'
 				| 'materialUnitPrice'
 				| 'maintainUnitPrice'
-				| 'electricityUnitPrice',
+				| 'electricityUnitPrice'
+				| 'unitOfMeasureName',
 			value: number | string,
 		) => {
 			if (!row.id) return;
 			setCustomCosts((prev) =>
 				prev.map((x) => {
 					if (x.id !== row.id) return x;
+					if (x.customName?.startsWith('__SPECIAL_PROD_ROW__::')) {
+						const raw = x.customName.replace('__SPECIAL_PROD_ROW__::', '');
+						const parts = raw.split('::');
+						let currentUnit = parts[0] || 'm';
+						let currentName = parts.slice(1).join('::') || '';
+
+						if (field === 'customName') {
+							currentName = String(value);
+						} else if (field === 'unitOfMeasureName') {
+							currentUnit = String(value);
+						} else if (field === 'actualQuantity') {
+							return { ...x, actualQuantity: Number(value) };
+						}
+						return {
+							...x,
+							customName: `__SPECIAL_PROD_ROW__::${currentUnit}::${currentName}`,
+						};
+					}
+
 					if (field === 'customName')
 						return { ...x, customName: String(value) };
 					return { ...x, [field]: Number(value) };
@@ -802,6 +911,11 @@ export function MainCostLumpSumFinalSettlementQuarterPage() {
 					onAddCustomCost={
 						hasPermission('production.lumpsumfinalsettlement.create')
 							? addCustomCostRow
+							: undefined
+					}
+					onAddSpecialProductionRow={
+						hasPermission('production.lumpsumfinalsettlement.create')
+							? addSpecialProductionRow
 							: undefined
 					}
 					onEditCustomCost={

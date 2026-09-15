@@ -96,7 +96,15 @@ export function RawAcceptanceReport({
 
 	const handleExport = async () => {
 		if (!output?.acceptanceReportId) {
-			exportMaterialTemplate();
+			const startMonthStr = output?.startMonth;
+			let daysInMonth = 31;
+			if (startMonthStr) {
+				const [year, month] = startMonthStr.split('-').map(Number);
+				if (year && month) {
+					daysInMonth = new Date(year, month, 0).getDate();
+				}
+			}
+			exportMaterialTemplate(daysInMonth);
 			return;
 		}
 

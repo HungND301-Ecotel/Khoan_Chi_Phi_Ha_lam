@@ -253,6 +253,9 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		const selectedYear = form.watch('year') || defaultYear;
 		const customCostRowsByMonth = new Map<number, LumpSumFinalSettlement[]>();
 		for (const item of customCosts) {
+			if ((item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+				continue;
+			}
 			const itemMonth = item.month ? Number(item.month) : undefined;
 			if (!itemMonth) continue;
 			const list = customCostRowsByMonth.get(itemMonth) ?? [];
@@ -795,13 +798,49 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				productName: 'Mét xén lò',
 				unitOfMeasureName: 'm',
 				isBold: true,
+				isSpecialQuantityRow: true,
+				canAddSpecialProductionRow: true,
 				plannedQuantity: undefined,
 				actualQuantity: quarterSpecialQuantities.meterCrosscutActualQuantity,
 				excludeFromSummary: true,
 			},
 		];
 
-		return [...specialRows, ...filteredData, ...defaultRows];
+		const specialProductionRows: LumpSumFinalSettlement[] = customCosts
+			.filter(
+				(item) =>
+					(item.customName || '').startsWith('__SPECIAL_PROD_ROW__::') &&
+					Number(item.month) === currentMonthNum,
+			)
+			.map((item) => {
+				const raw = item.customName || '';
+				const content = raw.replace('__SPECIAL_PROD_ROW__::', '');
+				const parts = content.split('::');
+				const unit = parts[0] || 'm';
+				const name = parts.slice(1).join('::') || '';
+				const isEditing =
+					item.id.startsWith('temp-') || editingSnapshot[item.id] !== undefined;
+
+				return {
+					id: item.id,
+					month: Number(item.month),
+					sttLabel: '-',
+					productName: name,
+					unitOfMeasureName: unit,
+					actualQuantity: item.actualQuantity ?? 0,
+					isSpecialProductionRow: true,
+					isEditing,
+					isBold: true,
+					excludeFromSummary: true,
+				};
+			});
+
+		return [
+			...specialRows,
+			...specialProductionRows,
+			...filteredData,
+			...defaultRows,
+		];
 	}, [
 		acceptedSavingMonth,
 		buildCustomCostRow,
@@ -970,6 +1009,25 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		[getCurrentFilter],
 	);
 
+	const addSpecialProductionRow = useCallback(() => {
+		const { month, year, processGroupId } = getCurrentFilter();
+		const tempId = `temp-${Date.now()}`;
+		setCustomCosts((prev) => [
+			...prev,
+			{
+				id: tempId,
+				month: String(month),
+				year,
+				processGroupId: processGroupId ?? '',
+				customName: '__SPECIAL_PROD_ROW__::m::',
+				actualQuantity: 0,
+				materialUnitPrice: 0,
+				maintainUnitPrice: 0,
+				electricityUnitPrice: 0,
+			},
+		]);
+	}, [getCurrentFilter]);
+
 	const editCustomCost = useCallback(
 		(row: LumpSumFinalSettlement) => {
 			if (!row.id || row.id.startsWith('temp-')) return;
@@ -1009,13 +1067,33 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 				| 'actualQuantity'
 				| 'materialUnitPrice'
 				| 'maintainUnitPrice'
-				| 'electricityUnitPrice',
+				| 'electricityUnitPrice'
+				| 'unitOfMeasureName',
 			value: number | string,
 		) => {
 			if (!row.id) return;
 			setCustomCosts((prev) =>
 				prev.map((x) => {
 					if (x.id !== row.id) return x;
+					if (x.customName?.startsWith('__SPECIAL_PROD_ROW__::')) {
+						const raw = x.customName.replace('__SPECIAL_PROD_ROW__::', '');
+						const parts = raw.split('::');
+						let currentUnit = parts[0] || 'm';
+						let currentName = parts.slice(1).join('::') || '';
+
+						if (field === 'customName') {
+							currentName = String(value);
+						} else if (field === 'unitOfMeasureName') {
+							currentUnit = String(value);
+						} else if (field === 'actualQuantity') {
+							return { ...x, actualQuantity: Number(value) };
+						}
+						return {
+							...x,
+							customName: `__SPECIAL_PROD_ROW__::${currentUnit}::${currentName}`,
+						};
+					}
+
 					if (field === 'customName')
 						return { ...x, customName: String(value) };
 					return { ...x, [field]: Number(value) };
@@ -1237,6 +1315,11 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					onAddCustomCost={
 						hasPermission('production.lumpsumfinalsettlement.create')
 							? addCustomCostRow
+							: undefined
+					}
+					onAddSpecialProductionRow={
+						hasPermission('production.lumpsumfinalsettlement.create')
+							? addSpecialProductionRow
 							: undefined
 					}
 					onEditCustomCost={

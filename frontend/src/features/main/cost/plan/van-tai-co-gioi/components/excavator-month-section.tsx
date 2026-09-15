@@ -2,7 +2,7 @@ import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumberInput } from '@/components/form/form-number';
 import { useUnitsOfMeasure } from '@/hooks/use-units-of-measure';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
 import {
@@ -42,13 +42,21 @@ export function ExcavatorMonthSection({
 		watchedMonth?.equipmentQualities || {};
 	const items: any[] = watchedMonth?.items || [];
 
+	const prevEquipmentIdsRef = useRef<string[]>(assignmentCodeIds);
+
 	const setItems = (newRows: typeof items) => {
 		const currentItems: any[] =
 			form.getValues(`${monthPath}.items` as any) || [];
 		const otherItems = currentItems.filter(
-			(it) => !assignmentCodeIds.includes(it.equipmentId),
+			(it) =>
+				!assignmentCodeIds.includes(it.equipmentId) &&
+				!prevEquipmentIdsRef.current.includes(it.equipmentId),
 		);
-		form.setValue(`${monthPath}.items` as any, [...otherItems, ...newRows]);
+		form.setValue(`${monthPath}.items` as any, [
+			...otherItems,
+			...newRows,
+		]);
+		prevEquipmentIdsRef.current = assignmentCodeIds;
 	};
 
 	useEffect(() => {
@@ -68,8 +76,7 @@ export function ExcavatorMonthSection({
 					(p) => p.id === procId || p.value === procId,
 				);
 				const scopeKey = `${eqId}_${procId}`;
-				const procQualities =
-					equipmentQualities[scopeKey] || equipmentQualities[eqId] || [];
+				const procQualities = equipmentQualities[scopeKey] || [];
 
 				procQualities.forEach((quality) => {
 					const existing = items.find(

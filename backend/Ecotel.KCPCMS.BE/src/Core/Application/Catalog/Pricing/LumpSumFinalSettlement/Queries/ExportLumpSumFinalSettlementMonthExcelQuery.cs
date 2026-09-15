@@ -660,7 +660,13 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
         var transferredElectricities = transferredCost?.Electricities?.TotalAmount ?? 0;
         var transferredTotal = transferredCost?.TotalAmount ?? 0;
 
-        var customRows = response.CustomCosts.Select(BuildCustomCostRow).ToList();
+        var specialProdCosts = response.CustomCosts
+            .Where(x => (x.CustomName ?? "").StartsWith(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix))
+            .ToList();
+        var transferredCustomCosts = response.CustomCosts
+            .Where(x => !(x.CustomName ?? "").StartsWith(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix))
+            .ToList();
+        var customRows = transferredCustomCosts.Select(BuildCustomCostRow).ToList();
 
         var acceptedSavingMonth = response.AcceptedSavingMonth;
         var savingAddedToIncomeMonth = response.SavingAddedToIncomeMonth;
@@ -718,6 +724,24 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
                 ExcludeFromSummary = true
             }
         };
+
+        foreach (var item in specialProdCosts)
+        {
+            var raw = item.CustomName.Substring(LumpSumFinalSettlementSpecialQuantityKeys.SpecialProductionRowPrefix.Length);
+            var parts = raw.Split("::", 2);
+            var unit = parts.Length > 0 ? parts[0] : "m";
+            var name = parts.Length > 1 ? parts[1] : raw;
+            specialRows.Add(new ExportRow
+            {
+                SttLabel = "-",
+                ProductName = name,
+                UnitOfMeasureName = unit,
+                PlannedQuantity = null,
+                ActualQuantity = item.ActualQuantity,
+                IsBold = true,
+                ExcludeFromSummary = true
+            });
+        }
 
         var defaultRows = new List<ExportRow>
         {

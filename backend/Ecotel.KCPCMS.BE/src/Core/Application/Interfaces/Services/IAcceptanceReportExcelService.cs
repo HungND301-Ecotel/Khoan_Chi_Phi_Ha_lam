@@ -10,7 +10,8 @@ public interface IAcceptanceReportExcelService : ITransientService
         Guid Id,
         Stream fileStream,
         string fileName,
-        IEnumerable<Material> materialsInDb);
+        IEnumerable<Material> materialsInDb,
+        DateOnly? periodMonth = null);
 
 }
 
