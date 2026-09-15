@@ -34,6 +34,9 @@ export type CostProduct = {
 	contractCodeCode?: string;
 	contractCodeName?: string;
 	equipmentQuality?: string;
+	transportRouteId?: string;
+	transportRouteCode?: string;
+	transportRouteName?: string;
 	haulDistanceId?: string;
 	haulDistanceValue?: string | number;
 	fuelAdjustmentFactor?: number;

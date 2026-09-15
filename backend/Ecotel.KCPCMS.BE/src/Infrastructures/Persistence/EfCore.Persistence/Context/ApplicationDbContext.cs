@@ -816,8 +816,8 @@ public class ApplicationDbContext(
             .ToTable(nameof(PlannedTransportCost), "Pricing", tb =>
             {
                 tb.HasCheckConstraint(
-                    "CK_PlannedTransportCost_ExactlyOneUnitPriceReference",
-                    "((\"TransportUnitPriceId\" IS NOT NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NULL) OR (\"TransportUnitPriceId\" IS NULL AND \"MechanizedTransportUnitPriceDetailId\" IS NOT NULL))");
+                    "CK_PlannedTransportCost_AtMostOneUnitPriceReference",
+                    "(\"TransportUnitPriceId\" IS NULL OR \"MechanizedTransportUnitPriceDetailId\" IS NULL)");
             });
 
         //MaterialUnitPrices table - Base configuration

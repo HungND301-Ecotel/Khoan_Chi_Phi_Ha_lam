@@ -1,6 +1,6 @@
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumberInput } from '@/components/form/form-number';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { ProductionFormSchema } from '../../production-form-schema';
 import { getUnitForProcess } from '../utils';
@@ -39,16 +39,21 @@ export function ServiceCraneFormSection({
 		watchedGroup?.equipmentDistances || {};
 	const items: any[] = watchedGroup?.motorizedItems || [];
 
+	const prevEquipmentIdsRef = useRef<string[]>(assignmentCodeIds);
+
 	const setItems = (newRows: typeof items) => {
 		const currentItems: any[] =
 			form.getValues(`${groupPath}.motorizedItems` as any) || [];
 		const otherItems = currentItems.filter(
-			(it) => !assignmentCodeIds.includes(it.equipmentId),
+			(it) =>
+				!assignmentCodeIds.includes(it.equipmentId) &&
+				!prevEquipmentIdsRef.current.includes(it.equipmentId),
 		);
 		form.setValue(`${groupPath}.motorizedItems` as any, [
 			...otherItems,
 			...newRows,
 		]);
+		prevEquipmentIdsRef.current = assignmentCodeIds;
 	};
 
 	useEffect(() => {
@@ -69,12 +74,9 @@ export function ServiceCraneFormSection({
 				);
 				const scopeKey = `${eqId}_${procId}`;
 				const procQualities = [
-					...(equipmentQualities[scopeKey] ||
-						equipmentQualities[eqId] ||
-						[]),
+					...(equipmentQualities[scopeKey] || []),
 				].sort((a, b) => a.localeCompare(b));
-				const dists = equipmentDistances[scopeKey] ||
-					equipmentDistances[eqId] || [''];
+				const dists = equipmentDistances[scopeKey] || [''];
 
 				const procText =
 					`${proc?.name || ''} ${proc?.label || ''} ${proc?.code || ''}`.toLowerCase();

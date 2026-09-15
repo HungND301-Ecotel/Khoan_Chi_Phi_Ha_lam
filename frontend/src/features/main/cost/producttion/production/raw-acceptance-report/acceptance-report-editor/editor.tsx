@@ -349,6 +349,7 @@ export function AcceptanceReportEditor({
 	const [searchKeyword, setSearchKeyword] = useState('');
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
 	const [selectedRowFieldIds, setSelectedRowFieldIds] = useState<string[]>([]);
 	const [selectedLookupValue, setSelectedLookupValue] = useState('');
 	const [newQuantityReceived, setNewQuantityReceived] = useState(0);
@@ -359,6 +360,18 @@ export function AcceptanceReportEditor({
 	const showMaterialToolbarActions = Boolean(
 		materialLookupOptions.length > 0 && onMaterialAdded,
 	);
+
+	const availableDates = useMemo(() => {
+		const dates = new Set<string>();
+		const source = watchedMaterials ?? fields;
+		for (const item of source) {
+			if (item?.postingDate) {
+				dates.add(item.postingDate.split('T')[0]);
+			}
+		}
+		return Array.from(dates).sort();
+	}, [watchedMaterials, fields]);
+
 	const toolbarFilterOptions = useMemo<ToolbarFilterOption[]>(
 		() =>
 			mode === 'import'
@@ -378,6 +391,13 @@ export function AcceptanceReportEditor({
 				const item = watchedMaterials?.[index] ?? fields[index];
 				if (!item) {
 					return true;
+				}
+
+				if (selectedDateFilter !== 'all') {
+					const itemDate = item.postingDate ? item.postingDate.split('T')[0] : '';
+					if (itemDate !== selectedDateFilter) {
+						return false;
+					}
 				}
 
 				const materialCode = item.materialCode?.toLowerCase() ?? '';
@@ -405,7 +425,7 @@ export function AcceptanceReportEditor({
 						Boolean(item.showAssetDropdown))
 				);
 			});
-	}, [fields, mode, searchKeyword, selectedEditFilterKeys, watchedMaterials]);
+	}, [fields, mode, searchKeyword, selectedDateFilter, selectedEditFilterKeys, watchedMaterials]);
 	const pageCount = Math.ceil(visibleMaterialIndexes.length / pageSize);
 	const safePageIndex =
 		pageCount === 0 ? 0 : Math.min(pageIndex, Math.max(pageCount - 1, 0));
@@ -687,6 +707,58 @@ export function AcceptanceReportEditor({
 						</Popover>
 					)}
 				</div>
+				{availableDates.length > 1 && (
+					<div className='flex items-center gap-1.5 overflow-x-auto pt-2 border-t mt-2'>
+						<span className='text-xs text-muted-foreground shrink-0 font-medium'>
+							Ngày chốt:
+						</span>
+						<Button
+							type='button'
+							variant={selectedDateFilter === 'all' ? 'default' : 'outline'}
+							size='sm'
+							className={cn(
+								'h-7 text-xs shrink-0 rounded-full font-normal px-2.5',
+								selectedDateFilter === 'all'
+									? 'bg-primary text-primary-foreground font-medium'
+									: 'bg-white hover:bg-neutral-100 text-neutral-700'
+							)}
+							onClick={() => {
+								setSelectedDateFilter('all');
+								setPageIndex(0);
+							}}
+						>
+							Tất cả ({fields.length})
+						</Button>
+						{availableDates.map((dateStr) => {
+							const [, m, d] = dateStr.split('-');
+							const label = d && m ? `${d}/${m}` : dateStr;
+							const count = (watchedMaterials ?? fields).filter(
+								(item) => item?.postingDate?.split('T')[0] === dateStr
+							).length;
+							const isSelected = selectedDateFilter === dateStr;
+							return (
+								<Button
+									key={dateStr}
+									type='button'
+									variant={isSelected ? 'default' : 'outline'}
+									size='sm'
+									className={cn(
+										'h-7 text-xs shrink-0 rounded-full font-normal px-2.5',
+										isSelected
+											? 'bg-primary text-primary-foreground font-medium'
+											: 'bg-white hover:bg-neutral-100 text-neutral-700'
+									)}
+									onClick={() => {
+										setSelectedDateFilter(dateStr);
+										setPageIndex(0);
+									}}
+								>
+									{label} ({count})
+								</Button>
+							);
+						})}
+					</div>
+				)}
 			</div>
 			<div className='min-h-0 flex-1 overflow-x-auto overflow-y-auto'>
 				<div className='rounded-lg border shadow-sm'>

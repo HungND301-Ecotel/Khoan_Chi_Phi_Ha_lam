@@ -417,10 +417,20 @@ export function MaterialImportDialog({
 			const uploadRows: AcceptanceReportEditorRow[] = [
 				...response.result.acceptanceReports.map((item) => {
 					const uploadedRow = mapResolvedImportItem(item);
-					const existingRow =
+					let existingRow =
 						item.reportItemId != null
 							? existingRowsByReportItemId.get(item.reportItemId)
 							: undefined;
+
+					if (!existingRow && item.materialCode) {
+						const existingList = Array.from(existingRowsByReportItemId.values());
+						existingRow = existingList.find(
+							(row) =>
+								row.materialCode?.trim().toUpperCase() === item.materialCode.trim().toUpperCase() &&
+								row.postingDate === item.postingDate &&
+								(!item.documentNumber || row.documentNumber === item.documentNumber),
+						);
+					}
 
 					if (!existingRow) {
 						return uploadedRow;
@@ -626,9 +636,7 @@ export function MaterialImportDialog({
 	return (
 		<>
 			{!showForm ? (
-				<div className='flex flex-col gap-4'>
-					<DataTableImport onImport={handleImport} isLoading={isLoading} />
-				</div>
+				<DataTableImport onImport={handleImport} isLoading={isLoading} />
 			) : (
 				<FormProvider
 					context={form}

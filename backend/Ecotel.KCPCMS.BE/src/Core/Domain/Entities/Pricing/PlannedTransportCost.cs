@@ -90,6 +90,18 @@ public class PlannedTransportCost : AuditableEntity<Guid>
         LowValuePerishableSupplyInclusion = lowValuePerishableSupplyInclusion;
     }
 
+    public void SetResolvedUnitPrice(
+        TransportUnitPrice? transportUnitPrice,
+        MechanizedTransportUnitPriceDetail? mechanizedTransportUnitPriceDetail)
+    {
+        Validate(TransportPlanLineId, transportUnitPrice?.Id, mechanizedTransportUnitPriceDetail?.Id);
+
+        TransportUnitPrice = transportUnitPrice;
+        TransportUnitPriceId = transportUnitPrice?.Id;
+        MechanizedTransportUnitPriceDetail = mechanizedTransportUnitPriceDetail;
+        MechanizedTransportUnitPriceDetailId = mechanizedTransportUnitPriceDetail?.Id;
+    }
+
     public void AddAdjustmentFactors(IEnumerable<PlannedTransportCostAdjustmentFactor> factors)
     {
         foreach (var factor in factors)
@@ -116,7 +128,9 @@ public class PlannedTransportCost : AuditableEntity<Guid>
         var hasTransportUnitPrice = transportUnitPriceId.HasValue;
         var hasMechanizedTransportUnitPriceDetail = mechanizedTransportUnitPriceDetailId.HasValue;
 
-        if (hasTransportUnitPrice == hasMechanizedTransportUnitPriceDetail)
+        // Không cho phép cùng lúc tham chiếu 2 loại đơn giá khác nhau (xung đột tham chiếu).
+        // Cho phép cả hai đều null khi kế hoạch được tạo trước lúc ban hành đơn giá.
+        if (hasTransportUnitPrice && hasMechanizedTransportUnitPriceDetail)
         {
             throw new ArgumentException(CustomResponseMessage.PlannedTransportCostReferenceInvalid);
         }

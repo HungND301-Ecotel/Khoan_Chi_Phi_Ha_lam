@@ -458,6 +458,9 @@ export function LumpSumFinalSettlementReportTable({
 			}
 		>();
 		for (const item of customCosts) {
+			if ((item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+				continue;
+			}
 			const month = Number(item.month ?? 0);
 			if (!month) {
 				continue;
@@ -710,7 +713,39 @@ export function LumpSumFinalSettlementReportTable({
 			},
 		];
 
-		return [...specialRows, ...rows, ...defaultRows];
+		const specialProdMap = new Map<string, LumpSumQuarterCustomCost[]>();
+		for (const item of customCosts) {
+			if (!(item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+				continue;
+			}
+			const list = specialProdMap.get(item.customName!) ?? [];
+			list.push(item);
+			specialProdMap.set(item.customName!, list);
+		}
+
+		const specialProductionRows: LumpSumFinalSettlement[] = [];
+		for (const [customName, items] of specialProdMap.entries()) {
+			const raw = customName.replace('__SPECIAL_PROD_ROW__::', '');
+			const parts = raw.split('::');
+			const unit = parts[0] || 'm';
+			const name = parts.slice(1).join('::') || '';
+			const totalQty = items.reduce(
+				(sum, x) => sum + (x.actualQuantity ?? 0),
+				0,
+			);
+			specialProductionRows.push({
+				id: items[0].id,
+				month: Number(items[0].month),
+				sttLabel: '-',
+				productName: name,
+				unitOfMeasureName: unit,
+				actualQuantity: totalQty,
+				isBold: true,
+				excludeFromSummary: true,
+			});
+		}
+
+		return [...specialRows, ...specialProductionRows, ...rows, ...defaultRows];
 	}, [
 		acceptedSavingQuarter,
 		costsByMonth,

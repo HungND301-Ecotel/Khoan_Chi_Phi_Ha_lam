@@ -435,7 +435,11 @@ export function LumpSumFinalSettlementMonthReportTable({
 			};
 		};
 
-		const customCostRows = customCosts.map((item) => buildCustomCostRow(item));
+		const customCostRows = customCosts
+			.filter(
+				(item) => !(item.customName || '').startsWith('__SPECIAL_PROD_ROW__::'),
+			)
+			.map((item) => buildCustomCostRow(item));
 		const transferred = {
 			materials: transferredCostByMonth?.materials?.totalAmount ?? 0,
 			maintains: transferredCostByMonth?.maintains?.totalAmount ?? 0,
@@ -627,6 +631,31 @@ export function LumpSumFinalSettlementMonthReportTable({
 			},
 		];
 
+		const specialProductionRows: LumpSumFinalSettlement[] = customCosts
+			.filter(
+				(item) =>
+					(item.customName || '').startsWith('__SPECIAL_PROD_ROW__::') &&
+					Number(item.month) === Number(month),
+			)
+			.map((item) => {
+				const raw = item.customName || '';
+				const content = raw.replace('__SPECIAL_PROD_ROW__::', '');
+				const parts = content.split('::');
+				const unit = parts[0] || 'm';
+				const name = parts.slice(1).join('::') || '';
+
+				return {
+					id: item.id,
+					month: Number(item.month),
+					sttLabel: '-',
+					productName: name,
+					unitOfMeasureName: unit,
+					actualQuantity: item.actualQuantity ?? 0,
+					isBold: true,
+					excludeFromSummary: true,
+				};
+			});
+
 		const quarterRows: LumpSumFinalSettlement[] = [];
 
 		if (quarterBreakdown) {
@@ -686,6 +715,9 @@ export function LumpSumFinalSettlementMonthReportTable({
 				LumpSumQuarterCustomCost[]
 			>();
 			for (const item of quarterBreakdown.customCosts ?? []) {
+				if ((item.customName || '').startsWith('__SPECIAL_PROD_ROW__::')) {
+					continue;
+				}
 				const itemMonth = item.month ? Number(item.month) : undefined;
 				if (!itemMonth) continue;
 				const list = quarterCustomCostsByMonth.get(itemMonth) ?? [];
@@ -863,7 +895,13 @@ export function LumpSumFinalSettlementMonthReportTable({
 			);
 		}
 
-		return [...specialRows, ...rows, ...defaultRows, ...quarterRows];
+		return [
+			...specialRows,
+			...specialProductionRows,
+			...rows,
+			...defaultRows,
+			...quarterRows,
+		];
 	}, [
 		acceptedSavingMonth,
 		costByMonth,

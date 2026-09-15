@@ -1,6 +1,6 @@
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumberInput } from '@/components/form/form-number';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { ProductionFormSchema } from '../../production-form-schema';
 import { getUnitForProcess } from '../utils';
@@ -14,6 +14,7 @@ type ScaniaFormSectionProps = {
 	pickupLocations: any[];
 	dropoffLocations: any[];
 	distances: any[];
+	locations?: any[];
 };
 
 export function ScaniaFormSection({
@@ -25,6 +26,7 @@ export function ScaniaFormSection({
 	pickupLocations,
 	dropoffLocations,
 	distances,
+	locations = [],
 }: ScaniaFormSectionProps) {
 	const groupPath = `groups.${groupIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,9 +38,7 @@ export function ScaniaFormSection({
 	}) as any;
 
 	const assignmentCodeIds: string[] =
-		watchedGroup?.scaniaAssignmentCodeIds ||
-		watchedGroup?.assignmentCodeIds ||
-		[];
+		watchedGroup?.scaniaAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedGroup?.equipmentProcesses || {};
 	const equipmentQualities: Record<string, string[]> =
@@ -53,16 +53,26 @@ export function ScaniaFormSection({
 		watchedGroup?.processDropoffLocations || {};
 	const items: any[] = watchedGroup?.motorizedItems || [];
 
+	const prevEquipmentIdsRef = useRef<string[]>(assignmentCodeIds);
+
+	const allLocations =
+		locations && locations.length > 0
+			? locations
+			: [...pickupLocations, ...dropoffLocations];
+
 	const setItems = (newRows: typeof items) => {
 		const currentItems: any[] =
 			form.getValues(`${groupPath}.motorizedItems` as any) || [];
 		const otherItems = currentItems.filter(
-			(it) => !assignmentCodeIds.includes(it.equipmentId),
+			(it) =>
+				!assignmentCodeIds.includes(it.equipmentId) &&
+				!prevEquipmentIdsRef.current.includes(it.equipmentId),
 		);
 		form.setValue(`${groupPath}.motorizedItems` as any, [
 			...otherItems,
 			...newRows,
 		]);
+		prevEquipmentIdsRef.current = assignmentCodeIds;
 	};
 
 	// Synchronize item rows when filter selections change
@@ -74,81 +84,114 @@ export function ScaniaFormSection({
 
 		const newRows: any[] = [];
 
-		assignmentCodeIds.forEach((eqId) => {
-			const eq = assignmentCodes.find((a) => a.id === eqId || a.value === eqId);
-			const eqProcs = equipmentProcesses[eqId] || [];
+		assignmentCodeIds.forEach((acId) => {
+			const acObj = assignmentCodes.find(
+				(a) => a.id === acId || a.value === acId,
+			);
 
-			eqProcs.forEach((procId) => {
-				const proc = processes.find(
+			const selectedProcs: string[] = equipmentProcesses[acId] || [];
+
+			selectedProcs.forEach((procId) => {
+				const scopeKey = `${acId}_${procId}`;
+				const procObj = processes.find(
 					(p) => p.id === procId || p.value === procId,
 				);
-				const scopeKey = `${eqId}_${procId}`;
+				const procName = procObj
+					? procObj.name || procObj.label
+					: procId;
 
-				const procQualities = [
-					...(equipmentQualities[scopeKey] ||
-						equipmentQualities[eqId] ||
-						[]),
+				const selectedQualities: string[] = [
+					...(equipmentQualities[scopeKey] || []),
 				].sort((a, b) => a.localeCompare(b));
-				const dists = equipmentDistances[scopeKey] ||
-					equipmentDistances[eqId] || [''];
-				const cTypes = processCargoTypes[scopeKey] ||
-					processCargoTypes[procId] || [''];
-				const pickups = processPickupLocations[scopeKey] ||
-					processPickupLocations[procId] || [''];
-				const dropoffs = processDropoffLocations[scopeKey] ||
-					processDropoffLocations[procId] || [''];
 
-				procQualities.forEach((quality) => {
-					cTypes.forEach((cargoId) => {
-						pickups.forEach((pickupId) => {
-							dropoffs.forEach((dropoffId) => {
-								dists.forEach((distId) => {
-									const cargo = cargoTypes.find(
-										(c) => c.id === cargoId || c.value === cargoId,
-									);
-									const pickup = pickupLocations.find(
-										(l) => l.id === pickupId || l.value === pickupId,
-									);
-									const dropoff = dropoffLocations.find(
-										(l) => l.id === dropoffId || l.value === dropoffId,
-									);
-									const dist = distances.find(
-										(d) => d.id === distId || d.value === distId,
-									);
+				const selectedDists: string[] = equipmentDistances[scopeKey] || [];
 
-									const existing = items.find(
-										(it) =>
-											it.equipmentId === eqId &&
-											it.equipmentQuality === quality &&
-											it.productionProcessId === procId &&
-											(it.cargoTypeId || '') === (cargoId || '') &&
-											(it.receivingLocationId || '') === (pickupId || '') &&
-											(it.dumpingLocationId || '') === (dropoffId || '') &&
-											(it.haulDistanceId || '') === (distId || ''),
-									);
+				if (selectedQualities.length === 0 || selectedDists.length === 0) {
+					return;
+				}
 
-									newRows.push({
-										equipmentId: eqId,
-										equipmentCode: eq?.code,
-										equipmentName: eq?.name || eq?.label,
-										equipmentQuality: quality,
-										productionProcessId: procId,
-										productionProcessCode: proc?.code,
-										productionProcessName: proc?.name || proc?.label,
-										cargoTypeId: cargoId || undefined,
-										cargoTypeName: cargo?.name || cargo?.label,
-										receivingLocationId: pickupId || undefined,
-										receivingLocationName: pickup?.name || pickup?.label,
-										dumpingLocationId: dropoffId || undefined,
-										dumpingLocationName: dropoff?.name || dropoff?.label,
-										haulDistanceId: distId || undefined,
-										haulDistanceValue: dist?.value || dist?.name || dist?.label,
-										productionMeters: existing?.productionMeters ?? Number.NaN,
-										unitName: getUnitForProcess(
-											proc?.name || proc?.label,
-											'scania',
-										),
-									});
+				const procCargoIds: string[] = processCargoTypes[scopeKey] || [];
+				const procPickupIds: string[] = processPickupLocations[scopeKey] || [];
+				const procDropoffIds: string[] = processDropoffLocations[scopeKey] || [];
+
+				const cargoList = procCargoIds.length > 0 ? procCargoIds : [''];
+				const dropoffList = procDropoffIds.length > 0 ? procDropoffIds : [''];
+				const distList = selectedDists;
+
+				const procPickupNames = procPickupIds
+					.map((id) => {
+						const l = allLocations.find(
+							(loc: any) =>
+								loc.id === id || loc.value === id || loc.name === id,
+						);
+						return l ? (l as any).name || (l as any).label : '';
+					})
+					.filter(Boolean);
+				const combinedPickupName = procPickupNames.join(', ');
+
+				selectedQualities.forEach((qual: string) => {
+					cargoList.forEach((cargoId: string) => {
+						dropoffList.forEach((dropoffId: string) => {
+							distList.forEach((distId: string) => {
+								const cargoObj = cargoTypes.find(
+									(c: any) =>
+										c.id === cargoId ||
+										c.value === cargoId ||
+										c.name === cargoId,
+								);
+								const cargoName = cargoObj
+									? (cargoObj as any).name || (cargoObj as any).label
+									: '';
+
+								const dropoffObj = allLocations.find(
+									(l: any) =>
+										l.id === dropoffId ||
+										l.value === dropoffId ||
+										l.name === dropoffId,
+								);
+								const dropoffName = dropoffObj
+									? (dropoffObj as any).name || (dropoffObj as any).label
+									: '';
+
+								const distObj = distances.find(
+									(d: any) => d.id === distId || d.value === distId,
+								);
+								const distValue = distObj
+									? (distObj as any).value ??
+										(distObj as any).name ??
+										(distObj as any).label
+									: '';
+
+								const existing = items.find(
+									(it: any) =>
+										it.equipmentId === acId &&
+										it.productionProcessId === procId &&
+										it.equipmentQuality === qual &&
+										(it.cargoTypeId || '') === (cargoId || '') &&
+										(it.dumpingLocationId || '') === (dropoffId || '') &&
+										(it.haulDistanceId || '') === (distId || ''),
+								);
+
+								newRows.push({
+									equipmentId: acId,
+									equipmentCode: acObj?.code,
+									equipmentName: acObj?.name || acObj?.label || acId,
+									equipmentQuality: qual,
+									productionProcessId: procId,
+									productionProcessCode: procObj?.code,
+									productionProcessName: procName,
+									cargoTypeId: cargoId || undefined,
+									cargoTypeName: cargoName,
+									receivingLocationIds: procPickupIds,
+									receivingLocationNames: combinedPickupName,
+									receivingLocationId: procPickupIds[0] || undefined,
+									receivingLocationName: combinedPickupName,
+									dumpingLocationId: dropoffId || undefined,
+									dumpingLocationName: dropoffName,
+									haulDistanceId: distId || undefined,
+									haulDistanceValue: distValue,
+									productionMeters: existing?.productionMeters ?? Number.NaN,
+									unitName: getUnitForProcess(procName, 'scania'),
 								});
 							});
 						});
@@ -170,9 +213,9 @@ export function ScaniaFormSection({
 	]);
 
 	return (
-		<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-			<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
-				<span>Xe ô tô Scania</span>
+		<div className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'>
+			<div className='border-b border-neutral-100 pb-2 text-sm font-semibold text-black'>
+				<span>Vận chuyển (Xe Scania)</span>
 			</div>
 
 			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
@@ -189,33 +232,34 @@ export function ScaniaFormSection({
 				}))}
 			/>
 
-			{/* LẶP QUA TỪNG NHÓM VẬT TƯ ĐƯỢC CHỌN */}
-			{assignmentCodeIds.map((eqId) => {
-				const eq = assignmentCodes.find(
-					(a) => a.id === eqId || a.value === eqId,
+			{/* LẶP QUA TỪNG XE SCANIA */}
+			{assignmentCodeIds.map((acId) => {
+				const acObj = assignmentCodes.find(
+					(a) => a.id === acId || a.value === acId,
 				);
-				const selectedProcs = equipmentProcesses[eqId] || [];
+				const title = acObj
+					? acObj.code
+						? `${acObj.code} - ${acObj.name || acObj.label}`
+						: acObj.name || acObj.label || acId
+					: acId;
+				const selectedProcs = equipmentProcesses[acId] || [];
 
 				return (
 					<div
-						key={eqId}
-						className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						key={acId}
+						className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs'
 					>
-						{/* HEADER NHÓM XE */}
-						<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
-							<span className='text-sm font-bold text-gray-900'>
-								{eq?.code
-									? `${eq.code} - ${eq.name || eq.label}`
-									: eq?.name || eq?.label || eqId}
-							</span>
+						{/* HEADER XE */}
+						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
+							<span className='text-sm font-semibold text-black'>{title}</span>
 						</div>
 
 						{/* CẤP 2: CHỌN CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
 						<FormMultiSelect
 							control={formControl}
-							name={`${groupPath}.equipmentProcesses.${eqId}` as any}
+							name={`${groupPath}.equipmentProcesses.${acId}` as any}
 							label='Công đoạn sản xuất'
-							placeholder='Chọn công đoạn sản xuất'
+							placeholder='Chọn các công đoạn sản xuất'
 							options={processes.map((p) => ({
 								value: p.id || p.value,
 								label: p.code
@@ -224,192 +268,246 @@ export function ScaniaFormSection({
 							}))}
 						/>
 
-						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT (FORM LỒNG FORM) */}
+						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
 						{selectedProcs.map((procId) => {
 							const proc = processes.find(
 								(p) => p.id === procId || p.value === procId,
 							);
-							const scopeKey = `${eqId}_${procId}`;
-							const procItems = items.filter(
-								(it) =>
-									it.equipmentId === eqId && it.productionProcessId === procId,
+							const procName = proc
+								? proc.code
+									? `${proc.code} - ${proc.name || proc.label}`
+									: proc.name || proc.label
+								: procId;
+							const scopeKey = `${acId}_${procId}`;
+
+							const currentQualities: string[] =
+								equipmentQualities[scopeKey] || [];
+							const currentDists: string[] =
+								equipmentDistances[scopeKey] || [];
+							const currentPickups: string[] =
+								processPickupLocations[scopeKey] || [];
+
+							const procPickupNames = currentPickups
+								.map((id) => {
+									const l = allLocations.find(
+										(loc: any) =>
+											loc.id === id || loc.value === id || loc.name === id,
+									);
+									return l ? (l as any).name || (l as any).label : '';
+								})
+								.filter(Boolean);
+							const combinedPickupName = procPickupNames.join(', ');
+
+							const filteredItems = items.filter(
+								(it: any) =>
+									it.equipmentId === acId && it.productionProcessId === procId,
 							);
+
+							const groupsMap = new Map<string, any>();
+							filteredItems.forEach((item: any) => {
+								const groupKey = `${item.equipmentQuality}_${item.cargoTypeId || ''}_${item.dumpingLocationId || ''}`;
+								if (!groupsMap.has(groupKey)) {
+									groupsMap.set(groupKey, {
+										equipmentQuality: item.equipmentQuality,
+										cargoTypeId: item.cargoTypeId,
+										cargoTypeName: item.cargoTypeName,
+										dumpingLocationId: item.dumpingLocationId,
+										dumpingLocationName: item.dumpingLocationName,
+										items: [],
+									});
+								}
+								groupsMap.get(groupKey)!.items.push(item);
+							});
+							const groups = Array.from(groupsMap.values());
 
 							return (
 								<div
 									key={procId}
-									className='space-y-4 rounded-lg border border-gray-300 bg-gray-50/40 p-4 shadow-xs'
+									className='space-y-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs'
 								>
 									{/* HEADER CỤM CÔNG ĐOẠN */}
-									<div className='border-b border-gray-200 pb-2'>
-										<span className='text-xs font-semibold text-black uppercase'>
-											{proc?.code
-												? `${proc.code} - ${proc.name || proc.label}`
-												: proc?.name || proc?.label || procId}
+									<div className='border-b border-neutral-200/80 pb-2'>
+										<span className='text-sm font-semibold text-black'>
+											{procName}
 										</span>
 									</div>
 
-									{/* THÔNG SỐ ĐIỀU KIỆN CHO RIÊNG CÔNG ĐOẠN NÀY */}
-									<div className='space-y-3'>
-										{/* HÀNG 1: Chất lượng & Cung độ */}
-										<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-											<FormMultiSelect
-												control={formControl}
-												name={
-													`${groupPath}.equipmentQualities.${scopeKey}` as any
-												}
-												label='Chất lượng thiết bị'
-												placeholder='Chọn chất lượng xe'
-												options={[
-													{ value: 'A', label: 'Thiết bị loại A' },
-													{ value: 'B', label: 'Thiết bị loại B' },
-													{ value: 'C', label: 'Thiết bị loại C' },
-												]}
-											/>
+									{/* SELECTOR THÔNG SỐ ĐIỀU KIỆN */}
+									<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${groupPath}.equipmentQualities.${scopeKey}` as any
+											}
+											label='Chất lượng thiết bị'
+											placeholder='Chọn chất lượng thiết bị'
+											options={[
+												{ label: 'Thiết bị loại A', value: 'A' },
+												{ label: 'Thiết bị loại B', value: 'B' },
+												{ label: 'Thiết bị loại C', value: 'C' },
+											]}
+										/>
 
-											<FormMultiSelect
-												control={formControl}
-												name={
-													`${groupPath}.equipmentDistances.${scopeKey}` as any
-												}
-												label='Cung độ vận tải (km)'
-												placeholder='Chọn cung độ'
-												options={distances.map((d) => ({
-													value: d.id || d.value,
-													label: d.value ? `${d.value} km` : d.name || d.label,
-												}))}
-											/>
-										</div>
-
-										{/* HÀNG 2: Cụm Loại hàng, Vị trí nhận, Vị trí đổ */}
-										<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
-											<FormMultiSelect
-												control={formControl}
-												name={
-													`${groupPath}.processCargoTypes.${scopeKey}` as any
-												}
-												label='Loại hàng'
-												placeholder='Chọn loại hàng'
-												options={cargoTypes.map((c) => ({
-													value: c.id || c.value,
-													label: c.code
-														? `${c.code} - ${c.name || c.label}`
-														: c.name || c.label,
-												}))}
-											/>
-
-											<FormMultiSelect
-												control={formControl}
-												name={
-													`${groupPath}.processPickupLocations.${scopeKey}` as any
-												}
-												label='Vị trí nhận'
-												placeholder='Chọn vị trí nhận'
-												options={pickupLocations.map((l) => ({
-													value: l.id || l.value,
-													label: l.name || l.label,
-												}))}
-											/>
-
-											<FormMultiSelect
-												control={formControl}
-												name={
-													`${groupPath}.processDropoffLocations.${scopeKey}` as any
-												}
-												label='Vị trí đổ'
-												placeholder='Chọn vị trí đổ'
-												options={dropoffLocations.map((l) => ({
-													value: l.id || l.value,
-													label: l.name || l.label,
-												}))}
-											/>
-										</div>
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${groupPath}.equipmentDistances.${scopeKey}` as any
+											}
+											label='Cung độ vận tải'
+											placeholder='Chọn cung độ vận tải'
+											options={distances.map((d) => ({
+												value: d.id || d.value,
+												label: d.value
+													? `${d.value} km`
+													: d.name || d.label,
+											}))}
+										/>
 									</div>
 
-									{/* BẢNG NHẬP SẢN LƯỢNG THỰC TẾ CHO RIÊNG CỤM NÀY */}
-									{procItems.length > 0 && (
-										<div className='space-y-2 pt-2'>
-											<div className='text-xs font-semibold text-gray-700'>
-												Bảng kế hoạch sản lượng thực tế ({procItems.length} tổ
-												hợp)
-											</div>
+									<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${groupPath}.processCargoTypes.${scopeKey}` as any
+											}
+											label='Chủng loại hàng'
+											placeholder='Chọn chủng loại hàng'
+											options={cargoTypes.map((c) => ({
+												value: c.id || c.value,
+												label: c.code
+													? `${c.code} - ${c.name || c.label}`
+													: c.name || c.label,
+											}))}
+										/>
 
-											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
-												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
-														<tr>
-															<th className='w-[15%] px-3 py-2'>Chất lượng</th>
-															<th className='w-[22%] px-3 py-2'>Loại hàng</th>
-															<th className='w-[28%] px-3 py-2'>
-																Vị trí nhận → Đổ
-															</th>
-															<th className='w-[15%] px-3 py-2'>Cung độ</th>
-															<th className='w-[20%] px-3 py-2'>
-																Sản lượng thực tế
-															</th>
-														</tr>
-													</thead>
-													<tbody className='divide-y divide-gray-100'>
-														{procItems.map((row) => {
-															const globalIdx = items.findIndex(
-																(it) => it === row,
-															);
-															return (
-																<tr
-																	key={`${row.equipmentId}-${row.equipmentQuality}-${row.productionProcessId}-${row.cargoTypeId || ''}-${row.receivingLocationId || ''}-${row.dumpingLocationId || ''}-${row.haulDistanceId || ''}`}
-																	className='hover:bg-gray-50/50'
-																>
-																	<td className='px-3 py-2'>
-																		<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																			{row.equipmentQuality
-																				? `Loại ${row.equipmentQuality}`
-																				: '-'}
-																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																			{row.cargoTypeName || '-'}
-																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																			{row.receivingLocationName ||
-																			row.dumpingLocationName
-																				? `${row.receivingLocationName || '...'} → ${row.dumpingLocationName || '...'}`
-																				: '-'}
-																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
-																			{row.haulDistanceValue
-																				? `${row.haulDistanceValue} km`
-																				: '-'}
-																		</div>
-																	</td>
-																	<td className='px-3 py-2'>
-																		<FormNumberInput
-																			value={row.productionMeters}
-																			onValueChange={(val) => {
-																				const next = [...items];
-																				if (globalIdx >= 0) {
-																					next[globalIdx] = {
-																						...next[globalIdx],
-																						productionMeters: val ?? Number.NaN,
-																					};
-																					setItems(next);
-																				}
-																			}}
-																			placeholder='Nhập sản lượng'
-																		/>
-																	</td>
-																</tr>
-															);
-														})}
-													</tbody>
-												</table>
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${groupPath}.processPickupLocations.${scopeKey}` as any
+											}
+											label='Vị trí nhận (Không bắt buộc)'
+											placeholder='Chọn vị trí nhận'
+											options={pickupLocations.map((l) => ({
+												value: l.id || l.value,
+												label: l.name || l.label,
+											}))}
+										/>
+
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${groupPath}.processDropoffLocations.${scopeKey}` as any
+											}
+											label='Vị trí đổ (Không bắt buộc)'
+											placeholder='Chọn vị trí đổ'
+											options={dropoffLocations.map((l) => ({
+												value: l.id || l.value,
+												label: l.name || l.label,
+											}))}
+										/>
+									</div>
+
+									{/* KHU VỰC BẢNG SẢN LƯỢNG THEO CUNG ĐỘ (CARDS VỚI BADGES) */}
+									{currentDists.length > 0 &&
+										currentQualities.length > 0 &&
+										groups.length > 0 && (
+											<div className='space-y-4 pt-2'>
+												{groups.map((grp: any, gIdx: number) => {
+													const summaryParts: string[] = [];
+													if (grp.cargoTypeName) {
+														summaryParts.push(grp.cargoTypeName);
+													}
+													if (combinedPickupName && grp.dumpingLocationName) {
+														summaryParts.push(
+															`từ ${combinedPickupName} đến ${grp.dumpingLocationName}`,
+														);
+													} else if (combinedPickupName) {
+														summaryParts.push(`từ ${combinedPickupName}`);
+													} else if (grp.dumpingLocationName) {
+														summaryParts.push(
+															`đến ${grp.dumpingLocationName}`,
+														);
+													}
+													const paramSummary = summaryParts.join(' ');
+
+													return (
+														<div
+															key={gIdx}
+															className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'
+														>
+															<div className='flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
+																<div className='flex flex-wrap items-center gap-2.5 text-sm'>
+																	<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 font-semibold text-black shadow-2xs'>
+																		{title} (Loại {grp.equipmentQuality})
+																	</span>
+																	{paramSummary && (
+																		<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 font-medium text-black shadow-2xs'>
+																			<span className='font-bold text-black'>
+																				Thông số:
+																			</span>{' '}
+																			{paramSummary}
+																		</span>
+																	)}
+																</div>
+															</div>
+
+															<div className='w-full overflow-x-auto'>
+																<table className='w-full min-w-[500px] text-left text-sm'>
+																	<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+																		<tr>
+																			<th className='px-4 py-2.5 whitespace-nowrap'>
+																				Cung độ vận tải
+																			</th>
+																			<th className='w-52 min-w-[160px] px-4 py-2.5 whitespace-nowrap'>
+																				Sản lượng thực tế
+																			</th>
+																		</tr>
+																	</thead>
+																	<tbody className='divide-y divide-neutral-100'>
+																		{grp.items.map((item: any) => {
+																			const globalIdx = items.findIndex(
+																				(it) => it === item,
+																			);
+																			return (
+																				<tr
+																					key={`${item.equipmentId}-${item.equipmentQuality}-${item.productionProcessId}-${item.cargoTypeId || ''}-${item.dumpingLocationId || ''}-${item.haulDistanceId || ''}`}
+																					className='transition-colors hover:bg-neutral-50/50'
+																				>
+																					<td className='px-4 py-2 whitespace-nowrap'>
+																						<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-black'>
+																							{item.haulDistanceValue
+																								? `${item.haulDistanceValue} km`
+																								: '-'}
+																						</div>
+																					</td>
+																					<td className='w-52 min-w-[160px] px-4 py-2'>
+																						<FormNumberInput
+																							value={item.productionMeters}
+																							onValueChange={(val) => {
+																								const next = [...items];
+																								if (globalIdx >= 0) {
+																									next[globalIdx] = {
+																										...next[globalIdx],
+																										productionMeters:
+																											val ?? Number.NaN,
+																									};
+																									setItems(next);
+																								}
+																							}}
+																							placeholder='Nhập sản lượng'
+																						/>
+																					</td>
+																				</tr>
+																			);
+																		})}
+																	</tbody>
+																</table>
+															</div>
+														</div>
+													);
+												})}
 											</div>
-										</div>
-									)}
+										)}
 								</div>
 							);
 						})}

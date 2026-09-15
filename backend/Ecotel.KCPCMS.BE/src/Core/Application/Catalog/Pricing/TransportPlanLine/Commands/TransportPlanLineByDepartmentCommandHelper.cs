@@ -251,9 +251,9 @@ internal static class TransportPlanLineByDepartmentCommandHelper
 
     /// <summary>
     /// Tự động dò dòng TransportUnitPrice khớp với tổ hợp field của dòng kế hoạch VTL — không cần người
-    /// dùng tự chọn đơn giá
+    /// dùng tự chọn đơn giá. Trả về null nếu chưa có đơn giá trong danh mục.
     /// </summary>
-    private static Guid ResolveTransportUnitPriceId(
+    internal static Guid? ResolveTransportUnitPriceId(
         IList<TransportUnitPriceEntity> candidates,
         ItemInput item,
         DateOnly month)
@@ -283,7 +283,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
 
         if (matches.Count == 0)
         {
-            throw new NotFoundException(CustomResponseMessage.TransportUnitPriceNotFound);
+            return null;
         }
 
         if (matches.Count == 1)
@@ -299,9 +299,10 @@ internal static class TransportPlanLineByDepartmentCommandHelper
 
     /// <summary>
     /// Tự động dò dòng MechanizedTransportUnitPriceDetail khớp với tổ hợp field của dòng kế hoạch VTCG
-    /// (Đơn giá vận tải cơ giới không theo đơn vị phòng ban mà theo Công đoạn, Nhóm xe, Chất lượng, Cung độ)
+    /// (Đơn giá vận tải cơ giới không theo đơn vị phòng ban mà theo Công đoạn, Nhóm xe, Chất lượng, Cung độ).
+    /// Trả về null nếu chưa có đơn giá trong danh mục.
     /// </summary>
-    private static Guid ResolveMechanizedTransportUnitPriceDetailId(
+    internal static Guid? ResolveMechanizedTransportUnitPriceDetailId(
         IList<MechanizedTransportUnitPrice> candidates,
         ItemInput item,
         DateOnly month)
@@ -352,7 +353,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
 
         if (matchedHeaders.Count == 0)
         {
-            throw new NotFoundException(CustomResponseMessage.TransportUnitPriceNotFound);
+            return null;
         }
 
         var allDetails = matchedHeaders.SelectMany(h => h.Details).ToList();
@@ -365,17 +366,12 @@ internal static class TransportPlanLineByDepartmentCommandHelper
 
         matchedDetail ??= allDetails.FirstOrDefault(d => d.HaulDistanceId == null) ?? allDetails.FirstOrDefault();
 
-        if (matchedDetail == null)
-        {
-            throw new NotFoundException(CustomResponseMessage.TransportUnitPriceNotFound);
-        }
-
-        return matchedDetail.Id;
+        return matchedDetail?.Id;
     }
 
     private sealed record MonthInput(DateOnly Month, bool LowValuePerishableSupply, IList<ItemInput> Items);
 
-    private sealed record ItemInput(
+    internal sealed record ItemInput(
         Guid? TransportPlanLineId,
         Guid ProductionProcessId,
         Guid? TransportRouteId,

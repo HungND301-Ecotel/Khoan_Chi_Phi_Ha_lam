@@ -18,6 +18,14 @@ import {
 	useReactTable,
 } from '@tanstack/react-table';
 import { useMemo } from 'react';
+import { useUnitsOfMeasure } from '@/hooks/use-units-of-measure';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
 
 interface LumpSumDataTableProps {
 	columns: ColumnDef<LumpSumFinalSettlement>[];
@@ -36,9 +44,11 @@ interface LumpSumDataTableProps {
 			| 'actualQuantity'
 			| 'materialUnitPrice'
 			| 'maintainUnitPrice'
-			| 'electricityUnitPrice',
+			| 'electricityUnitPrice'
+			| 'unitOfMeasureName',
 		value: number | string,
 	) => void;
+	onAddSpecialProductionRow?: () => void;
 	onEditSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
 	onCancelSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
 	onSaveSpecialQuantity?: (row: LumpSumFinalSettlement) => void;
@@ -66,6 +76,7 @@ export function LumpSumDataTable({
 	onSaveCustomCost,
 	onDeleteCustomCost,
 	onCustomCostChange,
+	onAddSpecialProductionRow,
 	onEditSpecialQuantity,
 	onCancelSpecialQuantity,
 	onSaveSpecialQuantity,
@@ -75,6 +86,22 @@ export function LumpSumDataTable({
 	onEditSavingCarryForward,
 	onCancelSavingCarryForward,
 }: LumpSumDataTableProps) {
+	const { units: uomList } = useUnitsOfMeasure();
+
+	const uomOptions = useMemo(() => {
+		const names = new Set<string>();
+		['m', 'Tấn', 'cột', 'm3', 'kg', 'bộ', 'cái', 'lít', 'ca', 'giờ', 'Đồng'].forEach((u) =>
+			names.add(u),
+		);
+		uomList.forEach((item) => {
+			if (item.name?.trim()) names.add(item.name.trim());
+		});
+		return Array.from(names).map((name) => ({
+			value: name,
+			label: name,
+		}));
+	}, [uomList]);
+
 	const renderUnitPrice = (value: number | null | undefined) => {
 		if (value == null || value === 0) {
 			return '';
@@ -225,35 +252,47 @@ export function LumpSumDataTable({
 											<div className='flex items-center justify-between gap-2'>
 												<span>{r.productName}</span>
 												<div className='flex items-center gap-1'>
-													{isEditing ? (
-														<>
-															<Button
-																variant='default'
-																size='sm'
-																className='h-8 px-3'
-																onClick={() => onSaveSpecialQuantity?.(r)}
-															>
-																Lưu
-															</Button>
+													{r.canAddSpecialProductionRow && onAddSpecialProductionRow && (
+														<Button
+															variant='default'
+															size='sm'
+															className='h-6 w-6 p-0 text-sm font-bold shadow-xs'
+															onClick={() => onAddSpecialProductionRow?.()}
+															title='Thêm sản phẩm phát sinh'
+														>
+															+
+														</Button>
+													)}
+													{r.specialQuantityField &&
+														(isEditing ? (
+															<>
+																<Button
+																	variant='default'
+																	size='sm'
+																	className='h-8 px-3'
+																	onClick={() => onSaveSpecialQuantity?.(r)}
+																>
+																	Lưu
+																</Button>
+																<Button
+																	variant='outline'
+																	size='sm'
+																	className='h-8 px-3'
+																	onClick={() => onCancelSpecialQuantity?.(r)}
+																>
+																	Hủy
+																</Button>
+															</>
+														) : (
 															<Button
 																variant='outline'
 																size='sm'
 																className='h-8 px-3'
-																onClick={() => onCancelSpecialQuantity?.(r)}
+																onClick={() => onEditSpecialQuantity?.(r)}
 															>
-																Hủy
+																Sửa
 															</Button>
-														</>
-													) : (
-														<Button
-															variant='outline'
-															size='sm'
-															className='h-8 px-3'
-															onClick={() => onEditSpecialQuantity?.(r)}
-														>
-															Sửa
-														</Button>
-													)}
+														))}
 												</div>
 											</div>
 										</TableCell>
@@ -282,6 +321,158 @@ export function LumpSumDataTable({
 												/>
 											) : (
 												<div className='text-left'>
+													{formatNumber(r.actualQuantity ?? 0)}
+												</div>
+											)}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='p-2 text-left'></TableCell>
+									</TableRow>
+								);
+							}
+
+							if (row.original.isSpecialProductionRow) {
+								const r = row.original;
+								const isEditing = !!r.isEditing;
+								return (
+									<TableRow
+										key={row.id}
+										className='border-b border-gray-200 bg-blue-50/20 hover:bg-blue-50/40'
+									>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-center font-bold'>
+											{r.sttLabel || '-'}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
+											<div className='flex items-center justify-between gap-2'>
+												{isEditing ? (
+													<Input
+														className='h-8 max-w-xs'
+														placeholder='Tên sản phẩm phát sinh (VD: Đào lò đá)'
+														value={r.productName ?? ''}
+														onChange={(e) =>
+															onCustomCostChange?.(
+																r,
+																'customName',
+																e.target.value,
+															)
+														}
+													/>
+												) : (
+													<span className='font-bold'>{r.productName}</span>
+												)}
+												<div className='flex items-center gap-1'>
+													{isEditing ? (
+														<>
+															<Button
+																variant='default'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onSaveCustomCost?.(r)}
+															>
+																Lưu
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onCancelCustomCost?.(r)}
+															>
+																Hủy
+															</Button>
+														</>
+													) : (
+														<>
+															<Button
+																variant='outline'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onEditCustomCost?.(r)}
+															>
+																Sửa
+															</Button>
+															<Button
+																variant='destructive'
+																size='sm'
+																className='h-8 px-3'
+																onClick={() => onDeleteCustomCost?.(r)}
+															>
+																Xóa
+															</Button>
+														</>
+													)}
+												</div>
+											</div>
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-center align-middle'>
+											{isEditing ? (
+												<Select
+													value={r.unitOfMeasureName || 'm'}
+													onValueChange={(val) =>
+														onCustomCostChange?.(
+															r,
+															'unitOfMeasureName',
+															val,
+														)
+													}
+												>
+													<SelectTrigger
+														size='sm'
+														className='h-8 w-fit min-w-[80px] mx-auto border border-gray-300 rounded-md bg-white px-2.5 text-sm font-bold text-black justify-center gap-1.5 shadow-2xs hover:bg-gray-50 focus:ring-1 focus:ring-primary'
+													>
+														<SelectValue placeholder='ĐVT' />
+													</SelectTrigger>
+													<SelectContent className='max-h-56'>
+														{(() => {
+															const currentVal = r.unitOfMeasureName || 'm';
+															const opts = uomOptions.some(
+																(o) => o.value === currentVal,
+															)
+																? uomOptions
+																: [
+																		{
+																			value: currentVal,
+																			label: currentVal,
+																		},
+																		...uomOptions,
+																	];
+															return opts.map((opt) => (
+																<SelectItem
+																	key={opt.value}
+																	value={opt.value}
+																>
+																	{opt.label}
+																</SelectItem>
+															));
+														})()}
+													</SelectContent>
+												</Select>
+											) : (
+												<div className='text-center font-bold'>
+													{r.unitOfMeasureName || 'm'}
+												</div>
+											)}
+										</TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
+											{isEditing ? (
+												<FormNumberInput
+													className='h-8'
+													value={r.actualQuantity ?? 0}
+													onValueChange={(value) =>
+														onCustomCostChange?.(
+															r,
+															'actualQuantity',
+															Number(value ?? 0),
+														)
+													}
+												/>
+											) : (
+												<div className='text-left font-bold'>
 													{formatNumber(r.actualQuantity ?? 0)}
 												</div>
 											)}
