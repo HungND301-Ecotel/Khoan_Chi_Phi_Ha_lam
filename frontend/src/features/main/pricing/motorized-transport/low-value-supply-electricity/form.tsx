@@ -80,8 +80,16 @@ export function MotorizedLowValueSupplyElectricityForm({
 					row.periods && row.periods.length > 0
 						? row.periods.map((p) => ({
 								id: isDuplicate ? undefined : p.id,
-								startMonth: p.startMonth ? p.startMonth.substring(0, 7) : '',
-								endMonth: p.endMonth ? p.endMonth.substring(0, 7) : '',
+								startMonth: p.startMonth
+									? p.startMonth.length === 7
+										? `${p.startMonth}-01`
+										: p.startMonth.substring(0, 10)
+									: '',
+								endMonth: p.endMonth
+									? p.endMonth.length === 7
+										? `${p.endMonth}-01`
+										: p.endMonth.substring(0, 10)
+									: '',
 								lowValueSupplyUnitPrice:
 									p.lowValueSupplyUnitPrice ??
 									p.lowValuePerishableSupplyUnitPrice ??
@@ -92,8 +100,15 @@ export function MotorizedLowValueSupplyElectricityForm({
 							? [
 									{
 										id: isDuplicate ? undefined : row.id,
-										startMonth: row.startMonth.substring(0, 7),
-										endMonth: row.endMonth?.substring(0, 7) || '',
+										startMonth:
+											row.startMonth.length === 7
+												? `${row.startMonth}-01`
+												: row.startMonth.substring(0, 10),
+										endMonth: row.endMonth
+											? row.endMonth.length === 7
+												? `${row.endMonth}-01`
+												: row.endMonth.substring(0, 10)
+											: '',
 										lowValueSupplyUnitPrice:
 											row.lowValuePerishableSupplyUnitPrice ??
 											row.lowValueSupplyUnitPrice ??
@@ -118,6 +133,30 @@ export function MotorizedLowValueSupplyElectricityForm({
 		values: MotorizedLowValueSupplyElectricityFormSchema,
 	) => {
 		try {
+			const periods = values.periods || [];
+			for (let i = 0; i < periods.length; i++) {
+				const p1 = periods[i];
+				const s1 = p1.startMonth.substring(0, 7);
+				const e1 = p1.endMonth.substring(0, 7);
+				if (s1 > e1) {
+					popup.error(
+						`Dòng thời gian ${i + 1}: Thời gian bắt đầu không được lớn hơn thời gian kết thúc`,
+					);
+					return;
+				}
+				for (let j = i + 1; j < periods.length; j++) {
+					const p2 = periods[j];
+					const s2 = p2.startMonth.substring(0, 7);
+					const e2 = p2.endMonth.substring(0, 7);
+					if (s1 <= e2 && e1 >= s2) {
+						popup.error(
+							`Khoảng thời gian ${s1} - ${e1} bị trùng hoặc giao với ${s2} - ${e2}`,
+						);
+						return;
+					}
+				}
+			}
+
 			const pgObj = processGroups.find((p) => p.id === values.processGroupId);
 			const requests = values.periods.map((period) => {
 				const payload = {
@@ -195,6 +234,14 @@ export function MotorizedLowValueSupplyElectricityForm({
 			/>
 
 			<FormSeparator label='Danh sách khoảng thời gian áp dụng' />
+
+			{(form.formState.errors.periods?.root?.message ||
+				form.formState.errors.periods?.message) && (
+				<p className='text-destructive text-sm font-medium'>
+					{form.formState.errors.periods?.root?.message ||
+						form.formState.errors.periods?.message}
+				</p>
+			)}
 
 			<div className='flex flex-col gap-4'>
 				{fields.map((field, index) => (

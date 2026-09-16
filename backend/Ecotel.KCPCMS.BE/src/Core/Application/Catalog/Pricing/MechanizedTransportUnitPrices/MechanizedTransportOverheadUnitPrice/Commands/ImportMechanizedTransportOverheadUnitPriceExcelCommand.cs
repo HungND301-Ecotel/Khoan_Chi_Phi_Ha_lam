@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -79,22 +79,30 @@ public class ImportMechanizedTransportOverheadUnitPriceExcelCommandHandler(
                 }
                 DateOnly startMonth = ParseMonthYear(item.dto.StartMonth);
                 DateOnly endMonth = ParseMonthYear(item.dto.EndMonth);
+                startMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
+                endMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
 
-                bool isDuplicated = dbEntities.Any(x =>
+                if (startMonth > endMonth)
+                {
+                    importErrors.Add($"Dòng {item.rowNumber}: thời gian bắt đầu không được lớn hơn thời gian kết thúc.");
+                    continue;
+                }
+
+                bool isOverlapped = dbEntities.Any(x =>
                         x.ProcessGroupId == processGroup.Id
                         && x.DepartmentId == department.Id
-                        && x.StartMonth == startMonth
-                        && x.EndMonth == endMonth
+                        && x.StartMonth <= endMonth
+                        && x.EndMonth >= startMonth
                         && x.Id != item.dto.Id)
                     || excelEntities.Any(x =>
                         x.ProcessGroupId == processGroup.Id
                         && x.DepartmentId == department.Id
-                        && x.StartMonth == startMonth
-                        && x.EndMonth == endMonth);
+                        && x.StartMonth <= endMonth
+                        && x.EndMonth >= startMonth);
 
-                if (isDuplicated)
+                if (isOverlapped)
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: đã tồn tại đơn giá cho nhóm công đoạn '{item.dto.ProcessGroupCode}' trong khoảng thời gian này.");
+                    importErrors.Add($"Dòng {item.rowNumber}: bị trùng hoặc giao khoảng thời gian với đơn giá đã tồn tại cho nhóm công đoạn '{item.dto.ProcessGroupCode}' và đơn vị '{item.dto.DepartmentCode}'.");
                     continue;
                 }
 

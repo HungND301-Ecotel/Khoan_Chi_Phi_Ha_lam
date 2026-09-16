@@ -53,11 +53,18 @@ export function MonthYearInput({
 	const parseValue = (val: string) => {
 		if (!val) return { month: currentMonth, year: currentYear };
 		try {
-			const match = val.match(/^(\d{4})-(\d{2})-/);
-			if (match) {
+			const isoMatch = val.match(/^(\d{4})-(\d{2})/);
+			if (isoMatch) {
 				return {
-					month: parseInt(match[2], 10),
-					year: parseInt(match[1], 10),
+					month: parseInt(isoMatch[2], 10),
+					year: parseInt(isoMatch[1], 10),
+				};
+			}
+			const slashMatch = val.match(/^(\d{1,2})\/(\d{4})/);
+			if (slashMatch) {
+				return {
+					month: parseInt(slashMatch[1], 10),
+					year: parseInt(slashMatch[2], 10),
 				};
 			}
 		} catch {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,11 +25,31 @@ public class UpdateMechanizedTransportOverheadUnitPriceCommandHandler(IUnitOfWor
             disableTracking: false)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
+        var normalizedStartMonth = new DateOnly(request.UpdateModel.StartMonth.Year, request.UpdateModel.StartMonth.Month, 1);
+        var normalizedEndMonth = new DateOnly(request.UpdateModel.EndMonth.Year, request.UpdateModel.EndMonth.Month, 1);
+
+        if (normalizedStartMonth > normalizedEndMonth)
+        {
+            throw new BadRequestException("Thời gian bắt đầu không được lớn hơn thời gian kết thúc.");
+        }
+
+        bool overlapExists = await _repository.ExistsAsync(e =>
+            e.Id != request.UpdateModel.Id &&
+            e.DepartmentId == request.UpdateModel.DepartmentId &&
+            e.ProcessGroupId == request.UpdateModel.ProcessGroupId &&
+            e.StartMonth <= normalizedEndMonth &&
+            e.EndMonth >= normalizedStartMonth);
+
+        if (overlapExists)
+        {
+            throw new ConflictException(CustomResponseMessage.MonthRangeOverlap);
+        }
+
         entity.Update(
             request.UpdateModel.ProcessGroupId,
             request.UpdateModel.DepartmentId,
-            request.UpdateModel.StartMonth,
-            request.UpdateModel.EndMonth,
+            normalizedStartMonth,
+            normalizedEndMonth,
             request.UpdateModel.LowValuePerishableSupplyUnitPrice,
             request.UpdateModel.ElectricityUnitPrice);
 
