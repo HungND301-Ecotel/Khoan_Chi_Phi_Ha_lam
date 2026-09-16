@@ -237,6 +237,11 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
                 valueByStandard = (totalValueToAccount / (decimal)usageTime)
                                   * ((decimal)plannedOutput / (decimal)standardOutput);
             }
+            else if (usageTime > 0)
+            {
+                // VTCG: phân bổ đều theo tháng V/Ti (không dùng sản lượng chuẩn)
+                valueByStandard = totalValueToAccount / (decimal)usageTime;
+            }
 
             // Ưu tiên AllocationRatio từ log override (nếu có)
             double allocationRatio;
@@ -527,6 +532,12 @@ public class GetAllAcceptanceReportItemLogQueryHandler(IUnitOfWork unitOfWork) :
         {
             valueByStandard = (totalValueToAccount / (decimal)usageTime)
                 * ((decimal)plannedOutput / (decimal)standardOutput);
+        }
+        else if (usageTime > 0)
+        {
+            // Khi standardOutput = 0 (VTCG: phân bổ đều theo tháng V/Ti,
+            // không phụ thuộc sản lượng chuẩn như Khai thác lò/VTL).
+            valueByStandard = totalValueToAccount / (decimal)usageTime;
         }
 
         if (usageTime <= 0)

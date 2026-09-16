@@ -194,9 +194,13 @@ internal static class LongTermAnchorSeedTrackingHelper
         }
 
         var normalizedAllocationRatio = allocationRatio;
+        // Khi standardOutput > 0: phân bổ theo sản lượng (Khai thác lò, VTL).
+        // Khi standardOutput = 0: phân bổ đều theo tháng V/Ti (VTCG: lốp xe, xích, ga lê...).
         var valueByStandard = usageTime > 0 && standardOutput > 0
             ? (totalValueToAccount / (decimal)usageTime) * ((decimal)plannedOutput / (decimal)standardOutput)
-            : 0;
+            : usageTime > 0
+                ? totalValueToAccount / (decimal)usageTime
+                : 0;
 
         decimal accountedValueThisPeriod;
         decimal pendingValueEndPeriod;
