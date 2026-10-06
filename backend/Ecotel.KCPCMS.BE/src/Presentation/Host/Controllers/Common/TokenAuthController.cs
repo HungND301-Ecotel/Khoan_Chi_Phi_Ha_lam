@@ -6,10 +6,12 @@ using Shared.Constants;
 
 namespace Host.Controllers.Common;
 
-public sealed class TokensController(ITokenService tokenService) : BaseNoAuthController
+public sealed class TokensController(ITokenService tokenService, IConfiguration configuration) : BaseNoAuthController
 {
     private const string RefreshCookieName = "refresh_token";
     private const string RefreshCookiePath = "/api/v1/tokens";
+    // HTTP deployments must explicitly opt out; HTTPS remains the default.
+    private readonly bool _secureCookie = configuration.GetValue("AuthCookies:Secure", true);
 
     [HttpPost]
     [OpenApiOperation("Request an access token using credentials.", "")]
@@ -36,26 +38,24 @@ public sealed class TokensController(ITokenService tokenService) : BaseNoAuthCon
     public async Task<IActionResult> RevokeAsync()
     {
         await tokenService.RevokeTokenAsync(Request.Cookies[RefreshCookieName] ?? string.Empty);
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Path = RefreshCookiePath
-        });
+        Response.Cookies.Delete(RefreshCookieName, CreateRefreshCookieOptions());
         return Ok(new { }, MessageCommon.GetDataSuccess);
     }
 
     private void SetRefreshCookie(TokenResponse result) =>
-        Response.Cookies.Append(RefreshCookieName, result.RefreshToken, new CookieOptions
+        Response.Cookies.Append(RefreshCookieName, result.RefreshToken,
+            CreateRefreshCookieOptions(result.RefreshTokenExpiryTime));
+
+    private CookieOptions CreateRefreshCookieOptions(DateTime? expires = null) =>
+        new()
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = _secureCookie,
             SameSite = SameSiteMode.Strict,
             Path = RefreshCookiePath,
-            Expires = result.RefreshTokenExpiryTime,
+            Expires = expires,
             IsEssential = true
-        });
+        };
 
     private string? GetIpAddress() =>
         Request.Headers.ContainsKey("X-Forwarded-For")
