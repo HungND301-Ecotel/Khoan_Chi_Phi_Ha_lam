@@ -87,7 +87,7 @@ public class User : AuditableEntity<int>, IAggregateRoot
 
     public void DeleteUser(int deleteBy = 0)
     {
-        DeletedOn = DateTimeOffset.Now;
+        DeletedOn = DateTimeOffset.UtcNow;
         DeletedBy = deleteBy;
         DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
     }

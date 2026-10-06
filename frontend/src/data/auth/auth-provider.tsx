@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { AuthContext, Credentials } from '@/data/auth/auth-context';
@@ -118,7 +117,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 		[navigate, popup, loadPermissions],
 	);
 
-	const signOut = useCallback(() => {
+	const signOut = useCallback(async () => {
+		try {
+			await api.post(API.AUTH.REVOKE, {}, { requiresAuth: false });
+		} catch {
+			popup.error('Không thể thu hồi phiên đăng nhập trên máy chủ');
+			return;
+		}
 		authStorage.clear();
 		setUser(false);
 		setRole(null);

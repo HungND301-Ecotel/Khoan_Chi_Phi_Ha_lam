@@ -6,6 +6,7 @@ using Domain.Exceptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Constants;
 
 namespace Infrastructure.Auth.Jwt;
 
@@ -26,17 +27,19 @@ public class ConfigureJwtBearerOptions(IOptions<JwtSettings> jwtSettings) : ICon
             return;
         }
 
-        byte[] key = Encoding.ASCII.GetBytes(_jwtSettings.Key);
+        byte[] key = Encoding.UTF8.GetBytes(_jwtSettings.Key);
 
-        options.RequireHttpsMetadata = false;
-        options.SaveToken = true;
+        options.RequireHttpsMetadata = true;
+        options.SaveToken = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = false,
+            ValidateIssuer = true,
+            ValidIssuer = JwtAuthConstants.Issuer,
             ValidateLifetime = true,
-            ValidateAudience = false,
+            ValidateAudience = true,
+            ValidAudience = JwtAuthConstants.Audience,
             RoleClaimType = ClaimTypes.Role,
             ClockSkew = TimeSpan.Zero
         };
@@ -56,7 +59,7 @@ public class ConfigureJwtBearerOptions(IOptions<JwtSettings> jwtSettings) : ICon
             OnAuthenticationFailed = context =>
             {
                 if (context.Exception is SecurityTokenExpiredException
-                    && !context.HttpContext.Request.Path.StartsWithSegments("/api/token/refresh", StringComparison.OrdinalIgnoreCase))
+                    && !context.HttpContext.Request.Path.StartsWithSegments("/api/v1/tokens/refresh", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new TokenExpiredException("Authentication token has expired");
                 }

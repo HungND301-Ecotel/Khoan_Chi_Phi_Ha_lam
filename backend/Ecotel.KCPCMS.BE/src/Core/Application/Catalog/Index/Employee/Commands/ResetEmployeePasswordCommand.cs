@@ -14,7 +14,6 @@ public record ResetEmployeePasswordCommand(int EmployeeId) : IRequest<bool>;
 
 public class ResetEmployeePasswordCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ResetEmployeePasswordCommand, bool>
 {
-    private const string DefaultPassword = "123456";
     private readonly IWriteRepository<Domain.Entities.Index.Employee> _employeeRepository = unitOfWork.GetRepository<Domain.Entities.Index.Employee>();
 
     public async Task<bool> Handle(ResetEmployeePasswordCommand request, CancellationToken cancellationToken)
@@ -29,7 +28,16 @@ public class ResetEmployeePasswordCommandHandler(IUnitOfWork unitOfWork) : IRequ
             throw new NotFoundException("Không tìm thấy tài khoản của nhân viên này.");
         }
 
-        existEmployee.User.SetPassword(Utils.ComputeHash(DefaultPassword));
+        existEmployee.User.SetPassword(Utils.ComputeHash(InitialAccountPassword.Read("INITIAL_ACCOUNT_PASSWORD")));
+
+        var refreshTokens = unitOfWork.GetRepository<RefreshToken>();
+        var sessions = await refreshTokens.GetAllAsync(
+            predicate: token => token.UserId == existEmployee.User.Id,
+            disableTracking: false);
+        if (sessions.Count > 0)
+        {
+            refreshTokens.Delete(sessions.ToArray());
+        }
 
         await unitOfWork.SaveChangesAsync();
         return true;

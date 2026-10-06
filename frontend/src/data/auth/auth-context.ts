@@ -14,7 +14,7 @@ export type AuthContextValue = {
 	permissions: string[];
 	refreshProfile: () => Promise<void>;
 	signIn: (credentials: Credentials) => Promise<void>;
-	signOut: () => void;
+	signOut: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

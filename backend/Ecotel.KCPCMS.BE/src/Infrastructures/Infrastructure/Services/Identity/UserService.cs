@@ -43,8 +43,6 @@ public class UserService(
 
         string normalizedUsername = Utils.NormalizeUserName(username);
         string inputPasswordHash = Utils.ComputeHash(password);
-        string defaultPasswordHash = Utils.ComputeHash(AppConsts.DefaultPassword);
-        bool allowDefaultPassword = inputPasswordHash == defaultPasswordHash;
 
         var user = await _userRepository.GetFirstOrDefaultAsync(
             predicate: u => u.NormalizedUserName == normalizedUsername || u.NormalizedEmail == normalizedUsername,
@@ -61,7 +59,7 @@ public class UserService(
             throw new BadRequestException($"Tài khoản đang bị khóa đến {user.LockoutEnd:HH:mm dd/MM/yyyy}");
         }
 
-        if (!(user.PasswordHash == inputPasswordHash || allowDefaultPassword))
+        if (user.PasswordHash != inputPasswordHash)
         {
             user.IncrementAccessFailedCount();
 
