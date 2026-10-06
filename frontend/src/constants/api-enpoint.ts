@@ -756,6 +756,7 @@ export const API = {
 	AUTH: {
 		SIGN_IN: '/v1/tokens',
 		REFRESH: '/v1/tokens/refresh',
+		REVOKE: '/v1/tokens/revoke',
 		PERMISSIONS: '/v1/system/permission',
 	},
 } as const;

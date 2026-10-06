@@ -12,6 +12,7 @@ internal static class Startup
     {
         services.AddOptions<JwtSettings>()
             .BindConfiguration($"SecuritySettings:{nameof(JwtSettings)}")
+            .PostConfigure(settings => settings.Key = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? string.Empty)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 

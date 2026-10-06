@@ -34,8 +34,8 @@ function UserMenu() {
 		try {
 			const payload = authStorage.parseJwt(token);
 			return {
-				name: payload.fullName || 'Admin',
-				email: payload.email || 'admin@email.com',
+				name: typeof payload.fullName === 'string' ? payload.fullName : 'Admin',
+				email: typeof payload.email === 'string' ? payload.email : 'admin@email.com',
 			};
 		} catch {
 			return { name: 'Admin', email: 'admin@email.com' };

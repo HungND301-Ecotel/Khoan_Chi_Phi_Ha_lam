@@ -1,5 +1,5 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-const base = import.meta.env.VITE_API_BASE_URL;
+import { apiBase as base } from '@/lib/api-base';
 
 import { authStorage } from '@/lib/auth-storage';
 import { TokenRefreshService } from '@/lib/token-refresh-service';
@@ -70,12 +70,12 @@ export type PaggingRequest = {
 /**
  * Lấy headers với token
  */
-const getHeaders = (): Record<string, string> => {
+const getHeaders = (requiresAuth = true): Record<string, string> => {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 	};
 
-	const token = authStorage.getToken();
+	const token = requiresAuth ? authStorage.getToken() : null;
 	if (token) {
 		headers.Authorization = `Bearer ${token}`;
 	}
@@ -122,7 +122,8 @@ export const fetcher = async <Res, Req>(
 	const response = await fetch(url, {
 		method,
 		body: JSON.stringify(body),
-		headers: getHeaders(),
+		headers: getHeaders(requiresAuth),
+		credentials: 'include',
 		cache: 'no-store',
 	});
 
@@ -184,7 +185,7 @@ export const api = {
 		const url = `${base}${path}${search ? '?' + search : ''}`;
 		
 		const headers = getHeaders();
-		const response = await fetch(url, { headers });
+		const response = await fetch(url, { headers, credentials: 'include' });
 
 		if (!response.ok) {
 			const json = await response.json();
@@ -239,6 +240,7 @@ export const api = {
 			method: 'POST',
 			body: formData,
 			headers,
+			credentials: 'include',
 		});
 
 		if (!response.ok) {
@@ -286,6 +288,7 @@ export const api = {
 			method: 'POST',
 			body: formData,
 			headers,
+			credentials: 'include',
 		});
 
 		const json = await response.json();

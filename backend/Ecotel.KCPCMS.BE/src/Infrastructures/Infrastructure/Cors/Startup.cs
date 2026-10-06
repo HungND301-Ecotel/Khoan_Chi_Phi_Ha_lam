@@ -16,9 +16,7 @@ internal static class Startup
             return services.AddCors(opt =>
                     opt.AddPolicy(CorsPolicy, policy =>
                         policy.AllowAnyHeader()
-                            .AllowAnyMethod()
-                            .AllowCredentials()
-                            .AllowAnyOrigin()));
+                            .AllowAnyMethod()));
         }
 
         string[] origins = corsSettings.AllowedOrigins.Split(";");

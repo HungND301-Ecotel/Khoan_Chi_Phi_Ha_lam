@@ -8,7 +8,6 @@ using Application.Utility;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using Shared.Constants;
 using Shared.Constants.EmailTemplate;
 
@@ -21,7 +20,6 @@ public class CreateEmployeeCommandHandler(
     IVerificationService verificationService)
     : IRequestHandler<CreateEmployeeCommand, bool>
 {
-    private const string DefaultPassword = "123456";
 
     private readonly IWriteRepository<Domain.Entities.Index.Employee> _employeeRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.Employee>();
@@ -54,7 +52,7 @@ public class CreateEmployeeCommandHandler(
         try
         {
             var user = new User(request.CreateModel.UserName.Trim(), request.CreateModel.Email.Trim(),request.CreateModel.PhoneNumber.Trim());
-            user.SetPassword(Utils.ComputeHash(DefaultPassword));
+            user.SetPassword(Utils.ComputeHash(InitialAccountPassword.Read("INITIAL_ACCOUNT_PASSWORD")));
             await _userRepository.InsertAsync(user, cancellationToken);
             await unitOfWork.SaveChangesAsync();
 

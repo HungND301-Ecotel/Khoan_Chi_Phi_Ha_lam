@@ -5,6 +5,7 @@ using System.Text;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Persistence.Catalog.User;
+using Application.Dto.Authorization.Role;
 using Application.Identity.Tokens;
 using Application.Interfaces.Services;
 using Domain.Entities.Identity;
@@ -12,6 +13,7 @@ using Domain.Exceptions;
 using Infrastructure.Auth.Jwt;
 using Mapster;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Shared.Constants;
 
@@ -24,7 +26,6 @@ internal class TokenService : ITokenService
     private readonly IUserService _userService;
     private readonly JwtSettings _jwtOptions;
     private readonly SigningCredentials _signingCredentials;
-    private readonly TokenValidationParameters _tokenValidationParameters;
     private readonly IUnitOfWork _unitOfWork;
 
     public TokenService(
@@ -43,17 +44,6 @@ internal class TokenService : ITokenService
         var securityKey = new SymmetricSecurityKey(secret);
         _signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        _tokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = securityKey,
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidAudience = JwtAuthConstants.Audience,
-            ValidIssuer = JwtAuthConstants.Issuer,
-            RoleClaimType = ClaimTypes.Role,
-            ClockSkew = TimeSpan.Zero
-        };
     }
 
     public async Task<TokenResponse> GetTokenAsync(TokenRequest request, string ipAddress, CancellationToken cancellationToken)
@@ -64,29 +54,24 @@ internal class TokenService : ITokenService
 
     public async Task<TokenResponse> RefreshTokenAsync(RefreshTokenRequest request, string ipAddress)
     {
-        // Validate input parameters
-        if (string.IsNullOrEmpty(request.Token) || string.IsNullOrEmpty(request.RefreshToken))
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            throw new UnauthorizedException("Invalid token or refresh token");
+            throw new UnauthorizedException("Invalid refresh token");
         }
 
-        var userPrincipal = GetPrincipalFromExpiredToken(request.Token);
-        string? nameIdentifier = userPrincipal.FindFirstValue(SystemClaims.NameIdentifier);
-
-        if (!int.TryParse(nameIdentifier, out int userId))
+        string tokenHash = HashRefreshToken(request.RefreshToken);
+        var storedToken = await _tokenRefreshRepository.GetFirstOrDefaultAsync(
+            predicate: x => x.Token == tokenHash &&
+                            x.ExpiredDate > DateTimeOffset.UtcNow,
+            disableTracking: false);
+        if (storedToken is null)
         {
-            throw new SecurityTokenException("Invalid token: unable to determine user ID");
+            throw new UnauthorizedException("Invalid refresh token");
         }
 
-        // Verify refresh token is valid
-        if (!await IsValidRefreshToken(userId, request.RefreshToken))
-        {
-            throw new SecurityTokenException("Invalid refresh token");
-        }
-
-        // Get user with single efficient query
         var user = await _userRepository.GetFirstOrDefaultAsync(
-            predicate: x => x.Id == userId,
+            predicate: x => x.Id == storedToken.UserId,
+            include: query => query.Include(x => x.UserRoles).ThenInclude(x => x.Role),
             disableTracking: true);
 
         if (user is null)
@@ -94,10 +79,32 @@ internal class TokenService : ITokenService
             throw new UnauthorizedException("User not found");
         }
 
-        return await GenerateTokensAndUpdateUser(user.Adapt<UserDto>(), ipAddress);
+        var userDto = user.Adapt<UserDto>();
+        userDto.Role = user.UserRoles.FirstOrDefault()?.Role?.Adapt<ShortRoleDto>();
+        return await GenerateTokensAndUpdateUser(userDto, ipAddress, storedToken);
     }
 
-    private async Task<TokenResponse> GenerateTokensAndUpdateUser(UserDto user, string ipAddress)
+    public async Task RevokeTokenAsync(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return;
+        }
+
+        string tokenHash = HashRefreshToken(refreshToken);
+        var storedToken = await _tokenRefreshRepository.GetFirstOrDefaultAsync(
+            predicate: x => x.Token == tokenHash,
+            disableTracking: false);
+        if (storedToken is null)
+        {
+            return;
+        }
+
+        _tokenRefreshRepository.Delete(storedToken);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    private async Task<TokenResponse> GenerateTokensAndUpdateUser(UserDto user, string ipAddress, RefreshToken? previousToken = null)
     {
         // Generate JWT token
         string token = GenerateJwt(user, ipAddress);
@@ -107,7 +114,7 @@ internal class TokenService : ITokenService
         var refreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenExpirationInDays);
 
         // Add or update refresh token in database
-        await UpdateRefreshToken(user.Id, refreshToken, refreshTokenExpiryTime);
+        await UpdateRefreshToken(user.Id, refreshToken, refreshTokenExpiryTime, previousToken);
 
         return new TokenResponse(token, refreshToken, refreshTokenExpiryTime);
     }
@@ -132,8 +139,7 @@ internal class TokenService : ITokenService
             issuer: JwtAuthConstants.Issuer,
             audience: JwtAuthConstants.Audience,
             claims: claims,
-            //expires: DateTime.UtcNow.AddMinutes(_jwtOptions.TokenExpirationInMinutes),
-            expires: DateTime.UtcNow.AddYears(1),
+            expires: DateTime.UtcNow.AddMinutes(_jwtOptions.TokenExpirationInMinutes),
             signingCredentials: _signingCredentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -147,65 +153,26 @@ internal class TokenService : ITokenService
         return Convert.ToBase64String(randomBytes);
     }
 
-    private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+    private static string HashRefreshToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private async Task UpdateRefreshToken(int userId, string token, DateTimeOffset expiredDate, RefreshToken? previousToken)
     {
-        try
-        {
-            // Copy validation parameters to disable lifetime validation temporarily
-            var tokenValidationParametersWithoutLifetime = _tokenValidationParameters.Clone();
-            tokenValidationParametersWithoutLifetime.ValidateLifetime = false;
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var principal = tokenHandler.ValidateToken(
-                token,
-                tokenValidationParametersWithoutLifetime,
-                out var securityToken);
-
-            if (securityToken is not JwtSecurityToken jwtSecurityToken ||
-                !jwtSecurityToken.Header.Alg.Equals(
-                    SecurityAlgorithms.HmacSha256,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new SecurityTokenException("Invalid token");
-            }
-
-            return principal;
-        }
-        catch (Exception ex)
-        {
-            throw new UnauthorizedException($"Token validation failed: {ex.Message}");
-        }
-    }
-
-    private async Task UpdateRefreshToken(int userId, string token, DateTimeOffset expiredDate)
-    {
-        var utcNow = DateTime.UtcNow;
-
         var expiredTokens = await _tokenRefreshRepository.GetAllAsync(
-            predicate: x => x.UserId == userId && x.ExpiredDate < utcNow,
+            predicate: x => x.UserId == userId && x.ExpiredDate < DateTimeOffset.UtcNow,
             disableTracking: false);
 
         if (expiredTokens.Count > 0)
         {
             _tokenRefreshRepository.Delete(expiredTokens.ToArray());
-            await _tokenRefreshRepository.InsertAsync(RefreshToken.Create(userId, token, expiredDate));
-            await _unitOfWork.SaveChangesAsync();
         }
-        else
+
+        if (previousToken is not null)
         {
-            await _tokenRefreshRepository.InsertAsync(RefreshToken.Create(userId, token, expiredDate));
-            await _unitOfWork.SaveChangesAsync();
+            _tokenRefreshRepository.Delete(previousToken);
         }
-    }
 
-    private async Task<bool> IsValidRefreshToken(int userId, string refreshToken)
-    {
-        var token = await _tokenRefreshRepository.GetFirstOrDefaultAsync(
-            predicate: x => x.UserId == userId &&
-                           x.Token == refreshToken &&
-                           x.ExpiredDate > DateTime.UtcNow,
-            disableTracking: true);
-
-        return token != null;
+        await _tokenRefreshRepository.InsertAsync(RefreshToken.Create(userId, HashRefreshToken(token), expiredDate));
+        await _unitOfWork.SaveChangesAsync();
     }
 }

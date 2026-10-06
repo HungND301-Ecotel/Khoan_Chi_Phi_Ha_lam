@@ -4,11 +4,11 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.Employee;
 using Application.Interfaces.Services;
+using Application.Utility;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 
 namespace Application.Catalog.Index.Employee.Commands;
 
@@ -16,10 +16,8 @@ public record ImportExcelEmployeeCommand(IFormFile File) : IRequest<bool>;
 
 public class ImportExcelEmployeeCommandHandler(
     IExcelService excelService,
-    IUnitOfWork unitOfWork,
-    IPasswordHasher<User> passwordHasher) : IRequestHandler<ImportExcelEmployeeCommand, bool>
+    IUnitOfWork unitOfWork) : IRequestHandler<ImportExcelEmployeeCommand, bool>
 {
-    private const string DefaultPassword = "123456";
     private const string MaleLabel = "Nam";
     private const string ActiveLabel = "Hoạt động";
 
@@ -138,7 +136,7 @@ public class ImportExcelEmployeeCommandHandler(
             {
                 var userName = dto.UserName.Trim();
                 var user = new User(userName, string.IsNullOrWhiteSpace(dto.Email) ? $"{userName}@company.com" : dto.Email.Trim(), dto.PhoneNumber.Trim());
-                user.SetPassword(passwordHasher.HashPassword(user, DefaultPassword));
+                user.SetPassword(Utils.ComputeHash(InitialAccountPassword.Read("INITIAL_ACCOUNT_PASSWORD")));
 
                 if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
                 {

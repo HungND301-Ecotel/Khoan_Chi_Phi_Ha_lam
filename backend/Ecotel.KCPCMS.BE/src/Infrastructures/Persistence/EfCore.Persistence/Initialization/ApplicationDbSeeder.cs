@@ -84,43 +84,37 @@ internal class ApplicationDbSeeder(
 
     private static async Task SeedUsersAsync(ApplicationDbContext context)
     {
-        if (context.Users.Any())
+        // Bootstrap only a database that has never had an account.
+        if (await context.Users.IgnoreQueryFilters().AnyAsync())
         {
             return;
         }
 
-        string defaultPasswordHash = Utils.ComputeHash(AppConsts.DefaultPassword);
+        string adminPasswordHash = Utils.ComputeHash(InitialAccountPassword.Read("BOOTSTRAP_ADMIN_PASSWORD"));
 
         var roleMap = await context.Roles
             .ToDictionaryAsync(r => r.RoleType, r => r.Id);
 
         var admin = new User("admin", "admin@company.com", "0312040047");
-        admin.SetPassword(defaultPasswordHash);
+        admin.SetPassword(adminPasswordHash);
         admin.VerifyEmail();
         admin.VerifyPhone();
         admin.SetRegisterProvider("Seed");
         admin.AddRole(roleMap[RoleType.SystemAdmin], RoleType.SystemAdmin);
 
-        var user = new User("user", "user@company.com", "0312040048");
-        user.SetPassword(defaultPasswordHash);
-        user.SetRegisterProvider("Seed");
-        user.AddRole(roleMap[RoleType.User], RoleType.User);
-
-        context.Users.AddRange(admin, user);
+        context.Users.Add(admin);
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedEmployeesAsync(ApplicationDbContext context)
     {
-        if (context.Employees.Any())
-        {
-            return;
-        }
+        var adminUsers = await context.Users
+            .Where(u => u.UserName == "admin" &&
+                        u.UserRoles.Any(r => r.RoleType == RoleType.SystemAdmin) &&
+                        !context.Employees.Any(e => e.UserId == u.Id))
+            .ToListAsync();
 
-        var adminUser = await context.Users
-            .FirstOrDefaultAsync(u => u.UserName == "admin");
-
-        if (adminUser == null)
+        if (adminUsers.Count == 0)
         {
             return;
         }
@@ -136,17 +130,21 @@ internal class ApplicationDbSeeder(
             return;
         }
 
-        var adminEmployee = Employee.Create(
-            fullName: "System Administrator",
-            userId: adminUser.Id,
-            positionId: position.Id,
-            departmentId: department.Id,
-            avatarUrl: string.Empty,
-            dob: null,
-            gender: null,
-            cccd: "000000000000");
+        // Repair each missing bootstrap admin profile, even in a populated database.
+        foreach (var adminUser in adminUsers)
+        {
+            var adminEmployee = Employee.Create(
+                fullName: "System Administrator",
+                userId: adminUser.Id,
+                positionId: position.Id,
+                departmentId: department.Id,
+                avatarUrl: string.Empty,
+                dob: null,
+                gender: null,
+                cccd: "000000000000");
 
-        context.Employees.Add(adminEmployee);
+            context.Employees.Add(adminEmployee);
+        }
         await context.SaveChangesAsync();
     }
 }
