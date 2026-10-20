@@ -10,18 +10,15 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useState,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { MotorizedVacuumTruckUnitPrice } from './columns';
 import { MotorizedSubFormHandle } from '../scania/form';
 import {
 	computeNextPeriodMonths,
 	VacuumTruckPeriodData,
 } from '../unit-price/types';
+import { ApplyToVehiclesButton } from '../apply-to-vehicles';
+import { copyVehicleConfig } from '../copy-vehicle-config';
 
 export type MotorizedVacuumTruckFormProps =
 	ActionDialogProps<MotorizedVacuumTruckUnitPrice> & {
@@ -57,6 +54,12 @@ const fetchCatalogList = async (url: string) => {
 	}
 };
 
+const QUALITY_OPTIONS = [
+	{ label: 'Thiết bị loại A', value: 'A' },
+	{ label: 'Thiết bị loại B', value: 'B' },
+	{ label: 'Thiết bị loại C', value: 'C' },
+];
+
 function computeItemsForVacuumTruckPeriod(
 	assignmentCodeIds: string[],
 	equipmentProcesses: Record<string, string[]>,
@@ -89,7 +92,8 @@ function computeItemsForVacuumTruckPeriod(
 				procName.toLowerCase().includes('di chuyển') ||
 				procName.toLowerCase().includes('cung độ');
 
-			const selectedQualities: string[] = equipmentQualities[scopeKey] || [];
+			// Chất lượng thiết bị chọn 1 lần theo Nhóm vật tư, tài sản (xe)
+			const selectedQualities: string[] = equipmentQualities[acId] || [];
 			const selectedDists: string[] = equipmentDistances[scopeKey] || [];
 
 			selectedQualities.forEach((qual: string) => {
@@ -156,9 +160,7 @@ function computeItemsForVacuumTruckPeriod(
 						haulDistanceId: null,
 						haulDistanceValue: '',
 						fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-						maintenanceUnitPrice: existing
-							? existing.maintenanceUnitPrice
-							: 0,
+						maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
 					});
 				}
 			});
@@ -266,6 +268,19 @@ function VacuumTruckPeriodSection({
 		});
 	};
 
+	// Tên xe hiển thị và các trường theo xe của dòng đơn giá (khớp hàm computeItems...)
+	const getVehicleTitle = (id: string) => {
+		const ac = assignmentCodes.find((a) => a.id === id);
+		return ac ? (ac.code ? `${ac.code} - ${ac.name}` : ac.name) : id;
+	};
+	const getVehicleItemFields = (id: string) => {
+		const ac = assignmentCodes.find((a) => a.id === id);
+		return {
+			title: getVehicleTitle(id),
+			materialName: ac ? ac.name || ac.code || id : id,
+		};
+	};
+
 	return (
 		<div className='flex flex-col gap-4 rounded-xl border border-neutral-300 bg-neutral-50/70 p-5 shadow-xs transition-all'>
 			{/* Hàng 1: Thời gian bắt đầu, kết thúc, Copy, Delete */}
@@ -345,6 +360,8 @@ function VacuumTruckPeriodSection({
 				const materialName = acObj ? acObj.name || acObj.code || acId : acId;
 				const selectedProcList: string[] =
 					period.equipmentProcesses?.[acId] || [];
+				const currentQualities: string[] =
+					period.equipmentQualities?.[acId] || [];
 
 				return (
 					<div
@@ -353,9 +370,41 @@ function VacuumTruckPeriodSection({
 					>
 						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
 							<span className='text-sm font-semibold text-black'>{title}</span>
+							<ApplyToVehiclesButton
+								sourceId={acId}
+								vehicleIds={period.assignmentCodeIds || []}
+								getTitle={getVehicleTitle}
+								onApply={(targetIds) =>
+									onUpdate(
+										copyVehicleConfig(
+											period,
+											acId,
+											targetIds,
+											getVehicleItemFields,
+										),
+									)
+								}
+							/>
 						</div>
 
-						{/* CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
+						{/* CHẤT LƯỢNG THIẾT BỊ (chọn 1 lần cho xe) & CÔNG ĐOẠN SẢN XUẤT */}
+						<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+							<MultiSelect
+								label='Chất lượng thiết bị'
+								placeholder='Chọn chất lượng thiết bị'
+								options={QUALITY_OPTIONS}
+								values={currentQualities.map((q) => ({
+									label: `Thiết bị loại ${q}`,
+									value: q,
+								}))}
+								onValuesChange={(selected) =>
+									handleScopeFieldChange(
+										acId,
+										'equipmentQualities',
+										selected.map((s) => s.value),
+									)
+								}
+							/>
 						<MultiSelect
 							label='Công đoạn sản xuất'
 							placeholder='Chọn các công đoạn sản xuất'
@@ -368,9 +417,13 @@ function VacuumTruckPeriodSection({
 								return { value: id, label: p ? p.label : id };
 							})}
 							onValuesChange={(selected) =>
-								handleProcessesChange(acId, selected.map((s) => s.value))
+								handleProcessesChange(
+									acId,
+									selected.map((s) => s.value),
+								)
 							}
 						/>
+						</div>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
 						{selectedProcList.map((procId: string) => {
@@ -381,8 +434,6 @@ function VacuumTruckPeriodSection({
 								procName.toLowerCase().includes('di chuyển') ||
 								procName.toLowerCase().includes('cung độ');
 
-							const currentQualities: string[] =
-								period.equipmentQualities?.[scopeKey] || [];
 							const currentDists: string[] =
 								period.equipmentDistances?.[scopeKey] || [];
 
@@ -397,32 +448,7 @@ function VacuumTruckPeriodSection({
 										</span>
 									</div>
 
-									<div
-										className={`grid grid-cols-1 gap-3 ${
-											isMoving ? 'md:grid-cols-2' : ''
-										}`}
-									>
-										<MultiSelect
-											label='Chất lượng thiết bị'
-											placeholder='Chọn chất lượng thiết bị'
-											options={[
-												{ label: 'Thiết bị loại A', value: 'A' },
-												{ label: 'Thiết bị loại B', value: 'B' },
-												{ label: 'Thiết bị loại C', value: 'C' },
-											]}
-											values={currentQualities.map((q) => ({
-												label: `Thiết bị loại ${q}`,
-												value: q,
-											}))}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'equipmentQualities',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-
+									<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
 										{isMoving && (
 											<MultiSelect
 												label='Cung độ vận tải'
@@ -456,16 +482,16 @@ function VacuumTruckPeriodSection({
 													<table className='w-full min-w-[600px] text-left text-sm'>
 														<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 															<tr>
-																<th className='whitespace-nowrap px-4 py-2.5'>
+																<th className='px-4 py-2.5 whitespace-nowrap'>
 																	{isMoving
 																		? 'Cung độ / Chất lượng thiết bị'
 																		: 'Chất lượng thiết bị'}
 																</th>
-																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
-																	Đơn giá Nhiên liệu (đ/ca)
+																<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+																	Đơn giá Nhiên liệu (đ)
 																</th>
-																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
-																	Đơn giá SCTX (đ/ca)
+																<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+																	Đơn giá SCTX (đ)
 																</th>
 															</tr>
 														</thead>
@@ -487,8 +513,8 @@ function VacuumTruckPeriodSection({
 																				key={`${qual}_${distId}`}
 																				className='transition-colors hover:bg-neutral-50/50'
 																			>
-																				<td className='whitespace-nowrap px-4 py-2'>
-																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
+																				<td className='px-4 py-2 whitespace-nowrap'>
+																					<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
 																						{item.haulDistanceValue
 																							? `${materialName} (Loại ${qual}) - ${item.haulDistanceValue} km`
 																							: `${materialName} (Loại ${qual})`}
@@ -509,7 +535,9 @@ function VacuumTruckPeriodSection({
 																				</td>
 																				<td className='w-40 min-w-[140px] px-4 py-2'>
 																					<FormNumberInput
-																						value={item.maintenanceUnitPrice ?? 0}
+																						value={
+																							item.maintenanceUnitPrice ?? 0
+																						}
 																						onValueChange={(val) =>
 																							handleItemValueChange(
 																								item.tempId || item.id,
@@ -534,9 +562,12 @@ function VacuumTruckPeriodSection({
 																	if (!item) return null;
 
 																	return (
-																		<tr key={qual} className='transition-colors hover:bg-neutral-50/50'>
-																			<td className='whitespace-nowrap px-4 py-2'>
-																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
+																		<tr
+																			key={qual}
+																			className='transition-colors hover:bg-neutral-50/50'
+																		>
+																			<td className='px-4 py-2 whitespace-nowrap'>
+																				<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
 																					{materialName} (Loại {qual})
 																				</div>
 																			</td>
@@ -666,11 +697,12 @@ export const MotorizedVacuumTruckForm = forwardRef<
 					}
 
 					const scopeKey = `${initialAcId}_${p.productionProcessId}`;
-					if (!initialQualitiesMap[scopeKey]) {
-						initialQualitiesMap[scopeKey] = [];
+					// Chất lượng thiết bị gom theo xe (chọn 1 lần cho Nhóm vật tư, tài sản)
+					if (!initialQualitiesMap[initialAcId]) {
+						initialQualitiesMap[initialAcId] = [];
 					}
-					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
-						initialQualitiesMap[scopeKey].push(q);
+					if (q && !initialQualitiesMap[initialAcId].includes(q)) {
+						initialQualitiesMap[initialAcId].push(q);
 					}
 
 					if (!initialDistsMap[scopeKey]) {
@@ -817,6 +849,16 @@ export const MotorizedVacuumTruckForm = forwardRef<
 				if (p.assignmentCodeIds.length === 0) {
 					popup.error(
 						`Vui lòng chọn Nhóm xe hút bùn ở khoảng thời gian thứ ${order}`,
+					);
+					return false;
+				}
+				const missingQualityAcId = p.assignmentCodeIds.find(
+					(acId) => (p.equipmentQualities[acId] || []).length === 0,
+				);
+				if (missingQualityAcId) {
+					const ac = assignmentCodes.find((a) => a.id === missingQualityAcId);
+					popup.error(
+						`Vui lòng chọn Chất lượng thiết bị cho ${ac?.name || ac?.code || missingQualityAcId} ở khoảng thời gian thứ ${order} của Xe hút bùn`,
 					);
 					return false;
 				}

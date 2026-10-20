@@ -146,11 +146,13 @@ public class MechanizedTransportUnitPriceSectionDto
     public List<MechanizedTransportUnitPriceRowDto> Rows { get; set; } = new();
 }
 
-// Gộp theo Nhóm vật tư, tài sản (AssignmentCode) + khoảng thời gian, không phụ thuộc vào loại xe/công đoạn bên trong
+// Gộp theo Nhóm vật tư, tài sản (AssignmentCode) + Chất lượng thiết bị + khoảng thời gian,
+// không phụ thuộc vào loại xe/công đoạn bên trong. Phân trang theo cặp AssignmentCode + Chất lượng.
 public class MechanizedTransportUnitPriceGroupDto : IDto
 {
     public Guid AssignmentCodeId { get; set; }
     public string AssignmentCodeName { get; set; } = string.Empty;
+    public string EquipmentQuality { get; set; } = string.Empty;
     public DateOnly StartMonth { get; set; }
     public DateOnly EndMonth { get; set; }
     public List<MechanizedTransportUnitPriceSectionDto> Sections { get; set; } = new();

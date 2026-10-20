@@ -34,19 +34,25 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 			<div className='rounded-lg border border-gray-200 bg-gray-50/50 p-4 shadow-xs'>
 				<div className='grid grid-cols-2 gap-4 text-sm'>
 					<div>
-						<span className='font-medium text-gray-500'>Thời gian bắt đầu:</span>{' '}
+						<span className='font-medium text-gray-500'>
+							Thời gian bắt đầu:
+						</span>{' '}
 						<span className='text-gray-900'>
 							{row.startMonth?.substring(0, 7)}
 						</span>
 					</div>
 					<div>
-						<span className='font-medium text-gray-500'>Thời gian kết thúc:</span>{' '}
+						<span className='font-medium text-gray-500'>
+							Thời gian kết thúc:
+						</span>{' '}
 						<span className='text-gray-900'>
 							{row.endMonth?.substring(0, 7)}
 						</span>
 					</div>
 					<div className='col-span-2'>
-						<span className='font-medium text-gray-500'>Nhóm vật tư, tài sản:</span>{' '}
+						<span className='font-medium text-gray-500'>
+							Nhóm vật tư, tài sản:
+						</span>{' '}
 						<span className='text-primary'>{row.assignmentCodeName}</span>
 					</div>
 				</div>
@@ -54,7 +60,9 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 
 			{/* Sub tables grouped by Production Process */}
 			{Object.entries(groupedByProcess).map(([procName, procList]) => {
-				const isHourly = procName.toLowerCase().includes('phục vụ') || procName.toLowerCase().includes('di chuyển');
+				const isHourly =
+					procName.toLowerCase().includes('phục vụ') ||
+					procName.toLowerCase().includes('di chuyển');
 				const unitLabel = isHourly ? '(đ/h)' : '(đ/tkm)';
 
 				// Sort items by quality (A -> B -> C)
@@ -67,7 +75,7 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 				return (
 					<div key={procName} className='space-y-3'>
 						<div className='flex items-center gap-2 border-b border-gray-200 pb-2'>
-							<span className='h-2.5 w-2.5 rounded-full bg-primary'></span>
+							<span className='bg-primary h-2.5 w-2.5 rounded-full'></span>
 							<h4 className='text-sm font-bold text-gray-800'>{procName}</h4>
 						</div>
 
@@ -76,8 +84,12 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 								<thead className='border-b border-gray-200 bg-gray-50 text-sm font-semibold text-gray-700'>
 									<tr>
 										<th className='min-w-[120px] px-4 py-3'>Chất lượng</th>
-										{!isHourly && <th className='min-w-[120px] px-4 py-3'>Cung độ</th>}
-										<th className='px-4 py-3'>Đơn giá Nhiên liệu {unitLabel}</th>
+										{!isHourly && (
+											<th className='min-w-[120px] px-4 py-3'>Cung độ</th>
+										)}
+										<th className='px-4 py-3'>
+											Đơn giá Nhiên liệu {unitLabel}
+										</th>
 										<th className='px-4 py-3'>Đơn giá SCTX {unitLabel}</th>
 									</tr>
 								</thead>
@@ -86,11 +98,16 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 										const details = item.details || [];
 										if (details.length === 0) {
 											return (
-												<tr key={`${pIdx}-empty`} className='hover:bg-gray-50/50'>
+												<tr
+													key={`${pIdx}-empty`}
+													className='hover:bg-gray-50/50'
+												>
 													<td className='px-4 py-2.5 text-gray-700'>
 														Thiết bị loại {item.equipmentQuality}
 													</td>
-													{!isHourly && <td className='px-4 py-2.5 text-gray-500'>-</td>}
+													{!isHourly && (
+														<td className='px-4 py-2.5 text-gray-500'>-</td>
+													)}
 													<td className='px-4 py-2.5 text-gray-500'>-</td>
 													<td className='px-4 py-2.5 text-gray-500'>-</td>
 												</tr>
@@ -98,7 +115,10 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 										}
 
 										return details.map((d, dIdx) => (
-											<tr key={`${pIdx}-${dIdx}`} className='hover:bg-gray-50/50'>
+											<tr
+												key={`${pIdx}-${dIdx}`}
+												className='hover:bg-gray-50/50'
+											>
 												<td className='px-4 py-2.5 text-gray-700'>
 													Thiết bị loại {item.equipmentQuality}
 												</td>

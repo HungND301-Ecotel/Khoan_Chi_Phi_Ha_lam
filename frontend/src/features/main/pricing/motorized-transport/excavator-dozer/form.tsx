@@ -10,18 +10,15 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useState,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { MotorizedExcavatorDozerUnitPrice } from './columns';
 import { MotorizedSubFormHandle } from '../scania/form';
 import {
 	computeNextPeriodMonths,
 	ExcavatorPeriodData,
 } from '../unit-price/types';
+import { ApplyToVehiclesButton } from '../apply-to-vehicles';
+import { copyVehicleConfig } from '../copy-vehicle-config';
 
 export type MotorizedExcavatorDozerFormProps =
 	ActionDialogProps<MotorizedExcavatorDozerUnitPrice> & {
@@ -48,6 +45,12 @@ const DEFAULT_PROCESS_OPTIONS = [
 	{ label: 'Giờ gạt di chuyển', value: 'Giờ gạt di chuyển' },
 ];
 
+const QUALITY_OPTIONS = [
+	{ label: 'Thiết bị loại A', value: 'A' },
+	{ label: 'Thiết bị loại B', value: 'B' },
+	{ label: 'Thiết bị loại C', value: 'C' },
+];
+
 function computeItemsForExcavatorPeriod(
 	assignmentCodeIds: string[],
 	equipmentProcesses: Record<string, string[]>,
@@ -63,14 +66,14 @@ function computeItemsForExcavatorPeriod(
 		const title = cc ? (cc.code ? `${cc.code} - ${cc.name}` : cc.name) : ccId;
 		const materialName = cc ? cc.name || cc.code || ccId : ccId;
 		const selectedProcs: string[] = equipmentProcesses[ccId] || [];
+		// Chất lượng thiết bị chọn 1 lần theo Nhóm vật tư, tài sản (máy)
+		const currentQualities: string[] = equipmentQualities[ccId] || [];
 
 		selectedProcs.forEach((procValue: string) => {
-			const scopeKey = `${ccId}_${procValue}`;
 			const procObj = processOptions.find(
 				(p) => p.value === procValue || p.label === procValue,
 			);
 			const procName = procObj?.label || procValue || '';
-			const currentQualities: string[] = equipmentQualities[scopeKey] || [];
 
 			currentQualities.forEach((quality: string) => {
 				const existing = existingItems.find(
@@ -154,10 +157,11 @@ function ExcavatorPeriodSection({
 		});
 	};
 
-	const handleQualitiesChange = (scopeKey: string, qualities: string[]) => {
+	// Chất lượng thiết bị khoá theo máy (ccId)
+	const handleQualitiesChange = (ccId: string, qualities: string[]) => {
 		const nextQualities = {
 			...period.equipmentQualities,
-			[scopeKey]: qualities,
+			[ccId]: qualities,
 		};
 		const nextItems = computeItemsForExcavatorPeriod(
 			period.assignmentCodeIds,
@@ -189,6 +193,19 @@ function ExcavatorPeriodSection({
 			...period,
 			items: nextItems,
 		});
+	};
+
+	// Tên máy hiển thị và các trường theo máy của dòng đơn giá (khớp computeItemsForExcavatorPeriod)
+	const getVehicleTitle = (id: string) => {
+		const cc = contractCodes.find((c) => c.id === id);
+		return cc ? (cc.code ? `${cc.code} - ${cc.name}` : cc.name) : id;
+	};
+	const getVehicleItemFields = (id: string) => {
+		const cc = contractCodes.find((c) => c.id === id);
+		return {
+			title: getVehicleTitle(id),
+			materialName: cc ? cc.name || cc.code || id : id,
+		};
 	};
 
 	return (
@@ -260,9 +277,16 @@ function ExcavatorPeriodSection({
 			{/* Form chi tiết từng máy */}
 			{(period.assignmentCodeIds || []).map((ccId: string) => {
 				const cc = contractCodes.find((c) => c.id === ccId);
-				const title = cc ? (cc.code ? `${cc.code} - ${cc.name}` : cc.name) : ccId;
+				const title = cc
+					? cc.code
+						? `${cc.code} - ${cc.name}`
+						: cc.name
+					: ccId;
 				const materialName = cc ? cc.name || cc.code || ccId : ccId;
-				const selectedProcList: string[] = period.equipmentProcesses?.[ccId] || [];
+				const selectedProcList: string[] =
+					period.equipmentProcesses?.[ccId] || [];
+				const currentQualities: string[] =
+					period.equipmentQualities?.[ccId] || [];
 
 				return (
 					<div
@@ -271,9 +295,40 @@ function ExcavatorPeriodSection({
 					>
 						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
 							<span className='text-sm font-semibold text-black'>{title}</span>
+							<ApplyToVehiclesButton
+								sourceId={ccId}
+								vehicleIds={period.assignmentCodeIds || []}
+								getTitle={getVehicleTitle}
+								onApply={(targetIds) =>
+									onUpdate(
+										copyVehicleConfig(
+											period,
+											ccId,
+											targetIds,
+											getVehicleItemFields,
+										),
+									)
+								}
+							/>
 						</div>
 
-						{/* CÔNG ĐOẠN CHO THIẾT BỊ NÀY */}
+						{/* CHẤT LƯỢNG THIẾT BỊ (chọn 1 lần cho máy) & CÔNG ĐOẠN SẢN XUẤT */}
+						<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+							<MultiSelect
+								label='Chất lượng thiết bị'
+								placeholder='Chọn chất lượng thiết bị'
+								options={QUALITY_OPTIONS}
+								values={currentQualities.map((q) => ({
+									label: `Thiết bị loại ${q}`,
+									value: q,
+								}))}
+								onValuesChange={(selected) =>
+									handleQualitiesChange(
+										ccId,
+										selected.map((s) => s.value),
+									)
+								}
+							/>
 						<MultiSelect
 							label='Công đoạn sản xuất'
 							placeholder='Chọn công đoạn sản xuất'
@@ -288,13 +343,16 @@ function ExcavatorPeriodSection({
 								return { value: id, label: p ? p.label : id };
 							})}
 							onValuesChange={(selected) =>
-								handleProcessesChange(ccId, selected.map((s) => s.value))
+								handleProcessesChange(
+									ccId,
+									selected.map((s) => s.value),
+								)
 							}
 						/>
+						</div>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
 						{selectedProcList.map((procValue: string) => {
-							const scopeKey = `${ccId}_${procValue}`;
 							const procObj = processOptions.find(
 								(p) => p.value === procValue || p.label === procValue,
 							);
@@ -307,8 +365,6 @@ function ExcavatorPeriodSection({
 								procText.toLowerCase().includes('giờ');
 
 							const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tấn)';
-							const currentQualities: string[] =
-								period.equipmentQualities?.[scopeKey] || [];
 
 							return (
 								<div
@@ -321,28 +377,6 @@ function ExcavatorPeriodSection({
 										</span>
 									</div>
 
-									<div className='w-full'>
-										<MultiSelect
-											label='Chất lượng thiết bị'
-											placeholder='Chọn chất lượng thiết bị'
-											options={[
-												{ label: 'Thiết bị loại A', value: 'A' },
-												{ label: 'Thiết bị loại B', value: 'B' },
-												{ label: 'Thiết bị loại C', value: 'C' },
-											]}
-											values={currentQualities.map((q) => ({
-												label: `Thiết bị loại ${q}`,
-												value: q,
-											}))}
-											onValuesChange={(selected) =>
-												handleQualitiesChange(
-													scopeKey,
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-									</div>
-
 									{/* BẢNG ĐƠN GIÁ */}
 									{currentQualities.length > 0 && (
 										<div className='space-y-2 pt-2'>
@@ -350,13 +384,13 @@ function ExcavatorPeriodSection({
 												<table className='w-full min-w-[600px] text-left text-sm'>
 													<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 														<tr>
-															<th className='whitespace-nowrap px-4 py-2.5'>
+															<th className='px-4 py-2.5 whitespace-nowrap'>
 																Chất lượng thiết bị
 															</th>
-															<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
+															<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
 																Đơn giá Nhiên liệu {itemUnitLabel}
 															</th>
-															<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
+															<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
 																Đơn giá SCTX {itemUnitLabel}
 															</th>
 														</tr>
@@ -376,8 +410,8 @@ function ExcavatorPeriodSection({
 																	key={quality}
 																	className='transition-colors hover:bg-neutral-50/50'
 																>
-																	<td className='whitespace-nowrap px-4 py-2'>
-																		<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
+																	<td className='px-4 py-2 whitespace-nowrap'>
+																		<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
 																			{materialName} (Loại {quality})
 																		</div>
 																	</td>
@@ -484,7 +518,10 @@ export const MotorizedExcavatorDozerForm = forwardRef<
 
 				const allProcs: any[] = (row as any).allProcesses || [row];
 				const initialCcId =
-					row.assignmentCodeId || (row as any).equipmentId || (row as any).equipmentName || '';
+					row.assignmentCodeId ||
+					(row as any).equipmentId ||
+					(row as any).equipmentName ||
+					'';
 				const initialProcsList: string[] = [];
 				const initialQualitiesMap: Record<string, string[]> = {};
 				const initialItems: any[] = [];
@@ -504,12 +541,12 @@ export const MotorizedExcavatorDozerForm = forwardRef<
 						initialProcsList.push(procId);
 					}
 
-					const scopeKey = `${initialCcId}_${procId}`;
-					if (!initialQualitiesMap[scopeKey]) {
-						initialQualitiesMap[scopeKey] = [];
+					// Chất lượng thiết bị gom theo máy (chọn 1 lần cho Nhóm vật tư, tài sản)
+					if (!initialQualitiesMap[initialCcId]) {
+						initialQualitiesMap[initialCcId] = [];
 					}
-					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
-						initialQualitiesMap[scopeKey].push(q);
+					if (q && !initialQualitiesMap[initialCcId].includes(q)) {
+						initialQualitiesMap[initialCcId].push(q);
 					}
 
 					const firstDetail = p.details?.[0];
@@ -633,6 +670,16 @@ export const MotorizedExcavatorDozerForm = forwardRef<
 				if (p.assignmentCodeIds.length === 0) {
 					popup.error(
 						`Vui lòng chọn Nhóm máy xúc/gạt ở khoảng thời gian thứ ${order}`,
+					);
+					return false;
+				}
+				const missingQualityId = p.assignmentCodeIds.find(
+					(ccId) => (p.equipmentQualities[ccId] || []).length === 0,
+				);
+				if (missingQualityId) {
+					const cc = contractCodes.find((c) => c.id === missingQualityId);
+					popup.error(
+						`Vui lòng chọn Chất lượng thiết bị cho ${cc?.name || cc?.code || missingQualityId} ở khoảng thời gian thứ ${order} của Máy xúc/gạt`,
 					);
 					return false;
 				}

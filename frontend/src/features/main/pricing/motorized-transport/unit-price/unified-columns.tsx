@@ -8,4 +8,12 @@ export const UNIFIED_MOTORIZED_TRANSPORT_COLUMNS: ColumnDef<MechanizedTransportA
 			header: 'Nhóm vật tư, tài sản',
 			cell: ({ row }) => row.original.assignmentCodeName || '-',
 		},
+		{
+			accessorKey: 'equipmentQuality',
+			header: 'Chất lượng thiết bị',
+			cell: ({ row }) =>
+				row.original.equipmentQuality
+					? `Thiết bị loại ${row.original.equipmentQuality}`
+					: '-',
+		},
 	];

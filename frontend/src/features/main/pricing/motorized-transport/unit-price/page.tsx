@@ -157,71 +157,86 @@ export function MotorizedFuelPowerMaintenancePage() {
 		}
 	};
 
+	// Cấp 1 = Nhóm vật tư, tài sản + Chất lượng thiết bị (mỗi chất lượng 1 dòng); các cấp
+	// dưới chỉ chứa đơn giá của đúng chất lượng đó nên bảng chi tiết không cần cột Chất lượng.
 	const transformData = (
 		rows: MechanizedTransportUnitPriceGroupDto[],
 	): MechanizedTransportAssignmentGroup[] => {
 		const groupMap = new Map<string, MechanizedTransportAssignmentGroup>();
+		// Thứ tự xuất hiện của từng Nhóm vật tư — giữ các chất lượng của cùng 1 nhóm đứng liền nhau
+		const assignmentOrder = new Map<string, number>();
 
 		rows.forEach((row) => {
-			const groupKey =
+			const assignmentKey =
 				row.assignmentCodeId ||
 				row.assignmentCodeName ||
 				`${row.startMonth}_${row.endMonth}`;
-
-			let assignmentGroup = groupMap.get(groupKey);
-			if (!assignmentGroup) {
-				assignmentGroup = {
-					...row,
-					id: groupKey,
-					c2Items: [],
-					rawGroups: [row],
-				};
-				groupMap.set(groupKey, assignmentGroup);
-			} else {
-				assignmentGroup.rawGroups?.push(row);
-				assignmentGroup.sections = [
-					...(assignmentGroup.sections || []),
-					...(row.sections || []),
-				];
+			if (!assignmentOrder.has(assignmentKey)) {
+				assignmentOrder.set(assignmentKey, assignmentOrder.size);
 			}
 
-			// Group sections of this row by vehicleType into C2 items
-			const sections = row.sections || [];
-			sections.forEach((section) => {
-				const c2Id = `${row.assignmentCodeId}_${row.startMonth}_${row.endMonth}_${section.vehicleType}`;
-				let c2Item = assignmentGroup!.c2Items.find((c2) => c2.id === c2Id);
-				if (!c2Item) {
-					c2Item = {
-						id: c2Id,
-						parentAssignmentCodeId: row.assignmentCodeId,
-						startMonth: row.startMonth,
-						endMonth: row.endMonth,
-						vehicleType: section.vehicleType,
-						vehicleLabel:
-							VEHICLE_TYPE_LABELS[section.vehicleType] || 'Phương tiện',
-						c3Items: [],
-					};
-					assignmentGroup!.c2Items.push(c2Item);
-				}
+			(row.sections || []).forEach((section) => {
+				// Tách dòng đơn giá của section theo Chất lượng thiết bị
+				const rowsByQuality = new Map<string, typeof section.rows>();
+				(section.rows || []).forEach((r) => {
+					const quality = r.equipmentQuality || '';
+					if (!rowsByQuality.has(quality)) rowsByQuality.set(quality, []);
+					rowsByQuality.get(quality)!.push(r);
+				});
 
-				const params = [
-					section.cargoTypeName,
-					section.receivingLocationName,
-					section.dumpingLocationName,
-				]
-					.filter(Boolean)
-					.join(' - ');
+				rowsByQuality.forEach((qualityRows, quality) => {
+					const qualitySection = { ...section, rows: qualityRows };
+					const groupKey = `${assignmentKey}__${quality}`;
 
-				const c3Id = `${c2Id}_${section.productionProcessId}_${section.cargoTypeId || ''}_${section.receivingLocationId || ''}_${section.dumpingLocationId || ''}`;
+					let assignmentGroup = groupMap.get(groupKey);
+					if (!assignmentGroup) {
+						assignmentGroup = {
+							...row,
+							id: groupKey,
+							equipmentQuality: quality,
+							sections: [],
+							c2Items: [],
+							rawGroups: [],
+						};
+						groupMap.set(groupKey, assignmentGroup);
+					}
+					if (!assignmentGroup.rawGroups!.includes(row)) {
+						assignmentGroup.rawGroups!.push(row);
+					}
+					assignmentGroup.sections.push(qualitySection);
 
-				const headerIds = Array.from(
-					new Set(
-						(section.rows || []).map((r) => r.headerId).filter(Boolean),
-					),
-				);
+					// Gom section theo loại xe thành C2
+					const c2Id = `${groupKey}_${row.startMonth}_${row.endMonth}_${section.vehicleType}`;
+					let c2Item = assignmentGroup.c2Items.find((c2) => c2.id === c2Id);
+					if (!c2Item) {
+						c2Item = {
+							id: c2Id,
+							parentAssignmentCodeId: row.assignmentCodeId,
+							startMonth: row.startMonth,
+							endMonth: row.endMonth,
+							vehicleType: section.vehicleType,
+							vehicleLabel:
+								VEHICLE_TYPE_LABELS[section.vehicleType] || 'Phương tiện',
+							c3Items: [],
+						};
+						assignmentGroup.c2Items.push(c2Item);
+					}
 
-				const priceRows: ExpandPriceRow[] = (section.rows || [])
-					.map((r) => ({
+					const params = [
+						section.cargoTypeName,
+						section.receivingLocationName,
+						section.dumpingLocationName,
+					]
+						.filter(Boolean)
+						.join(' - ');
+
+					const c3Id = `${c2Id}_${section.productionProcessId}_${section.cargoTypeId || ''}_${section.receivingLocationId || ''}_${section.dumpingLocationId || ''}`;
+
+					const headerIds = Array.from(
+						new Set(qualityRows.map((r) => r.headerId).filter(Boolean)),
+					);
+
+					const priceRows: ExpandPriceRow[] = qualityRows.map((r) => ({
 						headerId: r.headerId,
 						detailId: r.detailId,
 						equipmentQuality: r.equipmentQuality,
@@ -229,39 +244,35 @@ export function MotorizedFuelPowerMaintenancePage() {
 						fuelUnitPrice: r.fuelUnitPrice,
 						powerUnitPrice: r.powerUnitPrice,
 						maintenanceUnitPrice: r.maintenanceUnitPrice,
-					}))
-					.sort((a, b) =>
-						(a.equipmentQuality || '').localeCompare(
-							b.equipmentQuality || '',
-						),
-					);
+					}));
 
-				// Check if c3Item already exists
-				const existingC3 = c2Item.c3Items.find((c3) => c3.id === c3Id);
-				if (!existingC3) {
-					c2Item.c3Items.push({
-						id: c3Id,
-						c2Id: c2Id,
-						vehicleType: section.vehicleType,
-						productionProcessId: section.productionProcessId,
-						productionProcessName: section.productionProcessName || '-',
-						cargoTypeName: section.cargoTypeName,
-						receivingLocationName: section.receivingLocationName,
-						dumpingLocationName: section.dumpingLocationName,
-						params: params || '-',
-						headerIds,
-						rows: priceRows,
-					});
-				} else {
-					headerIds.forEach((hid) => {
-						if (!existingC3.headerIds.includes(hid)) existingC3.headerIds.push(hid);
-					});
-					existingC3.rows.push(...priceRows);
-				}
+					const existingC3 = c2Item.c3Items.find((c3) => c3.id === c3Id);
+					if (!existingC3) {
+						c2Item.c3Items.push({
+							id: c3Id,
+							c2Id: c2Id,
+							vehicleType: section.vehicleType,
+							productionProcessId: section.productionProcessId,
+							productionProcessName: section.productionProcessName || '-',
+							cargoTypeName: section.cargoTypeName,
+							receivingLocationName: section.receivingLocationName,
+							dumpingLocationName: section.dumpingLocationName,
+							params: params || '-',
+							headerIds,
+							rows: priceRows,
+						});
+					} else {
+						headerIds.forEach((hid) => {
+							if (!existingC3.headerIds.includes(hid))
+								existingC3.headerIds.push(hid);
+						});
+						existingC3.rows.push(...priceRows);
+					}
+				});
 			});
 		});
 
-		return Array.from(groupMap.values()).map((group) => {
+		const groups = Array.from(groupMap.values()).map((group) => {
 			const sortedRaw = (group.rawGroups || []).sort((a, b) =>
 				(b.startMonth || '').localeCompare(a.startMonth || ''),
 			);
@@ -283,6 +294,14 @@ export function MotorizedFuelPowerMaintenancePage() {
 			});
 			return group;
 		});
+
+		const orderOf = (group: MechanizedTransportAssignmentGroup) =>
+			assignmentOrder.get(group.id!.split('__')[0]) ?? 0;
+		return groups.sort(
+			(a, b) =>
+				orderOf(a) - orderOf(b) ||
+				(a.equipmentQuality || '').localeCompare(b.equipmentQuality || ''),
+		);
 	};
 
 	return (
@@ -290,7 +309,7 @@ export function MotorizedFuelPowerMaintenancePage() {
 			url={API.PRICING.MOTORIZED_TRANSPORT.ALL.LIST}
 			columns={UNIFIED_MOTORIZED_TRANSPORT_COLUMNS}
 			transformData={transformData}
-			getRowId={(row) => row.assignmentCodeId || row.assignmentCodeName || row.id || ''}
+			getRowId={(row) => row.id || row.assignmentCodeId || ''}
 			filters={[{ key: 'assignmentCodeName', label: 'Nhóm vật tư, tài sản' }]}
 			onExpand={({ row }) => (
 				<MotorizedSectionExpand

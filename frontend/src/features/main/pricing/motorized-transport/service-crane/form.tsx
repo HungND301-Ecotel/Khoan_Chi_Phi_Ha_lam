@@ -10,18 +10,15 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
 import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useState,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { MotorizedServiceCraneUnitPrice } from './columns';
 import { MotorizedSubFormHandle } from '../scania/form';
 import {
 	computeNextPeriodMonths,
 	ServiceCranePeriodData,
 } from '../unit-price/types';
+import { ApplyToVehiclesButton } from '../apply-to-vehicles';
+import { copyVehicleConfig } from '../copy-vehicle-config';
 
 export type MotorizedServiceCraneFormProps =
 	ActionDialogProps<MotorizedServiceCraneUnitPrice> & {
@@ -57,6 +54,17 @@ const fetchCatalogList = async (url: string) => {
 	}
 };
 
+const QUALITY_OPTIONS = [
+	{ label: 'Thiết bị loại A', value: 'A' },
+	{ label: 'Thiết bị loại B', value: 'B' },
+	{ label: 'Thiết bị loại C', value: 'C' },
+];
+
+// Công đoạn di chuyển: đơn giá tách theo Cung độ vận tải
+const isMovingProcess = (procName: string) =>
+	procName.toLowerCase().includes('di chuyển') ||
+	procName.toLowerCase().includes('cung độ');
+
 function computeItemsForServiceCranePeriod(
 	assignmentCodeIds: string[],
 	equipmentProcesses: Record<string, string[]>,
@@ -78,6 +86,8 @@ function computeItemsForServiceCranePeriod(
 			: acId;
 		const materialName = acObj ? acObj.name || acObj.code || acId : acId;
 		const selectedProcs: string[] = equipmentProcesses[acId] || [];
+		// Chất lượng thiết bị chọn 1 lần theo Nhóm vật tư, tài sản (xe)
+		const selectedQualities: string[] = equipmentQualities[acId] || [];
 
 		selectedProcs.forEach((procId: string) => {
 			const scopeKey = `${acId}_${procId}`;
@@ -85,11 +95,8 @@ function computeItemsForServiceCranePeriod(
 				(p) => p.value === procId || p.label === procId,
 			);
 			const procName = procObj ? procObj.label : procId;
-			const isMoving =
-				procName.toLowerCase().includes('di chuyển') ||
-				procName.toLowerCase().includes('cung độ');
+			const isMoving = isMovingProcess(procName);
 
-			const selectedQualities: string[] = equipmentQualities[scopeKey] || [];
 			const selectedDists: string[] = equipmentDistances[scopeKey] || [];
 
 			selectedQualities.forEach((qual: string) => {
@@ -156,9 +163,7 @@ function computeItemsForServiceCranePeriod(
 						haulDistanceId: null,
 						haulDistanceValue: '',
 						fuelUnitPrice: existing ? existing.fuelUnitPrice : 0,
-						maintenanceUnitPrice: existing
-							? existing.maintenanceUnitPrice
-							: 0,
+						maintenanceUnitPrice: existing ? existing.maintenanceUnitPrice : 0,
 					});
 				}
 			});
@@ -266,6 +271,24 @@ function ServiceCranePeriodSection({
 		});
 	};
 
+	const getProcName = (procId: string) => {
+		const p = processOptions.find((opt) => opt.value === procId);
+		return p ? p.label : procId;
+	};
+
+	// Tên xe hiển thị và các trường theo xe của dòng đơn giá (khớp hàm computeItems...)
+	const getVehicleTitle = (id: string) => {
+		const ac = assignmentCodes.find((a) => a.id === id);
+		return ac ? (ac.code ? `${ac.code} - ${ac.name}` : ac.name) : id;
+	};
+	const getVehicleItemFields = (id: string) => {
+		const ac = assignmentCodes.find((a) => a.id === id);
+		return {
+			title: getVehicleTitle(id),
+			materialName: ac ? ac.name || ac.code || id : id,
+		};
+	};
+
 	return (
 		<div className='flex flex-col gap-4 rounded-xl border border-neutral-300 bg-neutral-50/70 p-5 shadow-xs transition-all'>
 			{/* Hàng 1: Thời gian bắt đầu, kết thúc, Copy, Delete */}
@@ -345,6 +368,12 @@ function ServiceCranePeriodSection({
 				const materialName = acObj ? acObj.name || acObj.code || acId : acId;
 				const selectedProcList: string[] =
 					period.equipmentProcesses?.[acId] || [];
+				const currentQualities: string[] =
+					period.equipmentQualities?.[acId] || [];
+				// Công đoạn di chuyển cần chọn thêm Cung độ vận tải
+				const movingProcIds = selectedProcList.filter((procId) =>
+					isMovingProcess(getProcName(procId)),
+				);
 
 				return (
 					<div
@@ -353,228 +382,173 @@ function ServiceCranePeriodSection({
 					>
 						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
 							<span className='text-sm font-semibold text-black'>{title}</span>
+							<ApplyToVehiclesButton
+								sourceId={acId}
+								vehicleIds={period.assignmentCodeIds || []}
+								getTitle={getVehicleTitle}
+								onApply={(targetIds) =>
+									onUpdate(
+										copyVehicleConfig(
+											period,
+											acId,
+											targetIds,
+											getVehicleItemFields,
+										),
+									)
+								}
+							/>
 						</div>
 
-						{/* CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
-						<MultiSelect
-							label='Công đoạn sản xuất'
-							placeholder='Chọn các công đoạn sản xuất'
-							options={processOptions.map((opt) => ({
-								label: opt.label,
-								value: opt.value,
-							}))}
-							values={selectedProcList.map((id) => {
-								const p = processOptions.find((opt) => opt.value === id);
-								return { value: id, label: p ? p.label : id };
-							})}
-							onValuesChange={(selected) =>
-								handleProcessesChange(acId, selected.map((s) => s.value))
-							}
-						/>
+						{/* CHẤT LƯỢNG THIẾT BỊ (chọn 1 lần cho xe) & CÔNG ĐOẠN SẢN XUẤT */}
+						<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+							<MultiSelect
+								label='Chất lượng thiết bị'
+								placeholder='Chọn chất lượng thiết bị'
+								options={QUALITY_OPTIONS}
+								values={currentQualities.map((q) => ({
+									label: `Thiết bị loại ${q}`,
+									value: q,
+								}))}
+								onValuesChange={(selected) =>
+									handleScopeFieldChange(
+										acId,
+										'equipmentQualities',
+										selected.map((s) => s.value),
+									)
+								}
+							/>
 
-						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
-						{selectedProcList.map((procId: string) => {
-							const scopeKey = `${acId}_${procId}`;
-							const procObj = processOptions.find((p) => p.value === procId);
-							const procName = procObj ? procObj.label : procId;
-							const isMoving =
-								procName.toLowerCase().includes('di chuyển') ||
-								procName.toLowerCase().includes('cung độ');
+							<MultiSelect
+								label='Công đoạn sản xuất'
+								placeholder='Chọn các công đoạn sản xuất'
+								options={processOptions.map((opt) => ({
+									label: opt.label,
+									value: opt.value,
+								}))}
+								values={selectedProcList.map((id) => {
+									const p = processOptions.find((opt) => opt.value === id);
+									return { value: id, label: p ? p.label : id };
+								})}
+								onValuesChange={(selected) =>
+									handleProcessesChange(
+										acId,
+										selected.map((s) => s.value),
+									)
+								}
+							/>
+						</div>
 
-							const currentQualities: string[] =
-								period.equipmentQualities?.[scopeKey] || [];
-							const currentDists: string[] =
-								period.equipmentDistances?.[scopeKey] || [];
-
-							return (
-								<div
-									key={procId}
-									className='space-y-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs'
-								>
-									<div className='border-b border-neutral-200/80 pb-2'>
-										<span className='text-sm font-semibold text-black'>
-											{procName}
-										</span>
-									</div>
-
-									<div
-										className={`grid grid-cols-1 gap-3 ${
-											isMoving ? 'md:grid-cols-2' : ''
-										}`}
-									>
+						{/* CUNG ĐỘ VẬN TẢI cho các công đoạn di chuyển */}
+						{movingProcIds.length > 0 && (
+							<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+								{movingProcIds.map((procId) => {
+									const scopeKey = `${acId}_${procId}`;
+									const currentDists: string[] =
+										period.equipmentDistances?.[scopeKey] || [];
+									return (
 										<MultiSelect
-											label='Chất lượng thiết bị'
-											placeholder='Chọn chất lượng thiết bị'
-											options={[
-												{ label: 'Thiết bị loại A', value: 'A' },
-												{ label: 'Thiết bị loại B', value: 'B' },
-												{ label: 'Thiết bị loại C', value: 'C' },
-											]}
-											values={currentQualities.map((q) => ({
-												label: `Thiết bị loại ${q}`,
-												value: q,
+											key={procId}
+											label={`Cung độ vận tải - ${getProcName(procId)}`}
+											placeholder='Chọn cung độ vận tải'
+											options={distanceOptions.map((opt) => ({
+												label: opt.label,
+												value: opt.value,
 											}))}
+											values={currentDists.map((dId) => {
+												const d = distanceOptions.find(
+													(opt) => opt.value === dId || opt.id === dId,
+												);
+												return { value: dId, label: d ? d.label : dId };
+											})}
 											onValuesChange={(selected) =>
 												handleScopeFieldChange(
 													scopeKey,
-													'equipmentQualities',
+													'equipmentDistances',
 													selected.map((s) => s.value),
 												)
 											}
 										/>
+									);
+								})}
+							</div>
+						)}
 
-										{isMoving && (
-											<MultiSelect
-												label='Cung độ vận tải'
-												placeholder='Chọn cung độ vận tải'
-												options={distanceOptions.map((opt) => ({
-													label: opt.label,
-													value: opt.value,
-												}))}
-												values={currentDists.map((dId) => {
-													const d = distanceOptions.find(
-														(opt) => opt.value === dId || opt.id === dId,
-													);
-													return { value: dId, label: d ? d.label : dId };
-												})}
-												onValuesChange={(selected) =>
-													handleScopeFieldChange(
-														scopeKey,
-														'equipmentDistances',
-														selected.map((s) => s.value),
-													)
-												}
-											/>
-										)}
+						{/* BẢNG ĐƠN GIÁ: mỗi chất lượng thiết bị 1 bảng, mỗi dòng 1 công đoạn sản xuất */}
+						{currentQualities.map((qual: string) => {
+							const qualityItems = period.items.filter(
+								(it: any) =>
+									it.assignmentCodeId === acId && it.equipmentQuality === qual,
+							);
+							if (qualityItems.length === 0) return null;
+
+							return (
+								<div
+									key={qual}
+									className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'
+								>
+									<div className='border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
+										<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-semibold text-black shadow-2xs'>
+											{materialName} (Loại {qual})
+										</span>
 									</div>
-
-									{/* BẢNG ĐƠN GIÁ */}
-									{currentQualities.length > 0 &&
-										(!isMoving || currentDists.length > 0) && (
-											<div className='space-y-2 pt-2'>
-												<div className='w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
-													<table className='w-full min-w-[600px] text-left text-sm'>
-														<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
-															<tr>
-																<th className='whitespace-nowrap px-4 py-2.5'>
-																	{isMoving
-																		? 'Cung độ / Chất lượng thiết bị'
-																		: 'Chất lượng thiết bị'}
-																</th>
-																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
-																	Đơn giá Nhiên liệu (đ/ca)
-																</th>
-																<th className='w-40 min-w-[140px] whitespace-nowrap px-4 py-2.5'>
-																	Đơn giá SCTX (đ/ca)
-																</th>
-															</tr>
-														</thead>
-														<tbody className='divide-y divide-neutral-100'>
-															{currentQualities.map((qual: string) => {
-																if (isMoving) {
-																	return currentDists.map((distId: string) => {
-																		const item = period.items.find(
-																			(it: any) =>
-																				it.assignmentCodeId === acId &&
-																				it.productionProcessId === procId &&
-																				it.equipmentQuality === qual &&
-																				it.haulDistanceId === distId,
-																		);
-																		if (!item) return null;
-
-																		return (
-																			<tr
-																				key={`${qual}_${distId}`}
-																				className='transition-colors hover:bg-neutral-50/50'
-																			>
-																				<td className='whitespace-nowrap px-4 py-2'>
-																					<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
-																						{item.haulDistanceValue
-																							? `${materialName} (Loại ${qual}) - ${item.haulDistanceValue} km`
-																							: `${materialName} (Loại ${qual})`}
-																					</div>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.fuelUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'fuelUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.maintenanceUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'maintenanceUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																			</tr>
-																		);
-																	});
-																} else {
-																	const item = period.items.find(
-																		(it: any) =>
-																			it.assignmentCodeId === acId &&
-																			it.productionProcessId === procId &&
-																			it.equipmentQuality === qual &&
-																			!it.haulDistanceId,
-																	);
-																	if (!item) return null;
-
-																	return (
-																		<tr key={qual} className='transition-colors hover:bg-neutral-50/50'>
-																			<td className='whitespace-nowrap px-4 py-2'>
-																				<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
-																					{materialName} (Loại {qual})
-																				</div>
-																			</td>
-																			<td className='w-40 min-w-[140px] px-4 py-2'>
-																				<FormNumberInput
-																					value={item.fuelUnitPrice ?? 0}
-																					onValueChange={(val) =>
-																						handleItemValueChange(
-																							item.tempId || item.id,
-																							'fuelUnitPrice',
-																							val,
-																						)
-																					}
-																					placeholder='Nhập đơn giá'
-																				/>
-																			</td>
-																			<td className='w-40 min-w-[140px] px-4 py-2'>
-																				<FormNumberInput
-																					value={item.maintenanceUnitPrice ?? 0}
-																					onValueChange={(val) =>
-																						handleItemValueChange(
-																							item.tempId || item.id,
-																							'maintenanceUnitPrice',
-																							val,
-																						)
-																					}
-																					placeholder='Nhập đơn giá'
-																				/>
-																			</td>
-																		</tr>
-																	);
+									<div className='scrollbar-sm w-full overflow-x-auto'>
+										<table className='w-full min-w-[600px] text-left text-sm'>
+											<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+												<tr>
+													<th className='px-4 py-2.5 whitespace-nowrap'>
+														Công đoạn sản xuất
+													</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá Nhiên liệu (đ)
+													</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá SCTX (đ)
+													</th>
+												</tr>
+											</thead>
+											<tbody className='divide-y divide-neutral-100'>
+												{qualityItems.map((item: any) => (
+													<tr
+														key={item.tempId || item.id}
+														className='transition-colors hover:bg-neutral-50/50'
+													>
+														<td className='px-4 py-2 text-black'>
+															{getProcName(item.productionProcessId)}
+															{item.haulDistanceValue
+																? ` - ${item.haulDistanceValue} km`
+																: ''}
+														</td>
+														<td className='w-40 min-w-[140px] px-4 py-2'>
+															<FormNumberInput
+																value={item.fuelUnitPrice ?? 0}
+																onValueChange={(val) =>
+																	handleItemValueChange(
+																		item.tempId || item.id,
+																		'fuelUnitPrice',
+																		val,
+																	)
 																}
-															})}
-														</tbody>
-													</table>
-												</div>
-											</div>
-										)}
+																placeholder='Nhập đơn giá'
+															/>
+														</td>
+														<td className='w-40 min-w-[140px] px-4 py-2'>
+															<FormNumberInput
+																value={item.maintenanceUnitPrice ?? 0}
+																onValueChange={(val) =>
+																	handleItemValueChange(
+																		item.tempId || item.id,
+																		'maintenanceUnitPrice',
+																		val,
+																	)
+																}
+																placeholder='Nhập đơn giá'
+															/>
+														</td>
+													</tr>
+												))}
+											</tbody>
+										</table>
+									</div>
 								</div>
 							);
 						})}
@@ -666,11 +640,12 @@ export const MotorizedServiceCraneForm = forwardRef<
 					}
 
 					const scopeKey = `${initialAcId}_${p.productionProcessId}`;
-					if (!initialQualitiesMap[scopeKey]) {
-						initialQualitiesMap[scopeKey] = [];
+					// Chất lượng thiết bị gom theo xe (chọn 1 lần cho Nhóm vật tư, tài sản)
+					if (!initialQualitiesMap[initialAcId]) {
+						initialQualitiesMap[initialAcId] = [];
 					}
-					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
-						initialQualitiesMap[scopeKey].push(q);
+					if (q && !initialQualitiesMap[initialAcId].includes(q)) {
+						initialQualitiesMap[initialAcId].push(q);
 					}
 
 					if (!initialDistsMap[scopeKey]) {
@@ -787,7 +762,9 @@ export const MotorizedServiceCraneForm = forwardRef<
 	const submitInternal = async (forceCreate?: boolean): Promise<boolean> => {
 		try {
 			if (periods.length === 0) {
-				popup.error('Cần có ít nhất một khoảng thời gian áp dụng cho Xe phục vụ');
+				popup.error(
+					'Cần có ít nhất một khoảng thời gian áp dụng cho Xe phục vụ',
+				);
 				return false;
 			}
 
@@ -815,6 +792,16 @@ export const MotorizedServiceCraneForm = forwardRef<
 				if (p.assignmentCodeIds.length === 0) {
 					popup.error(
 						`Vui lòng chọn Nhóm xe phục vụ ở khoảng thời gian thứ ${order}`,
+					);
+					return false;
+				}
+				const missingQualityAcId = p.assignmentCodeIds.find(
+					(acId) => (p.equipmentQualities[acId] || []).length === 0,
+				);
+				if (missingQualityAcId) {
+					const ac = assignmentCodes.find((a) => a.id === missingQualityAcId);
+					popup.error(
+						`Vui lòng chọn Chất lượng thiết bị cho ${ac?.name || ac?.code || missingQualityAcId} ở khoảng thời gian thứ ${order} của Xe phục vụ`,
 					);
 					return false;
 				}
