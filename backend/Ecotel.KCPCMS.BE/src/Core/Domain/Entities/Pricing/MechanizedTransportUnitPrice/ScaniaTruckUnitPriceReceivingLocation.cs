@@ -16,7 +16,7 @@ public class ScaniaTruckUnitPriceReceivingLocation : AuditableEntity<Guid>
     {
         if (transportLocationId == Guid.Empty)
         {
-            throw new ArgumentException("Vị trí nhận không được để trống.");
+            throw new ArgumentException("Vị trí nhận tải không được để trống.");
         }
 
         return new ScaniaTruckUnitPriceReceivingLocation

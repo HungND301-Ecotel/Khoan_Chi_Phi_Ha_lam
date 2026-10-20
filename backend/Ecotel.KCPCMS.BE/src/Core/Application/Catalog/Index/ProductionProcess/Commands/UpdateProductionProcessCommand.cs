@@ -20,7 +20,9 @@ public class UpdateProductionProcessCommandHandler(IUnitOfWork unitOfWork, ICode
         {
             var existProductionProcess = await _productionProcessRepository.GetFirstOrDefaultAsync(
                 predicate: t => t.Id == request.UpdateModel.Id,
-                include: t => t.Include(t => t.Code).Include(t => t.UnitOfMeasure),
+                // Không Include UnitOfMeasure: entity được gắn lại bằng Update(), navigation cũ
+                // sẽ ghi đè UnitOfMeasureId mới về đơn vị tính cũ
+                include: t => t.Include(t => t.Code),
                 disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
             if (await codeService.IsCodeExisted(request.UpdateModel.Code, existProductionProcess.CodeId))

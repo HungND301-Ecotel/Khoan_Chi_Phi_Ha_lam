@@ -91,13 +91,13 @@ public class ScaniaTruckUnitPriceExcelDto
     [Display(Name = "Công đoạn sản xuất")]
     public string ProductionProcessCode { get; set; } = string.Empty;
 
-    [Display(Name = "Chủng loại hàng")]
+    [Display(Name = "Loại hàng")]
     public string CargoTypeCode { get; set; } = string.Empty;
 
-    [Display(Name = "Vị trí nhận")]
+    [Display(Name = "Vị trí nhận tải")]
     public string? ReceivingLocationCode { get; set; }
 
-    [Display(Name = "Vị trí đổ")]
+    [Display(Name = "Vị trí đổ tải")]
     public string? DumpingLocationCode { get; set; }
 
     [Display(Name = "Cung độ vận tải")]

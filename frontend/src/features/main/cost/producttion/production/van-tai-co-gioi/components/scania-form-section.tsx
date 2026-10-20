@@ -370,8 +370,8 @@ export function ScaniaFormSection({
 											name={
 												`${groupPath}.processCargoTypes.${scopeKey}` as any
 											}
-											label='Chủng loại hàng'
-											placeholder='Chọn chủng loại hàng'
+											label='Loại hàng'
+											placeholder='Chọn loại hàng'
 											options={cargoTypes.map((c) => ({
 												value: c.id || c.value,
 												label: c.code
@@ -385,8 +385,8 @@ export function ScaniaFormSection({
 											name={
 												`${groupPath}.processPickupLocations.${scopeKey}` as any
 											}
-											label='Vị trí nhận (Không bắt buộc)'
-											placeholder='Chọn vị trí nhận'
+											label='Vị trí nhận tải'
+											placeholder='Chọn vị trí nhận tải'
 											options={pickupLocations.map((l) => ({
 												value: l.id || l.value,
 												label: l.name || l.label,
@@ -398,8 +398,8 @@ export function ScaniaFormSection({
 											name={
 												`${groupPath}.processDropoffLocations.${scopeKey}` as any
 											}
-											label='Vị trí đổ (Không bắt buộc)'
-											placeholder='Chọn vị trí đổ'
+											label='Vị trí đổ tải'
+											placeholder='Chọn vị trí đổ tải'
 											options={dropoffLocations.map((l) => ({
 												value: l.id || l.value,
 												label: l.name || l.label,

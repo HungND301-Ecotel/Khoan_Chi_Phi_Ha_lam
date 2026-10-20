@@ -13,6 +13,7 @@ export type TransportLocation = {
 	name: string;
 	note?: string;
 	locationType: LocationType;
+	locationTypeName?: string;
 };
 
 export const CATALOG_TRANSPORT_LOCATION_COLUMNS: ColumnDef<TransportLocation>[] =
@@ -29,9 +30,10 @@ export const CATALOG_TRANSPORT_LOCATION_COLUMNS: ColumnDef<TransportLocation>[] 
 			accessorKey: 'locationType',
 			header: 'Phân loại',
 			cell: ({ row }) => {
-				const type = row.original.locationType;
-				if (type === LocationType.Receiving) return 'Vị trí nhận';
-				if (type === LocationType.Dumping) return 'Vị trí đổ';
+				const { locationType: type, locationTypeName } = row.original;
+				if (locationTypeName) return locationTypeName;
+				if (type === LocationType.Receiving) return 'Vị trí nhận tải';
+				if (type === LocationType.Dumping) return 'Vị trí đổ tải';
 				return '-';
 			},
 		},

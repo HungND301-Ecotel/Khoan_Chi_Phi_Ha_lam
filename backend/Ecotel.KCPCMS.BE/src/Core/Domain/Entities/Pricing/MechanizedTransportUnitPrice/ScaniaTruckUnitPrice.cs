@@ -30,7 +30,7 @@ public class ScaniaTruckUnitPrice : MechanizedTransportUnitPrice
         ValidateHeader(assignmentCodeId, equipmentQuality, productionProcessId, startMonth, endMonth);
         if (cargoTypeId == Guid.Empty)
         {
-            throw new ArgumentException("Chủng loại hàng không được để trống.");
+            throw new ArgumentException("Loại hàng không được để trống.");
         }
 
         var entity = new ScaniaTruckUnitPrice
@@ -59,7 +59,7 @@ public class ScaniaTruckUnitPrice : MechanizedTransportUnitPrice
         ValidateHeader(assignmentCodeId, equipmentQuality, productionProcessId, startMonth, endMonth);
         if (cargoTypeId == Guid.Empty)
         {
-            throw new ArgumentException("Chủng loại hàng không được để trống.");
+            throw new ArgumentException("Loại hàng không được để trống.");
         }
 
         CargoTypeId = cargoTypeId;
