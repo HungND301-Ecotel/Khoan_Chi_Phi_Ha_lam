@@ -41,6 +41,7 @@ export function DepartmentForm({
 		form.reset({
 			code: isDuplicate ? '' : row.code,
 			name: row.name,
+			note: row.note || '',
 		});
 	}, [row, form, isDuplicate]);
 
@@ -79,6 +80,12 @@ export function DepartmentForm({
 				name='name'
 				label='Tên đơn vị'
 				placeholder='Nhập tên đơn vị, ví dụ: Phân xưởng đào lò'
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

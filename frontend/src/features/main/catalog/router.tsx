@@ -34,7 +34,7 @@ const MainCatalogRouter: RouteObject = {
 		{
 			path: 'employees',
 			element: <MainCatalogEmployeePage />,
-			handle: { breadcrumb: 'Cán bộ, nhân viên', title: 'Cán bộ, nhân viên' },
+			handle: { breadcrumb: 'Nhân viên', title: 'Nhân viên' },
 		},
 		{
 			path: 'units',

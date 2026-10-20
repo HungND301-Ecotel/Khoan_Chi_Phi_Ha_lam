@@ -39,7 +39,7 @@ public class UpdateAdjustmentFactorCommandHandler(IUnitOfWork unitOfWork) : IReq
             predicate: p => p.Id == request.UpdateModel.ProcessGroupId,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.ProcessGroupNotFound);
 
-        existAdjustmentFactor.Update(fixedKey, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId);
+        existAdjustmentFactor.Update(fixedKey, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId, request.UpdateModel.Note);
 
         _adjusmentFactorRepository.Update(existAdjustmentFactor);
         await unitOfWork.SaveChangesAsync();

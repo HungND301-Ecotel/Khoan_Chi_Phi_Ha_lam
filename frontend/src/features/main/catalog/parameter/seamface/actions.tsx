@@ -48,6 +48,7 @@ export function SeamfaceForm({
 		if (row) {
 			form.reset({
 				value: row.value,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -82,6 +83,13 @@ export function SeamfaceForm({
 				label='Mặt vỉa (M)'
 				placeholder='Nhập mặt vỉa (M)'
 				supports={LONGWALLPARAMETERS_SUPPORTS}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

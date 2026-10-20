@@ -134,7 +134,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                     : string.Empty,
                 HardnessName = n.Hardness?.Value ?? string.Empty,
                 SteelMeshTypeName = GetSteelMeshDisplayName(n.SteelMeshType),
-                StoneClampRatioName = n.StoneClampRatio?.Value ?? string.Empty
+                StoneClampRatioName = n.StoneClampRatio?.Value ?? string.Empty,
+                Note = n.Note
             };
 
             if (!n.NormFactorAssignmentCodes.Any())
@@ -151,7 +152,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                         AssignmentCode = string.Empty,
                         MaterialCode = string.Empty,
                         Value = 0,
-                        TargetHardnessName = "Định mức hiện tại"
+                        TargetHardnessName = "Định mức hiện tại",
+                        Note = baseDto.Note
                     }
                 };
             }
@@ -173,7 +175,8 @@ public class ExportExcelNormFactorQueryHandler(IExcelService excelService, IUnit
                         : string.Empty,
 
                     Value = a.Value,
-                    TargetHardnessName = a.TargetHardness?.Value ?? "Định mức hiện tại"
+                    TargetHardnessName = a.TargetHardness?.Value ?? "Định mức hiện tại",
+                    Note = baseDto.Note
                 })
                 .ToList();
         });

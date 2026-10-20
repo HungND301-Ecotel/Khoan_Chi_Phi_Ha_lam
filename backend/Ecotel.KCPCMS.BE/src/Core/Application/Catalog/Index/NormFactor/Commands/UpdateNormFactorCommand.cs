@@ -109,7 +109,8 @@ public class UpdateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             request.UpdateModel.ProductionProcessId,
             request.UpdateModel.HardnessId,
             request.UpdateModel.StoneClampRatioId,
-            request.UpdateModel.SteelMeshType);
+            request.UpdateModel.SteelMeshType,
+            request.UpdateModel.Note);
 
         var oldAssignments = existNormFactor.NormFactorAssignmentCodes.ToList();
         if (oldAssignments.Any())

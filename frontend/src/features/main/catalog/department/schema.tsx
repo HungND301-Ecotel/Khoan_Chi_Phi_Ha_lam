@@ -7,6 +7,7 @@ export const departmentFormSchema = z.object({
 	name: z.string().min(1, {
 		message: 'Tên đơn vị không được để trống',
 	}),
+	note: z.string().optional(),
 });
 
 export type DepartmentFormSchema = z.infer<typeof departmentFormSchema>;
@@ -14,4 +15,5 @@ export type DepartmentFormSchema = z.infer<typeof departmentFormSchema>;
 export const DEPARTMENT_FORM_DEFAULT: DepartmentFormSchema = {
 	code: '',
 	name: '',
+	note: '',
 };

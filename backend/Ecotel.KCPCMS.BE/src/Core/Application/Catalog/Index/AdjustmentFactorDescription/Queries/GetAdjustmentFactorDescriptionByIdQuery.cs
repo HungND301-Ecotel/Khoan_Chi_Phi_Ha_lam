@@ -30,6 +30,7 @@ public class GetAdjustmentFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             AdjustmentFactorCode = adjustmentFactorDescription.AdjustmentFactor.Code?.Value ?? "",
             ElectricityAdjustmentValue = adjustmentFactorDescription.ElectricityAdjustmentValue,
             MaintenanceAdjustmentValue = adjustmentFactorDescription.MaintenanceAdjustmentValue,
+            Note = adjustmentFactorDescription.Note,
         };
     }
 }

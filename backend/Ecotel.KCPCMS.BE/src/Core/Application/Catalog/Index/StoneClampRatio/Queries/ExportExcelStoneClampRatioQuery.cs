@@ -35,6 +35,7 @@ public class ExportExcelStoneClampRatioQueryHandler(IExcelService excelService, 
         {
             Id = s.Id,
             Value = s.Value,
+            Note = s.Note,
         });
 
         return excelService.ExportToExcel(dtoList, "Đơn vị tính", listHiddenProperty);

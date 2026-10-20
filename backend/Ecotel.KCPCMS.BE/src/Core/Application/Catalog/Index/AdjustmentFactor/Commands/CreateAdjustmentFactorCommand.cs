@@ -33,7 +33,7 @@ public class CreateAdjustmentFactorCommandHandler(IUnitOfWork unitOfWork) : IReq
             predicate: p => p.Id == request.CreateModel.ProcessGroupId,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        var adjustmentFactor = Domain.Entities.Index.AdjustmentFactor.Create(fixedKey, request.CreateModel.Name, request.CreateModel.ProcessGroupId);
+        var adjustmentFactor = Domain.Entities.Index.AdjustmentFactor.Create(fixedKey, request.CreateModel.Name, request.CreateModel.ProcessGroupId, request.CreateModel.Note);
         await _adjustmentFactorRepository.InsertAsync(adjustmentFactor);
         await unitOfWork.SaveChangesAsync();
         return true;

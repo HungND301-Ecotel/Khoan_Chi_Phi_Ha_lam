@@ -47,6 +47,7 @@ public class ExportExcelMaterialQueryHandler(IExcelService excelService, IUnitOf
                 Name = l.Name,
                 UnitOfMeasureName = l.UnitOfMeasure?.Name ?? "",
                 Cost = costService.BuildExcelCostString(l.Costs.ToList()),
+                Note = l.Note,
             };
         });
 

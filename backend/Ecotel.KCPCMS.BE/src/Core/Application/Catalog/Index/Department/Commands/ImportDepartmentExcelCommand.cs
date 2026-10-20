@@ -31,7 +31,7 @@ public class ImportDepartmentExcelCommandHandler(
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<DepartmentExcelDto>(stream);
-        var excelDtos = dtos.Select(d => Domain.Entities.Index.Department.Create(d.Id, d.Code, d.Name)).ToList();
+        var excelDtos = dtos.Select(d => Domain.Entities.Index.Department.Create(d.Id, d.Code, d.Name, d.Note)).ToList();
         var dbDepartments = await _departmentRepository.GetAllAsync(
             include: q => q.Include(d => d.Code!),
             disableTracking: true);
@@ -78,7 +78,7 @@ public class ImportDepartmentExcelCommandHandler(
                         throw new ConflictException($"Giá trị mã '{codeValue}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(codeValue, dto.Name);
+                    entityToUpdate.Update(codeValue, dto.Name, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -91,7 +91,7 @@ public class ImportDepartmentExcelCommandHandler(
                     throw new ConflictException($"Giá trị mã '{codeValue}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(Domain.Entities.Index.Department.Create(codeValue, dto.Name));
+                addList.Add(Domain.Entities.Index.Department.Create(codeValue, dto.Name, dto.Note));
             }
         }
 

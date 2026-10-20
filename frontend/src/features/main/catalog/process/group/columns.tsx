@@ -11,6 +11,7 @@ export type ProcessGroup = {
 	name: string;
 	fixedKeyType?: ProcessGroupType;
 	type?: ProcessGroupType;
+	note?: string | null;
 };
 
 export function normalizeProcessGroup(group: ProcessGroup): ProcessGroup {
@@ -46,5 +47,9 @@ export const CATALOG_PROCESS_GROUP_COLUMNS: ColumnDef<ProcessGroup>[] = [
 	{
 		accessorKey: 'name',
 		header: 'Tên nhóm công đoạn sản xuất',
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

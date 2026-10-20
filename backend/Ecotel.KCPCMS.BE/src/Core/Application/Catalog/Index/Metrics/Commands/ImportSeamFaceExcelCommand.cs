@@ -44,13 +44,13 @@ public class ImportSeamFaceExcelCommandHandler(IExcelService excelService, IUnit
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(SeamFace.Create(dto.Value));
+                addList.Add(SeamFace.Create(dto.Value, dto.Note));
             }
         }
 

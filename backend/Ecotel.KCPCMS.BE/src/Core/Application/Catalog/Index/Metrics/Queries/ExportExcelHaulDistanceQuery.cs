@@ -26,7 +26,8 @@ public class ExportExcelHaulDistanceQueryHandler(
             .Select(c => new HaulDistanceExcelDto
             {
                 Id = c.Id,
-                Value = c.Value
+                Value = c.Value,
+                Note = c.Note
             });
 
         return excelService.ExportToExcel(dtoList, "Cung độ vận tải ", hiddenProperties);

@@ -17,7 +17,7 @@ public class UpdatePassportCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
             predicate: t => t.Id == request.UpdateModel.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        existProcessGroup.Update(request.UpdateModel.Name, request.UpdateModel.Sd, request.UpdateModel.Sc);
+        existProcessGroup.Update(request.UpdateModel.Name, request.UpdateModel.Sd, request.UpdateModel.Sc, request.UpdateModel.Note);
 
         _passportRepository.Update(existProcessGroup);
         await unitOfWork.SaveChangesAsync();

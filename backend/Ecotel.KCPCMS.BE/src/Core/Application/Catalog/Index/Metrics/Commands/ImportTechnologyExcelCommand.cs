@@ -44,13 +44,13 @@ public class ImportTechnologyExcelCommandHandler(IExcelService excelService, IUn
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Technology.Create(dto.Value));
+                addList.Add(Technology.Create(dto.Value, dto.Note));
             }
         }
 

@@ -35,7 +35,8 @@ public class UpdateProductCommandHandler(IUnitOfWork unitOfWork, ICodeService co
             name: request.UpdateModel.Name,
             processGroupId: request.UpdateModel.ProcessGroupId,
             startMonth: request.UpdateModel.StartMonth,
-            endMonth: request.UpdateModel.EndMonth);
+            endMonth: request.UpdateModel.EndMonth,
+            note: request.UpdateModel.Note);
 
         _productRepository.Update(existProduct);
         await unitOfWork.SaveChangesAsync();

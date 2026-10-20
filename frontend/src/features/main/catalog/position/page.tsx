@@ -60,7 +60,10 @@ export function MainCatalogPositionPage() {
 		<DataTable
 			url={API.CATALOG.POSITION.LIST}
 			columns={CATALOG_POSITION_COLUMNS}
-			filters={[{ key: 'name', label: 'Tên chức vụ' }]}
+			filters={[
+				{ key: 'code', label: 'Mã chức vụ' },
+				{ key: 'name', label: 'Tên chức vụ' },
+			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.POSITION.CREATE) ? (props) => <PositionForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.POSITION.CREATE) ? (props) => <PositionForm {...props} isDuplicate /> : undefined}
 			onUpdate={hasPermission(PERMISSIONS.CATALOG.POSITION.UPDATE) ? (props) => <PositionForm {...props} /> : undefined}

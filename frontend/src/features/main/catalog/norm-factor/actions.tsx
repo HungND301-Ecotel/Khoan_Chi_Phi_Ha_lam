@@ -1,6 +1,7 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
 import { FormComboBox } from '@/components/form/form-combo-box';
+import { FormInput } from '@/components/form/form-input';
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumber } from '@/components/form/form-number';
 import { FormProvider } from '@/components/form/form-provider';
@@ -67,6 +68,7 @@ export function NormFactorForm({
 					...row,
 					hardnessId: row.hardnessId ?? '',
 					stoneClampRatioId: row.stoneClampRatioId ?? '',
+					note: row.note || '',
 					isMechanizedLongwall:
 						(row.steelMeshType ?? STEEL_MESH_TYPE_NONE) !==
 						STEEL_MESH_TYPE_NONE,
@@ -166,6 +168,7 @@ export function NormFactorForm({
 				hardnessId,
 				stoneClampRatioId,
 				steelMeshType,
+				note: values.note,
 				assignmentCodes: values.assignmentCodeConfigs.map((config) => ({
 					assignmentCodeId: config.assignmentCodeId,
 					materialId: config.materialId,
@@ -507,6 +510,13 @@ export function NormFactorForm({
 					})}
 				</div>
 			)}
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
+			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

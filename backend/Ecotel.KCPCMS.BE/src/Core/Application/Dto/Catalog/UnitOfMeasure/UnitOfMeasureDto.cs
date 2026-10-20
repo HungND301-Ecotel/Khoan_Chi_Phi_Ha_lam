@@ -8,6 +8,7 @@ namespace Application.Dto.Catalog.UnitOfMeasure
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
+        public string? Note { get; set; }
     }
     public class UnitOfMeasureExcelDto
     {
@@ -15,6 +16,9 @@ namespace Application.Dto.Catalog.UnitOfMeasure
 
         [Display(Name = "Đơn vị tính")]
         public string Name { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class ImportDto
@@ -25,5 +29,6 @@ namespace Application.Dto.Catalog.UnitOfMeasure
     public class CreateUnitOfMeasureDto
     {
         public string Name { get; set; }
+        public string? Note { get; set; }
     }
 }

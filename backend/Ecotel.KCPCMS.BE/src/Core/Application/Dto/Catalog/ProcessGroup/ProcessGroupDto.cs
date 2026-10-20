@@ -11,6 +11,7 @@ namespace Application.Dto.Catalog.ProcessGroup
         public string Code { get; set; }
         public ProcessGroupType Type { get; set; }
         public string Name { get; set; }
+        public string? Note { get; set; }
     }
 
     public class ProcessGroupExcelDto
@@ -20,12 +21,15 @@ namespace Application.Dto.Catalog.ProcessGroup
         public string Code { get; set; }
         [Display(Name = "Tên nhóm công đoạn sản xuất")]
         public string Name { get; set; }
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateProcessGroupDto
     {
         public Guid FixedKeyId { get; set; }
         public string Name { get; set; }
+        public string? Note { get; set; }
     }
 
     public class UpdateProcessGroupDto
@@ -33,5 +37,6 @@ namespace Application.Dto.Catalog.ProcessGroup
         public Guid Id { get; set; }
         public Guid? FixedKeyId { get; set; }
         public string Name { get; set; }
+        public string? Note { get; set; }
     }
 }

@@ -7,12 +7,13 @@ namespace Domain.Entities.Index;
 public class CuttingThickness : AuditableEntity<Guid>, IAggregateRoot
 {
     public string Value { get; protected set; }
+    public string? Note { get; protected set; }
 
     //Navigation Properties
     private IList<LongwallMaterialUnitPrice> _materialUnitPrices = new List<LongwallMaterialUnitPrice>();
     public virtual IReadOnlyCollection<LongwallMaterialUnitPrice> MaterialUnitPrices => _materialUnitPrices.AsReadOnly();
 
-    public static CuttingThickness Create(string value)
+    public static CuttingThickness Create(string value, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -21,11 +22,12 @@ public class CuttingThickness : AuditableEntity<Guid>, IAggregateRoot
 
         return new CuttingThickness
         {
-            Value = value
+            Value = value,
+            Note = NormalizeNote(note)
         };
     }
 
-    public static CuttingThickness Create(Guid id, string value)
+    public static CuttingThickness Create(Guid id, string value, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -35,11 +37,12 @@ public class CuttingThickness : AuditableEntity<Guid>, IAggregateRoot
         return new CuttingThickness
         {
             Id = id,
-            Value = value
+            Value = value,
+            Note = NormalizeNote(note)
         };
     }
 
-    public void Update(string value)
+    public void Update(string value, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -47,10 +50,16 @@ public class CuttingThickness : AuditableEntity<Guid>, IAggregateRoot
         }
 
         Value = value;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(CuttingThickness dto)
     {
-        return !(Value == dto.Value);
+        return !(Value == dto.Value && Note == NormalizeNote(dto.Note));
+    }
+
+    private static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

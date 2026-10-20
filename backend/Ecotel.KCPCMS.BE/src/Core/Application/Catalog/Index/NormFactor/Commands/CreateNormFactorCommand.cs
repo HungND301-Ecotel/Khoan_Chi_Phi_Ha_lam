@@ -95,7 +95,8 @@ public class CreateNormFactorCommandHandler(IUnitOfWork unitOfWork) : IRequestHa
             request.CreateModel.ProductionProcessId,
             request.CreateModel.HardnessId,
             request.CreateModel.StoneClampRatioId,
-            request.CreateModel.SteelMeshType);
+            request.CreateModel.SteelMeshType,
+            request.CreateModel.Note);
 
         normFactor.AddNormFactorAssignmentCode(
             assignmentConfigs.Select(a =>

@@ -9,6 +9,7 @@ public class CreateProductionOrderDto
     public DateOnly EndMonth { get; set; }
     public string Code { get; set; }
     public string Name { get; set; }
+    public string? Note { get; set; }
 }
 
 public class ProductionOrderDto : IDto
@@ -18,6 +19,7 @@ public class ProductionOrderDto : IDto
     public DateOnly EndMonth { get; set; }
     public string Code { get; set; }
     public string Name { get; set; }
+    public string? Note { get; set; }
 }
 
 public class ProductionOrderExcelDto
@@ -31,4 +33,6 @@ public class ProductionOrderExcelDto
     public string Code { get; set; }
     [Display(Name = "Tên quyết định, lệnh sản xuất")]
     public string Name { get; set; }
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }

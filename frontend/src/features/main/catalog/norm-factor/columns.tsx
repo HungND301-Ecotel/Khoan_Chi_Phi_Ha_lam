@@ -39,6 +39,7 @@ export type NormFactor = {
 	value: number;
 	targetHardnessId: string;
 	targetHardnessName: string;
+	note?: string | null;
 };
 
 const STEEL_MESH_TYPE_LABEL: Record<number, string> = {
@@ -85,6 +86,10 @@ export const CATALOG_NORM_FACTOR_COLUMNS: ColumnDef<NormFactor>[] = [
 				<span className='whitespace-normal'>{stoneClampRatioName || ''}</span>
 			);
 		},
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];
 

@@ -22,6 +22,6 @@ export const CATALOG_REVENUE_COST_ADJUSTMENT_CONFIG_COLUMNS: ColumnDef<RevenueCo
 		},
 		{
 			accessorKey: 'description',
-			header: 'Mô tả',
+			header: 'Ghi chú',
 		},
 	];

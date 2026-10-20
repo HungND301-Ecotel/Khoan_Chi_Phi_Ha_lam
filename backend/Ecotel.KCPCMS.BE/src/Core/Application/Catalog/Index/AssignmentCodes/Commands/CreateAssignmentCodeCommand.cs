@@ -39,7 +39,7 @@ public class CreateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            var newAssignmentCode = AssignmentCode.Create(request.CreateModel.Name, request.CreateModel.Code, request.CreateModel.UnitOfMeasureId);
+            var newAssignmentCode = AssignmentCode.Create(request.CreateModel.Name, request.CreateModel.Code, request.CreateModel.UnitOfMeasureId, request.CreateModel.Note);
             var costList = request.CreateModel.Costs
                 .Select(cost => Cost.CreateAssignmentCodeCost(
                     startMonth: cost.StartMonth,

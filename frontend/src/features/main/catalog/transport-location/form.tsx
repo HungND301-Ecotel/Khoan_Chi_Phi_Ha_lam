@@ -89,8 +89,8 @@ export function TransportLocationForm({
 			<FormSelect
 				control={form.control as any}
 				name='locationType'
-				label='Loại vị trí'
-				placeholder='Chọn loại vị trí'
+				label='Phân loại'
+				placeholder='Chọn phân loại'
 				options={[
 					{ label: 'Vị trí nhận', value: LocationType.Receiving.toString() },
 					{ label: 'Vị trí đổ', value: LocationType.Dumping.toString() },

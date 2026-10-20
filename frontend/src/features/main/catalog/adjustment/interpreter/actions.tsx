@@ -44,6 +44,7 @@ export function InterpreterForm({
 					maintenanceAdjustmentValue: row.maintenanceAdjustmentValue,
 					electricityAdjustmentValue:
 						row.electricityAdjustmentValue || undefined,
+					note: row.note || '',
 				}
 			: INTERPRETER_SCHEMA_DEFAULT,
 	});
@@ -108,6 +109,13 @@ export function InterpreterForm({
 				name='electricityAdjustmentValue'
 				label='Trị số điều chỉnh điện năng'
 				placeholder='Nhập trị số điều chỉnh điện năng'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

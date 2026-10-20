@@ -12,6 +12,7 @@ namespace Application.Dto.Catalog.ProductionProcess
         public string ProcessGroupName { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string? UnitOfMeasureName { get; set; }
+        public string? Note { get; set; }
     }
 
     public class ProductionProcessExcelDto
@@ -25,6 +26,8 @@ namespace Application.Dto.Catalog.ProductionProcess
         public string ProcessGroupCode { get; set; }
         [Display(Name = "Đơn vị tính")]
         public string? UnitOfMeasureName { get; set; }
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateProductionProcessDto
@@ -33,6 +36,7 @@ namespace Application.Dto.Catalog.ProductionProcess
         public string Name { get; set; }
         public Guid ProcessGroupId { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public string? Note { get; set; }
     }
 
     public class UpdateProductionProcessDto
@@ -42,5 +46,6 @@ namespace Application.Dto.Catalog.ProductionProcess
         public string Name { get; set; }
         public Guid ProcessGroupId { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public string? Note { get; set; }
     }
 }

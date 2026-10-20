@@ -7,6 +7,7 @@ export type ProductionOrder = {
 	name: string;
 	startMonth: string;
 	endMonth: string;
+	note?: string;
 };
 
 export const CATALOG_PARAMETER_PRODUCTION_ORDER_COLUMNS: ColumnDef<ProductionOrder>[] =
@@ -29,5 +30,9 @@ export const CATALOG_PARAMETER_PRODUCTION_ORDER_COLUMNS: ColumnDef<ProductionOrd
 					<span>{formatDate(row.original.endMonth)}</span>
 				</span>
 			),
+		},
+		{
+			accessorKey: 'note',
+			header: 'Ghi chú',
 		},
 	];

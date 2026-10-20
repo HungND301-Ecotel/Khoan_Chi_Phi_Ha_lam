@@ -36,6 +36,7 @@ export function InsertForm({
 		if (row) {
 			form.reset({
 				value: row.value,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -69,6 +70,13 @@ export function InsertForm({
 				name='value'
 				label='Chèn'
 				placeholder='Nhập chèn'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

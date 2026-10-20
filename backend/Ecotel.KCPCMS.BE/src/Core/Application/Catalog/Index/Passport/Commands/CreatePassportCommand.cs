@@ -11,7 +11,7 @@ public class CreatePassportCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
     private readonly IWriteRepository<Domain.Entities.Index.Passport> _passportRepository = unitOfWork.GetRepository<Domain.Entities.Index.Passport>();
     public async Task<bool> Handle(CreatePassportCommand request, CancellationToken cancellationToken)
     {
-        var newPassport = Domain.Entities.Index.Passport.Create(request.CreateModel.Name, request.CreateModel.Sd, request.CreateModel.Sc);
+        var newPassport = Domain.Entities.Index.Passport.Create(request.CreateModel.Name, request.CreateModel.Sd, request.CreateModel.Sc, request.CreateModel.Note);
         await _passportRepository.InsertAsync(newPassport);
         await unitOfWork.SaveChangesAsync();
         return true;

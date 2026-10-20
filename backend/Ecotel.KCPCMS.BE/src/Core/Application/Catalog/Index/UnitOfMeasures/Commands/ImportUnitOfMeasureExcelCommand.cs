@@ -44,13 +44,13 @@ public class ImportUnitOfMeasureExcelCommandHandler(IExcelService excelService, 
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Name);
+                    entityToUpdate.Update(dto.Name, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(UnitOfMeasure.Create(dto.Name));
+                addList.Add(UnitOfMeasure.Create(dto.Name, dto.Note));
             }
         }
 

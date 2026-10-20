@@ -7,6 +7,7 @@ namespace Domain.Entities.Index
     public class UnitOfMeasure : AuditableEntity<Guid>, IAggregateRoot
     {
         public string Name { get; protected set; }
+        public string? Note { get; protected set; }
 
         // Navigation properties
         private IList<AssignmentCode> _assignmentCodes = new List<AssignmentCode>();
@@ -21,7 +22,7 @@ namespace Domain.Entities.Index
         private IList<ProductionProcess> _productionProcesses = new List<ProductionProcess>();
         public virtual IReadOnlyCollection<ProductionProcess> ProductionProcesses => _productionProcesses.AsReadOnly();
         //constructor
-        public static UnitOfMeasure Create(string name)
+        public static UnitOfMeasure Create(string name, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -30,11 +31,12 @@ namespace Domain.Entities.Index
 
             return new UnitOfMeasure
             {
-                Name = name
+                Name = name,
+                Note = NormalizeNote(note)
             };
         }
 
-        public void Update(string name)
+        public void Update(string name, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -42,11 +44,17 @@ namespace Domain.Entities.Index
             }
 
             Name = name;
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(UnitOfMeasure dto)
         {
-            return !Name.Equals(dto.Name);
+            return !Name.Equals(dto.Name) || Note != NormalizeNote(dto.Note);
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

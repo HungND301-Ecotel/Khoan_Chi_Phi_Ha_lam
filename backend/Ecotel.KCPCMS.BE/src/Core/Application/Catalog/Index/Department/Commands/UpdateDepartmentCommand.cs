@@ -27,7 +27,7 @@ public class UpdateDepartmentCommandHandler(IUnitOfWork unitOfWork, ICodeService
             throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
         }
 
-        existDepartment.Update(request.UpdateModel.Code, request.UpdateModel.Name);
+        existDepartment.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.Note);
         _departmentRepository.Update(existDepartment);
         await unitOfWork.SaveChangesAsync();
         return true;

@@ -4,6 +4,7 @@ export type Department = {
 	id: string;
 	code: string;
 	name: string;
+	note?: string;
 };
 
 export const CATALOG_DEPARTMENT_COLUMNS: ColumnDef<Department>[] = [
@@ -14,5 +15,9 @@ export const CATALOG_DEPARTMENT_COLUMNS: ColumnDef<Department>[] = [
 	{
 		accessorKey: 'name',
 		header: 'Tên đơn vị',
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

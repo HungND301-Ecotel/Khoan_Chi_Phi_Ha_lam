@@ -38,6 +38,7 @@ public class GetMaterialByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
                 .ToList(),
             UnitOfMeasureId = details.UnitOfMeasureId,
             UnitOfMeasureName = details.UnitOfMeasure != null ? details.UnitOfMeasure.Name : string.Empty,
+            Note = details.Note,
             Costs = details.Costs.Adapt<List<MaterialCostDto>>(),
             MaterialType = details.MaterialType == Domain.Common.Enums.MaterialType.MaterialOutContract
                 ? Domain.Common.Enums.MaterialType.MaterialInContract

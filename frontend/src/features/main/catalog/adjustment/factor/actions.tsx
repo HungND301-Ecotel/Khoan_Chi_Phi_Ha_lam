@@ -44,6 +44,7 @@ export function FactorForm({
 					fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
 					name: row.name,
 					processGroupId: row.processGroupId,
+					note: row.note || '',
 				}
 			: FACTOR_SCHEMA_DEFAULT,
 	});
@@ -115,6 +116,13 @@ export function FactorForm({
 				name='name'
 				label='Tên hệ số điều chỉnh'
 				placeholder='Nhập tên hệ số điều chỉnh'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

@@ -13,6 +13,7 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; }
+        public string? Note { get; set; }
         public double CurrentPrice { get; set; }
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
         public IList<AssignmentCodeMaterialDto> Materials { get; set; } = new List<AssignmentCodeMaterialDto>();
@@ -51,6 +52,8 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string MaterialRole { get; set; } = string.Empty;
         [Display(Name = "Đơn vị tính")]
         public string UnitOfMeasureName { get; set; } = string.Empty;
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateAssignmentCodeDto
@@ -58,6 +61,7 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public string? Note { get; set; }
         public IList<Guid> MaterialIds { get; set; } = new List<Guid>();
         public IList<Guid> OtherMaterialIds { get; set; } = new List<Guid>();
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();
@@ -69,6 +73,7 @@ namespace Application.Dto.Catalog.AssignmentCode
         public string Code { get; set; }
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
+        public string? Note { get; set; }
         public IList<Guid> MaterialIds { get; set; } = new List<Guid>();
         public IList<Guid> OtherMaterialIds { get; set; } = new List<Guid>();
         public IList<ElectricityCostDto> Costs { get; set; } = new List<ElectricityCostDto>();

@@ -26,7 +26,8 @@ public class ExportExcelProcessGroupQueryHandler(IExcelService excelService, IUn
         {
             Id = l.Id,
             Name = l.Name,
-            Code = l.Code?.Value ?? ""
+            Code = l.Code?.Value ?? "",
+            Note = l.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Nhóm công đoạn sản xuất", listHiddenProperty);

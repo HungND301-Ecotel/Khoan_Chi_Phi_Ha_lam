@@ -36,6 +36,7 @@ export function UnitForm({ data, row, isDuplicate = false }: UnitFormProps) {
 		if (!row) return;
 		form.reset({
 			name: row.name,
+			note: row.note || '',
 		});
 	}, [row, form]);
 
@@ -68,6 +69,12 @@ export function UnitForm({ data, row, isDuplicate = false }: UnitFormProps) {
 				name='name'
 				label='Đơn vị tính'
 				placeholder='Nhập tên đơn vị tính, ví dụ: cái'
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

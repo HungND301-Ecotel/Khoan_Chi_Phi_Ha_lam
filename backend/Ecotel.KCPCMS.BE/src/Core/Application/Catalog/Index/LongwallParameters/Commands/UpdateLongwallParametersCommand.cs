@@ -17,7 +17,7 @@ public class UpdateLongwallParametersCommandHandler(IUnitOfWork unitOfWork) : IR
             predicate: t => t.Id == request.UpdateModel.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        existLongwallParameters.Update(request.UpdateModel.Llc, request.UpdateModel.Lkc, request.UpdateModel.Mk);
+        existLongwallParameters.Update(request.UpdateModel.Llc, request.UpdateModel.Lkc, request.UpdateModel.Mk, request.UpdateModel.Note);
 
         _longwallParametersRepository.Update(existLongwallParameters);
         await unitOfWork.SaveChangesAsync();

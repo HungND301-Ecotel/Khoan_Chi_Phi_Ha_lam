@@ -52,7 +52,8 @@ public class MaterialsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                                 c.EndMonth >= checkDate)
                     .Select(c => c.ActualAmount)
                     .FirstOrDefault(),
-            MaterialType = m.MaterialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : m.MaterialType
+            MaterialType = m.MaterialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : m.MaterialType,
+            Note = m.Note
         });
     }
 }

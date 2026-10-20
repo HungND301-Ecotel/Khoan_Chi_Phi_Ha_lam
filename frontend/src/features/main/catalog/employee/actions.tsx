@@ -86,6 +86,7 @@ export function EmployeeForm({
 	useEffect(() => {
 		if (!row) return;
 		form.reset({
+			code: isDuplicate ? '' : row.code || '',
 			fullName: row.fullName,
 			userName: row.userName || '',
 			positionId: row.positionId ?? 0,
@@ -97,6 +98,7 @@ export function EmployeeForm({
 			cccd: row.cccd || '',
 			dob: row.dob || '',
 			genre: row.genre === false ? 'false' : 'true',
+			note: row.note || '',
 		});
 	}, [row, form, isDuplicate]);
 
@@ -131,6 +133,12 @@ export function EmployeeForm({
 	return (
 		<FormProvider context={form as any} onSubmit={handleSubmit as any}>
 			<div className='grid grid-cols-2 gap-4'>
+				<FormInput
+					control={form.control}
+					name='code'
+					label='Mã nhân viên'
+					placeholder='Nhập mã nhân viên'
+				/>
 				<FormInput
 					control={form.control}
 					name='fullName'
@@ -193,6 +201,12 @@ export function EmployeeForm({
 					]}
 				/>
 			</div>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
+			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>
 	);

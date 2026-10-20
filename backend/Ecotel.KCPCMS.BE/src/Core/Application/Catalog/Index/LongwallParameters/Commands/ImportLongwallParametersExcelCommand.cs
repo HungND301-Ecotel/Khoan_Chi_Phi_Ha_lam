@@ -24,7 +24,7 @@ public class ImportLongwallParametersExcelCommandHandler(IExcelService excelServ
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<LongwallParametersExcelDto>(stream);
-        var excelDtos = dtos.Select(d => LongwallParametersEntity.Create(d.Id, d.Llc, d.Lkc, d.Mk));
+        var excelDtos = dtos.Select(d => LongwallParametersEntity.Create(d.Id, d.Llc, d.Lkc, d.Mk, d.Note));
         var dbLongwallParameters = await _longwallParametersRepository.GetAllAsync(
             disableTracking: true);
 
@@ -45,13 +45,13 @@ public class ImportLongwallParametersExcelCommandHandler(IExcelService excelServ
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Llc, dto.Lkc, dto.Mk);
+                    entityToUpdate.Update(dto.Llc, dto.Lkc, dto.Mk, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(LongwallParametersEntity.Create(dto.Llc, dto.Lkc, dto.Mk));
+                addList.Add(LongwallParametersEntity.Create(dto.Llc, dto.Lkc, dto.Mk, dto.Note));
             }
         }
 

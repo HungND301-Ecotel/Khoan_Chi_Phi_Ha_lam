@@ -7,6 +7,7 @@ export type Interpreter = {
 	adjustmentFactorCode: string;
 	maintenanceAdjustmentValue: number;
 	electricityAdjustmentValue?: number;
+	note?: string | null;
 };
 
 export const CATALOG_ADJUSTMENT_INTERPRETER_COLUMNS: ColumnDef<Interpreter>[] =
@@ -26,5 +27,9 @@ export const CATALOG_ADJUSTMENT_INTERPRETER_COLUMNS: ColumnDef<Interpreter>[] =
 		{
 			accessorKey: 'electricityAdjustmentValue',
 			header: 'Trị số điều chỉnh điện năng',
+		},
+		{
+			accessorKey: 'note',
+			header: 'Ghi chú',
 		},
 	];

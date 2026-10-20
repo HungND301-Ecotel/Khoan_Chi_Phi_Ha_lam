@@ -65,6 +65,7 @@ public class GetNormFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             StoneClampRatioId = normFactor.StoneClampRatioId,
             StoneClampRatioName = normFactor.StoneClampRatio?.Value ?? string.Empty,
             SteelMeshType = normFactor.SteelMeshType,
+            Note = normFactor.Note,
             AffectAssignmentCodes = assignmentDtos
         .Select(a => new ShortAssignmentCodeDto
         {

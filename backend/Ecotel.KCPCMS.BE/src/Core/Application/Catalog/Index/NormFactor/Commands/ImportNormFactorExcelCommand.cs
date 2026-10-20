@@ -122,7 +122,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 assignmentCodeId,
                 materialId,
                 dto.Value,
-                targetHardnessId));
+                targetHardnessId,
+                dto.Note));
         }
 
         var aggregates = BuildAggregates(mappedRows);
@@ -153,7 +154,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                     aggregate.ProductionProcessId,
                     aggregate.HardnessId,
                     aggregate.StoneClampRatioId,
-                    aggregate.SteelMeshType);
+                    aggregate.SteelMeshType,
+                    aggregate.Note);
 
                 if (existingEntity.NormFactorAssignmentCodes.Any())
                 {
@@ -176,7 +178,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                     aggregate.ProductionProcessId,
                     aggregate.HardnessId,
                     aggregate.StoneClampRatioId,
-                    aggregate.SteelMeshType);
+                    aggregate.SteelMeshType,
+                    aggregate.Note);
 
                 newEntity.AddNormFactorAssignmentCode(aggregate.AssignmentCodes
                     .Select(x => NormFactorAssignmentCodeEntity.Create(
@@ -260,6 +263,11 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
                 throw new BadRequestException($"Vật tư bị trùng lặp trong cùng một NormFactor ở dòng {row.RowNumber}.");
             }
 
+            if (string.IsNullOrWhiteSpace(aggregate.Note) && !string.IsNullOrWhiteSpace(row.Note))
+            {
+                aggregate.Note = NormFactorEntity.NormalizeNote(row.Note);
+            }
+
             aggregate.AssignmentCodes.Add(new NormFactorAssignmentCodeUpsertDto
             {
                 AssignmentCodeId = row.AssignmentCodeId,
@@ -277,7 +285,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         if (existingEntity.ProductionProcessId != aggregate.ProductionProcessId
             || existingEntity.HardnessId != aggregate.HardnessId
             || existingEntity.StoneClampRatioId != aggregate.StoneClampRatioId
-            || existingEntity.SteelMeshType != aggregate.SteelMeshType)
+            || existingEntity.SteelMeshType != aggregate.SteelMeshType
+            || !string.Equals(existingEntity.Note, aggregate.Note, StringComparison.Ordinal))
         {
             return true;
         }
@@ -465,7 +474,8 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         Guid AssignmentCodeId,
         Guid MaterialId,
         double Value,
-        Guid? TargetHardnessId);
+        Guid? TargetHardnessId,
+        string? Note);
 
     private sealed class MappedNormFactorAggregate(
     Guid id,
@@ -479,6 +489,7 @@ public class ImportNormFactorExcelCommandHandler(IExcelService excelService, IUn
         public Guid? HardnessId { get; } = hardnessId;
         public Guid? StoneClampRatioId { get; } = stoneClampRatioId;
         public SteelMeshType SteelMeshType { get; } = steelMeshType;
+        public string? Note { get; set; }
         public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; } = [];
     }
 }

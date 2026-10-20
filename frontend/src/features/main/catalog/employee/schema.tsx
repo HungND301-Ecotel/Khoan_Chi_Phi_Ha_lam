@@ -1,6 +1,9 @@
 import z from 'zod';
 
 export const employeeFormSchema = z.object({
+	code: z.string().trim().min(1, {
+		message: 'Mã nhân viên không được để trống',
+	}),
 	fullName: z.string().min(1, {
 		message: 'Họ tên không được để trống',
 	}),
@@ -24,11 +27,13 @@ export const employeeFormSchema = z.object({
 	cccd: z.string().optional().or(z.literal('')),
 	dob: z.string().optional().or(z.literal('')),
 	genre: z.any().optional(),
+	note: z.string().optional(),
 });
 
 export type EmployeeFormSchema = z.infer<typeof employeeFormSchema>;
 
 export const EMPLOYEE_FORM_DEFAULT: EmployeeFormSchema = {
+	code: '',
 	fullName: '',
 	userName: '',
 	positionId: 0,
@@ -38,4 +43,5 @@ export const EMPLOYEE_FORM_DEFAULT: EmployeeFormSchema = {
 	cccd: '',
 	dob: '',
 	genre: true,
+	note: '',
 };

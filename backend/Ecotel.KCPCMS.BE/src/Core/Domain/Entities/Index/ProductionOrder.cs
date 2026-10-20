@@ -10,6 +10,7 @@ public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
     public string Name { get; protected set; }
     public DateOnly StartMonth { get; protected set; }
     public DateOnly EndMonth { get; protected set; }
+    public string? Note { get; protected set; }
 
     //Navigation Properties
     public virtual Code Code { get; protected set; }
@@ -17,7 +18,7 @@ public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
     private IList<AcceptanceReportItem> _acceptanceReportItems = new List<AcceptanceReportItem>();
     public virtual IReadOnlyCollection<AcceptanceReportItem> AcceptanceReportItems => _acceptanceReportItems.AsReadOnly();
 
-    public static ProductionOrder Create(string code, string name, DateOnly startMonth, DateOnly endMonth)
+    public static ProductionOrder Create(string code, string name, DateOnly startMonth, DateOnly endMonth, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -39,11 +40,12 @@ public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
             Code = new Code(code.ToUpper()),
             Name = name,
             StartMonth = startMonth,
-            EndMonth = endMonth
+            EndMonth = endMonth,
+            Note = NormalizeNote(note)
         };
     }
 
-    public void Update(string code, string name, DateOnly startMonth, DateOnly endMonth)
+    public void Update(string code, string name, DateOnly startMonth, DateOnly endMonth, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -68,10 +70,16 @@ public class ProductionOrder : AuditableEntity<Guid>, IAggregateRoot
         Name = name;
         StartMonth = startMonth;
         EndMonth = endMonth;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(ProductionOrder dto)
     {
-        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && StartMonth == dto.StartMonth && EndMonth == dto.EndMonth);
+        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && StartMonth == dto.StartMonth && EndMonth == dto.EndMonth && Note == dto.Note);
+    }
+
+    public static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

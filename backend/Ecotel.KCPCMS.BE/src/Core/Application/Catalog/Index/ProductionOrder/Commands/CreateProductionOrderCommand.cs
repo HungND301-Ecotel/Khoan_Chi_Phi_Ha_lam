@@ -12,7 +12,7 @@ public class CreateProductionOrderCommandHandler(IUnitOfWork unitOfWork) : IRequ
     private readonly IWriteRepository<Domain.Entities.Index.ProductionOrder> _productionOrderRepository = unitOfWork.GetRepository<Domain.Entities.Index.ProductionOrder>();
     public async Task<bool> Handle(CreateProductionOrderCommand request, CancellationToken cancellationToken)
     {
-        var newProductionOrder = Domain.Entities.Index.ProductionOrder.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.StartMonth, request.CreateModel.EndMonth);
+        var newProductionOrder = Domain.Entities.Index.ProductionOrder.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.StartMonth, request.CreateModel.EndMonth, request.CreateModel.Note);
         await _productionOrderRepository.InsertAsync(newProductionOrder);
         await unitOfWork.SaveChangesAsync();
         return true;

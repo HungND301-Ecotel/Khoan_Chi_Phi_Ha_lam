@@ -28,6 +28,7 @@ public class GetEmployeeByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
         return new EmployeeDto
         {
             Id = existEmployee.Id,
+            Code = existEmployee.Code,
             FullName = existEmployee.FullName,
             PositionId = existEmployee.PositionId,
             PositionName = existEmployee.Position?.Name,
@@ -41,6 +42,7 @@ public class GetEmployeeByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
             PhoneNumber = existEmployee.User?.PhoneNumber,
             Dob = existEmployee.Dob ?? default,
             Genre = existEmployee.Gender ?? true,
+            Note = existEmployee.Note,
             IsActive = !(existEmployee.User.LockoutEnabled && existEmployee.User.LockoutEnd != null && existEmployee.User.LockoutEnd > DateTimeOffset.UtcNow)
         };
     }

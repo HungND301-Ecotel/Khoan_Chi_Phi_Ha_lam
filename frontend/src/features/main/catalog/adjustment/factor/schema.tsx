@@ -10,6 +10,7 @@ export const factorSchema = z.object({
 	processGroupId: z.string().nonempty({
 		error: 'Nhóm công đoạn sản xuất không được để trống.',
 	}),
+	note: z.string().optional(),
 });
 
 export type FactorSchema = z.infer<typeof factorSchema>;
@@ -18,4 +19,5 @@ export const FACTOR_SCHEMA_DEFAULT: FactorSchema = {
 	fixedKeyId: '',
 	name: '',
 	processGroupId: '',
+	note: '',
 };

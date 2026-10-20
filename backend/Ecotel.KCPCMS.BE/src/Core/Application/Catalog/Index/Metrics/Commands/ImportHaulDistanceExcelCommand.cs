@@ -56,15 +56,17 @@ public class ImportHaulDistanceExcelCommandHandler(
             {
                 var entityToUpdate = dbHaulDistances.First(x => x.Id == dto.Id.Value);
 
-                if (entityToUpdate.Value != dto.Value.Trim())
+                var normalizedNote = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
+
+                if (entityToUpdate.Value != dto.Value.Trim() || entityToUpdate.Note != normalizedNote)
                 {
-                    entityToUpdate.Update(dto.Value.Trim());
+                    entityToUpdate.Update(dto.Value.Trim(), dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Domain.Entities.Index.HaulDistance.Create(dto.Value.Trim()));
+                addList.Add(Domain.Entities.Index.HaulDistance.Create(dto.Value.Trim(), dto.Note));
             }
         }
 

@@ -28,7 +28,8 @@ public class AdjustmentFactorDescriptionsByPaginationSpec
                 Description = ad.Description,
                 AdjustmentFactorCode = ad.AdjustmentFactor != null ? $"{ad.AdjustmentFactor.ProcessGroup.FixedKey.Key} - {ad.AdjustmentFactor.Code.Value}" : string.Empty,
                 ElectricityAdjustmentValue = ad.ElectricityAdjustmentValue,
-                MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue
+                MaintenanceAdjustmentValue = ad.MaintenanceAdjustmentValue,
+                Note = ad.Note
             });
     }
 }

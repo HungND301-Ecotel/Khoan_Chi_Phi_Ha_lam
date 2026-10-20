@@ -60,7 +60,7 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
 
             if (dbAdjustmentFactorMap.TryGetValue(compositeKey, out var adjustmentFactorId))
             {
-                return AdjustmentFactorDescriptionEntity.Create(d.Id, d.Description, adjustmentFactorId, d.MaintenanceAdjustmentValue, d.ElectricityAdjustmentValue);
+                return AdjustmentFactorDescriptionEntity.Create(d.Id, d.Description, adjustmentFactorId, d.MaintenanceAdjustmentValue, d.ElectricityAdjustmentValue, d.Note);
             }
             return null;
         }).Where(d => d != null).ToList();
@@ -85,13 +85,13 @@ public class ImportAdjustmentFactorDescriptionExcelCommandHandler(IExcelService 
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Description, dto.AdjustmentFactorId, dto.MaintenanceAdjustmentValue, dto.ElectricityAdjustmentValue);
+                    entityToUpdate.Update(dto.Description, dto.AdjustmentFactorId, dto.MaintenanceAdjustmentValue, dto.ElectricityAdjustmentValue, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(AdjustmentFactorDescriptionEntity.Create(dto.Description, dto.AdjustmentFactorId, dto.MaintenanceAdjustmentValue, dto.ElectricityAdjustmentValue));
+                addList.Add(AdjustmentFactorDescriptionEntity.Create(dto.Description, dto.AdjustmentFactorId, dto.MaintenanceAdjustmentValue, dto.ElectricityAdjustmentValue, dto.Note));
             }
         }
 

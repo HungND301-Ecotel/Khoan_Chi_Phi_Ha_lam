@@ -28,7 +28,8 @@ public class UpdateAdjustmentFactorDescriptionCommandHandler(IUnitOfWork unitOfW
             request.UpdateModel.Description,
             request.UpdateModel.AdjustmentFactorId,
             request.UpdateModel.MaintenanceAdjustmentValue,
-            request.UpdateModel.ElectricityAdjustmentValue);
+            request.UpdateModel.ElectricityAdjustmentValue,
+            request.UpdateModel.Note);
 
         _adjustmentFactorDescriptionRepository.Update(existAdjustmentFactorDescription);
         await unitOfWork.SaveChangesAsync();

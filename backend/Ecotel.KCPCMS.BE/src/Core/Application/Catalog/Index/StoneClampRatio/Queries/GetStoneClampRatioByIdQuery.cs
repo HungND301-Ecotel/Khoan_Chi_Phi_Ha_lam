@@ -22,6 +22,7 @@ public class GetStoneClampRatioByIdQueryHandler(IUnitOfWork unitOfWork) : IReque
         {
             Id = stoneClampRatio.Id,
             Value = stoneClampRatio.Value,
+            Note = stoneClampRatio.Note,
         };
     }
 }

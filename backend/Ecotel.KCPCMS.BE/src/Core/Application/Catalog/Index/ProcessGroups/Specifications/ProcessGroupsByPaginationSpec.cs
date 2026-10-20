@@ -28,6 +28,7 @@ public class ProcessGroupsByPaginationSpec : EntitiesByPaginationFilterSpec<Proc
             Code = pg.FixedKey != null ? pg.FixedKey.Key : pg.Code.Value,
             Type = pg.FixedKey != null ? pg.FixedKey.Type.ToProcessGroupType() : pg.Type,
             Name = pg.Name,
+            Note = pg.Note,
         });
     }
 }

@@ -8,6 +8,7 @@ export type ProcessStep = {
 	processGroupName: string;
 	unitOfMeasureId?: string;
 	unitOfMeasureName?: string;
+	note?: string;
 };
 
 export const CATALOG_PROCESS_STEP_COLUMNS: ColumnDef<ProcessStep>[] = [
@@ -27,5 +28,9 @@ export const CATALOG_PROCESS_STEP_COLUMNS: ColumnDef<ProcessStep>[] = [
 		accessorKey: 'unitOfMeasureName',
 		header: 'Đơn vị tính',
 		cell: ({ row }) => row.original.unitOfMeasureName || '-',
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

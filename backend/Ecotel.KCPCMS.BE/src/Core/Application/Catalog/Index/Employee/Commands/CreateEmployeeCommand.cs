@@ -30,6 +30,17 @@ public class CreateEmployeeCommandHandler(
 
     public async Task<bool> Handle(CreateEmployeeCommand request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.CreateModel.Code))
+        {
+            throw new BadRequestException("Mã nhân viên không được để trống.");
+        }
+
+        var code = request.CreateModel.Code.Trim().ToUpper();
+        if (await _employeeRepository.AnyAsync(e => e.Code == code))
+        {
+            throw new ConflictException("Mã nhân viên đã tồn tại.");
+        }
+
         if (await _userRepository.AnyAsync(u => u.NormalizedUserName == request.CreateModel.UserName.Trim().ToUpperInvariant()))
         {
             throw new ConflictException("Tên đăng nhập đã tồn tại.");
@@ -67,7 +78,9 @@ public class CreateEmployeeCommandHandler(
                 avatarUrl: string.Empty,
                 dob: null,
                 gender: null,
-                cccd: request.CreateModel.Cccd);
+                cccd: request.CreateModel.Cccd,
+                code: code,
+                note: request.CreateModel.Note);
 
             await _employeeRepository.InsertAsync(employee, cancellationToken);
             await unitOfWork.SaveChangesAsync();

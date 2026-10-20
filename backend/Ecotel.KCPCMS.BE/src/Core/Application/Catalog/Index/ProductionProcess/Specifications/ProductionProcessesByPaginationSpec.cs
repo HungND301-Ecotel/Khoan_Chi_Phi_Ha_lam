@@ -28,7 +28,8 @@ public class ProductionProcessesByPaginationSpec
                 ProcessGroupId = p.ProcessGroupId,
                 ProcessGroupName = p.ProcessGroup != null ? p.ProcessGroup.Name : string.Empty,
                 UnitOfMeasureId = p.UnitOfMeasureId,
-                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty
+                UnitOfMeasureName = p.UnitOfMeasure != null ? p.UnitOfMeasure.Name : string.Empty,
+                Note = p.Note
             });
     }
 }

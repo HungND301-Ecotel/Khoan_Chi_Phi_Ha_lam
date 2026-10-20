@@ -33,6 +33,7 @@ export function ClampForm({
 		defaultValues: row
 			? {
 					value: row.value,
+					note: row.note || '',
 				}
 			: CLAMP_SCHEMA_DEFAULT,
 	});
@@ -67,6 +68,13 @@ export function ClampForm({
 				label='Tỷ lệ đá kẹp (Ckẹp)'
 				placeholder='Nhập tỷ lệ đá kẹp (Ckẹp)'
 				supports={CLAMP_SUPPORTS}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

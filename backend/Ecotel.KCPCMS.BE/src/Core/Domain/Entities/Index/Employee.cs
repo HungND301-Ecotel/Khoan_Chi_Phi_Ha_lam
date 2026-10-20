@@ -15,6 +15,9 @@ namespace Domain.Entities.Index;
 public class Employee : AuditableEntity<int>, IAggregateRoot
 {
     [MaxLength(50)]
+    public string? Code { get; private set; }
+
+    [MaxLength(50)]
     public string FullName { get; private set; }
 
     [MaxLength(256)]
@@ -24,6 +27,8 @@ public class Employee : AuditableEntity<int>, IAggregateRoot
     public bool? Gender { get; private set; }
     [MaxLength(255)]
     public string? Cccd { get; private set; }
+
+    public string? Note { get; private set; }
 
     // Navigation Properties
     public int PositionId { get; private set; }
@@ -42,7 +47,7 @@ public class Employee : AuditableEntity<int>, IAggregateRoot
 
 
     public static Employee Create(string fullName,int userId, int positionId, Guid departmentId, string avatarUrl, DateOnly? dob,
-                        bool? gender, string cccd)
+                        bool? gender, string cccd, string? code = null, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
@@ -62,12 +67,14 @@ public class Employee : AuditableEntity<int>, IAggregateRoot
             Avatar = avatarUrl,
             Dob = dob,
             Gender = gender,
-            Cccd = cccd
+            Cccd = cccd,
+            Code = NormalizeCode(code),
+            Note = NormalizeText(note)
         };
     }
 
     public void UpdateEmployee(string fullName, int positionId, Guid departmentId, string avatarUrl, DateOnly? dob,
-                        bool? gender, string cccd)
+                        bool? gender, string cccd, string? code = null, string? note = null)
     {
         UpdateName(fullName);
         SetPosition(positionId);
@@ -76,6 +83,8 @@ public class Employee : AuditableEntity<int>, IAggregateRoot
         SetDob(dob);
         SetGender(gender);
         SetCccd(cccd);
+        SetCode(code);
+        SetNote(note);
     }
 
     
@@ -128,6 +137,24 @@ public class Employee : AuditableEntity<int>, IAggregateRoot
         Cccd = cccd;
         DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
     }
+
+    public void SetCode(string? code)
+    {
+        Code = NormalizeCode(code);
+        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
+    }
+
+    public void SetNote(string? note)
+    {
+        Note = NormalizeText(note);
+        DomainEvents.Add(EntityUpdatedEvent.WithEntity(this));
+    }
+
+    private static string? NormalizeCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpper();
+
+    private static string? NormalizeText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     #endregion
 

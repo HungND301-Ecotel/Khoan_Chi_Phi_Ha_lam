@@ -14,6 +14,7 @@ namespace Application.Dto.Catalog.Employee;
 public class EmployeeDto : IDto, IAvatarCarrier
 {
     public int Id { get; set; }
+    public string? Code { get; set; }
     public string FullName { get; set; } = string.Empty;
     public int PositionId { get; set; }
     public string? PositionName { get; set; }
@@ -26,6 +27,7 @@ public class EmployeeDto : IDto, IAvatarCarrier
     public string Avatar { get; set; }
     public string? Email { get; set; }
     public string? PhoneNumber { get; set; }
+    public string? Note { get; set; }
 
     public bool Genre { get; set; }
     public bool IsActive { get; set; }
@@ -42,6 +44,7 @@ public class EmployeeDto : IDto, IAvatarCarrier
 
 public class CreateEmployeeDto
 {
+    public string Code { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;    
     public int PositionId { get; set; }                     
     public Guid DepartmentId { get; set; }                
@@ -51,10 +54,12 @@ public class CreateEmployeeDto
     public string Cccd { get; set; }
     public DateOnly Dob { get; set; }
     public bool Genre { get; set; }
+    public string? Note { get; set; }
 }
 
 public class UpdateEmployeeDto
 {
+    public string Code { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public int PositionId { get; set; }
     public Guid DepartmentId { get; set; }
@@ -64,7 +69,7 @@ public class UpdateEmployeeDto
     public string? Cccd { get; set; }
     public string PhoneNumber { get; set; }
     public string Email { get; set; }
-
+    public string? Note { get; set; }
 }
 
 public class ChangeEmployeeAvatarDto
@@ -104,6 +109,9 @@ public class EmployeeExcelDto
 {
     public int? Id { get; set; }
 
+    [Display(Name = "Mã nhân viên")]
+    public string? Code { get; set; }
+
     [Display(Name = "Họ và tên")]
     public string FullName { get; set; } = string.Empty;
 
@@ -134,6 +142,9 @@ public class EmployeeExcelDto
     public string? GenderName { get; set; }
     [Display(Name = "Trạng thái")]
     public string? IsActiveName { get; set; }
+
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }
 public class UploadEmployeeImageRequest
 {

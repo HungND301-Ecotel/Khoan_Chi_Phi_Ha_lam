@@ -6,6 +6,7 @@ import { EmployeeForm } from '@/features/main/catalog/employee/actions';
 import {
 	CATALOG_EMPLOYEE_COLUMNS,
 	Employee,
+	EmployeeResetPasswordAction,
 } from '@/features/main/catalog/employee/columns';
 import { api } from '@/lib/api';
 import { usePermission } from '@/hooks/use-permission';
@@ -61,12 +62,25 @@ export function MainCatalogEmployeePage() {
 			url={API.CATALOG.EMPLOYEE.LIST}
 			columns={CATALOG_EMPLOYEE_COLUMNS}
 			filters={[
+				{ key: 'code', label: 'Mã nhân viên' },
 				{ key: 'fullName', label: 'Họ và tên' },
 				{ key: 'userName', label: 'Tên đăng nhập' },
 			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.CREATE) ? (props) => <EmployeeForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.CREATE) ? (props) => <EmployeeForm {...props} isDuplicate /> : undefined}
 			onUpdate={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.UPDATE) ? (props) => <EmployeeForm {...props} /> : undefined}
+			extraRowActions={
+				hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.UPDATE)
+					? [
+							{
+								key: 'reset-password',
+								header: 'Reset mật khẩu',
+								cell: ({ row }) =>
+									row ? <EmployeeResetPasswordAction row={row} /> : null,
+							},
+						]
+					: undefined
+			}
 			onDelete={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.DELETE) ? handleDelete : undefined}
 			onExport={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.EXPORT) ? handleExport : undefined}
 			onImport={hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.IMPORT) ? handleImport : undefined}

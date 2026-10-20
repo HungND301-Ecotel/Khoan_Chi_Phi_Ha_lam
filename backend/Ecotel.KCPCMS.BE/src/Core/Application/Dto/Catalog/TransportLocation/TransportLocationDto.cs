@@ -43,6 +43,6 @@ public class TransportLocationExcelDto
     [Display(Name = "Ghi chú")]
     public string? Note { get; set; }
 
-    [Display(Name = "Loại vị trí")]
+    [Display(Name = "Phân loại")]
     public LocationType LocationType { get; set; }
 }

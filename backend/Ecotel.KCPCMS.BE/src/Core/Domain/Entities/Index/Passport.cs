@@ -10,6 +10,7 @@ namespace Domain.Entities.Index
         public string Name { get; protected set; }
         public string Sd { get; protected set; }
         public string Sc { get; protected set; }
+        public string? Note { get; protected set; }
 
         //Navigation Properties
         private IList<TunnelExcavationMaterialUnitPrice> _materialUnitPrices = new List<TunnelExcavationMaterialUnitPrice>();
@@ -18,7 +19,7 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<SlideUnitPrice> SlideUnitPrices => _slideUnitPrices.AsReadOnly();
 
         // Constructor
-        public static Passport Create(string name, string sd, string sc)
+        public static Passport Create(string name, string sd, string sc, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -29,11 +30,12 @@ namespace Domain.Entities.Index
             {
                 Name = name,
                 Sd = sd,
-                Sc = sc
+                Sc = sc,
+                Note = NormalizeNote(note)
             };
         }
 
-        public static Passport Create(Guid id, string name, string sd, string sc)
+        public static Passport Create(Guid id, string name, string sd, string sc, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -45,11 +47,12 @@ namespace Domain.Entities.Index
                 Id = id,
                 Name = name,
                 Sd = sd,
-                Sc = sc
+                Sc = sc,
+                Note = NormalizeNote(note)
             };
         }
 
-        public void Update(string name, string sd, string sc)
+        public void Update(string name, string sd, string sc, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -59,16 +62,22 @@ namespace Domain.Entities.Index
             Name = name;
             Sd = sd;
             Sc = sc;
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(Passport dto)
         {
-            return !(Name == dto.Name && Sd == dto.Sd && Sc == dto.Sc);
+            return !(Name == dto.Name && Sd == dto.Sd && Sc == dto.Sc && Note == NormalizeNote(dto.Note));
         }
 
         public string GetFullname()
         {
             return $"H/c {Name}; {Sd}; {Sc}";
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

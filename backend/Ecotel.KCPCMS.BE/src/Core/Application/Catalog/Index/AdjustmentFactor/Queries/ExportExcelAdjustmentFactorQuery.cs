@@ -43,7 +43,8 @@ public class ExportExcelAdjustmentFactorQueryHandler(IExcelService excelService,
             Type = (int)(s.FixedKey?.Type ?? FixedKeyType.None),
             Code = s.FixedKey?.Key ?? s.Code?.Value ?? "",
             Name = s.Name,
-            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
+            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? "",
+            Note = s.Note
         });
 
         return excelService.ExportToExcel(dtoList.OrderBy(d => d.ProcessGroupCode).ThenBy(d => d.Code), "Hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);

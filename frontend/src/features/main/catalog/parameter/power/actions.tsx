@@ -32,6 +32,7 @@ export function PowerForm({
 		if (row) {
 			form.reset({
 				value: row.value,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -65,6 +66,13 @@ export function PowerForm({
 				name='value'
 				label='Công suất'
 				placeholder='Nhập công suất'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

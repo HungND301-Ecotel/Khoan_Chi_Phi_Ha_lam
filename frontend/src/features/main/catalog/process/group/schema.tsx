@@ -7,6 +7,7 @@ export const processGroupSchema = z.object({
 	name: z.string().min(1, {
 		message: 'Tên nhóm công đoạn sản xuất không được để trống',
 	}),
+	note: z.string().optional(),
 });
 
 export type ProcessGroupSchema = z.infer<typeof processGroupSchema>;
@@ -14,4 +15,5 @@ export type ProcessGroupSchema = z.infer<typeof processGroupSchema>;
 export const PROCESS_GROUP_SCHEMA_DEFAULT: ProcessGroupSchema = {
 	fixedKeyId: '',
 	name: '',
+	note: '',
 } as const;

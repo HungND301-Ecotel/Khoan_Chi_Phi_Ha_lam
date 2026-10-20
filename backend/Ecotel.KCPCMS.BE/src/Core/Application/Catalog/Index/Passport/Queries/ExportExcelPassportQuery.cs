@@ -27,7 +27,8 @@ public class ExportExcelPassportQueryHandler(IExcelService excelService, IUnitOf
             Id = l.Id,
             Name = l.Name,
             Sd = l.Sd,
-            Sc = l.Sc
+            Sc = l.Sc,
+            Note = l.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Hộ chiếu, Sđ, Sc", listHiddenProperty);

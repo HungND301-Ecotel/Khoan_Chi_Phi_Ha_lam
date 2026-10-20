@@ -2,12 +2,17 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 export type Position = {
 	id: number;
+	code?: string | null;
 	name: string;
 	level: number;
-	description: string;
+	description?: string | null;
 };
 
 export const CATALOG_POSITION_COLUMNS: ColumnDef<Position>[] = [
+	{
+		accessorKey: 'code',
+		header: 'Mã chức vụ',
+	},
 	{
 		accessorKey: 'name',
 		header: 'Tên chức vụ',
@@ -18,6 +23,6 @@ export const CATALOG_POSITION_COLUMNS: ColumnDef<Position>[] = [
 	},
 	{
 		accessorKey: 'description',
-		header: 'Mô tả',
+		header: 'Ghi chú',
 	},
 ];

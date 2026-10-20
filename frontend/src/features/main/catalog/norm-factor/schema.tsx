@@ -33,6 +33,7 @@ export const normFactorSchema = z
 		assignmentCodeConfigs: z.array(assignmentCodeConfigSchema).min(1, {
 			message: 'Cấu hình Nhóm vật tư, tài sản không được để trống',
 		}),
+		note: z.string().optional(),
 	})
 	.superRefine((data, ctx) => {
 		if (!data.isMechanizedLongwall && !data.hardnessId) {
@@ -85,4 +86,5 @@ export const NORM_FACTOR_SCHEMA_DEFAULT: NormFactorSchema = {
 	stoneClampRatioId: '',
 	assignmentCodeIds: [],
 	assignmentCodeConfigs: [],
+	note: '',
 };

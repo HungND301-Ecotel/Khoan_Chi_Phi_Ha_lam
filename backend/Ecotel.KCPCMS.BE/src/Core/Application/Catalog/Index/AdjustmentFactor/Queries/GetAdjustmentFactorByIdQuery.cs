@@ -40,6 +40,7 @@ public class GetAdjustmentFactorByIdQueryHandler(IUnitOfWork unitOfWork)
             ProcessGroupId = adjustmentFactor.ProcessGroupId,
             ProcessGroupCode = adjustmentFactor.ProcessGroup?.FixedKey?.Key ?? adjustmentFactor.ProcessGroup?.Code?.Value ?? string.Empty,
             ProcessGroupName = adjustmentFactor.ProcessGroup?.Name ?? string.Empty,
+            Note = adjustmentFactor.Note,
         };
     }
 }

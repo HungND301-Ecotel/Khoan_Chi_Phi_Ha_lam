@@ -28,7 +28,7 @@ public class UpdateProductionProcessCommandHandler(IUnitOfWork unitOfWork, ICode
                 throw new ConflictException(CustomResponseMessage.ProductionProcessCodeAlreadyExists);
             }
 
-            existProductionProcess.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId, request.UpdateModel.UnitOfMeasureId ?? Guid.Empty);
+            existProductionProcess.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.ProcessGroupId, request.UpdateModel.UnitOfMeasureId ?? Guid.Empty, request.UpdateModel.Note);
 
             _productionProcessRepository.Update(existProductionProcess);
             await unitOfWork.SaveChangesAsync();

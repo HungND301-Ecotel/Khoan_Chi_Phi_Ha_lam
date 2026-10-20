@@ -26,7 +26,8 @@ public class GetProductionProcessByIdQueryHandler(IUnitOfWork unitOfWork) : IReq
             ProcessGroupId = productionProcess.ProcessGroupId,
             ProcessGroupName = productionProcess.ProcessGroup != null ? productionProcess.ProcessGroup.Name : string.Empty,
             UnitOfMeasureId = productionProcess.UnitOfMeasureId,
-            UnitOfMeasureName = productionProcess.UnitOfMeasure != null ? productionProcess.UnitOfMeasure.Name : string.Empty
+            UnitOfMeasureName = productionProcess.UnitOfMeasure != null ? productionProcess.UnitOfMeasure.Name : string.Empty,
+            Note = productionProcess.Note
         };
     }
 }

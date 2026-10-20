@@ -24,7 +24,8 @@ public class CreateAdjustmentFactorDescriptionCommandHandler(IUnitOfWork unitOfW
             request.CreateModel.Description,
             request.CreateModel.AdjustmentFactorId,
             request.CreateModel.MaintenanceAdjustmentValue,
-            request.CreateModel.ElectricityAdjustmentValue);
+            request.CreateModel.ElectricityAdjustmentValue,
+            request.CreateModel.Note);
 
         await _adjustmentFactorDescriptionRepository.InsertAsync(newAdjustmentFactorDescription);
         await unitOfWork.SaveChangesAsync();

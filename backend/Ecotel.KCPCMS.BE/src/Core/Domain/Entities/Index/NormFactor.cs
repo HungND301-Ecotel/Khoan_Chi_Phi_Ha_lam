@@ -10,6 +10,7 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
     public Guid? HardnessId { get; protected set; }
     public Guid? StoneClampRatioId { get; protected set; }
     public SteelMeshType SteelMeshType { get; protected set; } = SteelMeshType.None;
+    public string? Note { get; protected set; }
 
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
     public virtual Hardness? Hardness { get; protected set; }
@@ -25,14 +26,16 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         Guid productionProcessId,
         Guid? hardnessId,
         Guid? stoneClampRatioId,
-        SteelMeshType steelMeshType = SteelMeshType.None)
+        SteelMeshType steelMeshType = SteelMeshType.None,
+        string? note = null)
     {
         return new NormFactor
         {
             ProductionProcessId = productionProcessId,
             HardnessId = hardnessId,
             StoneClampRatioId = stoneClampRatioId,
-            SteelMeshType = steelMeshType
+            SteelMeshType = steelMeshType,
+            Note = NormalizeNote(note)
         };
     }
 
@@ -49,11 +52,18 @@ public class NormFactor : AuditableEntity<Guid>, IAggregateRoot
         Guid productionProcessId,
         Guid? hardnessId,
         Guid? stoneClampRatioId,
-        SteelMeshType steelMeshType = SteelMeshType.None)
+        SteelMeshType steelMeshType = SteelMeshType.None,
+        string? note = null)
     {
         ProductionProcessId = productionProcessId;
         HardnessId = hardnessId;
         StoneClampRatioId = stoneClampRatioId;
         SteelMeshType = steelMeshType;
+        Note = NormalizeNote(note);
+    }
+
+    public static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

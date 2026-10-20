@@ -56,6 +56,12 @@ export type ActionDialogProps<TData> = {
 	row?: TData;
 };
 
+export type DataTableRowAction<TData> = {
+	key: string;
+	header: string;
+	cell: (props: ActionDialogProps<TData>) => JSX.Element | null;
+};
+
 type DataTableProps<TData> = {
 	columns: ColumnDef<TData>[];
 	url?: string;
@@ -68,6 +74,8 @@ type DataTableProps<TData> = {
 	onCreate?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onDuplicate?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onUpdate?: (props: ActionDialogProps<TData>) => JSX.Element;
+	/** Extra per-row action columns rendered right after Copy / Sửa. */
+	extraRowActions?: DataTableRowAction<TData>[];
 	onRowImport?: (props: ActionDialogProps<TData>) => JSX.Element;
 	onRowExport?: (props: ActionDialogProps<TData>) => Promise<void> | void;
 	onDelete?: (props: ActionDialogProps<TData>) => Promise<void> | void;
@@ -106,6 +114,7 @@ export function DataTable<TData>({
 	onCreate,
 	onDuplicate,
 	onUpdate,
+	extraRowActions,
 	onRowImport,
 	onRowExport,
 	onDelete,
@@ -209,6 +218,7 @@ export function DataTable<TData>({
 	if (onRowExport) ++columnCount;
 	if (onUpdate) ++columnCount;
 	if (onDuplicate) ++columnCount;
+	columnCount += extraRowActions?.length ?? 0;
 	if (onDelete) ++columnCount;
 	if (hasIndex) ++columnCount;
 
@@ -526,6 +536,16 @@ export function DataTable<TData>({
 											Sửa
 										</TableHead>
 									)}
+									{isFirstHeaderGroup &&
+										extraRowActions?.map((action) => (
+											<TableHead
+												key={action.key}
+												className='px-4 text-center'
+												rowSpan={totalHeaderGroups}
+											>
+												{action.header}
+											</TableHead>
+										))}
 								</TableRow>
 							);
 						})}
@@ -704,6 +724,12 @@ export function DataTable<TData>({
 												</DialogProvider>
 											</TableCell>
 										)}
+
+										{extraRowActions?.map((action) => (
+											<TableCell key={action.key} className='w-10 px-4 py-0'>
+												{action.cell({ data: datatable, row: row.original })}
+											</TableCell>
+										))}
 									</TableRow>
 
 									{row.getIsExpanded() && (

@@ -33,6 +33,7 @@ export const contractCodeSchema = z.object({
 				}),
 		}),
 	),
+	note: z.string().optional(),
 }).superRefine((data, ctx) => {
 	const duplicateIds = data.materialIds.filter((id) =>
 		data.otherMaterialIds.includes(id),
@@ -62,4 +63,5 @@ export const CONTRACT_CODE_SCHEMA_DEFAULT: ContractCodeSchema = {
 			amount: NaN,
 		},
 	],
+	note: '',
 } as const;

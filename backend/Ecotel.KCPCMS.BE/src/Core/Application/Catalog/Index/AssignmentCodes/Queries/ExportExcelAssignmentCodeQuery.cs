@@ -67,7 +67,8 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
                     Name = item.Name,
                     MaterialCode = string.Empty,
                     MaterialRole = string.Empty,
-                    UnitOfMeasureName = item.UnitOfMeasure?.Name ?? string.Empty
+                    UnitOfMeasureName = item.UnitOfMeasure?.Name ?? string.Empty,
+                    Note = item.Note
                 });
                 continue;
             }
@@ -81,7 +82,8 @@ public class ExportExcelAssignmentCodeQueryHandler(IExcelService excelService, I
                     Name = i == 0 ? item.Name : string.Empty,
                     MaterialCode = linkedMaterials[i].MaterialCode,
                     MaterialRole = linkedMaterials[i].MaterialRole,
-                    UnitOfMeasureName = i == 0 ? (item.UnitOfMeasure?.Name ?? string.Empty) : string.Empty
+                    UnitOfMeasureName = i == 0 ? (item.UnitOfMeasure?.Name ?? string.Empty) : string.Empty,
+                    Note = i == 0 ? item.Note : null
                 });
             }
         }

@@ -20,6 +20,7 @@ import {
 
 export type Employee = {
 	id: number;
+	code?: string | null;
 	fullName: string;
 	positionId: number;
 	positionName?: string;
@@ -33,6 +34,7 @@ export type Employee = {
 	email?: string;
 	phoneNumber?: string;
 	isActive?: boolean;
+	note?: string | null;
 };
 
 const EmployeeStatusToggle = ({ row }: { row: Employee }) => {
@@ -106,7 +108,7 @@ const EmployeeStatusToggle = ({ row }: { row: Employee }) => {
 	);
 };
 
-const EmployeeActions = ({ row }: { row: Employee }) => {
+export const EmployeeResetPasswordAction = ({ row }: { row: Employee }) => {
 	const popup = usePopup();
 	const { hasPermission } = usePermission();
 	const canUpdate = hasPermission(PERMISSIONS.CATALOG.EMPLOYEE.UPDATE);
@@ -170,6 +172,10 @@ const EmployeeActions = ({ row }: { row: Employee }) => {
 
 export const CATALOG_EMPLOYEE_COLUMNS: ColumnDef<Employee>[] = [
 	{
+		accessorKey: 'code',
+		header: 'Mã nhân viên',
+	},
+	{
 		accessorKey: 'fullName',
 		header: 'Họ và tên',
 	},
@@ -221,12 +227,7 @@ export const CATALOG_EMPLOYEE_COLUMNS: ColumnDef<Employee>[] = [
 		),
 	},
 	{
-		id: 'actions',
-		header: () => <div className='text-center'>Reset mật khẩu</div>,
-		cell: ({ row }) => (
-			<div className='flex justify-center'>
-				<EmployeeActions row={row.original} />
-			</div>
-		),
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

@@ -8,12 +8,14 @@ public class DepartmentDto : IDto
     public Guid Id { get; set; }
     public string Code { get; set; }
     public string Name { get; set; }
+    public string? Note { get; set; }
 }
 
 public class CreateDepartmentDto
 {
     public string Code { get; set; }
     public string Name { get; set; }
+    public string? Note { get; set; }
 }
 
 public class DepartmentExcelDto
@@ -25,6 +27,9 @@ public class DepartmentExcelDto
 
     [Display(Name = "Tên đơn vị")]
     public string Name { get; set; }
+
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }
 
 public class UpdateDepartmentDto
@@ -32,4 +37,5 @@ public class UpdateDepartmentDto
     public Guid Id { get; set; }
     public string Code { get; set; }
     public string Name { get; set; }
+    public string? Note { get; set; }
 }

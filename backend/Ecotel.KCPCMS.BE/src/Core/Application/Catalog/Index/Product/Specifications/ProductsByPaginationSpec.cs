@@ -32,7 +32,8 @@ public class ProductsByPaginationSpec
                 Name = p.Name,
                 ProcessGroupId = p.ProcessGroupId,
                 ProcessGroupCode = p.ProcessGroup != null && p.ProcessGroup.FixedKey != null ? p.ProcessGroup.FixedKey.Key : string.Empty,
-                ProcessGroupName = p.ProcessGroup != null ? p.ProcessGroup.Name : string.Empty
+                ProcessGroupName = p.ProcessGroup != null ? p.ProcessGroup.Name : string.Empty,
+                Note = p.Note
             });
     }
 }

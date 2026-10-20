@@ -12,7 +12,7 @@ public class CreateLongwallParametersCommandHandler(IUnitOfWork unitOfWork) : IR
     private readonly IWriteRepository<Domain.Entities.Index.LongwallParameters> _longwallParametersRepository = unitOfWork.GetRepository<Domain.Entities.Index.LongwallParameters>();
     public async Task<bool> Handle(CreateLongwallParametersCommand request, CancellationToken cancellationToken)
     {
-        var newLongwallParameters = Domain.Entities.Index.LongwallParameters.Create(request.CreateModel.Llc, request.CreateModel.Lkc, request.CreateModel.Mk);
+        var newLongwallParameters = Domain.Entities.Index.LongwallParameters.Create(request.CreateModel.Llc, request.CreateModel.Lkc, request.CreateModel.Mk, request.CreateModel.Note);
         await _longwallParametersRepository.InsertAsync(newLongwallParameters);
         await unitOfWork.SaveChangesAsync();
         return true;

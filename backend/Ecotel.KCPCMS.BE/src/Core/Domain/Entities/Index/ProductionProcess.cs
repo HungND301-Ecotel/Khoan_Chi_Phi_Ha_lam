@@ -10,6 +10,7 @@ namespace Domain.Entities.Index
         public string Name { get; protected set; }
         public Guid ProcessGroupId { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
+        public string? Note { get; protected set; }
 
         // Navigation properties
         public virtual Code? Code { get; protected set; }
@@ -26,7 +27,7 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<NormFactor> NormFactors => _normFactors.AsReadOnly();
 
         // constructor
-        public static ProductionProcess Create(string code, string name, Guid processGroupId, Guid unitOfMeasureId)
+        public static ProductionProcess Create(string code, string name, Guid processGroupId, Guid unitOfMeasureId, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -49,11 +50,12 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 Name = name,
                 ProcessGroupId = processGroupId,
-                UnitOfMeasureId = unitOfMeasureId
+                UnitOfMeasureId = unitOfMeasureId,
+                Note = NormalizeNote(note)
             };
         }
 
-        public static ProductionProcess Create(Guid id, string code, string name, Guid processGroupId, Guid unitOfMeasureId)
+        public static ProductionProcess Create(Guid id, string code, string name, Guid processGroupId, Guid unitOfMeasureId, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -77,11 +79,12 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 Name = name,
                 ProcessGroupId = processGroupId,
-                UnitOfMeasureId = unitOfMeasureId
+                UnitOfMeasureId = unitOfMeasureId,
+                Note = NormalizeNote(note)
             };
         }
 
-        public void Update(string code, string name, Guid processGroupId, Guid unitOfMeasureId)
+        public void Update(string code, string name, Guid processGroupId, Guid unitOfMeasureId, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -108,11 +111,17 @@ namespace Domain.Entities.Index
             Name = name;
             ProcessGroupId = processGroupId;
             UnitOfMeasureId = unitOfMeasureId;
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(ProductionProcess dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == dto.ProcessGroupId && UnitOfMeasureId == dto.UnitOfMeasureId);
+            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == dto.ProcessGroupId && UnitOfMeasureId == dto.UnitOfMeasureId && Note == dto.Note);
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Application.Dto.Catalog.Material
         public MaterialType MaterialType { get; set; }
         public double CostAmount { get; set; }
         public double ActualAmount { get; set; }
+        public string? Note { get; set; }
     }
 
     public class MaterialExcelDto
@@ -31,6 +32,8 @@ namespace Application.Dto.Catalog.Material
         public string UnitOfMeasureName { get; set; }
         [Display(Name = "Đơn giá")]
         public string Cost { get; set; }
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
     public class ImportMaterialDto
     {
@@ -47,6 +50,7 @@ namespace Application.Dto.Catalog.Material
         public Guid? UnitOfMeasureId { get; set; }
         public string UnitOfMeasureName { get; set; } = "";
         public MaterialType MaterialType { get; set; }
+        public string? Note { get; set; }
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
     }
 
@@ -57,6 +61,7 @@ namespace Application.Dto.Catalog.Material
         public Guid? AssigmentCodeId { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
+        public string? Note { get; set; }
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
     }
 
@@ -67,6 +72,7 @@ namespace Application.Dto.Catalog.Material
         public string Name { get; set; }
         public Guid? UnitOfMeasureId { get; set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
+        public string? Note { get; set; }
         public IList<MaterialCostDto> Costs { get; set; } = new List<MaterialCostDto>();
     }
 }

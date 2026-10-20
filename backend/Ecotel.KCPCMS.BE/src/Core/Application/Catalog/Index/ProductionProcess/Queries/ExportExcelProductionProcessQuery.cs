@@ -31,7 +31,8 @@ public class ExportExcelProductionProcessQueryHandler(IExcelService excelService
             Code = s.Code?.Value ?? "",
             Name = s.Name,
             ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? "",
-            UnitOfMeasureName = s.UnitOfMeasure?.Name ?? ""
+            UnitOfMeasureName = s.UnitOfMeasure?.Name ?? "",
+            Note = s.Note
         });
 
         var unitOfMeasureNames = (await _unitOfMeasureRepository.GetAllAsync(

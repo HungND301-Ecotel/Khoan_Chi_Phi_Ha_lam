@@ -20,7 +20,7 @@ public class UpdateProductionOrderCommandHandler(IUnitOfWork unitOfWork) : IRequ
             include: t => t.Include(t => t.Code),
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        existProductionOrder.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.StartMonth, request.UpdateModel.EndMonth);
+        existProductionOrder.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.StartMonth, request.UpdateModel.EndMonth, request.UpdateModel.Note);
 
         _productionOrderRepository.Update(existProductionOrder);
         await unitOfWork.SaveChangesAsync();

@@ -25,7 +25,8 @@ public class GetDepartmentByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHan
         {
             Id = department.Id,
             Code = department.Code?.Value ?? string.Empty,
-            Name = department.Name
+            Name = department.Name,
+            Note = department.Note
         };
     }
 }

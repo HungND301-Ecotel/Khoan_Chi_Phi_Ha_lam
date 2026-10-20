@@ -66,7 +66,7 @@ export function MainCatalogProductPage() {
 			filters={[
 				{ key: 'code', label: 'Mã sản phẩm' },
 				{ key: 'name', label: 'Tên sản phẩm' },
-				{ key: 'processGroupCode', label: 'Mã nhóm CĐSX' },
+				{ key: 'processGroupCode', label: 'Nhóm CĐSX' },
 			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.PRODUCT.CREATE) ? (props) => <ProductForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.PRODUCT.CREATE) ? (props) => <ProductForm {...props} isDuplicate /> : undefined}

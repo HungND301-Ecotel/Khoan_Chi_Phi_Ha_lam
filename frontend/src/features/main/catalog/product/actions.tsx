@@ -55,6 +55,7 @@ export function ProductForm({
 				processGroupId: row.processGroupId,
 				startMonth: row.startMonth,
 				endMonth: row.endMonth,
+				note: row.note || '',
 			});
 			return;
 		}
@@ -103,17 +104,6 @@ export function ProductForm({
 				/>
 			</div>
 
-			<FormComboBox
-				control={form.control}
-				name='processGroupId'
-				label='Mã nhóm công đoạn sản xuất'
-				placeholder='Chọn mã nhóm công đoạn sản xuất'
-				options={groups?.map((group) => ({
-					value: group.id,
-					label: group.code,
-				}))}
-			/>
-
 			<FormInput
 				control={form.control}
 				name='code'
@@ -126,6 +116,24 @@ export function ProductForm({
 				name='name'
 				label='Tên sản phẩm'
 				placeholder='Nhập tên sản phẩm'
+			/>
+
+			<FormComboBox
+				control={form.control}
+				name='processGroupId'
+				label='Nhóm công đoạn sản xuất'
+				placeholder='Chọn nhóm công đoạn sản xuất'
+				options={groups?.map((group) => ({
+					value: group.id,
+					label: group.code,
+				}))}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

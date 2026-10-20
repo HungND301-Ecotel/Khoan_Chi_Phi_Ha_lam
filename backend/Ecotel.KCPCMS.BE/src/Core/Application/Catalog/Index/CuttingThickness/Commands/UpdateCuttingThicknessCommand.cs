@@ -19,7 +19,7 @@ public class UpdateCuttingThicknessCommandHandler(IUnitOfWork unitOfWork) : IReq
             predicate: t => t.Id == request.UpdateModel.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        existCuttingThickness.Update(request.UpdateModel.Value);
+        existCuttingThickness.Update(request.UpdateModel.Value, request.UpdateModel.Note);
 
         _cuttingThicknessRepository.Update(existCuttingThickness);
         await unitOfWork.SaveChangesAsync();

@@ -84,7 +84,7 @@ export function TransportRouteForm({
 			<FormCheckBox
 				control={form.control}
 				name='isSpecialLowVolume'
-				label='Áp dụng giá đặc biệt sản lượng thấp'
+				label='Đơn giá tuyến vận tải phụ thuộc sản lượng'
 			/>
 
 			<FormInput

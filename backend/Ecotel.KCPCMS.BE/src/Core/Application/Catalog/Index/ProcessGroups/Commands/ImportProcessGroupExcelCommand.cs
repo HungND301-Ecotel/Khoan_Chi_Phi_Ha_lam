@@ -27,7 +27,7 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<ProcessGroupExcelDto>(stream);
-        var excelDtos = dtos.Select(d => ProcessGroup.Create(d.Id, d.Code, d.Name)).ToList();
+        var excelDtos = dtos.Select(d => ProcessGroup.Create(d.Id, d.Code, d.Name, d.Note)).ToList();
         var dbProcessGroups = await _processGroupRepository.GetAllAsync(
             include: p => p.Include(p => p.Code!),
             disableTracking: true);
@@ -67,7 +67,7 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
                         throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name);
+                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -79,7 +79,7 @@ public class ImportProcessGroupExcelCommandHandler(IExcelService excelService, I
                     throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(ProcessGroup.Create(dto.Code?.Value ?? "", dto.Name));
+                addList.Add(ProcessGroup.Create(dto.Code?.Value ?? "", dto.Name, dto.Note));
             }
         }
 

@@ -12,6 +12,7 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
     public Guid CodeId { get; protected set; }
     public string Name { get; protected set; }
     public Guid? UnitOfMeasureId { get; protected set; }
+    public string? Note { get; protected set; }
     public bool IsSlideAssignmentCode { get; protected set; } = false;
 
     // Navigation properties
@@ -38,7 +39,7 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
     public IReadOnlyList<NormFactorAssignmentCode> NormFactorAssignmentCodes => _normFactorAssignmentCodes.ToList();
 
     //constructor
-    public static AssignmentCode Create(string name, string code, Guid? unitOfMeasureId)
+    public static AssignmentCode Create(string name, string code, Guid? unitOfMeasureId, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -54,11 +55,12 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
         {
             Name = name,
             Code = new Code(code.ToUpper()),
-            UnitOfMeasureId = unitOfMeasureId
+            UnitOfMeasureId = unitOfMeasureId,
+            Note = NormalizeNote(note)
         };
     }
 
-    public static AssignmentCode Create(Guid id, string name, string code, Guid? unitOfMeasureId)
+    public static AssignmentCode Create(Guid id, string name, string code, Guid? unitOfMeasureId, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -75,11 +77,12 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
             Id = id,
             Name = name,
             Code = new Code(code.ToUpper()),
-            UnitOfMeasureId = unitOfMeasureId
+            UnitOfMeasureId = unitOfMeasureId,
+            Note = NormalizeNote(note)
         };
     }
 
-    public void Update(string name, string code, Guid? unitOfMeasureId)
+    public void Update(string name, string code, Guid? unitOfMeasureId, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -98,11 +101,17 @@ public class AssignmentCode : AuditableEntity<Guid>, IAggregateRoot
         }
 
         UnitOfMeasureId = unitOfMeasureId;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(AssignmentCode dto)
     {
-        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && UnitOfMeasureId == dto.UnitOfMeasureId);
+        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && UnitOfMeasureId == dto.UnitOfMeasureId && Note == dto.Note);
+    }
+
+    public static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 
     public void AddCost(Cost cost)

@@ -10,6 +10,7 @@ public class CreateNormFactorDto
     public Guid? HardnessId { get; set; }
     public Guid? StoneClampRatioId { get; set; }
     public SteelMeshType SteelMeshType { get; set; }
+    public string? Note { get; set; }
     public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; set; } = [];
 }
 
@@ -20,6 +21,7 @@ public class UpdateNormFactorDto
     public Guid? HardnessId { get; set; }
     public Guid? StoneClampRatioId { get; set; }
     public SteelMeshType SteelMeshType { get; set; }
+    public string? Note { get; set; }
     public IList<NormFactorAssignmentCodeUpsertDto> AssignmentCodes { get; set; } = [];
 }
 
@@ -45,6 +47,7 @@ public class NormFactorDto : IDto
     public Guid? StoneClampRatioId { get; set; }
     public string StoneClampRatioName { get; set; } = string.Empty;
     public SteelMeshType SteelMeshType { get; set; }
+    public string? Note { get; set; }
     public IList<AssignmentCode.ShortAssignmentCodeDto> AffectAssignmentCodes { get; set; } = [];
     public IList<NormFactorAssignmentCodeDto> AssignmentCodes { get; set; } = [];
 }
@@ -89,4 +92,7 @@ public class NormFactorExcelDto
 
     [Display(Name = "Định mức tham chiếu")]
     public string TargetHardnessName { get; set; } = string.Empty;
+
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }

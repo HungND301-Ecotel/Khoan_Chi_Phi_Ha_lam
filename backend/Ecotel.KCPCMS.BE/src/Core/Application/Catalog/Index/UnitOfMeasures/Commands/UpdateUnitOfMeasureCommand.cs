@@ -27,7 +27,7 @@ public class UpdateUnitOfMeasureCommandHandler(IUnitOfWork unitOfWork) : IReques
             predicate: t => t.Id == request.UpdateModel.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        existUnitOfMeasure.Update(request.UpdateModel.Name.Trim());
+        existUnitOfMeasure.Update(request.UpdateModel.Name.Trim(), request.UpdateModel.Note);
 
         _unitOfMeasureRepository.Update(existUnitOfMeasure);
         await unitOfWork.SaveChangesAsync();

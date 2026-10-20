@@ -52,24 +52,31 @@ public class ImportExcelPositionCommandHandler(
                 throw new ConflictException($"Tên chức vụ '{dto.Name}' đã tồn tại ở dòng {rowNumber}.");
             }
 
+            var code = string.IsNullOrWhiteSpace(dto.Code) ? null : dto.Code.Trim().ToUpper();
+            if (code != null && dtos.Count(d => string.Equals(d.Code?.Trim(), code, StringComparison.OrdinalIgnoreCase)) > 1)
+            {
+                throw new ConflictException($"Mã chức vụ '{code}' bị trùng trong file ở dòng {rowNumber}.");
+            }
+
 
             if (dto.Id.HasValue && dbPositions.Any(x => x.Id == dto.Id.Value))
             {
                 var entityToUpdate = dbPositions.First(x => x.Id == dto.Id.Value);
 
                 var hasChanged = entityToUpdate.Name != dto.Name.Trim()
+                    || entityToUpdate.Code != code
                     || entityToUpdate.Level != dto.Level
-                    || entityToUpdate.Description != dto.Description;
+                    || entityToUpdate.Description != (string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim());
 
                 if (hasChanged)
                 {
-                    entityToUpdate.Update(dto.Name.Trim(), dto.Level, dto.Description ?? string.Empty);
+                    entityToUpdate.Update(dto.Name.Trim(), dto.Level, dto.Description, code);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Domain.Entities.Index.Position.Create(dto.Name.Trim(), dto.Level, dto.Description ?? string.Empty));
+                addList.Add(Domain.Entities.Index.Position.Create(dto.Name.Trim(), dto.Level, dto.Description, code));
             }
         }
 

@@ -13,6 +13,7 @@ namespace Domain.Entities.Index
         public Guid? AssigmentCodeId { get; protected set; }
         public Guid? UnitOfMeasureId { get; protected set; }
         public MaterialType MaterialType { get; set; } = MaterialType.MaterialInContract;
+        public string? Note { get; protected set; }
 
         // Navigation properties
         public virtual AssignmentCode? AssignmentCode { get; protected set; }
@@ -35,7 +36,7 @@ namespace Domain.Entities.Index
         private IList<MaintainUnitPriceEquipment> _maintainUnitPriceEquipments = new List<MaintainUnitPriceEquipment>();
         public virtual IReadOnlyCollection<MaintainUnitPriceEquipment> MaintainUnitPriceEquipments => _maintainUnitPriceEquipments.AsReadOnly();
         //constructor
-        public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        public static Material Create(string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -58,11 +59,12 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
                 AssigmentCodeId = assigmentCodeId,
-                MaterialType = materialType
+                MaterialType = materialType,
+                Note = NormalizeNote(note)
             };
         }
 
-        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType)
+        public static Material Create(Guid id, string code, string name, Guid? unitOfMeasureId, Guid? assigmentCodeId, MaterialType materialType, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -86,7 +88,8 @@ namespace Domain.Entities.Index
                 Code = new Code(code.ToUpper()),
                 UnitOfMeasureId = unitOfMeasureId,
                 AssigmentCodeId = assigmentCodeId,
-                MaterialType = materialType
+                MaterialType = materialType,
+                Note = NormalizeNote(note)
             };
         }
         [Obsolete("Temporary method to recover orphan Code records. Remove after data migration is complete.")]
@@ -130,6 +133,16 @@ namespace Domain.Entities.Index
             MaterialType = materialType;
         }
 
+        public void SetNote(string? note)
+        {
+            Note = NormalizeNote(note);
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        }
+
         public void AddMaterialCost(Cost materialCost)
         {
             ArgumentNullException.ThrowIfNull(materialCost);
@@ -156,7 +169,7 @@ namespace Domain.Entities.Index
 
         public bool CheckChange(Material dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && AssigmentCodeId == dto.AssigmentCodeId && UnitOfMeasureId == dto.UnitOfMeasureId && MaterialType == dto.MaterialType);
+            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && AssigmentCodeId == dto.AssigmentCodeId && UnitOfMeasureId == dto.UnitOfMeasureId && MaterialType == dto.MaterialType && Note == dto.Note);
         }
 
         public double GetMaterialCost(DateOnly effectiveMonth)

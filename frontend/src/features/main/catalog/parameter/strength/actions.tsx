@@ -38,6 +38,7 @@ export function StrengthForm({
 		if (row) {
 			form.reset({
 				value: row.value,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -72,6 +73,12 @@ export function StrengthForm({
 				label='Độ kiên cố than, đá (f)'
 				placeholder='Nhập độ kiên cố than, đá (f)'
 				supports={STRENGTH_SUPPORTS}
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

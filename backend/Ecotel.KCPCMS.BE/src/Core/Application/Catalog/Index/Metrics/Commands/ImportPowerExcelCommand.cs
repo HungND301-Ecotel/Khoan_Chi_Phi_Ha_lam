@@ -44,13 +44,13 @@ public class ImportPowerExcelCommandHandler(IExcelService excelService, IUnitOfW
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Power.Create(dto.Value));
+                addList.Add(Power.Create(dto.Value, dto.Note));
             }
         }
 
