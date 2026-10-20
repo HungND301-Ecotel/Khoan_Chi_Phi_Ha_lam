@@ -35,36 +35,46 @@ public class GetAllMechanizedTransportUnitPriceQueryHandler(IUnitOfWork unitOfWo
                 && (string.IsNullOrWhiteSpace(searchTerm)
                     || (x.AssignmentCode != null && x.AssignmentCode.Name.ToLower().Contains(searchTerm))));
 
-        // Gộp theo Nhóm vật tư, tài sản (AssignmentCode) + khoảng thời gian: đây mới là đơn vị phân trang (1 "card" hiển thị),
-        // không phân trang theo từng dòng loại xe/công đoạn/chất lượng bên trong.
+        // Đơn vị phân trang = 1 dòng cấp 1 trên danh sách: Nhóm vật tư, tài sản (AssignmentCode) + Chất lượng
+        // thiết bị. Mỗi dòng trả về đủ mọi khoảng thời gian của nó (mỗi khoảng thời gian là 1 GroupDto).
         var groupKeys = await baseQuery
             .Select(x => new
             {
                 x.AssignmentCodeId,
                 AssignmentCodeName = x.AssignmentCode != null ? x.AssignmentCode.Name : string.Empty,
+                x.EquipmentQuality,
                 x.StartMonth,
                 x.EndMonth
             })
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        var orderedKeys = groupKeys
-            .OrderByDescending(k => k.StartMonth)
+        // Xe có khoảng thời gian mới nhất lên trước; các chất lượng của cùng 1 xe đứng liền nhau
+        var latestStartByAssignment = groupKeys
+            .GroupBy(k => k.AssignmentCodeId)
+            .ToDictionary(g => g.Key, g => g.Max(k => k.StartMonth));
+
+        var orderedRowKeys = groupKeys
+            .GroupBy(k => new { k.AssignmentCodeId, k.AssignmentCodeName, k.EquipmentQuality })
+            .Select(g => g.Key)
+            .OrderByDescending(k => latestStartByAssignment[k.AssignmentCodeId])
             .ThenBy(k => k.AssignmentCodeName)
+            .ThenBy(k => k.AssignmentCodeId)
+            .ThenBy(k => k.EquipmentQuality)
             .ToList();
 
-        var totalCount = orderedKeys.Count;
+        var totalCount = orderedRowKeys.Count;
 
-        var pagedKeys = request.IgnorePagination
-            ? orderedKeys
-            : orderedKeys.Skip((request.PageIndex - 1) * request.PageSize).Take(request.PageSize).ToList();
+        var pagedRowKeys = request.IgnorePagination
+            ? orderedRowKeys
+            : orderedRowKeys.Skip((request.PageIndex - 1) * request.PageSize).Take(request.PageSize).ToList();
 
-        if (pagedKeys.Count == 0)
+        if (pagedRowKeys.Count == 0)
         {
             return new PaginationResponse<MechanizedTransportUnitPriceGroupDto>(new List<MechanizedTransportUnitPriceGroupDto>(), totalCount, request.PageIndex, request.PageSize);
         }
 
-        var assignmentCodeIds = pagedKeys.Select(k => k.AssignmentCodeId).Distinct().ToList();
+        var assignmentCodeIds = pagedRowKeys.Select(k => k.AssignmentCodeId).Distinct().ToList();
 
         var entities = await baseQuery
             .Where(x => assignmentCodeIds.Contains(x.AssignmentCodeId))
@@ -75,89 +85,106 @@ public class GetAllMechanizedTransportUnitPriceQueryHandler(IUnitOfWork unitOfWo
             .Include(x => ((ScaniaTruckUnitPriceEntity)x).DumpingLocation)
             .ToListAsync(cancellationToken);
 
-        var pagedKeySet = pagedKeys.Select(k => (k.AssignmentCodeId, k.StartMonth, k.EndMonth)).ToHashSet();
-
-        var groupsByKey = entities
-            .Where(e => pagedKeySet.Contains((e.AssignmentCodeId, e.StartMonth, e.EndMonth)))
-            .GroupBy(e => (e.AssignmentCodeId, e.StartMonth, e.EndMonth))
+        var groupsByRowKey = entities
+            .GroupBy(e => (e.AssignmentCodeId, e.EquipmentQuality))
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var data = pagedKeys.Select(key =>
+        var data = pagedRowKeys.SelectMany(rowKey =>
         {
-            var groupEntities = groupsByKey.GetValueOrDefault((key.AssignmentCodeId, key.StartMonth, key.EndMonth)) ?? new List<MechanizedTransportUnitPrice>();
+            var rowEntities = groupsByRowKey.GetValueOrDefault((rowKey.AssignmentCodeId, rowKey.EquipmentQuality)) ?? new List<MechanizedTransportUnitPrice>();
 
-            var sections = groupEntities
-                .GroupBy(e => new
-                {
-                    VehicleType = GetVehicleType(e),
-                    e.ProductionProcessId,
-                    // Scania-specific grouping
-                    CargoTypeId = e is ScaniaTruckUnitPriceEntity scania ? scania.CargoTypeId : (Guid?)null,
-                    ReceivingLocationKey = e is ScaniaTruckUnitPriceEntity scania2
-                        ? string.Join(",", scania2.ReceivingLocations.Select(r => r.TransportLocationId).OrderBy(id => id))
-                        : string.Empty,
-                    DumpingLocationId = e is ScaniaTruckUnitPriceEntity scania3 ? scania3.DumpingLocationId : (Guid?)null,
-                })
-                .Select(sectionGroup =>
-                {
-                    var firstScania = sectionGroup.First() as ScaniaTruckUnitPriceEntity;
-                    var receivingNames = firstScania?.ReceivingLocations
-                        .Where(r => r.TransportLocation != null)
-                        .Select(r => r.TransportLocation!.Name)
-                        .ToList() ?? new List<string>();
-
-                    return new MechanizedTransportUnitPriceSectionDto
-                    {
-                        VehicleType = sectionGroup.Key.VehicleType,
-                        ProductionProcessId = sectionGroup.Key.ProductionProcessId,
-                        ProductionProcessName = sectionGroup.First().ProductionProcess?.Name ?? string.Empty,
-                        // Scania-specific fields
-                        CargoTypeId = sectionGroup.Key.CargoTypeId,
-                        CargoTypeName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                            ? (firstScania?.CargoType?.Name)
-                            : null,
-                        ReceivingLocationId = firstScania?.ReceivingLocations.Select(r => (Guid?)r.TransportLocationId).FirstOrDefault(),
-                        ReceivingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                            ? (receivingNames.Any() ? string.Join(", ", receivingNames) : null)
-                            : null,
-                        ReceivingLocationIds = firstScania?.ReceivingLocations.Select(r => r.TransportLocationId).ToList() ?? new List<Guid>(),
-                        ReceivingLocationNames = receivingNames,
-                        DumpingLocationId = sectionGroup.Key.DumpingLocationId,
-                        DumpingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
-                            ? (firstScania?.DumpingLocation?.Name)
-                            : null,
-                        Rows = sectionGroup
-                            .SelectMany(header => header.Details.Select(detail => new MechanizedTransportUnitPriceRowDto
-                            {
-                                HeaderId = header.Id,
-                                DetailId = detail.Id,
-                                EquipmentQuality = header.EquipmentQuality,
-                                HaulDistanceId = detail.HaulDistanceId,
-                                HaulDistanceValue = detail.HaulDistance?.Value,
-                                FuelUnitPrice = detail.FuelUnitPrice,
-                                PowerUnitPrice = detail.PowerUnitPrice,
-                                MaintenanceUnitPrice = detail.MaintenanceUnitPrice
-                            }))
-                            .OrderBy(r => r.EquipmentQuality)
-                            .ThenBy(r => r.HaulDistanceValue)
-                            .ToList()
-                    };
-                })
-                .OrderBy(s => s.VehicleType)
-                .ThenBy(s => s.ProductionProcessName)
-                .ToList();
-
-            return new MechanizedTransportUnitPriceGroupDto
-            {
-                AssignmentCodeId = key.AssignmentCodeId,
-                AssignmentCodeName = key.AssignmentCodeName,
-                StartMonth = key.StartMonth,
-                EndMonth = key.EndMonth,
-                Sections = sections
-            };
+            return rowEntities
+                .GroupBy(e => (e.StartMonth, e.EndMonth))
+                .OrderByDescending(g => g.Key.StartMonth)
+                .Select(periodGroup => BuildGroupDto(
+                    rowKey.AssignmentCodeId,
+                    rowKey.AssignmentCodeName,
+                    rowKey.EquipmentQuality,
+                    periodGroup.Key.StartMonth,
+                    periodGroup.Key.EndMonth,
+                    periodGroup.ToList()));
         }).ToList();
 
         return new PaginationResponse<MechanizedTransportUnitPriceGroupDto>(data, totalCount, request.PageIndex, request.PageSize);
+    }
+
+    private static MechanizedTransportUnitPriceGroupDto BuildGroupDto(
+        Guid assignmentCodeId,
+        string assignmentCodeName,
+        string equipmentQuality,
+        DateOnly startMonth,
+        DateOnly endMonth,
+        IList<MechanizedTransportUnitPrice> groupEntities)
+    {
+        var sections = groupEntities
+            .GroupBy(e => new
+            {
+                VehicleType = GetVehicleType(e),
+                e.ProductionProcessId,
+                // Scania-specific grouping
+                CargoTypeId = e is ScaniaTruckUnitPriceEntity scania ? scania.CargoTypeId : (Guid?)null,
+                ReceivingLocationKey = e is ScaniaTruckUnitPriceEntity scania2
+                    ? string.Join(",", scania2.ReceivingLocations.Select(r => r.TransportLocationId).OrderBy(id => id))
+                    : string.Empty,
+                DumpingLocationId = e is ScaniaTruckUnitPriceEntity scania3 ? scania3.DumpingLocationId : (Guid?)null,
+            })
+            .Select(sectionGroup =>
+            {
+                var firstScania = sectionGroup.First() as ScaniaTruckUnitPriceEntity;
+                var receivingNames = firstScania?.ReceivingLocations
+                    .Where(r => r.TransportLocation != null)
+                    .Select(r => r.TransportLocation!.Name)
+                    .ToList() ?? new List<string>();
+
+                return new MechanizedTransportUnitPriceSectionDto
+                {
+                    VehicleType = sectionGroup.Key.VehicleType,
+                    ProductionProcessId = sectionGroup.Key.ProductionProcessId,
+                    ProductionProcessName = sectionGroup.First().ProductionProcess?.Name ?? string.Empty,
+                    // Scania-specific fields
+                    CargoTypeId = sectionGroup.Key.CargoTypeId,
+                    CargoTypeName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                        ? (firstScania?.CargoType?.Name)
+                        : null,
+                    ReceivingLocationId = firstScania?.ReceivingLocations.Select(r => (Guid?)r.TransportLocationId).FirstOrDefault(),
+                    ReceivingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                        ? (receivingNames.Any() ? string.Join(", ", receivingNames) : null)
+                        : null,
+                    ReceivingLocationIds = firstScania?.ReceivingLocations.Select(r => r.TransportLocationId).ToList() ?? new List<Guid>(),
+                    ReceivingLocationNames = receivingNames,
+                    DumpingLocationId = sectionGroup.Key.DumpingLocationId,
+                    DumpingLocationName = sectionGroup.Key.VehicleType == MechanizedTransportUnitPriceType.ScaniaTruck
+                        ? (firstScania?.DumpingLocation?.Name)
+                        : null,
+                    Rows = sectionGroup
+                        .SelectMany(header => header.Details.Select(detail => new MechanizedTransportUnitPriceRowDto
+                        {
+                            HeaderId = header.Id,
+                            DetailId = detail.Id,
+                            EquipmentQuality = header.EquipmentQuality,
+                            HaulDistanceId = detail.HaulDistanceId,
+                            HaulDistanceValue = detail.HaulDistance?.Value,
+                            FuelUnitPrice = detail.FuelUnitPrice,
+                            PowerUnitPrice = detail.PowerUnitPrice,
+                            MaintenanceUnitPrice = detail.MaintenanceUnitPrice
+                        }))
+                        .OrderBy(r => r.HaulDistanceValue)
+                        .ToList()
+                };
+            })
+            .OrderBy(s => s.VehicleType)
+            .ThenBy(s => s.ProductionProcessName)
+            .ToList();
+
+        return new MechanizedTransportUnitPriceGroupDto
+        {
+            AssignmentCodeId = assignmentCodeId,
+            AssignmentCodeName = assignmentCodeName,
+            EquipmentQuality = equipmentQuality,
+            StartMonth = startMonth,
+            EndMonth = endMonth,
+            Sections = sections
+        };
     }
 
     private static MechanizedTransportUnitPriceType GetVehicleType(MechanizedTransportUnitPrice entity) => entity switch

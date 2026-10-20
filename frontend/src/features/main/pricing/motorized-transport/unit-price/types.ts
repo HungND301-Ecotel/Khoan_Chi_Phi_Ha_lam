@@ -27,9 +27,11 @@ export type MechanizedTransportUnitPriceSectionDto = {
 	rows: MechanizedTransportUnitPriceRowDto[];
 };
 
+// Server phân trang theo (Nhóm vật tư + Chất lượng); mỗi DTO là 1 khoảng thời gian của cặp đó
 export type MechanizedTransportUnitPriceGroupDto = {
 	assignmentCodeId: string;
 	assignmentCodeName: string;
+	equipmentQuality?: string;
 	startMonth: string;
 	endMonth: string;
 	sections: MechanizedTransportUnitPriceSectionDto[];
@@ -76,6 +78,8 @@ export type MotorizedC2Item = {
 // Cấp 1: Nhóm vật tư, tài sản
 export type MechanizedTransportAssignmentGroup = MechanizedTransportUnitPriceGroupDto & {
 	id?: string;
+	// Cấp 1 tách theo Chất lượng thiết bị: mỗi dòng = 1 Nhóm vật tư + 1 chất lượng
+	equipmentQuality?: string;
 	c2Items: MotorizedC2Item[];
 	rawGroups?: MechanizedTransportUnitPriceGroupDto[];
 };

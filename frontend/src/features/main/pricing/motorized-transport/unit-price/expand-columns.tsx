@@ -60,6 +60,7 @@ export const EXPAND_PRICE_COLUMNS: ColumnDef<ExpandPriceRow>[] = [
 ];
 
 // ====== TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ ======
+// Chất lượng thiết bị đã hiển thị ở cấp 1 (mỗi dòng cấp 1 = 1 chất lượng) nên không lặp lại ở đây.
 
 export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) {
 	return (
@@ -67,12 +68,6 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 			<table className='w-full min-w-max text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black whitespace-nowrap'>
 					<tr>
-						<th
-							scope='col'
-							className='px-4 py-2.5 font-semibold text-black whitespace-nowrap'
-						>
-							Chất lượng
-						</th>
 						<th
 							scope='col'
 							className='px-4 py-2.5 font-semibold text-black whitespace-nowrap'
@@ -102,7 +97,7 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 				<tbody className='divide-y divide-neutral-200 whitespace-nowrap'>
 					{rows.length === 0 ? (
 						<tr>
-							<td colSpan={5} className='py-4 text-center text-sm text-black'>
+							<td colSpan={4} className='py-4 text-center text-sm text-black'>
 								Không có dữ liệu đơn giá
 							</td>
 						</tr>
@@ -112,9 +107,6 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 								key={r.detailId || rIdx}
 								className='transition-colors hover:bg-neutral-50/80'
 							>
-								<td className='px-4 py-2 text-sm text-black whitespace-nowrap'>
-									Thiết bị loại {r.equipmentQuality}
-								</td>
 								<td className='px-4 py-2 text-sm text-black whitespace-nowrap'>
 									{r.haulDistanceValue || '-'}
 								</td>

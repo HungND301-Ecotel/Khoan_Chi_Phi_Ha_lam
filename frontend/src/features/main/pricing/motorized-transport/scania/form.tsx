@@ -15,17 +15,11 @@ import {
 } from '@/features/main/catalog/transport-location/columns';
 import { api } from '@/lib/api';
 import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useState,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { MotorizedScaniaUnitPrice } from './columns';
-import {
-	computeNextPeriodMonths,
-	ScaniaPeriodData,
-} from '../unit-price/types';
+import { computeNextPeriodMonths, ScaniaPeriodData } from '../unit-price/types';
+import { ApplyToVehiclesButton } from '../apply-to-vehicles';
+import { copyVehicleConfig } from '../copy-vehicle-config';
 
 export type MotorizedSubFormHandle = {
 	submit: (forceCreate?: boolean) => Promise<boolean>;
@@ -64,6 +58,15 @@ const fetchCatalogList = async (url: string) => {
 		return [];
 	}
 };
+
+// Khoá phạm vi cấu hình (luôn bắt đầu bằng "xeId_" để copyVehicleConfig chép được):
+// - Chất lượng thiết bị: theo xe (khoá = xeId)
+// - Loại hàng, Vị trí nhận, Vị trí đổ: theo xe + công đoạn (dùng chung cho các loại hàng)
+// - Cung độ: theo cụm xe + công đoạn + loại hàng
+const getScaniaProcessKey = (acId: string, procId: string) =>
+	`${acId}_${procId}`;
+const getScaniaCargoKey = (acId: string, procId: string, cargoId: string) =>
+	`${acId}_${procId}_${cargoId}`;
 
 // Khoá định danh một dòng cung độ trong bảng đơn giá Scania
 const getScaniaItemKey = (it: {
@@ -106,36 +109,47 @@ function computeItemsForScaniaPeriod(
 		const acObj = assignmentCodes.find((a) => a.id === acId);
 		const title = acObj ? acObj.name || acObj.code || acId : acId;
 
+		// Chất lượng thiết bị chọn 1 lần theo Nhóm vật tư, tài sản (xe)
+		const selectedQualities: string[] = equipmentQualities[acId] || [];
 		const selectedProcs: string[] = equipmentProcesses[acId] || [];
 
 		selectedProcs.forEach((procId: string) => {
-			const scopeKey = `${acId}_${procId}`;
+			const scopeKey = getScaniaProcessKey(acId, procId);
 			const procObj = processOptions.find((p) => p.value === procId);
 			const procName = procObj ? procObj.label : procId;
-
-			const selectedQualities: string[] = equipmentQualities[scopeKey] || [];
-			const selectedDists: string[] = equipmentDistances[scopeKey] || [];
 
 			const procCargoIds: string[] = processCargoTypes[scopeKey] || [];
 			const procPickupIds: string[] = processPickupLocations[scopeKey] || [];
 			const procDropoffIds: string[] = processDropoffLocations[scopeKey] || [];
 
-			const cargoList = procCargoIds.length > 0 ? procCargoIds : [''];
-			const dropoffList = procDropoffIds.length > 0 ? procDropoffIds : [''];
-			const distList = selectedDists.length > 0 ? selectedDists : [''];
+			procCargoIds.forEach((cargoId: string) => {
+				const cargoKey = getScaniaCargoKey(acId, procId, cargoId);
+				const cargoPickupIds = procPickupIds;
+				const cargoDropoffIds = procDropoffIds;
+				// Cung độ chọn riêng theo từng loại hàng
+				const cargoDistIds: string[] = equipmentDistances[cargoKey] || [];
 
-			const procPickupNames = procPickupIds
-				.map((id) => {
-					const l = locations.find(
-						(loc: any) => loc.id === id || loc.value === id,
-					);
-					return l ? (l as any).name || (l as any).label : '';
-				})
-				.filter(Boolean);
-			const combinedPickupName = procPickupNames.join(', ');
+				const dropoffList = cargoDropoffIds.length > 0 ? cargoDropoffIds : [''];
+				const distList = cargoDistIds.length > 0 ? cargoDistIds : [''];
 
-			selectedQualities.forEach((qual: string) => {
-				cargoList.forEach((cargoId: string) => {
+				const combinedPickupName = cargoPickupIds
+					.map((id) => {
+						const l = locations.find(
+							(loc: any) => loc.id === id || loc.value === id,
+						);
+						return l ? (l as any).name || (l as any).label : '';
+					})
+					.filter(Boolean)
+					.join(', ');
+
+				const cargoObj = cargoTypes.find(
+					(c: any) => c.id === cargoId || c.value === cargoId,
+				);
+				const cargoName = cargoObj
+					? (cargoObj as any).name || (cargoObj as any).label
+					: '';
+
+				selectedQualities.forEach((qual: string) => {
 					dropoffList.forEach((dropoffId: string) => {
 						distList.forEach((distId: string) => {
 							if (
@@ -151,13 +165,6 @@ function computeItemsForScaniaPeriod(
 								)
 							)
 								return;
-
-							const cargoObj = cargoTypes.find(
-								(c: any) => c.id === cargoId || c.value === cargoId,
-							);
-							const cargoName = cargoObj
-								? (cargoObj as any).name || (cargoObj as any).label
-								: '';
 
 							const dropoffObj = locations.find(
 								(l: any) => l.id === dropoffId || l.value === dropoffId,
@@ -196,9 +203,9 @@ function computeItemsForScaniaPeriod(
 								title,
 								cargoTypeId: cargoId || null,
 								cargoTypeName: cargoName,
-								receivingLocationIds: procPickupIds,
+								receivingLocationIds: cargoPickupIds,
 								receivingLocationNames: combinedPickupName,
-								receivingLocationId: procPickupIds[0] || null,
+								receivingLocationId: cargoPickupIds[0] || null,
 								receivingLocationName: combinedPickupName,
 								dumpingLocationId: dropoffId || null,
 								dumpingLocationName: dropoffName,
@@ -218,6 +225,121 @@ function computeItemsForScaniaPeriod(
 	});
 
 	return newItems;
+}
+
+const QUALITY_OPTIONS = [
+	{ label: 'Thiết bị loại A', value: 'A' },
+	{ label: 'Thiết bị loại B', value: 'B' },
+	{ label: 'Thiết bị loại C', value: 'C' },
+];
+
+type ScaniaPriceField = 'fuelUnitPrice' | 'powerUnitPrice' | 'maintenanceUnitPrice';
+
+// Bảng đơn giá theo cung độ của 1 nhóm (Chất lượng thiết bị + Vị trí đổ) trong 1 Loại hàng
+function ScaniaPriceTable({
+	title,
+	group,
+	pickupName,
+	onValueChange,
+	onDelete,
+}: {
+	title: string;
+	group: { equipmentQuality: string; dumpingLocationName?: string; items: any[] };
+	pickupName: string;
+	onValueChange: (
+		tempId: string,
+		field: ScaniaPriceField,
+		val: number | undefined,
+	) => void;
+	onDelete: (item: any) => void;
+}) {
+	const routeSummary =
+		pickupName && group.dumpingLocationName
+			? `từ ${pickupName} đến ${group.dumpingLocationName}`
+			: pickupName
+				? `từ ${pickupName}`
+				: group.dumpingLocationName
+					? `đến ${group.dumpingLocationName}`
+					: '';
+
+	const priceInput = (item: any, field: ScaniaPriceField) => (
+		<td className='w-40 min-w-[140px] px-4 py-2'>
+			<FormNumberInput
+				value={item[field] ?? 0}
+				onValueChange={(val) => onValueChange(item.tempId || item.id, field, val)}
+				placeholder='Nhập đơn giá'
+			/>
+		</td>
+	);
+
+	return (
+		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'>
+			<div className='flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
+				<div className='flex flex-wrap items-center gap-2.5 text-sm'>
+					<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 font-semibold text-black shadow-2xs'>
+						{title} (Loại {group.equipmentQuality})
+					</span>
+					{routeSummary && (
+						<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 text-black shadow-2xs'>
+							<span className='font-bold text-black'>Thông số:</span>{' '}
+							{routeSummary}
+						</span>
+					)}
+				</div>
+			</div>
+
+			<div className='scrollbar-sm w-full overflow-x-auto'>
+				<table className='w-full min-w-[650px] text-left text-sm'>
+					<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+						<tr>
+							<th className='px-4 py-2.5 whitespace-nowrap'>Cung độ vận tải</th>
+							<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+								Đơn giá nhiên liệu (đ/tkm)
+							</th>
+							<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+								Đơn giá động lực (đ/tkm)
+							</th>
+							<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+								Đơn giá SCTX (đ/tkm)
+							</th>
+							<th className='w-12 px-4 py-2.5' />
+						</tr>
+					</thead>
+					<tbody className='divide-y divide-neutral-100'>
+						{group.items.map((item: any) => (
+							<tr
+								key={`${item.tempId || item.id || item.haulDistanceId}`}
+								className='transition-colors hover:bg-neutral-50/50'
+							>
+								<td className='px-4 py-2 whitespace-nowrap'>
+									<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
+										{item.haulDistanceValue ? `${item.haulDistanceValue} km` : '-'}
+									</div>
+								</td>
+								{priceInput(item, 'fuelUnitPrice')}
+								{priceInput(item, 'powerUnitPrice')}
+								{priceInput(item, 'maintenanceUnitPrice')}
+								<td className='w-12 px-4 py-2 text-center'>
+									{group.items.length > 1 && (
+										<Button
+											type='button'
+											variant='ghost'
+											size='icon'
+											onClick={() => onDelete(item)}
+											className='h-fit w-fit border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
+											title='Xóa cung độ'
+										>
+											<XCircleIcon className='size-5 text-red-500' />
+										</Button>
+									)}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
 }
 
 interface ScaniaPeriodSectionProps {
@@ -298,6 +420,8 @@ function ScaniaPeriodSection({
 		});
 	};
 
+	// scopeKey: xeId (chất lượng), xeId_côngĐoạn (loại hàng, vị trí nhận, vị trí đổ) hoặc
+	// xeId_côngĐoạn_loạiHàng (cung độ)
 	const handleScopeFieldChange = (
 		scopeKey: string,
 		fieldName:
@@ -358,6 +482,13 @@ function ScaniaPeriodSection({
 			items: period.items.filter((it) => getScaniaItemKey(it) !== key),
 		});
 	};
+
+	// Tên xe hiển thị và các trường theo xe của dòng đơn giá (khớp computeItemsForScaniaPeriod)
+	const getVehicleTitle = (id: string) => {
+		const ac = assignmentCodes.find((a) => a.id === id);
+		return ac ? ac.name || ac.code || id : id;
+	};
+	const getVehicleItemFields = (id: string) => ({ title: getVehicleTitle(id) });
 
 	return (
 		<div className='flex flex-col gap-4 rounded-xl border border-neutral-300 bg-neutral-50/70 p-5 shadow-xs transition-all'>
@@ -435,74 +566,85 @@ function ScaniaPeriodSection({
 					>
 						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
 							<span className='text-sm font-semibold text-black'>{title}</span>
+							<ApplyToVehiclesButton
+								sourceId={acId}
+								vehicleIds={period.assignmentCodeIds || []}
+								getTitle={getVehicleTitle}
+								onApply={(targetIds) =>
+									onUpdate(
+										copyVehicleConfig(
+											period,
+											acId,
+											targetIds,
+											getVehicleItemFields,
+										),
+									)
+								}
+							/>
 						</div>
 
-						{/* CHỌN CÔNG ĐOẠN CHO XE NÀY */}
-						<MultiSelect
-							label='Công đoạn sản xuất'
-							placeholder='Chọn các công đoạn sản xuất'
-							options={processOptions.map((opt) => ({
-								label: opt.label,
-								value: opt.value,
-							}))}
-							values={selectedProcList.map((id) => {
-								const p = processOptions.find((opt) => opt.value === id);
-								return { value: id, label: p ? p.label : id };
-							})}
-							onValuesChange={(selected) =>
-								handleProcessesChange(acId, selected.map((s) => s.value))
-							}
-						/>
+						{/* CHẤT LƯỢNG THIẾT BỊ (chọn 1 lần cho xe) & CÔNG ĐOẠN SẢN XUẤT */}
+						<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+							<MultiSelect
+								label='Chất lượng thiết bị'
+								placeholder='Chọn chất lượng thiết bị'
+								options={QUALITY_OPTIONS}
+								values={(period.equipmentQualities[acId] || []).map((q) => ({
+									label: `Thiết bị loại ${q}`,
+									value: q,
+								}))}
+								onValuesChange={(selected) =>
+									handleScopeFieldChange(
+										acId,
+										'equipmentQualities',
+										selected.map((s) => s.value),
+									)
+								}
+							/>
+
+							<MultiSelect
+								label='Công đoạn sản xuất'
+								placeholder='Chọn các công đoạn sản xuất'
+								options={processOptions.map((opt) => ({
+									label: opt.label,
+									value: opt.value,
+								}))}
+								values={selectedProcList.map((id) => {
+									const p = processOptions.find((opt) => opt.value === id);
+									return { value: id, label: p ? p.label : id };
+								})}
+								onValuesChange={(selected) =>
+									handleProcessesChange(
+										acId,
+										selected.map((s) => s.value),
+									)
+								}
+							/>
+						</div>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
 						{selectedProcList.map((procId: string) => {
-							const scopeKey = `${acId}_${procId}`;
+							const scopeKey = getScaniaProcessKey(acId, procId);
 							const procObj = processOptions.find((p) => p.value === procId);
 							const procName = procObj ? procObj.label : procId;
-
-							const currentQualities: string[] =
-								period.equipmentQualities[scopeKey] || [];
-							const currentDists: string[] =
-								period.equipmentDistances[scopeKey] || [];
+							const currentCargos: string[] =
+								period.processCargoTypes[scopeKey] || [];
 							const currentPickups: string[] =
 								period.processPickupLocations[scopeKey] || [];
 							const currentDropoffs: string[] =
 								period.processDropoffLocations[scopeKey] || [];
-							const currentCargos: string[] =
-								period.processCargoTypes[scopeKey] || [];
+							const currentQualities: string[] =
+								period.equipmentQualities[acId] || [];
 
-							const procPickupNames = currentPickups
+							const combinedPickupName = currentPickups
 								.map((id) => {
 									const l = locations.find(
 										(loc: any) => loc.id === id || loc.value === id,
 									);
 									return l ? (l as any).name || (l as any).label : '';
 								})
-								.filter(Boolean);
-							const combinedPickupName = procPickupNames.join(', ');
-
-							const filteredItems = period.items.filter(
-								(it: any) =>
-									it.assignmentCodeId === acId &&
-									it.productionProcessId === procId,
-							);
-
-							const groupsMap = new Map<string, any>();
-							filteredItems.forEach((item: any) => {
-								const groupKey = `${item.equipmentQuality}_${item.cargoTypeId || ''}_${item.dumpingLocationId || ''}`;
-								if (!groupsMap.has(groupKey)) {
-									groupsMap.set(groupKey, {
-										equipmentQuality: item.equipmentQuality,
-										cargoTypeId: item.cargoTypeId,
-										cargoTypeName: item.cargoTypeName,
-										dumpingLocationId: item.dumpingLocationId,
-										dumpingLocationName: item.dumpingLocationName,
-										items: [],
-									});
-								}
-								groupsMap.get(groupKey)!.items.push(item);
-							});
-							const groups = Array.from(groupsMap.values());
+								.filter(Boolean)
+								.join(', ');
 
 							return (
 								<div
@@ -515,51 +657,7 @@ function ScaniaPeriodSection({
 										</span>
 									</div>
 
-									<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-										<MultiSelect
-											label='Chất lượng thiết bị'
-											placeholder='Chọn chất lượng thiết bị'
-											options={[
-												{ label: 'Thiết bị loại A', value: 'A' },
-												{ label: 'Thiết bị loại B', value: 'B' },
-												{ label: 'Thiết bị loại C', value: 'C' },
-											]}
-											values={currentQualities.map((q) => ({
-												label: `Thiết bị loại ${q}`,
-												value: q,
-											}))}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'equipmentQualities',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-
-										<MultiSelect
-											label='Cung độ vận tải'
-											placeholder='Chọn cung độ vận tải'
-											options={distanceOptions.map((opt) => ({
-												label: opt.label,
-												value: opt.value,
-											}))}
-											values={currentDists.map((dId) => {
-												const d = distanceOptions.find(
-													(opt) => opt.value === dId || opt.id === dId,
-												);
-												return { value: dId, label: d ? d.label : dId };
-											})}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'equipmentDistances',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-									</div>
-
+									{/* Loại hàng, Vị trí nhận, Vị trí đổ cùng cấp — dùng chung cho công đoạn */}
 									<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
 										<MultiSelect
 											label='Loại hàng'
@@ -623,145 +721,90 @@ function ScaniaPeriodSection({
 										/>
 									</div>
 
-									{/* KHU VỰC BẢNG ĐƠN GIÁ THEO CUNG ĐỘ */}
-									{currentDists.length > 0 &&
-										currentQualities.length > 0 &&
-										groups.length > 0 && (
-											<div className='space-y-4 pt-2'>
-												{groups.map((grp: any, gIdx: number) => {
-													const summaryParts: string[] = [];
-													if (grp.cargoTypeName) {
-														summaryParts.push(grp.cargoTypeName);
-													}
-													if (combinedPickupName && grp.dumpingLocationName) {
-														summaryParts.push(
-															`từ ${combinedPickupName} đến ${grp.dumpingLocationName}`,
-														);
-													} else if (combinedPickupName) {
-														summaryParts.push(`từ ${combinedPickupName}`);
-													} else if (grp.dumpingLocationName) {
-														summaryParts.push(
-															`đến ${grp.dumpingLocationName}`,
-														);
-													}
-													const paramSummary = summaryParts.join(' ');
+									{/* MỖI LOẠI HÀNG: Cung độ → Bảng đơn giá */}
+									{currentCargos.map((cargoId: string) => {
+										const cargoKey = getScaniaCargoKey(acId, procId, cargoId);
+										const cargoObj = cargoTypes.find(
+											(item) => item.id === cargoId,
+										);
+										const cargoLabel = cargoObj
+											? `${cargoObj.code} - ${cargoObj.name}`
+											: cargoId;
+										const currentDists: string[] =
+											period.equipmentDistances[cargoKey] || [];
 
-													return (
-														<div
-															key={gIdx}
-															className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'
-														>
-															<div className='flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
-																<div className='flex flex-wrap items-center gap-2.5 text-sm'>
-																	<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 font-semibold text-black shadow-2xs'>
-																		{title} (Loại {grp.equipmentQuality})
-																	</span>
-																	{paramSummary && (
-																		<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 text-black shadow-2xs'>
-																			<span className='font-bold text-black'>
-																				Thông số:
-																			</span>{' '}
-																			{paramSummary}
-																		</span>
-																	)}
-																</div>
-															</div>
+										const groupsMap = new Map<string, any>();
+										period.items
+											.filter(
+												(it: any) =>
+													it.assignmentCodeId === acId &&
+													it.productionProcessId === procId &&
+													it.cargoTypeId === cargoId,
+											)
+											.forEach((item: any) => {
+												const groupKey = `${item.equipmentQuality}_${item.dumpingLocationId || ''}`;
+												if (!groupsMap.has(groupKey)) {
+													groupsMap.set(groupKey, {
+														equipmentQuality: item.equipmentQuality,
+														dumpingLocationName: item.dumpingLocationName,
+														items: [],
+													});
+												}
+												groupsMap.get(groupKey)!.items.push(item);
+											});
+										const groups = Array.from(groupsMap.values());
 
-															<div className='w-full overflow-x-auto'>
-																<table className='w-full min-w-[650px] text-left text-sm'>
-																	<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
-																		<tr>
-																			<th className='px-4 py-2.5 whitespace-nowrap'>
-																				Cung độ vận tải
-																			</th>
-																			<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																				Đơn giá nhiên liệu (đ/tkm)
-																			</th>
-																			<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																				Đơn giá động lực (đ/tkm)
-																			</th>
-																			<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																				Đơn giá SCTX (đ/tkm)
-																			</th>
-																			<th className='w-12 px-4 py-2.5' />
-																		</tr>
-																	</thead>
-																	<tbody className='divide-y divide-neutral-100'>
-																		{grp.items.map((item: any) => (
-																			<tr
-																				key={`${item.tempId || item.id || item.haulDistanceId}`}
-																				className='transition-colors hover:bg-neutral-50/50'
-																			>
-																				<td className='px-4 py-2 whitespace-nowrap'>
-																					<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
-																						{item.haulDistanceValue
-																							? `${item.haulDistanceValue} km`
-																							: '-'}
-																					</div>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.fuelUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'fuelUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.powerUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'powerUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.maintenanceUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'maintenanceUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																				<td className='w-12 px-4 py-2 text-center'>
-																					{grp.items.length > 1 && (
-																						<Button
-																							type='button'
-																							variant='ghost'
-																							size='icon'
-																							onClick={() => handleItemDelete(item)}
-																							className='h-fit w-fit border-0 bg-transparent p-0 shadow-none hover:bg-transparent'
-																							title='Xóa cung độ'
-																						>
-																							<XCircleIcon className='size-5 text-red-500' />
-																						</Button>
-																					)}
-																				</td>
-																			</tr>
-																		))}
-																	</tbody>
-																</table>
-															</div>
+										return (
+											<div
+												key={cargoId}
+												className='space-y-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'
+											>
+												<div className='text-sm font-semibold text-black'>
+													{cargoLabel}
+												</div>
+
+												<MultiSelect
+													label='Cung độ vận tải'
+													placeholder='Chọn cung độ vận tải'
+													options={distanceOptions.map((opt) => ({
+														label: opt.label,
+														value: opt.value,
+													}))}
+													values={currentDists.map((dId) => {
+														const d = distanceOptions.find(
+															(opt) => opt.value === dId || opt.id === dId,
+														);
+														return { value: dId, label: d ? d.label : dId };
+													})}
+													onValuesChange={(selected) =>
+														handleScopeFieldChange(
+															cargoKey,
+															'equipmentDistances',
+															selected.map((s) => s.value),
+														)
+													}
+												/>
+
+												{/* KHU VỰC BẢNG ĐƠN GIÁ THEO CUNG ĐỘ */}
+												{currentDists.length > 0 &&
+													currentQualities.length > 0 &&
+													groups.length > 0 && (
+														<div className='space-y-4 pt-2'>
+															{groups.map((grp: any, gIdx: number) => (
+																<ScaniaPriceTable
+																	key={gIdx}
+																	title={title}
+																	group={grp}
+																	pickupName={combinedPickupName}
+																	onValueChange={handleItemValueChange}
+																	onDelete={handleItemDelete}
+																/>
+															))}
 														</div>
-													);
-												})}
+													)}
 											</div>
-										)}
+										);
+									})}
 								</div>
 							);
 						})}
@@ -884,22 +927,30 @@ export const MotorizedScaniaForm = forwardRef<
 						initialProcsList.push(p.productionProcessId);
 					}
 
-					const scopeKey = `${initialAcId}_${p.productionProcessId}`;
-					if (!initialQualitiesMap[scopeKey]) {
-						initialQualitiesMap[scopeKey] = [];
-					}
-					if (q && !initialQualitiesMap[scopeKey].includes(q)) {
-						initialQualitiesMap[scopeKey].push(q);
-					}
+					// Đưa dữ liệu đã lưu về đúng phạm vi khoá: chất lượng theo xe; loại hàng,
+					// vị trí nhận/đổ theo xe + công đoạn; cung độ theo cụm loại hàng
+					const addUnique = (
+						map: Record<string, string[]>,
+						key: string,
+						value?: string | null,
+					) => {
+						if (!value) return;
+						if (!map[key]) map[key] = [];
+						if (!map[key].includes(value)) map[key].push(value);
+					};
 
-					if (p.cargoTypeId) {
-						if (!initialProcCargoTypes[scopeKey]) {
-							initialProcCargoTypes[scopeKey] = [];
-						}
-						if (!initialProcCargoTypes[scopeKey].includes(p.cargoTypeId)) {
-							initialProcCargoTypes[scopeKey].push(p.cargoTypeId);
-						}
-					}
+					const scopeKey = getScaniaProcessKey(
+						initialAcId,
+						p.productionProcessId || '',
+					);
+					const cargoKey = getScaniaCargoKey(
+						initialAcId,
+						p.productionProcessId || '',
+						p.cargoTypeId || '',
+					);
+
+					addUnique(initialQualitiesMap, initialAcId, q);
+					addUnique(initialProcCargoTypes, scopeKey, p.cargoTypeId);
 
 					const rIds =
 						p.receivingLocationIds && p.receivingLocationIds.length > 0
@@ -907,36 +958,12 @@ export const MotorizedScaniaForm = forwardRef<
 							: p.receivingLocationId
 								? [p.receivingLocationId]
 								: [];
-					if (rIds.length > 0) {
-						if (!initialProcPickups[scopeKey]) {
-							initialProcPickups[scopeKey] = [];
-						}
-						rIds.forEach((rid) => {
-							if (!initialProcPickups[scopeKey].includes(rid)) {
-								initialProcPickups[scopeKey].push(rid);
-							}
-						});
-					}
-
-					if (p.dumpingLocationId) {
-						if (!initialProcDropoffs[scopeKey]) {
-							initialProcDropoffs[scopeKey] = [];
-						}
-						if (!initialProcDropoffs[scopeKey].includes(p.dumpingLocationId)) {
-							initialProcDropoffs[scopeKey].push(p.dumpingLocationId);
-						}
-					}
+					rIds.forEach((rid) => addUnique(initialProcPickups, scopeKey, rid));
+					addUnique(initialProcDropoffs, scopeKey, p.dumpingLocationId);
 
 					if (p.details && p.details.length > 0) {
 						p.details.forEach((d: any) => {
-							if (d.haulDistanceId) {
-								if (!initialDistsMap[scopeKey]) {
-									initialDistsMap[scopeKey] = [];
-								}
-								if (!initialDistsMap[scopeKey].includes(d.haulDistanceId)) {
-									initialDistsMap[scopeKey].push(d.haulDistanceId);
-								}
-							}
+							addUnique(initialDistsMap, cargoKey, d.haulDistanceId);
 
 							initialItems.push({
 								tempId: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -949,7 +976,8 @@ export const MotorizedScaniaForm = forwardRef<
 								cargoTypeId: p.cargoTypeId || null,
 								cargoTypeName: p.cargoTypeName,
 								receivingLocationIds: rIds,
-								receivingLocationNames: p.receivingLocationNames || p.receivingLocationName,
+								receivingLocationNames:
+									p.receivingLocationNames || p.receivingLocationName,
 								receivingLocationId: rIds[0] || null,
 								receivingLocationName: p.receivingLocationName,
 								dumpingLocationId: p.dumpingLocationId || null,
@@ -1082,7 +1110,9 @@ export const MotorizedScaniaForm = forwardRef<
 	const submitInternal = async (forceCreate?: boolean): Promise<boolean> => {
 		try {
 			if (periods.length === 0) {
-				popup.error('Cần có ít nhất một khoảng thời gian áp dụng cho Xe Scania');
+				popup.error(
+					'Cần có ít nhất một khoảng thời gian áp dụng cho Xe Scania',
+				);
 				return false;
 			}
 
@@ -1114,15 +1144,35 @@ export const MotorizedScaniaForm = forwardRef<
 					);
 					return false;
 				}
+				// Chất lượng thiết bị (theo xe) và Loại hàng (theo công đoạn) bắt buộc
+				for (const acId of p.assignmentCodeIds) {
+					const ac = assignmentCodes.find((a) => a.id === acId);
+					const acTitle = ac ? ac.name || ac.code || acId : acId;
+					if ((p.equipmentQualities[acId] || []).length === 0) {
+						popup.error(
+							`Vui lòng chọn Chất lượng thiết bị cho ${acTitle} ở khoảng thời gian thứ ${order} của Xe Scania`,
+						);
+						return false;
+					}
+					for (const procId of p.equipmentProcesses[acId] || []) {
+						const cargos =
+							p.processCargoTypes[getScaniaProcessKey(acId, procId)] || [];
+						if (cargos.length === 0) {
+							const proc = processOptions.find((o) => o.value === procId);
+							popup.error(
+								`Vui lòng chọn Loại hàng cho ${acTitle} - ${proc?.label || procId} ở khoảng thời gian thứ ${order} của Xe Scania`,
+							);
+							return false;
+						}
+					}
+				}
 			}
 
 			// Process each period
 			for (let i = 0; i < periods.length; i++) {
 				const p = periods[i];
 				const isPeriodCreate =
-					forceCreate !== undefined
-						? forceCreate
-						: isDuplicate || !p.id;
+					forceCreate !== undefined ? forceCreate : isDuplicate || !p.id;
 
 				const startMonth =
 					p.startMonth.length === 7 ? `${p.startMonth}-01` : p.startMonth;
