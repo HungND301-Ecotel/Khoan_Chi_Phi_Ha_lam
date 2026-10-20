@@ -97,8 +97,14 @@ public enum ProcessGroupType
 public enum LocationType
 {
     None = 0,
+
+    [Display(Name = "Vị trí nhận tải")]
     Receiving = 1,
+
+    [Display(Name = "Vị trí đổ tải")]
     Dumping = 2,
+
+    [Display(Name = "Vị trí nhận tải, đổ tải")]
     Both = 3
 }
 

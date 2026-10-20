@@ -2,6 +2,8 @@
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.TransportLocation;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
+using Domain.Extensions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,9 +35,18 @@ public class ExportExcelTransportLocationQueryHandler(
                 Code = t.Code?.Value ?? string.Empty,
                 Name = t.Name,
                 Note = t.Note,
-                LocationType = t.LocationType
+                LocationType = t.LocationType == LocationType.None ? null : t.LocationType.GetDisplayName()
             });
 
-        return excelService.ExportToExcel(dtoList, "Vị trí nhận, đổ", hiddenProperties);
+        var dropdownData = new Dictionary<string, List<string>>
+        {
+            [nameof(TransportLocationExcelDto.LocationType)] =
+            [
+                LocationType.Receiving.GetDisplayName(),
+                LocationType.Dumping.GetDisplayName(),
+            ]
+        };
+
+        return excelService.ExportToExcel(dtoList, "Vị trí nhận, đổ", hiddenProperties, dropdownData);
     }
 }

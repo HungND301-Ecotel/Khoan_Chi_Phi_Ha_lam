@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Application.Common.Interfaces;
 using Domain.Common.Enums;
+using Domain.Extensions;
 
 namespace Application.Dto.Catalog.TransportLocation;
 
@@ -28,6 +29,7 @@ public class TransportLocationDto : IDto
     public string Name { get; set; } = string.Empty;
     public string? Note { get; set; }
     public LocationType LocationType { get; set; }
+    public string LocationTypeName => LocationType == LocationType.None ? string.Empty : LocationType.GetDisplayName();
 }
 
 public class TransportLocationExcelDto
@@ -43,6 +45,7 @@ public class TransportLocationExcelDto
     [Display(Name = "Ghi chú")]
     public string? Note { get; set; }
 
+    // Ghi bằng tên hiển thị (Vị trí nhận tải / Vị trí đổ tải)
     [Display(Name = "Phân loại")]
-    public LocationType LocationType { get; set; }
+    public string? LocationType { get; set; }
 }

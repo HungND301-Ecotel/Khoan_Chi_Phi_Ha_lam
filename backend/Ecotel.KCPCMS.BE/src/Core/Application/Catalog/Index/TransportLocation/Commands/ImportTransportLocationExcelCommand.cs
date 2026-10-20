@@ -3,6 +3,8 @@ using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.TransportLocation;
 using Application.Interfaces.Services;
+using Domain.Common.Enums;
+using Domain.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +54,9 @@ public class ImportTransportLocationExcelCommandHandler(
                 throw new BadRequestException($"Tên vị trí không được để trống ở dòng {rowNumber}.");
             }
 
+            var locationType = ParseLocationType(dto.LocationType)
+                ?? throw new BadRequestException($"Phân loại '{dto.LocationType}' không hợp lệ ở dòng {rowNumber}.");
+
             var isCodeTakenByOther = dbLocations.Any(x =>
                 x.Code != null
                 && x.Code.Value.Trim().Equals(dto.Code.Trim(), StringComparison.OrdinalIgnoreCase)
@@ -69,17 +74,17 @@ public class ImportTransportLocationExcelCommandHandler(
                 var hasChanged = entityToUpdate.Code?.Value != dto.Code.Trim().ToUpper()
                     || entityToUpdate.Name != dto.Name.Trim()
                     || entityToUpdate.Note != dto.Note
-                    || entityToUpdate.LocationType != dto.LocationType;
+                    || entityToUpdate.LocationType != locationType;
 
                 if (hasChanged)
                 {
-                    entityToUpdate.Update(dto.Code.Trim(), dto.Name.Trim(), dto.Note, dto.LocationType);
+                    entityToUpdate.Update(dto.Code.Trim(), dto.Name.Trim(), dto.Note, locationType);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Domain.Entities.Index.TransportLocation.Create(dto.Code.Trim(), dto.Name.Trim(), dto.Note, dto.LocationType));
+                addList.Add(Domain.Entities.Index.TransportLocation.Create(dto.Code.Trim(), dto.Name.Trim(), dto.Note, locationType));
             }
         }
 
@@ -110,5 +115,12 @@ public class ImportTransportLocationExcelCommandHandler(
             await unitOfWork.RollbackAsync(cancellationToken);
             throw;
         }
+    }
+
+    // Phân loại ghi bằng tên hiển thị: Vị trí nhận tải / Vị trí đổ tải
+    private static LocationType? ParseLocationType(string? value)
+    {
+        var parsed = value?.ParseFromDisplayName<LocationType>();
+        return parsed is null or LocationType.None ? null : parsed;
     }
 }

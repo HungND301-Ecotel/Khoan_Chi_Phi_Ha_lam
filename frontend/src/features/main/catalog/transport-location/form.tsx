@@ -149,11 +149,11 @@ export function TransportLocationForm({
 								placeholder='Chọn phân loại'
 								options={[
 									{
-										label: 'Vị trí nhận',
+										label: 'Vị trí nhận tải',
 										value: LocationType.Receiving.toString(),
 									},
 									{
-										label: 'Vị trí đổ',
+										label: 'Vị trí đổ tải',
 										value: LocationType.Dumping.toString(),
 									},
 								]}

@@ -97,7 +97,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
                 string? cargoTypeCode = ExtractCode(item.dto.CargoTypeCode);
                 if (cargoTypeCode == null || !cargoTypeMap.TryGetValue(cargoTypeCode, out CargoType? cargoType))
                 {
-                    importErrors.Add($"Dòng {item.rowNumber}: chủng loại hàng '{item.dto.CargoTypeCode}' không tồn tại.");
+                    importErrors.Add($"Dòng {item.rowNumber}: loại hàng '{item.dto.CargoTypeCode}' không tồn tại.");
                     continue;
                 }
 
@@ -119,7 +119,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
                 {
                     if (!transportLocationMap.TryGetValue(receivingCode, out TransportLocation? receiving))
                     {
-                        importErrors.Add($"Dòng {item.rowNumber}: vị trí nhận '{item.dto.ReceivingLocationCode}' không tồn tại.");
+                        importErrors.Add($"Dòng {item.rowNumber}: vị trí nhận tải '{item.dto.ReceivingLocationCode}' không tồn tại.");
                         continue;
                     }
                     receivingLocationId = receiving.Id;
@@ -131,7 +131,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
                 {
                     if (!transportLocationMap.TryGetValue(dumpingCode, out TransportLocation? dumping))
                     {
-                        importErrors.Add($"Dòng {item.rowNumber}: vị trí đổ '{item.dto.DumpingLocationCode}' không tồn tại.");
+                        importErrors.Add($"Dòng {item.rowNumber}: vị trí đổ tải '{item.dto.DumpingLocationCode}' không tồn tại.");
                         continue;
                     }
                     dumpingLocationId = dumping.Id;
@@ -177,7 +177,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
                 var locDistances = locGroup.Select(r => r.HaulDistanceId).ToList();
                 if (locDistances.Count != locDistances.Distinct().Count())
                 {
-                    importErrors.Add($"Nhóm '{group.First().AssignmentCodeId}': trùng cung độ vận tải cho cùng một vị trí nhận.");
+                    importErrors.Add($"Nhóm '{group.First().AssignmentCodeId}': trùng cung độ vận tải cho cùng một vị trí nhận tải.");
                 }
             }
         }
@@ -238,7 +238,7 @@ public class ImportScaniaTruckUnitPriceExcelCommandHandler(
 
                 if (isDuplicated)
                 {
-                    importErrors.Add($"Đã tồn tại đơn giá cho tổ hợp thiết bị/hàng/vị trí đổ/thời gian này (thiếu HeaderId để cập nhật).");
+                    importErrors.Add($"Đã tồn tại đơn giá cho tổ hợp thiết bị/loại hàng/vị trí đổ tải/thời gian này (thiếu HeaderId để cập nhật).");
                     continue;
                 }
 

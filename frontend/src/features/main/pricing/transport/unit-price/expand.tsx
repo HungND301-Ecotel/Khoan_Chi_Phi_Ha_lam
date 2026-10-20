@@ -247,8 +247,8 @@ function OtherDetail({
 		<DetailTable
 			headers={[
 				'Nhóm vật tư, tài sản',
-				...priceHeaders,
 				'Định mức',
+				...priceHeaders,
 				NOTE_HEADER,
 			]}
 		>
@@ -260,8 +260,8 @@ function OtherDetail({
 							item.equipmentName || item.contractCodeName || item.materialName,
 						)}
 					</td>
-					<PriceCells item={item} />
 					<td className='px-4 py-2'>{item.quantity ?? '-'}</td>
+					<PriceCells item={item} />
 					<NoteCell item={item} />
 				</tr>
 			))}
