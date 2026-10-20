@@ -41,7 +41,7 @@ public class UpdateProcessGroupCommandHandler(IUnitOfWork unitOfWork) : IRequest
                 throw new ConflictException(CustomResponseMessage.ProcessGroupCodeAlreadyExists);
             }
 
-            existProcessGroup.Update(fixedKey, request.UpdateModel.Name);
+            existProcessGroup.Update(fixedKey, request.UpdateModel.Name, request.UpdateModel.Note);
 
             _processGroupRepository.Update(existProcessGroup);
             await unitOfWork.SaveChangesAsync();

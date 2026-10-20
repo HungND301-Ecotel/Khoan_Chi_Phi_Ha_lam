@@ -11,6 +11,7 @@ namespace Domain.Entities.Index
         public Guid ProcessGroupId { get; protected set; }
         public DateOnly StartMonth { get; protected set; }
         public DateOnly EndMonth { get; protected set; }
+        public string? Note { get; protected set; }
 
         //Navigation Properties
         public virtual ProcessGroup? ProcessGroup { get; protected set; }
@@ -27,7 +28,8 @@ namespace Domain.Entities.Index
             string name,
             Guid processGroupId,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(code, name, startMonth, endMonth);
 
@@ -38,6 +40,7 @@ namespace Domain.Entities.Index
                 ProcessGroupId = processGroupId,
                 StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
                 EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
+                Note = NormalizeNote(note),
             };
         }
 
@@ -47,7 +50,8 @@ namespace Domain.Entities.Index
             string name,
             Guid processGroupId,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(code, name, startMonth, endMonth);
 
@@ -59,6 +63,7 @@ namespace Domain.Entities.Index
                 ProcessGroupId = processGroupId,
                 StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
                 EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
+                Note = NormalizeNote(note),
             };
         }
 
@@ -67,7 +72,8 @@ namespace Domain.Entities.Index
             string name,
             Guid processGroupId,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(code, name, startMonth, endMonth);
 
@@ -76,6 +82,7 @@ namespace Domain.Entities.Index
             ProcessGroupId = processGroupId;
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(Product dto)
@@ -84,7 +91,13 @@ namespace Domain.Entities.Index
                 && Name == dto.Name
                 && ProcessGroupId == dto.ProcessGroupId
                 && StartMonth == dto.StartMonth
-                && EndMonth == dto.EndMonth);
+                && EndMonth == dto.EndMonth
+                && Note == dto.Note);
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
 
         private static void Validate(

@@ -56,7 +56,7 @@ public class UpdateAssignmentCodeCommandHandler(IUnitOfWork unitOfWork, ICodeSer
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            existAssignmentCode.Update(request.UpdateModel.Name, request.UpdateModel.Code, request.UpdateModel.UnitOfMeasureId);
+            existAssignmentCode.Update(request.UpdateModel.Name, request.UpdateModel.Code, request.UpdateModel.UnitOfMeasureId, request.UpdateModel.Note);
             _costRepository.Delete(existAssignmentCode.Costs.ToList());
 
             var costList = request.UpdateModel.Costs

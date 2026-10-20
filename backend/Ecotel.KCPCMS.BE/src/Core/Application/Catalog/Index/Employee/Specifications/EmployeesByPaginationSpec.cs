@@ -19,6 +19,7 @@ public class EmployeesByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
         Query
             .Where(e => string.IsNullOrWhiteSpace(searchTerm) ||
                         e.FullName.ToLower().Contains(searchTerm) ||
+                        (e.Code != null && e.Code.ToLower().Contains(searchTerm)) ||
                         (e.User != null && e.User.UserName.ToLower().Contains(searchTerm)))
             .Where(e => departmentId == null || e.DepartmentId == departmentId)
             .Include(e => e.Position)
@@ -29,6 +30,7 @@ public class EmployeesByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
             .Select(e => new EmployeeDto
             {
                 Id = e.Id,
+                Code = e.Code,
                 FullName = e.FullName,
                 PositionId = e.PositionId,
                 PositionName = e.Position != null ? e.Position.Name : null,
@@ -42,6 +44,7 @@ public class EmployeesByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                 PhoneNumber = e.User != null ? e.User.PhoneNumber : null,
                 Dob = e.Dob.HasValue ? e.Dob.Value : DateOnly.MinValue,
                 Genre = e.Gender ?? true,
+                Note = e.Note,
                 IsActive = !(e.User.LockoutEnabled && e.User.LockoutEnd != null && e.User.LockoutEnd > DateTimeOffset.UtcNow)
             });
     }

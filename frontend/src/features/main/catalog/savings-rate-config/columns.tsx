@@ -41,6 +41,6 @@ export const CATALOG_SAVINGS_RATE_CONFIG_COLUMNS: ColumnDef<SavingsRateConfig>[]
 		},
 		{
 			accessorKey: 'description',
-			header: 'Mô tả',
+			header: 'Ghi chú',
 		},
 	];

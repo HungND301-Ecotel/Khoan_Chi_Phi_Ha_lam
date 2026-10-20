@@ -65,7 +65,7 @@ export function MainCatalogAkFactorConfigPage() {
 				{ key: 'processGroupName', label: 'Tên nhóm công đoạn' },
 				{ key: 'akDiffDisplay', label: 'Chênh lệch Ak' },
 				{ key: 'adjustmentRateDisplay', label: 'Tỷ lệ điều chỉnh doanh thu' },
-				{ key: 'description', label: 'Mô tả' },
+				{ key: 'description', label: 'Ghi chú' },
 			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.CREATE) ? (props) => <AkFactorConfigForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.AK_FACTOR.CREATE) ? (props) => <AkFactorConfigForm {...props} isDuplicate /> : undefined}

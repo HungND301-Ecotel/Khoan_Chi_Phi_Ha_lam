@@ -30,6 +30,7 @@ public class ExportExcelPositionQueryHandler(
             .Select(p => new PositionExcelDto
             {
                 Id = p.Id,
+                Code = p.Code,
                 Name = p.Name,
                 Level = p.Level ?? 0,
                 Description = p.Description

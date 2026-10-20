@@ -9,13 +9,10 @@ export type Product = {
 	processGroupId: string;
 	processGroupCode: string;
 	processGroupName: string;
+	note?: string;
 };
 
 export const CATALOG_PRODUCT_COLUMNS: ColumnDef<Product>[] = [
-	{
-		accessorKey: 'processGroupCode',
-		header: 'Mã nhóm công đoạn sản xuất',
-	},
 	{
 		accessorKey: 'code',
 		header: 'Mã sản phẩm',
@@ -26,5 +23,13 @@ export const CATALOG_PRODUCT_COLUMNS: ColumnDef<Product>[] = [
 		cell: ({ row }) => (
 			<span className='whitespace-normal'>{row.original.name}</span>
 		),
+	},
+	{
+		accessorKey: 'processGroupCode',
+		header: 'Nhóm công đoạn sản xuất',
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

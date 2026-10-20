@@ -64,6 +64,6 @@ export const CATALOG_AK_FACTOR_CONFIG_COLUMNS: ColumnDef<AkFactorConfig>[] = [
 	},
 	{
 		accessorKey: 'description',
-		header: 'Mô tả',
+		header: 'Ghi chú',
 	},
 ];

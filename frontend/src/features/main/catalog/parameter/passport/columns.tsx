@@ -5,6 +5,7 @@ export type Passport = {
 	name: string;
 	sd: string;
 	sc: string;
+	note?: string;
 };
 
 export const CATALOG_PARAMETER_PASSPORT_COLUMNS: ColumnDef<Passport>[] = [
@@ -14,5 +15,9 @@ export const CATALOG_PARAMETER_PASSPORT_COLUMNS: ColumnDef<Passport>[] = [
 		cell: ({ row }) => {
 			return `H/c ${row.original.name}; ${row.original.sd}; ${row.original.sc}`;
 		},
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

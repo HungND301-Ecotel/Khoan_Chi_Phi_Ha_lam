@@ -24,7 +24,8 @@ public class ExportExcelCuttingThicknessQueryHandler(IExcelService excelService,
         var dtoList = list.Select(l => new CuttingThicknessExcelDto
         {
             Id = l.Id,
-            Value = l.Value
+            Value = l.Value,
+            Note = l.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Chiều dày lớp khấu", listHiddenProperty);

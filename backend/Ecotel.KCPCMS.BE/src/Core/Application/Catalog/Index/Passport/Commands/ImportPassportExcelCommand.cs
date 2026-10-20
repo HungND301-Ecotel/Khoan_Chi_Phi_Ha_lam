@@ -24,7 +24,7 @@ public class ImportPassportExcelCommandHandler(IExcelService excelService, IUnit
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<PassportExcelDto>(stream);
-        var excelDtos = dtos.Select(d => PassportEntity.Create(d.Id, d.Name, d.Sd, d.Sc));
+        var excelDtos = dtos.Select(d => PassportEntity.Create(d.Id, d.Name, d.Sd, d.Sc, d.Note));
         var dbProcessGroups = await _passportRepository.GetAllAsync(
             disableTracking: true);
 
@@ -45,13 +45,13 @@ public class ImportPassportExcelCommandHandler(IExcelService excelService, IUnit
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Name, dto.Sd, dto.Sc);
+                    entityToUpdate.Update(dto.Name, dto.Sd, dto.Sc, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(PassportEntity.Create(dto.Name, dto.Sd, dto.Sc));
+                addList.Add(PassportEntity.Create(dto.Name, dto.Sd, dto.Sc, dto.Note));
             }
         }
 

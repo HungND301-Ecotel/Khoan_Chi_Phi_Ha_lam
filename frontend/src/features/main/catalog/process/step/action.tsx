@@ -43,6 +43,7 @@ export function ProcessStepForm({
 					name: row.name,
 					processGroupId: row.processGroupId,
 					unitOfMeasureId: row.unitOfMeasureId || '',
+					note: row.note || '',
 				}
 			: PROCESS_STEP_SCHEMA_DEFAULT,
 	});
@@ -119,6 +120,13 @@ export function ProcessStepForm({
 					value: u.id,
 					label: u.name,
 				}))}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

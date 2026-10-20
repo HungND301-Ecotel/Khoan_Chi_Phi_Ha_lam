@@ -19,7 +19,7 @@ export const CATALOG_TRANSPORT_ROUTE_COLUMNS: ColumnDef<TransportRoute>[] = [
 	},
 	{
 		accessorKey: 'isSpecialLowVolume',
-		header: 'Áp dụng giá đặc biệt SL thấp',
+		header: 'Đơn giá tuyến vận tải phụ thuộc sản lượng',
 		cell: ({ row }) => (row.original.isSpecialLowVolume ? 'Có' : 'Không'),
 	},
 	{

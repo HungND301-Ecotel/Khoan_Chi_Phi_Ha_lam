@@ -50,6 +50,7 @@ export function LongwallparametersForm({
 				llc: row.llc,
 				lkc: row.lkc,
 				mk: row.mk,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -99,6 +100,12 @@ export function LongwallparametersForm({
 				label='Mk (m)'
 				placeholder='Nhập Mk (m)'
 				supports={LONGWALLPARAMETERS_SUPPORTS}
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

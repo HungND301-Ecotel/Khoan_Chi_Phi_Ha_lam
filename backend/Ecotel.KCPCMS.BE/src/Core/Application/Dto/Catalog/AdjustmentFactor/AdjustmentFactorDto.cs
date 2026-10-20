@@ -17,6 +17,7 @@ public class AdjustmentFactorDto : IDto
     public Guid ProcessGroupId { get; set; }
     public string ProcessGroupCode { get; set; }
     public string ProcessGroupName { get; set; }
+    public string? Note { get; set; }
 }
 
 public class AdjustmentFactorExcelDto
@@ -29,6 +30,8 @@ public class AdjustmentFactorExcelDto
     public string Code { get; set; }
     [Display(Name = "Tên hệ số điều chỉnh")]
     public string Name { get; set; }
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }
 
 public class AdjustmentFactorDetailDto
@@ -51,6 +54,7 @@ public class UpdateAdjustmentFactorDto
     public Guid FixedKeyId { get; set; }
     public string Name { get; set; }
     public Guid ProcessGroupId { get; set; }
+    public string? Note { get; set; }
 }
 
 public class CreateAdjustmentFactorDto
@@ -58,4 +62,5 @@ public class CreateAdjustmentFactorDto
     public Guid FixedKeyId { get; set; }
     public string Name { get; set; }
     public Guid ProcessGroupId { get; set; }
+    public string? Note { get; set; }
 }

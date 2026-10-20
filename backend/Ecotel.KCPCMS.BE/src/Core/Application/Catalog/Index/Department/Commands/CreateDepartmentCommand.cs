@@ -21,7 +21,7 @@ public class CreateDepartmentCommandHandler(IUnitOfWork unitOfWork, ICodeService
             throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
         }
 
-        var department = Domain.Entities.Index.Department.Create(request.CreateModel.Code, request.CreateModel.Name);
+        var department = Domain.Entities.Index.Department.Create(request.CreateModel.Code, request.CreateModel.Name, request.CreateModel.Note);
         await _departmentRepository.InsertAsync(department);
         await unitOfWork.SaveChangesAsync();
         return true;

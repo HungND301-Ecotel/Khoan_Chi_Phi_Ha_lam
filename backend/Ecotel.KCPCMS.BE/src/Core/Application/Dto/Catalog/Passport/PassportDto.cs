@@ -9,6 +9,7 @@ namespace Application.Dto.Catalog.Passport
         public string Name { get; set; }
         public string Sd { get; set; }
         public string Sc { get; set; }
+        public string? Note { get; set; }
         public DateTimeOffset CreateOn { get; set; }
     }
 
@@ -20,6 +21,9 @@ namespace Application.Dto.Catalog.Passport
         [Display(Name = "Sđ")]
         public string Sd { get; set; }
         public string Sc { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreatePassportDto
@@ -27,5 +31,6 @@ namespace Application.Dto.Catalog.Passport
         public string Name { get; set; }
         public string Sd { get; set; }
         public string Sc { get; set; }
+        public string? Note { get; set; }
     }
 }

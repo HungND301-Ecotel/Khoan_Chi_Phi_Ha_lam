@@ -19,7 +19,8 @@ public class StoneClampRatiosByPaginationSpec
             .Select(s => new StoneClampRatioDto
             {
                 Id = s.Id,
-                Value = s.Value
+                Value = s.Value,
+                Note = s.Note
             });
     }
 }

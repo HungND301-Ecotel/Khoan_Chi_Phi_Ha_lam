@@ -21,7 +21,8 @@ public class DepartmentsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain
             {
                 Id = d.Id,
                 Code = d.Code.Value,
-                Name = d.Name
+                Name = d.Name,
+                Note = d.Note
             });
     }
 }

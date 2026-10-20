@@ -48,6 +48,12 @@ public class ImportExcelEmployeeCommandHandler(
             predicate: r => r.RoleType == RoleType.User,
             disableTracking: true) ?? throw new NotFoundException("Không tìm thấy Role User mặc định.");
 
+        // Mã nhân viên cuối cùng của các dòng có Id trong file (dùng để bỏ qua xung đột khi đổi mã giữa các nhân viên)
+        var fileCodeById = dtos
+            .Where(d => d.Id.HasValue)
+            .GroupBy(d => d.Id!.Value)
+            .ToDictionary(g => g.Key, g => NormalizeCode(g.Last().Code));
+
         var updatePayloads = new List<(Domain.Entities.Index.Employee Entity, EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender, bool IsActive)>();
         var addPayloads = new List<(EmployeeExcelDto Dto, int PositionId, Guid DepartmentId, bool? Gender, bool IsActive)>();
 
@@ -67,6 +73,22 @@ public class ImportExcelEmployeeCommandHandler(
             var department = allDepartments.FirstOrDefault(d =>
                 d.Name.Trim().Equals(dto.DepartmentName?.Trim(), StringComparison.OrdinalIgnoreCase))
                 ?? throw new BadRequestException($"Không tìm thấy phòng ban '{dto.DepartmentName}' ở dòng {rowNumber}.");
+
+            var code = NormalizeCode(dto.Code);
+            if (code != null && dtos.Count(d => NormalizeCode(d.Code) == code) > 1)
+            {
+                throw new ConflictException($"Mã nhân viên '{code}' bị trùng trong file ở dòng {rowNumber}.");
+            }
+
+            var isCodeTakenByOther = code != null && dbEmployees.Any(x =>
+                x.Code == code
+                && (!dto.Id.HasValue || x.Id != dto.Id.Value)
+                && !(fileCodeById.TryGetValue(x.Id, out var newCode) && newCode != code));
+
+            if (isCodeTakenByOther)
+            {
+                throw new ConflictException($"Mã nhân viên '{code}' đã tồn tại ở dòng {rowNumber}.");
+            }
 
             bool? gender = string.IsNullOrWhiteSpace(dto.GenderName)
                 ? null
@@ -109,7 +131,9 @@ public class ImportExcelEmployeeCommandHandler(
                     avatarUrl: entity.Avatar,
                     dob: dto.Dob,
                     gender: gender,
-                    cccd: dto.Cccd?.Trim() ?? string.Empty
+                    cccd: dto.Cccd?.Trim() ?? string.Empty,
+                    code: dto.Code,
+                    note: dto.Note
                     );
 
                 _employeeRepository.Update(entity);
@@ -166,7 +190,9 @@ public class ImportExcelEmployeeCommandHandler(
                     dob: dto.Dob,
                     gender: gender,
                     cccd: dto.Cccd?.Trim() ?? string.Empty,
-                    userId: user.Id);
+                    userId: user.Id,
+                    code: dto.Code,
+                    note: dto.Note);
 
                 await _employeeRepository.InsertAsync(employee, cancellationToken);
             }
@@ -181,4 +207,7 @@ public class ImportExcelEmployeeCommandHandler(
             throw;
         }
     }
+
+    private static string? NormalizeCode(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpper();
 }

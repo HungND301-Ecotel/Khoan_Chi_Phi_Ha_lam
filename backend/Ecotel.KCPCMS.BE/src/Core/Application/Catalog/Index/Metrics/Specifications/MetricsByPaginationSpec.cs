@@ -26,7 +26,8 @@ public class MetricsByPaginationSpec<TEntity>
         Query.Select(e => new MetricDto
         {
             Id = EF.Property<DefaultIdType>(e, "Id"),
-            Value = EF.Property<string>(e, "Value")
+            Value = EF.Property<string>(e, "Value"),
+            Note = EF.Property<string?>(e, "Note")
         });
     }
 }

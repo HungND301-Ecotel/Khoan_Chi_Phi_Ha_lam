@@ -25,4 +25,8 @@ export const CATALOG_ASSET_INTERNAL_COLUMNS: ColumnDef<Asset>[] = [
 		header: 'Đơn giá thực tế (đ)',
 		cell: ({ row }) => formatNumber(row.original.actualAmount ?? 0),
 	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
+	},
 ];

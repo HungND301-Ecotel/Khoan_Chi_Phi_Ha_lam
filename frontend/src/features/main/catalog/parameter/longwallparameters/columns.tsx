@@ -5,6 +5,7 @@ export type Longwallparameters = {
 	llc: string;
 	lkc: number;
 	mk: number;
+	note?: string;
 };
 
 export const CATALOG_PARAMETER_LONGWALLPARAMETERS_COLUMNS: ColumnDef<Longwallparameters>[] =
@@ -15,5 +16,9 @@ export const CATALOG_PARAMETER_LONGWALLPARAMETERS_COLUMNS: ColumnDef<Longwallpar
 			cell: ({ row }) => {
 				return `${row.original.llc}; ${row.original.lkc}; ${row.original.mk}`;
 			},
+		},
+		{
+			accessorKey: 'note',
+			header: 'Ghi chú',
 		},
 	];

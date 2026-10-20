@@ -19,7 +19,7 @@ public class UpdateStoneClampRatioCommandHandler(IUnitOfWork unitOfWork) : IRequ
             predicate: p => p.Id == request.UpdateModel.Id,
             disableTracking: true
         ) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
-        existedModel.Update(request.UpdateModel.Value);
+        existedModel.Update(request.UpdateModel.Value, request.UpdateModel.Note);
 
         _stoneClampRatioRepository.Update(existedModel);
         await unitOfWork.SaveChangesAsync();

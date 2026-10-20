@@ -39,6 +39,7 @@ public class NormFactorsByPaginationSpec
             StoneClampRatioId = nf.StoneClampRatioId,
             StoneClampRatioName = nf.StoneClampRatio != null ? nf.StoneClampRatio.Value : string.Empty,
             SteelMeshType = nf.SteelMeshType,
+            Note = nf.Note,
             AssignmentCodes = nf.NormFactorAssignmentCodes.Select(a => new NormFactorAssignmentCodeDto
             {
                 AssignmentCodeId = a.AssignmentCodeId,

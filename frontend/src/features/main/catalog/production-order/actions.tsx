@@ -39,6 +39,7 @@ export function ProductionOrderForm({
 				name: row.name,
 				startMonth: row.startMonth,
 				endMonth: row.endMonth,
+				note: row.note || '',
 			});
 		}
 	}, [row, form, isDuplicate]);
@@ -95,6 +96,12 @@ export function ProductionOrderForm({
 				name='name'
 				label='Tên quyết định, lệnh sản xuất'
 				placeholder='Nhập tên quyết định, lệnh sản xuất'
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

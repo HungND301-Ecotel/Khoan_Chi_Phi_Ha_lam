@@ -29,7 +29,8 @@ public class ExportExcelDepartmentQueryHandler(
         {
             Id = l.Id,
             Code = l.Code?.Value ?? string.Empty,
-            Name = l.Name
+            Name = l.Name,
+            Note = l.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Đơn vị", listHiddenProperty);

@@ -22,6 +22,7 @@ public class PassportsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
                 Name = p.Name,
                 Sd = p.Sd,
                 Sc = p.Sc,
+                Note = p.Note,
                 CreateOn = p.CreatedOn
             });
     }

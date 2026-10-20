@@ -18,12 +18,14 @@ public class PositionsByPaginationSpec : EntitiesByPaginationFilterSpec<Domain.E
 
         Query
             .Where(p => string.IsNullOrWhiteSpace(searchTerm) ||
-                        p.Name.ToLower().Contains(searchTerm));
+                        p.Name.ToLower().Contains(searchTerm) ||
+                        (p.Code != null && p.Code.ToLower().Contains(searchTerm)));
 
         Query
             .Select(p => new PositionDto
             {
                 Id = p.Id,
+                Code = p.Code,
                 Name = p.Name,
                 Level = p.Level ?? 0,
                 Description = p.Description

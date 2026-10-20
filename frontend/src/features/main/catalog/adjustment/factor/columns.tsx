@@ -11,6 +11,7 @@ export type Factor = {
 	processGroupCode: string;
 	processGroupName: string;
 	type: number;
+	note?: string | null;
 };
 
 export const CATALOG_ADJUSTMENT_FACTOR_COLUMNS: ColumnDef<Factor>[] = [
@@ -32,5 +33,9 @@ export const CATALOG_ADJUSTMENT_FACTOR_COLUMNS: ColumnDef<Factor>[] = [
 		cell: ({ row }) => (
 			<span className='whitespace-normal'>{row.original.name}</span>
 		),
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

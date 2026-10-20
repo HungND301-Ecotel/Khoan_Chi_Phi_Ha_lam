@@ -32,6 +32,10 @@ public class UpdateMetricCommandHandler<TEntity>(IUnitOfWork unitOfWork) : IRequ
 
         // Cập nhật: giả sử entity có method Update(...) hoặc bạn map DTO vào entity
         // Bạn có thể dùng Mapster để map các field từ DTO sang entity
+        request.UpdateModel.Note = string.IsNullOrWhiteSpace(request.UpdateModel.Note)
+            ? null
+            : request.UpdateModel.Note.Trim();
+
         request.UpdateModel.Adapt(existing);
 
         _metricRepository.Update(existing);

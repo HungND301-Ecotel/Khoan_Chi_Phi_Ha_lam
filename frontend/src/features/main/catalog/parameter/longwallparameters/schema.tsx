@@ -10,6 +10,7 @@ export const longwallparametersSchema = z.object({
 	mk: z.string().nonempty({
 		error: 'MK không được để trống',
 	}),
+	note: z.string().optional(),
 });
 
 export type LongwallparametersSchema = z.infer<typeof longwallparametersSchema>;
@@ -18,4 +19,5 @@ export const LONGWALLPARAMETERS_SCHEMA_DEFAULT: LongwallparametersSchema = {
 	llc: '',
 	lkc: '',
 	mk: '',
+	note: '',
 };

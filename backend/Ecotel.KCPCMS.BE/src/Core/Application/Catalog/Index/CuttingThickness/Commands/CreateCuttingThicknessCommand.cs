@@ -13,7 +13,7 @@ public class CreateCuttingThicknessCommandHandler(IUnitOfWork unitOfWork) : IReq
 
     public async Task<bool> Handle(CreateCuttingThicknessCommand request, CancellationToken cancellationToken)
     {
-        var newCuttingThickness = Domain.Entities.Index.CuttingThickness.Create(request.CreateModel.Value);
+        var newCuttingThickness = Domain.Entities.Index.CuttingThickness.Create(request.CreateModel.Value, request.CreateModel.Note);
         await _cuttingThicknessRepository.InsertAsync(newCuttingThickness);
         await unitOfWork.SaveChangesAsync();
         return true;

@@ -9,13 +9,14 @@ public class LongwallParameters : AuditableEntity<Guid>, IAggregateRoot
     public string Llc { get; protected set; }
     public string Lkc { get; protected set; }
     public string Mk { get; protected set; }
+    public string? Note { get; protected set; }
 
     //Navigation Properties
     private IList<LongwallMaterialUnitPrice> _materialUnitPrices = new List<LongwallMaterialUnitPrice>();
     public virtual IReadOnlyCollection<LongwallMaterialUnitPrice> MaterialUnitPrices => _materialUnitPrices.AsReadOnly();
 
     // Constructor
-    public static LongwallParameters Create(string llc, string lkc, string mk)
+    public static LongwallParameters Create(string llc, string lkc, string mk, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(llc) || string.IsNullOrWhiteSpace(lkc) || string.IsNullOrWhiteSpace(mk))
         {
@@ -26,11 +27,12 @@ public class LongwallParameters : AuditableEntity<Guid>, IAggregateRoot
         {
             Llc = llc,
             Lkc = lkc,
-            Mk = mk
+            Mk = mk,
+            Note = NormalizeNote(note)
         };
     }
 
-    public static LongwallParameters Create(Guid id, string llc, string lkc, string mk)
+    public static LongwallParameters Create(Guid id, string llc, string lkc, string mk, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(llc) || string.IsNullOrWhiteSpace(lkc) || string.IsNullOrWhiteSpace(mk))
         {
@@ -42,11 +44,12 @@ public class LongwallParameters : AuditableEntity<Guid>, IAggregateRoot
             Id = id,
             Llc = llc,
             Lkc = lkc,
-            Mk = mk
+            Mk = mk,
+            Note = NormalizeNote(note)
         };
     }
 
-    public void Update(string llc, string lkc, string mk)
+    public void Update(string llc, string lkc, string mk, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(llc) || string.IsNullOrWhiteSpace(lkc) || string.IsNullOrWhiteSpace(mk))
         {
@@ -56,10 +59,16 @@ public class LongwallParameters : AuditableEntity<Guid>, IAggregateRoot
         Llc = llc;
         Lkc = lkc;
         Mk = mk;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(LongwallParameters dto)
     {
-        return !(Llc == dto.Llc && Lkc == dto.Lkc && Mk == dto.Mk);
+        return !(Llc == dto.Llc && Lkc == dto.Lkc && Mk == dto.Mk && Note == NormalizeNote(dto.Note));
+    }
+
+    private static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

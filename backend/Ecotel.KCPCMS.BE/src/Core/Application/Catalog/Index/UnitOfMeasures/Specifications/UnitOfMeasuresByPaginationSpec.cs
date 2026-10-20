@@ -20,7 +20,8 @@ public class UnitOfMeasuresByPaginationSpec : EntitiesByPaginationFilterSpec<Uni
             .Select(u => new UnitOfMeasureDto
             {
                 Id = u.Id,
-                Name = u.Name
+                Name = u.Name,
+                Note = u.Note
             });
     }
 }

@@ -13,6 +13,7 @@ namespace Application.Dto.Catalog.Product
         public Guid ProcessGroupId { get; set; }
         public string ProcessGroupCode { get; set; } = "";
         public string ProcessGroupName { get; set; } = "";
+        public string? Note { get; set; }
     }
 
     public class ProductExcelDto
@@ -22,12 +23,14 @@ namespace Application.Dto.Catalog.Product
         public DateOnly StartMonth { get; set; }
         [Display(Name = "Thời gian kết thúc")]
         public DateOnly EndMonth { get; set; }
-        [Display(Name = "Mã nhóm CĐSX")]
-        public string ProcessGroupCode { get; set; } = "";
         [Display(Name = "Mã sản phẩm")]
         public string Code { get; set; } = "";
         [Display(Name = "Tên sản phẩm")]
         public string Name { get; set; } = "";
+        [Display(Name = "Mã nhóm CĐSX")]
+        public string ProcessGroupCode { get; set; } = "";
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class UpdateProductDto
@@ -38,6 +41,7 @@ namespace Application.Dto.Catalog.Product
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public Guid ProcessGroupId { get; set; }
+        public string? Note { get; set; }
     }
 
     public class CreateProductDto
@@ -47,5 +51,6 @@ namespace Application.Dto.Catalog.Product
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public Guid ProcessGroupId { get; set; }
+        public string? Note { get; set; }
     }
 }

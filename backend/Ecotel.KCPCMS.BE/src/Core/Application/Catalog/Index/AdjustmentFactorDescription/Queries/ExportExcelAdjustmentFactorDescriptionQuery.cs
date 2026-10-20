@@ -41,7 +41,8 @@ public class ExportExcelAdjustmentFactorDescriptionQueryHandler(IExcelService ex
             AdjustmentFactorCode = (s.AdjustmentFactor?.ProcessGroup!.FixedKey!.Key + " - " + s.AdjustmentFactor!.Code?.Value) ?? "",
             Description = s.Description,
             MaintenanceAdjustmentValue = s.MaintenanceAdjustmentValue,
-            ElectricityAdjustmentValue = s.ElectricityAdjustmentValue
+            ElectricityAdjustmentValue = s.ElectricityAdjustmentValue,
+            Note = s.Note
         });
 
         return excelService.ExportToExcel(dtoList.OrderBy(d => d.AdjustmentFactorCode).ThenBy(d => d.Description), "Diễn giải hệ số điều chỉnh", listHiddenProperty, dropdownConfigs);

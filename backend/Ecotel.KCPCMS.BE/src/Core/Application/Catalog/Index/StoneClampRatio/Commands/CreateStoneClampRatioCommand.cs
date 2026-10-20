@@ -12,7 +12,7 @@ public class CreateStoneClampRatioCommandHandler(IUnitOfWork unitOfWork) : IRequ
     private readonly IWriteRepository<Domain.Entities.Index.StoneClampRatio> _stoneClampRatioRepository = unitOfWork.GetRepository<Domain.Entities.Index.StoneClampRatio>();
     public async Task<bool> Handle(CreateStoneClampRatioCommand request, CancellationToken cancellationToken)
     {
-        var newStoneClampRatio = Domain.Entities.Index.StoneClampRatio.Create(request.CreateModel.Value);
+        var newStoneClampRatio = Domain.Entities.Index.StoneClampRatio.Create(request.CreateModel.Value, request.CreateModel.Note);
         await _stoneClampRatioRepository.InsertAsync(newStoneClampRatio);
         await unitOfWork.SaveChangesAsync();
         return true;

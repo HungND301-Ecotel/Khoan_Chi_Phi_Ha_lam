@@ -34,7 +34,8 @@ public class AdjustmentFactorsByPaginationSpec
                 Type = af.FixedKey != null ? af.FixedKey.Type.ToAdjustmentFactorType() : Domain.Common.Enums.AdjustmentFactorType.None,
                 ProcessGroupId = af.ProcessGroupId,
                 ProcessGroupName = af.ProcessGroup != null ? af.ProcessGroup.Name : string.Empty,
-                ProcessGroupCode = af.ProcessGroup != null && af.ProcessGroup.FixedKey != null ? af.ProcessGroup.FixedKey.Key : string.Empty
+                ProcessGroupCode = af.ProcessGroup != null && af.ProcessGroup.FixedKey != null ? af.ProcessGroup.FixedKey.Key : string.Empty,
+                Note = af.Note
             });
     }
 }

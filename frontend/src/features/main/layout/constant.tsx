@@ -40,7 +40,7 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
-				name: 'Cán bộ, nhân viên',
+				name: 'Nhân viên',
 				href: '/catalogs/employees',
 				permission: PERMISSIONS.CATALOG.EMPLOYEE.READ,
 			},

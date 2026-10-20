@@ -22,7 +22,8 @@ public class ProductionOrdersByPaginationSpec : EntitiesByPaginationFilterSpec<D
                 Name = p.Name,
                 Code = p.Code.Value,
                 StartMonth = p.StartMonth,
-                EndMonth = p.EndMonth
+                EndMonth = p.EndMonth,
+                Note = p.Note
             });
     }
 }

@@ -7,6 +7,7 @@ namespace Application.Dto.Catalog.CuttingThickness
     {
         public Guid Id { get; set; }
         public string Value { get; set; }
+        public string? Note { get; set; }
     }
 
     public class CuttingThicknessExcelDto
@@ -14,10 +15,14 @@ namespace Application.Dto.Catalog.CuttingThickness
         public Guid Id { get; set; }
         [Display(Name = "Value")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateCuttingThicknessDto
     {
         public string Value { get; set; }
+        public string? Note { get; set; }
     }
 }

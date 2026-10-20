@@ -68,7 +68,7 @@ export function MainCatalogSavingsRateConfigPage() {
 			filters={[
 				{ key: 'revenueDisplay', label: 'Tổng doanh thu 3 yếu tố' },
 				{ key: 'savingsRateDisplay', label: 'Giá trị tiết kiệm' },
-				{ key: 'description', label: 'Mô tả' },
+				{ key: 'description', label: 'Ghi chú' },
 			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.CREATE) ? (props) => <SavingsRateConfigForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.SAVINGS_RATE.CREATE) ? (props) => <SavingsRateConfigForm {...props} isDuplicate /> : undefined}

@@ -41,7 +41,8 @@ public class ExportExcelProductQueryHandler(IExcelService excelService, IUnitOfW
             EndMonth = s.EndMonth,
             Code = s.Code?.Value ?? "",
             Name = s.Name,
-            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? ""
+            ProcessGroupCode = s.ProcessGroup?.FixedKey?.Key ?? "",
+            Note = s.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Công đoạn sản xuất", listHiddenProperty, dropdownConfigs);

@@ -27,6 +27,7 @@ public class GetProcessGroupByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestH
                 Code = t.FixedKey != null ? t.FixedKey.Key : t.Code != null ? t.Code.Value : string.Empty,
                 Type = t.FixedKey != null ? t.FixedKey.Type.ToProcessGroupType() : t.Type,
                 Name = t.Name,
+                Note = t.Note,
             })
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);

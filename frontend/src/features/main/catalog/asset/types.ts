@@ -9,4 +9,5 @@ export type Asset = {
 	usageTime: number;
 	costAmount: number;
 	actualAmount: number;
+	note?: string | null;
 };

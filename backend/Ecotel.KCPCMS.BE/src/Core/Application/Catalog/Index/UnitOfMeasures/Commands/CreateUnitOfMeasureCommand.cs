@@ -22,7 +22,7 @@ public class CreateUnitOfMeasureCommandHandler(IUnitOfWork unitOfWork) : IReques
             throw new ConflictException(CustomResponseMessage.UnitOfMeasureNameAlreadyExists);
         }
 
-        var newUnitOfmeasure = UnitOfMeasure.Create(request.CreateModel.Name);
+        var newUnitOfmeasure = UnitOfMeasure.Create(request.CreateModel.Name, request.CreateModel.Note);
         await _unitOfMeasureRepository.InsertAsync(newUnitOfmeasure, cancellationToken);
         await unitOfWork.SaveChangesAsync();
         return true;

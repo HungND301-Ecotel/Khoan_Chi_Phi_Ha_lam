@@ -10,6 +10,7 @@ export const passportSchema = z.object({
 	sc: z.string().nonempty({
 		error: 'Sc không được để trống',
 	}),
+	note: z.string().optional(),
 });
 
 export type PassportSchema = z.infer<typeof passportSchema>;
@@ -18,4 +19,5 @@ export const PASSPORT_SCHEMA_DEFAULT: PassportSchema = {
 	name: '',
 	sd: '',
 	sc: '',
+	note: '',
 };

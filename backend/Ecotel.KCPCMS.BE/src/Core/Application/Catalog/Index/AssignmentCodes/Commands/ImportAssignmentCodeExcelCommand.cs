@@ -116,6 +116,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                 AssignmentCodeNormalized: firstRow.AssignmentCodeNormalized,
                 Name: firstRow.AssignmentName,
                 UnitOfMeasureId: unitOfMeasureId,
+                Note: firstRow.Note,
                 MaterialIds: materialIds,
                 OtherMaterialIds: otherMaterialIds);
         }).ToList();
@@ -163,6 +164,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                 var isInfoChanged =
                     !string.Equals(existedEntity.Name, item.Name, StringComparison.Ordinal)
                     || existedEntity.UnitOfMeasureId != item.UnitOfMeasureId
+                    || !string.Equals(existedEntity.Note, AssignmentCodeEntity.NormalizeNote(item.Note), StringComparison.Ordinal)
                     || !string.Equals(existedEntity.Code?.Value, item.AssignmentCodeDisplay, StringComparison.OrdinalIgnoreCase);
 
                 var selectedLinkSet = selectedLinks.ToHashSet();
@@ -173,7 +175,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
 
                 if (isInfoChanged)
                 {
-                    existedEntity.Update(item.Name, item.AssignmentCodeDisplay, item.UnitOfMeasureId);
+                    existedEntity.Update(item.Name, item.AssignmentCodeDisplay, item.UnitOfMeasureId, item.Note);
                 }
 
                 if (isMaterialChanged)
@@ -216,7 +218,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             }
             else
             {
-                var newEntity = AssignmentCodeEntity.Create(item.Name, item.AssignmentCodeDisplay, item.UnitOfMeasureId);
+                var newEntity = AssignmentCodeEntity.Create(item.Name, item.AssignmentCodeDisplay, item.UnitOfMeasureId, item.Note);
                 addList.Add(newEntity);
                 newAssignmentMaterialMap[newEntity] = selectedLinks;
             }
@@ -287,6 +289,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         string? currentCode = null;
         string? currentName = null;
         string currentUnit = string.Empty;
+        string? currentNote = null;
 
         for (var i = 0; i < dtos.Count; i++)
         {
@@ -296,6 +299,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
             var codeInput = (dto.Code ?? string.Empty).Trim();
             var nameInput = (dto.Name ?? string.Empty).Trim();
             var unitInput = (dto.UnitOfMeasureName ?? string.Empty).Trim();
+            var noteInput = dto.Note?.Trim();
             var materialInput = NormalizeCode(dto.MaterialCode);
             var materialRole = ParseMaterialRole(dto.MaterialRole);
 
@@ -310,6 +314,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                 currentCode = codeInput;
                 currentName = nameInput;
                 currentUnit = unitInput;
+                currentNote = noteInput;
             }
             else
             {
@@ -328,6 +333,11 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                 {
                     currentUnit = unitInput;
                 }
+
+                if (!string.IsNullOrWhiteSpace(noteInput))
+                {
+                    currentNote = noteInput;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(currentName))
@@ -342,6 +352,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
                 AssignmentCodeNormalized: NormalizeCode(currentCode),
                 AssignmentName: currentName,
                 UnitName: currentUnit,
+                Note: currentNote,
                 MaterialCode: materialInput,
                 MaterialRole: materialRole));
         }
@@ -394,6 +405,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         string AssignmentCodeNormalized,
         string AssignmentName,
         string UnitName,
+        string? Note,
         string MaterialCode,
         AssignmentCodeMaterialRole MaterialRole);
 
@@ -403,6 +415,7 @@ public class ImportAssignmentCodeExcelCommandHandler(IExcelService excelService,
         string AssignmentCodeNormalized,
         string Name,
         Guid? UnitOfMeasureId,
+        string? Note,
         List<Guid> MaterialIds,
         List<Guid> OtherMaterialIds);
 

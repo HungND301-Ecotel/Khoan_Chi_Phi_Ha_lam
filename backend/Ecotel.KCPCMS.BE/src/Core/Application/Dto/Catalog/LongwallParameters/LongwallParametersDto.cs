@@ -9,6 +9,7 @@ namespace Application.Dto.Catalog.LongwallParameters
         public string Llc { get; set; }
         public string Lkc { get; set; }
         public string Mk { get; set; }
+        public string? Note { get; set; }
     }
 
     public class LongwallParametersExcelDto
@@ -20,6 +21,9 @@ namespace Application.Dto.Catalog.LongwallParameters
         public string Lkc { get; set; }
         [Display(Name = "MK")]
         public string Mk { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateLongwallParametersDto
@@ -27,5 +31,6 @@ namespace Application.Dto.Catalog.LongwallParameters
         public string Llc { get; set; }
         public string Lkc { get; set; }
         public string Mk { get; set; }
+        public string? Note { get; set; }
     }
 }

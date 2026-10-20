@@ -21,7 +21,8 @@ public class LongwallParametersByPaginationSpec : EntitiesByPaginationFilterSpec
                 Id = p.Id,
                 Llc = p.Llc,
                 Lkc = p.Lkc,
-                Mk = p.Mk
+                Mk = p.Mk,
+                Note = p.Note
             });
     }
 }

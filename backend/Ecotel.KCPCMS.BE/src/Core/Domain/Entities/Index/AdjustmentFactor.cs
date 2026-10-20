@@ -10,6 +10,7 @@ namespace Domain.Entities.Index
         public string Name { get; protected set; }
         public Guid? FixedKeyId { get; protected set; }
         public Guid ProcessGroupId { get; protected set; }
+        public string? Note { get; protected set; }
 
         // Navigation properties
         public virtual ProcessGroup? ProcessGroup { get; protected set; }
@@ -19,7 +20,7 @@ namespace Domain.Entities.Index
         private IList<AdjustmentFactorDescription> _adjustmentFactorDescriptions = new List<AdjustmentFactorDescription>();
         public IReadOnlyList<AdjustmentFactorDescription> AdjustmentFactorDescriptions => _adjustmentFactorDescriptions.ToList();
 
-        public static AdjustmentFactor Create(FixedKey fixedKey, string name, Guid processGroupId)
+        public static AdjustmentFactor Create(FixedKey fixedKey, string name, Guid processGroupId, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(fixedKey);
 
@@ -34,10 +35,11 @@ namespace Domain.Entities.Index
                 FixedKeyId = fixedKey.Id,
                 Name = name,
                 ProcessGroupId = processGroupId,
+                Note = NormalizeNote(note),
             };
         }
 
-        public void Update(FixedKey fixedKey, string name, Guid processGroupId)
+        public void Update(FixedKey fixedKey, string name, Guid processGroupId, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(fixedKey);
 
@@ -58,6 +60,7 @@ namespace Domain.Entities.Index
             FixedKeyId = fixedKey.Id;
             Name = name;
             ProcessGroupId = processGroupId;
+            Note = NormalizeNote(note);
         }
 
         public void UpdateProcessGroupInfo(Guid processGroupId, string processGroupName)
@@ -67,7 +70,12 @@ namespace Domain.Entities.Index
 
         public bool CheckChange(AdjustmentFactor dto)
         {
-            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == dto.ProcessGroupId && FixedKeyId == dto.FixedKeyId);
+            return !(Code?.Value == dto.Code?.Value && Name == dto.Name && ProcessGroupId == dto.ProcessGroupId && FixedKeyId == dto.FixedKeyId && Note == dto.Note);
+        }
+
+        public static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

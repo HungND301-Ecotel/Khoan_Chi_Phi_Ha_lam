@@ -27,6 +27,7 @@ public class AssignmentCodesByPaginationSpec : EntitiesByPaginationFilterSpec<As
             Name = x.Name,
             UnitOfMeasureId = x.UnitOfMeasureId,
             UnitOfMeasureName = x.UnitOfMeasure != null ? x.UnitOfMeasure.Name : string.Empty,
+            Note = x.Note,
             CurrentPrice = x.Costs
                 .Where(c => c.CostType == CostType.Electricity && c.StartMonth <= currentDate && c.EndMonth >= currentDate)
                 .Select(c => c.Amount)

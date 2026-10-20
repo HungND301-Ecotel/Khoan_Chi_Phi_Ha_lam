@@ -26,7 +26,8 @@ public class GetProductionOrderByIdQueryHandler(IUnitOfWork unitOfWork) : IReque
             Code = entity.Code.Value,
             Name = entity.Name,
             StartMonth = entity.StartMonth,
-            EndMonth = entity.EndMonth
+            EndMonth = entity.EndMonth,
+            Note = entity.Note
         };
     }
 }

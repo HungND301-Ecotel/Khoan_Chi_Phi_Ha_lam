@@ -40,6 +40,7 @@ export function PassportForm({
 				name: row.name,
 				sd: row.sd,
 				sc: row.sc,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -89,6 +90,12 @@ export function PassportForm({
 				placeholder='Nhập Sc'
 				type='text'
 				supports={PASSPORT_SUPPORTS}
+			/>
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

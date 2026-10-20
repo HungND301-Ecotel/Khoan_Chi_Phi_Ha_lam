@@ -31,6 +31,10 @@
 *.code-workspace
 
 # --- Node.js / Front-end Specific ---
+.env
+.env.*
+!.env.example
+.env_backend
 node_modules/
 dist/
 dist-ssr/

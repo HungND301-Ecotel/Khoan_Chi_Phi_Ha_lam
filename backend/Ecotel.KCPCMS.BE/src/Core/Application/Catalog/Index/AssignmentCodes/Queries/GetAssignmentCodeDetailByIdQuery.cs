@@ -63,6 +63,7 @@ public class GetAssignmentCodeDetailByIdQueryHandler(IUnitOfWork unitOfWork) : I
             Name = detail.Name,
             UnitOfMeasureId = detail.UnitOfMeasureId,
             UnitOfMeasureName = detail.UnitOfMeasure != null ? detail.UnitOfMeasure.Name : string.Empty,
+            Note = detail.Note,
             CurrentPrice = detail.Costs
                 .Where(c => c.CostType == CostType.Electricity && c.StartMonth <= checkDate && c.EndMonth >= checkDate)
                 .Select(c => c.Amount)

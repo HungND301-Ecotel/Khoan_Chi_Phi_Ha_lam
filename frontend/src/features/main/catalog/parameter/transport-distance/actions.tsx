@@ -48,6 +48,7 @@ export function TransportDistanceForm({
 		if (row) {
 			form.reset({
 				value: row.value || row.name || row.distanceRange || '',
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -58,6 +59,7 @@ export function TransportDistanceForm({
 				value: values.value,
 				name: values.value,
 				code: values.value,
+				note: values.note,
 			};
 
 			if (row?.id && !isDuplicate) {
@@ -88,6 +90,13 @@ export function TransportDistanceForm({
 				label='Cung độ vận tải (L)'
 				placeholder='Nhập cung độ vận tải (ví dụ: L ≤ 1, L ≤ 1.1)'
 				supports={LONGWALLPARAMETERS_SUPPORTS}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

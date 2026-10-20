@@ -51,6 +51,7 @@ public class UpdateMaterialCommandHandler(IUnitOfWork unitOfWork, ICodeService c
             await unitOfWork.SaveChangesAsync();
 
             existedMaterial.Update(request.UpdateModel.Code, request.UpdateModel.Name, request.UpdateModel.UnitOfMeasureId, existedMaterial.AssigmentCodeId, normalizedMaterialType);
+            existedMaterial.SetNote(request.UpdateModel.Note);
 
             var costList = new List<Cost>();
             foreach (var cost in request.UpdateModel.Costs)

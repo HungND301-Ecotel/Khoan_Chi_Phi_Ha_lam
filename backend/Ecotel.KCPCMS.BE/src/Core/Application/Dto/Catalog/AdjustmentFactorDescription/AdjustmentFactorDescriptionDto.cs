@@ -11,6 +11,7 @@ public class AdjustmentFactorDescriptionDto : IDto
     public string AdjustmentFactorCode { get; set; } = "";
     public double? MaintenanceAdjustmentValue { get; set; }
     public double? ElectricityAdjustmentValue { get; set; }
+    public string? Note { get; set; }
 }
 
 public class AdjustmentFactorDescriptionExcelDto
@@ -24,6 +25,8 @@ public class AdjustmentFactorDescriptionExcelDto
     public double? MaintenanceAdjustmentValue { get; set; }
     [Display(Name = "Trị số điều chỉnh điện năng")]
     public double? ElectricityAdjustmentValue { get; set; }
+    [Display(Name = "Ghi chú")]
+    public string? Note { get; set; }
 }
 
 public class ShortAdjustmentFactorDescriptionDto
@@ -66,6 +69,7 @@ public class CreateAdjustmentFactorDescriptionDto
     public Guid AdjustmentFactorId { get; set; }
     public double? MaintenanceAdjustmentValue { get; set; }
     public double? ElectricityAdjustmentValue { get; set; }
+    public string? Note { get; set; }
 }
 
 public class UpdateAdjustmentFactorDescriptionDto
@@ -75,4 +79,5 @@ public class UpdateAdjustmentFactorDescriptionDto
     public Guid AdjustmentFactorId { get; set; }
     public double? MaintenanceAdjustmentValue { get; set; }
     public double? ElectricityAdjustmentValue { get; set; }
+    public string? Note { get; set; }
 }

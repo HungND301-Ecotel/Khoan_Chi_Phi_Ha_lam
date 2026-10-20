@@ -70,7 +70,7 @@ export function MainCatalogRevenueCostAdjustmentConfigPage() {
 			filters={[
 				{ key: 'profitConditionDisplay', label: 'Điều kiện lợi nhuận' },
 				{ key: 'rateDisplay', label: 'Tỷ lệ điều chỉnh' },
-				{ key: 'description', label: 'Mô tả' },
+				{ key: 'description', label: 'Ghi chú' },
 			]}
 			onCreate={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.CREATE) ? (props) => <RevenueCostAdjustmentConfigForm {...props} /> : undefined}
 			onDuplicate={hasPermission(PERMISSIONS.CATALOG.REVENUE_COST.CREATE) ? (props) => (

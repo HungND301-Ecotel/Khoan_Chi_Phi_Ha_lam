@@ -44,13 +44,13 @@ public class ImportHardnessExcelCommandHandler(IExcelService excelService, IUnit
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(Hardness.Create(dto.Value));
+                addList.Add(Hardness.Create(dto.Value, dto.Note));
             }
         }
 

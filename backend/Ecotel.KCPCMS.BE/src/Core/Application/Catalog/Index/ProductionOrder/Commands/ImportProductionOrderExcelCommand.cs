@@ -53,7 +53,8 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
                     !string.Equals(entityToUpdate.Code?.Value, dto.Code, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(entityToUpdate.Name, dto.Name, StringComparison.Ordinal)
                     || entityToUpdate.StartMonth != dto.StartMonth
-                    || entityToUpdate.EndMonth != dto.EndMonth;
+                    || entityToUpdate.EndMonth != dto.EndMonth
+                    || !string.Equals(entityToUpdate.Note, ProductionOrderEntity.NormalizeNote(dto.Note), StringComparison.Ordinal);
 
                 if (isChanged)
                 {
@@ -62,7 +63,7 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
                         throw new ConflictException($"Giá trị mã '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth);
+                    entityToUpdate.Update(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -73,7 +74,7 @@ public class ImportProductionOrderExcelCommandHandler(IExcelService excelService
                     throw new ConflictException($"Giá trị mã '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(ProductionOrderEntity.Create(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth));
+                addList.Add(ProductionOrderEntity.Create(dto.Code, dto.Name, dto.StartMonth, dto.EndMonth, dto.Note));
             }
         }
 

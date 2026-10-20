@@ -64,6 +64,7 @@ public class ExportExcelEmployeeQueryHandler(
             .Select(e => new EmployeeExcelDto
             {
                 Id = e.Id,
+                Code = e.Code,
                 FullName = e.FullName,
                 PositionName = e.Position != null ? e.Position.Name : string.Empty,
                 DepartmentName = e.Department != null ? e.Department.Name : string.Empty,
@@ -73,7 +74,8 @@ public class ExportExcelEmployeeQueryHandler(
                 Cccd = e.Cccd,
                 Dob = e.Dob,
                 GenderName = e.Gender.HasValue ? (e.Gender.Value ? MaleLabel : FemaleLabel) : string.Empty,
-                IsActiveName = e.User != null ? (!(e.User.LockoutEnabled && e.User.LockoutEnd != null && e.User.LockoutEnd > DateTimeOffset.UtcNow) ? ActiveLabel : InActiveLabel) : string.Empty
+                IsActiveName = e.User != null ? (!(e.User.LockoutEnabled && e.User.LockoutEnd != null && e.User.LockoutEnd > DateTimeOffset.UtcNow) ? ActiveLabel : InActiveLabel) : string.Empty,
+                Note = e.Note
             });
 
         return excelService.ExportToExcel(dtoList, "Nhân viên", hiddenProperties, dropdownConfigs);

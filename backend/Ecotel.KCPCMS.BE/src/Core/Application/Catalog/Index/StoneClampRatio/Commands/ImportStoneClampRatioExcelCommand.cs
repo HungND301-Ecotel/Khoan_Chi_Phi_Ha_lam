@@ -24,7 +24,7 @@ public class ImportStoneClampRatioExcelCommandHandler(IExcelService excelService
         using var stream = request.File.OpenReadStream();
         var dtos = excelService.ImportFromExcel<StoneClampRatioExcelDto>(stream);
 
-        var excelDtos = dtos.Select(d => StoneClampRatioEntity.Create(d.Id, d.Value)).ToList();
+        var excelDtos = dtos.Select(d => StoneClampRatioEntity.Create(d.Id, d.Value, d.Note)).ToList();
 
 
         var dbStoneClampRatio = await _stoneClampRatioRepository.GetAllAsync(disableTracking: true);
@@ -46,13 +46,13 @@ public class ImportStoneClampRatioExcelCommandHandler(IExcelService excelService
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(StoneClampRatioEntity.Create(dto.Value));
+                addList.Add(StoneClampRatioEntity.Create(dto.Value, dto.Note));
             }
         }
 

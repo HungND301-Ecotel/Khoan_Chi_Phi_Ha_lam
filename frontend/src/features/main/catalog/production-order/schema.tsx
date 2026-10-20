@@ -13,6 +13,7 @@ export const ProductionOrderSchema = z.object({
 	endMonth: z.string().nonempty({
 		error: 'Thời gian kết thúc không được để trống.',
 	}),
+	note: z.string().optional(),
 });
 
 export type ProductionOrderSchema = z.infer<typeof ProductionOrderSchema>;
@@ -22,4 +23,5 @@ export const PRODUCTION_ORDER_SCHEMA_DEFAULT: ProductionOrderSchema = {
 	name: '',
 	startMonth: '',
 	endMonth: '',
+	note: '',
 };

@@ -7,6 +7,7 @@ namespace Application.Dto.Catalog.Metric
     {
         public Guid Id { get; set; }
         public string Value { get; set; }
+        public string? Note { get; set; }
     }
 
     public class HardnessExcelDto
@@ -14,6 +15,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Độ kiên cố than đá")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class PowerExcelDto
@@ -21,6 +25,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Công suất")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class SupportStepExcelDto
@@ -28,6 +35,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Bước chống")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class InsertItemExcelDto
@@ -35,6 +45,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Chèn")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class ProductioOrderExcelDto
@@ -49,6 +62,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Công nghệ khai thác")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class SeamFaceExcelDto
@@ -56,6 +72,9 @@ namespace Application.Dto.Catalog.Metric
         public Guid Id { get; set; }
         [Display(Name = "Mặt vỉa (M)")]
         public string Value { get; set; }
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class HaulDistanceExcelDto
@@ -64,10 +83,14 @@ namespace Application.Dto.Catalog.Metric
 
         [Display(Name = "Cung độ vận tải")]
         public string Value { get; set; } = string.Empty;
+
+        [Display(Name = "Ghi chú")]
+        public string? Note { get; set; }
     }
 
     public class CreateMetricDto
     {
         public string Value { get; set; }
+        public string? Note { get; set; }
     }
 }

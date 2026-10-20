@@ -34,6 +34,7 @@ type ContractCodeDetail = {
 	code: string;
 	name: string;
 	unitOfMeasureId?: string | null;
+	note?: string | null;
 	costs?: Array<{
 		startMonth: string;
 		endMonth: string;
@@ -75,6 +76,7 @@ export function ContractCodeForm({
 					materialIds: [],
 					otherMaterialIds: [],
 					costs: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
+					note: row.note || '',
 				}
 			: CONTRACT_CODE_SCHEMA_DEFAULT,
 	});
@@ -122,6 +124,7 @@ export function ContractCodeForm({
 										amount: cost.amount,
 									}))
 								: CONTRACT_CODE_SCHEMA_DEFAULT.costs,
+							note: detail.note || '',
 						});
 						setSelectedMaterials(selected);
 						setSelectedOtherMaterials(selectedOther);
@@ -281,6 +284,13 @@ export function ContractCodeForm({
 					</div>
 				)}
 			</FormArray>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
+			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

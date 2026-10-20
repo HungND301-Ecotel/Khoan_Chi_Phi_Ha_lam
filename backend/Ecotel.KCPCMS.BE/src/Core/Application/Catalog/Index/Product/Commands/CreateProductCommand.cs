@@ -33,7 +33,8 @@ public class CreateProductCommandHandler(IUnitOfWork unitOfWork, ICodeService co
             request.CreateModel.Name,
             request.CreateModel.ProcessGroupId,
             request.CreateModel.StartMonth,
-            request.CreateModel.EndMonth);
+            request.CreateModel.EndMonth,
+            request.CreateModel.Note);
         await _productRepository.InsertAsync(newProduct);
         await unitOfWork.SaveChangesAsync();
         return true;

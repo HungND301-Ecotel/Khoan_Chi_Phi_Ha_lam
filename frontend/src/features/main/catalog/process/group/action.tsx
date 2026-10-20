@@ -53,6 +53,7 @@ export function ProcessGroupForm({
 			form.reset({
 				name: row.name,
 				fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
+				note: row.note || '',
 			});
 		}
 	}, [row, form, isDuplicate]);
@@ -97,6 +98,13 @@ export function ProcessGroupForm({
 				name='name'
 				label='Tên nhóm công đoạn sản xuất'
 				placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

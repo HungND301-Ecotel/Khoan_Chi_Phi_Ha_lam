@@ -27,7 +27,8 @@ public class ExportExcelProductionOrderQueryHandler(IExcelService excelService, 
             StartMonth = p.StartMonth,
             EndMonth = p.EndMonth,
             Code = p.Code.Value,
-            Name = p.Name
+            Name = p.Name,
+            Note = p.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Quyết định, lệnh sản xuất", listHiddenProperty);

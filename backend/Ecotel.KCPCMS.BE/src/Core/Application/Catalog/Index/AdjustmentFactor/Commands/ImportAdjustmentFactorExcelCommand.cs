@@ -113,7 +113,8 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
                 var isChanged = entityToUpdate.ProcessGroupId != row.ProcessGroupId
                                 || entityToUpdate.FixedKeyId != row.FixedKey.Id
                                 || !string.Equals(entityToUpdate.Name, dto.Name, StringComparison.Ordinal)
-                                || !string.Equals(entityToUpdate.Code?.Value, row.FixedKey.Key, StringComparison.OrdinalIgnoreCase);
+                                || !string.Equals(entityToUpdate.Code?.Value, row.FixedKey.Key, StringComparison.OrdinalIgnoreCase)
+                                || !string.Equals(entityToUpdate.Note, AdjustmentFactorEntity.NormalizeNote(dto.Note), StringComparison.Ordinal);
 
                 if (isChanged)
                 {
@@ -131,7 +132,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
 
                     try
                     {
-                        entityToUpdate.Update(row.FixedKey, dto.Name, row.ProcessGroupId);
+                        entityToUpdate.Update(row.FixedKey, dto.Name, row.ProcessGroupId, dto.Note);
                         updateList.Add(entityToUpdate);
                     }
                     catch (Exception ex)
@@ -155,7 +156,7 @@ public class ImportAdjustmentFactorExcelCommandHandler(IExcelService excelServic
 
                 try
                 {
-                    addList.Add(AdjustmentFactorEntity.Create(row.FixedKey, dto.Name, row.ProcessGroupId));
+                    addList.Add(AdjustmentFactorEntity.Create(row.FixedKey, dto.Name, row.ProcessGroupId, dto.Note));
                 }
                 catch (Exception ex)
                 {

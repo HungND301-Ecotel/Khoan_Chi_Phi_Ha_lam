@@ -25,7 +25,7 @@ public class ImportCuttingThicknessExcelCommandHandler(IExcelService excelServic
         using var stream = request.File.OpenReadStream();
 
         var dtos = excelService.ImportFromExcel<CuttingThicknessExcelDto>(stream);
-        var excelDtos = dtos.Select(d => CuttingThicknessEntity.Create(d.Id, d.Value));
+        var excelDtos = dtos.Select(d => CuttingThicknessEntity.Create(d.Id, d.Value, d.Note));
         var dbCuttingThickness = await _cuttingThicknessRepository.GetAllAsync(
             disableTracking: true);
 
@@ -45,13 +45,13 @@ public class ImportCuttingThicknessExcelCommandHandler(IExcelService excelServic
 
                 if (entityToUpdate.CheckChange(dto))
                 {
-                    entityToUpdate.Update(dto.Value);
+                    entityToUpdate.Update(dto.Value, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
             else
             {
-                addList.Add(CuttingThicknessEntity.Create(dto.Value));
+                addList.Add(CuttingThicknessEntity.Create(dto.Value, dto.Note));
             }
         }
 

@@ -9,6 +9,7 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
     public Guid AdjustmentFactorId { get; protected set; }
     public double? MaintenanceAdjustmentValue { get; protected set; }
     public double? ElectricityAdjustmentValue { get; protected set; }
+    public string? Note { get; protected set; }
 
     // Navigation properties
     public AdjustmentFactor AdjustmentFactor { get; protected set; } = null!;
@@ -23,7 +24,8 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
         string description,
         Guid adjustmentFactorId,
         double? maintenanceAdjustmentValue,
-        double? electricityAdjustmentValue)
+        double? electricityAdjustmentValue,
+        string? note = null)
     {
         if (string.IsNullOrWhiteSpace(description))
         {
@@ -35,7 +37,8 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
             Description = description,
             AdjustmentFactorId = adjustmentFactorId,
             MaintenanceAdjustmentValue = maintenanceAdjustmentValue,
-            ElectricityAdjustmentValue = electricityAdjustmentValue
+            ElectricityAdjustmentValue = electricityAdjustmentValue,
+            Note = NormalizeNote(note)
         };
     }
 
@@ -44,7 +47,8 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
         string description,
         Guid adjustmentFactorId,
         double? maintenanceAdjustmentValue,
-        double? electricityAdjustmentValue)
+        double? electricityAdjustmentValue,
+        string? note = null)
     {
         if (string.IsNullOrWhiteSpace(description))
         {
@@ -57,7 +61,8 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
             Description = description,
             AdjustmentFactorId = adjustmentFactorId,
             MaintenanceAdjustmentValue = maintenanceAdjustmentValue,
-            ElectricityAdjustmentValue = electricityAdjustmentValue
+            ElectricityAdjustmentValue = electricityAdjustmentValue,
+            Note = NormalizeNote(note)
         };
     }
 
@@ -65,7 +70,8 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
         string description,
         Guid adjustmentFactorId,
         double? maintenanceAdjustmentValue,
-        double? electricityAdjustmentValue)
+        double? electricityAdjustmentValue,
+        string? note = null)
     {
         if (string.IsNullOrWhiteSpace(description))
         {
@@ -76,10 +82,16 @@ public class AdjustmentFactorDescription : AuditableEntity<Guid>, IAggregateRoot
         AdjustmentFactorId = adjustmentFactorId;
         MaintenanceAdjustmentValue = maintenanceAdjustmentValue;
         ElectricityAdjustmentValue = electricityAdjustmentValue;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(AdjustmentFactorDescription dto)
     {
-        return !(Description == dto.Description && AdjustmentFactorId == dto.AdjustmentFactorId && MaintenanceAdjustmentValue == dto.MaintenanceAdjustmentValue && ElectricityAdjustmentValue == dto.ElectricityAdjustmentValue);
+        return !(Description == dto.Description && AdjustmentFactorId == dto.AdjustmentFactorId && MaintenanceAdjustmentValue == dto.MaintenanceAdjustmentValue && ElectricityAdjustmentValue == dto.ElectricityAdjustmentValue && Note == dto.Note);
+    }
+
+    private static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

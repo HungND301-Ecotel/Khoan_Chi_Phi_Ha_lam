@@ -30,7 +30,7 @@ namespace Application.Dto.Catalog.TransportRoute
         [Display(Name = "Tuyến vận tải")]
         public string Name { get; set; }
 
-        [Display(Name = "Áp dụng giá đặc biệt sản lượng thấp")]
+        [Display(Name = "Đơn giá tuyến vận tải phụ thuộc sản lượng")]
         public bool IsSpecialLowVolume { get; set; }
 
         [Display(Name = "Ghi chú")]

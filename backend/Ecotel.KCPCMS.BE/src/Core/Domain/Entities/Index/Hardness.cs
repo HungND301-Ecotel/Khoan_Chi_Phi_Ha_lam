@@ -8,6 +8,7 @@ namespace Domain.Entities.Index
     public class Hardness : AuditableEntity<Guid>, IAggregateRoot
     {
         public string Value { get; protected set; }
+        public string? Note { get; protected set; }
 
         //Navigation Properties
         private IList<StoneClampRatio> _stoneClampRatios = new List<StoneClampRatio>();
@@ -22,7 +23,7 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<NormFactor> NormFactors => _normFactors.AsReadOnly();
         private IList<NormFactorAssignmentCode> _targetedNormFactorAssignmentCodes = new List<NormFactorAssignmentCode>();
         public IReadOnlyList<NormFactorAssignmentCode> TargetedNormFactorAssignmentCodes => _targetedNormFactorAssignmentCodes.ToList();
-        public static Hardness Create(string value)
+        public static Hardness Create(string value, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -31,22 +32,30 @@ namespace Domain.Entities.Index
 
             return new Hardness
             {
-                Value = value
+                Value = value,
+                Note = NormalizeNote(note)
             };
         }
 
-        public void Update(string value)
+        public void Update(string value, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
                 throw new ArgumentException(CustomResponseMessage.HardnessValueNullOrEmpty);
             }
             Value = value;
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(Hardness dto)
         {
-            return !(Value == dto.Value);
+            return !(Value == dto.Value
+                && Note == NormalizeNote(dto.Note));
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

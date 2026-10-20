@@ -55,6 +55,7 @@ namespace Application.Catalog.Index.Material.Commands
                         request.CreateModel.UnitOfMeasureId,
                         request.CreateModel.AssigmentCodeId,
                         normalizedMaterialType);
+                    deletedMaterial.SetNote(request.CreateModel.Note);
 
                     var oldCosts = deletedMaterial.Costs.ToList();
                     if (oldCosts.Any())
@@ -118,6 +119,8 @@ namespace Application.Catalog.Index.Material.Commands
                             request.CreateModel.AssigmentCodeId,
                             normalizedMaterialType);
                     }
+
+                    newMaterial.SetNote(request.CreateModel.Note);
 
                     var costList = new List<Cost>();
                     foreach (var cost in request.CreateModel.Costs)

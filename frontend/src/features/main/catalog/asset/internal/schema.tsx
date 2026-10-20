@@ -41,6 +41,7 @@ export const assetInternalFormSchema = z.object({
 				}),
 		}),
 	),
+	note: z.string().optional(),
 });
 
 export type AssetInternalFormSchema = z.infer<typeof assetInternalFormSchema>;
@@ -58,4 +59,5 @@ export const ASSET_INTERNAL_FORM_DEFAULT: AssetInternalFormSchema = {
 			actualAmount: NaN,
 		},
 	],
+	note: '',
 } as const;

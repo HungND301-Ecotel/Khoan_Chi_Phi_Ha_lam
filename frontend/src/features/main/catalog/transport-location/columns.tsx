@@ -27,7 +27,7 @@ export const CATALOG_TRANSPORT_LOCATION_COLUMNS: ColumnDef<TransportLocation>[] 
 		},
 		{
 			accessorKey: 'locationType',
-			header: 'Loại vị trí',
+			header: 'Phân loại',
 			cell: ({ row }) => {
 				const type = row.original.locationType;
 				if (type === LocationType.Receiving) return 'Vị trí nhận';

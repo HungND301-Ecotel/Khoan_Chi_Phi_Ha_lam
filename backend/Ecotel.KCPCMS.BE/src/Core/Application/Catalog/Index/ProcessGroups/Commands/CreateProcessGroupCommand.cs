@@ -30,7 +30,7 @@ public class CreateProcessGroupCommandHandler(IUnitOfWork unitOfWork) : IRequest
         await unitOfWork.BeginTransactionAsync(cancellationToken: cancellationToken);
         try
         {
-            var newProcessGroup = ProcessGroup.Create(fixedKey, request.CreateModel.Name);
+            var newProcessGroup = ProcessGroup.Create(fixedKey, request.CreateModel.Name, request.CreateModel.Note);
             await _processGroupRepository.InsertAsync(newProcessGroup, cancellationToken);
             await unitOfWork.SaveChangesAsync();
             await unitOfWork.CommitAsync(cancellationToken);

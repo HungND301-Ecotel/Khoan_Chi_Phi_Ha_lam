@@ -85,7 +85,7 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
                 unitOfMeasureId = uomId;
             }
 
-            return ProductionProcessEntity.Create(d.Id, d.Code, d.Name, processGroupId, unitOfMeasureId?? Guid.Empty);
+            return ProductionProcessEntity.Create(d.Id, d.Code, d.Name, processGroupId, unitOfMeasureId?? Guid.Empty, d.Note);
         }).Where(d => d != null).ToList();
 
         var dbProductionProcess = await _productionProcessRepository.GetAllAsync(disableTracking: true);
@@ -115,7 +115,7 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
                         throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                     }
 
-                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty);
+                    entityToUpdate.Update(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty, dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -126,7 +126,7 @@ public class ImportProductionProcessExcelCommandHandler(IExcelService excelServi
                     throw new ConflictException($"Giá trị mã '{dto.Code.Value}' đã tồn tại ở dòng {rowNumber}.");
                 }
 
-                addList.Add(ProductionProcessEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty));
+                addList.Add(ProductionProcessEntity.Create(dto.Code?.Value ?? "", dto.Name, dto.ProcessGroupId, dto.UnitOfMeasureId ?? Guid.Empty, dto.Note));
             }
         }
 

@@ -30,7 +30,8 @@ public class GetProductByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandle
             Name = productExisted.Name,
             ProcessGroupId = productExisted.ProcessGroupId,
             ProcessGroupCode = productExisted.ProcessGroup?.FixedKey?.Key ?? "",
-            ProcessGroupName = productExisted.ProcessGroup?.Name ?? ""
+            ProcessGroupName = productExisted.ProcessGroup?.Name ?? "",
+            Note = productExisted.Note
         };
     }
 }

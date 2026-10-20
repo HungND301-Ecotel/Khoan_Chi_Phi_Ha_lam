@@ -12,29 +12,35 @@ namespace Application.Dto.Catalog.Position;
 public class PositionDto : IDto
 {
     public int Id { get; set; }
+    public string? Code { get; set; }
     public string Name { get; set; } = string.Empty;
     public int Level { get; set; }
-    public string Description { get; set; }
+    public string? Description { get; set; }
 }
 
 public class CreatePositionDto
 {
+    public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int? Level { get; set; }
-    public string Description { get; set; }
+    public string? Description { get; set; }
 }
 
 public class UpdatePositionDto
 {
     public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int? Level { get; set; }
-    public string Description { get; set; }
+    public string? Description { get; set; }
 }
 
 public class PositionExcelDto
 {
     public int? Id { get; set; }
+
+    [Display(Name = "Mã chức vụ")]
+    public string? Code { get; set; }
 
     [Display(Name = "Tên chức vụ")]
     public string Name { get; set; } = string.Empty;
@@ -42,7 +48,7 @@ public class PositionExcelDto
     [Display(Name = "Cấp bậc")]
     public int Level { get; set; }
 
-    [Display(Name = "Mô tả")]
+    [Display(Name = "Ghi chú")]
     public string? Description { get; set; }
 
 }

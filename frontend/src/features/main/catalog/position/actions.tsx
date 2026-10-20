@@ -39,6 +39,7 @@ export function PositionForm({
 	useEffect(() => {
 		if (!row) return;
 		form.reset({
+			code: isDuplicate ? '' : row.code || '',
 			name: row.name,
 			level: row.level,
 			description: row.description || '',
@@ -71,6 +72,12 @@ export function PositionForm({
 		<FormProvider context={form as any} onSubmit={handleSubmit as any}>
 			<FormInput
 				control={form.control}
+				name='code'
+				label='Mã chức vụ'
+				placeholder='Nhập mã chức vụ'
+			/>
+			<FormInput
+				control={form.control}
 				name='name'
 				label='Tên chức vụ'
 				placeholder='Nhập tên chức vụ'
@@ -85,8 +92,8 @@ export function PositionForm({
 			<FormInput
 				control={form.control}
 				name='description'
-				label='Mô tả'
-				placeholder='Nhập mô tả chi tiết'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

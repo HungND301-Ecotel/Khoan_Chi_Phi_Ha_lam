@@ -74,7 +74,8 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                     d.Name,
                     processGroupId,
                     d.StartMonth,
-                    d.EndMonth);
+                    d.EndMonth,
+                    d.Note);
             }
             else
             {
@@ -117,7 +118,8 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                         dto.Name,
                         dto.ProcessGroupId,
                         dto.StartMonth,
-                        dto.EndMonth);
+                        dto.EndMonth,
+                        dto.Note);
                     updateList.Add(entityToUpdate);
                 }
             }
@@ -133,7 +135,8 @@ public class ImportProductExcelCommandHandler(IExcelService excelService, IUnitO
                     dto.Name,
                     dto.ProcessGroupId,
                     dto.StartMonth,
-                    dto.EndMonth));
+                    dto.EndMonth,
+                    dto.Note));
             }
         }
 

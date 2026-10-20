@@ -27,6 +27,7 @@ public class GetPositionByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandl
         return new PositionDto
         {
             Id = entity.Id,
+            Code = entity.Code,
             Name = entity.Name,
             Level = entity.Level ?? 0,
             Description = entity.Description

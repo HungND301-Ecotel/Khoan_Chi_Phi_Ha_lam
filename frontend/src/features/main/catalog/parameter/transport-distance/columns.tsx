@@ -6,6 +6,7 @@ export type TransportDistanceParameter = {
 	name?: string;
 	code?: string;
 	distanceRange?: string;
+	note?: string;
 };
 
 export const CATALOG_TRANSPORT_DISTANCE_COLUMNS: ColumnDef<TransportDistanceParameter>[] = [
@@ -13,5 +14,9 @@ export const CATALOG_TRANSPORT_DISTANCE_COLUMNS: ColumnDef<TransportDistancePara
 		accessorKey: 'value',
 		header: 'Cung độ vận tải (L)',
 		cell: ({ row }) => row.original.value || row.original.name || row.original.distanceRange || '-',
+	},
+	{
+		accessorKey: 'note',
+		header: 'Ghi chú',
 	},
 ];

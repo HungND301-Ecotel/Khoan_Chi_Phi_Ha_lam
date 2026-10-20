@@ -9,6 +9,7 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
 {
     public Guid CodeId { get; protected set; }
     public string Name { get; protected set; }
+    public string? Note { get; protected set; }
 
     // Navigation properties
     public virtual Code? Code { get; protected set; }
@@ -25,7 +26,7 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
     private IList<LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPrices = new List<LowValuePerishableSupplyUnitPrice>();
     public IReadOnlyList<LowValuePerishableSupplyUnitPrice> LowValuePerishableSupplyUnitPrices => _lowValuePerishableSupplyUnitPrices.ToList();
 
-    public static Department Create(string code, string name)
+    public static Department Create(string code, string name, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -40,11 +41,12 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
         return new Department
         {
             Code = new Code(code.ToUpper()),
-            Name = name
+            Name = name,
+            Note = NormalizeNote(note)
         };
     }
 
-    public static Department Create(Guid id, string code, string name)
+    public static Department Create(Guid id, string code, string name, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -60,11 +62,12 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
         {
             Id = id,
             Code = new Code(code.ToUpper()),
-            Name = name
+            Name = name,
+            Note = NormalizeNote(note)
         };
     }
 
-    public void Update(string code, string name)
+    public void Update(string code, string name, string? note = null)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -82,10 +85,16 @@ public class Department : AuditableEntity<Guid>, IAggregateRoot
         }
 
         Name = name;
+        Note = NormalizeNote(note);
     }
 
     public bool CheckChange(Department dto)
     {
-        return !(Code?.Value == dto.Code?.Value && Name == dto.Name);
+        return !(Code?.Value == dto.Code?.Value && Name == dto.Name && Note == dto.Note);
+    }
+
+    private static string? NormalizeNote(string? note)
+    {
+        return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
 }

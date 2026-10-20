@@ -30,6 +30,7 @@ export type AssetInternalDetail = {
 	unitOfMeasureId: string;
 	unitOfMeasureName: string;
 	materialType: 1;
+	note?: string | null;
 	costs: Array<{
 		startMonth: string;
 		endMonth: string;
@@ -86,6 +87,7 @@ export function AssetInternalForm({
 					form.reset({
 						...data,
 						code: isDuplicate ? '' : data.code,
+						note: data.note || '',
 						costs: costs?.length
 							? costs.map((cost) => ({
 									startMonth: cost.startMonth.substring(0, 10),
@@ -227,6 +229,13 @@ export function AssetInternalForm({
 					</div>
 				)}
 			</FormArray>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
+			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

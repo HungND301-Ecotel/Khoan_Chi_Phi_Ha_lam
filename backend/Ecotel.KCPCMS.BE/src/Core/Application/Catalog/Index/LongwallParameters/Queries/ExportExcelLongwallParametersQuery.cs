@@ -26,7 +26,8 @@ public class ExportExcelLongwallParametersQueryHandler(IExcelService excelServic
             Id = l.Id,
             Llc = l.Llc,
             Lkc = l.Lkc,
-            Mk = l.Mk
+            Mk = l.Mk,
+            Note = l.Note
         });
 
         return excelService.ExportToExcel(dtoList, "Thông số lò chợ", listHiddenProperty);

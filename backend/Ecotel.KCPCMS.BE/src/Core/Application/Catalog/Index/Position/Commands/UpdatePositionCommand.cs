@@ -15,7 +15,7 @@ namespace Application.Catalog.Index.Position.Commands;
 
 public record UpdatePositionCommand(UpdatePositionDto Dto) : IRequest<bool>;
 
-public class UpdatePositionCommandHandler(IUnitOfWork unitOfWork, ICodeService codeService) : IRequestHandler<UpdatePositionCommand, bool>
+public class UpdatePositionCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<UpdatePositionCommand, bool>
 {
     private readonly IWriteRepository<Domain.Entities.Index.Position> _positionRepository =
         unitOfWork.GetRepository<Domain.Entities.Index.Position>();
@@ -26,9 +26,18 @@ public class UpdatePositionCommandHandler(IUnitOfWork unitOfWork, ICodeService c
             predicate: t => t.Id == request.Dto.Id,
             disableTracking: true) ?? throw new NotFoundException(CustomResponseMessage.EntityNotFound);
 
-        
-        
-        entity.Update(request.Dto.Name.Trim(),request.Dto.Level ?? 0,request.Dto.Description.Trim());
+        if (string.IsNullOrWhiteSpace(request.Dto.Code))
+        {
+            throw new BadRequestException(CustomResponseMessage.CodeCannotBeNullOrEmpty);
+        }
+
+        var code = request.Dto.Code.Trim().ToUpper();
+        if (await _positionRepository.ExistsAsync(p => p.Code == code && p.Id != request.Dto.Id))
+        {
+            throw new ConflictException(CustomResponseMessage.CodeAlreadyExists);
+        }
+
+        entity.Update(request.Dto.Name.Trim(), request.Dto.Level ?? 0, request.Dto.Description, code);
         _positionRepository.Update(entity);
         await unitOfWork.SaveChangesAsync();
         return true;

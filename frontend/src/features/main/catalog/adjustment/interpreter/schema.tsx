@@ -19,6 +19,7 @@ export const interpreterSchema = z.object({
 			error: 'Giá trị điều chỉnh SCTX phải là số.',
 		})
 		.optional(),
+	note: z.string().optional(),
 });
 
 export type InterpreterSchema = z.infer<typeof interpreterSchema>;
@@ -27,4 +28,5 @@ export const INTERPRETER_SCHEMA_DEFAULT: InterpreterSchema = {
 	description: '',
 	adjustmentFactorId: '',
 	maintenanceAdjustmentValue: NaN,
+	note: '',
 };

@@ -18,7 +18,8 @@ public class CuttingThicknessByPaginationSpec : EntitiesByPaginationFilterSpec<D
             .Select(p => new CuttingThicknessDto
             {
                 Id = p.Id,
-                Value = p.Value
+                Value = p.Value,
+                Note = p.Note
             });
     }
 }

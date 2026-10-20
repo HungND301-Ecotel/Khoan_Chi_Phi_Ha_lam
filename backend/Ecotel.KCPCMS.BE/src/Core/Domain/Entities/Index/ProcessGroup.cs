@@ -10,6 +10,7 @@ namespace Domain.Entities.Index
         public Guid CodeId { get; protected set; }
         public string Name { get; protected set; }
         public Guid? FixedKeyId { get; protected set; }
+        public string? Note { get; protected set; }
 
         public ProcessGroupType Type { get; protected set; } = ProcessGroupType.None;
 
@@ -33,7 +34,7 @@ namespace Domain.Entities.Index
         public virtual IReadOnlyCollection<SlideUnitPrice> SlideUnitPrices => _slideUnitPrices.AsReadOnly();
 
         // constructor
-        public static ProcessGroup Create(string code, string name)
+        public static ProcessGroup Create(string code, string name, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -49,10 +50,11 @@ namespace Domain.Entities.Index
             {
                 Code = new Code(code.ToUpper()),
                 Name = name,
+                Note = NormalizeNote(note),
             };
         }
 
-        public static ProcessGroup Create(Guid id, string code, string name)
+        public static ProcessGroup Create(Guid id, string code, string name, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -69,10 +71,11 @@ namespace Domain.Entities.Index
                 Id = id,
                 Code = new Code(code.ToUpper()),
                 Name = name,
+                Note = NormalizeNote(note),
             };
         }
 
-        public static ProcessGroup Create(FixedKey fixedKey, string name)
+        public static ProcessGroup Create(FixedKey fixedKey, string name, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(fixedKey);
 
@@ -87,10 +90,11 @@ namespace Domain.Entities.Index
                 FixedKeyId = fixedKey.Id,
                 Name = name,
                 Type = fixedKey.Type.ToProcessGroupType(),
+                Note = NormalizeNote(note),
             };
         }
 
-        public void Update(string code, string name)
+        public void Update(string code, string name, string? note = null)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -108,9 +112,10 @@ namespace Domain.Entities.Index
             }
 
             Name = name;
+            Note = NormalizeNote(note);
         }
 
-        public void Update(FixedKey fixedKey, string name)
+        public void Update(FixedKey fixedKey, string name, string? note = null)
         {
             ArgumentNullException.ThrowIfNull(fixedKey);
 
@@ -131,11 +136,17 @@ namespace Domain.Entities.Index
             FixedKeyId = fixedKey.Id;
             Name = name;
             Type = fixedKey.Type.ToProcessGroupType();
+            Note = NormalizeNote(note);
         }
 
         public bool CheckChange(ProcessGroup dto)
         {
-            return !(Name == dto.Name && Code?.Value == dto.Code?.Value);
+            return !(Name == dto.Name && Code?.Value == dto.Code?.Value && Note == dto.Note);
+        }
+
+        private static string? NormalizeNote(string? note)
+        {
+            return string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         }
     }
 }

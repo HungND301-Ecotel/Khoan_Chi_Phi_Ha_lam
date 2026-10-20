@@ -36,6 +36,7 @@ export function TechnologyForm({
 		if (row) {
 			form.reset({
 				value: row.value,
+				note: row.note || '',
 			});
 		}
 	}, [row, form]);
@@ -69,6 +70,13 @@ export function TechnologyForm({
 				name='value'
 				label='Công nghệ khai thác'
 				placeholder='Nhập công nghệ khai thác'
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

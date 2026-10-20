@@ -19,10 +19,11 @@ export const productFormSchema = z
 			message: 'Tên sản phẩm không được để trống',
 		}),
 		processGroupId: z.string().min(1, {
-			message: 'Mã nhóm công đoạn sản xuất không được để trống',
+			message: 'Nhóm công đoạn sản xuất không được để trống',
 		}),
 		startMonth: monthField('Thời gian bắt đầu không được để trống'),
 		endMonth: monthField('Thời gian kết thúc không được để trống'),
+		note: z.string().optional(),
 	})
 	.superRefine((data, ctx) => {
 		if (data.startMonth > data.endMonth) {
@@ -47,4 +48,5 @@ export const PRODUCT_FORM_DEFAULT: ProductFormSchema = {
 	processGroupId: '',
 	startMonth: '',
 	endMonth: '',
+	note: '',
 };
