@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const AkFactorConfigSchema = z
@@ -69,3 +70,9 @@ export const AK_FACTOR_CONFIG_SCHEMA_DEFAULT: AkFactorConfigSchema = {
 	adjustmentRateDisplay: '',
 	description: '',
 };
+
+export const akFactorConfigBatchSchema = batchSchema(AkFactorConfigSchema);
+
+export type AkFactorConfigBatchSchema = z.infer<
+	typeof akFactorConfigBatchSchema
+>;

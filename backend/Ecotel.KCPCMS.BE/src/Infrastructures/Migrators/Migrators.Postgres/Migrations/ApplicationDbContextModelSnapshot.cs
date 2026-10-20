@@ -3905,6 +3905,9 @@ namespace Migrators.PostgreSQL.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
                     b.Property<decimal?>("PowerUnitPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");

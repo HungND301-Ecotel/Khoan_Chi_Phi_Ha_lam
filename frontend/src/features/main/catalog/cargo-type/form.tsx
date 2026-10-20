@@ -1,5 +1,10 @@
 import type { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { FormText } from '@/components/form/form-text';
@@ -9,86 +14,130 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { usePopup } from '@/components/popup';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { CargoType } from './columns';
 import {
 	CARGO_TYPE_FORM_DEFAULT,
-	cargoTypeFormSchema,
-	CargoTypeFormSchema,
+	cargoTypeBatchSchema,
+	CargoTypeBatchSchema,
 } from './schema';
 
 type CargoTypeFormProps = ActionDialogProps<CargoType> & {
 	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
 };
 
 export function CargoTypeForm({
 	data,
 	row,
 	isDuplicate = false,
+	single = false,
 }: CargoTypeFormProps) {
-	useMeta();
+	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const { setOpen } = useDialog();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<CargoTypeFormSchema>({
-		resolver: zodResolver(cargoTypeFormSchema) as any,
+	const form = useForm<CargoTypeBatchSchema>({
+		resolver: zodResolver(cargoTypeBatchSchema),
 		mode: 'onSubmit',
-		defaultValues: CARGO_TYPE_FORM_DEFAULT,
+		defaultValues: {
+			items: [
+				row
+					? {
+							code: isDuplicate ? '' : row.code,
+							name: row.name,
+							note: row.note || '',
+						}
+					: CARGO_TYPE_FORM_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				code: isDuplicate ? `${row.code}_COPY` : row.code,
-				name: row.name,
-				note: row.note || '',
-			});
-		}
-	}, [form, isDuplicate, row]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: CargoTypeFormSchema) => {
-		try {
-			if (row && !isDuplicate) {
+	const handleSubmit = async ({ items }: CargoTypeBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.CARGO_TYPE.UPDATE, {
 					id: row.id,
-					...values,
+					...items[0],
 				});
-				popup.success('Cập nhật chủng loại hàng thành công');
-			} else {
-				await api.post(API.CATALOG.CARGO_TYPE.CREATE, values);
-				popup.success('Thêm mới chủng loại hàng thành công');
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.CARGO_TYPE.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
-		<FormProvider context={form as any} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control as any}
-				name='code'
-				label='Mã chủng loại hàng'
-				placeholder='Nhập mã chủng loại hàng'
+		<FormProvider context={form} onSubmit={handleSubmit}>
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => CARGO_TYPE_FORM_DEFAULT}
+				columns={[
+					{
+						key: 'code',
+						header: 'Mã chủng loại hàng',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.code`}
+								label={label}
+								placeholder='Nhập mã chủng loại hàng'
+							/>
+						),
+					},
+					{
+						key: 'name',
+						header: 'Chủng loại hàng',
+						required: true,
+						className: 'min-w-48',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.name`}
+								label={label}
+								placeholder='Nhập tên chủng loại hàng'
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormText
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
-			<FormInput
-				control={form.control as any}
-				name='name'
-				label='Chủng loại hàng'
-				placeholder='Nhập tên chủng loại hàng'
-			/>
-			<FormText
-				control={form.control as any}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

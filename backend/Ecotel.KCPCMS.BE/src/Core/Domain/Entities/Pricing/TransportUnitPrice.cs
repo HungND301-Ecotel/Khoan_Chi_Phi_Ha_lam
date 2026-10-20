@@ -18,6 +18,7 @@ namespace Domain.Entities.Pricing
         public bool IsLowVolumeCase { get; protected set; }
         public DateOnly StartMonth { get; protected set; }
         public DateOnly EndMonth { get; protected set; }
+        public string? Note { get; protected set; }
 
         public virtual ProductionProcess? ProductionProcess { get; protected set; }
         public virtual TransportRoute? TransportRoute { get; protected set; }
@@ -36,7 +37,8 @@ namespace Domain.Entities.Pricing
             decimal? quantity,
             bool isLowVolumeCase,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(productionProcessId, materialFuelUnitPrice, powerUnitPrice, maintenanceUnitPrice, startMonth, endMonth);
 
@@ -54,6 +56,7 @@ namespace Domain.Entities.Pricing
                 IsLowVolumeCase = isLowVolumeCase,
                 StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
                 EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
+                Note = note,
             };
         }
 
@@ -70,7 +73,8 @@ namespace Domain.Entities.Pricing
             decimal? quantity,
             bool isLowVolumeCase,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(productionProcessId, materialFuelUnitPrice, powerUnitPrice, maintenanceUnitPrice, startMonth, endMonth);
 
@@ -89,6 +93,7 @@ namespace Domain.Entities.Pricing
                 IsLowVolumeCase = isLowVolumeCase,
                 StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1),
                 EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1),
+                Note = note,
             };
         }
 
@@ -104,7 +109,8 @@ namespace Domain.Entities.Pricing
             decimal? quantity,
             bool isLowVolumeCase,
             DateOnly startMonth,
-            DateOnly endMonth)
+            DateOnly endMonth,
+            string? note = null)
         {
             Validate(productionProcessId, materialFuelUnitPrice, powerUnitPrice, maintenanceUnitPrice, startMonth, endMonth);
 
@@ -120,6 +126,7 @@ namespace Domain.Entities.Pricing
             IsLowVolumeCase = isLowVolumeCase;
             StartMonth = new DateOnly(startMonth.Year, startMonth.Month, 1);
             EndMonth = new DateOnly(endMonth.Year, endMonth.Month, 1);
+            Note = note;
         }
 
         public bool CheckChange(TransportUnitPrice dto)
@@ -135,7 +142,8 @@ namespace Domain.Entities.Pricing
                 && Quantity == dto.Quantity
                 && IsLowVolumeCase == dto.IsLowVolumeCase
                 && StartMonth == dto.StartMonth
-                && EndMonth == dto.EndMonth);
+                && EndMonth == dto.EndMonth
+                && Note == dto.Note);
         }
 
         private static void Validate(

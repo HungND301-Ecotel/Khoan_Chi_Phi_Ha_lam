@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const interpreterSchema = z.object({
@@ -30,3 +31,7 @@ export const INTERPRETER_SCHEMA_DEFAULT: InterpreterSchema = {
 	maintenanceAdjustmentValue: NaN,
 	note: '',
 };
+
+export const interpreterBatchSchema = batchSchema(interpreterSchema);
+
+export type InterpreterBatchSchema = z.infer<typeof interpreterBatchSchema>;

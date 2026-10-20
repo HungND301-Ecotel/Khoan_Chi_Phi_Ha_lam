@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const departmentFormSchema = z.object({
@@ -17,3 +18,10 @@ export const DEPARTMENT_FORM_DEFAULT: DepartmentFormSchema = {
 	name: '',
 	note: '',
 };
+
+export const departmentBatchSchema = batchSchema(departmentFormSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã đơn vị bị trùng',
+});
+
+export type DepartmentBatchSchema = z.infer<typeof departmentBatchSchema>;

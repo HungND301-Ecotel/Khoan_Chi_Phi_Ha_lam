@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const positionFormSchema = z.object({
@@ -21,3 +22,10 @@ export const POSITION_FORM_DEFAULT: PositionFormSchema = {
 	level: 0,
 	description: '',
 };
+
+export const positionBatchSchema = batchSchema(positionFormSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã chức vụ bị trùng',
+});
+
+export type PositionBatchSchema = z.infer<typeof positionBatchSchema>;

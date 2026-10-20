@@ -35,19 +35,19 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 				<div className='grid grid-cols-2 gap-4 text-sm'>
 					<div>
 						<span className='font-medium text-gray-500'>Thời gian bắt đầu:</span>{' '}
-						<span className='font-semibold text-gray-900'>
+						<span className='text-gray-900'>
 							{row.startMonth?.substring(0, 7)}
 						</span>
 					</div>
 					<div>
 						<span className='font-medium text-gray-500'>Thời gian kết thúc:</span>{' '}
-						<span className='font-semibold text-gray-900'>
+						<span className='text-gray-900'>
 							{row.endMonth?.substring(0, 7)}
 						</span>
 					</div>
 					<div className='col-span-2'>
 						<span className='font-medium text-gray-500'>Nhóm vật tư, tài sản:</span>{' '}
-						<span className='font-semibold text-primary'>{row.assignmentCodeName}</span>
+						<span className='text-primary'>{row.assignmentCodeName}</span>
 					</div>
 				</div>
 			</div>
@@ -87,7 +87,7 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 										if (details.length === 0) {
 											return (
 												<tr key={`${pIdx}-empty`} className='hover:bg-gray-50/50'>
-													<td className='px-4 py-2.5 font-medium text-gray-700'>
+													<td className='px-4 py-2.5 text-gray-700'>
 														Thiết bị loại {item.equipmentQuality}
 													</td>
 													{!isHourly && <td className='px-4 py-2.5 text-gray-500'>-</td>}
@@ -99,7 +99,7 @@ export function MotorizedVacuumTruckViewDialog({ row }: ViewDialogProps) {
 
 										return details.map((d, dIdx) => (
 											<tr key={`${pIdx}-${dIdx}`} className='hover:bg-gray-50/50'>
-												<td className='px-4 py-2.5 font-medium text-gray-700'>
+												<td className='px-4 py-2.5 text-gray-700'>
 													Thiết bị loại {item.equipmentQuality}
 												</td>
 												{!isHourly && (

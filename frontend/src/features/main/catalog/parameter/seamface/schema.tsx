@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const seamfaceSchema = z.object({
@@ -13,3 +14,10 @@ export const SEAMFACE_SCHEMA_DEFAULT: SeamfaceSchema = {
 	value: '',
 	note: '',
 };
+
+export const seamfaceBatchSchema = batchSchema(seamfaceSchema, {
+	uniqueKey: 'value',
+	uniqueMessage: 'Mặt vỉa (M) bị trùng',
+});
+
+export type SeamfaceBatchSchema = z.infer<typeof seamfaceBatchSchema>;

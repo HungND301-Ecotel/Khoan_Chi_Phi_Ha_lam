@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const processGroupSchema = z.object({
@@ -17,3 +18,10 @@ export const PROCESS_GROUP_SCHEMA_DEFAULT: ProcessGroupSchema = {
 	name: '',
 	note: '',
 } as const;
+
+export const processGroupBatchSchema = batchSchema(processGroupSchema, {
+	uniqueKey: 'fixedKeyId',
+	uniqueMessage: 'Mã nhóm công đoạn sản xuất bị trùng',
+});
+
+export type ProcessGroupBatchSchema = z.infer<typeof processGroupBatchSchema>;

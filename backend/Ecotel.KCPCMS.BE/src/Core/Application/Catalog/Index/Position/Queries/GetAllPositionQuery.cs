@@ -27,7 +27,8 @@ public class GetAllPositionQueryHandler(
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new PositionsByPaginationSpec(filter, request.Search);
@@ -40,7 +41,7 @@ public class GetAllPositionQueryHandler(
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(p => p.Name).ToList();
+        result = result.Data.OrderBy(p => p.Name).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }

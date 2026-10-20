@@ -57,7 +57,7 @@ export function MotorizedScaniaPage() {
 			filters={[
 				{ key: 'equipmentName', label: 'Nhóm vật tư, tài sản' },
 				{ key: 'productionProcess', label: 'Công đoạn sản xuất' },
-				{ key: 'cargoTypeName', label: 'Chủng loại hàng' },
+				{ key: 'cargoTypeName', label: 'Loại hàng' },
 			]}
 			onCreate={(props) => <MotorizedScaniaForm {...props} />}
 			onDuplicate={(props) => <MotorizedScaniaForm {...props} isDuplicate />}

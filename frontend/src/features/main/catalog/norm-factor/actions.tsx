@@ -15,9 +15,10 @@ import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
+import { useCatalogQuickCreate } from '@/features/main/catalog/quick-create';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { NormFactor } from './columns';
 import { NORM_FACTOR_SCHEMA_DEFAULT, NormFactorSchema } from './schema';
@@ -101,23 +102,55 @@ export function NormFactorForm({
 
 	const previousSteelMeshTypeRef = useRef<number | undefined>(undefined);
 
+	const loadGroups = useCallback(
+		() =>
+			api
+				.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
+				.then((res) => setGroups(res.result.data)),
+		[],
+	);
+
+	const loadProductionProcesses = useCallback(
+		() =>
+			api
+				.pagging<ProcessStep>(API.CATALOG.PROCESS.STEP.LIST)
+				.then((res) => setProductionProcesses(res.result.data ?? [])),
+		[],
+	);
+
+	const loadHardnesses = useCallback(
+		() =>
+			api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST).then((res) => {
+				setHardnesses(res.result.data ?? []);
+				setTargetHardnesses(res.result.data ?? []);
+			}),
+		[],
+	);
+
+	const loadStoneClampRatios = useCallback(
+		() =>
+			api
+				.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST)
+				.then((res) => setStoneClampRatios(res.result.data ?? [])),
+		[],
+	);
+
+	const groupQuickCreate = useCatalogQuickCreate('processGroup', loadGroups);
+	const processStepQuickCreate = useCatalogQuickCreate(
+		'processStep',
+		loadProductionProcesses,
+	);
+	const hardnessQuickCreate = useCatalogQuickCreate('hardness', loadHardnesses);
+	const stoneClampRatioQuickCreate = useCatalogQuickCreate(
+		'stoneClampRatio',
+		loadStoneClampRatios,
+	);
+
 	useEffect(() => {
-		api
-			.pagging<ProcessGroup>(API.CATALOG.PROCESS.GROUP.LIST)
-			.then((res) => setGroups(res.result.data));
-
-		api
-			.pagging<ProcessStep>(API.CATALOG.PROCESS.STEP.LIST)
-			.then((res) => setProductionProcesses(res.result.data ?? []));
-
-		api.pagging<Strength>(API.CATALOG.PARAMETER.STRENGTH.LIST).then((res) => {
-			setHardnesses(res.result.data ?? []);
-			setTargetHardnesses(res.result.data ?? []);
-		});
-
-		api
-			.pagging<Clamp>(API.CATALOG.PARAMETER.CLAMP.LIST)
-			.then((res) => setStoneClampRatios(res.result.data ?? []));
+		loadGroups();
+		loadProductionProcesses();
+		loadHardnesses();
+		loadStoneClampRatios();
 
 		api
 			.pagging<ContractCode>(API.CATALOG.CONTRACT_CODE.LIST)
@@ -129,7 +162,14 @@ export function NormFactorForm({
 				pageSize: 99999,
 			})
 			.then((res) => setMaterials(res.result?.data ?? []));
-	}, [row, form]);
+	}, [
+		row,
+		form,
+		loadGroups,
+		loadProductionProcesses,
+		loadHardnesses,
+		loadStoneClampRatios,
+	]);
 
 	const handleSubmit = async (values: NormFactorSchema) => {
 		try {
@@ -335,6 +375,7 @@ export function NormFactorForm({
 					label: group.name,
 					value: group.id,
 				}))}
+				quickCreate={groupQuickCreate}
 			/>
 
 			<FormComboBox
@@ -343,6 +384,7 @@ export function NormFactorForm({
 				label='Công đoạn sản xuất'
 				placeholder='Chọn công đoạn sản xuất'
 				options={productionOptions}
+				quickCreate={processStepQuickCreate}
 			/>
 
 			<div className='flex items-center gap-2'>
@@ -403,6 +445,7 @@ export function NormFactorForm({
 					label='Độ kiên cố than đá (f)'
 					placeholder='Chọn độ kiên cố'
 					options={hardnesses.map((h) => ({ label: h.value, value: h.id }))}
+					quickCreate={hardnessQuickCreate}
 				/>
 			)}
 
@@ -416,6 +459,7 @@ export function NormFactorForm({
 						label: s.value,
 						value: s.id,
 					}))}
+					quickCreate={stoneClampRatioQuickCreate}
 				/>
 			)}
 

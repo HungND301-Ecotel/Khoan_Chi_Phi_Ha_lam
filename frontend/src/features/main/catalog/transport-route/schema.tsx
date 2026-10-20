@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const transportRouteSchema = z.object({
@@ -19,3 +20,12 @@ export const TRANSPORT_ROUTE_SCHEMA_DEFAULT: TransportRouteSchema = {
 	note: '',
 	isSpecialLowVolume: false,
 } as const;
+
+export const transportRouteBatchSchema = batchSchema(transportRouteSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã tuyến vận tải bị trùng',
+});
+
+export type TransportRouteBatchSchema = z.infer<
+	typeof transportRouteBatchSchema
+>;

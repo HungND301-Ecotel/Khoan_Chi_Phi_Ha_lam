@@ -216,6 +216,9 @@ export type ScaniaPeriodData = {
 	processCargoTypes: Record<string, string[]>;
 	processPickupLocations: Record<string, string[]>;
 	processDropoffLocations: Record<string, string[]>;
+	// Các dòng cung độ người dùng đã xoá (mỗi loại hàng có cung độ khác nhau),
+	// để không bị sinh lại khi đổi lựa chọn khác.
+	excludedItemKeys?: string[];
 	items: any[];
 };
 

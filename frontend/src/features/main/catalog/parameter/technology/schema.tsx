@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const technologySchema = z.object({
@@ -13,3 +14,10 @@ export const TECHNOLOGY_SCHEMA_DEFAULT: TechnologySchema = {
 	value: '',
 	note: '',
 };
+
+export const technologyBatchSchema = batchSchema(technologySchema, {
+	uniqueKey: 'value',
+	uniqueMessage: 'Công nghệ khai thác bị trùng',
+});
+
+export type TechnologyBatchSchema = z.infer<typeof technologyBatchSchema>;

@@ -30,7 +30,7 @@ export const EXPAND_PRICE_COLUMNS: ColumnDef<ExpandPriceRow>[] = [
 		accessorKey: 'equipmentQuality',
 		header: 'Chất lượng',
 		cell: ({ row }) => (
-			<span className='font-medium text-gray-700'>
+			<span className='text-black'>
 				Thiết bị loại {row.original.equipmentQuality}
 			</span>
 		),
@@ -112,7 +112,7 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 								key={r.detailId || rIdx}
 								className='transition-colors hover:bg-neutral-50/80'
 							>
-								<td className='px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap'>
+								<td className='px-4 py-2 text-sm text-black whitespace-nowrap'>
 									Thiết bị loại {r.equipmentQuality}
 								</td>
 								<td className='px-4 py-2 text-sm text-black whitespace-nowrap'>
@@ -210,7 +210,7 @@ export function MotorizedProcessExpand({
 												aria-label={`Chọn ${item.productionProcessName}`}
 											/>
 										</td>
-										<td className='w-64 px-4 py-2 text-sm font-medium text-black'>
+										<td className='w-64 px-4 py-2 text-sm text-black'>
 											{item.productionProcessName}
 										</td>
 										<td className='px-4 py-2 text-sm text-black'>
@@ -361,7 +361,7 @@ export function MotorizedSectionExpand({
 											{formatMonth(item.startMonth)} -{' '}
 											{formatMonth(item.endMonth)}
 										</td>
-										<td className='px-4 py-2 text-sm font-medium text-black'>
+										<td className='px-4 py-2 text-sm text-black'>
 											{item.vehicleLabel}
 										</td>
 										<td className='w-20 px-4 py-2 text-center'>

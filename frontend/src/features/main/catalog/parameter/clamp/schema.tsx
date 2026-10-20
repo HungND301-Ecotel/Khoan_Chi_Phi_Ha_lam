@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const clampSchema = z.object({
@@ -13,3 +14,10 @@ export const CLAMP_SCHEMA_DEFAULT: ClampSchema = {
 	value: '',
 	note: '',
 };
+
+export const clampBatchSchema = batchSchema(clampSchema, {
+	uniqueKey: 'value',
+	uniqueMessage: 'Tỷ lệ đá kẹp (Ckẹp) bị trùng',
+});
+
+export type ClampBatchSchema = z.infer<typeof clampBatchSchema>;

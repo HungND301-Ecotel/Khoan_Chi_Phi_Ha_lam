@@ -35,6 +35,7 @@ export const ERROR: Record<string, string> = {
 	ADJUSTMENT_FACTOR_NOT_FOUND: 'Không tìm thấy Hệ số điều chỉnh.',
 	EQUIPMENT_NOT_FOUND: 'Không tìm thấy Thiết bị.',
 	UNIT_OF_MEASURE_NOT_FOUND: 'Không tìm thấy Đơn vị tính.',
+	UNIT_OF_MEASURE_ID_CANNOT_BE_EMPTY: 'Đơn vị tính không được để trống.',
 	MATERIAL_NOT_FOUND: 'Không tìm thấy Vật tư.',
 	PART_NOT_FOUND: 'Không tìm thấy Phụ tùng.',
 	PASSPORT_NOT_FOUND: 'Không tìm thấy Hồ sơ (Passport).',

@@ -278,8 +278,8 @@ export function MotorizedLowValueSupplyElectricityForm({
 									<FormNumber
 										control={form.control as any}
 										name={`periods.${index}.electricityUnitPrice`}
-										label='Điện năng (đ/tháng)'
-										placeholder='Nhập đơn giá điện năng'
+										label='Điện năng (kWh)'
+										placeholder='Nhập điện năng'
 									/>
 								</div>
 							</FormRow>

@@ -17,7 +17,8 @@ public class GetAllPassportQueryHandler(IPaginationService paginationService, IR
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new PassportsByPaginationSpec(filter, request.Search);
@@ -30,7 +31,7 @@ public class GetAllPassportQueryHandler(IPaginationService paginationService, IR
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.CreateOn).ToList();
+        result = result.Data.OrderBy(d => d.CreateOn).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }

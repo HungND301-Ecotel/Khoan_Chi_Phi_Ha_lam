@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -8,13 +13,12 @@ import { useDialog } from '@/data/dialog/dialog.hook';
 import { useMeta } from '@/data/meta/meta-hook';
 import { TransportDistanceParameter } from '@/features/main/catalog/parameter/transport-distance/columns';
 import {
-	transportDistanceSchema,
-	TransportDistanceSchema,
 	TRANSPORT_DISTANCE_SCHEMA_DEFAULT,
+	transportDistanceBatchSchema,
+	TransportDistanceBatchSchema,
 } from '@/features/main/catalog/parameter/transport-distance/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 const LONGWALLPARAMETERS_SUPPORTS = [
@@ -29,77 +33,122 @@ const LONGWALLPARAMETERS_SUPPORTS = [
 	'_',
 ];
 
+type TransportDistanceFormProps =
+	ActionDialogProps<TransportDistanceParameter> & {
+		isDuplicate?: boolean;
+		/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+		single?: boolean;
+	};
+
 export function TransportDistanceForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<TransportDistanceParameter> & { isDuplicate?: boolean }) {
+	single = false,
+}: TransportDistanceFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<TransportDistanceSchema>({
-		resolver: zodResolver(transportDistanceSchema),
-		defaultValues: TRANSPORT_DISTANCE_SCHEMA_DEFAULT,
+	const form = useForm<TransportDistanceBatchSchema>({
+		resolver: zodResolver(transportDistanceBatchSchema),
 		mode: 'onSubmit',
+		defaultValues: {
+			items: [
+				row
+					? {
+							value: row.value || row.name || row.distanceRange || '',
+							note: row.note || '',
+						}
+					: TRANSPORT_DISTANCE_SCHEMA_DEFAULT,
+			],
+		},
+	});
+	const batch = useFormBatch(form);
+
+	// Backend lưu name/code theo chính giá trị cung độ vận tải
+	const toPayload = (item: TransportDistanceBatchSchema['items'][number]) => ({
+		value: item.value,
+		name: item.value,
+		code: item.value,
+		note: item.note,
 	});
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				value: row.value || row.name || row.distanceRange || '',
-				note: row.note || '',
-			});
-		}
-	}, [row, form]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: TransportDistanceSchema) => {
-		try {
-			const payload = {
-				value: values.value,
-				name: values.value,
-				code: values.value,
-				note: values.note,
-			};
-
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: TransportDistanceBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.UPDATE, {
-					id: row?.id,
-					...payload,
+					id: row.id,
+					...toPayload(items[0]),
 				});
-			} else {
-				await api.post(API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.CREATE, payload);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(
+				API.CATALOG.PARAMETER.TRANSPORT_DISTANCE.CREATE,
+				toPayload(item),
+			),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control}
-				name='value'
-				label='Cung độ vận tải (L)'
-				placeholder='Nhập cung độ vận tải (ví dụ: L ≤ 1, L ≤ 1.1)'
-				supports={LONGWALLPARAMETERS_SUPPORTS}
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => TRANSPORT_DISTANCE_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'value',
+						header: 'Cung độ vận tải (L)',
+						required: true,
+						className: 'min-w-48',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.value`}
+								label={label}
+								placeholder='Ví dụ: L ≤ 1, L ≤ 1.1'
+								supports={LONGWALLPARAMETERS_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
 
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

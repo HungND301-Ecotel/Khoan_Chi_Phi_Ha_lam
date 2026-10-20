@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const passportSchema = z.object({
@@ -21,3 +22,10 @@ export const PASSPORT_SCHEMA_DEFAULT: PassportSchema = {
 	sc: '',
 	note: '',
 };
+
+export const passportBatchSchema = batchSchema(passportSchema, {
+	uniqueKey: 'name',
+	uniqueMessage: 'Hộ chiếu bị trùng',
+});
+
+export type PassportBatchSchema = z.infer<typeof passportBatchSchema>;

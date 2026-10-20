@@ -44,7 +44,7 @@ export function MotorizedLowValuePeriodExpand({
 							scope='col'
 							className='px-4 py-2.5 text-right font-semibold text-black'
 						>
-							Điện năng (đ/tháng)
+							Điện năng (kWh)
 						</th>
 					</tr>
 				</thead>

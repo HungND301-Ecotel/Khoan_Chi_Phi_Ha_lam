@@ -45,7 +45,8 @@ export function DataTableEditDialog({
 					'flex flex-col gap-6 px-0 pt-10 pb-0',
 					maximize
 						? 'h-screen max-h-screen max-w-screen min-w-screen rounded-none'
-						: 'w-205 sm:max-w-205 sm:min-w-205',
+						: // Form nhập nhiều dòng dạng bảng: nới rộng theo bảng, tối đa 95% màn hình
+							'w-205 has-[[data-batch-table]]:w-fit sm:max-w-205 sm:min-w-205 sm:has-[[data-batch-table]]:max-w-[95vw]',
 				)}
 			>
 				<DialogHeader className='px-10'>
@@ -74,7 +75,14 @@ export function DataTableEditDialog({
 				<ScrollArea
 					className={cn(maximize ? 'h-[calc(100vh-8.8rem)]' : 'h-128')}
 				>
-					<div className={cn('px-10', maximize ? 'w-screen' : 'w-205')}>
+					<div
+						className={cn(
+							'px-10',
+							maximize
+								? 'w-screen'
+								: 'w-205 has-[[data-batch-table]]:w-fit has-[[data-batch-table]]:max-w-[95vw] has-[[data-batch-table]]:min-w-205',
+						)}
+					>
 						{children}
 					</div>
 				</ScrollArea>

@@ -1,8 +1,9 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const processStepSchema = z.object({
 	processGroupId: z.string().min(1, {
-		message: 'Mã nhóm công đoạn sản xuất không được để trống',
+		message: 'Nhóm công đoạn sản xuất không được để trống',
 	}),
 	code: z.string().min(1, {
 		message: 'Mã công đoạn sản xuất không được để trống',
@@ -10,7 +11,9 @@ export const processStepSchema = z.object({
 	name: z.string().min(1, {
 		message: 'Tên công đoạn sản xuất không được để trống',
 	}),
-	unitOfMeasureId: z.string().optional(),
+	unitOfMeasureId: z.string().min(1, {
+		message: 'Đơn vị tính không được để trống',
+	}),
 	note: z.string().optional(),
 });
 
@@ -23,3 +26,10 @@ export const PROCESS_STEP_SCHEMA_DEFAULT: ProcessStepSchema = {
 	unitOfMeasureId: '',
 	note: '',
 } as const;
+
+export const processStepBatchSchema = batchSchema(processStepSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã công đoạn sản xuất bị trùng',
+});
+
+export type ProcessStepBatchSchema = z.infer<typeof processStepBatchSchema>;

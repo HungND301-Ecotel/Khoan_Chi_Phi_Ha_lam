@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const revenueCostAdjustmentConfigSchema = z
@@ -12,9 +13,7 @@ export const revenueCostAdjustmentConfigSchema = z
 		const profitConditionRegex = new RegExp(
 			`^\\s*(?:${signedNumberPattern}\\s*[-–]\\s*${signedNumberPattern}|[≥>]=?\\s*${signedNumberPattern}|[≤<]=?\\s*${signedNumberPattern}|${signedNumberPattern})\\s*$`,
 		);
-		const rateRegex = new RegExp(
-			`^\\s*${signedNumberPattern}\\s*%?\\s*$`,
-		);
+		const rateRegex = new RegExp(`^\\s*${signedNumberPattern}\\s*%?\\s*$`);
 
 		if (!values.profitConditionDisplay) {
 			ctx.addIssue({
@@ -48,10 +47,10 @@ export const revenueCostAdjustmentConfigSchema = z
 			ctx.addIssue({
 				code: 'custom',
 				path: ['rateDisplay'],
-				message: 'Tỷ lệ điều chỉnh không đúng định dạng. Ví dụ: "60%" hoặc "-1".',
+				message:
+					'Tỷ lệ điều chỉnh không đúng định dạng. Ví dụ: "60%" hoặc "-1".',
 			});
 		}
-
 	});
 
 export type RevenueCostAdjustmentConfigSchema = z.infer<
@@ -64,3 +63,11 @@ export const REVENUE_COST_ADJUSTMENT_CONFIG_SCHEMA_DEFAULT: RevenueCostAdjustmen
 		rateDisplay: '',
 		description: '',
 	};
+
+export const revenueCostAdjustmentConfigBatchSchema = batchSchema(
+	revenueCostAdjustmentConfigSchema,
+);
+
+export type RevenueCostAdjustmentConfigBatchSchema = z.infer<
+	typeof revenueCostAdjustmentConfigBatchSchema
+>;

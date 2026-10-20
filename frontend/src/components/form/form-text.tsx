@@ -30,7 +30,7 @@ export function FormText<T extends FieldValues>({
 			render={({ field }) => {
 				return (
 					<FormItem className='w-full flex-1'>
-						<FormLabel>{label}</FormLabel>
+						{label && <FormLabel>{label}</FormLabel>}
 						<FormControl>
 							<Textarea autoComplete={autoComplete} {...props} {...field} />
 						</FormControl>

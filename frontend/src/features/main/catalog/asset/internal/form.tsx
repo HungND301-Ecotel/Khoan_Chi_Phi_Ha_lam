@@ -17,9 +17,10 @@ import {
 } from '@/features/main/catalog/asset/internal/schema';
 import { Asset } from '@/features/main/catalog/asset/types';
 import { Unit } from '@/features/main/catalog/unit/columns';
+import { useCatalogQuickCreate } from '@/features/main/catalog/quick-create';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 
 export type AssetInternalDetail = {
@@ -71,12 +72,20 @@ export function AssetInternalForm({
 		name: 'costs',
 	});
 
+	const loadUnits = useCallback(
+		() =>
+			api
+				.pagging<Unit>(API.CATALOG.UNIT.LIST)
+				.then((res) => setUnits(res.result.data)),
+		[],
+	);
+
+	const unitQuickCreate = useCatalogQuickCreate('unit', loadUnits);
+
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const units = await api.pagging<Unit>(API.CATALOG.UNIT.LIST);
-
-				setUnits(units.result.data);
+				await loadUnits();
 
 				if (row) {
 					const res = await api.get<AssetInternalDetail>(
@@ -109,7 +118,7 @@ export function AssetInternalForm({
 		};
 
 		fetchData();
-	}, [row, form, isDuplicate, defaultCode]);
+	}, [row, form, isDuplicate, defaultCode, loadUnits]);
 
 	useEffect(() => {
 		costs?.forEach((cost, index) => {
@@ -193,6 +202,14 @@ export function AssetInternalForm({
 					value: unit.id,
 					label: unit.name,
 				}))}
+				quickCreate={unitQuickCreate}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<FormArray control={form.control} name='costs' label='Đơn giá'>
@@ -229,13 +246,6 @@ export function AssetInternalForm({
 					</div>
 				)}
 			</FormArray>
-
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

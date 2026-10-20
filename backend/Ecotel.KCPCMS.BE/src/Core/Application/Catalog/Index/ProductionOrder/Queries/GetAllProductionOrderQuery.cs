@@ -17,7 +17,8 @@ public class GetAllProductionOrderQueryHandler(IPaginationService paginationServ
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new ProductionOrdersByPaginationSpec(filter, request.Search);
@@ -30,7 +31,7 @@ public class GetAllProductionOrderQueryHandler(IPaginationService paginationServ
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.Name).ToList();
+        result = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.Name).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }

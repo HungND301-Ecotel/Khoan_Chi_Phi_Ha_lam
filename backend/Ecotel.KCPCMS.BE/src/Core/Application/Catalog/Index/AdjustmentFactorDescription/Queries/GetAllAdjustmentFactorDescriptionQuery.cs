@@ -18,7 +18,8 @@ public class GetAllAdjustmentFactorDescriptionQueryHandler(IPaginationService pa
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new AdjustmentFactorDescriptionsByPaginationSpec(filter, request.Search);
@@ -30,7 +31,7 @@ public class GetAllAdjustmentFactorDescriptionQueryHandler(IPaginationService pa
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderByCodeNatural(d => d.AdjustmentFactorCode).ThenBy(d => d.Description).ToList();
+        result = result.Data.OrderByCodeNatural(d => d.AdjustmentFactorCode).ThenBy(d => d.Description).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }

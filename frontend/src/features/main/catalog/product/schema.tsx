@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 const monthField = (message: string) =>
@@ -50,3 +51,10 @@ export const PRODUCT_FORM_DEFAULT: ProductFormSchema = {
 	endMonth: '',
 	note: '',
 };
+
+export const productBatchSchema = batchSchema(productFormSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã sản phẩm bị trùng',
+});
+
+export type ProductBatchSchema = z.infer<typeof productBatchSchema>;

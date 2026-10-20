@@ -9,10 +9,13 @@ namespace Application.Dto.Catalog.TransportUnitPrice
         public Guid ProductionProcessId { get; set; }
         public string? ProductionProcessName { get; set; }
         public Guid? TransportRouteId { get; set; }
+        public string? TransportRouteCode { get; set; }
         public string? TransportRouteName { get; set; }
         public Guid? DepartmentId { get; set; }
+        public string? DepartmentCode { get; set; }
         public string? DepartmentName { get; set; }
         public Guid? EquipmentId { get; set; }
+        public string? EquipmentCode { get; set; }
         public string? EquipmentName { get; set; }
         public string? EquipmentQuality { get; set; }
         public decimal? MaterialFuelUnitPrice { get; set; }
@@ -23,6 +26,7 @@ namespace Application.Dto.Catalog.TransportUnitPrice
         public bool IsLowVolumeCase { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
+        public string? Note { get; set; }
     }
 
     // 1 nhóm ứng với 1 lần tạo mới trên form (cùng Công đoạn sản xuất + Thời gian) — gộp nhiều
@@ -54,6 +58,7 @@ namespace Application.Dto.Catalog.TransportUnitPrice
         public bool IsLowVolumeCase { get; set; }
         public DateOnly StartMonth { get; set; }
         public DateOnly EndMonth { get; set; }
+        public string? Note { get; set; }
     }
 
     public class TransportUnitPriceExcelDto

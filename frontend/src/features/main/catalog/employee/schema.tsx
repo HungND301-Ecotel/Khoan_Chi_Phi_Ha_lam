@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const employeeFormSchema = z.object({
@@ -45,3 +46,10 @@ export const EMPLOYEE_FORM_DEFAULT: EmployeeFormSchema = {
 	genre: true,
 	note: '',
 };
+
+export const employeeBatchSchema = batchSchema(employeeFormSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã nhân viên bị trùng',
+});
+
+export type EmployeeBatchSchema = z.infer<typeof employeeBatchSchema>;

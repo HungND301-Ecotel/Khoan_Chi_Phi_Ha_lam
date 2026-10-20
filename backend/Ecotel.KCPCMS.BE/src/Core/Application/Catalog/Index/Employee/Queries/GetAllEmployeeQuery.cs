@@ -25,7 +25,8 @@ public class GetAllEmployeeQueryHandler(
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new EmployeesByPaginationSpec(filter, request.Search,request.DepartmentId);
@@ -38,7 +39,7 @@ public class GetAllEmployeeQueryHandler(
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(e => e.FullName).ToList();
+        result = result.Data.OrderBy(e => e.FullName).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }
