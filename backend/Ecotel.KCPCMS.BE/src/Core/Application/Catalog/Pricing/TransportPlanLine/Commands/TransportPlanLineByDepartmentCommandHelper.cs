@@ -258,11 +258,21 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         ItemInput item,
         DateOnly month)
     {
+        // Tuyến có đơn giá theo Đơn vị (băng tải, trục): dòng "Đơn vị khác" (DepartmentId = null)
+        // chưa được áp khi tính — chỉ khớp đúng Đơn vị. Tuyến không theo Đơn vị (trục kéo) giữ nguyên.
+        var routeUsesDepartments = candidates.Any(x =>
+            x.ProductionProcessId == item.ProductionProcessId &&
+            x.TransportRouteId == item.TransportRouteId &&
+            x.DepartmentId != null);
+        bool DepartmentMatches(TransportUnitPriceEntity x) => routeUsesDepartments
+            ? x.DepartmentId == item.RouteDepartmentId
+            : x.DepartmentId == null || x.DepartmentId == item.RouteDepartmentId;
+
         var matches = candidates
             .Where(x =>
                 x.ProductionProcessId == item.ProductionProcessId &&
                 x.TransportRouteId == item.TransportRouteId &&
-                (x.DepartmentId == null || x.DepartmentId == item.RouteDepartmentId) &&
+                DepartmentMatches(x) &&
                 x.EquipmentId == item.EquipmentId &&
                 x.EquipmentQuality == item.EquipmentQuality &&
                 x.StartMonth <= month &&
@@ -275,7 +285,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                 .Where(x =>
                     x.ProductionProcessId == item.ProductionProcessId &&
                     x.TransportRouteId == item.TransportRouteId &&
-                    (x.DepartmentId == null || x.DepartmentId == item.RouteDepartmentId) &&
+                    DepartmentMatches(x) &&
                     x.EquipmentId == item.EquipmentId &&
                     x.EquipmentQuality == item.EquipmentQuality)
                 .ToList();

@@ -18,9 +18,10 @@ import {
 	contractCodeSchema,
 } from '@/features/main/catalog/contract-code/schema';
 import { Unit } from '@/features/main/catalog/unit/columns';
+import { useCatalogQuickCreate } from '@/features/main/catalog/quick-create';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 type Material = {
@@ -80,6 +81,16 @@ export function ContractCodeForm({
 				}
 			: CONTRACT_CODE_SCHEMA_DEFAULT,
 	});
+
+	const loadUnits = useCallback(
+		() =>
+			api
+				.pagging<Unit>(API.CATALOG.UNIT.LIST)
+				.then((res) => setUnits(res.result.data)),
+		[],
+	);
+
+	const unitQuickCreate = useCatalogQuickCreate('unit', loadUnits);
 
 	useEffect(() => {
 		const promises = Promise.all([
@@ -235,6 +246,7 @@ export function ContractCodeForm({
 					value: unit.id,
 					label: unit.name,
 				}))}
+				quickCreate={unitQuickCreate}
 			/>
 
 			<MultiSelect
@@ -251,6 +263,13 @@ export function ContractCodeForm({
 				values={selectedOtherMaterials}
 				onValuesChange={setSelectedOtherMaterials}
 				options={otherMaterialOptions}
+			/>
+
+			<FormInput
+				control={form.control}
+				name='note'
+				label='Ghi chú'
+				placeholder='Nhập ghi chú (nếu có)'
 			/>
 
 			<FormArray
@@ -284,13 +303,6 @@ export function ContractCodeForm({
 					</div>
 				)}
 			</FormArray>
-
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
 
 			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
 		</FormProvider>

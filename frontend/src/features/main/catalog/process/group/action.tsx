@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormComboBox } from '@/components/form/form-combo-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
@@ -11,29 +16,49 @@ import { FixedKey } from '@/features/main/system/fixed-key/columns';
 import { ProcessGroup } from '@/features/main/catalog/process/group/columns';
 import {
 	PROCESS_GROUP_SCHEMA_DEFAULT,
-	ProcessGroupSchema,
-	processGroupSchema,
+	processGroupBatchSchema,
+	ProcessGroupBatchSchema,
 } from '@/features/main/catalog/process/group/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+type ProcessGroupFormProps = ActionDialogProps<ProcessGroup> & {
+	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
+};
+
 export function ProcessGroupForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<ProcessGroup> & { isDuplicate?: boolean }) {
+	single = false,
+}: ProcessGroupFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
 	const [fixedKeys, setFixedKeys] = useState<FixedKey[]>([]);
 
-	const form = useForm<ProcessGroupSchema>({
-		resolver: zodResolver(processGroupSchema),
+	const isEdit = !!row?.id && !isDuplicate;
+
+	const form = useForm<ProcessGroupBatchSchema>({
+		resolver: zodResolver(processGroupBatchSchema),
 		mode: 'onSubmit',
-		defaultValues: PROCESS_GROUP_SCHEMA_DEFAULT,
+		defaultValues: {
+			items: [
+				row
+					? {
+							name: row.name,
+							fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
+							note: row.note || '',
+						}
+					: PROCESS_GROUP_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
 	useEffect(() => {
 		api
@@ -48,66 +73,94 @@ export function ProcessGroupForm({
 			.catch((error) => popup.error(error));
 	}, [popup]);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				name: row.name,
-				fixedKeyId: isDuplicate ? '' : (row.fixedKeyId ?? ''),
-				note: row.note || '',
-			});
-		}
-	}, [row, form, isDuplicate]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: ProcessGroupSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: ProcessGroupBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PROCESS.GROUP.UPDATE, {
 					id: row.id,
-					...values,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.PROCESS.GROUP.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.PROCESS.GROUP.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormComboBox
-				control={form.control}
-				name='fixedKeyId'
-				label='Mã nhóm công đoạn sản xuất'
-				placeholder='Chọn mã nhóm công đoạn sản xuất'
-				options={fixedKeys.map((fixedKey) => ({
-					value: fixedKey.id,
-					label: `${fixedKey.key} - ${fixedKey.name}`,
-				}))}
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => PROCESS_GROUP_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'fixedKeyId',
+						header: 'Mã nhóm công đoạn sản xuất',
+						required: true,
+						className: 'min-w-48',
+						render: ({ index, label }) => (
+							<FormComboBox
+								control={form.control}
+								name={`items.${index}.fixedKeyId`}
+								label={label}
+								placeholder='Chọn mã nhóm công đoạn sản xuất'
+								options={fixedKeys.map((fixedKey) => ({
+									value: fixedKey.id,
+									label: `${fixedKey.key} - ${fixedKey.name}`,
+								}))}
+							/>
+						),
+					},
+					{
+						key: 'name',
+						header: 'Tên nhóm công đoạn sản xuất',
+						required: true,
+						className: 'min-w-48',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.name`}
+								label={label}
+								placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
 
-			<FormInput
-				control={form.control}
-				name='name'
-				label='Tên nhóm công đoạn sản xuất'
-				placeholder='Nhập tên nhóm công đoạn sản xuất, ví dụ: Đào lò'
-			/>
-
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

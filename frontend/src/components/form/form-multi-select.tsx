@@ -106,7 +106,7 @@ export function FormMultiSelect<T extends FieldValues>({
 
 				return (
 					<FormItem className='flex flex-col gap-2'>
-						<FormLabel>{label}</FormLabel>
+						{label && <FormLabel>{label}</FormLabel>}
 						<FormControl>
 							<Popover open={open} onOpenChange={setOpen}>
 								<PopoverTrigger asChild>

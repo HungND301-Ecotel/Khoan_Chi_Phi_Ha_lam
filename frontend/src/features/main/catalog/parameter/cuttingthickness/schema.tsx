@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const cuttingthicknessSchema = z.object({
@@ -13,3 +14,12 @@ export const CUTTINGTHICKNESS_SCHEMA_DEFAULT: CuttingthicknessSchema = {
 	value: '',
 	note: '',
 };
+
+export const cuttingthicknessBatchSchema = batchSchema(cuttingthicknessSchema, {
+	uniqueKey: 'value',
+	uniqueMessage: 'Chiều dày lớp khấu bị trùng',
+});
+
+export type CuttingthicknessBatchSchema = z.infer<
+	typeof cuttingthicknessBatchSchema
+>;

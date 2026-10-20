@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const ProductionOrderSchema = z.object({
@@ -25,3 +26,12 @@ export const PRODUCTION_ORDER_SCHEMA_DEFAULT: ProductionOrderSchema = {
 	endMonth: '',
 	note: '',
 };
+
+export const productionOrderBatchSchema = batchSchema(ProductionOrderSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Số quyết định, lệnh sản xuất bị trùng',
+});
+
+export type ProductionOrderBatchSchema = z.infer<
+	typeof productionOrderBatchSchema
+>;

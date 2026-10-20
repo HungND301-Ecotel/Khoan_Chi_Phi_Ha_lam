@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -9,77 +14,110 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { CLAMP_SCHEMA_DEFAULT } from '@/features/main/catalog/parameter/clamp/schema';
 import { Insert } from '@/features/main/catalog/parameter/insert/columns';
 import {
-	insertSchema,
-	InsertSchema,
+	insertBatchSchema,
+	InsertBatchSchema,
 } from '@/features/main/catalog/parameter/insert/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+
+type InsertFormProps = ActionDialogProps<Insert> & {
+	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
+};
 
 export function InsertForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<Insert> & { isDuplicate?: boolean }) {
+	single = false,
+}: InsertFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<InsertSchema>({
-		resolver: zodResolver(insertSchema),
-		defaultValues: CLAMP_SCHEMA_DEFAULT,
+	const form = useForm<InsertBatchSchema>({
+		resolver: zodResolver(insertBatchSchema),
 		mode: 'onSubmit',
+		defaultValues: {
+			items: [
+				row ? { value: row.value, note: row.note || '' } : CLAMP_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				value: row.value,
-				note: row.note || '',
-			});
-		}
-	}, [row, form]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: InsertSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: InsertBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PARAMETER.INSERT.UPDATE, {
-					id: row?.id,
-					...values,
+					id: row.id,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.PARAMETER.INSERT.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.PARAMETER.INSERT.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control}
-				name='value'
-				label='Chèn'
-				placeholder='Nhập chèn'
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => CLAMP_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'value',
+						header: 'Chèn',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.value`}
+								label={label}
+								placeholder='Nhập chèn'
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
 
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

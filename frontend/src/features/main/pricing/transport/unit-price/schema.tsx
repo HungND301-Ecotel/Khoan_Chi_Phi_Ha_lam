@@ -14,6 +14,7 @@ export type TransportPeriodRowItem = {
 	quantity?: number | null;
 	unitOfMeasureId?: string;
 	isLowVolumeCase?: boolean;
+	note?: string;
 };
 
 export type TransportPeriodCardData = {
@@ -62,7 +63,7 @@ export function validateTransportPeriods(
 			return `Thời gian bắt đầu không được lớn hơn thời gian kết thúc ở khoảng thời gian thứ ${periodOrder}.`;
 		}
 
-		if (mode === 'conveyor' || mode === 'shaft') {
+		if (mode === 'conveyor') {
 			if (!p.selectedRouteIds || p.selectedRouteIds.length === 0) {
 				return `Vui lòng chọn Tuyến vận tải ở khoảng thời gian thứ ${periodOrder}.`;
 			}
@@ -72,7 +73,7 @@ export function validateTransportPeriods(
 					return `Vui lòng chọn Đơn vị cho tuyến vận tải ở khoảng thời gian thứ ${periodOrder}.`;
 				}
 			}
-		} else if (mode === 'cable_winch') {
+		} else if (mode === 'shaft' || mode === 'cable_winch') {
 			if (!p.selectedRouteIds || p.selectedRouteIds.length === 0) {
 				return `Vui lòng chọn Tuyến vận tải ở khoảng thời gian thứ ${periodOrder}.`;
 			}

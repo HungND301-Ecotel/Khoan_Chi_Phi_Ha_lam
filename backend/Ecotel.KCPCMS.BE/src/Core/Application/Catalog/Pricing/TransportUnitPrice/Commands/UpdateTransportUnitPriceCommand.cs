@@ -39,7 +39,8 @@ public class UpdateTransportUnitPriceCommandHandler(IUnitOfWork unitOfWork) : IR
             model.Quantity,
             model.IsLowVolumeCase,
             model.StartMonth,
-            model.EndMonth);
+            model.EndMonth,
+            string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim());
 
         _transportUnitPriceRepository.Update(existTransportUnitPrice);
         await unitOfWork.SaveChangesAsync();

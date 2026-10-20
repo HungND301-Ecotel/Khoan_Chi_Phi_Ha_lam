@@ -19,10 +19,12 @@ export type TransportUnitPrice = {
 	transportRouteCode?: string;
 	transportRouteName?: string;
 	departmentId?: string;
+	departmentCode?: string;
 	departmentName?: string;
 	contractCodeId?: string;
 	contractCodeName?: string;
 	equipmentId?: string;
+	equipmentCode?: string;
 	equipmentName?: string;
 	materialId?: string;
 	materialName?: string;
@@ -34,6 +36,7 @@ export type TransportUnitPrice = {
 	powerUnitPrice?: number;
 	maintenanceUnitPrice?: number;
 	isLowVolumeCase?: boolean;
+	note?: string;
 	startMonth: string;
 	endMonth: string;
 	itemCount?: number;
@@ -56,6 +59,27 @@ export const formatMoney = (value?: number) => {
 	if (value === undefined || value === null) return '-';
 	return new Intl.NumberFormat('vi-VN').format(value);
 };
+
+// Hiển thị dạng "Mã - Tên" (bỏ phần thiếu)
+export const formatCodeName = (code?: string, name?: string) =>
+	[code, name].filter(Boolean).join(' - ') || '-';
+
+// Đơn vị tính của các cột đơn giá theo phương thức vận tải (dùng chung form và bảng Xem)
+export function getTransportUnitLabel(mode: TransportMode): string {
+	switch (mode) {
+		case 'conveyor':
+			return 'đ/tấn';
+		case 'shaft':
+			return 'đ/xe';
+		case 'cable_winch':
+		case 'other':
+			return 'đ/tháng';
+		case 'monorail':
+			return 'đ/h';
+		default:
+			return 'đ';
+	}
+}
 
 // Đúng logic suy luận trong form.tsx (tạo mới/sửa) — giữ riêng ở đây (file không phải
 // component) để bảng Xem (expand.tsx) chỉ đọc, không cần state/effect như form.
@@ -80,10 +104,6 @@ export const MAIN_PRICING_TRANSPORT_UNIT_PRICE_COLUMNS: ColumnDef<TransportUnitP
 		{
 			accessorKey: 'productionProcessName',
 			header: 'Công đoạn sản xuất',
-			cell: ({ row }) => (
-				<span className='font-medium text-black'>
-					{row.original.productionProcessName || '-'}
-				</span>
-			),
+			cell: ({ row }) => row.original.productionProcessName || '-',
 		},
 	];

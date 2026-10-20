@@ -36,6 +36,40 @@ interface PopupContextValue {
 
 const PopupContext = React.createContext<PopupContextValue | null>(null);
 
+/** Chuyển lỗi (API / Error / string) thành thông báo tiếng Việt hiển thị cho người dùng */
+export function getErrorDetail(error?: unknown): {
+	message: string;
+	errorList: string[];
+} {
+	let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
+	let errorList: string[] = [];
+
+	if (error instanceof ErrorResponse) {
+		const mappedMessage = ERROR[error.title];
+		const responseErrors = Object.values(error.errors)
+			.flatMap((value) => (Array.isArray(value) ? value : [value]))
+			.filter(
+				(value): value is string =>
+					typeof value === 'string' && value.trim().length > 0,
+			);
+
+		errorList = [...new Set(responseErrors)];
+
+		if (mappedMessage) {
+			message = mappedMessage;
+		} else {
+			message =
+				error.message.trim() || error.title.trim() || errorList[0] || message;
+		}
+	} else if (typeof error === 'string' && error.trim()) {
+		message = error;
+	} else if (error instanceof Error && error.message.trim()) {
+		message = error.message;
+	}
+
+	return { message, errorList };
+}
+
 export function usePopup() {
 	const context = React.useContext(PopupContext);
 	if (!context) {
@@ -51,34 +85,7 @@ export function usePopup() {
 
 	const error = React.useCallback(
 		(error?: unknown) => {
-			let message = 'Có lỗi xảy ra. Vui lòng thử lại.';
-			let errorList: string[] = [];
-
-			if (error instanceof ErrorResponse) {
-				const mappedMessage = ERROR[error.title];
-				const responseErrors = Object.values(error.errors)
-					.flatMap((value) => (Array.isArray(value) ? value : [value]))
-					.filter(
-						(value): value is string =>
-							typeof value === 'string' && value.trim().length > 0,
-					);
-
-				errorList = [...new Set(responseErrors)];
-
-				if (mappedMessage) {
-					message = mappedMessage;
-				} else {
-					message =
-						error.message.trim() ||
-						error.title.trim() ||
-						errorList[0] ||
-						message;
-				}
-			} else if (typeof error === 'string' && error.trim()) {
-				message = error;
-			} else if (error instanceof Error && error.message.trim()) {
-				message = error.message;
-			}
+			const { message, errorList } = getErrorDetail(error);
 
 			context.showPopup({
 				type: 'error',

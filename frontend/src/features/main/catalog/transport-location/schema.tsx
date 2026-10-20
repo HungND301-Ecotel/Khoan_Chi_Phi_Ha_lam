@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import { z } from 'zod';
 
 export const transportLocationFormSchema = z.object({
@@ -7,11 +8,26 @@ export const transportLocationFormSchema = z.object({
 	note: z.string().optional(),
 });
 
-export type TransportLocationFormSchema = z.infer<typeof transportLocationFormSchema>;
+export type TransportLocationFormSchema = z.infer<
+	typeof transportLocationFormSchema
+>;
 
-export const TRANSPORT_LOCATION_FORM_DEFAULT: Partial<TransportLocationFormSchema> = {
-	code: '',
-	name: '',
-	locationType: undefined,
-	note: '',
-};
+export const TRANSPORT_LOCATION_FORM_DEFAULT: Partial<TransportLocationFormSchema> =
+	{
+		code: '',
+		name: '',
+		locationType: undefined,
+		note: '',
+	};
+
+export const transportLocationBatchSchema = batchSchema(
+	transportLocationFormSchema,
+	{
+		uniqueKey: 'code',
+		uniqueMessage: 'Mã vị trí bị trùng',
+	},
+);
+
+export type TransportLocationBatchSchema = z.infer<
+	typeof transportLocationBatchSchema
+>;

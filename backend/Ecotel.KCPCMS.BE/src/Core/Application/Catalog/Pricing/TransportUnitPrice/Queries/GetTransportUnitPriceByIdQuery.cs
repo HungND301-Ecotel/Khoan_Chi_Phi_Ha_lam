@@ -43,7 +43,8 @@ public class GetTransportUnitPriceByIdQueryHandler(IUnitOfWork unitOfWork) : IRe
             Quantity = entity.Quantity,
             IsLowVolumeCase = entity.IsLowVolumeCase,
             StartMonth = entity.StartMonth,
-            EndMonth = entity.EndMonth
+            EndMonth = entity.EndMonth,
+            Note = entity.Note
         };
     }
 }

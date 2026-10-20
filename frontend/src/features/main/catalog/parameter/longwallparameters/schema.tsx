@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const longwallparametersSchema = z.object({
@@ -21,3 +22,11 @@ export const LONGWALLPARAMETERS_SCHEMA_DEFAULT: LongwallparametersSchema = {
 	mk: '',
 	note: '',
 };
+
+export const longwallparametersBatchSchema = batchSchema(
+	longwallparametersSchema,
+);
+
+export type LongwallparametersBatchSchema = z.infer<
+	typeof longwallparametersBatchSchema
+>;

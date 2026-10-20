@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const factorSchema = z.object({
@@ -21,3 +22,8 @@ export const FACTOR_SCHEMA_DEFAULT: FactorSchema = {
 	processGroupId: '',
 	note: '',
 };
+
+// Không có trường đơn lẻ nào phải duy nhất (hệ số + nhóm công đoạn mới là cặp duy nhất)
+export const factorBatchSchema = batchSchema(factorSchema);
+
+export type FactorBatchSchema = z.infer<typeof factorBatchSchema>;

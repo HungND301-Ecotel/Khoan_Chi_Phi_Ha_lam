@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -9,12 +14,11 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { Longwallparameters } from '@/features/main/catalog/parameter/longwallparameters/columns';
 import {
 	LONGWALLPARAMETERS_SCHEMA_DEFAULT,
-	longwallparametersSchema,
-	LongwallparametersSchema,
+	longwallparametersBatchSchema,
+	LongwallparametersBatchSchema,
 } from '@/features/main/catalog/parameter/longwallparameters/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 const LONGWALLPARAMETERS_SUPPORTS = [
@@ -29,85 +33,141 @@ const LONGWALLPARAMETERS_SUPPORTS = [
 	'_',
 ];
 
+type LongwallparametersFormProps = ActionDialogProps<Longwallparameters> & {
+	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
+};
+
 export function LongwallparametersForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<Longwallparameters> & { isDuplicate?: boolean }) {
+	single = false,
+}: LongwallparametersFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<LongwallparametersSchema & any>({
-		resolver: zodResolver(longwallparametersSchema),
-		defaultValues: LONGWALLPARAMETERS_SCHEMA_DEFAULT,
+	const form = useForm<LongwallparametersBatchSchema>({
+		resolver: zodResolver(longwallparametersBatchSchema),
 		mode: 'onSubmit',
+		defaultValues: {
+			items: [
+				row
+					? {
+							// Kiểu cột là number nhưng schema form là string
+							llc: row.llc,
+							lkc: String(row.lkc ?? ''),
+							mk: String(row.mk ?? ''),
+							note: row.note || '',
+						}
+					: LONGWALLPARAMETERS_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				llc: row.llc,
-				lkc: row.lkc,
-				mk: row.mk,
-				note: row.note || '',
-			});
-		}
-	}, [row, form]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: LongwallparametersSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: LongwallparametersBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PARAMETER.LONGWALLPARAMETERS.UPDATE, {
-					id: row?.id,
-					...values,
+					id: row.id,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.PARAMETER.LONGWALLPARAMETERS.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.PARAMETER.LONGWALLPARAMETERS.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control}
-				name='llc'
-				label='Llc (m)'
-				placeholder='Nhập Llc (m)'
-				type='text'
-				supports={LONGWALLPARAMETERS_SUPPORTS}
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => LONGWALLPARAMETERS_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'llc',
+						header: 'Llc (m)',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.llc`}
+								label={label}
+								placeholder='Nhập Llc (m)'
+								type='text'
+								supports={LONGWALLPARAMETERS_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'lkc',
+						header: 'Lkc (m)',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.lkc`}
+								label={label}
+								placeholder='Nhập Lkc (m)'
+								supports={LONGWALLPARAMETERS_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'mk',
+						header: 'Mk (m)',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.mk`}
+								label={label}
+								placeholder='Nhập Mk (m)'
+								supports={LONGWALLPARAMETERS_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
-			<FormInput
-				control={form.control}
-				name='lkc'
-				label='Lkc (m)'
-				placeholder='Nhập Lkc (m)'
-				supports={LONGWALLPARAMETERS_SUPPORTS}
-			/>
-			<FormInput
-				control={form.control}
-				name='mk'
-				label='Mk (m)'
-				placeholder='Nhập Mk (m)'
-				supports={LONGWALLPARAMETERS_SUPPORTS}
-			/>
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

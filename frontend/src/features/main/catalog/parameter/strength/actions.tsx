@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -9,78 +14,115 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { Strength } from '@/features/main/catalog/parameter/strength/columns';
 import {
 	STRENGTH_SCHEMA_DEFAULT,
-	strengthSchema,
-	StrengthSchema,
+	strengthBatchSchema,
+	StrengthBatchSchema,
 } from '@/features/main/catalog/parameter/strength/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 const STRENGTH_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
+
+type StrengthFormProps = ActionDialogProps<Strength> & {
+	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
+};
 
 export function StrengthForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<Strength> & { isDuplicate?: boolean }) {
+	single = false,
+}: StrengthFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<StrengthSchema>({
-		resolver: zodResolver(strengthSchema),
-		defaultValues: STRENGTH_SCHEMA_DEFAULT,
+	const form = useForm<StrengthBatchSchema>({
+		resolver: zodResolver(strengthBatchSchema),
 		mode: 'onSubmit',
+		defaultValues: {
+			items: [
+				row
+					? { value: row.value, note: row.note || '' }
+					: STRENGTH_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				value: row.value,
-				note: row.note || '',
-			});
-		}
-	}, [row, form]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: StrengthSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: StrengthBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PARAMETER.STRENGTH.UPDATE, {
-					id: row?.id,
-					...values,
+					id: row.id,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.PARAMETER.STRENGTH.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.PARAMETER.STRENGTH.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control}
-				name='value'
-				label='Độ kiên cố than, đá (f)'
-				placeholder='Nhập độ kiên cố than, đá (f)'
-				supports={STRENGTH_SUPPORTS}
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => STRENGTH_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'value',
+						header: 'Độ kiên cố than, đá (f)',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.value`}
+								label={label}
+								placeholder='Nhập độ kiên cố (f)'
+								supports={STRENGTH_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

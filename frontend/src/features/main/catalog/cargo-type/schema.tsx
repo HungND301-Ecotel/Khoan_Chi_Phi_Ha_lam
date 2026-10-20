@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import { z } from 'zod';
 
 export const cargoTypeFormSchema = z.object({
@@ -13,3 +14,10 @@ export const CARGO_TYPE_FORM_DEFAULT: CargoTypeFormSchema = {
 	name: '',
 	note: '',
 };
+
+export const cargoTypeBatchSchema = batchSchema(cargoTypeFormSchema, {
+	uniqueKey: 'code',
+	uniqueMessage: 'Mã chủng loại hàng bị trùng',
+});
+
+export type CargoTypeBatchSchema = z.infer<typeof cargoTypeBatchSchema>;

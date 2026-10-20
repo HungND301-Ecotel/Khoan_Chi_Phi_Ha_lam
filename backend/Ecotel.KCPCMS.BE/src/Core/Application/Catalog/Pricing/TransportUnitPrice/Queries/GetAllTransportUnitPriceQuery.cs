@@ -31,8 +31,11 @@ public class GetAllTransportUnitPriceQueryHandler(IUnitOfWork unitOfWork)
             .Include(t => t.ProductionProcess)
                 .ThenInclude(p => p!.Code)
             .Include(t => t.TransportRoute)
+                .ThenInclude(r => r!.Code)
             .Include(t => t.Department)
+                .ThenInclude(d => d!.Code)
             .Include(t => t.Equipment)
+                .ThenInclude(e => e!.Code)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -77,10 +80,13 @@ public class GetAllTransportUnitPriceQueryHandler(IUnitOfWork unitOfWork)
         ProductionProcessId = t.ProductionProcessId,
         ProductionProcessName = t.ProductionProcess?.Name,
         TransportRouteId = t.TransportRouteId,
+        TransportRouteCode = t.TransportRoute?.Code?.Value,
         TransportRouteName = t.TransportRoute?.Name,
         DepartmentId = t.DepartmentId,
+        DepartmentCode = t.Department?.Code?.Value,
         DepartmentName = t.Department?.Name,
         EquipmentId = t.EquipmentId,
+        EquipmentCode = t.Equipment?.Code?.Value,
         EquipmentName = t.Equipment?.Name,
         EquipmentQuality = t.EquipmentQuality,
         MaterialFuelUnitPrice = t.MaterialFuelUnitPrice,
@@ -90,5 +96,6 @@ public class GetAllTransportUnitPriceQueryHandler(IUnitOfWork unitOfWork)
         IsLowVolumeCase = t.IsLowVolumeCase,
         StartMonth = t.StartMonth,
         EndMonth = t.EndMonth,
+        Note = t.Note,
     };
 }

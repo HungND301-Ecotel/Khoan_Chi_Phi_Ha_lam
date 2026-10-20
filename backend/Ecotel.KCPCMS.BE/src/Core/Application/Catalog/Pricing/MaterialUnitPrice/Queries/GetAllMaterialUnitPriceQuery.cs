@@ -35,7 +35,8 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new MaterialUnitPricesByPaginationSpec(filter, request.Search, request.Type);
@@ -48,7 +49,7 @@ public class GetAllUnitPriceQueryHandler(IPaginationService paginationService, I
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.ProcessName).ToList();
+        result = result.Data.OrderByCodeNatural(d => d.Code).ThenBy(d => d.ProcessName).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         cacheService.SetWithSignal(cacheKey, result, CacheSignalKey);
         return result;
     }

@@ -377,7 +377,7 @@ function ExcavatorPeriodSection({
 																	className='transition-colors hover:bg-neutral-50/50'
 																>
 																	<td className='whitespace-nowrap px-4 py-2'>
-																		<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-black'>
+																		<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs text-black'>
 																			{materialName} (Loại {quality})
 																		</div>
 																	</td>

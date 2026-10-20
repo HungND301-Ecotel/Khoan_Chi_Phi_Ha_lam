@@ -147,7 +147,7 @@ export function FormDate<T extends FieldValues>({
 
 	return (
 		<FormItem className='w-full flex-1'>
-			<FormLabel>{label}</FormLabel>
+			{label && <FormLabel>{label}</FormLabel>}
 			<FormControl>
 				<FormDateInput
 					field={field}

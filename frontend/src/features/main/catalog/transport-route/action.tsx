@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormCheckBox } from '@/components/form/form-check-box';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
@@ -10,91 +15,149 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import {
 	TRANSPORT_ROUTE_SCHEMA_DEFAULT,
-	TransportRouteSchema,
-	transportRouteSchema,
+	transportRouteBatchSchema,
+	TransportRouteBatchSchema,
 } from '@/features/main/catalog/transport-route/schema';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 type TransportRouteFormProps = ActionDialogProps<TransportRoute> & {
 	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
 };
 
 export function TransportRouteForm({
 	data,
 	row,
 	isDuplicate = false,
+	single = false,
 }: TransportRouteFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<TransportRouteSchema>({
-		resolver: zodResolver(transportRouteSchema) as any,
+	const form = useForm<TransportRouteBatchSchema>({
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- isSpecialLowVolume có .default() nên kiểu input/output khác nhau
+		resolver: zodResolver(transportRouteBatchSchema) as any,
 		mode: 'onSubmit',
-		defaultValues: row
-			? {
-					code: isDuplicate ? '' : row.code,
-					name: row.name,
-					note: row.note || '',
-					isSpecialLowVolume: row.isSpecialLowVolume ?? false,
-				}
-			: TRANSPORT_ROUTE_SCHEMA_DEFAULT,
+		defaultValues: {
+			items: [
+				row
+					? {
+							code: isDuplicate ? '' : row.code,
+							name: row.name,
+							note: row.note || '',
+							isSpecialLowVolume: row.isSpecialLowVolume ?? false,
+						}
+					: TRANSPORT_ROUTE_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	const handleSubmit = async (values: TransportRouteSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
+
+	const handleSubmit = async ({ items }: TransportRouteBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.TRANSPORT_ROUTE.UPDATE, {
 					id: row.id,
-					...values,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.TRANSPORT_ROUTE.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.TRANSPORT_ROUTE.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
-		<FormProvider context={form as any} onSubmit={handleSubmit as any}>
-			<FormInput
-				control={form.control}
-				name='code'
-				label='Mã tuyến vận tải'
-				placeholder='Nhập mã tuyến vận tải'
+		<FormProvider context={form} onSubmit={handleSubmit}>
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => TRANSPORT_ROUTE_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'code',
+						header: 'Mã tuyến vận tải',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.code`}
+								label={label}
+								placeholder='Nhập mã tuyến vận tải'
+							/>
+						),
+					},
+					{
+						key: 'name',
+						header: 'Tên tuyến vận tải',
+						required: true,
+						className: 'min-w-48',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.name`}
+								label={label}
+								placeholder='Nhập tên tuyến vận tải'
+							/>
+						),
+					},
+					{
+						key: 'isSpecialLowVolume',
+						header: 'Đơn giá tuyến vận tải phụ thuộc sản lượng',
+						// Trong bảng: căn giữa ô đánh dấu theo chiều cao ô nhập
+						render: ({ index, label }) => (
+							<div
+								className={cn(!label && 'flex h-9 items-center justify-center')}
+							>
+								<FormCheckBox
+									control={form.control}
+									name={`items.${index}.isSpecialLowVolume`}
+									label={label}
+								/>
+							</div>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
 
-			<FormInput
-				control={form.control}
-				name='name'
-				label='Tên tuyến vận tải'
-				placeholder='Nhập tên tuyến vận tải'
-			/>
-
-			<FormCheckBox
-				control={form.control}
-				name='isSpecialLowVolume'
-				label='Đơn giá tuyến vận tải phụ thuộc sản lượng'
-			/>
-
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

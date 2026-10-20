@@ -16,7 +16,8 @@ public class GetAllLongwallParametersQueryHandler(IPaginationService paginationS
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new LongwallParametersByPaginationSpec(filter, request.Search);
@@ -29,7 +30,7 @@ public class GetAllLongwallParametersQueryHandler(IPaginationService paginationS
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
 
-        result.Data = result.Data.OrderBy(d => d.Llc).ThenBy(d => d.Lkc).ThenBy(d => d.Mk).ToList();
+        result = result.Data.OrderBy(d => d.Llc).ThenBy(d => d.Lkc).ThenBy(d => d.Mk).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
         return result;
     }
 }

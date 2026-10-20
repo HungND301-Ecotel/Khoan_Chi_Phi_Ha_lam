@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const powerSchema = z.object({
@@ -13,3 +14,10 @@ export const POWER_SCHEMA_DEFAULT: PowerSchema = {
 	value: '',
 	note: '',
 };
+
+export const powerBatchSchema = batchSchema(powerSchema, {
+	uniqueKey: 'value',
+	uniqueMessage: 'Công suất bị trùng',
+});
+
+export type PowerBatchSchema = z.infer<typeof powerBatchSchema>;

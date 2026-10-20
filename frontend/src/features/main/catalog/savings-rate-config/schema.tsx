@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const savingsRateConfigSchema = z
@@ -11,9 +12,9 @@ export const savingsRateConfigSchema = z
 		const revenueRegex = new RegExp(
 			`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*$`,
 		);
-	const savingsRateRegex = new RegExp(
-		`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*%\\s*$`,
-	);
+		const savingsRateRegex = new RegExp(
+			`^\\s*(?:${numberPattern}\\s*[-–]\\s*${numberPattern}|[≥>]=?\\s*${numberPattern}|[≤<]=?\\s*${numberPattern}|${numberPattern})\\s*%\\s*$`,
+		);
 
 		if (!values.revenueDisplay) {
 			ctx.addIssue({
@@ -60,3 +61,11 @@ export const SAVINGS_RATE_CONFIG_SCHEMA_DEFAULT: SavingsRateConfigSchema = {
 	savingsRateDisplay: '',
 	description: '',
 };
+
+export const savingsRateConfigBatchSchema = batchSchema(
+	savingsRateConfigSchema,
+);
+
+export type SavingsRateConfigBatchSchema = z.infer<
+	typeof savingsRateConfigBatchSchema
+>;

@@ -1,5 +1,10 @@
 import { ActionDialogProps } from '@/components/datatable';
 import { DataTableEditConfirm } from '@/components/datatable/edit';
+import {
+	FormBatch,
+	reportBatchResult,
+	useFormBatch,
+} from '@/components/form/form-batch';
 import { FormInput } from '@/components/form/form-input';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
@@ -9,95 +14,144 @@ import { useMeta } from '@/data/meta/meta-hook';
 import { Passport } from '@/features/main/catalog/parameter/passport/columns';
 import {
 	PASSPORT_SCHEMA_DEFAULT,
-	passportSchema,
-	PassportSchema,
+	passportBatchSchema,
+	PassportBatchSchema,
 } from '@/features/main/catalog/parameter/passport/schema';
 import { api } from '@/lib/api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 const PASSPORT_SUPPORTS = ['≥', '≤', '<', '>', '%', '°', '=', '-', '_'];
+
+type PassportFormProps = ActionDialogProps<Passport> & {
+	isDuplicate?: boolean;
+	/** Chỉ tạo một bản ghi (vd: tạo nhanh từ dropdown) */
+	single?: boolean;
+};
 
 export function PassportForm({
 	data,
 	row,
 	isDuplicate = false,
-}: ActionDialogProps<Passport> & { isDuplicate?: boolean }) {
+	single = false,
+}: PassportFormProps) {
 	const { setOpen } = useDialog();
 	const { breadcrumb } = useMeta();
 	const popup = usePopup();
+	const isEdit = !!row?.id && !isDuplicate;
 
-	const form = useForm<PassportSchema>({
-		resolver: zodResolver(passportSchema),
-		defaultValues: PASSPORT_SCHEMA_DEFAULT,
+	const form = useForm<PassportBatchSchema>({
+		resolver: zodResolver(passportBatchSchema),
 		mode: 'onSubmit',
+		defaultValues: {
+			items: [
+				row
+					? { name: row.name, sd: row.sd, sc: row.sc, note: row.note || '' }
+					: PASSPORT_SCHEMA_DEFAULT,
+			],
+		},
 	});
+	const batch = useFormBatch(form);
 
-	useEffect(() => {
-		if (row) {
-			form.reset({
-				name: row.name,
-				sd: row.sd,
-				sc: row.sc,
-				note: row.note || '',
-			});
-		}
-	}, [row, form]);
+	const refresh = async () => {
+		await data?.refresh();
+		data?.table.toggleAllRowsSelected(false);
+	};
 
-	const handleSubmit = async (values: PassportSchema) => {
-		try {
-			if (row?.id && !isDuplicate) {
+	const handleSubmit = async ({ items }: PassportBatchSchema) => {
+		if (isEdit) {
+			try {
 				await api.put(API.CATALOG.PARAMETER.PASSPORT.UPDATE, {
-					id: row?.id,
-					...values,
+					id: row.id,
+					...items[0],
 				});
-			} else {
-				await api.post(API.CATALOG.PARAMETER.PASSPORT.CREATE, values);
+				setOpen(false);
+				popup.success(`${breadcrumb} đã được Cập nhật thành công.`);
+				await refresh();
+			} catch (error) {
+				popup.error(error);
 			}
-
-			setOpen(false);
-			popup.success(
-				`${breadcrumb} đã được ${row?.id && !isDuplicate ? 'Cập nhật' : 'Tạo mới'} thành công.`,
-			);
-			await data?.refresh();
-			data?.table.toggleAllRowsSelected(false);
-		} catch (error) {
-			popup.error(error);
+			return;
 		}
+
+		const result = await batch.submit(items, (item) =>
+			api.post(API.CATALOG.PARAMETER.PASSPORT.CREATE, item),
+		);
+		await reportBatchResult(result, {
+			breadcrumb,
+			popup,
+			close: () => setOpen(false),
+			refresh,
+		});
 	};
 
 	return (
 		<FormProvider context={form} onSubmit={handleSubmit}>
-			<FormInput
-				control={form.control}
-				name='name'
-				label='Hộ chiếu'
-				placeholder='Nhập hộ chiếu'
+			<FormBatch
+				form={form}
+				batch={batch}
+				canAdd={!isEdit && !single}
+				newItem={() => PASSPORT_SCHEMA_DEFAULT}
+				columns={[
+					{
+						key: 'name',
+						header: 'Hộ chiếu',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.name`}
+								label={label}
+								placeholder='Nhập hộ chiếu'
+							/>
+						),
+					},
+					{
+						key: 'sd',
+						header: 'Sđ',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.sd`}
+								label={label}
+								placeholder='Nhập Sđ'
+								type='text'
+								supports={PASSPORT_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'sc',
+						header: 'Sc',
+						required: true,
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.sc`}
+								label={label}
+								placeholder='Nhập Sc'
+								type='text'
+								supports={PASSPORT_SUPPORTS}
+							/>
+						),
+					},
+					{
+						key: 'note',
+						header: 'Ghi chú',
+						render: ({ index, label }) => (
+							<FormInput
+								control={form.control}
+								name={`items.${index}.note`}
+								label={label}
+								placeholder='Nhập ghi chú (nếu có)'
+							/>
+						),
+					},
+				]}
 			/>
-			<FormInput
-				control={form.control}
-				name='sd'
-				label='Sđ'
-				placeholder='Nhập Sđ'
-				type='text'
-				supports={PASSPORT_SUPPORTS}
-			/>
-			<FormInput
-				control={form.control}
-				name='sc'
-				label='Sc'
-				placeholder='Nhập Sc'
-				type='text'
-				supports={PASSPORT_SUPPORTS}
-			/>
-			<FormInput
-				control={form.control}
-				name='note'
-				label='Ghi chú'
-				placeholder='Nhập ghi chú (nếu có)'
-			/>
-			<DataTableEditConfirm isEdit={!!row && !isDuplicate} />
+
+			<DataTableEditConfirm isEdit={isEdit} />
 		</FormProvider>
 	);
 }

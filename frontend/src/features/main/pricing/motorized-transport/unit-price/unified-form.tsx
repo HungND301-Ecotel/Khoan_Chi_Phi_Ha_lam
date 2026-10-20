@@ -4,7 +4,6 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormProvider } from '@/components/form/form-provider';
 import { usePopup } from '@/components/popup';
 import { useDialog } from '@/data/dialog/dialog.hook';
-import { InfoIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
@@ -245,31 +244,6 @@ export function UnifiedMotorizedTransportForm(
 						hideConfirmButton={true}
 					/>
 				)}
-
-				{/* 3. KHỐI LƯU Ý CHUNG Ở CUỐI FORM */}
-				<div className='mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300'>
-					<div className='flex items-center gap-1.5 font-semibold text-blue-900 dark:text-blue-200'>
-						<InfoIcon className='size-4 text-blue-600 dark:text-blue-400' />
-						Lưu ý về Hệ số điều chỉnh đơn giá định mức (Cấu hình ở Danh mục):
-					</div>
-					<ul className='mt-1 list-disc space-y-0.5 pl-5 text-slate-700 dark:text-slate-300'>
-						<li>
-							Đơn giá nhiên liệu, SCTX tăng 5% theo công đoạn sản xuất, mùa mưa
-							và loại hàng.
-						</li>
-						<li>
-							Áp dụng hệ số điều chỉnh khi sản phẩm là Than, bùn, bã sàng, đá
-							sàng đổ tại Kho 5 (Kho BHN) & Kho 6 (mức +75):
-							<span className='font-medium'> Mức ≤ +65 (K = 1)</span>;
-							<span className='font-medium'>
-								{' '}
-								+65 &lt; Mức ≤ +90 (K = 1,03)
-							</span>
-							;
-							<span className='font-medium'> Mức &gt; +90 (K = 1,06)</span>.
-						</li>
-					</ul>
-				</div>
 
 				{/* 4. NÚT XÁC NHẬN / HUỶ DUY NHẤT Ở CUỐI FORM */}
 				<DataTableEditConfirm isEdit={!!row && !isDuplicate} />

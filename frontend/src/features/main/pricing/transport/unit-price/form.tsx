@@ -8,19 +8,7 @@ import { FormProvider } from '@/components/form/form-provider';
 import { FormSeparator } from '@/components/form/form-separator';
 import { MultiSelect, type MultiSelectOption } from '@/components/multi-select';
 import { Button } from '@/components/ui/button';
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from '@/components/ui/command';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useDialog } from '@/data/dialog/dialog.hook';
@@ -29,6 +17,7 @@ import type { Department } from '@/features/main/catalog/department/columns';
 import type { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import {
 	detectTransportMode,
+	getTransportUnitLabel,
 	type TransportMode,
 	type TransportUnitPrice,
 } from '@/features/main/pricing/transport/unit-price/columns';
@@ -41,15 +30,8 @@ import {
 	validateTransportPeriods,
 } from '@/features/main/pricing/transport/unit-price/schema';
 import { api } from '@/lib/api';
-import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-	Check,
-	ChevronDownIcon,
-	Copy,
-	PlusCircleIcon,
-	XCircleIcon,
-} from 'lucide-react';
+import { Copy, PlusCircleIcon, XCircleIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 
@@ -63,73 +45,31 @@ const QUALITY_OPTIONS: MultiSelectOption[] = [
 	{ value: 'C', label: 'Thiết bị loại C' },
 ];
 
-function SearchableSelect({
+// Dòng "Đơn vị khác": lưu với DepartmentId = null. Logic áp giá dòng này khi tính
+// cho Đơn vị không có dòng riêng sẽ nối sau.
+const OTHER_DEPARTMENT_ID = '';
+const OTHER_DEPARTMENT_LABEL = 'Đơn vị khác';
+
+const isOtherDepartmentEmpty = (it: TransportPeriodRowItem) =>
+	!it.departmentId &&
+	it.materialFuelUnitPrice == null &&
+	it.powerUnitPrice == null &&
+	it.maintenanceUnitPrice == null;
+
+function NoteInput({
 	value,
 	onChange,
-	placeholder,
-	options = [],
-	className,
 }: {
 	value?: string;
 	onChange: (val: string) => void;
-	placeholder?: string;
-	options?: { value: string; label: string }[];
-	className?: string;
 }) {
-	const [open, setOpen] = useState(false);
-	const selected = options.find((o) => o.value === value);
-
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant='outline'
-					role='combobox'
-					aria-expanded={open}
-					className={cn(
-						'h-9 w-full justify-between rounded-md border-neutral-300 bg-white px-3 font-normal text-black shadow-none hover:bg-neutral-50',
-						!selected && 'text-muted-foreground',
-						className,
-					)}
-				>
-					<span className='truncate'>
-						{selected ? selected.label : placeholder}
-					</span>
-					<ChevronDownIcon className='ml-2 size-4 shrink-0 opacity-50' />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent
-				className='w-[var(--radix-popover-trigger-width)] min-w-[260px] p-0'
-				align='start'
-			>
-				<Command>
-					<CommandInput placeholder='Tìm kiếm...' />
-					<CommandList className='max-h-56'>
-						<CommandEmpty>Không tìm thấy.</CommandEmpty>
-						<CommandGroup>
-							{options.map((option) => (
-								<CommandItem
-									key={option.value}
-									value={option.label}
-									onSelect={() => {
-										onChange(option.value);
-										setOpen(false);
-									}}
-								>
-									<Check
-										className={cn(
-											'mr-2 size-4',
-											value === option.value ? 'opacity-100' : 'opacity-0',
-										)}
-									/>
-									<span className='truncate'>{option.label}</span>
-								</CommandItem>
-							))}
-						</CommandGroup>
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
+		<Input
+			value={value ?? ''}
+			onChange={(e) => onChange(e.target.value)}
+			placeholder='Nhập ghi chú'
+			className='h-9 border-neutral-300 bg-white'
+		/>
 	);
 }
 
@@ -156,19 +96,26 @@ function computeSynchronizedItems(
 ): TransportPeriodRowItem[] {
 	const newItems: TransportPeriodRowItem[] = [];
 
-	if (mode === 'conveyor' || mode === 'shaft') {
+	if (mode === 'conveyor') {
 		selectedRouteIds.forEach((routeId) => {
 			const route = routes.find((r) => r.id === routeId);
 			const isSpecialRoute = !!route?.isSpecialLowVolume;
-			const deptsForRoute = routeDepartmentIds[routeId] || [];
+			// Luôn kèm 1 dòng "Đơn vị khác" (departmentId rỗng) sau các Đơn vị đã chọn —
+			// kể cả tuyến đặc biệt cũng chỉ 1 dòng, không tách theo sản lượng
+			const deptsForRoute = [
+				...(routeDepartmentIds[routeId] || []),
+				OTHER_DEPARTMENT_ID,
+			];
+			const sameDept = (it: TransportPeriodRowItem, deptId: string) =>
+				(it.departmentId || OTHER_DEPARTMENT_ID) === deptId;
 
 			deptsForRoute.forEach((deptId) => {
-				if (isSpecialRoute) {
+				if (isSpecialRoute && deptId !== OTHER_DEPARTMENT_ID) {
 					// Dòng 1: Sản lượng >= 10.000 tấn/tháng (Trường hợp bình thường)
 					const existingNormal = prevItems.find(
 						(it) =>
 							it.transportRouteId === routeId &&
-							it.departmentId === deptId &&
+							sameDept(it, deptId) &&
 							!it.isLowVolumeCase,
 					);
 					newItems.push({
@@ -183,13 +130,14 @@ function computeSynchronizedItems(
 						powerUnitPrice: existingNormal?.powerUnitPrice ?? null,
 						maintenanceUnitPrice: existingNormal?.maintenanceUnitPrice ?? null,
 						isLowVolumeCase: false,
+						note: existingNormal?.note ?? '',
 					});
 
 					// Dòng 2: Sản lượng < 10.000 tấn/tháng (Trường hợp đặc biệt)
 					const existingLow = prevItems.find(
 						(it) =>
 							it.transportRouteId === routeId &&
-							it.departmentId === deptId &&
+							sameDept(it, deptId) &&
 							it.isLowVolumeCase,
 					);
 					newItems.push({
@@ -203,12 +151,13 @@ function computeSynchronizedItems(
 						powerUnitPrice: existingLow?.powerUnitPrice ?? null,
 						maintenanceUnitPrice: existingLow?.maintenanceUnitPrice ?? null,
 						isLowVolumeCase: true,
+						note: existingLow?.note ?? '',
 					});
 				} else {
 					const existing = prevItems.find(
 						(it) =>
 							it.transportRouteId === routeId &&
-							it.departmentId === deptId &&
+							sameDept(it, deptId) &&
 							!it.isLowVolumeCase,
 					);
 					newItems.push({
@@ -222,8 +171,35 @@ function computeSynchronizedItems(
 						powerUnitPrice: existing?.powerUnitPrice ?? null,
 						maintenanceUnitPrice: existing?.maintenanceUnitPrice ?? null,
 						isLowVolumeCase: false,
+						note: existing?.note ?? '',
 					});
 				}
+			});
+		});
+	} else if (mode === 'shaft') {
+		// Vận tải trục: không chọn Đơn vị — mỗi tuyến 1 dòng; tuyến đặc biệt tách 2 dòng theo sản lượng
+		selectedRouteIds.forEach((routeId) => {
+			const route = routes.find((r) => r.id === routeId);
+			const lowVolumeCases = route?.isSpecialLowVolume ? [false, true] : [false];
+
+			lowVolumeCases.forEach((isLowVolumeCase) => {
+				const existing = prevItems.find(
+					(it) =>
+						it.transportRouteId === routeId &&
+						!!it.isLowVolumeCase === isLowVolumeCase,
+				);
+				newItems.push({
+					tempId:
+						existing?.tempId ||
+						`item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+					id: existing?.id,
+					transportRouteId: routeId,
+					materialFuelUnitPrice: existing?.materialFuelUnitPrice ?? null,
+					powerUnitPrice: existing?.powerUnitPrice ?? null,
+					maintenanceUnitPrice: existing?.maintenanceUnitPrice ?? null,
+					isLowVolumeCase,
+					note: existing?.note ?? '',
+				});
 			});
 		});
 	} else if (mode === 'cable_winch') {
@@ -244,6 +220,7 @@ function computeSynchronizedItems(
 					? 115834567
 					: (existing?.maintenanceUnitPrice ?? null),
 				isLowVolumeCase: isLowVolume,
+				note: existing?.note ?? '',
 			});
 		});
 	} else if (mode === 'monorail') {
@@ -265,6 +242,7 @@ function computeSynchronizedItems(
 					materialFuelUnitPrice: existing?.materialFuelUnitPrice ?? null,
 					powerUnitPrice: existing?.powerUnitPrice ?? null,
 					maintenanceUnitPrice: existing?.maintenanceUnitPrice ?? null,
+					note: existing?.note ?? '',
 				});
 			});
 		});
@@ -284,6 +262,7 @@ function computeSynchronizedItems(
 				maintenanceUnitPrice: existing?.maintenanceUnitPrice ?? null,
 				quantity: existing?.quantity ?? null,
 				unitOfMeasureId: existing?.unitOfMeasureId || '',
+				note: existing?.note ?? '',
 			});
 		});
 	}
@@ -298,7 +277,6 @@ interface TransportPeriodSectionProps {
 	routes: TransportRoute[];
 	departments: Department[];
 	contractCodes: { id: string; code: string; name: string }[];
-	units: { id: string; name: string }[];
 	unitLabel: string;
 	onUpdate: (updated: TransportPeriodCardData) => void;
 	onCopy: () => void;
@@ -313,7 +291,6 @@ function TransportPeriodSection({
 	routes,
 	departments,
 	contractCodes,
-	units,
 	unitLabel,
 	onUpdate,
 	onCopy,
@@ -573,9 +550,9 @@ function TransportPeriodSection({
 			</div>
 
 			{/* ============================================================== */}
-			{/* Case 1: CONVEYOR & SHAFT */}
+			{/* Case 1: CONVEYOR */}
 			{/* ============================================================== */}
-			{(transportMode === 'conveyor' || transportMode === 'shaft') && (
+			{transportMode === 'conveyor' && (
 				<>
 					<MultiSelect
 						label='Tuyến vận tải'
@@ -625,7 +602,7 @@ function TransportPeriodSection({
 										</div>
 
 										<MultiSelect
-											label='Đơn vị áp dụng cho tuyến này'
+											label='Đơn vị'
 											placeholder='Chọn Đơn vị'
 											options={departmentOptions}
 											values={selectedDeptOptions}
@@ -634,8 +611,8 @@ function TransportPeriodSection({
 											}
 										/>
 
-										{deptsForRoute.length > 0 && routeItems.length > 0 && (
-											<div className='mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white'>
+										{routeItems.length > 0 && (
+											<div className='mt-2 scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white'>
 												<table className='w-full text-left text-sm text-black'>
 													<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 														<tr>
@@ -651,6 +628,7 @@ function TransportPeriodSection({
 															<th className='min-w-[180px] px-4 py-2.5'>
 																Đơn giá SCTX ({unitLabel})
 															</th>
+															<th className='min-w-[200px] px-4 py-2.5'>Ghi chú</th>
 														</tr>
 													</thead>
 													<tbody className='divide-y divide-neutral-100'>
@@ -659,21 +637,31 @@ function TransportPeriodSection({
 																(d) => d.id === item.departmentId,
 															);
 															const isLowVolume = !!item.isLowVolumeCase;
-															const deptName = dept
-																? `${dept.code} - ${dept.name}`
-																: item.departmentId;
-															const rowLabel = isLowVolume
-																? `${deptName} (Sản lượng < 10.000 tấn/tháng)`
-																: isSpecialRoute
-																	? `${deptName} (Sản lượng ≥ 10.000 tấn/tháng)`
-																	: deptName;
+															const isOtherDept = !item.departmentId;
+															const deptName = isOtherDept
+																? OTHER_DEPARTMENT_LABEL
+																: dept
+																	? `${dept.code} - ${dept.name}`
+																	: item.departmentId;
+															// "Đơn vị khác" chỉ 1 dòng nên không ghi chú sản lượng
+															const rowLabel = isOtherDept
+																? deptName
+																: isLowVolume
+																	? `${deptName} (Sản lượng < 10.000 tấn/tháng)`
+																	: isSpecialRoute
+																		? `${deptName} (Sản lượng ≥ 10.000 tấn/tháng)`
+																		: deptName;
+															// Dòng < 10.000 tấn/tháng nhập chi phí thay vì đơn giá
+															const inputPlaceholder = isLowVolume
+																? 'Nhập chi phí'
+																: 'Nhập đơn giá';
 
 															return (
 																<tr
 																	key={item.tempId}
 																	className='transition-colors hover:bg-neutral-50/50'
 																>
-																	<td className='px-4 py-2.5 font-medium whitespace-nowrap text-black'>
+																	<td className='px-4 py-2.5 whitespace-nowrap text-black'>
 																		<span>{rowLabel}</span>
 																	</td>
 																	<td className='px-4 py-2'>
@@ -688,7 +676,7 @@ function TransportPeriodSection({
 																					val,
 																				)
 																			}
-																			placeholder='Nhập đơn giá'
+																			placeholder={inputPlaceholder}
 																		/>
 																	</td>
 																	<td className='px-4 py-2'>
@@ -701,7 +689,7 @@ function TransportPeriodSection({
 																					val,
 																				)
 																			}
-																			placeholder='Nhập đơn giá'
+																			placeholder={inputPlaceholder}
 																		/>
 																	</td>
 																	<td className='px-4 py-2'>
@@ -716,7 +704,15 @@ function TransportPeriodSection({
 																					val,
 																				)
 																			}
-																			placeholder='Nhập đơn giá'
+																			placeholder={inputPlaceholder}
+																		/>
+																	</td>
+																	<td className='px-4 py-2'>
+																		<NoteInput
+																			value={item.note}
+																			onChange={(val) =>
+																				handleItemValueChange(item.tempId, 'note', val)
+																			}
 																		/>
 																	</td>
 																</tr>
@@ -784,7 +780,7 @@ function TransportPeriodSection({
 										/>
 
 										{qualitiesForCc.length > 0 && ccItems.length > 0 && (
-											<div className='mt-2 overflow-hidden rounded-md border border-neutral-200 bg-white'>
+											<div className='mt-2 scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white'>
 												<table className='w-full text-left text-sm text-black'>
 													<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 														<tr>
@@ -800,6 +796,7 @@ function TransportPeriodSection({
 															<th className='min-w-[180px] px-4 py-2.5'>
 																Đơn giá SCTX (đ/h)
 															</th>
+															<th className='min-w-[200px] px-4 py-2.5'>Ghi chú</th>
 														</tr>
 													</thead>
 													<tbody className='divide-y divide-neutral-100'>
@@ -808,7 +805,7 @@ function TransportPeriodSection({
 																key={item.tempId}
 																className='transition-colors hover:bg-neutral-50/50'
 															>
-																<td className='px-4 py-2.5 font-medium whitespace-nowrap text-black'>
+																<td className='px-4 py-2.5 whitespace-nowrap text-black'>
 																	Thiết bị loại {item.equipmentQuality}
 																</td>
 																<td className='px-4 py-2'>
@@ -854,6 +851,14 @@ function TransportPeriodSection({
 																		placeholder='Nhập đơn giá'
 																	/>
 																</td>
+																<td className='px-4 py-2'>
+																	<NoteInput
+																		value={item.note}
+																		onChange={(val) =>
+																			handleItemValueChange(item.tempId, 'note', val)
+																		}
+																	/>
+																</td>
 															</tr>
 														))}
 													</tbody>
@@ -869,9 +874,9 @@ function TransportPeriodSection({
 			)}
 
 			{/* ============================================================== */}
-			{/* Case 3: CABLE WINCH */}
+			{/* Case 3: SHAFT & CABLE WINCH — chỉ chọn Tuyến vận tải, không có Đơn vị */}
 			{/* ============================================================== */}
-			{transportMode === 'cable_winch' && (
+			{(transportMode === 'shaft' || transportMode === 'cable_winch') && (
 				<>
 					<MultiSelect
 						label='Tuyến vận tải'
@@ -883,7 +888,7 @@ function TransportPeriodSection({
 
 					{period.items.length > 0 && (
 						<div className='mt-1 flex flex-col gap-3'>
-							<div className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
+							<div className='scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white'>
 								<table className='w-full text-left text-sm text-black'>
 									<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 										<tr>
@@ -891,14 +896,15 @@ function TransportPeriodSection({
 												Tuyến vận tải
 											</th>
 											<th className='min-w-[180px] px-4 py-2.5'>
-												Đơn giá vật liệu, nhiên liệu (đ/tháng)
+												Đơn giá vật liệu, nhiên liệu ({unitLabel})
 											</th>
 											<th className='min-w-[180px] px-4 py-2.5'>
-												Đơn giá động lực (đ/tháng)
+												Đơn giá động lực ({unitLabel})
 											</th>
 											<th className='min-w-[180px] px-4 py-2.5'>
-												Đơn giá SCTX (đ/tháng)
+												Đơn giá SCTX ({unitLabel})
 											</th>
+											<th className='min-w-[200px] px-4 py-2.5'>Ghi chú</th>
 										</tr>
 									</thead>
 									<tbody className='divide-y divide-neutral-100'>
@@ -907,24 +913,42 @@ function TransportPeriodSection({
 												(r) => r.id === item.transportRouteId,
 											);
 											const isLowVolume = !!item.isLowVolumeCase;
+											// Trục kéo: tuyến SL thấp áp giá cố định (động lực 0, SCTX 115.834.567)
+											const isFixedPrice =
+												transportMode === 'cable_winch' && isLowVolume;
+											// Vận tải trục: tuyến đặc biệt tách 2 dòng ≥ / < 10.000 tấn/tháng —
+											// ghi chú dạng ngoặc phía sau như bảng băng tải
+											const routeName = route
+												? `${route.code} - ${route.name}`
+												: item.transportRouteId;
+											const shaftRowLabel = isLowVolume
+												? `${routeName} (Sản lượng < 10.000 tấn/tháng)`
+												: route?.isSpecialLowVolume
+													? `${routeName} (Sản lượng ≥ 10.000 tấn/tháng)`
+													: routeName;
+											const pricePlaceholder = isLowVolume
+												? 'Nhập chi phí'
+												: 'Nhập đơn giá';
 											return (
 												<tr
 													key={item.tempId}
 													className='transition-colors hover:bg-neutral-50/50'
 												>
-													<td className='px-4 py-2.5 font-medium text-black'>
-														<div className='flex items-center gap-2'>
-															<span>
-																{route
-																	? `${route.code} - ${route.name}`
-																	: item.transportRouteId}
+													<td className='px-4 py-2.5 text-black'>
+														{transportMode === 'shaft' ? (
+															<span className='whitespace-nowrap'>
+																{shaftRowLabel}
 															</span>
-															{isLowVolume && (
-																<span className='rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-800'>
-																	⚡ Sản lượng &lt; 10.000 tấn/tháng
-																</span>
-															)}
-														</div>
+														) : (
+															<div className='flex items-center gap-2'>
+																<span>{routeName}</span>
+																{isLowVolume && (
+																	<span className='rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-amber-800'>
+																		⚡ Sản lượng &lt; 10.000 tấn/tháng
+																	</span>
+																)}
+															</div>
+														)}
 													</td>
 													<td className='px-4 py-2'>
 														<FormNumberInput
@@ -936,13 +960,13 @@ function TransportPeriodSection({
 																	val,
 																)
 															}
-															placeholder='Nhập đơn giá'
+															placeholder={pricePlaceholder}
 														/>
 													</td>
 													<td className='px-4 py-2'>
 														<FormNumberInput
 															value={item.powerUnitPrice ?? undefined}
-															disabled={isLowVolume}
+															disabled={isFixedPrice}
 															onValueChange={(val) =>
 																handleItemValueChange(
 																	item.tempId,
@@ -951,14 +975,14 @@ function TransportPeriodSection({
 																)
 															}
 															placeholder={
-																isLowVolume ? '0 đ/tháng' : 'Nhập đơn giá'
+																isFixedPrice ? '0 đ/tháng' : pricePlaceholder
 															}
 														/>
 													</td>
 													<td className='px-4 py-2'>
 														<FormNumberInput
 															value={item.maintenanceUnitPrice ?? undefined}
-															disabled={isLowVolume}
+															disabled={isFixedPrice}
 															onValueChange={(val) =>
 																handleItemValueChange(
 																	item.tempId,
@@ -967,9 +991,17 @@ function TransportPeriodSection({
 																)
 															}
 															placeholder={
-																isLowVolume
+																isFixedPrice
 																	? '115.834.567 đ/tháng'
-																	: 'Nhập đơn giá'
+																	: pricePlaceholder
+															}
+														/>
+													</td>
+													<td className='px-4 py-2'>
+														<NoteInput
+															value={item.note}
+															onChange={(val) =>
+																handleItemValueChange(item.tempId, 'note', val)
 															}
 														/>
 													</td>
@@ -999,7 +1031,7 @@ function TransportPeriodSection({
 
 					{period.items.length > 0 && (
 						<div className='mt-1 flex flex-col gap-3'>
-							<div className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
+							<div className='scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white'>
 								<table className='w-full text-left text-sm text-black'>
 									<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 										<tr>
@@ -1007,7 +1039,6 @@ function TransportPeriodSection({
 												Nhóm vật tư, tài sản
 											</th>
 											<th className='min-w-[140px] px-4 py-2.5'>Định mức</th>
-											<th className='min-w-[160px] px-4 py-2.5'>Đơn vị tính</th>
 											<th className='min-w-[180px] px-4 py-2.5'>
 												Đơn giá vật liệu, nhiên liệu (đ/tháng)
 											</th>
@@ -1017,6 +1048,7 @@ function TransportPeriodSection({
 											<th className='min-w-[180px] px-4 py-2.5'>
 												Đơn giá SCTX (đ/tháng)
 											</th>
+											<th className='min-w-[200px] px-4 py-2.5'>Ghi chú</th>
 										</tr>
 									</thead>
 									<tbody className='divide-y divide-neutral-100'>
@@ -1029,7 +1061,7 @@ function TransportPeriodSection({
 													key={item.tempId}
 													className='transition-colors hover:bg-neutral-50/50'
 												>
-													<td className='px-4 py-2.5 font-medium whitespace-nowrap text-black'>
+													<td className='px-4 py-2.5 whitespace-nowrap text-black'>
 														{cc ? `${cc.code} - ${cc.name}` : item.equipmentId}
 													</td>
 													<td className='px-4 py-2'>
@@ -1043,23 +1075,6 @@ function TransportPeriodSection({
 																)
 															}
 															placeholder='Nhập định mức'
-														/>
-													</td>
-													<td className='px-4 py-2'>
-														<SearchableSelect
-															value={item.unitOfMeasureId}
-															placeholder='Chọn ĐVT'
-															options={units.map((u) => ({
-																value: u.id,
-																label: u.name,
-															}))}
-															onChange={(val) =>
-																handleItemValueChange(
-																	item.tempId,
-																	'unitOfMeasureId',
-																	val,
-																)
-															}
 														/>
 													</td>
 													<td className='px-4 py-2'>
@@ -1099,6 +1114,14 @@ function TransportPeriodSection({
 																)
 															}
 															placeholder='Nhập đơn giá'
+														/>
+													</td>
+													<td className='px-4 py-2'>
+														<NoteInput
+															value={item.note}
+															onChange={(val) =>
+																handleItemValueChange(item.tempId, 'note', val)
+															}
 														/>
 													</td>
 												</tr>
@@ -1132,7 +1155,6 @@ export function TransportUnitPriceForm({
 	const [contractCodes, setContractCodes] = useState<
 		{ id: string; code: string; name: string }[]
 	>([]);
-	const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
 	const [deletedItemIds, setDeletedItemIds] = useState<string[]>([]);
 
 	const form = useForm<TransportCommonFormSchema>({
@@ -1238,15 +1260,6 @@ export function TransportUnitPriceForm({
 				setContractCodes(res.result.data || []);
 			})
 			.catch(() => {});
-
-		api
-			.pagging<{ id: string; name: string }>(API.CATALOG.UNIT.LIST, {
-				ignorePagination: true,
-			})
-			.then((res) => {
-				setUnits(res.result.data || []);
-			})
-			.catch(() => {});
 	}, [row, form]);
 
 	// Tải dữ liệu các khoảng thời gian khi mở form ở chế độ Sửa / Duplicate
@@ -1254,6 +1267,10 @@ export function TransportUnitPriceForm({
 		if (!row) return;
 
 		form.setValue('productionProcessId', row.productionProcessId || '');
+		const loadMode = detectTransportMode(
+			row.productionProcessCode,
+			row.productionProcessName,
+		);
 
 		const periodsToLoad: {
 			id?: string;
@@ -1327,7 +1344,30 @@ export function TransportUnitPriceForm({
 				quantity: item.quantity ?? null,
 				unitOfMeasureId: item.unitOfMeasureId || '',
 				isLowVolumeCase: item.isLowVolumeCase ?? false,
+				note: item.note ?? '',
 			}));
+
+			// Dữ liệu cũ chưa có dòng "Đơn vị khác" → bổ sung 1 dòng trống cho từng tuyến
+			if (loadMode === 'conveyor') {
+				routeIds.forEach((routeId) => {
+					const hasOther = items.some(
+						(it) =>
+							it.transportRouteId === routeId &&
+							!it.departmentId &&
+							!it.isLowVolumeCase,
+					);
+					if (hasOther) return;
+					items.push({
+						tempId: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+						transportRouteId: routeId,
+						departmentId: OTHER_DEPARTMENT_ID,
+						materialFuelUnitPrice: null,
+						powerUnitPrice: null,
+						maintenanceUnitPrice: null,
+						isLowVolumeCase: false,
+					});
+				});
+			}
 
 			return {
 				tempId:
@@ -1381,21 +1421,7 @@ export function TransportUnitPriceForm({
 	}, [selectedProductionProcessId]);
 
 	// Nhãn đơn vị tính tiền tệ theo phương thức vận tải
-	const unitLabel = useMemo(() => {
-		switch (transportMode) {
-			case 'conveyor':
-				return 'đ/tấn';
-			case 'shaft':
-				return 'đ/xe';
-			case 'cable_winch':
-			case 'other':
-				return 'đ/tháng';
-			case 'monorail':
-				return 'đ/h';
-			default:
-				return 'đ';
-		}
-	}, [transportMode]);
+	const unitLabel = getTransportUnitLabel(transportMode);
 
 	// Thêm khoảng thời gian
 	const handleAddPeriod = () => {
@@ -1538,13 +1564,26 @@ export function TransportUnitPriceForm({
 			const productionProcessCode =
 				procObj?.code || row?.productionProcessCode || '';
 
+			// Dòng "Đơn vị khác" để trống thì không lưu (đã lưu trước đó thì xoá)
+			const isSkippedItem = (it: TransportPeriodRowItem) =>
+				transportMode === 'conveyor' &&
+				isOtherDepartmentEmpty(it);
+
 			if (row?.id && !isDuplicate) {
 				// 1. Xóa các mục bị xóa khỏi backend
-				if (deletedItemIds.length > 0) {
-					if (deletedItemIds.length === 1) {
-						await api.delete(API.PRICING.TRANSPORT.DELETE(deletedItemIds[0]));
+				const idsToDelete = [
+					...deletedItemIds,
+					...periods.flatMap((p) =>
+						p.items
+							.filter((it) => it.id && isSkippedItem(it))
+							.map((it) => it.id as string),
+					),
+				];
+				if (idsToDelete.length > 0) {
+					if (idsToDelete.length === 1) {
+						await api.delete(API.PRICING.TRANSPORT.DELETE(idsToDelete[0]));
 					} else {
-						await api.delete(API.PRICING.TRANSPORT.DELETES, deletedItemIds);
+						await api.delete(API.PRICING.TRANSPORT.DELETES, idsToDelete);
 					}
 				}
 
@@ -1554,6 +1593,7 @@ export function TransportUnitPriceForm({
 					const endMonth = formatDateOnly(period.endMonth);
 
 					for (const it of period.items) {
+						if (isSkippedItem(it)) continue;
 						const qualityVal = it.equipmentQuality || null;
 						const adjustmentFactorDescriptionId = isGuid(qualityVal)
 							? qualityVal
@@ -1571,7 +1611,7 @@ export function TransportUnitPriceForm({
 									? it.transportRouteId || null
 									: null,
 							departmentId:
-								transportMode === 'conveyor' || transportMode === 'shaft'
+								transportMode === 'conveyor'
 									? it.departmentId || null
 									: null,
 							equipmentId:
@@ -1596,6 +1636,7 @@ export function TransportUnitPriceForm({
 									: false,
 							startMonth,
 							endMonth,
+							note: it.note?.trim() || null,
 						};
 
 						if (it.id) {
@@ -1615,6 +1656,7 @@ export function TransportUnitPriceForm({
 					const endMonth = formatDateOnly(period.endMonth);
 
 					for (const it of period.items) {
+						if (isSkippedItem(it)) continue;
 						const qualityVal = it.equipmentQuality || null;
 						const adjustmentFactorDescriptionId = isGuid(qualityVal)
 							? qualityVal
@@ -1632,7 +1674,7 @@ export function TransportUnitPriceForm({
 									? it.transportRouteId || null
 									: null,
 							departmentId:
-								transportMode === 'conveyor' || transportMode === 'shaft'
+								transportMode === 'conveyor'
 									? it.departmentId || null
 									: null,
 							equipmentId:
@@ -1657,6 +1699,7 @@ export function TransportUnitPriceForm({
 									: false,
 							startMonth,
 							endMonth,
+							note: it.note?.trim() || null,
 						};
 						await api.post(API.PRICING.TRANSPORT.CREATE, payload);
 					}
@@ -1702,7 +1745,6 @@ export function TransportUnitPriceForm({
 						routes={routes}
 						departments={departments}
 						contractCodes={contractCodes}
-						units={units}
 						unitLabel={unitLabel}
 						onUpdate={(updated) => handleUpdatePeriod(index, updated)}
 						onDelete={() => handleDeletePeriod(index)}

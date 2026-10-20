@@ -68,13 +68,13 @@ export function MotorizedExcavatorDozerViewDialog({
 
 									return (
 										<tr key={qIdx} className='hover:bg-gray-50/30'>
-											<td className='px-6 py-2.5 pl-12 text-base font-medium text-gray-800'>
+											<td className='px-6 py-2.5 pl-12 text-base text-gray-800'>
 												{qualityText}
 											</td>
-											<td className='px-6 py-2.5 text-right text-base font-semibold text-gray-900'>
+											<td className='px-6 py-2.5 text-right text-base text-gray-900'>
 												{fuel > 0 ? fuel.toLocaleString('vi-VN') : '-'}
 											</td>
-											<td className='px-6 py-2.5 text-right text-base font-semibold text-gray-900'>
+											<td className='px-6 py-2.5 text-right text-base text-gray-900'>
 												{maint > 0 ? maint.toLocaleString('vi-VN') : '-'}
 											</td>
 										</tr>

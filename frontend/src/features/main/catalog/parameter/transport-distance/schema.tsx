@@ -1,3 +1,4 @@
+import { batchSchema } from '@/components/form/form-batch';
 import z from 'zod';
 
 export const transportDistanceSchema = z.object({
@@ -13,3 +14,15 @@ export const TRANSPORT_DISTANCE_SCHEMA_DEFAULT: TransportDistanceSchema = {
 	value: '',
 	note: '',
 };
+
+export const transportDistanceBatchSchema = batchSchema(
+	transportDistanceSchema,
+	{
+		uniqueKey: 'value',
+		uniqueMessage: 'Cung độ vận tải (L) bị trùng',
+	},
+);
+
+export type TransportDistanceBatchSchema = z.infer<
+	typeof transportDistanceBatchSchema
+>;

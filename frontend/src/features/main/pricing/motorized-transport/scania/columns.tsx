@@ -96,7 +96,7 @@ export const MOTORIZED_SCANIA_COLUMNS: ColumnDef<MotorizedScaniaUnitPrice>[] = [
 					{details.slice(0, 3).map((d, i) => (
 						<div key={i} className='flex items-center gap-2'>
 							{d.haulDistanceValue && (
-								<span className='font-medium text-gray-600'>{d.haulDistanceValue}km</span>
+								<span className='text-gray-600'>{d.haulDistanceValue}km</span>
 							)}
 							<span>NL: {d.fuelUnitPrice?.toLocaleString('vi-VN')}</span>
 							<span>ĐL: {d.powerUnitPrice?.toLocaleString('vi-VN')}</span>

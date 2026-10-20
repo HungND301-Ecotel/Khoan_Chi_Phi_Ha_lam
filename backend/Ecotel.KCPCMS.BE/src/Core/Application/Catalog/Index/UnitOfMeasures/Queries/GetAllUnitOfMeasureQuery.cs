@@ -18,7 +18,8 @@ public class GetAllUnitOfMeasureQueryHandler(IPaginationService paginationServic
         {
             PageNumber = request.PageIndex,
             PageSize = request.PageSize,
-            IgnorePagination = request.IgnorePagination
+            // Lấy toàn bộ rồi sắp xếp, cắt trang trong bộ nhớ — xem ToPaginationResponse
+            IgnorePagination = true
         };
 
         var spec = new UnitOfMeasuresByPaginationSpec(filter, request.Search);
@@ -30,7 +31,7 @@ public class GetAllUnitOfMeasureQueryHandler(IPaginationService paginationServic
             pageSize: filter.PageSize,
             ignorePagination: filter.IgnorePagination,
             cancellationToken: cancellationToken);
-        result.Data = result.Data.OrderBy(d => d.Name).ToList();
+        result = result.Data.OrderBy(d => d.Name).ToPaginationResponse(request.PageIndex, request.PageSize, request.IgnorePagination);
 
         return result;
     }
