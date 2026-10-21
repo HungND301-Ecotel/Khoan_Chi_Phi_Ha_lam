@@ -2,8 +2,8 @@ import { batchSchema } from '@/components/form/form-batch';
 import { z } from 'zod';
 
 export const cargoTypeFormSchema = z.object({
-	code: z.string().min(1, 'Vui lòng nhập mã chủng loại hàng'),
-	name: z.string().min(1, 'Vui lòng nhập tên chủng loại hàng'),
+	code: z.string().min(1, 'Vui lòng nhập mã loại hàng'),
+	name: z.string().min(1, 'Vui lòng nhập tên loại hàng'),
 	note: z.string().optional(),
 });
 
@@ -17,7 +17,7 @@ export const CARGO_TYPE_FORM_DEFAULT: CargoTypeFormSchema = {
 
 export const cargoTypeBatchSchema = batchSchema(cargoTypeFormSchema, {
 	uniqueKey: 'code',
-	uniqueMessage: 'Mã chủng loại hàng bị trùng',
+	uniqueMessage: 'Mã loại hàng bị trùng',
 });
 
 export type CargoTypeBatchSchema = z.infer<typeof cargoTypeBatchSchema>;

@@ -250,7 +250,8 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                         transportLineDto.EquipmentQuality,
                         transportLineDto.TransportRouteId,
                         transportLineDto.RouteDepartmentId,
-                        transportLineDto.ProductionMeters));
+                        transportLineDto.ProductionMeters,
+                        planProductionMeters: transportLineDto.PlanProductionMeters));
                 }
             }
 

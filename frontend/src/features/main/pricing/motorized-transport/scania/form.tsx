@@ -61,8 +61,8 @@ const fetchCatalogList = async (url: string) => {
 
 // Khoá phạm vi cấu hình (luôn bắt đầu bằng "xeId_" để copyVehicleConfig chép được):
 // - Chất lượng thiết bị: theo xe (khoá = xeId)
-// - Loại hàng, Vị trí nhận, Vị trí đổ: theo xe + công đoạn (dùng chung cho các loại hàng)
-// - Cung độ: theo cụm xe + công đoạn + loại hàng
+// - Loại hàng: theo xe + công đoạn
+// - Vị trí nhận, Vị trí đổ, Cung độ: theo cụm xe + công đoạn + loại hàng (mỗi loại hàng có vị trí riêng)
 const getScaniaProcessKey = (acId: string, procId: string) =>
 	`${acId}_${procId}`;
 const getScaniaCargoKey = (acId: string, procId: string, cargoId: string) =>
@@ -119,14 +119,13 @@ function computeItemsForScaniaPeriod(
 			const procName = procObj ? procObj.label : procId;
 
 			const procCargoIds: string[] = processCargoTypes[scopeKey] || [];
-			const procPickupIds: string[] = processPickupLocations[scopeKey] || [];
-			const procDropoffIds: string[] = processDropoffLocations[scopeKey] || [];
 
 			procCargoIds.forEach((cargoId: string) => {
+				// Mỗi loại hàng có Vị trí nhận, Vị trí đổ, Cung độ riêng
 				const cargoKey = getScaniaCargoKey(acId, procId, cargoId);
-				const cargoPickupIds = procPickupIds;
-				const cargoDropoffIds = procDropoffIds;
-				// Cung độ chọn riêng theo từng loại hàng
+				const cargoPickupIds: string[] = processPickupLocations[cargoKey] || [];
+				const cargoDropoffIds: string[] =
+					processDropoffLocations[cargoKey] || [];
 				const cargoDistIds: string[] = equipmentDistances[cargoKey] || [];
 
 				const dropoffList = cargoDropoffIds.length > 0 ? cargoDropoffIds : [''];
@@ -253,7 +252,9 @@ function ScaniaPriceTable({
 	) => void;
 	onDelete: (item: any) => void;
 }) {
-	const routeSummary =
+	// Thông số: Loại hàng + tuyến từ vị trí nhận đến vị trí đổ
+	const cargoName: string = group.items[0]?.cargoTypeName || '';
+	const routePart =
 		pickupName && group.dumpingLocationName
 			? `từ ${pickupName} đến ${group.dumpingLocationName}`
 			: pickupName
@@ -261,6 +262,7 @@ function ScaniaPriceTable({
 				: group.dumpingLocationName
 					? `đến ${group.dumpingLocationName}`
 					: '';
+	const routeSummary = [cargoName, routePart].filter(Boolean).join(' ');
 
 	const priceInput = (item: any, field: ScaniaPriceField) => (
 		<td className='w-40 min-w-[140px] px-4 py-2'>
@@ -420,8 +422,8 @@ function ScaniaPeriodSection({
 		});
 	};
 
-	// scopeKey: xeId (chất lượng), xeId_côngĐoạn (loại hàng, vị trí nhận, vị trí đổ) hoặc
-	// xeId_côngĐoạn_loạiHàng (cung độ)
+	// scopeKey: xeId (chất lượng), xeId_côngĐoạn (loại hàng) hoặc xeId_côngĐoạn_loạiHàng
+	// (vị trí nhận, vị trí đổ, cung độ)
 	const handleScopeFieldChange = (
 		scopeKey: string,
 		fieldName:
@@ -480,6 +482,82 @@ function ScaniaPeriodSection({
 			...period,
 			excludedItemKeys: [...(period.excludedItemKeys || []), key],
 			items: period.items.filter((it) => getScaniaItemKey(it) !== key),
+		});
+	};
+
+	// Chép Vị trí nhận, Vị trí đổ, Cung độ, đơn giá (và các dòng cung độ đã xoá) của 1 loại hàng
+	// sang các loại hàng khác trong cùng xe + công đoạn. Dòng đơn giá đã lưu của loại hàng đích
+	// (cùng chất lượng, vị trí đổ, cung độ) được giữ id để cập nhật thay vì tạo mới.
+	const handleApplyToCargos = (
+		acId: string,
+		procId: string,
+		sourceCargoId: string,
+		targetCargoIds: string[],
+	) => {
+		const sourceKey = getScaniaCargoKey(acId, procId, sourceCargoId);
+		const nextPickups = { ...period.processPickupLocations };
+		const nextDropoffs = { ...period.processDropoffLocations };
+		const nextDists = { ...period.equipmentDistances };
+		targetCargoIds.forEach((targetId) => {
+			const targetKey = getScaniaCargoKey(acId, procId, targetId);
+			nextPickups[targetKey] = [...(nextPickups[sourceKey] || [])];
+			nextDropoffs[targetKey] = [...(nextDropoffs[sourceKey] || [])];
+			nextDists[targetKey] = [...(nextDists[sourceKey] || [])];
+		});
+
+		const inScope = (it: any) =>
+			it.assignmentCodeId === acId && it.productionProcessId === procId;
+		const isTarget = (it: any) =>
+			inScope(it) && targetCargoIds.includes(it.cargoTypeId);
+		const sourceItems = period.items.filter(
+			(it) => inScope(it) && it.cargoTypeId === sourceCargoId,
+		);
+
+		const clonedItems = targetCargoIds.flatMap((targetId) => {
+			const cargo = cargoTypes.find((c) => c.id === targetId);
+			return sourceItems.map((src) => {
+				const existing = period.items.find(
+					(it) =>
+						isTarget(it) &&
+						it.cargoTypeId === targetId &&
+						it.equipmentQuality === src.equipmentQuality &&
+						(it.dumpingLocationId || '') === (src.dumpingLocationId || '') &&
+						(it.haulDistanceId || '') === (src.haulDistanceId || ''),
+				);
+				return {
+					...src,
+					tempId: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+					id: existing?.id,
+					detailId: existing?.detailId,
+					cargoTypeId: targetId,
+					cargoTypeName: cargo?.name || '',
+				};
+			});
+		});
+
+		// Khoá dòng đã xoá: [xe, công đoạn, chất lượng, loại hàng, vị trí đổ, cung độ]
+		const excludedKeys = (period.excludedItemKeys || []).filter((key) => {
+			const [kAc, kProc, , kCargo] = key.split('_');
+			return !(kAc === acId && kProc === procId && targetCargoIds.includes(kCargo));
+		});
+		(period.excludedItemKeys || []).forEach((key) => {
+			const parts = key.split('_');
+			if (parts[0] !== acId || parts[1] !== procId || parts[3] !== sourceCargoId)
+				return;
+			targetCargoIds.forEach((targetId) => {
+				const renamed = [...parts];
+				renamed[3] = targetId;
+				excludedKeys.push(renamed.join('_'));
+			});
+		});
+
+		onUpdate({
+			...period,
+			processPickupLocations: nextPickups,
+			processDropoffLocations: nextDropoffs,
+			equipmentDistances: nextDists,
+			excludedItemKeys: excludedKeys,
+			items: [...period.items.filter((it) => !isTarget(it)), ...clonedItems],
 		});
 	};
 
@@ -629,22 +707,12 @@ function ScaniaPeriodSection({
 							const procName = procObj ? procObj.label : procId;
 							const currentCargos: string[] =
 								period.processCargoTypes[scopeKey] || [];
-							const currentPickups: string[] =
-								period.processPickupLocations[scopeKey] || [];
-							const currentDropoffs: string[] =
-								period.processDropoffLocations[scopeKey] || [];
 							const currentQualities: string[] =
 								period.equipmentQualities[acId] || [];
-
-							const combinedPickupName = currentPickups
-								.map((id) => {
-									const l = locations.find(
-										(loc: any) => loc.id === id || loc.value === id,
-									);
-									return l ? (l as any).name || (l as any).label : '';
-								})
-								.filter(Boolean)
-								.join(', ');
+							const getCargoLabel = (cargoId: string) => {
+								const c = cargoTypes.find((item) => item.id === cargoId);
+								return c ? `${c.code} - ${c.name}` : cargoId;
+							};
 
 							return (
 								<div
@@ -657,81 +725,45 @@ function ScaniaPeriodSection({
 										</span>
 									</div>
 
-									{/* Loại hàng, Vị trí nhận, Vị trí đổ cùng cấp — dùng chung cho công đoạn */}
-									<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
-										<MultiSelect
-											label='Loại hàng'
-											placeholder='Chọn loại hàng'
-											options={cargoTypes.map((item) => ({
-												label: `${item.code} - ${item.name}`,
-												value: item.id,
-											}))}
-											values={currentCargos.map((cId) => {
-												const c = cargoTypes.find((item) => item.id === cId);
-												return {
-													value: cId,
-													label: c ? `${c.code} - ${c.name}` : cId,
-												};
-											})}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'processCargoTypes',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
+									<MultiSelect
+										label='Loại hàng'
+										placeholder='Chọn loại hàng'
+										options={cargoTypes.map((item) => ({
+											label: `${item.code} - ${item.name}`,
+											value: item.id,
+										}))}
+										values={currentCargos.map((cId) => ({
+											value: cId,
+											label: getCargoLabel(cId),
+										}))}
+										onValuesChange={(selected) =>
+											handleScopeFieldChange(
+												scopeKey,
+												'processCargoTypes',
+												selected.map((s) => s.value),
+											)
+										}
+									/>
 
-										<MultiSelect
-											label='Vị trí nhận tải'
-											placeholder='Chọn vị trí nhận tải'
-											options={pickupOptions}
-											values={currentPickups.map((pId) => {
-												const l = locations.find(
-													(loc) => loc.id === pId || loc.name === pId,
-												);
-												return { value: pId, label: l ? l.name : pId };
-											})}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'processPickupLocations',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-
-										<MultiSelect
-											label='Vị trí đổ tải'
-											placeholder='Chọn vị trí đổ tải'
-											options={dropoffOptions}
-											values={currentDropoffs.map((dId) => {
-												const l = locations.find(
-													(loc) => loc.id === dId || loc.name === dId,
-												);
-												return { value: dId, label: l ? l.name : dId };
-											})}
-											onValuesChange={(selected) =>
-												handleScopeFieldChange(
-													scopeKey,
-													'processDropoffLocations',
-													selected.map((s) => s.value),
-												)
-											}
-										/>
-									</div>
-
-									{/* MỖI LOẠI HÀNG: Cung độ → Bảng đơn giá */}
+									{/* MỖI LOẠI HÀNG: Vị trí nhận, Vị trí đổ, Cung độ → Bảng đơn giá */}
 									{currentCargos.map((cargoId: string) => {
 										const cargoKey = getScaniaCargoKey(acId, procId, cargoId);
-										const cargoObj = cargoTypes.find(
-											(item) => item.id === cargoId,
-										);
-										const cargoLabel = cargoObj
-											? `${cargoObj.code} - ${cargoObj.name}`
-											: cargoId;
+										const currentPickups: string[] =
+											period.processPickupLocations[cargoKey] || [];
+										const currentDropoffs: string[] =
+											period.processDropoffLocations[cargoKey] || [];
 										const currentDists: string[] =
 											period.equipmentDistances[cargoKey] || [];
+
+										const combinedPickupName = currentPickups
+											.map((id) => {
+												const l = locations.find(
+													(loc: any) => loc.id === id || loc.value === id,
+												);
+												return l ? (l as any).name || (l as any).label : '';
+											})
+											.filter(Boolean)
+											.join(', ');
 
 										const groupsMap = new Map<string, any>();
 										period.items
@@ -759,31 +791,84 @@ function ScaniaPeriodSection({
 												key={cargoId}
 												className='space-y-3 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'
 											>
-												<div className='text-sm font-semibold text-black'>
-													{cargoLabel}
+												<div className='flex items-center justify-between'>
+													<span className='text-sm font-semibold text-black'>
+														{getCargoLabel(cargoId)}
+													</span>
+													<ApplyToVehiclesButton
+														sourceId={cargoId}
+														vehicleIds={currentCargos}
+														getTitle={getCargoLabel}
+														label='Áp dụng cho Loại hàng khác'
+														targetNoun='loại hàng'
+														copiedContent='vị trí nhận, vị trí đổ, cung độ và đơn giá'
+														onApply={(targetIds) =>
+															handleApplyToCargos(acId, procId, cargoId, targetIds)
+														}
+													/>
 												</div>
 
-												<MultiSelect
-													label='Cung độ vận tải'
-													placeholder='Chọn cung độ vận tải'
-													options={distanceOptions.map((opt) => ({
-														label: opt.label,
-														value: opt.value,
-													}))}
-													values={currentDists.map((dId) => {
-														const d = distanceOptions.find(
-															(opt) => opt.value === dId || opt.id === dId,
-														);
-														return { value: dId, label: d ? d.label : dId };
-													})}
-													onValuesChange={(selected) =>
-														handleScopeFieldChange(
-															cargoKey,
-															'equipmentDistances',
-															selected.map((s) => s.value),
-														)
-													}
-												/>
+												<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
+													<MultiSelect
+														label='Vị trí nhận tải'
+														placeholder='Chọn vị trí nhận tải'
+														options={pickupOptions}
+														values={currentPickups.map((pId) => {
+															const l = locations.find(
+																(loc) => loc.id === pId || loc.name === pId,
+															);
+															return { value: pId, label: l ? l.name : pId };
+														})}
+														onValuesChange={(selected) =>
+															handleScopeFieldChange(
+																cargoKey,
+																'processPickupLocations',
+																selected.map((s) => s.value),
+															)
+														}
+													/>
+
+													<MultiSelect
+														label='Vị trí đổ tải'
+														placeholder='Chọn vị trí đổ tải'
+														options={dropoffOptions}
+														values={currentDropoffs.map((dId) => {
+															const l = locations.find(
+																(loc) => loc.id === dId || loc.name === dId,
+															);
+															return { value: dId, label: l ? l.name : dId };
+														})}
+														onValuesChange={(selected) =>
+															handleScopeFieldChange(
+																cargoKey,
+																'processDropoffLocations',
+																selected.map((s) => s.value),
+															)
+														}
+													/>
+
+													<MultiSelect
+														label='Cung độ vận tải'
+														placeholder='Chọn cung độ vận tải'
+														options={distanceOptions.map((opt) => ({
+															label: opt.label,
+															value: opt.value,
+														}))}
+														values={currentDists.map((dId) => {
+															const d = distanceOptions.find(
+																(opt) => opt.value === dId || opt.id === dId,
+															);
+															return { value: dId, label: d ? d.label : dId };
+														})}
+														onValuesChange={(selected) =>
+															handleScopeFieldChange(
+																cargoKey,
+																'equipmentDistances',
+																selected.map((s) => s.value),
+															)
+														}
+													/>
+												</div>
 
 												{/* KHU VỰC BẢNG ĐƠN GIÁ THEO CUNG ĐỘ */}
 												{currentDists.length > 0 &&
@@ -927,8 +1012,8 @@ export const MotorizedScaniaForm = forwardRef<
 						initialProcsList.push(p.productionProcessId);
 					}
 
-					// Đưa dữ liệu đã lưu về đúng phạm vi khoá: chất lượng theo xe; loại hàng,
-					// vị trí nhận/đổ theo xe + công đoạn; cung độ theo cụm loại hàng
+					// Đưa dữ liệu đã lưu về đúng phạm vi khoá: chất lượng theo xe; loại hàng theo
+					// xe + công đoạn; vị trí nhận/đổ + cung độ theo cụm loại hàng
 					const addUnique = (
 						map: Record<string, string[]>,
 						key: string,
@@ -958,8 +1043,8 @@ export const MotorizedScaniaForm = forwardRef<
 							: p.receivingLocationId
 								? [p.receivingLocationId]
 								: [];
-					rIds.forEach((rid) => addUnique(initialProcPickups, scopeKey, rid));
-					addUnique(initialProcDropoffs, scopeKey, p.dumpingLocationId);
+					rIds.forEach((rid) => addUnique(initialProcPickups, cargoKey, rid));
+					addUnique(initialProcDropoffs, cargoKey, p.dumpingLocationId);
 
 					if (p.details && p.details.length > 0) {
 						p.details.forEach((d: any) => {

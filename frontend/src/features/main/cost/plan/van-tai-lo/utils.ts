@@ -16,9 +16,47 @@ export function detectTransportMode(code?: string, name?: string) {
 	return 'conveyor';
 }
 
-export function formatAdjustmentOptionLabel(description: string, value?: number | null) {
+// Vận tải trục (VTT): theo tuyến nhưng không có Đơn vị — chỉ chọn Tuyến rồi nhập sản lượng.
+// Khớp cách nhận dạng ở form đơn giá (pricing/transport/unit-price/columns.tsx).
+export function isRouteOnlyProcess(code?: string, name?: string) {
+	const c = (code || '').toUpperCase();
+	const n = (name || '').toLowerCase();
+	return c === 'VTT' || (n.includes('vận tải trục') && !n.includes('trục kéo'));
+}
+
+// Dòng của công đoạn chỉ theo tuyến: mỗi tuyến 1 dòng, bỏ Đơn vị
+export function normalizeRouteOnlyItems<
+	T extends { transportRouteId?: string },
+>(items: T[], departmentKey: keyof T): T[] {
+	const seenRoutes = new Set<string>();
+	return items
+		.filter((it) => {
+			const routeId = it.transportRouteId || '';
+			if (seenRoutes.has(routeId)) return false;
+			seenRoutes.add(routeId);
+			return true;
+		})
+		.map((it) => ({ ...it, [departmentKey]: undefined }));
+}
+
+export function formatAdjustmentOptionLabel(
+	description: string,
+	value?: number | null,
+) {
 	if (value === null || value === undefined) return description;
 	return `${description} - ${formatNumber(value)}`;
+}
+
+// Chỉ Vận tải than / đá qua băng tải mới có hệ số điều chỉnh K1, K2
+export function hasConveyorFactors(process?: {
+	productionProcessCode?: string | null;
+	productionProcessName?: string | null;
+}) {
+	const code = (process?.productionProcessCode || '').toUpperCase();
+	const name = (process?.productionProcessName || '').toLowerCase();
+	return (
+		name.includes('băng tải') || code.startsWith('BT') || code.endsWith('QBT')
+	);
 }
 
 export function isConveyorMode(mode: string) {
@@ -60,7 +98,8 @@ export function buildTransportMonthsPayload(
 						if (
 							!factor ||
 							(!factor.adjustmentFactorDescriptionId &&
-								(factor.customValue === null || factor.customValue === undefined))
+								(factor.customValue === null ||
+									factor.customValue === undefined))
 						) {
 							return undefined;
 						}

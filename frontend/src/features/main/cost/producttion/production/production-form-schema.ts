@@ -47,6 +47,8 @@ const transportLineItemSchema = z.object({
 	productionMeters: z.coerce
 		.number<number>({ error: 'Sản lượng thực tế phải là số' })
 		.min(0, { error: 'Sản lượng thực tế không được âm' }),
+	// Sản lượng kế hoạch VTL — chỉ dòng đầu của mỗi Tuyến/Nhóm VTTS mang giá trị (xem planMeters)
+	planProductionMeters: z.number().optional(),
 });
 
 // 1 khối ứng với 1 Công đoạn sản xuất cụ thể đã chọn trong nhóm VTL/VTCG
@@ -59,6 +61,8 @@ const transportProcessEntrySchema = z.object({
 	equipmentQualities: z.array(z.string()).optional().default([]),
 	// Chất lượng thiết bị cho từng Nhóm VTTS (công đoạn Monoray) — key là equipmentId
 	equipmentQualitiesMap: z.record(z.string(), z.any()).optional().default({}),
+	// Sản lượng kế hoạch VTL khoán theo từng Tuyến vận tải / Nhóm VTTS — key là routeId hoặc equipmentId
+	planMeters: z.record(z.string(), z.any()).optional().default({}),
 	items: z.array(transportLineItemSchema).optional().default([]),
 });
 
@@ -200,6 +204,7 @@ export const TRANSPORT_PROCESS_ENTRY_DEFAULT: TransportProcessEntrySchema = {
 	equipmentIds: [],
 	equipmentQualities: [],
 	equipmentQualitiesMap: {},
+	planMeters: {},
 	items: [],
 };
 

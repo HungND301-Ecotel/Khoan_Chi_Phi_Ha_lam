@@ -68,7 +68,23 @@ public class TransportPlanLineMonthDto
     public DateOnly Month { get; set; }
 
     public bool LowValuePerishableSupply { get; set; }
+
+    // Chi phí vật tư mau hỏng rẻ tiền của tháng — 1 dòng cho mỗi Nhóm công đoạn có tick tính VTMHRT
+    public IList<TransportLowValuePerishableSupplyCostDto> LowValuePerishableSupplyCosts { get; set; } =
+        new List<TransportLowValuePerishableSupplyCostDto>();
+
     public IList<TransportPlanLineItemDto> Items { get; set; } = new List<TransportPlanLineItemDto>();
+}
+
+public class TransportLowValuePerishableSupplyCostDto
+{
+    public Guid ProcessGroupId { get; set; }
+    public string? ProcessGroupCode { get; set; }
+    public string? ProcessGroupName { get; set; }
+    public bool IsMechanized { get; set; }
+
+    // 0 khi chưa có đơn giá VTMHRT khớp Đơn vị + Nhóm công đoạn + tháng
+    public double Amount { get; set; }
 }
 
 public class TransportPlanLineByDepartmentDetailDto

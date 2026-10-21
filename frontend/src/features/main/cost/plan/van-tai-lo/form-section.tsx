@@ -22,6 +22,8 @@ import {
 	isMonorailMode,
 	isOtherMode,
 	isShaftMode,
+	isRouteOnlyProcess,
+	normalizeRouteOnlyItems,
 } from './utils';
 import { Department } from '@/features/main/catalog/department/columns';
 import { TransportRoute } from '@/features/main/catalog/transport-route/columns';
@@ -151,6 +153,8 @@ export function TransportProcessEntryCard({
 	const isShaft = isShaftMode(mode);
 	const isMonorail = isMonorailMode(mode);
 	const isOther = isOtherMode(mode);
+	// Vận tải trục: chỉ chọn Tuyến, không có Đơn vị — mỗi tuyến 1 dòng sản lượng
+	const routeOnly = isRouteOnlyProcess(process.code, process.name);
 
 	const [fetchedAdjustments, setFetchedAdjustments] = useState<
 		AdjustmentDetail[]
@@ -204,8 +208,31 @@ export function TransportProcessEntryCard({
 	const items: any[] = watchedEntry?.items || [];
 
 	const setItems = (newItems: typeof items) => {
-		form.setValue(`${entryPath}.items` as any, newItems);
+		form.setValue(
+			`${entryPath}.items` as any,
+			routeOnly
+				? normalizeRouteOnlyItems(newItems, 'departmentId').map((it: any) => ({
+						...it,
+						k1Factor: undefined,
+						k2Factor: undefined,
+					}))
+				: newItems,
+		);
 	};
+	// VTT: cập nhật dòng sản lượng của 1 tuyến (mỗi tuyến 1 dòng)
+	const updateRouteOnlyItem = (routeId: string, patch: Record<string, unknown>) => {
+		const next = [...items];
+		const idx = next.findIndex((it: any) => it.transportRouteId === routeId);
+		if (idx >= 0) {
+			next[idx] = { ...next[idx], ...patch };
+		} else {
+			next.push({ transportRouteId: routeId, ...patch });
+		}
+		setItems(next);
+	};
+	// VTT: dòng của tuyến không phân biệt Đơn vị
+	const isRouteItem = (it: any, routeId: string, deptId: string) =>
+		it.transportRouteId === routeId && (routeOnly || it.departmentId === deptId);
 
 	// Dọn dữ liệu con khi bỏ chọn Tuyến vận tải
 	const prevRouteIdsRef = useRef<string[]>(routeIds);
@@ -218,6 +245,15 @@ export function TransportProcessEntryCard({
 			const newRouteDept = { ...routeDepartmentIds };
 			removedIds.forEach((id) => delete newRouteDept[id]);
 			form.setValue(`${entryPath}.routeDepartmentIds` as any, newRouteDept);
+		}
+		if (removedIds.length > 0 && routeOnly) {
+			const currentItems = form.getValues(`${entryPath}.items` as any) || [];
+			form.setValue(
+				`${entryPath}.items` as any,
+				(currentItems as any[]).filter(
+					(it: any) => !removedIds.includes(it.transportRouteId),
+				),
+			);
 		}
 		prevRouteIdsRef.current = [...routeIds];
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -296,13 +332,77 @@ export function TransportProcessEntryCard({
 						}))}
 					/>
 
-					{routeIds.map((routeId: string) => {
+					{/* VTT: 1 bảng duy nhất, mỗi tuyến 1 dòng — không có Đơn vị, K1, K2 */}
+					{routeOnly && routeIds.length > 0 && (
+						<div className='overflow-x-auto rounded-sm border border-[#e0e0e0]'>
+							<table className='w-full text-left text-sm'>
+								<thead className='border-b border-[#e0e0e0] bg-[#f5f5f5] text-xs font-semibold text-gray-700 uppercase'>
+									<tr>
+										<th className='min-w-[240px] px-3 py-2'>Tuyến vận tải</th>
+										<th className='min-w-[160px] px-3 py-2'>Sản lượng</th>
+										<th className='min-w-[140px] px-3 py-2'>ĐVT</th>
+									</tr>
+								</thead>
+								<tbody className='divide-y divide-[#e0e0e0] bg-white'>
+									{routeIds.map((routeId: string) => {
+										const routeObj = transportRoutes.find((r) => r.id === routeId);
+										const currentItem: any =
+											items.find((it: any) => it.transportRouteId === routeId) ||
+											{};
+										return (
+											<tr key={routeId} className='hover:bg-gray-50'>
+												<td className='px-3 py-2'>
+													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
+														{routeObj?.code
+															? `${routeObj.code} - ${routeObj.name}`
+															: routeObj?.name || routeId}
+													</div>
+												</td>
+												<td className='px-3 py-2'>
+													<NumericFormat
+														className='h-9 w-full rounded-sm border border-[#999999] px-3 text-sm focus:border-primary focus:outline-none'
+														placeholder='Nhập sản lượng'
+														decimalSeparator=','
+														thousandSeparator='.'
+														value={currentItem.productionMeters ?? ''}
+														onValueChange={(values) =>
+															updateRouteOnlyItem(routeId, {
+																productionMeters: values.floatValue ?? 0,
+															})
+														}
+													/>
+												</td>
+												<td className='px-3 py-2'>
+													<FormSelectInput
+														value={currentItem.unitOfMeasureId || ''}
+														onValueChange={(unitId: string) =>
+															updateRouteOnlyItem(routeId, { unitOfMeasureId: unitId })
+														}
+														placeholder='Chọn ĐVT'
+														options={units.map((u) => ({
+															value: u.id,
+															label: u.name,
+														}))}
+													/>
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					)}
+
+					{!routeOnly &&
+						routeIds.map((routeId: string) => {
 						const routeObj = transportRoutes.find((r) => r.id === routeId);
-						const deptsForRoute = Array.isArray(routeDepartmentIds[routeId])
-							? routeDepartmentIds[routeId]
-							: typeof routeDepartmentIds[routeId] === 'string'
-								? [routeDepartmentIds[routeId] as string]
-								: [];
+						const deptsForRoute = routeOnly
+							? ['']
+							: Array.isArray(routeDepartmentIds[routeId])
+								? routeDepartmentIds[routeId]
+								: typeof routeDepartmentIds[routeId] === 'string'
+									? [routeDepartmentIds[routeId] as string]
+									: [];
 
 						return (
 							<div
@@ -313,6 +413,7 @@ export function TransportProcessEntryCard({
 									{routeObj?.code ? `${routeObj.code} - ${routeObj.name}` : routeObj?.name}
 								</div>
 
+								{!routeOnly && (
 								<FormMultiSelect
 									control={formControl}
 									name={`${entryPath}.routeDepartmentIds.${routeId}` as any}
@@ -323,13 +424,16 @@ export function TransportProcessEntryCard({
 										label: d.code ? `${d.code} - ${d.name}` : d.name,
 									}))}
 								/>
+								)}
 
 								{deptsForRoute.length > 0 && (
 									<div className='overflow-x-auto rounded-sm border border-[#e0e0e0]'>
 										<table className='w-full text-left text-sm'>
 											<thead className='border-b border-[#e0e0e0] bg-[#f5f5f5] text-xs font-semibold text-gray-700 uppercase'>
 												<tr>
-													<th className='min-w-[180px] px-3 py-2'>Đơn vị</th>
+													{!routeOnly && (
+														<th className='min-w-[180px] px-3 py-2'>Đơn vị</th>
+													)}
 													<th className='min-w-[140px] px-3 py-2'>Sản lượng</th>
 													<th className='min-w-[120px] px-3 py-2'>ĐVT</th>
 													<th className='min-w-[150px] px-3 py-2'>K1</th>
@@ -341,21 +445,22 @@ export function TransportProcessEntryCard({
 													const deptObj = departments.find((d) => d.id === deptId);
 													const itemIndex = items.findIndex(
 														(it: any) =>
-															it.transportRouteId === routeId &&
-															it.departmentId === deptId,
+															isRouteItem(it, routeId, deptId),
 													);
 													const currentItem: any =
 														itemIndex >= 0
 															? items[itemIndex]
-															: { transportRouteId: routeId, departmentId: deptId };
+															: { transportRouteId: routeId, departmentId: routeOnly ? undefined : deptId };
 
 													return (
 														<tr key={deptId} className='hover:bg-gray-50'>
+															{!routeOnly && (
 															<td className='px-3 py-2'>
 																<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
 																	{deptObj?.code ? `${deptObj.code} - ${deptObj.name}` : deptObj?.name || deptId}
 																</div>
 															</td>
+															)}
 															<td className='px-3 py-2'>
 																<NumericFormat
 																	className='h-9 w-full rounded-sm border border-[#999999] px-3 text-sm focus:border-primary focus:outline-none'
@@ -368,15 +473,14 @@ export function TransportProcessEntryCard({
 																		const next = [...items];
 																		const idx = next.findIndex(
 																			(it) =>
-																				it.transportRouteId === routeId &&
-																				it.departmentId === deptId,
+																				isRouteItem(it, routeId, deptId),
 																		);
 																		if (idx >= 0) {
 																			next[idx] = { ...next[idx], productionMeters: meters };
 																		} else {
 																			next.push({
 																				transportRouteId: routeId,
-																				departmentId: deptId,
+																				departmentId: routeOnly ? undefined : deptId,
 																				productionMeters: meters,
 																			});
 																		}
@@ -391,15 +495,14 @@ export function TransportProcessEntryCard({
 																		const next = [...items];
 																		const idx = next.findIndex(
 																			(it) =>
-																				it.transportRouteId === routeId &&
-																				it.departmentId === deptId,
+																				isRouteItem(it, routeId, deptId),
 																		);
 																		if (idx >= 0) {
 																			next[idx] = { ...next[idx], unitOfMeasureId: unitId };
 																		} else {
 																			next.push({
 																				transportRouteId: routeId,
-																				departmentId: deptId,
+																				departmentId: routeOnly ? undefined : deptId,
 																				unitOfMeasureId: unitId,
 																			});
 																		}
@@ -436,15 +539,14 @@ export function TransportProcessEntryCard({
 																		const next = [...items];
 																		const idx = next.findIndex(
 																			(it) =>
-																				it.transportRouteId === routeId &&
-																				it.departmentId === deptId,
+																				isRouteItem(it, routeId, deptId),
 																		);
 																		if (idx >= 0) {
 																			next[idx] = { ...next[idx], k1Factor: value };
 																		} else {
 																			next.push({
 																				transportRouteId: routeId,
-																				departmentId: deptId,
+																				departmentId: routeOnly ? undefined : deptId,
 																				k1Factor: value,
 																			});
 																		}
@@ -476,15 +578,14 @@ export function TransportProcessEntryCard({
 																		const next = [...items];
 																		const idx = next.findIndex(
 																			(it) =>
-																				it.transportRouteId === routeId &&
-																				it.departmentId === deptId,
+																				isRouteItem(it, routeId, deptId),
 																		);
 																		if (idx >= 0) {
 																			next[idx] = { ...next[idx], k2Factor: value };
 																		} else {
 																			next.push({
 																				transportRouteId: routeId,
-																				departmentId: deptId,
+																				departmentId: routeOnly ? undefined : deptId,
 																				k2Factor: value,
 																			});
 																		}

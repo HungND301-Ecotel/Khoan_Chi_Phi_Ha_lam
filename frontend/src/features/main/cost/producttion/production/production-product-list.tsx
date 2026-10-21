@@ -205,6 +205,23 @@ export function ProductionProductList({
 									};
 								});
 
+								// Vận tải lò / Vận tải cơ giới: bỏ cấp Nhóm công đoạn, Công đoạn sản xuất lên cấp đầu
+								if (isVTCG || isVanTaiLo) {
+									return (
+										<div key={groupKey} className='w-full min-w-0 overflow-x-auto'>
+											{isVTCG ? (
+												<Motorized3TierTreeList
+													motorizedLines={(processGroup.transportLines ?? []) as any}
+												/>
+											) : (
+												<Vtl3TierTreeList
+													transportLines={processGroup.transportLines ?? []}
+												/>
+											)}
+										</div>
+									);
+								}
+
 								return (
 									<AccordionItem
 										key={groupKey}
@@ -247,25 +264,15 @@ export function ProductionProductList({
 
 										<AccordionContent className='p-0 pt-2'>
 											<div className='w-full min-w-0 overflow-x-auto'>
-												{isVTCG ? (
-													<Motorized3TierTreeList
-														motorizedLines={(processGroup.transportLines ?? []) as any}
-													/>
-												) : isVanTaiLo ? (
-													<Vtl3TierTreeList
-														transportLines={processGroup.transportLines ?? []}
-													/>
-												) : (
-													<DataTable
-														columns={PRODUCTION_GROUP_PRODUCT_COLUMNS}
-														items={productRows}
-														hasActions={false}
-														hasPagination={false}
-														hasSort={false}
-														hasIndex={false}
-														compact={true}
-													/>
-												)}
+												<DataTable
+													columns={PRODUCTION_GROUP_PRODUCT_COLUMNS}
+													items={productRows}
+													hasActions={false}
+													hasPagination={false}
+													hasSort={false}
+													hasIndex={false}
+													compact={true}
+												/>
 											</div>
 										</AccordionContent>
 									</AccordionItem>

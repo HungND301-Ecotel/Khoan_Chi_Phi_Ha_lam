@@ -17,14 +17,23 @@ type ApplyToVehiclesButtonProps = {
 	vehicleIds: string[];
 	getTitle: (vehicleId: string) => string;
 	onApply: (targetIds: string[]) => void;
+	/** Nhãn nút / tiêu đề hộp thoại (mặc định: Áp dụng cho Nhóm VT, TS khác) */
+	label?: string;
+	/** Tên đối tượng đích hiển thị trong hộp thoại (mặc định: Nhóm VT, TS) */
+	targetNoun?: string;
+	/** Phần dữ liệu được chép (mặc định: công đoạn, thông số và đơn giá) */
+	copiedContent?: string;
 };
 
-/** Nút "Áp dụng cho các xe khác" trên tiêu đề khối của một xe */
+/** Nút "Áp dụng cho ... khác" trên tiêu đề khối (xe, loại hàng...) để chép cấu hình sang khối cùng loại */
 export function ApplyToVehiclesButton({
 	sourceId,
 	vehicleIds,
 	getTitle,
 	onApply,
+	label = 'Áp dụng cho Nhóm VT, TS khác',
+	targetNoun = 'Nhóm VT, TS',
+	copiedContent = 'công đoạn, thông số và đơn giá',
 }: ApplyToVehiclesButtonProps) {
 	const others = vehicleIds.filter((id) => id !== sourceId);
 	const [open, setOpen] = useState(false);
@@ -47,20 +56,20 @@ export function ApplyToVehiclesButton({
 				}}
 			>
 				<CopyPlus className='size-4' />
-				Áp dụng cho các xe khác
+				{label}
 			</Button>
 
 			<Dialog open={open} onOpenChange={setOpen}>
 				<DialogContent className='sm:max-w-lg'>
 					<DialogHeader>
-						<DialogTitle>Áp dụng cho các xe khác</DialogTitle>
+						<DialogTitle>{label}</DialogTitle>
 						<DialogDescription>
-							Chép công đoạn, thông số và đơn giá của{' '}
+							Chép {copiedContent} của{' '}
 							<span className='font-semibold text-black'>
 								{getTitle(sourceId)}
 							</span>{' '}
-							sang các xe được chọn. Dữ liệu đang nhập của các xe này sẽ bị ghi
-							đè.
+							sang các {targetNoun} được chọn. Dữ liệu đang nhập của các {targetNoun}{' '}
+							này sẽ bị ghi đè.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -69,7 +78,7 @@ export function ApplyToVehiclesButton({
 							checked={allSelected}
 							onCheckedChange={(checked) => setSelected(checked ? others : [])}
 						/>
-						Chọn tất cả ({others.length} xe)
+						Chọn tất cả ({others.length} {targetNoun})
 					</label>
 
 					<div className='flex max-h-72 flex-col gap-2 overflow-y-auto'>

@@ -290,7 +290,7 @@ function combineVehicleName(
 // VTCG — Gom 4 cấp:
 // Cấp 1: Thiết bị (Xe) — Đánh số [STT.0], tên [Tên xe] (LOẠI [Chất lượng])
 // Cấp 2: Công đoạn sản xuất — Đánh số [1], [2], [3]...
-// Cấp 3: Thông số (Chủng loại hàng, Vị trí nhận, Vị trí đổ) — Không đánh số
+// Cấp 3: Thông số (Loại hàng, Vị trí nhận, Vị trí đổ) — Không đánh số
 // Cấp 4: Cung độ (L <= ... Km) — Không đánh số
 // Cuối mỗi xe: 6 dòng tổng kết tài chính (Doanh thu xe theo giá khoán, Tổng doanh thu xe,
 // Tổng chi phí xe, Tiết kiệm(+)/Bội chi(-), Tiết kiệm được chấp nhận (khống chế 8%), Cộng trừ thu nhập)

@@ -118,7 +118,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             ReceivingLocationName = tl.ReceivingLocation?.Name,
                             DumpingLocationId = tl.DumpingLocationId,
                             DumpingLocationName = tl.DumpingLocation?.Name,
-                            ProductionMeters = tl.ProductionMeters
+                            ProductionMeters = tl.ProductionMeters,
+                            PlanProductionMeters = tl.PlanProductionMeters
                         }).ToList()
                 }).ToList()
         };

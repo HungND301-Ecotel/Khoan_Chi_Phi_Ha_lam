@@ -35,6 +35,6 @@ public class ExportExcelCargoTypeQueryHandler(
                 Note = c.Note
             });
 
-        return excelService.ExportToExcel(dtoList, "Chủng loại hàng", hiddenProperties);
+        return excelService.ExportToExcel(dtoList, "Loại hàng", hiddenProperties);
     }
 }

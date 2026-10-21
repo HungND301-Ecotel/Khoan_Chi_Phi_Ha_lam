@@ -25,6 +25,10 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
     public Guid? ReceivingLocationId { get; protected set; }
     public Guid? DumpingLocationId { get; protected set; }
     public double ProductionMeters { get; protected set; }
+    // Sản lượng kế hoạch VTL khoán theo Tuyến/Nhóm VTTS (không theo Nhóm công đoạn) — chỉ ghi ở
+    // dòng đầu tiên của mỗi Tuyến/Nhóm VTTS trong 1 công đoạn, các dòng còn lại = 0, nên cộng dồn
+    // theo (công đoạn, tuyến/nhóm VTTS) ra đúng kế hoạch.
+    public double PlanProductionMeters { get; protected set; }
 
     // Navigation properties
     public virtual ProductionOutputProcessGroup? ProductionOutputProcessGroup { get; protected set; }
@@ -47,7 +51,8 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
         Guid? haulDistanceId = null,
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
-        Guid? dumpingLocationId = null)
+        Guid? dumpingLocationId = null,
+        double planProductionMeters = 0)
     {
         return new ProductionOutputTransportLine
         {
@@ -61,6 +66,7 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
             ReceivingLocationId = receivingLocationId,
             DumpingLocationId = dumpingLocationId,
             ProductionMeters = productionMeters,
+            PlanProductionMeters = planProductionMeters,
         };
     }
 

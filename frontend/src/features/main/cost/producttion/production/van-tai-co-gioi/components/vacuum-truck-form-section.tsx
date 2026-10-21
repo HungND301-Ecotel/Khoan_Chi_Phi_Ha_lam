@@ -239,7 +239,7 @@ export function VacuumTruckFormSection({
 												hợp)
 											</div>
 
-											<div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
+											<div className='scrollbar-sm overflow-x-auto rounded-md border border-gray-200 bg-white'>
 												<table className='w-full text-left text-sm'>
 													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
 														<tr>

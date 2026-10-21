@@ -58,8 +58,8 @@ export function MainCatalogCargoTypePage() {
 			url={API.CATALOG.CARGO_TYPE.LIST}
 			columns={CATALOG_CARGO_TYPE_COLUMNS}
 			filters={[
-				{ key: 'name', label: 'Tên chủng loại hàng' },
-				{ key: 'code', label: 'Mã chủng loại hàng' },
+				{ key: 'name', label: 'Tên loại hàng' },
+				{ key: 'code', label: 'Mã loại hàng' },
 			]}
 			onCreate={
 				hasPermission(PERMISSIONS.CATALOG.CARGO_TYPE.CREATE)

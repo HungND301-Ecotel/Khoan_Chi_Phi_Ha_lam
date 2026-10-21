@@ -30,10 +30,10 @@ public class CargoTypeExcelDto
 {
     public Guid? Id { get; set; }
 
-    [Display(Name = "Mã chủng loại hàng")]
+    [Display(Name = "Mã loại hàng")]
     public string Code { get; set; } = string.Empty;
 
-    [Display(Name = "Chủng loại hàng")]
+    [Display(Name = "Loại hàng")]
     public string Name { get; set; } = string.Empty;
 
     [Display(Name = "Ghi chú")]

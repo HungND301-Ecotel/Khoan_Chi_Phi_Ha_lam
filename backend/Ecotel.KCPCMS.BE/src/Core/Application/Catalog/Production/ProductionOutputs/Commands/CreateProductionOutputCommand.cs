@@ -184,7 +184,8 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
                         transportLineDto.HaulDistanceId,
                         transportLineDto.CargoTypeId,
                         transportLineDto.ReceivingLocationId,
-                        transportLineDto.DumpingLocationId));
+                        transportLineDto.DumpingLocationId,
+                        transportLineDto.PlanProductionMeters));
                 }
             }
 

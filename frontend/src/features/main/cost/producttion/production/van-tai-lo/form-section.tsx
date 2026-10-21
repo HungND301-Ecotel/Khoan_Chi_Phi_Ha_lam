@@ -1,6 +1,8 @@
 import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumberInput } from '@/components/form/form-number';
 import { FieldError } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { Department } from '@/features/main/catalog/department/columns';
 import type { TransportRoute } from '@/features/main/catalog/transport-route/columns';
 import {
@@ -9,6 +11,8 @@ import {
 	isMonorailMode,
 	isOtherMode,
 	isShaftMode,
+	isRouteOnlyProcess,
+	normalizeRouteOnlyItems,
 } from '@/features/main/cost/plan/van-tai-lo/utils';
 import {
 	TRANSPORT_PROCESS_ENTRY_DEFAULT,
@@ -16,6 +20,7 @@ import {
 	type ProductionGroupSchema,
 	type TransportProcessEntrySchema,
 } from '@/features/main/cost/producttion/production/production-form-schema';
+import { formatNumber } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 
@@ -27,6 +32,62 @@ export type ProductionProcessOption = {
 };
 
 type ContractCodeOption = { id: string; code: string; name: string };
+
+function toMeters(value: unknown) {
+	return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+}
+
+// Tổng sản lượng kế hoạch của 1 công đoạn = cộng kế hoạch các Tuyến/Nhóm VTTS đang chọn
+function sumProcessPlanMeters(entry?: TransportProcessEntrySchema) {
+	const planMeters: Record<string, number> = entry?.planMeters || {};
+	return [...(entry?.routeIds || []), ...(entry?.equipmentIds || [])].reduce(
+		(sum, key) => sum + toMeters(planMeters[key]),
+		0,
+	);
+}
+
+type PlanActualFieldsProps = {
+	planValue?: number;
+	actualValue: number;
+	onPlanChange?: (value: number | undefined) => void;
+};
+
+// Cặp Sản lượng kế hoạch/thực tế: có onPlanChange thì kế hoạch là ô nhập (cấp Tuyến/Nhóm VTTS),
+// không thì chỉ hiển thị tổng (cấp Công đoạn). Thực tế luôn là tổng các dòng con.
+function PlanActualFields({
+	planValue,
+	actualValue,
+	onPlanChange,
+}: PlanActualFieldsProps) {
+	return (
+		<>
+			<div className='flex-1 space-y-2'>
+				<Label>Sản lượng kế hoạch</Label>
+				{onPlanChange ? (
+					<FormNumberInput
+						value={planValue}
+						onValueChange={onPlanChange}
+						placeholder='Nhập sản lượng kế hoạch'
+					/>
+				) : (
+					<Input
+						readOnly
+						className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
+						value={formatNumber(planValue || 0)}
+					/>
+				)}
+			</div>
+			<div className='flex-1 space-y-2'>
+				<Label>Sản lượng thực tế</Label>
+				<Input
+					readOnly
+					className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
+					value={formatNumber(actualValue)}
+				/>
+			</div>
+		</>
+	);
+}
 
 type VanTaiLoProcessEntryCardProps = {
 	form: UseFormReturn<ProductionFormSchema>;
@@ -69,6 +130,8 @@ function VanTaiLoProcessEntryCard({
 	const isShaft = isShaftMode(mode);
 	const isMonorail = isMonorailMode(mode);
 	const isOther = isOtherMode(mode);
+	// Vận tải trục: chỉ chọn Tuyến, không có Đơn vị — mỗi tuyến 1 dòng sản lượng
+	const routeOnly = isRouteOnlyProcess(process.code, process.name);
 
 	const routeIds = watchedEntry?.routeIds || [];
 	const routeDepartmentIds: Record<string, string[]> =
@@ -78,9 +141,47 @@ function VanTaiLoProcessEntryCard({
 	const equipmentQualitiesMap: Record<string, string[]> =
 		watchedEntry?.equipmentQualitiesMap || {};
 	const items = watchedEntry?.items || [];
+	const planMeters: Record<string, number> = watchedEntry?.planMeters || {};
+
+	// Kế hoạch khoán theo từng Tuyến/Nhóm VTTS — key là routeId hoặc equipmentId
+	const setPlan = (key: string, value: number | undefined) => {
+		const next = { ...planMeters };
+		if (value === undefined || Number.isNaN(value)) delete next[key];
+		else next[key] = value;
+		form.setValue(`${entryPath}.planMeters` as any, next);
+	};
+	const sumActual = (predicate: (item: (typeof items)[number]) => boolean) =>
+		items
+			.filter(predicate)
+			.reduce((sum, item) => sum + toMeters(item.productionMeters), 0);
+	const removePlanKeys = (removedIds: string[]) => {
+		const current: Record<string, number> =
+			form.getValues(`${entryPath}.planMeters` as any) || {};
+		if (!removedIds.some((id) => id in current)) return;
+		const next = { ...current };
+		removedIds.forEach((id) => delete next[id]);
+		form.setValue(`${entryPath}.planMeters` as any, next);
+	};
 
 	const setItems = (newItems: typeof items) => {
-		form.setValue(`${entryPath}.items` as any, newItems);
+		form.setValue(
+			`${entryPath}.items` as any,
+			routeOnly
+				? normalizeRouteOnlyItems(newItems, 'routeDepartmentId')
+				: newItems,
+		);
+	};
+
+	// VTT: cập nhật sản lượng thực tế của 1 tuyến (mỗi tuyến 1 dòng)
+	const updateRouteOnlyItem = (routeId: string, productionMeters: number) => {
+		const next = [...items];
+		const idx = next.findIndex((it) => it.transportRouteId === routeId);
+		if (idx >= 0) {
+			next[idx] = { ...next[idx], productionMeters };
+		} else {
+			next.push({ transportRouteId: routeId, productionMeters });
+		}
+		setItems(next);
 	};
 
 	const prevRouteIdsRef = useRef<string[]>(routeIds);
@@ -90,6 +191,7 @@ function VanTaiLoProcessEntryCard({
 
 		const removedIds = prev.filter((id) => !routeIds.includes(id));
 		if (removedIds.length > 0) {
+			removePlanKeys(removedIds);
 			if (isConveyor || isShaft) {
 				const nextRouteDept = { ...routeDepartmentIds };
 				removedIds.forEach((id) => delete nextRouteDept[id]);
@@ -107,14 +209,13 @@ function VanTaiLoProcessEntryCard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [JSON.stringify(routeIds)]);
 
-	const prevRouteDepartmentIdsRef = useRef<Record<string, string[]>>(
-		routeDepartmentIds,
-	);
+	const prevRouteDepartmentIdsRef =
+		useRef<Record<string, string[]>>(routeDepartmentIds);
 	useEffect(() => {
 		const prev = prevRouteDepartmentIdsRef.current;
 		if (JSON.stringify(prev) === JSON.stringify(routeDepartmentIds)) return;
 
-		if (isConveyor || isShaft) {
+		if ((isConveyor || isShaft) && !routeOnly) {
 			const currentItems = form.getValues(`${entryPath}.items` as any) || [];
 			const filtered = (currentItems as typeof items).filter((item) => {
 				if (!item.transportRouteId) return true;
@@ -136,6 +237,7 @@ function VanTaiLoProcessEntryCard({
 
 		const removedIds = prev.filter((id) => !equipmentIds.includes(id));
 		if (removedIds.length > 0) {
+			removePlanKeys(removedIds);
 			if (isMonorail) {
 				const nextEqQualities = { ...equipmentQualitiesMap };
 				removedIds.forEach((id) => delete nextEqQualities[id]);
@@ -184,6 +286,13 @@ function VanTaiLoProcessEntryCard({
 				{process.code ? `${process.code} - ${process.name}` : process.name}
 			</div>
 
+			<div className='flex flex-col gap-3 md:flex-row'>
+				<PlanActualFields
+					planValue={sumProcessPlanMeters(watchedEntry)}
+					actualValue={sumActual(() => true)}
+				/>
+			</div>
+
 			{(isConveyor || isShaft) && (
 				<>
 					<FormMultiSelect
@@ -197,89 +306,169 @@ function VanTaiLoProcessEntryCard({
 						}))}
 					/>
 
-					{routeIds.map((routeId) => {
-						const route = transportRoutes.find((r) => r.id === routeId);
-						const deptsForRoute = routeDepartmentIds[routeId] || [];
+					{/* VTT: 1 bảng duy nhất, mỗi tuyến 1 dòng — không có Đơn vị */}
+					{routeOnly && routeIds.length > 0 && (
+						<div className='overflow-hidden rounded-md border border-gray-200'>
+							<table className='w-full text-left text-sm'>
+								<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+									<tr>
+										<th className='min-w-[240px] px-4 py-3'>Tuyến vận tải</th>
+										<th className='min-w-[160px] px-4 py-3'>
+											Sản lượng kế hoạch
+										</th>
+										<th className='min-w-[160px] px-4 py-3'>
+											Sản lượng thực tế
+										</th>
+									</tr>
+								</thead>
+								<tbody className='divide-y divide-gray-100'>
+									{routeIds.map((routeId) => {
+										const route = transportRoutes.find((r) => r.id === routeId);
+										const currentItem = items.find(
+											(it) => it.transportRouteId === routeId,
+										);
+										return (
+											<tr key={routeId} className='hover:bg-gray-50/50'>
+												<td className='px-4 py-2'>
+													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
+														{route ? `${route.code} - ${route.name}` : routeId}
+													</div>
+												</td>
+												<td className='px-4 py-2'>
+													<FormNumberInput
+														value={planMeters[routeId]}
+														onValueChange={(value) => setPlan(routeId, value)}
+														placeholder='Nhập sản lượng kế hoạch'
+													/>
+												</td>
+												<td className='px-4 py-2'>
+													<FormNumberInput
+														value={currentItem?.productionMeters}
+														onValueChange={(value) =>
+															updateRouteOnlyItem(routeId, value ?? Number.NaN)
+														}
+														placeholder='Nhập sản lượng thực tế'
+													/>
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					)}
 
-						return (
-							<div
-								key={routeId}
-								className='flex flex-col gap-3 rounded-sm border border-gray-200 bg-white p-4'
-							>
-								<div className='text-xs font-semibold text-gray-800'>
-									{route ? `${route.code} - ${route.name}` : routeId}
-								</div>
+					{!routeOnly &&
+						routeIds.map((routeId) => {
+							const route = transportRoutes.find((r) => r.id === routeId);
+							const deptsForRoute = routeOnly
+								? ['']
+								: routeDepartmentIds[routeId] || [];
 
-								<FormMultiSelect
-									control={formControl}
-									name={`${entryPath}.routeDepartmentIds.${routeId}` as any}
-									label='Đơn vị áp dụng cho tuyến này'
-									placeholder='Chọn đơn vị'
-									options={departments.map((d) => ({
-										value: d.id,
-										label: `${d.code} - ${d.name}`,
-									}))}
-								/>
-
-								{deptsForRoute.length > 0 && (
-									<div className='overflow-hidden rounded-md border border-gray-200'>
-										<table className='w-full text-left text-sm'>
-											<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-												<tr>
-													<th className='min-w-[220px] px-4 py-3'>Đơn vị</th>
-													<th className='min-w-[140px] px-4 py-3'>
-														Sản lượng thực tế
-													</th>
-												</tr>
-											</thead>
-											<tbody className='divide-y divide-gray-100'>
-												{deptsForRoute.map((deptId) => {
-													const dept = departments.find((d) => d.id === deptId);
-													const itemIndex = items.findIndex(
-														(it) =>
-															it.transportRouteId === routeId &&
-															it.routeDepartmentId === deptId,
-													);
-
-													return (
-														<tr key={deptId} className='hover:bg-gray-50/50'>
-															<td className='px-4 py-2'>
-																<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
-																	{dept ? `${dept.code} - ${dept.name}` : deptId}
-																</div>
-															</td>
-															<td className='px-4 py-2'>
-																<FormNumberInput
-																	value={items[itemIndex]?.productionMeters}
-																	onValueChange={(value) => {
-																		const next = [...items];
-																		if (itemIndex >= 0) {
-																			next[itemIndex] = {
-																				...next[itemIndex],
-																				productionMeters: value ?? Number.NaN,
-																			};
-																		} else {
-																			next.push({
-																				transportRouteId: routeId,
-																				routeDepartmentId: deptId,
-																				productionMeters: value ?? Number.NaN,
-																			});
-																		}
-																		setItems(next);
-																	}}
-																	placeholder='Nhập sản lượng thực tế'
-																/>
-															</td>
-														</tr>
-													);
-												})}
-											</tbody>
-										</table>
+							return (
+								<div
+									key={routeId}
+									className='flex flex-col gap-3 rounded-sm border border-gray-200 bg-white p-4'
+								>
+									<div className='text-xs font-semibold text-gray-800'>
+										{route ? `${route.code} - ${route.name}` : routeId}
 									</div>
-								)}
-							</div>
-						);
-					})}
+
+									<div className='flex flex-col gap-3 md:flex-row md:items-end'>
+										<div className='md:flex-[2]'>
+											<FormMultiSelect
+												control={formControl}
+												name={
+													`${entryPath}.routeDepartmentIds.${routeId}` as any
+												}
+												label='Đơn vị áp dụng cho tuyến này'
+												placeholder='Chọn đơn vị'
+												options={departments.map((d) => ({
+													value: d.id,
+													label: `${d.code} - ${d.name}`,
+												}))}
+											/>
+										</div>
+										<PlanActualFields
+											planValue={planMeters[routeId]}
+											actualValue={sumActual(
+												(it) => it.transportRouteId === routeId,
+											)}
+											onPlanChange={(value) => setPlan(routeId, value)}
+										/>
+									</div>
+
+									{deptsForRoute.length > 0 && (
+										<div className='overflow-hidden rounded-md border border-gray-200'>
+											<table className='w-full text-left text-sm'>
+												<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+													<tr>
+														{!routeOnly && (
+															<th className='min-w-[220px] px-4 py-3'>
+																Đơn vị
+															</th>
+														)}
+														<th className='min-w-[140px] px-4 py-3'>
+															Sản lượng thực tế
+														</th>
+													</tr>
+												</thead>
+												<tbody className='divide-y divide-gray-100'>
+													{deptsForRoute.map((deptId) => {
+														const dept = departments.find(
+															(d) => d.id === deptId,
+														);
+														const itemIndex = items.findIndex(
+															(it) =>
+																it.transportRouteId === routeId &&
+																(routeOnly || it.routeDepartmentId === deptId),
+														);
+
+														return (
+															<tr key={deptId} className='hover:bg-gray-50/50'>
+																{!routeOnly && (
+																	<td className='px-4 py-2'>
+																		<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
+																			{dept
+																				? `${dept.code} - ${dept.name}`
+																				: deptId}
+																		</div>
+																	</td>
+																)}
+																<td className='px-4 py-2'>
+																	<FormNumberInput
+																		value={items[itemIndex]?.productionMeters}
+																		onValueChange={(value) => {
+																			const next = [...items];
+																			if (itemIndex >= 0) {
+																				next[itemIndex] = {
+																					...next[itemIndex],
+																					productionMeters: value ?? Number.NaN,
+																				};
+																			} else {
+																				next.push({
+																					transportRouteId: routeId,
+																					routeDepartmentId: routeOnly
+																						? undefined
+																						: deptId,
+																					productionMeters: value ?? Number.NaN,
+																				});
+																			}
+																			setItems(next);
+																		}}
+																		placeholder='Nhập sản lượng thực tế'
+																	/>
+																</td>
+															</tr>
+														);
+													})}
+												</tbody>
+											</table>
+										</div>
+									)}
+								</div>
+							);
+						})}
 				</>
 			)}
 
@@ -311,17 +500,30 @@ function VanTaiLoProcessEntryCard({
 									{cc ? `${cc.code} - ${cc.name}` : equipmentId}
 								</div>
 
-								<FormMultiSelect
-									control={formControl}
-									name={`${entryPath}.equipmentQualitiesMap.${equipmentId}` as any}
-									label='Chất lượng thiết bị'
-									placeholder='Chọn chất lượng thiết bị'
-									options={[
-										{ value: 'A', label: 'Thiết bị loại A' },
-										{ value: 'B', label: 'Thiết bị loại B' },
-										{ value: 'C', label: 'Thiết bị loại C' },
-									]}
-								/>
+								<div className='flex flex-col gap-3 md:flex-row md:items-end'>
+									<div className='md:flex-[2]'>
+										<FormMultiSelect
+											control={formControl}
+											name={
+												`${entryPath}.equipmentQualitiesMap.${equipmentId}` as any
+											}
+											label='Chất lượng thiết bị'
+											placeholder='Chọn chất lượng thiết bị'
+											options={[
+												{ value: 'A', label: 'Thiết bị loại A' },
+												{ value: 'B', label: 'Thiết bị loại B' },
+												{ value: 'C', label: 'Thiết bị loại C' },
+											]}
+										/>
+									</div>
+									<PlanActualFields
+										planValue={planMeters[equipmentId]}
+										actualValue={sumActual(
+											(it) => it.equipmentId === equipmentId,
+										)}
+										onPlanChange={(value) => setPlan(equipmentId, value)}
+									/>
+								</div>
 
 								{qualitiesForEq.length > 0 && (
 									<div className='overflow-hidden rounded-md border border-gray-200'>
@@ -408,6 +610,9 @@ function VanTaiLoProcessEntryCard({
 											Nhóm vật tư, tài sản
 										</th>
 										<th className='min-w-[140px] px-4 py-3'>
+											Sản lượng kế hoạch
+										</th>
+										<th className='min-w-[140px] px-4 py-3'>
 											Sản lượng thực tế
 										</th>
 									</tr>
@@ -425,6 +630,15 @@ function VanTaiLoProcessEntryCard({
 													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
 														{cc ? `${cc.code} - ${cc.name}` : equipmentId}
 													</div>
+												</td>
+												<td className='px-4 py-2'>
+													<FormNumberInput
+														value={planMeters[equipmentId]}
+														onValueChange={(value) =>
+															setPlan(equipmentId, value)
+														}
+														placeholder='Nhập sản lượng kế hoạch'
+													/>
 												</td>
 												<td className='px-4 py-2'>
 													<FormNumberInput
@@ -491,6 +705,17 @@ export function VanTaiLoGroupFields({
 
 	const processIds = watchedGroup?.processIds || [];
 	const transportProcesses = watchedGroup?.transportProcesses || [];
+
+	// SL kế hoạch của Nhóm công đoạn VTL không nhập — luôn = tổng kế hoạch các Tuyến/Nhóm VTTS
+	const groupPlanMeters = transportProcesses.reduce(
+		(sum, entry) => sum + sumProcessPlanMeters(entry),
+		0,
+	);
+	useEffect(() => {
+		if ((watchedGroup?.planProductionMeters || 0) === groupPlanMeters) return;
+		form.setValue(`groups.${groupIndex}.planProductionMeters`, groupPlanMeters);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [groupPlanMeters, groupIndex]);
 
 	const prevProcessIdsRef = useRef<string[]>(processIds);
 	useEffect(() => {

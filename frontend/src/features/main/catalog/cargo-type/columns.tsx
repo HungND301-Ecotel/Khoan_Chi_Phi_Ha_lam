@@ -10,11 +10,11 @@ export type CargoType = {
 export const CATALOG_CARGO_TYPE_COLUMNS: ColumnDef<CargoType>[] = [
 	{
 		accessorKey: 'code',
-		header: 'Mã chủng loại hàng',
+		header: 'Mã loại hàng',
 	},
 	{
 		accessorKey: 'name',
-		header: 'Chủng loại hàng',
+		header: 'Loại hàng',
 	},
 	{
 		accessorKey: 'note',

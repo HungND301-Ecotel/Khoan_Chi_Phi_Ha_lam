@@ -98,8 +98,8 @@ const MainCatalogRouter: RouteObject = {
 			path: 'cargo-types',
 			element: <MainCatalogCargoTypePage />,
 			handle: {
-				breadcrumb: 'Chủng loại hàng',
-				title: 'Chủng loại hàng',
+				breadcrumb: 'Loại hàng',
+				title: 'Loại hàng',
 			},
 		},
 	],

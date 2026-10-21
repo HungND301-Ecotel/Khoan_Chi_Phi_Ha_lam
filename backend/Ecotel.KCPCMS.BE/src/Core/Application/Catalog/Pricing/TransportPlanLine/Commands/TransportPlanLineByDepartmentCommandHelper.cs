@@ -258,37 +258,19 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         ItemInput item,
         DateOnly month)
     {
-        // Tuyến có đơn giá theo Đơn vị (băng tải, trục): dòng "Đơn vị khác" (DepartmentId = null)
-        // chưa được áp khi tính — chỉ khớp đúng Đơn vị. Tuyến không theo Đơn vị (trục kéo) giữ nguyên.
-        var routeUsesDepartments = candidates.Any(x =>
-            x.ProductionProcessId == item.ProductionProcessId &&
-            x.TransportRouteId == item.TransportRouteId &&
-            x.DepartmentId != null);
-        bool DepartmentMatches(TransportUnitPriceEntity x) => routeUsesDepartments
-            ? x.DepartmentId == item.RouteDepartmentId
-            : x.DepartmentId == null || x.DepartmentId == item.RouteDepartmentId;
-
-        var matches = candidates
+        var sameFields = candidates
             .Where(x =>
                 x.ProductionProcessId == item.ProductionProcessId &&
                 x.TransportRouteId == item.TransportRouteId &&
-                DepartmentMatches(x) &&
                 x.EquipmentId == item.EquipmentId &&
-                x.EquipmentQuality == item.EquipmentQuality &&
-                x.StartMonth <= month &&
-                x.EndMonth >= month)
+                x.EquipmentQuality == item.EquipmentQuality)
             .ToList();
 
+        // Ưu tiên đơn giá đúng kỳ hiệu lực, không có thì lấy theo mọi kỳ
+        var matches = MatchDepartment(sameFields.Where(x => x.StartMonth <= month && x.EndMonth >= month).ToList(), item);
         if (matches.Count == 0)
         {
-            matches = candidates
-                .Where(x =>
-                    x.ProductionProcessId == item.ProductionProcessId &&
-                    x.TransportRouteId == item.TransportRouteId &&
-                    DepartmentMatches(x) &&
-                    x.EquipmentId == item.EquipmentId &&
-                    x.EquipmentQuality == item.EquipmentQuality)
-                .ToList();
+            matches = MatchDepartment(sameFields, item);
         }
 
         if (matches.Count == 0)
@@ -305,6 +287,24 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         var preferLowVolume = item.ProductionMeters < LowVolumeThresholdTons;
         var matched = matches.FirstOrDefault(x => x.IsLowVolumeCase == preferLowVolume) ?? matches[0];
         return matched.Id;
+    }
+
+    /// <summary>
+    /// Lọc theo Đơn vị trong 1 tập đơn giá (cùng kỳ hoặc mọi kỳ). Tập có dòng gắn Đơn vị (băng tải) chỉ
+    /// khớp đúng Đơn vị — dòng "Đơn vị khác" (DepartmentId = null) chưa được áp khi tính. Tập không gắn
+    /// Đơn vị (vận tải trục, trục kéo) khớp mọi Đơn vị của kế hoạch. Xét theo từng tập nên dữ liệu cũ
+    /// của kỳ khác (vd VTT từng lưu kèm Đơn vị) không làm hỏng việc dò giá của kỳ hiện tại.
+    /// </summary>
+    private static List<TransportUnitPriceEntity> MatchDepartment(
+        IList<TransportUnitPriceEntity> pool,
+        ItemInput item)
+    {
+        var usesDepartments = pool.Any(x => x.DepartmentId != null);
+        return pool
+            .Where(x => usesDepartments
+                ? x.DepartmentId == item.RouteDepartmentId
+                : x.DepartmentId == null || x.DepartmentId == item.RouteDepartmentId)
+            .ToList();
     }
 
     /// <summary>

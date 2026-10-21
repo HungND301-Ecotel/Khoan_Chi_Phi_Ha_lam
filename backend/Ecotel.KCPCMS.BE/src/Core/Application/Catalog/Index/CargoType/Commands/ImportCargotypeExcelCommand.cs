@@ -44,12 +44,12 @@ public class ImportCargoTypeExcelCommandHandler(
 
             if (string.IsNullOrWhiteSpace(dto.Code))
             {
-                throw new BadRequestException($"Mã chủng loại hàng không được để trống ở dòng {rowNumber}.");
+                throw new BadRequestException($"Mã loại hàng không được để trống ở dòng {rowNumber}.");
             }
 
             if (string.IsNullOrWhiteSpace(dto.Name))
             {
-                throw new BadRequestException($"Tên chủng loại hàng không được để trống ở dòng {rowNumber}.");
+                throw new BadRequestException($"Tên loại hàng không được để trống ở dòng {rowNumber}.");
             }
 
             var isCodeTakenByOther = dbHaulDistances.Any(x =>
@@ -59,7 +59,7 @@ public class ImportCargoTypeExcelCommandHandler(
 
             if (isCodeTakenByOther)
             {
-                throw new ConflictException($"Mã chủng loại hàng '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
+                throw new ConflictException($"Mã loại hàng '{dto.Code}' đã tồn tại ở dòng {rowNumber}.");
             }
 
             if (dto.Id.HasValue && dbHaulDistances.Any(x => x.Id == dto.Id.Value))
