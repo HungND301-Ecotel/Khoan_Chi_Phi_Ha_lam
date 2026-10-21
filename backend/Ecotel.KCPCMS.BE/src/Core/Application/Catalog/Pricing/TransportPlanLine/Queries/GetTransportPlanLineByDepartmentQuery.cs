@@ -1,8 +1,10 @@
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
+using Application.Catalog.Pricing.Common;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.TransportPlanLine;
 using Domain.Common.Enums;
+using Domain.Entities.Pricing.MechanizedTransportUnitPrice;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Constants;
@@ -18,6 +20,10 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
 {
     private readonly IWriteRepository<TransportPlanLineEntity> _transportPlanLineRepository =
         unitOfWork.GetRepository<TransportPlanLineEntity>();
+    private readonly IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> _lowValuePerishableSupplyUnitPriceRepository =
+        unitOfWork.GetRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice>();
+    private readonly IWriteRepository<MechanizedTransportOverheadUnitPrice> _mechanizedTransportOverheadUnitPriceRepository =
+        unitOfWork.GetRepository<MechanizedTransportOverheadUnitPrice>();
 
     public async Task<TransportPlanLineByDepartmentDetailDto> Handle(
         GetTransportPlanLineByDepartmentQuery request,
@@ -101,6 +107,13 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             await TryAutoLinkUnpricedLinesAsync(unlinkedLines, unitOfWork, cancellationToken);
         }
 
+        // Cùng cách tra đơn giá với Quyết toán giao khoán để số hiển thị khớp nhau
+        var lowValueLookup = await TransportLowValuePerishableSupplyCostResolver.ResolveAsync(
+            lines,
+            _lowValuePerishableSupplyUnitPriceRepository,
+            _mechanizedTransportOverheadUnitPriceRepository,
+            cancellationToken);
+
         var department = lines.First();
         return new TransportPlanLineByDepartmentDetailDto
         {
@@ -118,6 +131,7 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                     LowValuePerishableSupply = monthGroup.Any(x =>
                         x.PlannedTransportCost?.LowValuePerishableSupplyInclusion
                             == LowValuePerishableSupplyInclusion.Include),
+                    LowValuePerishableSupplyCosts = ToLowValuePerishableSupplyCosts(monthGroup, lowValueLookup),
                     Items = monthGroup
                         .OrderBy(x => x.ProductionProcess?.Code?.Value ?? string.Empty)
                         .ThenBy(x => x.Equipment?.Code?.Value ?? string.Empty)
@@ -128,6 +142,33 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                 })
                 .ToList(),
         };
+    }
+
+    private static List<TransportLowValuePerishableSupplyCostDto> ToLowValuePerishableSupplyCosts(
+        IEnumerable<TransportPlanLineEntity> monthLines,
+        Dictionary<TransportLowValuePerishableSupplyCostResolver.Key, double> lookup)
+    {
+        return monthLines
+            .Where(x => x.PlannedTransportCost?.LowValuePerishableSupplyInclusion == LowValuePerishableSupplyInclusion.Include
+                && x.ProductionProcess?.ProcessGroupId != null)
+            .GroupBy(x => x.ProductionProcess!.ProcessGroupId)
+            .Select(group =>
+            {
+                var first = group.First();
+                var processGroup = first.ProductionProcess?.ProcessGroup;
+                return new TransportLowValuePerishableSupplyCostDto
+                {
+                    ProcessGroupId = group.Key,
+                    ProcessGroupCode = processGroup?.Code?.Value ?? processGroup?.FixedKey?.Key,
+                    ProcessGroupName = processGroup?.Name,
+                    IsMechanized = processGroup?.Type == ProcessGroupType.VTCG
+                        || processGroup?.FixedKey?.Key == "VTCG",
+                    Amount = TransportLowValuePerishableSupplyCostResolver.Resolve(first, lookup),
+                };
+            })
+            .OrderBy(x => x.IsMechanized)
+            .ThenBy(x => x.ProcessGroupCode)
+            .ToList();
     }
 
     // internal: dùng chung cho GetTransportPlanLineByIdQueryHandler 

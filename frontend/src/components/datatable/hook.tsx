@@ -97,7 +97,11 @@ export function useDataTable<TData>(
 	const refresh = useCallback(async () => {
 		try {
 			setLoading(true);
-			if (!url) return;
+			// Bảng truyền sẵn items (không có url): vẫn tăng version để các expand con tải lại
+			if (!url) {
+				setRefreshVersion((prev) => prev + 1);
+				return;
+			}
 			const mergedQuery: PaggingRequest = {
 				...query,
 				...(isServerPaginated

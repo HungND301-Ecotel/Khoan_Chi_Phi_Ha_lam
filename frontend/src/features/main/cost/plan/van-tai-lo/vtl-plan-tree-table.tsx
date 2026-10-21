@@ -306,7 +306,7 @@ export function VtlPlanTreeTable({
 	}
 
 	return (
-		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow'>
+		<div className='scrollbar-sm overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
 			{/* ============================================================ */}
 			{/* CẤP 1: BẢNG CÔNG ĐOẠN SẢN XUẤT (GỘP CHUNG 1 CỘT MÃ - TÊN)      */}
 			{/* ============================================================ */}
@@ -423,7 +423,7 @@ function L2Table({
 	const isConveyor = group.category === 'conveyor_shaft';
 
 	return (
-		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow'>
+		<div className='scrollbar-sm w-0 min-w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
 			<table className='w-full border-collapse text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-[#fafafa] text-sm font-semibold text-black'>
 					<tr>
@@ -565,7 +565,7 @@ function L3Table({
 	const isConveyor = group.category === 'conveyor_shaft';
 
 	return (
-		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow'>
+		<div className='scrollbar-sm w-0 min-w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
 			<table className='w-full border-collapse text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-[#fafafa] text-sm font-semibold text-black'>
 					<tr>
@@ -693,7 +693,7 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 	};
 
 	return (
-		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow'>
+		<div className='scrollbar-sm w-0 min-w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
 			{/* Thanh tiêu đề Cấp 4 đồng bộ hệ thống */}
 			<div className='flex items-center justify-between border-b border-neutral-200 bg-[#f5f5f5] px-4 py-2.5 text-sm font-normal'>
 				<div className='font-medium text-black'>Doanh thu kế hoạch ban đầu</div>

@@ -18,11 +18,21 @@ export type DepartmentPlanGroup = {
 	productUnitPriceIds: string[];
 };
 
+// Chi phí vật tư mau hỏng rẻ tiền (VTMHRT) của tháng, theo Nhóm công đoạn vận tải
+export type MonthLowValuePerishableSupplyCost = {
+	processGroupId: string;
+	processGroupCode?: string;
+	processGroupName?: string;
+	isMechanized: boolean;
+	amount: number;
+};
+
 export type DepartmentPlanMonthGroup = {
 	id: string;
 	time: string;
 	productUnitPriceIds: string[];
 	products: CostProduct[];
+	lowValuePerishableSupplyCosts?: MonthLowValuePerishableSupplyCost[];
 };
 
 export const PLAN_DEPARTMENT_COLUMNS: ColumnDef<DepartmentPlanGroup>[] = [

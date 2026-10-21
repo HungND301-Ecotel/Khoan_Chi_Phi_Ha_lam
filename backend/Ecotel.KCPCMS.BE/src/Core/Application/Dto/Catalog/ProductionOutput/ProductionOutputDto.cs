@@ -62,4 +62,5 @@ public class ProductionOutputTransportLineDto
     public Guid? DumpingLocationId { get; set; }
     public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
+    public double PlanProductionMeters { get; set; }
 }

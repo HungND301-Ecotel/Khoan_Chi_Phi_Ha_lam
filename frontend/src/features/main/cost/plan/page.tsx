@@ -19,6 +19,7 @@ import {
 	DepartmentPlanGroup,
 	DepartmentPlanMonthGroup,
 	MAIN_COST_PLAN_COLUMNS,
+	type MonthLowValuePerishableSupplyCost,
 	PLAN_DEPARTMENT_COLUMNS,
 	VTCG_COST_PLAN_COLUMNS,
 } from '@/features/main/cost/plan/columns';
@@ -33,7 +34,7 @@ import {
 } from '@/features/main/cost/plan/types';
 import { usePermission } from '@/hooks/use-permission';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -245,6 +246,51 @@ function DepartmentPlanProductsTable({
 	);
 }
 
+function MonthLowValuePerishableSupplyRow({
+	costs,
+}: {
+	costs?: MonthLowValuePerishableSupplyCost[];
+}) {
+	if (!costs || costs.length === 0) return null;
+
+	return (
+		<div className='scrollbar-sm mb-4 overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
+			<table className='w-full border-collapse text-left text-sm text-black'>
+				<thead className='border-b border-neutral-200 bg-[#fafafa] text-sm font-semibold text-black'>
+					<tr>
+						<th className='px-4 py-2.5'>Chi phí vật tư mau hỏng rẻ tiền</th>
+						<th className='px-4 py-2.5'>Nhóm công đoạn</th>
+						<th className='w-56 px-4 py-2.5 text-right'>
+							Thành tiền (đ/tháng)
+						</th>
+					</tr>
+				</thead>
+				<tbody className='divide-y divide-neutral-200'>
+					{costs.map((cost) => (
+						<tr key={cost.processGroupId}>
+							<td className='px-4 py-2.5'>
+								{cost.isMechanized ? 'Vận tải cơ giới' : 'Vận tải lò'}
+							</td>
+							<td className='px-4 py-2.5'>
+								{[cost.processGroupCode, cost.processGroupName]
+									.filter(Boolean)
+									.join(' - ') || '-'}
+							</td>
+							<td className='px-4 py-2.5 text-right'>
+								{cost.amount > 0 ? (
+									formatNumber(cost.amount)
+								) : (
+									<span className='text-red-500'>Chưa có đơn giá</span>
+								)}
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
 type DepartmentPlanMonthsTableProps = {
 	departmentId: string;
 	hasKhaiThac?: boolean;
@@ -351,6 +397,7 @@ function DepartmentPlanMonthsTable({
 								departmentName: string;
 								months: {
 									month: string;
+									lowValuePerishableSupplyCosts?: MonthLowValuePerishableSupplyCost[];
 									items: {
 										id: string;
 										productionProcessId?: string;
@@ -494,12 +541,15 @@ function DepartmentPlanMonthsTable({
 							...existing.productUnitPriceIds,
 							...vtlMonth.items.map((it) => it.id),
 						];
+						existing.lowValuePerishableSupplyCosts =
+							vtlMonth.lowValuePerishableSupplyCosts;
 					} else {
 						mergedMap.set(monthKey, {
 							id: monthKey,
 							time: monthKey,
 							productUnitPriceIds: vtlMonth.items.map((it) => it.id),
 							products: vtlProducts,
+							lowValuePerishableSupplyCosts: vtlMonth.lowValuePerishableSupplyCosts,
 						});
 					}
 				});
@@ -605,6 +655,9 @@ function DepartmentPlanMonthsTable({
 					</Item>
 
 					<AccordionContent className='p-0 px-2 pt-2'>
+						<MonthLowValuePerishableSupplyRow
+							costs={group.lowValuePerishableSupplyCosts}
+						/>
 						<div className='w-full min-w-0 overflow-x-auto'>
 							<DepartmentPlanProductsTable
 								monthId={group.id}

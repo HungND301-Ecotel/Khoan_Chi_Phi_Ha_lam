@@ -38,4 +38,5 @@ public class CreateProductionOutputTransportLineDto
     public Guid? ReceivingLocationId { get; set; }
     public Guid? DumpingLocationId { get; set; }
     public double ProductionMeters { get; set; }
+    public double PlanProductionMeters { get; set; }
 }

@@ -37,6 +37,7 @@ import {
 	type ProductionFormMode,
 	type ProductionFormSchema,
 	type ProductionGroupSchema,
+	type TransportProcessEntrySchema,
 } from './production-form-schema';
 import {
 	VanTaiLoGroupFields,
@@ -64,6 +65,7 @@ type ProductionOutputDetailTransportLine = {
 	dumpingLocationId?: string | null;
 	dumpingLocationName?: string | null;
 	productionMeters: number;
+	planProductionMeters?: number;
 };
 
 type ProductionOutputDetailProcessGroup = {
@@ -169,6 +171,35 @@ function isSameProductionRows(
 	});
 }
 
+// Dòng VTCG chỉ còn hiệu lực khi Nhóm vật tư của nó vẫn đang được chọn trong một Nhóm Vận tải cơ giới
+// đang chọn. Bỏ nhóm xe thì khối form của nó bị ẩn (không tự dọn motorizedItems), và dòng bị đoán sai
+// nhóm xe lúc mở Sửa không thuộc khối nào — lọc ở đây để các dòng đó không bị gửi lên lưu lại.
+const MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS = {
+	scania: 'scaniaAssignmentCodeIds',
+	excavator_dozer: 'excavatorAssignmentCodeIds',
+	service_crane: 'serviceCraneAssignmentCodeIds',
+	vacuum_truck: 'vacuumTruckAssignmentCodeIds',
+} as const;
+
+function getActiveMotorizedItems(group: ProductionGroupSchema) {
+	const categories =
+		group.motorizedCategories && group.motorizedCategories.length > 0
+			? group.motorizedCategories
+			: ['scania'];
+	const activeEquipmentIds = new Set(
+		categories.flatMap((category) => {
+			const field =
+				MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS[
+					category as keyof typeof MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS
+				];
+			return field ? (group[field] ?? []) : [];
+		}),
+	);
+	return (group.motorizedItems || []).filter(
+		(item) => !!item.equipmentId && activeEquipmentIds.has(item.equipmentId),
+	);
+}
+
 function calculateTotals(groups: ProductionGroupSchema[] = []) {
 	return {
 		plannedOutput: groups.reduce(
@@ -189,7 +220,7 @@ function calculateTotals(groups: ProductionGroupSchema[] = []) {
 					),
 				0,
 			);
-			const motorizedMeters = (group.motorizedItems || []).reduce(
+			const motorizedMeters = getActiveMotorizedItems(group).reduce(
 				(mSum, item) =>
 					Number.isNaN(item.productionMeters)
 						? mSum
@@ -203,6 +234,90 @@ function calculateTotals(groups: ProductionGroupSchema[] = []) {
 			0,
 		),
 	};
+}
+
+function toValidMeters(value: unknown) {
+	return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+}
+
+// Dòng VTL chỉ hợp lệ khi đang hiện trên form: Tuyến đang chọn + Đơn vị đã chọn cho tuyến đó (nếu
+// tuyến có chọn Đơn vị), hoặc Nhóm VTTS đang chọn + Chất lượng đã chọn (nếu có chọn Chất lượng).
+// Dòng lệch (vd. thiếu Đơn vị/Chất lượng từ dữ liệu cũ) không hiện để sửa/xoá nhưng vẫn bị cộng vào
+// sản lượng thực tế — loại khi nạp form và khi lưu.
+function isVisibleTransportItem(
+	process: TransportProcessEntrySchema,
+	item: TransportProcessEntrySchema['items'][number],
+) {
+	if (item.transportRouteId) {
+		if (!(process.routeIds || []).includes(item.transportRouteId)) return false;
+		const depts = process.routeDepartmentIds?.[item.transportRouteId] || [];
+		return depts.length === 0 || depts.includes(item.routeDepartmentId || '');
+	}
+	if (item.equipmentId) {
+		if (!(process.equipmentIds || []).includes(item.equipmentId)) return false;
+		const qualities =
+			process.equipmentQualitiesMap?.[item.equipmentId] ||
+			process.equipmentQualities ||
+			[];
+		return (
+			qualities.length === 0 || qualities.includes(item.equipmentQuality || '')
+		);
+	}
+	return false;
+}
+
+// Sản lượng kế hoạch VTL khoán theo Tuyến/Nhóm VTTS (planMeters) — ghi vào dòng đầu tiên của
+// key đó, các dòng sau = 0. Tuyến/Nhóm VTTS chưa có dòng thực tế nào mà có kế hoạch thì thêm 1
+// dòng giữ chỗ (thực tế = 0) để không mất kế hoạch.
+function buildTransportProcessLines(process: TransportProcessEntrySchema) {
+	const routeIds = process.routeIds || [];
+	const equipmentIds = process.equipmentIds || [];
+	const planMeters: Record<string, number> = process.planMeters || {};
+	const assignedKeys = new Set<string>();
+
+	const takePlan = (key?: string) => {
+		if (!key || assignedKeys.has(key)) return 0;
+		assignedKeys.add(key);
+		return toValidMeters(planMeters[key]);
+	};
+
+	const lines = (process.items || [])
+		.filter(
+			(item) =>
+				typeof item.productionMeters === 'number' &&
+				!Number.isNaN(item.productionMeters) &&
+				isVisibleTransportItem(process, item),
+		)
+		.map((item) => ({
+			productionProcessId: process.productionProcessId,
+			equipmentId: item.equipmentId || undefined,
+			equipmentQuality: item.equipmentQuality || undefined,
+			transportRouteId: item.transportRouteId || undefined,
+			routeDepartmentId: item.routeDepartmentId || undefined,
+			haulDistanceId: item.haulDistanceId || undefined,
+			productionMeters: item.productionMeters,
+			planProductionMeters: takePlan(item.transportRouteId || item.equipmentId),
+		}));
+
+	[...routeIds, ...equipmentIds].forEach((key) => {
+		if (assignedKeys.has(key)) return;
+		const plan = toValidMeters(planMeters[key]);
+		if (plan <= 0) return;
+		assignedKeys.add(key);
+		const isRoute = routeIds.includes(key);
+		lines.push({
+			productionProcessId: process.productionProcessId,
+			equipmentId: isRoute ? undefined : key,
+			equipmentQuality: undefined,
+			transportRouteId: isRoute ? key : undefined,
+			routeDepartmentId: undefined,
+			haulDistanceId: undefined,
+			productionMeters: 0,
+			planProductionMeters: plan,
+		});
+	});
+
+	return lines;
 }
 
 function buildProcessGroupPayload(
@@ -221,24 +336,8 @@ function buildProcessGroupPayload(
 				: 0,
 		})),
 		transportLines: [
-			...(group.transportProcesses || []).flatMap((process) =>
-				(process.items || [])
-					.filter(
-						(item) =>
-							typeof item.productionMeters === 'number' &&
-							!Number.isNaN(item.productionMeters),
-					)
-					.map((item) => ({
-						productionProcessId: process.productionProcessId,
-						equipmentId: item.equipmentId || undefined,
-						equipmentQuality: item.equipmentQuality || undefined,
-						transportRouteId: item.transportRouteId || undefined,
-						routeDepartmentId: item.routeDepartmentId || undefined,
-						haulDistanceId: item.haulDistanceId || undefined,
-						productionMeters: item.productionMeters,
-					})),
-			),
-			...(group.motorizedItems || [])
+			...(group.transportProcesses || []).flatMap(buildTransportProcessLines),
+			...getActiveMotorizedItems(group)
 				.filter(
 					(item) =>
 						typeof item.productionMeters === 'number' &&
@@ -276,8 +375,18 @@ function mapTransportLinesToFormState(
 			equipmentIds: [],
 			equipmentQualities: [],
 			equipmentQualitiesMap: {},
+			planMeters: {},
 			items: [],
 		};
+
+		const planKey = line.transportRouteId || line.equipmentId;
+		const linePlan = line.planProductionMeters || 0;
+		if (planKey && linePlan) {
+			existing.planMeters = {
+				...existing.planMeters,
+				[planKey]: (existing.planMeters[planKey] || 0) + linePlan,
+			};
+		}
 
 		if (line.transportRouteId) {
 			existing.routeIds = [
@@ -314,21 +423,28 @@ function mapTransportLinesToFormState(
 				],
 			};
 		}
-		existing.items = [
-			...existing.items,
-			{
-				transportRouteId: line.transportRouteId || undefined,
-				routeDepartmentId: line.routeDepartmentId || undefined,
-				equipmentId: line.equipmentId || undefined,
-				equipmentQuality: line.equipmentQuality || undefined,
-				productionMeters: line.productionMeters,
-			},
-		];
+		// Dòng giữ chỗ chỉ để lưu kế hoạch (thực tế = 0) — không đưa vào items
+		const isPlanOnlyLine = linePlan > 0 && !line.productionMeters;
+		if (!isPlanOnlyLine) {
+			existing.items = [
+				...existing.items,
+				{
+					transportRouteId: line.transportRouteId || undefined,
+					routeDepartmentId: line.routeDepartmentId || undefined,
+					equipmentId: line.equipmentId || undefined,
+					equipmentQuality: line.equipmentQuality || undefined,
+					productionMeters: line.productionMeters,
+				},
+			];
+		}
 
 		byProcess.set(line.productionProcessId, existing);
 	});
 
-	const transportProcesses = Array.from(byProcess.values());
+	const transportProcesses = Array.from(byProcess.values()).map((process) => ({
+		...process,
+		items: process.items.filter((item) => isVisibleTransportItem(process, item)),
+	}));
 	return {
 		processIds: transportProcesses.map((p) => p.productionProcessId),
 		transportProcesses,
@@ -1027,16 +1143,25 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 			<FormRow>
 				<div className='flex-1 space-y-2'>
 					<Label>Tổng sản lượng kế hoạch</Label>
-					<Input readOnly value={formatNumber(totals.plannedOutput)} />
+					<Input
+						readOnly
+						className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
+						value={formatNumber(totals.plannedOutput)}
+					/>
 				</div>
 				<div className='flex-1 space-y-2'>
 					<Label>Tổng sản lượng thực tế</Label>
-					<Input readOnly value={formatNumber(totals.productionMeters)} />
+					<Input
+						readOnly
+						className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
+						value={formatNumber(totals.productionMeters)}
+					/>
 				</div>
 				<div className='flex-1 space-y-2'>
 					<Label>Tổng sản lượng định mức</Label>
 					<Input
 						readOnly
+						className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
 						value={formatNumber(totals.standardProductionMeters)}
 					/>
 				</div>
@@ -1072,7 +1197,9 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 							),
 						0,
 					);
-					const groupMotorizedMeters = (group.motorizedItems || []).reduce(
+					const groupMotorizedMeters = getActiveMotorizedItems(
+						group as ProductionGroupSchema,
+					).reduce(
 						(sum, item) =>
 							Number.isNaN(item.productionMeters)
 								? sum
@@ -1124,19 +1251,29 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 									}))}
 								/>
 
-								<div className='flex-1 space-y-2'>
-									<FormNumber
-										control={form.control}
-										name={`groups.${groupIndex}.planProductionMeters`}
-										label='Sản lượng kế hoạch'
-										placeholder='Nhập sản lượng kế hoạch'
-									/>
-								</div>
+								{/* VTL khoán kế hoạch/thực tế theo từng Tuyến/Nhóm VTTS bên dưới — cấp nhóm không hiển thị
+								    (planProductionMeters vẫn được VanTaiLoGroupFields đồng bộ để lưu) */}
+								{groupType !== 'vantailo' && (
+									<>
+										<div className='flex-1 space-y-2'>
+											<FormNumber
+												control={form.control}
+												name={`groups.${groupIndex}.planProductionMeters`}
+												label='Sản lượng kế hoạch'
+												placeholder='Nhập sản lượng kế hoạch'
+											/>
+										</div>
 
-								<div className='flex-1 space-y-2'>
-									<Label>Sản lượng thực tế</Label>
-									<Input readOnly value={formatNumber(totalProductionMeters)} />
-								</div>
+										<div className='flex-1 space-y-2'>
+											<Label>Sản lượng thực tế</Label>
+											<Input
+												readOnly
+												className='read-only:bg-[#f5f5f5] read-only:text-gray-600'
+												value={formatNumber(totalProductionMeters)}
+											/>
+										</div>
+									</>
+								)}
 
 								<div className='flex-1'>
 									<FormNumber

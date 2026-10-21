@@ -4995,6 +4995,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<DateTimeOffset?>("LastModifiedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<double>("PlanProductionMeters")
+                        .HasColumnType("double precision");
+
                     b.Property<double>("ProductionMeters")
                         .HasColumnType("double precision");
 

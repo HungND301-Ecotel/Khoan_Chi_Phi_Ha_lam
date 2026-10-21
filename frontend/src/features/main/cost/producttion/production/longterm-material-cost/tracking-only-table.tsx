@@ -20,7 +20,7 @@ export function TrackingOnlyTable({ items }: TrackingOnlyTableProps) {
 			<div className='text-sm font-semibold text-black'>
 				Vật tư xuất khác (bổ sung chi phí)
 			</div>
-			<div className='overflow-hidden rounded-md border border-gray-200'>
+			<div className='scrollbar-sm overflow-x-auto rounded-md border border-gray-200'>
 				<table className='w-full text-left text-sm'>
 					<thead className='border-b border-gray-200 bg-gray-50 text-sm font-semibold text-black'>
 						<tr>
