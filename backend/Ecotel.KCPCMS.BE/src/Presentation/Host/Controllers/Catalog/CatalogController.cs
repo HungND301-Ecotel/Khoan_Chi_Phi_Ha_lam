@@ -2235,7 +2235,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType")]
     [OpenApiOperation("Get All CargoType", "")]
-    [HasPermission("catalog.cargotype.read", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.read", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> GetAllCargoType([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllCargoTypeQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2244,17 +2244,17 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType/export")]
     [OpenApiOperation("Export CargoType", "")]
-    [HasPermission("catalog.cargotype.export", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.export", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> ExportCargoType()
     {
         var fileByte = await Mediator.Send(new ExportExcelCargoTypeQuery());
-        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Chung_loai_hang.xlsx");
+        var result = File(fileByte, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Loai_hang.xlsx");
         return result;
     }
 
     [HttpPost("CargoType/import")]
     [OpenApiOperation("Import CargoType", "")]
-    [HasPermission("catalog.cargotype.import", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.import", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> ImportCargoType([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportCargoTypeExcelCommand(importModel.FormFile));
@@ -2263,7 +2263,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType/{Id:guid}")]
     [OpenApiOperation("Get CargoType By Id", "")]
-    [HasPermission("catalog.cargotype.read", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.read", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> GetCargoTypeById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetCargoTypeByIdQuery(id));
@@ -2272,7 +2272,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("CargoType")]
     [OpenApiOperation("Create New CargoType", "")]
-    [HasPermission("catalog.cargotype.create", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.create", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> CreateCargoType([FromBody] CreateCargoTypeDto createModel)
     {
         var result = await Mediator.Send(new CreateCargoTypeCommand(createModel));
@@ -2281,7 +2281,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("CargoType")]
     [OpenApiOperation("Update CargoType", "")]
-    [HasPermission("catalog.cargotype.update", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.update", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> UpdateCargoType([FromBody] UpdateCargoTypeDto updateModel)
     {
         var result = await Mediator.Send(new UpdateCargoTypeCommand(updateModel));
@@ -2290,7 +2290,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CargoType/{deleteId:guid}")]
     [OpenApiOperation("Delete CargoType", "")]
-    [HasPermission("catalog.cargotype.delete", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.delete", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> DeleteCargoType([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteCargoTypeCommand(deleteId));
@@ -2299,7 +2299,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CargoType")]
     [OpenApiOperation("Delete Many CargoType", "")]
-    [HasPermission("catalog.cargotype.delete", "Danh mục", "Chủng loại hàng")]
+    [HasPermission("catalog.cargotype.delete", "Danh mục", "Loại hàng")]
     public async Task<IActionResult> DeleteCargoTypeList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteCargoTypeListCommand(deleteIds));

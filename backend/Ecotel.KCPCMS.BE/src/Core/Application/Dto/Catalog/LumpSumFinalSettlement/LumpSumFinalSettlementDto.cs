@@ -33,7 +33,7 @@ public class LumpSumFinalSettlementDto
     public Guid? HaulDistanceId { get; set; }
     public string? HaulDistanceValue { get; set; }
 
-    // VTCG — Thông số công đoạn (Chủng loại hàng, Vị trí nhận, Vị trí đổ)
+    // VTCG — Thông số công đoạn (Loại hàng, Vị trí nhận, Vị trí đổ)
     public Guid? CargoTypeId { get; set; }
     public string? CargoTypeCode { get; set; }
     public string? CargoTypeName { get; set; }

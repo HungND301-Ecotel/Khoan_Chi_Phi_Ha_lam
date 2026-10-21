@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { hasConveyorFactors } from '@/features/main/cost/plan/van-tai-lo/utils';
 
 export type VtlCategoryType = 'conveyor_shaft' | 'monorail' | 'other';
 
@@ -79,7 +80,9 @@ export function VtlPlanTreeTable({
 	onSelectedRowsChange,
 }: VtlPlanTreeTableProps) {
 	// Quản lý trạng thái mở/đóng các cấp
-	const [openedProcessIds, setOpenedProcessIds] = useState<Set<string>>(new Set());
+	const [openedProcessIds, setOpenedProcessIds] = useState<Set<string>>(
+		new Set(),
+	);
 	const [openedL2Keys, setOpenedL2Keys] = useState<Set<string>>(new Set());
 	const [openedL3Keys, setOpenedL3Keys] = useState<Set<string>>(new Set());
 
@@ -145,7 +148,8 @@ export function VtlPlanTreeTable({
 						'Tuyến vận tải không xác định';
 				} else if (group.category === 'monorail') {
 					// Nhóm vật tư tài sản cho Monoray
-					l2Key = item.contractCodeCode || item.contractCodeName || 'vtts_unknown';
+					l2Key =
+						item.contractCodeCode || item.contractCodeName || 'vtts_unknown';
 					l2Code = item.contractCodeCode || '';
 					l2Name = item.contractCodeName || 'Nhóm vật tư tài sản';
 				} else {
@@ -431,8 +435,12 @@ function L2Table({
 						</th>
 						<th className='w-28 px-3 py-2.5 text-center'>Đơn vị tính</th>
 						<th className='w-32 px-3 py-2.5 text-center'>Thời gian</th>
-						<th className='w-48 px-4 py-2.5 text-right'>Sản lượng kế hoạch ban đầu</th>
-						<th className='w-56 px-4 py-2.5 text-right'>Doanh thu kế hoạch ban đầu (đ)</th>
+						<th className='w-48 px-4 py-2.5 text-right'>
+							Sản lượng kế hoạch ban đầu
+						</th>
+						<th className='w-56 px-4 py-2.5 text-right'>
+							Doanh thu kế hoạch ban đầu (đ)
+						</th>
 						<th className='w-14 px-3 py-2.5 text-center'>Xem</th>
 					</tr>
 				</thead>
@@ -441,7 +449,8 @@ function L2Table({
 						const isOpenedL2 = openedL2Keys.has(l2.key);
 						const l2ItemIds = l2.items.map((it) => it.id);
 						const allL2Selected =
-							l2ItemIds.length > 0 && l2ItemIds.every((id) => selectedRowIds.has(id));
+							l2ItemIds.length > 0 &&
+							l2ItemIds.every((id) => selectedRowIds.has(id));
 
 						return (
 							<Fragment key={l2.key}>
@@ -563,9 +572,15 @@ function L3Table({
 						<th className='w-10 px-3 py-2.5 text-center'>
 							<span className='sr-only'>Chọn</span>
 						</th>
-						<th className='px-4 py-2.5'>{isConveyor ? 'Đơn vị' : 'Chất lượng'}</th>
-						<th className='w-48 px-4 py-2.5 text-right'>Sản lượng kế hoạch ban đầu</th>
-						<th className='w-56 px-4 py-2.5 text-right'>Doanh thu kế hoạch ban đầu (đ)</th>
+						<th className='px-4 py-2.5'>
+							{isConveyor ? 'Đơn vị' : 'Chất lượng'}
+						</th>
+						<th className='w-48 px-4 py-2.5 text-right'>
+							Sản lượng kế hoạch ban đầu
+						</th>
+						<th className='w-56 px-4 py-2.5 text-right'>
+							Doanh thu kế hoạch ban đầu (đ)
+						</th>
 						<th className='w-14 px-3 py-2.5 text-center'>Xem</th>
 					</tr>
 				</thead>
@@ -665,6 +680,7 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 	const material = product.material;
 	const maintenance = product.maintenance;
 	const power = product.power;
+	const showFactors = hasConveyorFactors(product);
 
 	const renderPrice = (val?: number | null) => {
 		if (val === null || val === undefined || val === 0) return '-';
@@ -680,9 +696,7 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow'>
 			{/* Thanh tiêu đề Cấp 4 đồng bộ hệ thống */}
 			<div className='flex items-center justify-between border-b border-neutral-200 bg-[#f5f5f5] px-4 py-2.5 text-sm font-normal'>
-				<div className='font-medium text-black'>
-					Doanh thu kế hoạch ban đầu
-				</div>
+				<div className='font-medium text-black'>Doanh thu kế hoạch ban đầu</div>
 
 				<div className='flex items-center gap-10 text-sm font-semibold text-black'>
 					<div>{formatNumber(product.totalProductionMeters)}</div>
@@ -696,8 +710,12 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 					<tr>
 						<th className='px-4 py-2.5'>Thành phần chi phí</th>
 						<th className='px-4 py-2.5 text-right'>Đơn giá gốc (đ)</th>
-						<th className='w-24 px-3 py-2.5 text-center'>K1</th>
-						<th className='w-24 px-3 py-2.5 text-center'>K2</th>
+						{showFactors && (
+							<>
+								<th className='w-24 px-3 py-2.5 text-center'>K1</th>
+								<th className='w-24 px-3 py-2.5 text-center'>K2</th>
+							</>
+						)}
 						<th className='px-4 py-2.5 text-right'>Đơn giá (đ)</th>
 					</tr>
 				</thead>
@@ -706,10 +724,16 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 					<tr>
 						<td className='px-4 py-2.5 font-medium text-black'>Vật liệu</td>
 						<td className='px-4 py-2.5 text-right'>
-							{renderPrice(material?.baseUnitPrice ?? material?.effectiveUnitPrice)}
+							{renderPrice(
+								material?.baseUnitPrice ?? material?.effectiveUnitPrice,
+							)}
 						</td>
-						<td className='px-3 py-2.5 text-center text-neutral-400'>-</td>
-						<td className='px-3 py-2.5 text-center text-neutral-400'>-</td>
+						{showFactors && (
+							<>
+								<td className='px-3 py-2.5 text-center text-neutral-400'>-</td>
+								<td className='px-3 py-2.5 text-center text-neutral-400'>-</td>
+							</>
+						)}
 						<td className='px-4 py-2.5 text-right font-medium text-black'>
 							{renderPrice(material?.effectiveUnitPrice)}
 						</td>
@@ -723,12 +747,16 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 						<td className='px-4 py-2.5 text-right'>
 							{renderPrice(maintenance?.baseUnitPrice)}
 						</td>
-						<td className='px-3 py-2.5 text-center'>
-							{renderFactor(maintenance?.k1Coefficient)}
-						</td>
-						<td className='px-3 py-2.5 text-center'>
-							{renderFactor(maintenance?.k2Coefficient)}
-						</td>
+						{showFactors && (
+							<>
+								<td className='px-3 py-2.5 text-center'>
+									{renderFactor(maintenance?.k1Coefficient)}
+								</td>
+								<td className='px-3 py-2.5 text-center'>
+									{renderFactor(maintenance?.k2Coefficient)}
+								</td>
+							</>
+						)}
 						<td className='px-4 py-2.5 text-right font-medium text-black'>
 							{renderPrice(maintenance?.effectiveUnitPrice)}
 						</td>
@@ -742,12 +770,16 @@ function L4DetailPanel({ product }: L4DetailPanelProps) {
 						<td className='px-4 py-2.5 text-right'>
 							{renderPrice(power?.baseUnitPrice)}
 						</td>
-						<td className='px-3 py-2.5 text-center'>
-							{renderFactor(power?.k1Coefficient)}
-						</td>
-						<td className='px-3 py-2.5 text-center'>
-							{renderFactor(power?.k2Coefficient)}
-						</td>
+						{showFactors && (
+							<>
+								<td className='px-3 py-2.5 text-center'>
+									{renderFactor(power?.k1Coefficient)}
+								</td>
+								<td className='px-3 py-2.5 text-center'>
+									{renderFactor(power?.k2Coefficient)}
+								</td>
+							</>
+						)}
 						<td className='px-4 py-2.5 text-right font-medium text-black'>
 							{renderPrice(power?.effectiveUnitPrice)}
 						</td>

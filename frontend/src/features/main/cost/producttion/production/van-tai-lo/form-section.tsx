@@ -9,6 +9,8 @@ import {
 	isMonorailMode,
 	isOtherMode,
 	isShaftMode,
+	isRouteOnlyProcess,
+	normalizeRouteOnlyItems,
 } from '@/features/main/cost/plan/van-tai-lo/utils';
 import {
 	TRANSPORT_PROCESS_ENTRY_DEFAULT,
@@ -69,6 +71,8 @@ function VanTaiLoProcessEntryCard({
 	const isShaft = isShaftMode(mode);
 	const isMonorail = isMonorailMode(mode);
 	const isOther = isOtherMode(mode);
+	// Vận tải trục: chỉ chọn Tuyến, không có Đơn vị — mỗi tuyến 1 dòng sản lượng
+	const routeOnly = isRouteOnlyProcess(process.code, process.name);
 
 	const routeIds = watchedEntry?.routeIds || [];
 	const routeDepartmentIds: Record<string, string[]> =
@@ -80,7 +84,24 @@ function VanTaiLoProcessEntryCard({
 	const items = watchedEntry?.items || [];
 
 	const setItems = (newItems: typeof items) => {
-		form.setValue(`${entryPath}.items` as any, newItems);
+		form.setValue(
+			`${entryPath}.items` as any,
+			routeOnly
+				? normalizeRouteOnlyItems(newItems, 'routeDepartmentId')
+				: newItems,
+		);
+	};
+
+	// VTT: cập nhật sản lượng thực tế của 1 tuyến (mỗi tuyến 1 dòng)
+	const updateRouteOnlyItem = (routeId: string, productionMeters: number) => {
+		const next = [...items];
+		const idx = next.findIndex((it) => it.transportRouteId === routeId);
+		if (idx >= 0) {
+			next[idx] = { ...next[idx], productionMeters };
+		} else {
+			next.push({ transportRouteId: routeId, productionMeters });
+		}
+		setItems(next);
 	};
 
 	const prevRouteIdsRef = useRef<string[]>(routeIds);
@@ -107,14 +128,13 @@ function VanTaiLoProcessEntryCard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [JSON.stringify(routeIds)]);
 
-	const prevRouteDepartmentIdsRef = useRef<Record<string, string[]>>(
-		routeDepartmentIds,
-	);
+	const prevRouteDepartmentIdsRef =
+		useRef<Record<string, string[]>>(routeDepartmentIds);
 	useEffect(() => {
 		const prev = prevRouteDepartmentIdsRef.current;
 		if (JSON.stringify(prev) === JSON.stringify(routeDepartmentIds)) return;
 
-		if (isConveyor || isShaft) {
+		if ((isConveyor || isShaft) && !routeOnly) {
 			const currentItems = form.getValues(`${entryPath}.items` as any) || [];
 			const filtered = (currentItems as typeof items).filter((item) => {
 				if (!item.transportRouteId) return true;
@@ -197,89 +217,148 @@ function VanTaiLoProcessEntryCard({
 						}))}
 					/>
 
-					{routeIds.map((routeId) => {
-						const route = transportRoutes.find((r) => r.id === routeId);
-						const deptsForRoute = routeDepartmentIds[routeId] || [];
+					{/* VTT: 1 bảng duy nhất, mỗi tuyến 1 dòng — không có Đơn vị */}
+					{routeOnly && routeIds.length > 0 && (
+						<div className='overflow-hidden rounded-md border border-gray-200'>
+							<table className='w-full text-left text-sm'>
+								<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+									<tr>
+										<th className='min-w-[240px] px-4 py-3'>Tuyến vận tải</th>
+										<th className='min-w-[160px] px-4 py-3'>
+											Sản lượng thực tế
+										</th>
+									</tr>
+								</thead>
+								<tbody className='divide-y divide-gray-100'>
+									{routeIds.map((routeId) => {
+										const route = transportRoutes.find((r) => r.id === routeId);
+										const currentItem = items.find(
+											(it) => it.transportRouteId === routeId,
+										);
+										return (
+											<tr key={routeId} className='hover:bg-gray-50/50'>
+												<td className='px-4 py-2'>
+													<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
+														{route ? `${route.code} - ${route.name}` : routeId}
+													</div>
+												</td>
+												<td className='px-4 py-2'>
+													<FormNumberInput
+														value={currentItem?.productionMeters}
+														onValueChange={(value) =>
+															updateRouteOnlyItem(routeId, value ?? Number.NaN)
+														}
+														placeholder='Nhập sản lượng thực tế'
+													/>
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					)}
 
-						return (
-							<div
-								key={routeId}
-								className='flex flex-col gap-3 rounded-sm border border-gray-200 bg-white p-4'
-							>
-								<div className='text-xs font-semibold text-gray-800'>
-									{route ? `${route.code} - ${route.name}` : routeId}
-								</div>
+					{!routeOnly &&
+						routeIds.map((routeId) => {
+							const route = transportRoutes.find((r) => r.id === routeId);
+							const deptsForRoute = routeOnly
+								? ['']
+								: routeDepartmentIds[routeId] || [];
 
-								<FormMultiSelect
-									control={formControl}
-									name={`${entryPath}.routeDepartmentIds.${routeId}` as any}
-									label='Đơn vị áp dụng cho tuyến này'
-									placeholder='Chọn đơn vị'
-									options={departments.map((d) => ({
-										value: d.id,
-										label: `${d.code} - ${d.name}`,
-									}))}
-								/>
-
-								{deptsForRoute.length > 0 && (
-									<div className='overflow-hidden rounded-md border border-gray-200'>
-										<table className='w-full text-left text-sm'>
-											<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
-												<tr>
-													<th className='min-w-[220px] px-4 py-3'>Đơn vị</th>
-													<th className='min-w-[140px] px-4 py-3'>
-														Sản lượng thực tế
-													</th>
-												</tr>
-											</thead>
-											<tbody className='divide-y divide-gray-100'>
-												{deptsForRoute.map((deptId) => {
-													const dept = departments.find((d) => d.id === deptId);
-													const itemIndex = items.findIndex(
-														(it) =>
-															it.transportRouteId === routeId &&
-															it.routeDepartmentId === deptId,
-													);
-
-													return (
-														<tr key={deptId} className='hover:bg-gray-50/50'>
-															<td className='px-4 py-2'>
-																<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
-																	{dept ? `${dept.code} - ${dept.name}` : deptId}
-																</div>
-															</td>
-															<td className='px-4 py-2'>
-																<FormNumberInput
-																	value={items[itemIndex]?.productionMeters}
-																	onValueChange={(value) => {
-																		const next = [...items];
-																		if (itemIndex >= 0) {
-																			next[itemIndex] = {
-																				...next[itemIndex],
-																				productionMeters: value ?? Number.NaN,
-																			};
-																		} else {
-																			next.push({
-																				transportRouteId: routeId,
-																				routeDepartmentId: deptId,
-																				productionMeters: value ?? Number.NaN,
-																			});
-																		}
-																		setItems(next);
-																	}}
-																	placeholder='Nhập sản lượng thực tế'
-																/>
-															</td>
-														</tr>
-													);
-												})}
-											</tbody>
-										</table>
+							return (
+								<div
+									key={routeId}
+									className='flex flex-col gap-3 rounded-sm border border-gray-200 bg-white p-4'
+								>
+									<div className='text-xs font-semibold text-gray-800'>
+										{route ? `${route.code} - ${route.name}` : routeId}
 									</div>
-								)}
-							</div>
-						);
-					})}
+
+									{!routeOnly && (
+										<FormMultiSelect
+											control={formControl}
+											name={`${entryPath}.routeDepartmentIds.${routeId}` as any}
+											label='Đơn vị áp dụng cho tuyến này'
+											placeholder='Chọn đơn vị'
+											options={departments.map((d) => ({
+												value: d.id,
+												label: `${d.code} - ${d.name}`,
+											}))}
+										/>
+									)}
+
+									{deptsForRoute.length > 0 && (
+										<div className='overflow-hidden rounded-md border border-gray-200'>
+											<table className='w-full text-left text-sm'>
+												<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
+													<tr>
+														{!routeOnly && (
+															<th className='min-w-[220px] px-4 py-3'>
+																Đơn vị
+															</th>
+														)}
+														<th className='min-w-[140px] px-4 py-3'>
+															Sản lượng thực tế
+														</th>
+													</tr>
+												</thead>
+												<tbody className='divide-y divide-gray-100'>
+													{deptsForRoute.map((deptId) => {
+														const dept = departments.find(
+															(d) => d.id === deptId,
+														);
+														const itemIndex = items.findIndex(
+															(it) =>
+																it.transportRouteId === routeId &&
+																(routeOnly || it.routeDepartmentId === deptId),
+														);
+
+														return (
+															<tr key={deptId} className='hover:bg-gray-50/50'>
+																{!routeOnly && (
+																	<td className='px-4 py-2'>
+																		<div className='flex h-9 items-center rounded-sm border border-[#999999] bg-[#f5f5f5] px-3 text-xs font-semibold text-gray-800'>
+																			{dept
+																				? `${dept.code} - ${dept.name}`
+																				: deptId}
+																		</div>
+																	</td>
+																)}
+																<td className='px-4 py-2'>
+																	<FormNumberInput
+																		value={items[itemIndex]?.productionMeters}
+																		onValueChange={(value) => {
+																			const next = [...items];
+																			if (itemIndex >= 0) {
+																				next[itemIndex] = {
+																					...next[itemIndex],
+																					productionMeters: value ?? Number.NaN,
+																				};
+																			} else {
+																				next.push({
+																					transportRouteId: routeId,
+																					routeDepartmentId: routeOnly
+																						? undefined
+																						: deptId,
+																					productionMeters: value ?? Number.NaN,
+																				});
+																			}
+																			setItems(next);
+																		}}
+																		placeholder='Nhập sản lượng thực tế'
+																	/>
+																</td>
+															</tr>
+														);
+													})}
+												</tbody>
+											</table>
+										</div>
+									)}
+								</div>
+							);
+						})}
 				</>
 			)}
 
@@ -313,7 +392,9 @@ function VanTaiLoProcessEntryCard({
 
 								<FormMultiSelect
 									control={formControl}
-									name={`${entryPath}.equipmentQualitiesMap.${equipmentId}` as any}
+									name={
+										`${entryPath}.equipmentQualitiesMap.${equipmentId}` as any
+									}
 									label='Chất lượng thiết bị'
 									placeholder='Chọn chất lượng thiết bị'
 									options={[

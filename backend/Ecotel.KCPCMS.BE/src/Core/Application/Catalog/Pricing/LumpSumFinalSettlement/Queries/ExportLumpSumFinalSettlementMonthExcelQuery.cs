@@ -572,7 +572,11 @@ public class ExportLumpSumFinalSettlementMonthExcelQueryHandler(IMediator mediat
 
         foreach (var item in flatItems.OrderByCodeNatural(x => x.EquipmentCode ?? x.TransportRouteCode))
         {
-            result.Add(BuildLeafRow($"{sttPrefix}.{subStt}", item.ProductName, item));
+            // Dòng theo tuyến không có Đơn vị (Vận tải trục) hiển thị tên tuyến thay vì tên công đoạn
+            var label = item.TransportRouteId.HasValue && !item.RouteDepartmentId.HasValue
+                ? GetNameOnly(item.TransportRouteCode, item.TransportRouteName, item.ProductName ?? "Tuyen chua xac dinh")
+                : item.ProductName;
+            result.Add(BuildLeafRow($"{sttPrefix}.{subStt}", label, item));
             subStt++;
         }
     }

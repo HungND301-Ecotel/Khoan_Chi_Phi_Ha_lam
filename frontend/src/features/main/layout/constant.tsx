@@ -112,7 +112,7 @@ export const NAVIGATIONS: Navigation[] = [
 			},
 			{
 				type: 'link',
-				name: 'Chủng loại hàng',
+				name: 'Loại hàng',
 				href: '/catalogs/cargo-types',
 				permission: PERMISSIONS.CATALOG.CARGO_TYPE.READ,
 			},

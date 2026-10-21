@@ -98,20 +98,20 @@ export function CargoTypeForm({
 				columns={[
 					{
 						key: 'code',
-						header: 'Mã chủng loại hàng',
+						header: 'Mã loại hàng',
 						required: true,
 						render: ({ index, label }) => (
 							<FormInput
 								control={form.control}
 								name={`items.${index}.code`}
 								label={label}
-								placeholder='Nhập mã chủng loại hàng'
+								placeholder='Nhập mã loại hàng'
 							/>
 						),
 					},
 					{
 						key: 'name',
-						header: 'Chủng loại hàng',
+						header: 'Loại hàng',
 						required: true,
 						className: 'min-w-48',
 						render: ({ index, label }) => (
@@ -119,7 +119,7 @@ export function CargoTypeForm({
 								control={form.control}
 								name={`items.${index}.name`}
 								label={label}
-								placeholder='Nhập tên chủng loại hàng'
+								placeholder='Nhập tên loại hàng'
 							/>
 						),
 					},

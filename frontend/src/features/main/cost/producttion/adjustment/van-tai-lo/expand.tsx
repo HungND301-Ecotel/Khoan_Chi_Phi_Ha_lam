@@ -16,6 +16,7 @@ import { formatNumber } from '@/lib/utils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useState } from 'react';
+import { hasConveyorFactors } from '@/features/main/cost/plan/van-tai-lo/utils';
 
 type VtlAdjustmentExpandProps = ActionDialogProps<ProductionAdjustment> & {
 	monthId?: string;
@@ -40,6 +41,7 @@ export function VtlAdjustmentExpand({ row }: VtlAdjustmentExpandProps) {
 	const material = product?.material;
 	const maintenance = product?.maintenance;
 	const power = product?.power;
+	const showFactors = hasConveyorFactors(product);
 
 	return (
 		<Accordion
@@ -82,12 +84,16 @@ export function VtlAdjustmentExpand({ row }: VtlAdjustmentExpandProps) {
 				<AccordionContent className='p-4 pt-2'>
 					<div className='overflow-x-auto rounded-md border border-gray-200 bg-white p-4 shadow-xs'>
 						<table className='w-full text-left text-sm text-gray-700'>
-							<thead className='bg-gray-50 text-xs font-semibold uppercase text-gray-600'>
+							<thead className='bg-gray-50 text-xs font-semibold text-gray-600 uppercase'>
 								<tr>
 									<th className='px-4 py-2'>Thành phần chi phí</th>
 									<th className='px-4 py-2 text-right'>Đơn giá gốc (đ)</th>
-									<th className='px-4 py-2 text-center'>K1</th>
-									<th className='px-4 py-2 text-center'>K2</th>
+									{showFactors && (
+										<>
+											<th className='px-4 py-2 text-center'>K1</th>
+											<th className='px-4 py-2 text-center'>K2</th>
+										</>
+									)}
 									<th className='px-4 py-2 text-right'>Đơn giá (đ)</th>
 								</tr>
 							</thead>
@@ -97,8 +103,12 @@ export function VtlAdjustmentExpand({ row }: VtlAdjustmentExpandProps) {
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(material?.baseUnitPrice)}
 									</td>
-									<td className='px-4 py-2 text-center'>-</td>
-									<td className='px-4 py-2 text-center'>-</td>
+									{showFactors && (
+										<>
+											<td className='px-4 py-2 text-center'>-</td>
+											<td className='px-4 py-2 text-center'>-</td>
+										</>
+									)}
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(material?.effectiveUnitPrice)}
 									</td>
@@ -110,12 +120,16 @@ export function VtlAdjustmentExpand({ row }: VtlAdjustmentExpandProps) {
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(maintenance?.baseUnitPrice)}
 									</td>
-									<td className='px-4 py-2 text-center'>
-										{renderFactor(maintenance?.k1Coefficient)}
-									</td>
-									<td className='px-4 py-2 text-center'>
-										{renderFactor(maintenance?.k2Coefficient)}
-									</td>
+									{showFactors && (
+										<>
+											<td className='px-4 py-2 text-center'>
+												{renderFactor(maintenance?.k1Coefficient)}
+											</td>
+											<td className='px-4 py-2 text-center'>
+												{renderFactor(maintenance?.k2Coefficient)}
+											</td>
+										</>
+									)}
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(maintenance?.effectiveUnitPrice)}
 									</td>
@@ -127,12 +141,16 @@ export function VtlAdjustmentExpand({ row }: VtlAdjustmentExpandProps) {
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(power?.baseUnitPrice)}
 									</td>
-									<td className='px-4 py-2 text-center'>
-										{renderFactor(power?.k1Coefficient)}
-									</td>
-									<td className='px-4 py-2 text-center'>
-										{renderFactor(power?.k2Coefficient)}
-									</td>
+									{showFactors && (
+										<>
+											<td className='px-4 py-2 text-center'>
+												{renderFactor(power?.k1Coefficient)}
+											</td>
+											<td className='px-4 py-2 text-center'>
+												{renderFactor(power?.k2Coefficient)}
+											</td>
+										</>
+									)}
 									<td className='px-4 py-2 text-right'>
 										{renderPrice(power?.effectiveUnitPrice)}
 									</td>

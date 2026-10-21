@@ -181,8 +181,9 @@ function ToggleDetailButton({
 
 // ====== TẦNG 3: BẢNG CÔNG ĐOẠN SẢN XUẤT ======
 // - Xe Scania: Công đoạn + Thông số (loại hàng, vị trí nhận/đổ) → tầng 4 đơn giá theo cung độ.
-// - Phục vụ, Hút bùn, Xúc gạt nâng: đơn giá nằm ngay trên dòng công đoạn (Nhiên liệu, SCTX). Chỉ
-//   công đoạn tính theo cung độ (Tưới đường mỏ, Giờ di chuyển...) mới có tầng 4.
+// - Phục vụ, Hút bùn, Xúc gạt nâng: đơn giá nằm ngay trên dòng công đoạn (Nhiên liệu, SCTX), không
+//   có nút Xem. Công đoạn tính theo cung độ (Tưới đường mỏ, Giờ di chuyển...) xếp cuối và mở sẵn
+//   bảng đơn giá theo cung độ.
 
 export function MotorizedProcessExpand({
 	c3Items,
@@ -202,10 +203,20 @@ export function MotorizedProcessExpand({
 	};
 
 	const isScania = c3Items[0]?.vehicleType === SCANIA_VEHICLE_TYPE;
-	const colCount = isScania ? 4 : 5;
+	const colCount = 4;
+	const hasDistanceRows = (item: MotorizedC3Item) =>
+		item.rows.some((r) => !!r.haulDistanceValue);
+	// Nhóm khác Scania: công đoạn theo cung độ xếp cuối (giữ nguyên thứ tự còn lại)
+	const orderedItems = isScania
+		? c3Items
+		: [
+				...c3Items.filter((item) => !hasDistanceRows(item)),
+				...c3Items.filter((item) => hasDistanceRows(item)),
+			];
 
 	return (
-		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white text-black shadow-xs'>
+		// Bảng công đoạn rộng 80%, căn giữa bảng Thời gian / Nhóm (cấp 2) cho các cột không bị kéo quá xa
+		<div className='mx-auto w-[80%] overflow-hidden rounded-md border border-neutral-200 bg-white text-black shadow-xs'>
 			<table className='w-full table-fixed text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 					<tr>
@@ -239,12 +250,14 @@ export function MotorizedProcessExpand({
 								</th>
 							</>
 						)}
-						<th
-							scope='col'
-							className='w-20 px-4 py-2.5 text-center font-semibold text-black'
-						>
-							Xem
-						</th>
+						{isScania && (
+							<th
+								scope='col'
+								className='w-20 px-4 py-2.5 text-center font-semibold text-black'
+							>
+								Xem
+							</th>
+						)}
 					</tr>
 				</thead>
 				<tbody className='divide-y divide-neutral-200'>
@@ -255,11 +268,13 @@ export function MotorizedProcessExpand({
 							</td>
 						</tr>
 					) : (
-						c3Items.map((item) => {
+						orderedItems.map((item) => {
 							const isSelected = expandedC3Ids.includes(item.id);
 							// Có tầng 4 khi là Xe Scania hoặc công đoạn có đơn giá theo cung độ
-							const hasDistance = item.rows.some((r) => !!r.haulDistanceValue);
+							const hasDistance = hasDistanceRows(item);
 							const hasDetail = isScania || hasDistance;
+							// Scania mở/đóng bằng nút Xem; nhóm khác mở sẵn bảng cung độ
+							const showDetail = isScania ? isSelected : hasDistance;
 							const inlineRow = !hasDetail ? item.rows[0] : undefined;
 
 							return (
@@ -298,18 +313,18 @@ export function MotorizedProcessExpand({
 												</td>
 											</>
 										)}
-										<td className='w-20 px-4 py-2 text-center'>
-											{hasDetail && (
+										{isScania && (
+											<td className='w-20 px-4 py-2 text-center'>
 												<ToggleDetailButton
 													open={isSelected}
 													onClick={() => handleToggleC3(item.id)}
 												/>
-											)}
-										</td>
+											</td>
+										)}
 									</tr>
 
 									{/* TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ THEO CUNG ĐỘ */}
-									{hasDetail && isSelected && (
+									{hasDetail && showDetail && (
 										<tr className='border-b border-neutral-200 bg-neutral-50/50'>
 											<td colSpan={colCount} className='max-w-0 bg-neutral-50/40 p-3'>
 												<MotorizedPriceDetailTable
