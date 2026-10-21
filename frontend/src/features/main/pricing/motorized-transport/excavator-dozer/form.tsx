@@ -51,6 +51,10 @@ const QUALITY_OPTIONS = [
 	{ label: 'Thiết bị loại C', value: 'C' },
 ];
 
+// Xúc gạt nâng khoán theo công đoạn: công đoạn tính theo giờ dùng đ/h, còn lại đ/tấn
+const getProcessUnitLabel = (procText: string) =>
+	procText.toLowerCase().includes('giờ') ? 'đ/h' : 'đ/tấn';
+
 function computeItemsForExcavatorPeriod(
 	assignmentCodeIds: string[],
 	equipmentProcesses: Record<string, string[]>,
@@ -196,6 +200,13 @@ function ExcavatorPeriodSection({
 	};
 
 	// Tên máy hiển thị và các trường theo máy của dòng đơn giá (khớp computeItemsForExcavatorPeriod)
+	const getProcName = (procValue: string) => {
+		const p = processOptions.find(
+			(opt) => opt.value === procValue || opt.label === procValue,
+		);
+		return p?.label || procValue || '';
+	};
+
 	const getVehicleTitle = (id: string) => {
 		const cc = contractCodes.find((c) => c.id === id);
 		return cc ? (cc.code ? `${cc.code} - ${cc.name}` : cc.name) : id;
@@ -351,104 +362,85 @@ function ExcavatorPeriodSection({
 						/>
 						</div>
 
-						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
-						{selectedProcList.map((procValue: string) => {
-							const procObj = processOptions.find(
-								(p) => p.value === procValue || p.label === procValue,
+						{/* BẢNG ĐƠN GIÁ: mỗi chất lượng thiết bị 1 bảng, mỗi dòng 1 công đoạn sản xuất */}
+						{currentQualities.map((quality: string) => {
+							const qualityItems = period.items.filter(
+								(it: any) =>
+									it.assignmentCodeId === ccId &&
+									it.equipmentQuality === quality,
 							);
-							const procText = procObj?.label || procValue || '';
-							const isHourly =
-								procText === 'Giờ phục vụ' ||
-								procText === 'Giờ di chuyển' ||
-								procText === 'Giờ gạt phục vụ' ||
-								procText === 'Giờ gạt di chuyển' ||
-								procText.toLowerCase().includes('giờ');
-
-							const itemUnitLabel = isHourly ? '(đ/h)' : '(đ/tấn)';
+							if (qualityItems.length === 0) return null;
 
 							return (
 								<div
-									key={procValue}
-									className='space-y-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs'
+									key={quality}
+									className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'
 								>
-									<div className='border-b border-neutral-200/80 pb-2'>
-										<span className='text-sm font-semibold text-black'>
-											{procText}
+									<div className='border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
+										<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-semibold text-black shadow-2xs'>
+											{materialName} (Loại {quality})
 										</span>
 									</div>
-
-									{/* BẢNG ĐƠN GIÁ */}
-									{currentQualities.length > 0 && (
-										<div className='space-y-2 pt-2'>
-											<div className='w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
-												<table className='w-full min-w-[600px] text-left text-sm'>
-													<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
-														<tr>
-															<th className='px-4 py-2.5 whitespace-nowrap'>
-																Chất lượng thiết bị
-															</th>
-															<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																Đơn giá Nhiên liệu {itemUnitLabel}
-															</th>
-															<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																Đơn giá SCTX {itemUnitLabel}
-															</th>
+									<div className='scrollbar-sm w-full overflow-x-auto'>
+										<table className='w-full min-w-[600px] text-left text-sm'>
+											<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+												<tr>
+													<th className='px-4 py-2.5 whitespace-nowrap'>
+														Công đoạn sản xuất
+													</th>
+													<th className='w-24 px-4 py-2.5 whitespace-nowrap'>ĐVT</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá Nhiên liệu
+													</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá SCTX
+													</th>
+												</tr>
+											</thead>
+											<tbody className='divide-y divide-neutral-100'>
+												{qualityItems.map((item: any) => {
+													const procText = getProcName(item.productionProcessId);
+													return (
+														<tr
+															key={item.tempId || item.id}
+															className='transition-colors hover:bg-neutral-50/50'
+														>
+															<td className='px-4 py-2 text-black'>{procText}</td>
+															<td className='w-24 px-4 py-2 whitespace-nowrap text-black'>
+																{getProcessUnitLabel(procText)}
+															</td>
+															<td className='w-40 min-w-[140px] px-4 py-2'>
+																<FormNumberInput
+																	value={item.fuelUnitPrice ?? 0}
+																	onValueChange={(val) =>
+																		handleItemValueChange(
+																			item.tempId || item.id,
+																			'fuelUnitPrice',
+																			val,
+																		)
+																	}
+																	placeholder='Nhập đơn giá nhiên liệu'
+																/>
+															</td>
+															<td className='w-40 min-w-[140px] px-4 py-2'>
+																<FormNumberInput
+																	value={item.maintenanceUnitPrice ?? 0}
+																	onValueChange={(val) =>
+																		handleItemValueChange(
+																			item.tempId || item.id,
+																			'maintenanceUnitPrice',
+																			val,
+																		)
+																	}
+																	placeholder='Nhập đơn giá SCTX'
+																/>
+															</td>
 														</tr>
-													</thead>
-													<tbody className='divide-y divide-neutral-100'>
-														{currentQualities.map((quality: string) => {
-															const item = period.items.find(
-																(it: any) =>
-																	it.assignmentCodeId === ccId &&
-																	it.productionProcessId === procValue &&
-																	it.equipmentQuality === quality,
-															);
-															if (!item) return null;
-
-															return (
-																<tr
-																	key={quality}
-																	className='transition-colors hover:bg-neutral-50/50'
-																>
-																	<td className='px-4 py-2 whitespace-nowrap'>
-																		<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
-																			{materialName} (Loại {quality})
-																		</div>
-																	</td>
-																	<td className='w-40 min-w-[140px] px-4 py-2'>
-																		<FormNumberInput
-																			value={item.fuelUnitPrice ?? 0}
-																			onValueChange={(val) =>
-																				handleItemValueChange(
-																					item.tempId || item.id,
-																					'fuelUnitPrice',
-																					val,
-																				)
-																			}
-																			placeholder='Nhập đơn giá nhiên liệu'
-																		/>
-																	</td>
-																	<td className='w-40 min-w-[140px] px-4 py-2'>
-																		<FormNumberInput
-																			value={item.maintenanceUnitPrice ?? 0}
-																			onValueChange={(val) =>
-																				handleItemValueChange(
-																					item.tempId || item.id,
-																					'maintenanceUnitPrice',
-																					val,
-																				)
-																			}
-																			placeholder='Nhập đơn giá SCTX'
-																		/>
-																	</td>
-																</tr>
-															);
-														})}
-													</tbody>
-												</table>
-											</div>
-										</div>
-									)}
+													);
+												})}
+											</tbody>
+										</table>
+									</div>
 								</div>
 							);
 						})}

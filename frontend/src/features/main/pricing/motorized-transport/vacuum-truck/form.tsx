@@ -60,6 +60,12 @@ const QUALITY_OPTIONS = [
 	{ label: 'Thiết bị loại C', value: 'C' },
 ];
 
+// Nhóm Hút bùn, chất thải: công đoạn Giờ di chuyển tính đơn giá theo Cung độ vận tải;
+// các công đoạn khác nhập đơn giá trực tiếp
+const isMovingProcess = (procName: string) =>
+	procName.toLowerCase().includes('di chuyển') ||
+	procName.toLowerCase().includes('cung độ');
+
 function computeItemsForVacuumTruckPeriod(
 	assignmentCodeIds: string[],
 	equipmentProcesses: Record<string, string[]>,
@@ -88,9 +94,7 @@ function computeItemsForVacuumTruckPeriod(
 				(p) => p.value === procId || p.label === procId,
 			);
 			const procName = procObj ? procObj.label : procId;
-			const isMoving =
-				procName.toLowerCase().includes('di chuyển') ||
-				procName.toLowerCase().includes('cung độ');
+			const isMoving = isMovingProcess(procName);
 
 			// Chất lượng thiết bị chọn 1 lần theo Nhóm vật tư, tài sản (xe)
 			const selectedQualities: string[] = equipmentQualities[acId] || [];
@@ -269,6 +273,11 @@ function VacuumTruckPeriodSection({
 	};
 
 	// Tên xe hiển thị và các trường theo xe của dòng đơn giá (khớp hàm computeItems...)
+	const getProcName = (procId: string) => {
+		const p = processOptions.find((opt) => opt.value === procId);
+		return p ? p.label : procId;
+	};
+
 	const getVehicleTitle = (id: string) => {
 		const ac = assignmentCodes.find((a) => a.id === id);
 		return ac ? (ac.code ? `${ac.code} - ${ac.name}` : ac.name) : id;
@@ -362,6 +371,10 @@ function VacuumTruckPeriodSection({
 					period.equipmentProcesses?.[acId] || [];
 				const currentQualities: string[] =
 					period.equipmentQualities?.[acId] || [];
+				// Công đoạn di chuyển cần chọn thêm Cung độ vận tải
+				const movingProcIds = selectedProcList.filter((procId) =>
+					isMovingProcess(getProcName(procId)),
+				);
 
 				return (
 					<div
@@ -405,207 +418,138 @@ function VacuumTruckPeriodSection({
 									)
 								}
 							/>
-						<MultiSelect
-							label='Công đoạn sản xuất'
-							placeholder='Chọn các công đoạn sản xuất'
-							options={processOptions.map((opt) => ({
-								label: opt.label,
-								value: opt.value,
-							}))}
-							values={selectedProcList.map((id) => {
-								const p = processOptions.find((opt) => opt.value === id);
-								return { value: id, label: p ? p.label : id };
-							})}
-							onValuesChange={(selected) =>
-								handleProcessesChange(
-									acId,
-									selected.map((s) => s.value),
-								)
-							}
-						/>
+
+							<MultiSelect
+								label='Công đoạn sản xuất'
+								placeholder='Chọn các công đoạn sản xuất'
+								options={processOptions.map((opt) => ({
+									label: opt.label,
+									value: opt.value,
+								}))}
+								values={selectedProcList.map((id) => {
+									const p = processOptions.find((opt) => opt.value === id);
+									return { value: id, label: p ? p.label : id };
+								})}
+								onValuesChange={(selected) =>
+									handleProcessesChange(
+										acId,
+										selected.map((s) => s.value),
+									)
+								}
+							/>
 						</div>
 
-						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
-						{selectedProcList.map((procId: string) => {
-							const scopeKey = `${acId}_${procId}`;
-							const procObj = processOptions.find((p) => p.value === procId);
-							const procName = procObj ? procObj.label : procId;
-							const isMoving =
-								procName.toLowerCase().includes('di chuyển') ||
-								procName.toLowerCase().includes('cung độ');
+						{/* CUNG ĐỘ VẬN TẢI cho các công đoạn di chuyển */}
+						{movingProcIds.length > 0 && (
+							<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+								{movingProcIds.map((procId) => {
+									const scopeKey = `${acId}_${procId}`;
+									const currentDists: string[] =
+										period.equipmentDistances?.[scopeKey] || [];
+									return (
+										<MultiSelect
+											key={procId}
+											label={`Cung độ vận tải - ${getProcName(procId)}`}
+											placeholder='Chọn cung độ vận tải'
+											options={distanceOptions.map((opt) => ({
+												label: opt.label,
+												value: opt.value,
+											}))}
+											values={currentDists.map((dId) => {
+												const d = distanceOptions.find(
+													(opt) => opt.value === dId || opt.id === dId,
+												);
+												return { value: dId, label: d ? d.label : dId };
+											})}
+											onValuesChange={(selected) =>
+												handleScopeFieldChange(
+													scopeKey,
+													'equipmentDistances',
+													selected.map((s) => s.value),
+												)
+											}
+										/>
+									);
+								})}
+							</div>
+						)}
 
-							const currentDists: string[] =
-								period.equipmentDistances?.[scopeKey] || [];
+						{/* BẢNG ĐƠN GIÁ: mỗi chất lượng thiết bị 1 bảng, mỗi dòng 1 công đoạn sản xuất */}
+						{currentQualities.map((qual: string) => {
+							const qualityItems = period.items.filter(
+								(it: any) =>
+									it.assignmentCodeId === acId && it.equipmentQuality === qual,
+							);
+							if (qualityItems.length === 0) return null;
 
 							return (
 								<div
-									key={procId}
-									className='space-y-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4 shadow-2xs'
+									key={qual}
+									className='overflow-hidden rounded-md border border-neutral-200 bg-white shadow-xs'
 								>
-									<div className='border-b border-neutral-200/80 pb-2'>
-										<span className='text-sm font-semibold text-black'>
-											{procName}
+									<div className='border-b border-neutral-200 bg-neutral-100 px-3.5 py-2.5'>
+										<span className='rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-semibold text-black shadow-2xs'>
+											{materialName} (Loại {qual})
 										</span>
 									</div>
-
-									<div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-										{isMoving && (
-											<MultiSelect
-												label='Cung độ vận tải'
-												placeholder='Chọn cung độ vận tải'
-												options={distanceOptions.map((opt) => ({
-													label: opt.label,
-													value: opt.value,
-												}))}
-												values={currentDists.map((dId) => {
-													const d = distanceOptions.find(
-														(opt) => opt.value === dId || opt.id === dId,
-													);
-													return { value: dId, label: d ? d.label : dId };
-												})}
-												onValuesChange={(selected) =>
-													handleScopeFieldChange(
-														scopeKey,
-														'equipmentDistances',
-														selected.map((s) => s.value),
-													)
-												}
-											/>
-										)}
-									</div>
-
-									{/* BẢNG ĐƠN GIÁ */}
-									{currentQualities.length > 0 &&
-										(!isMoving || currentDists.length > 0) && (
-											<div className='space-y-2 pt-2'>
-												<div className='w-full overflow-x-auto rounded-md border border-neutral-200 bg-white shadow-xs'>
-													<table className='w-full min-w-[600px] text-left text-sm'>
-														<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
-															<tr>
-																<th className='px-4 py-2.5 whitespace-nowrap'>
-																	{isMoving
-																		? 'Cung độ / Chất lượng thiết bị'
-																		: 'Chất lượng thiết bị'}
-																</th>
-																<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																	Đơn giá Nhiên liệu (đ)
-																</th>
-																<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
-																	Đơn giá SCTX (đ)
-																</th>
-															</tr>
-														</thead>
-														<tbody className='divide-y divide-neutral-100'>
-															{currentQualities.map((qual: string) => {
-																if (isMoving) {
-																	return currentDists.map((distId: string) => {
-																		const item = period.items.find(
-																			(it: any) =>
-																				it.assignmentCodeId === acId &&
-																				it.productionProcessId === procId &&
-																				it.equipmentQuality === qual &&
-																				it.haulDistanceId === distId,
-																		);
-																		if (!item) return null;
-
-																		return (
-																			<tr
-																				key={`${qual}_${distId}`}
-																				className='transition-colors hover:bg-neutral-50/50'
-																			>
-																				<td className='px-4 py-2 whitespace-nowrap'>
-																					<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
-																						{item.haulDistanceValue
-																							? `${materialName} (Loại ${qual}) - ${item.haulDistanceValue} km`
-																							: `${materialName} (Loại ${qual})`}
-																					</div>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={item.fuelUnitPrice ?? 0}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'fuelUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																				<td className='w-40 min-w-[140px] px-4 py-2'>
-																					<FormNumberInput
-																						value={
-																							item.maintenanceUnitPrice ?? 0
-																						}
-																						onValueChange={(val) =>
-																							handleItemValueChange(
-																								item.tempId || item.id,
-																								'maintenanceUnitPrice',
-																								val,
-																							)
-																						}
-																						placeholder='Nhập đơn giá'
-																					/>
-																				</td>
-																			</tr>
-																		);
-																	});
-																} else {
-																	const item = period.items.find(
-																		(it: any) =>
-																			it.assignmentCodeId === acId &&
-																			it.productionProcessId === procId &&
-																			it.equipmentQuality === qual &&
-																			!it.haulDistanceId,
-																	);
-																	if (!item) return null;
-
-																	return (
-																		<tr
-																			key={qual}
-																			className='transition-colors hover:bg-neutral-50/50'
-																		>
-																			<td className='px-4 py-2 whitespace-nowrap'>
-																				<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs whitespace-nowrap text-black'>
-																					{materialName} (Loại {qual})
-																				</div>
-																			</td>
-																			<td className='w-40 min-w-[140px] px-4 py-2'>
-																				<FormNumberInput
-																					value={item.fuelUnitPrice ?? 0}
-																					onValueChange={(val) =>
-																						handleItemValueChange(
-																							item.tempId || item.id,
-																							'fuelUnitPrice',
-																							val,
-																						)
-																					}
-																					placeholder='Nhập đơn giá'
-																				/>
-																			</td>
-																			<td className='w-40 min-w-[140px] px-4 py-2'>
-																				<FormNumberInput
-																					value={item.maintenanceUnitPrice ?? 0}
-																					onValueChange={(val) =>
-																						handleItemValueChange(
-																							item.tempId || item.id,
-																							'maintenanceUnitPrice',
-																							val,
-																						)
-																					}
-																					placeholder='Nhập đơn giá'
-																				/>
-																			</td>
-																		</tr>
-																	);
+									<div className='scrollbar-sm w-full overflow-x-auto'>
+										<table className='w-full min-w-[600px] text-left text-sm'>
+											<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
+												<tr>
+													<th className='px-4 py-2.5 whitespace-nowrap'>
+														Công đoạn sản xuất
+													</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá Nhiên liệu (đ)
+													</th>
+													<th className='w-40 min-w-[140px] px-4 py-2.5 whitespace-nowrap'>
+														Đơn giá SCTX (đ)
+													</th>
+												</tr>
+											</thead>
+											<tbody className='divide-y divide-neutral-100'>
+												{qualityItems.map((item: any) => (
+													<tr
+														key={item.tempId || item.id}
+														className='transition-colors hover:bg-neutral-50/50'
+													>
+														<td className='px-4 py-2 text-black'>
+															{getProcName(item.productionProcessId)}
+															{item.haulDistanceValue
+																? ` - ${item.haulDistanceValue} km`
+																: ''}
+														</td>
+														<td className='w-40 min-w-[140px] px-4 py-2'>
+															<FormNumberInput
+																value={item.fuelUnitPrice ?? 0}
+																onValueChange={(val) =>
+																	handleItemValueChange(
+																		item.tempId || item.id,
+																		'fuelUnitPrice',
+																		val,
+																	)
 																}
-															})}
-														</tbody>
-													</table>
-												</div>
-											</div>
-										)}
+																placeholder='Nhập đơn giá'
+															/>
+														</td>
+														<td className='w-40 min-w-[140px] px-4 py-2'>
+															<FormNumberInput
+																value={item.maintenanceUnitPrice ?? 0}
+																onValueChange={(val) =>
+																	handleItemValueChange(
+																		item.tempId || item.id,
+																		'maintenanceUnitPrice',
+																		val,
+																	)
+																}
+																placeholder='Nhập đơn giá'
+															/>
+														</td>
+													</tr>
+												))}
+											</tbody>
+										</table>
+									</div>
 								</div>
 							);
 						})}
