@@ -176,7 +176,11 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
     {
         var cost = line.PlannedTransportCost;
 
-        var materialEffectiveUnitPrice = (double)(cost?.MaterialFuelUnitPrice ?? 0);
+        // Dòng VTCG: đơn giá nhiên liệu × hệ số người dùng nhập tay
+        var fuelAdjustmentFactor = cost?.MechanizedTransportUnitPriceDetailId != null
+            ? line.FuelAdjustmentFactor
+            : 1;
+        var materialEffectiveUnitPrice = (double)(cost?.MaterialFuelUnitPrice ?? 0) * fuelAdjustmentFactor;
         var maintenanceEffectiveUnitPrice = (double)(cost?.MaintenanceUnitPrice ?? 0) * (cost?.MaintenanceCoefficient ?? 1);
         var powerEffectiveUnitPrice = (double)(cost?.PowerUnitPrice ?? 0) * (cost?.PowerCoefficient ?? 1);
         var isLowVolumeCase = cost?.IsLowVolumeCase ?? false;
@@ -214,6 +218,7 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             DumpingLocationCode = line.DumpingLocation?.Code?.Value,
             DumpingLocationName = line.DumpingLocation?.Name,
             ProductionMeters = line.ProductionMeters,
+            FuelAdjustmentFactor = line.FuelAdjustmentFactor,
             UnitOfMeasureId = line.UnitOfMeasureId,
             UnitOfMeasureName = line.UnitOfMeasure?.Name,
             K1 = ToSelectionDto(cost, FixedKeyType.K1, "K1"),

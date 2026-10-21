@@ -36,6 +36,9 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
     public Guid? ReceivingLocationId { get; protected set; }
     public Guid? DumpingLocationId { get; protected set; }
 
+    // Hệ số do người dùng nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu (mặc định 1)
+    public double FuelAdjustmentFactor { get; protected set; } = 1;
+
     // Navigation properties
     public virtual Department? Department { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
@@ -65,12 +68,14 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         Guid? haulDistanceId,
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
-        Guid? dumpingLocationId = null)
+        Guid? dumpingLocationId = null,
+        double? fuelAdjustmentFactor = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
         return new TransportPlanLine
         {
+            FuelAdjustmentFactor = NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor),
             DepartmentId = departmentId,
             ProductionProcessId = productionProcessId,
             ProductionMeters = productionMeters,
@@ -104,10 +109,12 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         Guid? haulDistanceId,
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
-        Guid? dumpingLocationId = null)
+        Guid? dumpingLocationId = null,
+        double? fuelAdjustmentFactor = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
+        FuelAdjustmentFactor = NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor);
         DepartmentId = departmentId;
         ProductionProcessId = productionProcessId;
         ProductionMeters = productionMeters;
@@ -123,6 +130,10 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         ReceivingLocationId = receivingLocationId;
         DumpingLocationId = dumpingLocationId;
     }
+
+    // Bỏ trống / <= 0 coi như 1 (không điều chỉnh)
+    public static double NormalizeFuelAdjustmentFactor(double? factor) =>
+        factor is > 0 ? Math.Round(factor.Value, 4) : 1;
 
     private static void Validate(
         Guid departmentId,

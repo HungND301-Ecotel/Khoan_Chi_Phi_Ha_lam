@@ -35,7 +35,9 @@ export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'equipmentQuality',
 		header: () => <span className='whitespace-normal'>Chất lượng</span>,
 		cell: ({ row }) =>
-			row.original.equipmentQuality ? `Loại ${row.original.equipmentQuality}` : '-',
+			row.original.equipmentQuality
+				? `Loại ${row.original.equipmentQuality}`
+				: '-',
 	},
 	{
 		accessorKey: 'cargoTypeName',
@@ -55,7 +57,9 @@ export const VTCG_COST_PLAN_COLUMNS: ColumnDef<CostProduct>[] = [
 		accessorKey: 'haulDistanceValue',
 		header: () => <span className='whitespace-normal'>Cung độ</span>,
 		cell: ({ row }) =>
-			row.original.haulDistanceValue ? `${row.original.haulDistanceValue} km` : '-',
+			row.original.haulDistanceValue
+				? `${row.original.haulDistanceValue} km`
+				: '-',
 	},
 	{
 		accessorKey: 'unitOfMeasureName',

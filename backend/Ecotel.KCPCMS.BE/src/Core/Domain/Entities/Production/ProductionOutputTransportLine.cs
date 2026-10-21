@@ -30,6 +30,9 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
     // theo (công đoạn, tuyến/nhóm VTTS) ra đúng kế hoạch.
     public double PlanProductionMeters { get; protected set; }
 
+    // Hệ số do người dùng nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu khi quyết toán (mặc định 1)
+    public double FuelAdjustmentFactor { get; protected set; } = 1;
+
     // Navigation properties
     public virtual ProductionOutputProcessGroup? ProductionOutputProcessGroup { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
@@ -52,10 +55,12 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
         Guid? dumpingLocationId = null,
-        double planProductionMeters = 0)
+        double planProductionMeters = 0,
+        double? fuelAdjustmentFactor = null)
     {
         return new ProductionOutputTransportLine
         {
+            FuelAdjustmentFactor = Domain.Entities.Pricing.TransportPlanLine.NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor),
             ProductionProcessId = productionProcessId,
             EquipmentId = equipmentId,
             EquipmentQuality = equipmentQuality,

@@ -17,11 +17,13 @@ export function resolveRevenueCostAdjustmentRate(
 	return profit >= 0 ? 0.6 : 1.0;
 }
 
-
 // So sánh tự nhiên (A < B < C, "2" < "10") theo tiếng Việt — dùng để sắp xếp Công đoạn/Tuyến/
 // Thiết bị/Đơn vị/Chất lượng theo ABC thay vì giữ nguyên thứ tự BE trả về.
 function compareLabel(a?: string | null, b?: string | null) {
-	return (a ?? '').localeCompare(b ?? '', 'vi', { numeric: true, sensitivity: 'base' });
+	return (a ?? '').localeCompare(b ?? '', 'vi', {
+		numeric: true,
+		sensitivity: 'base',
+	});
 }
 
 type CostTotals = {
@@ -35,7 +37,10 @@ type CostTotals = {
 
 function sumCostTotals(items: LumpSumFinalSettlement[]): CostTotals {
 	return {
-		plannedQuantity: items.reduce((sum, x) => sum + (x.plannedQuantity ?? 0), 0),
+		plannedQuantity: items.reduce(
+			(sum, x) => sum + (x.plannedQuantity ?? 0),
+			0,
+		),
 		actualQuantity: items.reduce((sum, x) => sum + (x.actualQuantity ?? 0), 0),
 		materialsTotal: items.reduce(
 			(sum, x) => sum + (x.materials?.totalAmount ?? 0),
@@ -90,8 +95,12 @@ function pushTransportGroupItems(
 	// Chi phí vật tư mau hỏng rẻ tiền là khoản trọn gói theo THÁNG (1 dòng cho cả Đơn vị+Nhóm
 	// công đoạn), không thuộc về 1 Công đoạn/Tuyến/Thiết bị cụ thể nào — tách ra hiển thị phẳng,
 	// không đi qua gộp cây Công đoạn > Tuyến/Thiết bị bên dưới.
-	const lowValueRows = groupItems.filter((x) => x.isLowValuePerishableSupplyRow);
-	const regularItems = groupItems.filter((x) => !x.isLowValuePerishableSupplyRow);
+	const lowValueRows = groupItems.filter(
+		(x) => x.isLowValuePerishableSupplyRow,
+	);
+	const regularItems = groupItems.filter(
+		(x) => !x.isLowValuePerishableSupplyRow,
+	);
 
 	const processGroups = new Map<string, LumpSumFinalSettlement[]>();
 	const processOrder: string[] = [];
@@ -210,8 +219,10 @@ function pushRouteOrEquipmentGroups(
 		);
 
 		const parentLabel = isRoute
-			? (first.transportRouteName || first.transportRouteCode || 'Tuyến chưa xác định')
-			: (first.equipmentName || first.equipmentCode || 'Thiết bị chưa xác định');
+			? first.transportRouteName ||
+				first.transportRouteCode ||
+				'Tuyến chưa xác định'
+			: first.equipmentName || first.equipmentCode || 'Thiết bị chưa xác định';
 
 		result.push(
 			buildSubHeaderRow(
@@ -225,13 +236,17 @@ function pushRouteOrEquipmentGroups(
 
 		for (const child of children) {
 			const leafLabel = isRoute
-				? (child.routeDepartmentName || child.routeDepartmentCode || 'Đơn vị chưa xác định')
+				? child.routeDepartmentName ||
+					child.routeDepartmentCode ||
+					'Đơn vị chưa xác định'
 				: [
 						child.haulDistanceValue && `Cung độ: ${child.haulDistanceValue}`,
 						child.equipmentQuality && `Loại ${child.equipmentQuality}`,
 					]
 						.filter(Boolean)
-						.join(' - ') || child.productName || 'Chi tiết';
+						.join(' - ') ||
+					child.productName ||
+					'Chi tiết';
 
 			result.push({
 				...child,
@@ -275,15 +290,13 @@ function formatVtcgParameterName(
 	return parts.join(' ') || fallback;
 }
 
-function combineVehicleName(
-	code?: string,
-	name?: string,
-	quality?: string,
-) {
+function combineVehicleName(code?: string, name?: string, quality?: string) {
 	const baseName = name?.trim() || code?.trim() || 'Thiết bị';
 	if (!quality?.trim()) return baseName;
 	const qTrim = quality.trim();
-	const qLabel = qTrim.toUpperCase().startsWith('LOẠI') ? qTrim : `LOẠI ${qTrim}`;
+	const qLabel = qTrim.toUpperCase().startsWith('LOẠI')
+		? qTrim
+		: `LOẠI ${qTrim}`;
 	return `${baseName} (${qLabel})`;
 }
 
@@ -301,8 +314,12 @@ function pushVtcgGroupItems(
 	month = 1,
 	revenueCostAdjustmentConfigs?: RevenueCostAdjustmentConfig[],
 ) {
-	const lowValueRows = groupItems.filter((x) => x.isLowValuePerishableSupplyRow);
-	const regularItems = groupItems.filter((x) => !x.isLowValuePerishableSupplyRow);
+	const lowValueRows = groupItems.filter(
+		(x) => x.isLowValuePerishableSupplyRow,
+	);
+	const regularItems = groupItems.filter(
+		(x) => !x.isLowValuePerishableSupplyRow,
+	);
 
 	const vehicleMap = new Map<string, LumpSumFinalSettlement[]>();
 	const vehicleOrder: string[] = [];
@@ -368,7 +385,8 @@ function pushVtcgGroupItems(
 		const processOrder: string[] = [];
 
 		for (const item of vehicleItems) {
-			const pKey = item.productionProcessCode || item.productionProcessName || 'process';
+			const pKey =
+				item.productionProcessCode || item.productionProcessName || 'process';
 			if (!processMap.has(pKey)) {
 				processMap.set(pKey, []);
 				processOrder.push(pKey);
@@ -417,7 +435,9 @@ function pushVtcgGroupItems(
 					item.cargoTypeName,
 					item.receivingLocationName,
 					item.dumpingLocationName,
-					item.haulDistanceId || item.haulDistanceValue ? 'Thông số vận chuyển' : '',
+					item.haulDistanceId || item.haulDistanceValue
+						? 'Thông số vận chuyển'
+						: '',
 				);
 				const paramKey = paramName || '__no_param__';
 				if (!paramMap.has(paramKey)) {
@@ -429,7 +449,8 @@ function pushVtcgGroupItems(
 
 			for (const paramKey of paramOrder) {
 				const paramItems = paramMap.get(paramKey) ?? [];
-				const isNamedParam = paramKey !== '__no_param__' && paramKey.trim() !== '';
+				const isNamedParam =
+					paramKey !== '__no_param__' && paramKey.trim() !== '';
 				const hasSubBreakdown =
 					paramItems.length > 1 ||
 					paramItems.some(
@@ -503,9 +524,12 @@ function pushVtcgGroupItems(
 		);
 
 		const vehicleCost = firstVehicleItem.vehicleTotalTransferredCost ?? 0;
-		const vehicleMaterialCost = firstVehicleItem.vehicleTransferredMaterialAmount ?? 0;
-		const vehicleMaintainCost = firstVehicleItem.vehicleTransferredMaintainAmount ?? 0;
-		const vehicleElectricityCost = firstVehicleItem.vehicleTransferredElectricityAmount ?? 0;
+		const vehicleMaterialCost =
+			firstVehicleItem.vehicleTransferredMaterialAmount ?? 0;
+		const vehicleMaintainCost =
+			firstVehicleItem.vehicleTransferredMaintainAmount ?? 0;
+		const vehicleElectricityCost =
+			firstVehicleItem.vehicleTransferredElectricityAmount ?? 0;
 
 		const calcAcceptedSaving = (rev: number, cost: number) => {
 			const sav = rev - cost;
@@ -525,7 +549,8 @@ function pushVtcgGroupItems(
 
 		const vehicleMaterialSaving = vehicleMaterialRevenue - vehicleMaterialCost;
 		const vehicleMaintainSaving = vehicleMaintainRevenue - vehicleMaintainCost;
-		const vehicleElectricitySaving = vehicleElectricityRevenue - vehicleElectricityCost;
+		const vehicleElectricitySaving =
+			vehicleElectricityRevenue - vehicleElectricityCost;
 		const vehicleSaving = vehicleRevenue - vehicleCost;
 
 		const acceptedMaterialSaving = calcAcceptedSaving(
@@ -545,9 +570,15 @@ function pushVtcgGroupItems(
 			acceptedSaving = vehicleRevenue * 0.08;
 		}
 
-		const incomeAdjustmentMaterial = calcIncomeAdjustment(acceptedMaterialSaving);
-		const incomeAdjustmentMaintain = calcIncomeAdjustment(acceptedMaintainSaving);
-		const incomeAdjustmentElectricity = calcIncomeAdjustment(acceptedElectricitySaving);
+		const incomeAdjustmentMaterial = calcIncomeAdjustment(
+			acceptedMaterialSaving,
+		);
+		const incomeAdjustmentMaintain = calcIncomeAdjustment(
+			acceptedMaintainSaving,
+		);
+		const incomeAdjustmentElectricity = calcIncomeAdjustment(
+			acceptedElectricitySaving,
+		);
 		const rate = resolveRevenueCostAdjustmentRate(
 			acceptedSaving,
 			revenueCostAdjustmentConfigs,

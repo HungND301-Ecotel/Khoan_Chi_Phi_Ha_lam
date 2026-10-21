@@ -36,6 +36,7 @@ internal sealed class TransportPlanLineItemPayload
     public Guid? ReceivingLocationId { get; init; }
     public Guid? DumpingLocationId { get; init; }
     public double ProductionMeters { get; init; }
+    public double FuelAdjustmentFactor { get; init; } = 1;
     public Guid? UnitOfMeasureId { get; init; }
     public AdjustmentFactorSelectionDto? K1 { get; init; }
     public AdjustmentFactorSelectionDto? K2 { get; init; }
@@ -75,7 +76,8 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     item.ProductionMeters,
                     item.UnitOfMeasureId,
                     item.K1,
-                    item.K2)).ToList())).ToList(),
+                    item.K2,
+                    item.FuelAdjustmentFactor)).ToList())).ToList(),
             departmentRepository,
             transportUnitPriceRepository,
             mechanizedTransportUnitPriceRepository,
@@ -108,7 +110,8 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     item.ProductionMeters,
                     item.UnitOfMeasureId,
                     item.K1,
-                    item.K2)).ToList())).ToList(),
+                    item.K2,
+                    item.FuelAdjustmentFactor)).ToList())).ToList(),
             departmentRepository,
             transportUnitPriceRepository,
             mechanizedTransportUnitPriceRepository,
@@ -233,6 +236,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     ReceivingLocationId = item.ReceivingLocationId,
                     DumpingLocationId = item.DumpingLocationId,
                     ProductionMeters = item.ProductionMeters,
+                    FuelAdjustmentFactor = item.FuelAdjustmentFactor,
                     UnitOfMeasureId = item.UnitOfMeasureId,
                     K1 = item.K1,
                     K2 = item.K2,
@@ -395,5 +399,6 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         double ProductionMeters,
         Guid? UnitOfMeasureId,
         AdjustmentFactorSelectionDto? K1,
-        AdjustmentFactorSelectionDto? K2);
+        AdjustmentFactorSelectionDto? K2,
+        double FuelAdjustmentFactor = 1);
 }

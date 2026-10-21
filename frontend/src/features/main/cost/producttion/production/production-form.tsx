@@ -66,6 +66,7 @@ type ProductionOutputDetailTransportLine = {
 	dumpingLocationName?: string | null;
 	productionMeters: number;
 	planProductionMeters?: number;
+	fuelAdjustmentFactor?: number;
 };
 
 type ProductionOutputDetailProcessGroup = {
@@ -108,11 +109,7 @@ function resolveGroupType(
 ): 'khaithac' | 'vantailo' | 'vantaicogioi' {
 	const processGroup = processGroupsById.get(processGroupId);
 	if (!processGroup) return 'khaithac';
-	const code = (
-		processGroup.code ||
-		processGroup.processGroupCode ||
-		''
-	)
+	const code = (processGroup.code || processGroup.processGroupCode || '')
 		.trim()
 		.toUpperCase();
 	if (code === 'VTCG') return 'vantaicogioi';
@@ -171,32 +168,19 @@ function isSameProductionRows(
 	});
 }
 
-// Dòng VTCG chỉ còn hiệu lực khi Nhóm vật tư của nó vẫn đang được chọn trong một Nhóm Vận tải cơ giới
-// đang chọn. Bỏ nhóm xe thì khối form của nó bị ẩn (không tự dọn motorizedItems), và dòng bị đoán sai
-// nhóm xe lúc mở Sửa không thuộc khối nào — lọc ở đây để các dòng đó không bị gửi lên lưu lại.
-const MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS = {
-	scania: 'scaniaAssignmentCodeIds',
-	excavator_dozer: 'excavatorAssignmentCodeIds',
-	service_crane: 'serviceCraneAssignmentCodeIds',
-	vacuum_truck: 'vacuumTruckAssignmentCodeIds',
-} as const;
-
+// Dòng VTCG chỉ còn hiệu lực khi Nhóm vật tư + Công đoạn của nó vẫn đang được chọn. Khối loại xe bị
+// ẩn (bỏ nhóm vật tư) không tự dọn motorizedItems — lọc ở đây để các dòng đó không bị gửi lên lưu lại.
 function getActiveMotorizedItems(group: ProductionGroupSchema) {
-	const categories =
-		group.motorizedCategories && group.motorizedCategories.length > 0
-			? group.motorizedCategories
-			: ['scania'];
-	const activeEquipmentIds = new Set(
-		categories.flatMap((category) => {
-			const field =
-				MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS[
-					category as keyof typeof MOTORIZED_CATEGORY_ASSIGNMENT_FIELDS
-				];
-			return field ? (group[field] ?? []) : [];
-		}),
-	);
+	const selectedAssignmentCodeIds = new Set(group.assignmentCodeIds || []);
+	const equipmentProcesses: Record<string, string[]> =
+		(group.equipmentProcesses as Record<string, string[]>) || {};
 	return (group.motorizedItems || []).filter(
-		(item) => !!item.equipmentId && activeEquipmentIds.has(item.equipmentId),
+		(item) =>
+			!!item.equipmentId &&
+			selectedAssignmentCodeIds.has(item.equipmentId) &&
+			(equipmentProcesses[item.equipmentId] || []).includes(
+				item.productionProcessId || '',
+			),
 	);
 }
 
@@ -352,6 +336,7 @@ function buildProcessGroupPayload(
 					receivingLocationId: item.receivingLocationId || undefined,
 					dumpingLocationId: item.dumpingLocationId || undefined,
 					productionMeters: item.productionMeters,
+					fuelAdjustmentFactor: item.fuelAdjustmentFactor ?? 1,
 				})),
 		],
 	}));
@@ -443,7 +428,9 @@ function mapTransportLinesToFormState(
 
 	const transportProcesses = Array.from(byProcess.values()).map((process) => ({
 		...process,
-		items: process.items.filter((item) => isVisibleTransportItem(process, item)),
+		items: process.items.filter((item) =>
+			isVisibleTransportItem(process, item),
+		),
 	}));
 	return {
 		processIds: transportProcesses.map((p) => p.productionProcessId),
@@ -519,325 +506,248 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 					processGroups?.map((g) => [g.processGroupId, g as any]) || [],
 				);
 
-				const mappedGroups: ProductionGroupSchema[] = (
-					processGroups || []
-				).map((group) => {
-					const mappedProducts = (group.products || []).map((product) => ({
-						productId: product.productId,
-						productionMeters: product.productionMeters,
-						actualAshContent: product.actualAshContent ?? 0,
-					}));
-					const groupType = resolveGroupType(
-						group.processGroupId,
-						processGroupsById,
-					);
+				const mappedGroups: ProductionGroupSchema[] = (processGroups || []).map(
+					(group) => {
+						const mappedProducts = (group.products || []).map((product) => ({
+							productId: product.productId,
+							productionMeters: product.productionMeters,
+							actualAshContent: product.actualAshContent ?? 0,
+						}));
+						const groupType = resolveGroupType(
+							group.processGroupId,
+							processGroupsById,
+						);
 
-					if (groupType === 'vantaicogioi') {
-						const rawLines = group.transportLines || [];
-						const motorizedItems: ProductionGroupSchema['motorizedItems'] =
-							rawLines.map((line) => {
-								const eq = contractCodes.find((c) => c.id === line.equipmentId);
-								const proc = productionProcesses.find(
-									(p) => p.id === line.productionProcessId,
-								);
-								return {
-									equipmentId: line.equipmentId || undefined,
-									equipmentCode: eq?.code || undefined,
-									equipmentName: eq?.name || undefined,
-									equipmentQuality: line.equipmentQuality || undefined,
-									productionProcessId: line.productionProcessId,
-									productionProcessCode: proc?.code || undefined,
-									productionProcessName: proc?.name || undefined,
-									haulDistanceId: line.haulDistanceId || undefined,
-									haulDistanceValue: undefined,
-									cargoTypeId: line.cargoTypeId || undefined,
-									cargoTypeName: line.cargoTypeName || undefined,
-									receivingLocationId: line.receivingLocationId || undefined,
-									receivingLocationName: line.receivingLocationName || undefined,
-									dumpingLocationId: line.dumpingLocationId || undefined,
-									dumpingLocationName: line.dumpingLocationName || undefined,
-									productionMeters: line.productionMeters,
-								};
+						if (groupType === 'vantaicogioi') {
+							const rawLines = group.transportLines || [];
+							const motorizedItems: ProductionGroupSchema['motorizedItems'] =
+								rawLines.map((line) => {
+									const eq = contractCodes.find(
+										(c) => c.id === line.equipmentId,
+									);
+									const proc = productionProcesses.find(
+										(p) => p.id === line.productionProcessId,
+									);
+									return {
+										equipmentId: line.equipmentId || undefined,
+										equipmentCode: eq?.code || undefined,
+										equipmentName: eq?.name || undefined,
+										equipmentQuality: line.equipmentQuality || undefined,
+										productionProcessId: line.productionProcessId,
+										productionProcessCode: proc?.code || undefined,
+										productionProcessName: proc?.name || undefined,
+										haulDistanceId: line.haulDistanceId || undefined,
+										haulDistanceValue: undefined,
+										cargoTypeId: line.cargoTypeId || undefined,
+										cargoTypeName: line.cargoTypeName || undefined,
+										receivingLocationId: line.receivingLocationId || undefined,
+										receivingLocationName:
+											line.receivingLocationName || undefined,
+										dumpingLocationId: line.dumpingLocationId || undefined,
+										dumpingLocationName: line.dumpingLocationName || undefined,
+										productionMeters: line.productionMeters,
+										fuelAdjustmentFactor: line.fuelAdjustmentFactor ?? 1,
+									};
+								});
+
+							const eqIds = Array.from(
+								new Set(
+									motorizedItems.map((it) => it.equipmentId).filter(Boolean),
+								),
+							) as string[];
+
+							const equipmentProcesses: Record<string, string[]> = {};
+							const equipmentQualities: Record<string, string[]> = {};
+							const equipmentDistances: Record<string, string[]> = {};
+							const processCargoTypes: Record<string, string[]> = {};
+							const processPickupLocations: Record<string, string[]> = {};
+							const processDropoffLocations: Record<string, string[]> = {};
+
+							rawLines.forEach((line) => {
+								const eqId = line.equipmentId;
+								const procId = line.productionProcessId;
+								if (!eqId || !procId) return;
+
+								// 1. equipmentProcesses[eqId] -> procIds
+								if (!equipmentProcesses[eqId]) {
+									equipmentProcesses[eqId] = [];
+								}
+								if (!equipmentProcesses[eqId].includes(procId)) {
+									equipmentProcesses[eqId].push(procId);
+								}
+
+								const scopeKey = `${eqId}_${procId}`;
+
+								// 2. equipmentQualities[scopeKey] & [eqId] -> qualities
+								if (line.equipmentQuality) {
+									if (!equipmentQualities[scopeKey]) {
+										equipmentQualities[scopeKey] = [];
+									}
+									if (
+										!equipmentQualities[scopeKey].includes(
+											line.equipmentQuality,
+										)
+									) {
+										equipmentQualities[scopeKey].push(line.equipmentQuality);
+									}
+									if (!equipmentQualities[eqId]) {
+										equipmentQualities[eqId] = [];
+									}
+									if (
+										!equipmentQualities[eqId].includes(line.equipmentQuality)
+									) {
+										equipmentQualities[eqId].push(line.equipmentQuality);
+									}
+								}
+
+								// 3. equipmentDistances[scopeKey] & [eqId] -> haulDistanceIds
+								if (line.haulDistanceId) {
+									if (!equipmentDistances[scopeKey]) {
+										equipmentDistances[scopeKey] = [];
+									}
+									if (
+										!equipmentDistances[scopeKey].includes(line.haulDistanceId)
+									) {
+										equipmentDistances[scopeKey].push(line.haulDistanceId);
+									}
+									if (!equipmentDistances[eqId]) {
+										equipmentDistances[eqId] = [];
+									}
+									if (!equipmentDistances[eqId].includes(line.haulDistanceId)) {
+										equipmentDistances[eqId].push(line.haulDistanceId);
+									}
+								}
+
+								// 4. processCargoTypes[scopeKey] & [procId] -> cargoTypeIds
+								if (line.cargoTypeId) {
+									if (!processCargoTypes[scopeKey]) {
+										processCargoTypes[scopeKey] = [];
+									}
+									if (!processCargoTypes[scopeKey].includes(line.cargoTypeId)) {
+										processCargoTypes[scopeKey].push(line.cargoTypeId);
+									}
+									if (!processCargoTypes[procId]) {
+										processCargoTypes[procId] = [];
+									}
+									if (!processCargoTypes[procId].includes(line.cargoTypeId)) {
+										processCargoTypes[procId].push(line.cargoTypeId);
+									}
+								}
+
+								// 5. processPickupLocations[scopeKey] & [procId] -> receivingLocationIds
+								if (line.receivingLocationId) {
+									if (!processPickupLocations[scopeKey]) {
+										processPickupLocations[scopeKey] = [];
+									}
+									if (
+										!processPickupLocations[scopeKey].includes(
+											line.receivingLocationId,
+										)
+									) {
+										processPickupLocations[scopeKey].push(
+											line.receivingLocationId,
+										);
+									}
+									if (!processPickupLocations[procId]) {
+										processPickupLocations[procId] = [];
+									}
+									if (
+										!processPickupLocations[procId].includes(
+											line.receivingLocationId,
+										)
+									) {
+										processPickupLocations[procId].push(
+											line.receivingLocationId,
+										);
+									}
+								}
+
+								// 6. processDropoffLocations[scopeKey] & [procId] -> dumpingLocationIds
+								if (line.dumpingLocationId) {
+									if (!processDropoffLocations[scopeKey]) {
+										processDropoffLocations[scopeKey] = [];
+									}
+									if (
+										!processDropoffLocations[scopeKey].includes(
+											line.dumpingLocationId,
+										)
+									) {
+										processDropoffLocations[scopeKey].push(
+											line.dumpingLocationId,
+										);
+									}
+									if (!processDropoffLocations[procId]) {
+										processDropoffLocations[procId] = [];
+									}
+									if (
+										!processDropoffLocations[procId].includes(
+											line.dumpingLocationId,
+										)
+									) {
+										processDropoffLocations[procId].push(
+											line.dumpingLocationId,
+										);
+									}
+								}
 							});
 
-						const eqIds = Array.from(
-							new Set(
-								motorizedItems.map((it) => it.equipmentId).filter(Boolean),
-							),
-						) as string[];
+							return {
+								groupType: 'vantaicogioi',
+								processGroupId: group.processGroupId,
+								planProductionMeters: group.planProductionMeters ?? 0,
+								standardProductionMeters: group.standardProductionMeters,
+								productIds: [],
+								products: [],
+								processIds: [],
+								transportProcesses: [],
+								// Khối loại xe + phần nhóm vật tư của từng khối do form-section suy ra từ Đơn giá VTCG
+								motorizedCategory: 'scania',
+								motorizedCategories: [],
+								assignmentCodeIds: eqIds,
+								scaniaAssignmentCodeIds: [],
+								excavatorAssignmentCodeIds: [],
+								serviceCraneAssignmentCodeIds: [],
+								vacuumTruckAssignmentCodeIds: [],
+								equipmentQualities,
+								equipmentProcesses,
+								equipmentDistances,
+								processCargoTypes,
+								processPickupLocations,
+								processDropoffLocations,
+								motorizedItems,
+							};
+						}
 
-						const equipmentProcesses: Record<string, string[]> = {};
-						const equipmentQualities: Record<string, string[]> = {};
-						const equipmentDistances: Record<string, string[]> = {};
-						const processCargoTypes: Record<string, string[]> = {};
-						const processPickupLocations: Record<string, string[]> = {};
-						const processDropoffLocations: Record<string, string[]> = {};
-
-						rawLines.forEach((line) => {
-							const eqId = line.equipmentId;
-							const procId = line.productionProcessId;
-							if (!eqId || !procId) return;
-
-							// 1. equipmentProcesses[eqId] -> procIds
-							if (!equipmentProcesses[eqId]) {
-								equipmentProcesses[eqId] = [];
-							}
-							if (!equipmentProcesses[eqId].includes(procId)) {
-								equipmentProcesses[eqId].push(procId);
-							}
-
-							const scopeKey = `${eqId}_${procId}`;
-
-							// 2. equipmentQualities[scopeKey] & [eqId] -> qualities
-							if (line.equipmentQuality) {
-								if (!equipmentQualities[scopeKey]) {
-									equipmentQualities[scopeKey] = [];
-								}
-								if (!equipmentQualities[scopeKey].includes(line.equipmentQuality)) {
-									equipmentQualities[scopeKey].push(line.equipmentQuality);
-								}
-								if (!equipmentQualities[eqId]) {
-									equipmentQualities[eqId] = [];
-								}
-								if (!equipmentQualities[eqId].includes(line.equipmentQuality)) {
-									equipmentQualities[eqId].push(line.equipmentQuality);
-								}
-							}
-
-							// 3. equipmentDistances[scopeKey] & [eqId] -> haulDistanceIds
-							if (line.haulDistanceId) {
-								if (!equipmentDistances[scopeKey]) {
-									equipmentDistances[scopeKey] = [];
-								}
-								if (!equipmentDistances[scopeKey].includes(line.haulDistanceId)) {
-									equipmentDistances[scopeKey].push(line.haulDistanceId);
-								}
-								if (!equipmentDistances[eqId]) {
-									equipmentDistances[eqId] = [];
-								}
-								if (!equipmentDistances[eqId].includes(line.haulDistanceId)) {
-									equipmentDistances[eqId].push(line.haulDistanceId);
-								}
-							}
-
-							// 4. processCargoTypes[scopeKey] & [procId] -> cargoTypeIds
-							if (line.cargoTypeId) {
-								if (!processCargoTypes[scopeKey]) {
-									processCargoTypes[scopeKey] = [];
-								}
-								if (!processCargoTypes[scopeKey].includes(line.cargoTypeId)) {
-									processCargoTypes[scopeKey].push(line.cargoTypeId);
-								}
-								if (!processCargoTypes[procId]) {
-									processCargoTypes[procId] = [];
-								}
-								if (!processCargoTypes[procId].includes(line.cargoTypeId)) {
-									processCargoTypes[procId].push(line.cargoTypeId);
-								}
-							}
-
-							// 5. processPickupLocations[scopeKey] & [procId] -> receivingLocationIds
-							if (line.receivingLocationId) {
-								if (!processPickupLocations[scopeKey]) {
-									processPickupLocations[scopeKey] = [];
-								}
-								if (!processPickupLocations[scopeKey].includes(line.receivingLocationId)) {
-									processPickupLocations[scopeKey].push(line.receivingLocationId);
-								}
-								if (!processPickupLocations[procId]) {
-									processPickupLocations[procId] = [];
-								}
-								if (!processPickupLocations[procId].includes(line.receivingLocationId)) {
-									processPickupLocations[procId].push(line.receivingLocationId);
-								}
-							}
-
-							// 6. processDropoffLocations[scopeKey] & [procId] -> dumpingLocationIds
-							if (line.dumpingLocationId) {
-								if (!processDropoffLocations[scopeKey]) {
-									processDropoffLocations[scopeKey] = [];
-								}
-								if (!processDropoffLocations[scopeKey].includes(line.dumpingLocationId)) {
-									processDropoffLocations[scopeKey].push(line.dumpingLocationId);
-								}
-								if (!processDropoffLocations[procId]) {
-									processDropoffLocations[procId] = [];
-								}
-								if (!processDropoffLocations[procId].includes(line.dumpingLocationId)) {
-									processDropoffLocations[procId].push(line.dumpingLocationId);
-								}
-							}
-						});
-
-						const classifyEq = (
-							eqCode?: string,
-							eqName?: string,
-							procName?: string,
-						) => {
-							const text = `${eqCode || ''} ${eqName || ''} ${procName || ''}`.toLowerCase();
-							if (
-								text.includes('hút bùn') ||
-								text.includes('chất thải') ||
-								text.includes('xe bồn') ||
-								text.includes('bồn hút')
-							) {
-								return 'vacuum_truck';
-							}
-							if (
-								text.includes('xúc') ||
-								text.includes('gạt') ||
-								text.includes('ủi') ||
-								text.includes('lu') ||
-								text.includes('dx210') ||
-								text.includes('jcb') ||
-								text.includes('d7r') ||
-								text.includes('cat') ||
-								text.includes('komatsu') ||
-								text.includes('pc')
-							) {
-								return 'excavator_dozer';
-							}
-							if (
-								text.includes('cẩu') ||
-								text.includes('nâng') ||
-								text.includes('forklift') ||
-								text.includes('dịch vụ') ||
-								text.includes('ds') ||
-								text.includes('tưới') ||
-								text.includes('cứu hỏa') ||
-								text.includes('phục vụ')
-							) {
-								return 'service_crane';
-							}
-							return 'scania';
-						};
-
-						const scaniaEqIds = [
-							...new Set(
-								motorizedItems
-									.filter(
-										(it) =>
-											classifyEq(
-												it.equipmentCode,
-												it.equipmentName,
-												it.productionProcessName,
-											) === 'scania',
-									)
-									.map((it) => it.equipmentId)
-									.filter(Boolean),
-							),
-						] as string[];
-
-						const excavatorEqIds = [
-							...new Set(
-								motorizedItems
-									.filter(
-										(it) =>
-											classifyEq(
-												it.equipmentCode,
-												it.equipmentName,
-												it.productionProcessName,
-											) === 'excavator_dozer',
-									)
-									.map((it) => it.equipmentId)
-									.filter(Boolean),
-							),
-						] as string[];
-
-						const serviceCraneEqIds = [
-							...new Set(
-								motorizedItems
-									.filter(
-										(it) =>
-											classifyEq(
-												it.equipmentCode,
-												it.equipmentName,
-												it.productionProcessName,
-											) === 'service_crane',
-									)
-									.map((it) => it.equipmentId)
-									.filter(Boolean),
-							),
-						] as string[];
-
-						const vacuumTruckEqIds = [
-							...new Set(
-								motorizedItems
-									.filter(
-										(it) =>
-											classifyEq(
-												it.equipmentCode,
-												it.equipmentName,
-												it.productionProcessName,
-											) === 'vacuum_truck',
-									)
-									.map((it) => it.equipmentId)
-									.filter(Boolean),
-							),
-						] as string[];
-
-						const activeCategories: string[] = [];
-						if (scaniaEqIds.length > 0) activeCategories.push('scania');
-						if (excavatorEqIds.length > 0) activeCategories.push('excavator_dozer');
-						if (serviceCraneEqIds.length > 0) activeCategories.push('service_crane');
-						if (vacuumTruckEqIds.length > 0) activeCategories.push('vacuum_truck');
-						if (activeCategories.length === 0) activeCategories.push('scania');
+						const { processIds, transportProcesses } =
+							mapTransportLinesToFormState(group.transportLines);
 
 						return {
-							groupType: 'vantaicogioi',
+							groupType:
+								transportProcesses.length > 0 ? 'vantailo' : 'khaithac',
 							processGroupId: group.processGroupId,
 							planProductionMeters: group.planProductionMeters ?? 0,
 							standardProductionMeters: group.standardProductionMeters,
-							productIds: [],
-							products: [],
-							processIds: [],
-							transportProcesses: [],
-							motorizedCategory: (activeCategories[0] || 'scania') as any,
-							motorizedCategories: activeCategories,
-							assignmentCodeIds: eqIds,
-							scaniaAssignmentCodeIds: scaniaEqIds,
-							excavatorAssignmentCodeIds: excavatorEqIds,
-							serviceCraneAssignmentCodeIds: serviceCraneEqIds,
-							vacuumTruckAssignmentCodeIds: vacuumTruckEqIds,
-							equipmentQualities,
-							equipmentProcesses,
-							equipmentDistances,
-							processCargoTypes,
-							processPickupLocations,
-							processDropoffLocations,
-							motorizedItems,
+							productIds: mappedProducts.map((product) => product.productId),
+							products: mappedProducts,
+							processIds,
+							transportProcesses,
+							motorizedCategory: 'scania',
+							motorizedCategories: ['scania'],
+							assignmentCodeIds: [],
+							scaniaAssignmentCodeIds: [],
+							excavatorAssignmentCodeIds: [],
+							serviceCraneAssignmentCodeIds: [],
+							vacuumTruckAssignmentCodeIds: [],
+							equipmentQualities: {},
+							equipmentProcesses: {},
+							equipmentDistances: {},
+							processCargoTypes: {},
+							processPickupLocations: {},
+							processDropoffLocations: {},
+							motorizedItems: [],
 						};
-					}
-
-					const { processIds, transportProcesses } =
-						mapTransportLinesToFormState(group.transportLines);
-
-					return {
-						groupType:
-							transportProcesses.length > 0 ? 'vantailo' : 'khaithac',
-						processGroupId: group.processGroupId,
-						planProductionMeters: group.planProductionMeters ?? 0,
-						standardProductionMeters: group.standardProductionMeters,
-						productIds: mappedProducts.map((product) => product.productId),
-						products: mappedProducts,
-						processIds,
-						transportProcesses,
-						motorizedCategory: 'scania',
-						motorizedCategories: ['scania'],
-						assignmentCodeIds: [],
-						scaniaAssignmentCodeIds: [],
-						excavatorAssignmentCodeIds: [],
-						serviceCraneAssignmentCodeIds: [],
-						vacuumTruckAssignmentCodeIds: [],
-						equipmentQualities: {},
-						equipmentProcesses: {},
-						equipmentDistances: {},
-						processCargoTypes: {},
-						processPickupLocations: {},
-						processDropoffLocations: {},
-						motorizedItems: [],
-					};
-				});
+					},
+				);
 
 				mappedGroups.forEach((g, idx) => {
 					prevGroupTypesRef.current[idx] = g.groupType || 'khaithac';

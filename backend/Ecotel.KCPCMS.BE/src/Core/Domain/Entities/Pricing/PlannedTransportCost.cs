@@ -43,6 +43,11 @@ public class PlannedTransportCost : AuditableEntity<Guid>
 
     public bool IsLowVolumeCase => TransportUnitPrice?.IsLowVolumeCase ?? false;
 
+    // Hệ số người dùng nhập tay cho dòng VTCG, nhân vào đơn giá nhiên liệu
+    public double FuelCoefficient => MechanizedTransportUnitPriceDetailId.HasValue
+        ? TransportPlanLine?.FuelAdjustmentFactor ?? 1
+        : 1;
+
 
     public double GetPlannedTotalPrice()
     {
@@ -51,7 +56,7 @@ public class PlannedTransportCost : AuditableEntity<Guid>
             return CachedPlannedTotalPrice.Value;
         }
 
-        var unitTotal = (double)(MaterialFuelUnitPrice ?? 0)
+        var unitTotal = (double)(MaterialFuelUnitPrice ?? 0) * FuelCoefficient
             + (double)(PowerUnitPrice ?? 0) * (PowerCoefficient ?? 1)
             + (double)(MaintenanceUnitPrice ?? 0) * (MaintenanceCoefficient ?? 1);
 

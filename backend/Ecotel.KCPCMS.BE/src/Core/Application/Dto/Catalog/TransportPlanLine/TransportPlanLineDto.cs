@@ -1,4 +1,4 @@
-namespace Application.Dto.Catalog.TransportPlanLine;
+﻿namespace Application.Dto.Catalog.TransportPlanLine;
 
 public class AdjustmentFactorSelectionDto
 {
@@ -47,6 +47,7 @@ public class TransportPlanLineItemDto
     public string? ReceivingLocationCode { get; set; }
     public string? ReceivingLocationName { get; set; }
     public Guid? DumpingLocationId { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
     public string? DumpingLocationCode { get; set; }
     public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
@@ -124,6 +125,7 @@ public class TransportPlanLineAdjustmentItemDto
     public string? ReceivingLocationCode { get; set; }
     public string? ReceivingLocationName { get; set; }
     public Guid? DumpingLocationId { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
     public string? DumpingLocationCode { get; set; }
     public string? DumpingLocationName { get; set; }
     public double ActualProductionMeters { get; set; }
@@ -177,6 +179,7 @@ public class CreateTransportPlanLineItemDto
     public Guid? CargoTypeId { get; set; }
     public Guid? ReceivingLocationId { get; set; }
     public Guid? DumpingLocationId { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }
@@ -209,6 +212,7 @@ public class UpdateTransportPlanLineItemDto
     public Guid? CargoTypeId { get; set; }
     public Guid? ReceivingLocationId { get; set; }
     public Guid? DumpingLocationId { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }

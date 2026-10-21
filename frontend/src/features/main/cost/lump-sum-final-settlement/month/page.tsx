@@ -4,7 +4,11 @@ import { FormProvider } from '@/components/form/form-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { API } from '@/constants/api-enpoint';
-import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS } from '@/features/main/cost/lump-sum-final-settlement/columns';
+import { LUMP_SUM_FINAL_SETTLEMENT_COLUMNS_BY_MODE } from '@/features/main/cost/lump-sum-final-settlement/columns';
+import {
+	hasMaterialFactorColumns,
+	resolveMaterialColumnMode,
+} from '@/features/main/cost/lump-sum-final-settlement/material-column-mode';
 import { LumpSumDataTable } from '@/features/main/cost/lump-sum-final-settlement/components/datatable';
 import { groupByProcessGroup } from '@/features/main/cost/lump-sum-final-settlement/grouping';
 import type { Department } from '@/features/main/catalog/department/columns';
@@ -89,7 +93,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		{ value: string; label: string }[]
 	>([{ value: '', label: 'Tất cả đơn vị' }]);
 	const [processGroups, setProcessGroups] = useState<
-		{ value: string; label: string }[]
+		{ value: string; label: string; code?: string }[]
 	>([{ value: '', label: 'Tất cả nhóm công đoạn' }]);
 
 	const now = new Date();
@@ -894,6 +898,7 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 					...(response.result.data ?? []).map((item) => ({
 						value: item.id,
 						label: `${item.code} - ${item.name}`,
+						code: item.code,
 					})),
 				]);
 			} catch (error) {
@@ -1260,6 +1265,15 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 		}
 	}, [form, handleFilter]);
 
+	// Cột Vật liệu / Nhiên liệu theo Nhóm công đoạn đang lọc (VTCG có Đơn giá gốc + Hệ số)
+	const selectedProcessGroupId = form.watch('processGroup');
+	const materialColumnMode = resolveMaterialColumnMode(
+		selectedProcessGroupId,
+		processGroups.find((group) => group.value === selectedProcessGroupId)?.code,
+	);
+	const settlementColumns =
+		LUMP_SUM_FINAL_SETTLEMENT_COLUMNS_BY_MODE[materialColumnMode];
+
 	return (
 		<Card>
 			<CardHeader>
@@ -1309,7 +1323,10 @@ export function MainCostLumpSumFinalSettlementMonthPage() {
 			</CardHeader>
 			<CardContent>
 				<LumpSumDataTable
-					columns={LUMP_SUM_FINAL_SETTLEMENT_COLUMNS}
+					columns={settlementColumns}
+					showMaterialFactorColumns={hasMaterialFactorColumns(
+						materialColumnMode,
+					)}
 					data={monthDisplayData}
 					isLoading={isLoading}
 					onAddCustomCost={

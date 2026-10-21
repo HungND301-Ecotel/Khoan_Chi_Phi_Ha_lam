@@ -1,4 +1,4 @@
-using Application.Catalog.Production.ProductionOutputs.Utilities;
+﻿using Application.Catalog.Production.ProductionOutputs.Utilities;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -251,7 +251,8 @@ public class UpdateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                         transportLineDto.TransportRouteId,
                         transportLineDto.RouteDepartmentId,
                         transportLineDto.ProductionMeters,
-                        planProductionMeters: transportLineDto.PlanProductionMeters));
+                        planProductionMeters: transportLineDto.PlanProductionMeters,
+                        fuelAdjustmentFactor: transportLineDto.FuelAdjustmentFactor));
                 }
             }
 

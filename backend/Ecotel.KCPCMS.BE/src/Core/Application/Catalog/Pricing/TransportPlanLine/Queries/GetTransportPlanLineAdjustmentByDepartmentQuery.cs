@@ -120,6 +120,7 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
                         tl.ReceivingLocationId,
                         tl.DumpingLocationId,
                         tl.ProductionMeters,
+                        tl.FuelAdjustmentFactor,
                     })))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -127,7 +128,10 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
         var actualByKey = actualLines
             .GroupBy(x => new ActualLineKey(
                 x.StartMonth, x.ProductionProcessId, x.EquipmentId, x.EquipmentQuality, x.TransportRouteId, x.RouteDepartmentId, x.HaulDistanceId, x.CargoTypeId, x.ReceivingLocationId, x.DumpingLocationId))
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.ProductionMeters));
+            .ToDictionary(
+                g => g.Key,
+                g => (Meters: g.Sum(x => x.ProductionMeters),
+                    FuelWeightedMeters: g.Sum(x => x.ProductionMeters * x.FuelAdjustmentFactor)));
 
         var department = lines.First();
         return new TransportPlanLineAdjustmentByDepartmentDetailDto
@@ -155,15 +159,31 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
 
     private static TransportPlanLineAdjustmentItemDto ToAdjustmentItemDto(
         TransportPlanLineEntity line,
-        Dictionary<ActualLineKey, double> actualByKey)
+        Dictionary<ActualLineKey, (double Meters, double FuelWeightedMeters)> actualByKey)
     {
         var planItem = GetTransportPlanLineByDepartmentQueryHandler.ToItemDto(line);
 
         var key = new ActualLineKey(
             line.StartMonth, line.ProductionProcessId, line.EquipmentId, line.EquipmentQuality, line.TransportRouteId, line.RouteDepartmentId, line.HaulDistanceId, line.CargoTypeId, line.ReceivingLocationId, line.DumpingLocationId);
-        var actualProductionMeters = actualByKey.TryGetValue(key, out var meters) ? meters : 0;
+        var actual = actualByKey.TryGetValue(key, out var actualLine) ? actualLine : (Meters: 0d, FuelWeightedMeters: 0d);
+        var actualProductionMeters = actual.Meters;
 
-        var unitTotal = planItem.Material.EffectiveUnitPrice
+        // VTCG: đơn giá nhiên liệu × hệ số nhập ở Vận hành sản xuất (bình quân theo sản lượng thực hiện)
+        var material = planItem.Material;
+        var fuelAdjustmentFactor = planItem.FuelAdjustmentFactor;
+        if (line.PlannedTransportCost?.MechanizedTransportUnitPriceDetailId != null && actual.Meters > 0)
+        {
+            fuelAdjustmentFactor = actual.FuelWeightedMeters / actual.Meters;
+            material = new TransportCostComponentDto
+            {
+                BaseUnitPrice = planItem.Material.BaseUnitPrice,
+                K1Coefficient = planItem.Material.K1Coefficient,
+                K2Coefficient = planItem.Material.K2Coefficient,
+                EffectiveUnitPrice = (double)(planItem.Material.BaseUnitPrice ?? 0) * fuelAdjustmentFactor,
+            };
+        }
+
+        var unitTotal = material.EffectiveUnitPrice
             + planItem.Maintenance.EffectiveUnitPrice
             + planItem.Power.EffectiveUnitPrice;
         var adjustmentTotalCost = planItem.IsLowVolumeCase
@@ -201,12 +221,13 @@ public class GetTransportPlanLineAdjustmentByDepartmentQueryHandler(IUnitOfWork 
             DumpingLocationCode = planItem.DumpingLocationCode,
             DumpingLocationName = planItem.DumpingLocationName,
             ActualProductionMeters = actualProductionMeters,
+            FuelAdjustmentFactor = fuelAdjustmentFactor,
             UnitOfMeasureId = planItem.UnitOfMeasureId,
             UnitOfMeasureName = planItem.UnitOfMeasureName,
             K1 = planItem.K1,
             K2 = planItem.K2,
             IsLowVolumeCase = planItem.IsLowVolumeCase,
-            Material = planItem.Material,
+            Material = material,
             Maintenance = planItem.Maintenance,
             Power = planItem.Power,
             AdjustmentTotalCost = adjustmentTotalCost,

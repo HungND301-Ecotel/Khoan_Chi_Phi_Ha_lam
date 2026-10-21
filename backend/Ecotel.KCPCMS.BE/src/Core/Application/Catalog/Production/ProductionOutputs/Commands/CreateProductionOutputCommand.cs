@@ -1,4 +1,4 @@
-using Application.Catalog.Production.ProductionOutputs.Utilities;
+﻿using Application.Catalog.Production.ProductionOutputs.Utilities;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
@@ -185,7 +185,8 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
                         transportLineDto.CargoTypeId,
                         transportLineDto.ReceivingLocationId,
                         transportLineDto.DumpingLocationId,
-                        transportLineDto.PlanProductionMeters));
+                        transportLineDto.PlanProductionMeters,
+                        transportLineDto.FuelAdjustmentFactor));
                 }
             }
 

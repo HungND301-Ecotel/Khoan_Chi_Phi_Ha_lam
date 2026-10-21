@@ -73,6 +73,10 @@ public class LumpSumCostDetailDto
 {
     public double UnitPrice { get; set; }
     public double TotalAmount { get; set; }
+
+    // Chỉ dòng VTCG (cột Nhiên liệu): đơn giá gốc và hệ số nhập tay, UnitPrice = gốc × hệ số
+    public double? BaseUnitPrice { get; set; }
+    public double? AdjustmentFactor { get; set; }
 }
 
 public class LumpSumFinalSettlementQuarterResponseDto
