@@ -16,6 +16,9 @@ import {
 
 export type { ExpandPriceRow };
 
+// vehicleType từ backend: 1=Scania, 2=Hút bùn, 3=Phục vụ, 4=Xúc gạt nâng
+const SCANIA_VEHICLE_TYPE = 1;
+
 function formatMonth(val?: string) {
 	if (!val) return '-';
 	const parts = val.substring(0, 7).split('-');
@@ -59,36 +62,49 @@ export const EXPAND_PRICE_COLUMNS: ColumnDef<ExpandPriceRow>[] = [
 	},
 ];
 
-// ====== TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ ======
+// ====== TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ THEO CUNG ĐỘ ======
 // Chất lượng thiết bị đã hiển thị ở cấp 1 (mỗi dòng cấp 1 = 1 chất lượng) nên không lặp lại ở đây.
+// Chỉ Xe Scania có Đơn giá Động lực.
 
-export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) {
+const formatPrice = (value?: number | null, empty: string | number = 0) =>
+	value != null ? value.toLocaleString('vi-VN') : empty;
+
+export function MotorizedPriceDetailTable({
+	rows,
+	showPower = true,
+}: {
+	rows: ExpandPriceRow[];
+	showPower?: boolean;
+}) {
+	const colCount = showPower ? 4 : 3;
 	return (
 		<div className='scrollbar-sm w-full overflow-x-auto rounded-md border border-neutral-200 bg-white p-3 shadow-xs'>
 			<table className='w-full min-w-max text-left text-sm text-black'>
-				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black whitespace-nowrap'>
+				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold whitespace-nowrap text-black'>
 					<tr>
 						<th
 							scope='col'
-							className='px-4 py-2.5 font-semibold text-black whitespace-nowrap'
+							className='px-4 py-2.5 font-semibold whitespace-nowrap text-black'
 						>
 							Cung độ vận tải
 						</th>
 						<th
 							scope='col'
-							className='px-4 py-2.5 text-right font-semibold text-black whitespace-nowrap'
+							className='px-4 py-2.5 text-right font-semibold whitespace-nowrap text-black'
 						>
 							Đơn giá Nhiên liệu (đ)
 						</th>
+						{showPower && (
+							<th
+								scope='col'
+								className='px-4 py-2.5 text-right font-semibold whitespace-nowrap text-black'
+							>
+								Đơn giá Động lực (đ)
+							</th>
+						)}
 						<th
 							scope='col'
-							className='px-4 py-2.5 text-right font-semibold text-black whitespace-nowrap'
-						>
-							Đơn giá Động lực (đ)
-						</th>
-						<th
-							scope='col'
-							className='px-4 py-2.5 text-right font-semibold text-black whitespace-nowrap'
+							className='px-4 py-2.5 text-right font-semibold whitespace-nowrap text-black'
 						>
 							Đơn giá SCTX (đ)
 						</th>
@@ -97,7 +113,10 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 				<tbody className='divide-y divide-neutral-200 whitespace-nowrap'>
 					{rows.length === 0 ? (
 						<tr>
-							<td colSpan={4} className='py-4 text-center text-sm text-black'>
+							<td
+								colSpan={colCount}
+								className='py-4 text-center text-sm text-black'
+							>
 								Không có dữ liệu đơn giá
 							</td>
 						</tr>
@@ -107,23 +126,19 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 								key={r.detailId || rIdx}
 								className='transition-colors hover:bg-neutral-50/80'
 							>
-								<td className='px-4 py-2 text-sm text-black whitespace-nowrap'>
+								<td className='px-4 py-2 text-sm whitespace-nowrap text-black'>
 									{r.haulDistanceValue || '-'}
 								</td>
-								<td className='px-4 py-2 text-right text-sm text-black whitespace-nowrap'>
-									{r.fuelUnitPrice != null
-										? r.fuelUnitPrice.toLocaleString('vi-VN')
-										: 0}
+								<td className='px-4 py-2 text-right text-sm whitespace-nowrap text-black'>
+									{formatPrice(r.fuelUnitPrice)}
 								</td>
-								<td className='px-4 py-2 text-right text-sm text-black whitespace-nowrap'>
-									{r.powerUnitPrice != null
-										? r.powerUnitPrice.toLocaleString('vi-VN')
-										: '-'}
-								</td>
-								<td className='px-4 py-2 text-right text-sm text-black whitespace-nowrap'>
-									{r.maintenanceUnitPrice != null
-										? r.maintenanceUnitPrice.toLocaleString('vi-VN')
-										: 0}
+								{showPower && (
+									<td className='px-4 py-2 text-right text-sm whitespace-nowrap text-black'>
+										{formatPrice(r.powerUnitPrice, '-')}
+									</td>
+								)}
+								<td className='px-4 py-2 text-right text-sm whitespace-nowrap text-black'>
+									{formatPrice(r.maintenanceUnitPrice)}
 								</td>
 							</tr>
 						))
@@ -134,7 +149,40 @@ export function MotorizedPriceDetailTable({ rows }: { rows: ExpandPriceRow[] }) 
 	);
 }
 
-// ====== TẦNG 3: BẢNG CÔNG ĐOẠN SẢN XUẤT VÀ THÔNG SỐ ======
+// Nút Xem / Đóng chi tiết dùng chung cho các tầng
+function ToggleDetailButton({
+	open,
+	onClick,
+}: {
+	open: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<div className='flex items-center justify-center'>
+			<Button
+				variant='ghost'
+				size='icon'
+				className={cn(
+					'h-8 w-8 rounded-full bg-transparent shadow-none hover:bg-neutral-100 hover:shadow-none',
+					open ? 'font-semibold text-black' : 'text-[#6e6e6e] hover:text-black',
+				)}
+				title={open ? 'Đóng chi tiết' : 'Xem chi tiết'}
+				onClick={onClick}
+			>
+				{open ? (
+					<VisibilityOffIcon fontSize='small' />
+				) : (
+					<VisibilityIcon fontSize='small' />
+				)}
+			</Button>
+		</div>
+	);
+}
+
+// ====== TẦNG 3: BẢNG CÔNG ĐOẠN SẢN XUẤT ======
+// - Xe Scania: Công đoạn + Thông số (loại hàng, vị trí nhận/đổ) → tầng 4 đơn giá theo cung độ.
+// - Phục vụ, Hút bùn, Xúc gạt nâng: đơn giá nằm ngay trên dòng công đoạn (Nhiên liệu, SCTX). Chỉ
+//   công đoạn tính theo cung độ (Tưới đường mỏ, Giờ di chuyển...) mới có tầng 4.
 
 export function MotorizedProcessExpand({
 	c3Items,
@@ -153,6 +201,9 @@ export function MotorizedProcessExpand({
 		);
 	};
 
+	const isScania = c3Items[0]?.vehicleType === SCANIA_VEHICLE_TYPE;
+	const colCount = isScania ? 4 : 5;
+
 	return (
 		<div className='overflow-hidden rounded-md border border-neutral-200 bg-white text-black shadow-xs'>
 			<table className='w-full table-fixed text-left text-sm text-black'>
@@ -161,13 +212,33 @@ export function MotorizedProcessExpand({
 						<th scope='col' className='w-10 px-3 py-2.5 text-center' />
 						<th
 							scope='col'
-							className='w-64 px-4 py-2.5 font-semibold text-black'
+							className={cn(
+								'px-4 py-2.5 font-semibold text-black',
+								isScania && 'w-64',
+							)}
 						>
 							Công đoạn sản xuất
 						</th>
-						<th scope='col' className='px-4 py-2.5 font-semibold text-black'>
-							Thông số
-						</th>
+						{isScania ? (
+							<th scope='col' className='px-4 py-2.5 font-semibold text-black'>
+								Thông số
+							</th>
+						) : (
+							<>
+								<th
+									scope='col'
+									className='w-48 px-4 py-2.5 text-right font-semibold text-black'
+								>
+									Đơn giá Nhiên liệu (đ)
+								</th>
+								<th
+									scope='col'
+									className='w-48 px-4 py-2.5 text-right font-semibold text-black'
+								>
+									Đơn giá SCTX (đ)
+								</th>
+							</>
+						)}
 						<th
 							scope='col'
 							className='w-20 px-4 py-2.5 text-center font-semibold text-black'
@@ -179,13 +250,17 @@ export function MotorizedProcessExpand({
 				<tbody className='divide-y divide-neutral-200'>
 					{c3Items.length === 0 ? (
 						<tr>
-							<td colSpan={4} className='py-6 text-center text-sm text-black'>
+							<td colSpan={colCount} className='py-6 text-center text-sm text-black'>
 								Chưa có công đoạn sản xuất nào.
 							</td>
 						</tr>
 					) : (
 						c3Items.map((item) => {
 							const isSelected = expandedC3Ids.includes(item.id);
+							// Có tầng 4 khi là Xe Scania hoặc công đoạn có đơn giá theo cung độ
+							const hasDistance = item.rows.some((r) => !!r.haulDistanceValue);
+							const hasDetail = isScania || hasDistance;
+							const inlineRow = !hasDetail ? item.rows[0] : undefined;
 
 							return (
 								<Fragment key={item.id}>
@@ -202,43 +277,45 @@ export function MotorizedProcessExpand({
 												aria-label={`Chọn ${item.productionProcessName}`}
 											/>
 										</td>
-										<td className='w-64 px-4 py-2 text-sm text-black'>
+										<td className='px-4 py-2 text-sm text-black'>
 											{item.productionProcessName}
 										</td>
-										<td className='px-4 py-2 text-sm text-black'>
-											{item.params}
-										</td>
+										{isScania ? (
+											<td className='px-4 py-2 text-sm text-black'>
+												{item.params}
+											</td>
+										) : (
+											<>
+												<td className='w-48 px-4 py-2 text-right text-sm text-black'>
+													{inlineRow
+														? formatPrice(inlineRow.fuelUnitPrice)
+														: 'Theo cung độ'}
+												</td>
+												<td className='w-48 px-4 py-2 text-right text-sm text-black'>
+													{inlineRow
+														? formatPrice(inlineRow.maintenanceUnitPrice)
+														: 'Theo cung độ'}
+												</td>
+											</>
+										)}
 										<td className='w-20 px-4 py-2 text-center'>
-											<div className='flex items-center justify-center'>
-												<Button
-													variant='ghost'
-													size='icon'
-													className={cn(
-														'h-8 w-8 rounded-full bg-transparent shadow-none hover:bg-neutral-100 hover:shadow-none',
-														isSelected
-															? 'font-semibold text-black'
-															: 'text-[#6e6e6e] hover:text-black',
-													)}
-													title={
-														isSelected ? 'Đóng chi tiết' : 'Xem chi tiết'
-													}
+											{hasDetail && (
+												<ToggleDetailButton
+													open={isSelected}
 													onClick={() => handleToggleC3(item.id)}
-												>
-													{isSelected ? (
-														<VisibilityOffIcon fontSize='small' />
-													) : (
-														<VisibilityIcon fontSize='small' />
-													)}
-												</Button>
-											</div>
+												/>
+											)}
 										</td>
 									</tr>
 
-									{/* TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ */}
-									{isSelected && (
+									{/* TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ THEO CUNG ĐỘ */}
+									{hasDetail && isSelected && (
 										<tr className='border-b border-neutral-200 bg-neutral-50/50'>
-											<td colSpan={4} className='max-w-0 bg-neutral-50/40 p-3'>
-												<MotorizedPriceDetailTable rows={item.rows} />
+											<td colSpan={colCount} className='max-w-0 bg-neutral-50/40 p-3'>
+												<MotorizedPriceDetailTable
+													rows={item.rows}
+													showPower={isScania}
+												/>
 											</td>
 										</tr>
 									)}

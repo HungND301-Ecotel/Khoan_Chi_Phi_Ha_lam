@@ -60,10 +60,10 @@ const QUALITY_OPTIONS = [
 	{ label: 'Thiết bị loại C', value: 'C' },
 ];
 
-// Công đoạn di chuyển: đơn giá tách theo Cung độ vận tải
+// Nhóm Phục vụ chỉ có công đoạn Tưới đường mỏ tính đơn giá theo Cung độ vận tải (đ/tkm);
+// các công đoạn khác nhập đơn giá trực tiếp
 const isMovingProcess = (procName: string) =>
-	procName.toLowerCase().includes('di chuyển') ||
-	procName.toLowerCase().includes('cung độ');
+	procName.toLowerCase().includes('tưới đường mỏ');
 
 function computeItemsForServiceCranePeriod(
 	assignmentCodeIds: string[],

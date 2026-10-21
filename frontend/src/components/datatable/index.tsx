@@ -44,7 +44,15 @@ import UploadIcon from '@mui/icons-material/Upload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { type ColumnDef, flexRender } from '@tanstack/react-table';
-import { Fragment, JSX, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	Fragment,
+	JSX,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import { DataTableImport } from './import';
 
 const shadow = cn(
@@ -81,6 +89,8 @@ type DataTableProps<TData> = {
 	onDelete?: (props: ActionDialogProps<TData>) => Promise<void> | void;
 	onExport?: (props: ActionDialogProps<TData>) => Promise<void> | void;
 	onImport?: (file: File, data?: UseDataTable<TData>) => Promise<void> | void;
+	/** Bộ lọc thêm, hiển thị giữa ô tìm kiếm và nhóm nút Tải lên / Tải xuống. */
+	toolbarFilters?: ReactNode;
 	onSelectedRowsChange?: (rows: TData[]) => void;
 	selectAllPageRows?: boolean;
 	deleteCountOverride?: number;
@@ -120,6 +130,7 @@ export function DataTable<TData>({
 	onDelete,
 	onExport,
 	onImport,
+	toolbarFilters,
 	onSelectedRowsChange,
 	selectAllPageRows,
 	deleteCountOverride,
@@ -307,6 +318,8 @@ export function DataTable<TData>({
 					{showFilterAction && filters && filters.length > 0 && (
 						<Filter table={table} filters={filters} />
 					)}
+
+					{toolbarFilters && <div className='shrink-0'>{toolbarFilters}</div>}
 
 					{showUtilityActions && (
 						<div className='flex gap-4'>

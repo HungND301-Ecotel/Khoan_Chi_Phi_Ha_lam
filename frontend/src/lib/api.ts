@@ -65,6 +65,7 @@ export type PaggingRequest = {
 	date?: string;
 	longwallType?: number;
 	maintainType?: number;
+	vehicleType?: number;
 };
 
 /**

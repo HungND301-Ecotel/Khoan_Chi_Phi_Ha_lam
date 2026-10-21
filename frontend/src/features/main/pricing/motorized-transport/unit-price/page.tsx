@@ -3,7 +3,14 @@ import { usePopup } from '@/components/popup';
 import { API } from '@/constants/api-enpoint';
 import { useMeta } from '@/data/meta/meta-hook';
 import { api } from '@/lib/api';
-import { useState } from 'react';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { useMemo, useState } from 'react';
 import { MotorizedSectionExpand } from './expand-columns';
 import type {
 	ExpandPriceRow,
@@ -11,14 +18,29 @@ import type {
 	MechanizedTransportUnitPriceGroupDto,
 	MotorizedC2Item,
 } from './types';
-import { VEHICLE_TYPE_LABELS, getVehicleApi } from './types';
+import {
+	VEHICLE_TYPE_LABELS,
+	VEHICLE_TYPE_OPTIONS,
+	getVehicleApi,
+} from './types';
 import { UNIFIED_MOTORIZED_TRANSPORT_COLUMNS } from './unified-columns';
 import UnifiedMotorizedTransportForm from './unified-form';
+
+const ALL_VEHICLE_TYPES = 'all';
 
 export function MotorizedFuelPowerMaintenancePage() {
 	const popup = usePopup();
 	const { breadcrumb } = useMeta();
 	const [selectedC3Ids, setSelectedC3Ids] = useState<string[]>([]);
+	// Lọc theo nhóm vận tải cơ giới (vehicleType backend: 1=Scania, 2=Hút bùn, 3=Phục vụ, 4=Xúc gạt)
+	const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>(ALL_VEHICLE_TYPES);
+	const query = useMemo(
+		() =>
+			vehicleTypeFilter === ALL_VEHICLE_TYPES
+				? undefined
+				: { vehicleType: Number(vehicleTypeFilter) },
+		[vehicleTypeFilter],
+	);
 
 	const handleToggleC3Select = (c3Id: string) => {
 		setSelectedC3Ids((prev) =>
@@ -307,6 +329,28 @@ export function MotorizedFuelPowerMaintenancePage() {
 	return (
 		<DataTable
 			url={API.PRICING.MOTORIZED_TRANSPORT.ALL.LIST}
+			query={query}
+			toolbarFilters={
+				<Select
+					value={vehicleTypeFilter}
+					onValueChange={(value) => {
+						setVehicleTypeFilter(value);
+						setSelectedC3Ids([]);
+					}}
+				>
+					<SelectTrigger className='w-64 bg-white'>
+						<SelectValue placeholder='Chọn nhóm' />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value={ALL_VEHICLE_TYPES}>Tất cả nhóm</SelectItem>
+						{VEHICLE_TYPE_OPTIONS.map((opt) => (
+							<SelectItem key={opt.value} value={String(opt.apiType)}>
+								{opt.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			}
 			columns={UNIFIED_MOTORIZED_TRANSPORT_COLUMNS}
 			transformData={transformData}
 			getRowId={(row) => row.id || row.assignmentCodeId || ''}
