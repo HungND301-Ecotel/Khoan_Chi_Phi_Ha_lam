@@ -5,11 +5,17 @@ import { useUnitsOfMeasure } from '@/hooks/use-units-of-measure';
 import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
+import {
+	getAllowedProcessIds,
+	type MotorizedPricingIndex,
+} from '../pricing-index';
+import { CategoryProcessSelect } from './category-process-select';
 import { getUnitForMotorizedProcess } from '../utils';
 
 type VacuumTruckMonthSectionProps = {
 	form: UseFormReturn<DepartmentPlanFormSchema>;
 	monthIndex: number;
+	pricingIndex: MotorizedPricingIndex;
 	assignmentCodes: any[];
 	processes: any[];
 	distances: any[];
@@ -18,6 +24,7 @@ type VacuumTruckMonthSectionProps = {
 export function VacuumTruckMonthSection({
 	form,
 	monthIndex,
+	pricingIndex,
 	assignmentCodes,
 	processes,
 	distances,
@@ -37,6 +44,22 @@ export function VacuumTruckMonthSection({
 		watchedMonth?.vacuumTruckAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedMonth?.equipmentProcesses || {};
+	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
+	// loại xe của mình, và chỉ thay các dòng thuộc loại xe này
+	const getCategoryProcs = (assignmentCodeId: string) => {
+		const all = equipmentProcesses[assignmentCodeId] || [];
+		const allowed = getAllowedProcessIds(
+			pricingIndex,
+			'vacuum_truck',
+			assignmentCodeId,
+			all,
+		);
+		return all.filter((procId) => allowed.includes(procId));
+	};
+	const ownsItem = (it: any) =>
+		getAllowedProcessIds(pricingIndex, 'vacuum_truck', it.equipmentId, [
+			it.productionProcessId,
+		]).includes(it.productionProcessId);
 	const equipmentQualities: Record<string, string[]> =
 		watchedMonth?.equipmentQualities || {};
 	const equipmentDistances: Record<string, string[]> =
@@ -50,13 +73,13 @@ export function VacuumTruckMonthSection({
 			form.getValues(`${monthPath}.items` as any) || [];
 		const otherItems = currentItems.filter(
 			(it) =>
-				!assignmentCodeIds.includes(it.equipmentId) &&
-				!prevEquipmentIdsRef.current.includes(it.equipmentId),
+				!(
+					(assignmentCodeIds.includes(it.equipmentId) ||
+						prevEquipmentIdsRef.current.includes(it.equipmentId)) &&
+					ownsItem(it)
+				),
 		);
-		form.setValue(`${monthPath}.items` as any, [
-			...otherItems,
-			...newRows,
-		]);
+		form.setValue(`${monthPath}.items` as any, [...otherItems, ...newRows]);
 		prevEquipmentIdsRef.current = assignmentCodeIds;
 	};
 
@@ -70,7 +93,7 @@ export function VacuumTruckMonthSection({
 
 		assignmentCodeIds.forEach((eqId) => {
 			const eq = assignmentCodes.find((a) => a.id === eqId || a.value === eqId);
-			const eqProcs = equipmentProcesses[eqId] || [];
+			const eqProcs = getCategoryProcs(eqId);
 
 			eqProcs.forEach((procId) => {
 				const proc = processes.find(
@@ -134,6 +157,7 @@ export function VacuumTruckMonthSection({
 	}, [
 		JSON.stringify(assignmentCodeIds),
 		JSON.stringify(equipmentProcesses),
+		pricingIndex,
 		JSON.stringify(equipmentQualities),
 		JSON.stringify(equipmentDistances),
 		unitOptions.length,
@@ -145,26 +169,12 @@ export function VacuumTruckMonthSection({
 				<span>Xe hút chất thải</span>
 			</div>
 
-			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
-			<FormMultiSelect
-				control={formControl}
-				name={`${monthPath}.vacuumTruckAssignmentCodeIds` as any}
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn nhóm vật tư, tài sản'
-				options={assignmentCodes.map((a) => ({
-					value: a.id || a.value,
-					label: a.code
-						? `${a.code} - ${a.name || a.label}`
-						: a.name || a.label,
-				}))}
-			/>
-
 			{/* LẶP QUA TỪNG NHÓM XE */}
 			{assignmentCodeIds.map((eqId) => {
 				const eq = assignmentCodes.find(
 					(a) => a.id === eqId || a.value === eqId,
 				);
-				const selectedProcs = equipmentProcesses[eqId] || [];
+				const selectedProcs = getCategoryProcs(eqId);
 
 				return (
 					<div
@@ -181,17 +191,13 @@ export function VacuumTruckMonthSection({
 						</div>
 
 						{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO XE NÀY */}
-						<FormMultiSelect
-							control={formControl}
-							name={`${monthPath}.equipmentProcesses.${eqId}` as any}
-							label='Công đoạn sản xuất'
-							placeholder='Chọn công đoạn sản xuất'
-							options={processes.map((p) => ({
-								value: p.id || p.value,
-								label: p.code
-									? `${p.code} - ${p.name || p.label}`
-									: p.name || p.label,
-							}))}
+						<CategoryProcessSelect
+							form={form}
+							basePath={monthPath}
+							assignmentCodeId={eqId}
+							category='vacuum_truck'
+							pricingIndex={pricingIndex}
+							processes={processes}
 						/>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN */}
@@ -212,7 +218,7 @@ export function VacuumTruckMonthSection({
 								>
 									{/* HEADER CỤM CÔNG ĐOẠN */}
 									<div className='border-b border-gray-200 pb-2'>
-										<span className='text-xs font-semibold text-black uppercase'>
+										<span className='text-sm font-semibold text-black'>
 											{proc?.code
 												? `${proc.code} - ${proc.name || proc.label}`
 												: proc?.name || proc?.label || procId}
@@ -258,7 +264,7 @@ export function VacuumTruckMonthSection({
 
 											<div className='scrollbar-sm overflow-x-auto rounded-md border border-gray-200 bg-white'>
 												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black uppercase'>
+													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black'>
 														<tr>
 															<th className='w-[30%] px-3 py-2'>Chất lượng</th>
 															<th className='w-[25%] px-3 py-2'>Cung độ</th>
@@ -268,6 +274,7 @@ export function VacuumTruckMonthSection({
 															<th className='w-[25%] px-3 py-2'>
 																Sản lượng kế hoạch
 															</th>
+															<th className='w-28 px-3 py-2'>Hệ số</th>
 														</tr>
 													</thead>
 													<tbody className='divide-y divide-gray-100'>
@@ -335,6 +342,22 @@ export function VacuumTruckMonthSection({
 																				}
 																			}}
 																			placeholder='Nhập sản lượng KH'
+																		/>
+																	</td>
+																	<td className='px-3 py-2'>
+																		<FormNumberInput
+																			value={row.fuelAdjustmentFactor}
+																			onValueChange={(val) => {
+																				const next = [...items];
+																				if (globalIdx >= 0) {
+																					next[globalIdx] = {
+																						...next[globalIdx],
+																						fuelAdjustmentFactor: val,
+																					};
+																					setItems(next);
+																				}
+																			}}
+																			placeholder='1'
 																		/>
 																	</td>
 																</tr>

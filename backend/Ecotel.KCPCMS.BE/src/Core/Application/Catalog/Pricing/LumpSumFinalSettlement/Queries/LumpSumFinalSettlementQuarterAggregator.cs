@@ -121,6 +121,22 @@ public static class LumpSumFinalSettlementQuarterAggregator
                 var materialTotal = group.Sum(x => (x.Materials?.TotalAmount ?? 0) + (x.AshContentMaterials?.TotalAmount ?? 0));
                 var maintainTotal = group.Sum(x => (x.Maintains?.TotalAmount ?? 0) + (x.AshContentMaintains?.TotalAmount ?? 0));
                 var electricityTotal = group.Sum(x => (x.Electricities?.TotalAmount ?? 0) + (x.AshContentElectricities?.TotalAmount ?? 0));
+                var materialUnitPrice = actualQuantity > 0 ? materialTotal / actualQuantity : 0;
+
+                // Dòng VTCG: đơn giá gốc bình quân theo sản lượng TH các tháng, hệ số = đơn giá / gốc
+                double? materialBaseUnitPrice = null;
+                double? materialAdjustmentFactor = null;
+                var vtcgMonths = group.Where(x => x.Materials?.BaseUnitPrice != null).ToList();
+                if (vtcgMonths.Count > 0)
+                {
+                    var vtcgQuantity = vtcgMonths.Sum(x => x.ActualQuantity);
+                    materialBaseUnitPrice = vtcgQuantity > 0
+                        ? vtcgMonths.Sum(x => x.Materials!.BaseUnitPrice!.Value * x.ActualQuantity) / vtcgQuantity
+                        : vtcgMonths[0].Materials!.BaseUnitPrice;
+                    materialAdjustmentFactor = materialBaseUnitPrice > 0 && actualQuantity > 0
+                        ? materialUnitPrice / materialBaseUnitPrice
+                        : vtcgMonths[0].Materials!.AdjustmentFactor;
+                }
 
                 return new LumpSumFinalSettlementDto
                 {
@@ -151,8 +167,10 @@ public static class LumpSumFinalSettlementQuarterAggregator
                     ActualQuantity = actualQuantity,
                     Materials = new LumpSumCostDetailDto
                     {
-                        UnitPrice = actualQuantity > 0 ? materialTotal / actualQuantity : 0,
-                        TotalAmount = materialTotal
+                        UnitPrice = materialUnitPrice,
+                        TotalAmount = materialTotal,
+                        BaseUnitPrice = materialBaseUnitPrice,
+                        AdjustmentFactor = materialAdjustmentFactor,
                     },
                     Maintains = new LumpSumCostDetailDto
                     {

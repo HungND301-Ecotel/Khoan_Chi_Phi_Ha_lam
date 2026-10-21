@@ -5,12 +5,28 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
 import { XCircleIcon } from 'lucide-react';
+import { useEffect } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import { ExcavatorMonthSection } from './components/excavator-month-section';
 import { ScaniaMonthSection } from './components/scania-month-section';
 import { ServiceCraneMonthSection } from './components/service-crane-month-section';
 import { VacuumTruckMonthSection } from './components/vacuum-truck-month-section';
-import { MOTORIZED_PLAN_CATEGORIES } from './types';
+import {
+	getAssetCategories,
+	MOTORIZED_CATEGORY_ORDER,
+	useMotorizedPricingIndex,
+} from './pricing-index';
+import type { MotorizedCategory } from './types';
+
+const CATEGORY_ASSIGNMENT_FIELDS: Record<MotorizedCategory, string> = {
+	scania: 'scaniaAssignmentCodeIds',
+	excavator_dozer: 'excavatorAssignmentCodeIds',
+	service_crane: 'serviceCraneAssignmentCodeIds',
+	vacuum_truck: 'vacuumTruckAssignmentCodeIds',
+};
+
+const isSameIds = (a: string[] = [], b: string[] = []) =>
+	a.length === b.length && a.every((id, index) => id === b[index]);
 
 type MotorizedMonthSectionProps = {
 	form: UseFormReturn<DepartmentPlanFormSchema>;
@@ -42,11 +58,53 @@ export function MotorizedMonthSection({
 		name: monthPath,
 	}) as any;
 
-	const selectedCategories: string[] =
-		watchedMonth?.motorizedCategories ||
-		(watchedMonth?.motorizedCategory
-			? [watchedMonth.motorizedCategory]
-			: ['scania']);
+	const pricingIndex = useMotorizedPricingIndex();
+	const assignmentCodeIds: string[] = watchedMonth?.assignmentCodeIds || [];
+	const selectedCategories: string[] = watchedMonth?.motorizedCategories || [];
+
+	// Chọn thẳng Nhóm vật tư — loại xe (khối nhập) suy ra từ Đơn giá VTCG của nhóm vật tư đó
+	useEffect(() => {
+		if (!pricingIndex) return;
+
+		const idsByCategory = Object.fromEntries(
+			MOTORIZED_CATEGORY_ORDER.map((category) => [category, [] as string[]]),
+		) as Record<MotorizedCategory, string[]>;
+		assignmentCodeIds.forEach((acId) => {
+			getAssetCategories(pricingIndex, acId).forEach((category) =>
+				idsByCategory[category].push(acId),
+			);
+		});
+
+		const current = form.getValues(monthPath) as any;
+		MOTORIZED_CATEGORY_ORDER.forEach((category) => {
+			const field = CATEGORY_ASSIGNMENT_FIELDS[category];
+			if (!isSameIds(current?.[field], idsByCategory[category])) {
+				form.setValue(`${monthPath}.${field}` as any, idsByCategory[category]);
+			}
+		});
+
+		const categories = MOTORIZED_CATEGORY_ORDER.filter(
+			(category) => idsByCategory[category].length > 0,
+		);
+		if (!isSameIds(current?.motorizedCategories, categories)) {
+			form.setValue(`${monthPath}.motorizedCategories` as any, categories);
+			form.setValue(
+				`${monthPath}.motorizedCategory` as any,
+				categories[0] || 'scania',
+			);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [pricingIndex, JSON.stringify(assignmentCodeIds), monthPath]);
+
+	// Chỉ cho chọn Nhóm vật tư đã có đơn giá VTCG (giữ lại nhóm đã chọn trước đó để không mất dữ liệu)
+	const pricedAssignmentCodes =
+		pricingIndex && Object.keys(pricingIndex).length > 0
+			? assignmentCodes.filter(
+					(a) =>
+						!!pricingIndex[a.id || a.value] ||
+						assignmentCodeIds.includes(a.id || a.value),
+				)
+			: assignmentCodes;
 
 	const currentEquipments = assignmentCodes;
 	const currentProcesses = productionProcesses;
@@ -106,23 +164,26 @@ export function MotorizedMonthSection({
 				label='Chi phí vật tư mau hỏng rẻ tiền (đồng/tháng)'
 			/>
 
-			{/* CẤP 1: CHỌN NHÓM VẬN TẢI CƠ GIỚI (MULTI-SELECT) */}
+			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN — khối loại xe tự hiện theo đơn giá */}
 			<FormMultiSelect
 				control={form.control as any}
-				name={`${monthPath}.motorizedCategories` as any}
-				label='Nhóm Vận tải cơ giới'
-				placeholder='Chọn nhóm vận tải cơ giới'
-				options={MOTORIZED_PLAN_CATEGORIES.map((cat) => ({
-					value: cat.id,
-					label: cat.name,
+				name={`${monthPath}.assignmentCodeIds` as any}
+				label='Nhóm vật tư, tài sản'
+				placeholder='Chọn nhóm vật tư, tài sản'
+				options={pricedAssignmentCodes.map((a) => ({
+					value: a.id || a.value,
+					label: a.code
+						? `${a.code} - ${a.name || a.label}`
+						: a.name || a.label,
 				}))}
 			/>
 
 			{/* RENDER DÃY FORM THEO TỪNG NHÓM ĐƯỢC CHỌN */}
-			{selectedCategories.includes('scania') && (
+			{pricingIndex && selectedCategories.includes('scania') && (
 				<ScaniaMonthSection
 					form={form}
 					monthIndex={monthIndex}
+					pricingIndex={pricingIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 					cargoTypes={currentCargoTypes}
@@ -137,29 +198,32 @@ export function MotorizedMonthSection({
 				/>
 			)}
 
-			{selectedCategories.includes('excavator_dozer') && (
+			{pricingIndex && selectedCategories.includes('excavator_dozer') && (
 				<ExcavatorMonthSection
 					form={form}
 					monthIndex={monthIndex}
+					pricingIndex={pricingIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 				/>
 			)}
 
-			{selectedCategories.includes('service_crane') && (
+			{pricingIndex && selectedCategories.includes('service_crane') && (
 				<ServiceCraneMonthSection
 					form={form}
 					monthIndex={monthIndex}
+					pricingIndex={pricingIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 					distances={currentDistances}
 				/>
 			)}
 
-			{selectedCategories.includes('vacuum_truck') && (
+			{pricingIndex && selectedCategories.includes('vacuum_truck') && (
 				<VacuumTruckMonthSection
 					form={form}
 					monthIndex={monthIndex}
+					pricingIndex={pricingIndex}
 					assignmentCodes={currentEquipments}
 					processes={currentProcesses}
 					distances={currentDistances}

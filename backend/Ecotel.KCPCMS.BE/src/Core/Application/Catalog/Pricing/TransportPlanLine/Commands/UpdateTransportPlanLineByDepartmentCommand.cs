@@ -1,4 +1,4 @@
-using Application.Common.Caching;
+﻿using Application.Common.Caching;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.TransportPlanLine;
@@ -100,7 +100,8 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                         item.HaulDistanceId,
                         item.CargoTypeId,
                         item.ReceivingLocationId,
-                        item.DumpingLocationId);
+                        item.DumpingLocationId,
+                        item.FuelAdjustmentFactor);
                     _transportPlanLineRepository.Update(existingLine);
 
                     UpdateCost(existingLine.PlannedTransportCost, item, lowValuePerishableSupplyInclusion);
@@ -123,7 +124,8 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                     item.HaulDistanceId,
                     item.CargoTypeId,
                     item.ReceivingLocationId,
-                    item.DumpingLocationId);
+                    item.DumpingLocationId,
+                    item.FuelAdjustmentFactor);
 
                 await _transportPlanLineRepository.InsertAsync(newLine, cancellationToken);
 

@@ -42,11 +42,7 @@ export function getSuggestedFuelAdjustmentFactor(
 
 	// 3. Xe cẩu / Xe nâng / Xe dịch vụ
 	if (category === 'service_crane') {
-		if (
-			eq.includes('FORKLIFT') ||
-			eq.includes('DS') ||
-			n.includes('xe nâng')
-		) {
+		if (eq.includes('FORKLIFT') || eq.includes('DS') || n.includes('xe nâng')) {
 			if (n.includes('phục vụ')) return 0.85;
 		}
 		return 1.0;
@@ -87,12 +83,22 @@ export function buildMotorizedTransportMonthsPayload(
 	motorizedMonths: DepartmentPlanFormSchema['motorizedMonths'] = [],
 ) {
 	return motorizedMonths.map((m) => {
+		// Chỉ giữ dòng của Nhóm vật tư + Công đoạn còn đang chọn — khối loại xe bị ẩn (bỏ nhóm vật tư)
+		// không tự dọn dòng của nó
+		const selectedAssignmentCodeIds = new Set(m.assignmentCodeIds || []);
+		const equipmentProcesses: Record<string, string[]> =
+			(m.equipmentProcesses as Record<string, string[]>) || {};
 		const itemsPayload = (m.items || [])
 			.filter(
 				(item) =>
 					typeof item.productionMeters === 'number' &&
 					!Number.isNaN(item.productionMeters) &&
-					item.productionMeters > 0,
+					item.productionMeters > 0 &&
+					!!item.equipmentId &&
+					selectedAssignmentCodeIds.has(item.equipmentId) &&
+					(equipmentProcesses[item.equipmentId] || []).includes(
+						item.productionProcessId || '',
+					),
 			)
 			.map((item) => ({
 				id: item.id || undefined,

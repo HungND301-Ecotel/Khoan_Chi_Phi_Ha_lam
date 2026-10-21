@@ -6,13 +6,16 @@ import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
 import {
-	getSuggestedFuelAdjustmentFactor,
-	getUnitForMotorizedProcess,
-} from '../utils';
+	getAllowedProcessIds,
+	type MotorizedPricingIndex,
+} from '../pricing-index';
+import { CategoryProcessSelect } from './category-process-select';
+import { getUnitForMotorizedProcess } from '../utils';
 
 type ScaniaMonthSectionProps = {
 	form: UseFormReturn<DepartmentPlanFormSchema>;
 	monthIndex: number;
+	pricingIndex: MotorizedPricingIndex;
 	assignmentCodes: any[];
 	processes: any[];
 	cargoTypes?: any[];
@@ -25,6 +28,7 @@ type ScaniaMonthSectionProps = {
 export function ScaniaMonthSection({
 	form,
 	monthIndex,
+	pricingIndex,
 	assignmentCodes,
 	processes,
 	cargoTypes = [],
@@ -48,6 +52,22 @@ export function ScaniaMonthSection({
 		watchedMonth?.scaniaAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedMonth?.equipmentProcesses || {};
+	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
+	// loại xe của mình, và chỉ thay các dòng thuộc loại xe này
+	const getCategoryProcs = (assignmentCodeId: string) => {
+		const all = equipmentProcesses[assignmentCodeId] || [];
+		const allowed = getAllowedProcessIds(
+			pricingIndex,
+			'scania',
+			assignmentCodeId,
+			all,
+		);
+		return all.filter((procId) => allowed.includes(procId));
+	};
+	const ownsItem = (it: any) =>
+		getAllowedProcessIds(pricingIndex, 'scania', it.equipmentId, [
+			it.productionProcessId,
+		]).includes(it.productionProcessId);
 	const equipmentQualities: Record<string, string[]> =
 		watchedMonth?.equipmentQualities || {};
 	const equipmentDistances: Record<string, string[]> =
@@ -72,13 +92,13 @@ export function ScaniaMonthSection({
 			form.getValues(`${monthPath}.items` as any) || [];
 		const otherItems = currentItems.filter(
 			(it) =>
-				!assignmentCodeIds.includes(it.equipmentId) &&
-				!prevEquipmentIdsRef.current.includes(it.equipmentId),
+				!(
+					(assignmentCodeIds.includes(it.equipmentId) ||
+						prevEquipmentIdsRef.current.includes(it.equipmentId)) &&
+					ownsItem(it)
+				),
 		);
-		form.setValue(`${monthPath}.items` as any, [
-			...otherItems,
-			...newRows,
-		]);
+		form.setValue(`${monthPath}.items` as any, [...otherItems, ...newRows]);
 		prevEquipmentIdsRef.current = assignmentCodeIds;
 	};
 
@@ -92,20 +112,16 @@ export function ScaniaMonthSection({
 		const newRows: any[] = [];
 
 		assignmentCodeIds.forEach((acId) => {
-			const eq = assignmentCodes.find(
-				(a) => a.id === acId || a.value === acId,
-			);
+			const eq = assignmentCodes.find((a) => a.id === acId || a.value === acId);
 
-			const selectedProcs: string[] = equipmentProcesses[acId] || [];
+			const selectedProcs: string[] = getCategoryProcs(acId);
 
 			selectedProcs.forEach((procId) => {
 				const scopeKey = `${acId}_${procId}`;
 				const proc = processes.find(
 					(p) => p.id === procId || p.value === procId,
 				);
-				const procName = proc
-					? proc.name || proc.label
-					: procId;
+				const procName = proc ? proc.name || proc.label : procId;
 
 				const selectedQualities: string[] = [
 					...(equipmentQualities[scopeKey] || []),
@@ -119,7 +135,8 @@ export function ScaniaMonthSection({
 
 				const procCargoIds: string[] = processCargoTypes[scopeKey] || [];
 				const procPickupIds: string[] = processPickupLocations[scopeKey] || [];
-				const procDropoffIds: string[] = processDropoffLocations[scopeKey] || [];
+				const procDropoffIds: string[] =
+					processDropoffLocations[scopeKey] || [];
 
 				const cargoList = procCargoIds.length > 0 ? procCargoIds : [''];
 				const dropoffList = procDropoffIds.length > 0 ? procDropoffIds : [''];
@@ -164,9 +181,9 @@ export function ScaniaMonthSection({
 									(d: any) => d.id === distId || d.value === distId,
 								);
 								const distValue = distObj
-									? (distObj as any).value ??
+									? ((distObj as any).value ??
 										(distObj as any).name ??
-										(distObj as any).label
+										(distObj as any).label)
 									: '';
 
 								const existing = items.find(
@@ -179,19 +196,9 @@ export function ScaniaMonthSection({
 										(it.haulDistanceId || '') === (distId || ''),
 								);
 
-								const suggestedFactor = getSuggestedFuelAdjustmentFactor(
-									'scania',
-									procName,
-									eq?.code,
-									distValue,
-								);
-
 								const defaultUnitName =
 									existing?.unitName ||
-									getUnitForMotorizedProcess(
-										procName,
-										'scania',
-									);
+									getUnitForMotorizedProcess(procName, 'scania');
 
 								const matchedUnit = unitOptions.find(
 									(u: any) =>
@@ -220,8 +227,7 @@ export function ScaniaMonthSection({
 									haulDistanceId: distId || undefined,
 									haulDistanceValue: distValue,
 									productionMeters: existing?.productionMeters ?? Number.NaN,
-									fuelAdjustmentFactor:
-										existing?.fuelAdjustmentFactor ?? suggestedFactor,
+									fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1,
 									unitName: defaultUnitName,
 									unitOfMeasureId:
 										existing?.unitOfMeasureId || matchedUnit?.id || undefined,
@@ -238,6 +244,7 @@ export function ScaniaMonthSection({
 	}, [
 		JSON.stringify(assignmentCodeIds),
 		JSON.stringify(equipmentProcesses),
+		pricingIndex,
 		JSON.stringify(equipmentQualities),
 		JSON.stringify(equipmentDistances),
 		JSON.stringify(processCargoTypes),
@@ -252,20 +259,6 @@ export function ScaniaMonthSection({
 				<span>Vận chuyển (Xe Scania)</span>
 			</div>
 
-			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
-			<FormMultiSelect
-				control={formControl}
-				name={`${monthPath}.scaniaAssignmentCodeIds` as any}
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn nhóm vật tư, tài sản'
-				options={assignmentCodes.map((a) => ({
-					value: a.id || a.value,
-					label: a.code
-						? `${a.code} - ${a.name || a.label}`
-						: a.name || a.label,
-				}))}
-			/>
-
 			{/* LẶP QUA TỪNG XE SCANIA */}
 			{assignmentCodeIds.map((acId) => {
 				const eq = assignmentCodes.find(
@@ -276,7 +269,7 @@ export function ScaniaMonthSection({
 						? `${eq.code} - ${eq.name || eq.label}`
 						: eq.name || eq.label || acId
 					: acId;
-				const selectedProcs = equipmentProcesses[acId] || [];
+				const selectedProcs = getCategoryProcs(acId);
 
 				return (
 					<div
@@ -289,17 +282,13 @@ export function ScaniaMonthSection({
 						</div>
 
 						{/* CẤP 2: CHỌN CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
-						<FormMultiSelect
-							control={formControl}
-							name={`${monthPath}.equipmentProcesses.${acId}` as any}
-							label='Công đoạn sản xuất'
-							placeholder='Chọn các công đoạn sản xuất'
-							options={processes.map((p) => ({
-								value: p.id || p.value,
-								label: p.code
-									? `${p.code} - ${p.name || p.label}`
-									: p.name || p.label,
-							}))}
+						<CategoryProcessSelect
+							form={form}
+							basePath={monthPath}
+							assignmentCodeId={acId}
+							category='scania'
+							pricingIndex={pricingIndex}
+							processes={processes}
 						/>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
@@ -316,8 +305,7 @@ export function ScaniaMonthSection({
 
 							const currentQualities: string[] =
 								equipmentQualities[scopeKey] || [];
-							const currentDists: string[] =
-								equipmentDistances[scopeKey] || [];
+							const currentDists: string[] = equipmentDistances[scopeKey] || [];
 							const currentPickups: string[] =
 								processPickupLocations[scopeKey] || [];
 
@@ -391,9 +379,7 @@ export function ScaniaMonthSection({
 											placeholder='Chọn cung độ vận tải'
 											options={distances.map((d) => ({
 												value: d.id || d.value,
-												label: d.value
-													? `${d.value} km`
-													: d.name || d.label,
+												label: d.value ? `${d.value} km` : d.name || d.label,
 											}))}
 										/>
 									</div>
@@ -401,9 +387,7 @@ export function ScaniaMonthSection({
 									<div className='grid grid-cols-1 gap-3 md:grid-cols-3'>
 										<FormMultiSelect
 											control={formControl}
-											name={
-												`${monthPath}.processCargoTypes.${scopeKey}` as any
-											}
+											name={`${monthPath}.processCargoTypes.${scopeKey}` as any}
 											label='Loại hàng'
 											placeholder='Chọn loại hàng'
 											options={cargoTypes.map((c) => ({
@@ -458,9 +442,7 @@ export function ScaniaMonthSection({
 													} else if (combinedPickupName) {
 														summaryParts.push(`từ ${combinedPickupName}`);
 													} else if (grp.dumpingLocationName) {
-														summaryParts.push(
-															`đến ${grp.dumpingLocationName}`,
-														);
+														summaryParts.push(`đến ${grp.dumpingLocationName}`);
 													}
 													const paramSummary = summaryParts.join(' ');
 
@@ -492,11 +474,14 @@ export function ScaniaMonthSection({
 																			<th className='px-4 py-2.5 whitespace-nowrap'>
 																				Cung độ vận tải
 																			</th>
-																			<th className='w-36 min-w-[120px] px-4 py-2.5 whitespace-nowrap text-center'>
+																			<th className='w-36 min-w-[120px] px-4 py-2.5 text-center whitespace-nowrap'>
 																				Đơn vị tính
 																			</th>
 																			<th className='w-52 min-w-[160px] px-4 py-2.5 whitespace-nowrap'>
 																				Sản lượng kế hoạch
+																			</th>
+																			<th className='w-32 min-w-[110px] px-4 py-2.5 whitespace-nowrap'>
+																				Hệ số
 																			</th>
 																		</tr>
 																	</thead>
@@ -511,7 +496,7 @@ export function ScaniaMonthSection({
 																					className='transition-colors hover:bg-neutral-50/50'
 																				>
 																					<td className='px-4 py-2 whitespace-nowrap'>
-																						<div className='inline-flex h-9 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-black'>
+																						<div className='inline-flex h-9 items-center rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium whitespace-nowrap text-black'>
 																							{item.haulDistanceValue
 																								? `${item.haulDistanceValue} km`
 																								: '-'}
@@ -523,15 +508,17 @@ export function ScaniaMonthSection({
 																							onValueChange={(val) => {
 																								const next = [...items];
 																								if (globalIdx >= 0) {
-																									const matched = unitOptions.find(
-																										(u: any) =>
-																											u.value === val ||
-																											u.name === val ||
-																											u.id === val,
-																									);
+																									const matched =
+																										unitOptions.find(
+																											(u: any) =>
+																												u.value === val ||
+																												u.name === val ||
+																												u.id === val,
+																										);
 																									next[globalIdx] = {
 																										...next[globalIdx],
-																										unitName: matched?.name || val,
+																										unitName:
+																											matched?.name || val,
 																										unitOfMeasureId:
 																											matched?.id || val,
 																									};
@@ -557,6 +544,22 @@ export function ScaniaMonthSection({
 																								}
 																							}}
 																							placeholder='Nhập sản lượng KH'
+																						/>
+																					</td>
+																					<td className='w-32 min-w-[110px] px-4 py-2'>
+																						<FormNumberInput
+																							value={item.fuelAdjustmentFactor}
+																							onValueChange={(val) => {
+																								const next = [...items];
+																								if (globalIdx >= 0) {
+																									next[globalIdx] = {
+																										...next[globalIdx],
+																										fuelAdjustmentFactor: val,
+																									};
+																									setItems(next);
+																								}
+																							}}
+																							placeholder='1'
 																						/>
 																					</td>
 																				</tr>

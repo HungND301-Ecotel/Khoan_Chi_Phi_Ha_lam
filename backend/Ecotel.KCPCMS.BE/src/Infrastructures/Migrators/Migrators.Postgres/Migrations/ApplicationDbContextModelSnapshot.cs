@@ -3797,6 +3797,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<string>("EquipmentQuality")
                         .HasColumnType("text");
 
+                    b.Property<double>("FuelAdjustmentFactor")
+                        .HasColumnType("double precision");
+
                     b.Property<Guid?>("HaulDistanceId")
                         .HasColumnType("uuid");
 
@@ -4985,6 +4988,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<string>("EquipmentQuality")
                         .HasColumnType("text");
+
+                    b.Property<double>("FuelAdjustmentFactor")
+                        .HasColumnType("double precision");
 
                     b.Property<Guid?>("HaulDistanceId")
                         .HasColumnType("uuid");

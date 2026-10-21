@@ -193,7 +193,13 @@ export interface LumpSumFinalSettlement {
 	planAshContent?: number;
 	actualAshContent?: number;
 	ashContentDeltaPercent?: number;
-	materials?: { unitPrice?: number; totalAmount?: number } | null;
+	materials?: {
+		unitPrice?: number;
+		totalAmount?: number;
+		// Chỉ dòng VTCG (Nhiên liệu): đơn giá gốc và hệ số, đơn giá = gốc × hệ số
+		baseUnitPrice?: number | null;
+		adjustmentFactor?: number | null;
+	} | null;
 	maintains?: { unitPrice?: number; totalAmount?: number } | null;
 	electricities?: { unitPrice?: number; totalAmount?: number } | null;
 	ashContentMaterials?: { unitPrice?: number; totalAmount?: number } | null;

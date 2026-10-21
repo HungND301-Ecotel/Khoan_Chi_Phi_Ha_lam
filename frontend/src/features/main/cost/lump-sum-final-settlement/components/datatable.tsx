@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select';
 
 interface LumpSumDataTableProps {
+	/** Hiện cột Đơn giá gốc + Hệ số trong nhóm Vật liệu/Nhiên liệu */
+	showMaterialFactorColumns?: boolean;
 	columns: ColumnDef<LumpSumFinalSettlement>[];
 	data: LumpSumFinalSettlement[];
 	className?: string;
@@ -67,6 +69,7 @@ interface LumpSumDataTableProps {
 
 export function LumpSumDataTable({
 	columns,
+	showMaterialFactorColumns = true,
 	data,
 	className,
 	isLoading,
@@ -90,9 +93,19 @@ export function LumpSumDataTable({
 
 	const uomOptions = useMemo(() => {
 		const names = new Set<string>();
-		['m', 'Tấn', 'cột', 'm3', 'kg', 'bộ', 'cái', 'lít', 'ca', 'giờ', 'Đồng'].forEach((u) =>
-			names.add(u),
-		);
+		[
+			'm',
+			'Tấn',
+			'cột',
+			'm3',
+			'kg',
+			'bộ',
+			'cái',
+			'lít',
+			'ca',
+			'giờ',
+			'Đồng',
+		].forEach((u) => names.add(u));
 		uomList.forEach((item) => {
 			if (item.name?.trim()) names.add(item.name.trim());
 		});
@@ -190,14 +203,20 @@ export function LumpSumDataTable({
 					{/* Summary Row */}
 					<TableRow className='border-b-2 border-gray-400 bg-yellow-50'>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
-						<TableCell className='border-r border-gray-300 p-2'></TableCell>
-						<TableCell className='border-r border-gray-300 p-2'></TableCell>
+						{showMaterialFactorColumns && (
+							<>
+								<TableCell className='border-r border-gray-300 p-2'></TableCell>
+								<TableCell className='border-r border-gray-300 p-2'></TableCell>
+							</>
+						)}
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
 							{formatNumber(totals.plannedQuantity)}
 						</TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
 							{formatNumber(totals.actualQuantity)}
 						</TableCell>
+						<TableCell className='border-r border-gray-300 p-2'></TableCell>
+						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2'></TableCell>
 						<TableCell className='border-r border-gray-300 p-2 text-left font-bold'>
 							{formatNumber(totals.materialsTotal)}
@@ -252,17 +271,18 @@ export function LumpSumDataTable({
 											<div className='flex items-center justify-between gap-2'>
 												<span>{r.productName}</span>
 												<div className='flex items-center gap-1'>
-													{r.canAddSpecialProductionRow && onAddSpecialProductionRow && (
-														<Button
-															variant='default'
-															size='sm'
-															className='h-6 w-6 p-0 text-sm font-bold shadow-xs'
-															onClick={() => onAddSpecialProductionRow?.()}
-															title='Thêm sản phẩm phát sinh'
-														>
-															+
-														</Button>
-													)}
+													{r.canAddSpecialProductionRow &&
+														onAddSpecialProductionRow && (
+															<Button
+																variant='default'
+																size='sm'
+																className='h-6 w-6 p-0 text-sm font-bold shadow-xs'
+																onClick={() => onAddSpecialProductionRow?.()}
+																title='Thêm sản phẩm phát sinh'
+															>
+																+
+															</Button>
+														)}
 													{r.specialQuantityField &&
 														(isEditing ? (
 															<>
@@ -331,6 +351,12 @@ export function LumpSumDataTable({
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										{showMaterialFactorColumns && (
+											<>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+											</>
+										)}
 										<TableCell className='p-2 text-left'></TableCell>
 									</TableRow>
 								);
@@ -413,16 +439,12 @@ export function LumpSumDataTable({
 												<Select
 													value={r.unitOfMeasureName || 'm'}
 													onValueChange={(val) =>
-														onCustomCostChange?.(
-															r,
-															'unitOfMeasureName',
-															val,
-														)
+														onCustomCostChange?.(r, 'unitOfMeasureName', val)
 													}
 												>
 													<SelectTrigger
 														size='sm'
-														className='h-8 w-fit min-w-[80px] mx-auto border border-gray-300 rounded-md bg-white px-2.5 text-sm font-bold text-black justify-center gap-1.5 shadow-2xs hover:bg-gray-50 focus:ring-1 focus:ring-primary'
+														className='focus:ring-primary mx-auto h-8 w-fit min-w-[80px] justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 text-sm font-bold text-black shadow-2xs hover:bg-gray-50 focus:ring-1'
 													>
 														<SelectValue placeholder='ĐVT' />
 													</SelectTrigger>
@@ -441,10 +463,7 @@ export function LumpSumDataTable({
 																		...uomOptions,
 																	];
 															return opts.map((opt) => (
-																<SelectItem
-																	key={opt.value}
-																	value={opt.value}
-																>
+																<SelectItem key={opt.value} value={opt.value}>
 																	{opt.label}
 																</SelectItem>
 															));
@@ -483,6 +502,12 @@ export function LumpSumDataTable({
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										{showMaterialFactorColumns && (
+											<>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+											</>
+										)}
 										<TableCell className='p-2 text-left'></TableCell>
 									</TableRow>
 								);
@@ -580,6 +605,12 @@ export function LumpSumDataTable({
 												formatNumber(r.actualQuantity ?? 0)
 											)}
 										</TableCell>
+										{showMaterialFactorColumns && (
+											<>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+											</>
+										)}
 										<TableCell className='border-r-2 border-gray-200 p-1 text-left'>
 											{isEditing ? (
 												<FormNumberInput
@@ -634,15 +665,11 @@ export function LumpSumDataTable({
 													}
 												/>
 											) : (
-												formatNumber(
-													r.electricities?.unitPrice ?? 0,
-												)
+												formatNumber(r.electricities?.unitPrice ?? 0)
 											)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(
-												r.electricities?.totalAmount ?? 0,
-											)}
+											{formatNumber(r.electricities?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='p-2 text-left font-medium'>
 											{formatNumber(r.totalAmount ?? 0)}
@@ -679,7 +706,7 @@ export function LumpSumDataTable({
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell
-											colSpan={5}
+											colSpan={showMaterialFactorColumns ? 7 : 5}
 											className={cn(
 												'border-r-2 border-gray-200 p-2 text-center',
 												row.original.isBold && 'font-bold',
@@ -732,9 +759,7 @@ export function LumpSumDataTable({
 																variant='outline'
 																size='sm'
 																className='h-8 px-3'
-																onClick={() =>
-																	onCancelSavingCarryForward?.(r)
-																}
+																onClick={() => onCancelSavingCarryForward?.(r)}
 															>
 																Hủy
 															</Button>
@@ -758,7 +783,7 @@ export function LumpSumDataTable({
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell
-											colSpan={5}
+											colSpan={showMaterialFactorColumns ? 7 : 5}
 											className='border-r-2 border-gray-200 p-1 text-center'
 										>
 											{isEditing ? (
@@ -766,10 +791,7 @@ export function LumpSumDataTable({
 													className='h-8'
 													value={r.mergedValue ?? 0}
 													onValueChange={(value) =>
-														onSavingCarryForwardChange?.(
-															r,
-															Number(value ?? 0),
-														)
+														onSavingCarryForwardChange?.(r, Number(value ?? 0))
 													}
 												/>
 											) : (
@@ -809,6 +831,12 @@ export function LumpSumDataTable({
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+										{showMaterialFactorColumns && (
+											<>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+												<TableCell className='border-r-2 border-gray-200 p-2 text-left'></TableCell>
+											</>
+										)}
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
 											{renderUnitPrice(r.materials?.unitPrice)}
 										</TableCell>
@@ -825,9 +853,7 @@ export function LumpSumDataTable({
 											{renderUnitPrice(r.electricities?.unitPrice)}
 										</TableCell>
 										<TableCell className='border-r-2 border-gray-200 p-2 text-left'>
-											{formatNumber(
-												r.electricities?.totalAmount ?? 0,
-											)}
+											{formatNumber(r.electricities?.totalAmount ?? 0)}
 										</TableCell>
 										<TableCell className='p-2 text-left'>
 											{formatNumber(r.totalAmount ?? 0)}
@@ -841,7 +867,8 @@ export function LumpSumDataTable({
 									key={row.id}
 									className={cn(
 										'border-b border-gray-200 hover:bg-gray-50',
-										row.original.isVehicleHeaderRow && 'bg-amber-50/40 font-bold',
+										row.original.isVehicleHeaderRow &&
+											'bg-amber-50/40 font-bold',
 										row.original.isVehicleSummaryRow && 'bg-slate-50/70',
 									)}
 								>

@@ -2,12 +2,18 @@ import { FormMultiSelect } from '@/components/form/form-multi-select';
 import { FormNumberInput } from '@/components/form/form-number';
 import { useEffect, useRef } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
+import {
+	getAllowedProcessIds,
+	type MotorizedPricingIndex,
+} from '@/features/main/cost/plan/van-tai-co-gioi/pricing-index';
+import { CategoryProcessSelect } from '@/features/main/cost/plan/van-tai-co-gioi/components/category-process-select';
 import type { ProductionFormSchema } from '../../production-form-schema';
 import { getUnitForProcess } from '../utils';
 
 type ExcavatorFormSectionProps = {
 	form: UseFormReturn<ProductionFormSchema>;
 	groupIndex: number;
+	pricingIndex: MotorizedPricingIndex;
 	assignmentCodes: any[];
 	processes: any[];
 };
@@ -15,6 +21,7 @@ type ExcavatorFormSectionProps = {
 export function ExcavatorFormSection({
 	form,
 	groupIndex,
+	pricingIndex,
 	assignmentCodes,
 	processes,
 }: ExcavatorFormSectionProps) {
@@ -31,6 +38,22 @@ export function ExcavatorFormSection({
 		watchedGroup?.excavatorAssignmentCodeIds || [];
 	const equipmentProcesses: Record<string, string[]> =
 		watchedGroup?.equipmentProcesses || {};
+	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
+	// loại xe của mình, và chỉ thay các dòng thuộc loại xe này
+	const getCategoryProcs = (assignmentCodeId: string) => {
+		const all = equipmentProcesses[assignmentCodeId] || [];
+		const allowed = getAllowedProcessIds(
+			pricingIndex,
+			'excavator_dozer',
+			assignmentCodeId,
+			all,
+		);
+		return all.filter((procId) => allowed.includes(procId));
+	};
+	const ownsItem = (it: any) =>
+		getAllowedProcessIds(pricingIndex, 'excavator_dozer', it.equipmentId, [
+			it.productionProcessId,
+		]).includes(it.productionProcessId);
 	const equipmentQualities: Record<string, string[]> =
 		watchedGroup?.equipmentQualities || {};
 	const items: any[] = watchedGroup?.motorizedItems || [];
@@ -42,8 +65,11 @@ export function ExcavatorFormSection({
 			form.getValues(`${groupPath}.motorizedItems` as any) || [];
 		const otherItems = currentItems.filter(
 			(it) =>
-				!assignmentCodeIds.includes(it.equipmentId) &&
-				!prevEquipmentIdsRef.current.includes(it.equipmentId),
+				!(
+					(assignmentCodeIds.includes(it.equipmentId) ||
+						prevEquipmentIdsRef.current.includes(it.equipmentId)) &&
+					ownsItem(it)
+				),
 		);
 		form.setValue(`${groupPath}.motorizedItems` as any, [
 			...otherItems,
@@ -62,16 +88,16 @@ export function ExcavatorFormSection({
 
 		assignmentCodeIds.forEach((eqId) => {
 			const eq = assignmentCodes.find((a) => a.id === eqId || a.value === eqId);
-			const eqProcs = equipmentProcesses[eqId] || [];
+			const eqProcs = getCategoryProcs(eqId);
 
 			eqProcs.forEach((procId) => {
 				const proc = processes.find(
 					(p) => p.id === procId || p.value === procId,
 				);
 				const scopeKey = `${eqId}_${procId}`;
-				const procQualities = [
-					...(equipmentQualities[scopeKey] || []),
-				].sort((a, b) => a.localeCompare(b));
+				const procQualities = [...(equipmentQualities[scopeKey] || [])].sort(
+					(a, b) => a.localeCompare(b),
+				);
 
 				procQualities.forEach((quality) => {
 					const existing = items.find(
@@ -90,6 +116,7 @@ export function ExcavatorFormSection({
 						productionProcessCode: proc?.code,
 						productionProcessName: proc?.name || proc?.label,
 						productionMeters: existing?.productionMeters ?? Number.NaN,
+						fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1,
 						unitName: getUnitForProcess(
 							proc?.name || proc?.label,
 							'excavator_dozer',
@@ -104,6 +131,7 @@ export function ExcavatorFormSection({
 	}, [
 		JSON.stringify(assignmentCodeIds),
 		JSON.stringify(equipmentProcesses),
+		pricingIndex,
 		JSON.stringify(equipmentQualities),
 	]);
 
@@ -113,26 +141,12 @@ export function ExcavatorFormSection({
 				<span>Máy xúc, máy gạt </span>
 			</div>
 
-			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
-			<FormMultiSelect
-				control={formControl}
-				name={`${groupPath}.excavatorAssignmentCodeIds` as any}
-				label='Nhóm vật tư, tài sản'
-				placeholder='Chọn nhóm vật tư, tài sản'
-				options={assignmentCodes.map((a) => ({
-					value: a.id || a.value,
-					label: a.code
-						? `${a.code} - ${a.name || a.label}`
-						: a.name || a.label,
-				}))}
-			/>
-
 			{/* LẶP QUA TỪNG NHÓM THIẾT BỊ */}
 			{assignmentCodeIds.map((eqId) => {
 				const eq = assignmentCodes.find(
 					(a) => a.id === eqId || a.value === eqId,
 				);
-				const selectedProcs = equipmentProcesses[eqId] || [];
+				const selectedProcs = getCategoryProcs(eqId);
 
 				return (
 					<div
@@ -149,17 +163,13 @@ export function ExcavatorFormSection({
 						</div>
 
 						{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO THIẾT BỊ NÀY */}
-						<FormMultiSelect
-							control={formControl}
-							name={`${groupPath}.equipmentProcesses.${eqId}` as any}
-							label='Công đoạn sản xuất'
-							placeholder='Chọn công đoạn sản xuất'
-							options={processes.map((p) => ({
-								value: p.id || p.value,
-								label: p.code
-									? `${p.code} - ${p.name || p.label}`
-									: p.name || p.label,
-							}))}
+						<CategoryProcessSelect
+							form={form}
+							basePath={groupPath}
+							assignmentCodeId={eqId}
+							category='excavator_dozer'
+							pricingIndex={pricingIndex}
+							processes={processes}
 						/>
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
@@ -180,7 +190,7 @@ export function ExcavatorFormSection({
 								>
 									{/* HEADER CỤM CÔNG ĐOẠN */}
 									<div className='border-b border-gray-200 pb-2'>
-										<span className='text-xs font-semibold text-black uppercase'>
+										<span className='text-sm font-semibold text-black'>
 											{proc?.code
 												? `${proc.code} - ${proc.name || proc.label}`
 												: proc?.name || proc?.label || procId}
@@ -214,12 +224,13 @@ export function ExcavatorFormSection({
 
 											<div className='scrollbar-sm overflow-x-auto rounded-md border border-gray-200 bg-white'>
 												<table className='w-full text-left text-sm'>
-													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase text-black'>
+													<thead className='border-b border-gray-200 bg-gray-50 text-xs font-semibold text-black'>
 														<tr>
 															<th className='w-[50%] px-3 py-2'>Chất lượng</th>
 															<th className='w-[50%] px-3 py-2'>
 																Sản lượng thực tế
 															</th>
+															<th className='w-28 px-3 py-2'>Hệ số</th>
 														</tr>
 													</thead>
 													<tbody className='divide-y divide-gray-100'>
@@ -253,6 +264,22 @@ export function ExcavatorFormSection({
 																				}
 																			}}
 																			placeholder='Nhập sản lượng'
+																		/>
+																	</td>
+																	<td className='px-3 py-2'>
+																		<FormNumberInput
+																			value={row.fuelAdjustmentFactor}
+																			onValueChange={(val) => {
+																				const next = [...items];
+																				if (globalIdx >= 0) {
+																					next[globalIdx] = {
+																						...next[globalIdx],
+																						fuelAdjustmentFactor: val,
+																					};
+																					setItems(next);
+																				}
+																			}}
+																			placeholder='1'
 																		/>
 																	</td>
 																</tr>

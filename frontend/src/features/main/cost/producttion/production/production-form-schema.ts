@@ -49,6 +49,12 @@ const transportLineItemSchema = z.object({
 		.min(0, { error: 'Sản lượng thực tế không được âm' }),
 	// Sản lượng kế hoạch VTL — chỉ dòng đầu của mỗi Tuyến/Nhóm VTTS mang giá trị (xem planMeters)
 	planProductionMeters: z.number().optional(),
+	// Hệ số nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu (bỏ trống = 1)
+	fuelAdjustmentFactor: z.preprocess(
+		(val) =>
+			val === '' || val === null || Number.isNaN(val) ? undefined : val,
+		z.coerce.number().optional(),
+	),
 });
 
 // 1 khối ứng với 1 Công đoạn sản xuất cụ thể đã chọn trong nhóm VTL/VTCG
@@ -110,8 +116,14 @@ const productionGroupSchema = z
 		equipmentProcesses: z.record(z.string(), z.any()).optional().default({}),
 		equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
 		processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
-		processPickupLocations: z.record(z.string(), z.any()).optional().default({}),
-		processDropoffLocations: z.record(z.string(), z.any()).optional().default({}),
+		processPickupLocations: z
+			.record(z.string(), z.any())
+			.optional()
+			.default({}),
+		processDropoffLocations: z
+			.record(z.string(), z.any())
+			.optional()
+			.default({}),
 		motorizedItems: z.array(transportLineItemSchema).optional().default([]),
 	})
 	.superRefine((data, ctx) => {

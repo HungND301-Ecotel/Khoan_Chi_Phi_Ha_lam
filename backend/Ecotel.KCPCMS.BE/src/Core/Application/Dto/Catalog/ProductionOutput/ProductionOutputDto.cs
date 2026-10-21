@@ -1,4 +1,4 @@
-using Application.Common.Interfaces;
+﻿using Application.Common.Interfaces;
 
 namespace Application.Dto.Catalog.ProductionOutput;
 
@@ -63,4 +63,5 @@ public class ProductionOutputTransportLineDto
     public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
     public double PlanProductionMeters { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
 }

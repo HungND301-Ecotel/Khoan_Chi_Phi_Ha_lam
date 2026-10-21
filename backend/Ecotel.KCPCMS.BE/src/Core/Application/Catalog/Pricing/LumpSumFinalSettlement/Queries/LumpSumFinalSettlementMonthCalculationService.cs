@@ -31,6 +31,9 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
 
     private readonly record struct VehicleTransferredCost(decimal Material, decimal Maintain, decimal Electricity);
 
+    // Sản lượng thực hiện của 1 dòng vận tải + Σ(sản lượng × hệ số nhiên liệu) của các dòng TH
+    private readonly record struct TransportActual(double Meters, double FuelWeightedMeters);
+
     private readonly record struct TransportLineKey(
         Guid ProcessGroupId,
         Guid ProductionProcessId,
@@ -82,7 +85,11 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 x.Line.CargoTypeId,
                 x.Line.ReceivingLocationId,
                 x.Line.DumpingLocationId))
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Line.ProductionMeters));
+            .ToDictionary(
+                g => g.Key,
+                g => new TransportActual(
+                    g.Sum(x => x.Line.ProductionMeters),
+                    g.Sum(x => x.Line.ProductionMeters * x.Line.FuelAdjustmentFactor)));
 
         var actualByProduct = productionOutputs
             .SelectMany(po => po.ProductionOutputProcessGroups)
@@ -632,7 +639,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         int year,
         Guid? processGroupId,
         Guid? departmentId,
-        Dictionary<TransportLineKey, double> actualByTransportLine,
+        Dictionary<TransportLineKey, TransportActual> actualByTransportLine,
         Dictionary<Guid, VehicleTransferredCost> vehicleTransferredCosts,
         CancellationToken cancellationToken)
     {
@@ -710,7 +717,10 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 line.CargoTypeId,
                 line.ReceivingLocationId,
                 line.DumpingLocationId);
-            var actualQuantity = actualByTransportLine.TryGetValue(key, out var meters) ? meters : 0;
+            var actual = actualByTransportLine.TryGetValue(key, out var actualLine)
+                ? actualLine
+                : new TransportActual(0, 0);
+            var actualQuantity = actual.Meters;
 
             double ComponentTotal(TransportCostComponentDto component) => planItem.IsLowVolumeCase
                 ? component.EffectiveUnitPrice
@@ -726,6 +736,21 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
             var materialTotal = ComponentTotal(planItem.Material);
+            var materialUnitPrice = planItem.Material.EffectiveUnitPrice;
+            double? materialBaseUnitPrice = null;
+            double? materialAdjustmentFactor = null;
+
+            // VTCG: đơn giá nhiên liệu × hệ số nhập ở Vận hành sản xuất (thực hiện), không dùng hệ số kế hoạch
+            if (line.PlannedTransportCost?.MechanizedTransportUnitPriceDetailId != null && !planItem.IsLowVolumeCase)
+            {
+                var baseFuelUnitPrice = (double)(planItem.Material.BaseUnitPrice ?? 0);
+                materialTotal = baseFuelUnitPrice * actual.FuelWeightedMeters;
+                materialAdjustmentFactor = actual.Meters > 0
+                    ? actual.FuelWeightedMeters / actual.Meters
+                    : planItem.FuelAdjustmentFactor;
+                materialBaseUnitPrice = baseFuelUnitPrice;
+                materialUnitPrice = baseFuelUnitPrice * materialAdjustmentFactor.Value;
+            }
             var maintainTotal = ComponentTotal(planItem.Maintenance);
             var electricityTotal = ComponentTotal(planItem.Power);
 
@@ -784,7 +809,13 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 UnitOfMeasureName = planItem.UnitOfMeasureName ?? string.Empty,
                 PlannedQuantity = planItem.ProductionMeters,
                 ActualQuantity = actualQuantity,
-                Materials = new LumpSumCostDetailDto { UnitPrice = planItem.Material.EffectiveUnitPrice, TotalAmount = materialTotal },
+                Materials = new LumpSumCostDetailDto
+                {
+                    UnitPrice = materialUnitPrice,
+                    TotalAmount = materialTotal,
+                    BaseUnitPrice = materialBaseUnitPrice,
+                    AdjustmentFactor = materialAdjustmentFactor,
+                },
                 Maintains = new LumpSumCostDetailDto { UnitPrice = planItem.Maintenance.EffectiveUnitPrice, TotalAmount = maintainTotal },
                 Electricities = new LumpSumCostDetailDto { UnitPrice = planItem.Power.EffectiveUnitPrice, TotalAmount = electricityTotal },
                 TotalAmount = materialTotal + maintainTotal + electricityTotal,

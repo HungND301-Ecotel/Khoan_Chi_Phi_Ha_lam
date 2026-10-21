@@ -1,4 +1,4 @@
-namespace Application.Dto.Catalog.ProductionOutput;
+﻿namespace Application.Dto.Catalog.ProductionOutput;
 
 public class CreateProductionOutputDto
 {
@@ -39,4 +39,5 @@ public class CreateProductionOutputTransportLineDto
     public Guid? DumpingLocationId { get; set; }
     public double ProductionMeters { get; set; }
     public double PlanProductionMeters { get; set; }
+    public double FuelAdjustmentFactor { get; set; } = 1;
 }

@@ -1,4 +1,4 @@
-using Application.Catalog.Pricing.ProductUnitPrice.Commands;
+﻿using Application.Catalog.Pricing.ProductUnitPrice.Commands;
 using Application.Catalog.Production.ProductionOutputs.Utilities;
 using Application.Common.Exceptions;
 using Application.Common.Repositories;
@@ -222,7 +222,8 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                         transportLineDto.CargoTypeId,
                         transportLineDto.ReceivingLocationId,
                         transportLineDto.DumpingLocationId,
-                        transportLineDto.PlanProductionMeters));
+                        transportLineDto.PlanProductionMeters,
+                        transportLineDto.FuelAdjustmentFactor));
                 }
             }
 

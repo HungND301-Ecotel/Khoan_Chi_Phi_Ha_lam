@@ -1,4 +1,4 @@
-using Application.Common.Caching;
+﻿using Application.Common.Caching;
 using Application.Common.Repositories;
 using Application.Common.UnitOfWork;
 using Application.Dto.Catalog.TransportPlanLine;
@@ -66,7 +66,8 @@ public class CreateTransportPlanLineByDepartmentCommandHandler(
                     item.HaulDistanceId,
                     item.CargoTypeId,
                     item.ReceivingLocationId,
-                    item.DumpingLocationId);
+                    item.DumpingLocationId,
+                    item.FuelAdjustmentFactor);
 
                 await _transportPlanLineRepository.InsertAsync(line, cancellationToken);
 
