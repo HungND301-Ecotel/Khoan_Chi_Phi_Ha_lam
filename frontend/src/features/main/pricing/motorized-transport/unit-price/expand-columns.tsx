@@ -153,9 +153,12 @@ export function MotorizedPriceDetailTable({
 function ToggleDetailButton({
 	open,
 	onClick,
+	disabled = false,
 }: {
 	open: boolean;
 	onClick: () => void;
+	/** Làm mờ, không bấm được (công đoạn không có chi tiết) */
+	disabled?: boolean;
 }) {
 	return (
 		<div className='flex items-center justify-center'>
@@ -165,8 +168,16 @@ function ToggleDetailButton({
 				className={cn(
 					'h-8 w-8 rounded-full bg-transparent shadow-none hover:bg-neutral-100 hover:shadow-none',
 					open ? 'font-semibold text-black' : 'text-[#6e6e6e] hover:text-black',
+					disabled && 'pointer-events-none opacity-30',
 				)}
-				title={open ? 'Đóng chi tiết' : 'Xem chi tiết'}
+				title={
+					disabled
+						? 'Không có đơn giá theo cung độ'
+						: open
+							? 'Đóng chi tiết'
+							: 'Xem chi tiết'
+				}
+				disabled={disabled}
 				onClick={onClick}
 			>
 				{open ? (
@@ -181,9 +192,9 @@ function ToggleDetailButton({
 
 // ====== TẦNG 3: BẢNG CÔNG ĐOẠN SẢN XUẤT ======
 // - Xe Scania: Công đoạn + Thông số (loại hàng, vị trí nhận/đổ) → tầng 4 đơn giá theo cung độ.
-// - Phục vụ, Hút bùn, Xúc gạt nâng: đơn giá nằm ngay trên dòng công đoạn (Nhiên liệu, SCTX), không
-//   có nút Xem. Công đoạn tính theo cung độ (Tưới đường mỏ, Giờ di chuyển...) xếp cuối và mở sẵn
-//   bảng đơn giá theo cung độ.
+// - Phục vụ, Hút bùn, Xúc gạt nâng: đơn giá nằm ngay trên dòng công đoạn (Nhiên liệu, SCTX). Công
+//   đoạn tính theo cung độ (Tưới đường mỏ, Giờ di chuyển...) xếp cuối, bấm Xem để mở bảng cung độ
+//   (mặc định đóng); công đoạn không có cung độ thì nút Xem bị làm mờ.
 
 export function MotorizedProcessExpand({
 	c3Items,
@@ -196,14 +207,12 @@ export function MotorizedProcessExpand({
 }) {
 	const [expandedC3Ids, setExpandedC3Ids] = useState<string[]>([]);
 
-	const handleToggleC3 = (id: string) => {
-		setExpandedC3Ids((prev) =>
+	const isScania = c3Items[0]?.vehicleType === SCANIA_VEHICLE_TYPE;
+	const colCount = isScania ? 4 : 5;
+	const toggleIn = (setter: typeof setExpandedC3Ids, id: string) =>
+		setter((prev) =>
 			prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
 		);
-	};
-
-	const isScania = c3Items[0]?.vehicleType === SCANIA_VEHICLE_TYPE;
-	const colCount = 4;
 	const hasDistanceRows = (item: MotorizedC3Item) =>
 		item.rows.some((r) => !!r.haulDistanceValue);
 	// Nhóm khác Scania: công đoạn theo cung độ xếp cuối (giữ nguyên thứ tự còn lại)
@@ -215,8 +224,8 @@ export function MotorizedProcessExpand({
 			];
 
 	return (
-		// Bảng công đoạn rộng 80%, căn giữa bảng Thời gian / Nhóm (cấp 2) cho các cột không bị kéo quá xa
-		<div className='mx-auto w-[80%] overflow-hidden rounded-md border border-neutral-200 bg-white text-black shadow-xs'>
+		// Bảng công đoạn rộng 70%, căn giữa bảng Thời gian / Nhóm (cấp 2) cho các cột không bị kéo quá xa
+		<div className='mx-auto w-[70%] overflow-hidden rounded-md border border-neutral-200 bg-white text-black shadow-xs'>
 			<table className='w-full table-fixed text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-neutral-100 text-sm font-semibold text-black'>
 					<tr>
@@ -250,14 +259,12 @@ export function MotorizedProcessExpand({
 								</th>
 							</>
 						)}
-						{isScania && (
-							<th
-								scope='col'
-								className='w-20 px-4 py-2.5 text-center font-semibold text-black'
-							>
-								Xem
-							</th>
-						)}
+						<th
+							scope='col'
+							className='w-20 px-4 py-2.5 text-center font-semibold text-black'
+						>
+							Xem
+						</th>
 					</tr>
 				</thead>
 				<tbody className='divide-y divide-neutral-200'>
@@ -273,8 +280,8 @@ export function MotorizedProcessExpand({
 							// Có tầng 4 khi là Xe Scania hoặc công đoạn có đơn giá theo cung độ
 							const hasDistance = hasDistanceRows(item);
 							const hasDetail = isScania || hasDistance;
-							// Scania mở/đóng bằng nút Xem; nhóm khác mở sẵn bảng cung độ
-							const showDetail = isScania ? isSelected : hasDistance;
+							// Mặc định đóng, bấm Xem để mở bảng chi tiết
+							const showDetail = hasDetail && isSelected;
 							const inlineRow = !hasDetail ? item.rows[0] : undefined;
 
 							return (
@@ -282,7 +289,7 @@ export function MotorizedProcessExpand({
 									<tr
 										className={cn(
 											'border-b border-neutral-200 transition-colors hover:bg-neutral-50/80',
-											isSelected && 'bg-neutral-50',
+											showDetail && 'bg-neutral-50',
 										)}
 									>
 										<td className='w-10 px-3 py-2 text-center'>
@@ -313,18 +320,22 @@ export function MotorizedProcessExpand({
 												</td>
 											</>
 										)}
-										{isScania && (
-											<td className='w-20 px-4 py-2 text-center'>
-												<ToggleDetailButton
-													open={isSelected}
-													onClick={() => handleToggleC3(item.id)}
-												/>
-											</td>
-										)}
+										<td className='w-20 px-4 py-2 text-center'>
+											<ToggleDetailButton
+												open={showDetail}
+												disabled={!hasDetail}
+												onClick={() =>
+													toggleIn(
+														setExpandedC3Ids,
+														item.id,
+													)
+												}
+											/>
+										</td>
 									</tr>
 
-									{/* TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ THEO CUNG ĐỘ */}
-									{hasDetail && showDetail && (
+									{/* TẦNG 4: BẢNG CHI TIẾT ĐƠN GIÁ THEO CUNG ĐỘ (Scania — có thêm Động lực) */}
+									{isScania && showDetail && (
 										<tr className='border-b border-neutral-200 bg-neutral-50/50'>
 											<td colSpan={colCount} className='max-w-0 bg-neutral-50/40 p-3'>
 												<MotorizedPriceDetailTable
@@ -332,6 +343,47 @@ export function MotorizedProcessExpand({
 													showPower={isScania}
 												/>
 											</td>
+										</tr>
+									)}
+
+									{/* Nhóm khác: bảng cung độ bo tròn nằm gọn trong 3 cột Công đoạn / Nhiên liệu / SCTX,
+									    2 cột đơn giá cùng độ rộng (w-48) nên thẳng hàng với dòng công đoạn phía trên */}
+									{!isScania && showDetail && (
+										<tr className='border-b border-neutral-200 bg-neutral-50'>
+											<td className='w-10' />
+											<td colSpan={3} className='py-2'>
+												<div className='overflow-hidden rounded-md border border-neutral-300 bg-white shadow-xs'>
+													<table className='w-full table-fixed text-left text-sm text-black'>
+														<thead className='border-b border-neutral-200 bg-neutral-100 font-semibold'>
+															<tr>
+																<th className='px-4 py-2'>Cung độ vận tải</th>
+																<th className='w-48 px-4 py-2 text-right'>
+																	Đơn giá Nhiên liệu (đ)
+																</th>
+																<th className='w-48 px-4 py-2 text-right'>
+																	Đơn giá SCTX (đ)
+																</th>
+															</tr>
+														</thead>
+														<tbody className='divide-y divide-neutral-100'>
+															{item.rows.map((r, rIdx) => (
+																<tr key={r.detailId || rIdx}>
+																	<td className='px-4 py-1.5'>
+																		{r.haulDistanceValue || '-'}
+																	</td>
+																	<td className='w-48 px-4 py-1.5 text-right'>
+																		{formatPrice(r.fuelUnitPrice)}
+																	</td>
+																	<td className='w-48 px-4 py-1.5 text-right'>
+																		{formatPrice(r.maintenanceUnitPrice)}
+																	</td>
+																</tr>
+															))}
+														</tbody>
+													</table>
+												</div>
+											</td>
+											<td className='w-20' />
 										</tr>
 									)}
 								</Fragment>
