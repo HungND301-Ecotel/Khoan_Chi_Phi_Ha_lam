@@ -48,6 +48,7 @@ public class TransportPlanLineItemDto
     public string? ReceivingLocationName { get; set; }
     public Guid? DumpingLocationId { get; set; }
     public double FuelAdjustmentFactor { get; set; } = 1;
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; set; }
     public string? DumpingLocationCode { get; set; }
     public string? DumpingLocationName { get; set; }
     public double ProductionMeters { get; set; }
@@ -86,6 +87,9 @@ public class TransportLowValuePerishableSupplyCostDto
 
     // 0 khi chưa có đơn giá VTMHRT khớp Đơn vị + Nhóm công đoạn + tháng
     public double Amount { get; set; }
+
+    // Chỉ VTCG: Điện năng (kWh) trong đơn giá VTMHRT, điện năng — hiển thị cạnh VTMHRT, không cộng vào tiền
+    public double? ElectricityKwh { get; set; }
 }
 
 public class TransportPlanLineByDepartmentDetailDto
@@ -126,6 +130,7 @@ public class TransportPlanLineAdjustmentItemDto
     public string? ReceivingLocationName { get; set; }
     public Guid? DumpingLocationId { get; set; }
     public double FuelAdjustmentFactor { get; set; } = 1;
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; set; }
     public string? DumpingLocationCode { get; set; }
     public string? DumpingLocationName { get; set; }
     public double ActualProductionMeters { get; set; }
@@ -180,6 +185,7 @@ public class CreateTransportPlanLineItemDto
     public Guid? ReceivingLocationId { get; set; }
     public Guid? DumpingLocationId { get; set; }
     public double FuelAdjustmentFactor { get; set; } = 1;
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; set; }
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }
@@ -213,6 +219,7 @@ public class UpdateTransportPlanLineItemDto
     public Guid? ReceivingLocationId { get; set; }
     public Guid? DumpingLocationId { get; set; }
     public double FuelAdjustmentFactor { get; set; } = 1;
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; set; }
     public double ProductionMeters { get; set; }
     public Guid? UnitOfMeasureId { get; set; }
     public AdjustmentFactorSelectionDto? K1 { get; set; }

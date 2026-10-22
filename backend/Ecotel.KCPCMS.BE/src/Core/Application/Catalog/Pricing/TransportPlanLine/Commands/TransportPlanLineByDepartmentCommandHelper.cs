@@ -37,6 +37,7 @@ internal sealed class TransportPlanLineItemPayload
     public Guid? DumpingLocationId { get; init; }
     public double ProductionMeters { get; init; }
     public double FuelAdjustmentFactor { get; init; } = 1;
+    public MechanizedTransportUnitPriceType? VehicleType { get; init; }
     public Guid? UnitOfMeasureId { get; init; }
     public AdjustmentFactorSelectionDto? K1 { get; init; }
     public AdjustmentFactorSelectionDto? K2 { get; init; }
@@ -77,7 +78,8 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     item.UnitOfMeasureId,
                     item.K1,
                     item.K2,
-                    item.FuelAdjustmentFactor)).ToList())).ToList(),
+                    item.FuelAdjustmentFactor,
+                    item.VehicleType)).ToList())).ToList(),
             departmentRepository,
             transportUnitPriceRepository,
             mechanizedTransportUnitPriceRepository,
@@ -111,7 +113,8 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     item.UnitOfMeasureId,
                     item.K1,
                     item.K2,
-                    item.FuelAdjustmentFactor)).ToList())).ToList(),
+                    item.FuelAdjustmentFactor,
+                    item.VehicleType)).ToList())).ToList(),
             departmentRepository,
             transportUnitPriceRepository,
             mechanizedTransportUnitPriceRepository,
@@ -237,6 +240,7 @@ internal static class TransportPlanLineByDepartmentCommandHelper
                     DumpingLocationId = item.DumpingLocationId,
                     ProductionMeters = item.ProductionMeters,
                     FuelAdjustmentFactor = item.FuelAdjustmentFactor,
+                    VehicleType = item.VehicleType,
                     UnitOfMeasureId = item.UnitOfMeasureId,
                     K1 = item.K1,
                     K2 = item.K2,
@@ -321,6 +325,12 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         ItemInput item,
         DateOnly month)
     {
+        // Cùng Nhóm vật tư + Công đoạn có đơn giá ở nhiều loại xe: chỉ dò trong loại xe người dùng đã chọn
+        if (item.VehicleType is { } vehicleType && vehicleType != MechanizedTransportUnitPriceType.None)
+        {
+            candidates = candidates.Where(x => GetVehicleType(x) == vehicleType).ToList();
+        }
+
         // 1. Khớp chính xác: Công đoạn + Nhóm xe + Chất lượng + Thời gian hiệu lực + Vị trí / Hàng (nếu có)
         var matchedHeaders = candidates
             .Where(x =>
@@ -400,5 +410,14 @@ internal static class TransportPlanLineByDepartmentCommandHelper
         Guid? UnitOfMeasureId,
         AdjustmentFactorSelectionDto? K1,
         AdjustmentFactorSelectionDto? K2,
-        double FuelAdjustmentFactor = 1);
+        double FuelAdjustmentFactor = 1,
+        MechanizedTransportUnitPriceType? VehicleType = null);
+
+    internal static MechanizedTransportUnitPriceType GetVehicleType(MechanizedTransportUnitPrice entity) => entity switch
+    {
+        Domain.Entities.Pricing.MechanizedTransportUnitPrice.ScaniaTruckUnitPrice => MechanizedTransportUnitPriceType.ScaniaTruck,
+        Domain.Entities.Pricing.MechanizedTransportUnitPrice.WasteSuctionTruckUnitPrice => MechanizedTransportUnitPriceType.WasteSuctionTruck,
+        Domain.Entities.Pricing.MechanizedTransportUnitPrice.ServiceAndCraneVehicleUnitPrice => MechanizedTransportUnitPriceType.ServiceAndCraneVehicle,
+        _ => MechanizedTransportUnitPriceType.ExcavatorAndBulldozer
+    };
 }

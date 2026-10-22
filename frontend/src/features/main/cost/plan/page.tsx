@@ -21,11 +21,11 @@ import {
 	MAIN_COST_PLAN_COLUMNS,
 	type MonthLowValuePerishableSupplyCost,
 	PLAN_DEPARTMENT_COLUMNS,
-	VTCG_COST_PLAN_COLUMNS,
 } from '@/features/main/cost/plan/columns';
 import { PlanExpand } from '@/features/main/cost/plan/expand';
 import { PlanForm } from '@/features/main/cost/plan/form';
 import { VtlPlanTreeTable } from '@/features/main/cost/plan/van-tai-lo/vtl-plan-tree-table';
+import { VtcgPlanTreeTable } from '@/features/main/cost/plan/van-tai-co-gioi/vtcg-plan-tree-table';
 import {
 	CostProduct,
 	type DepartmentPlannedDetail,
@@ -101,7 +101,13 @@ function DepartmentPlanProductsTable({
 			lastSelectedIdsRef.current = serialized;
 			onSelectedRowsChange(monthId, merged);
 		}
-	}, [monthId, selectedKhaiThac, selectedVtl, selectedVtcg, onSelectedRowsChange]);
+	}, [
+		monthId,
+		selectedKhaiThac,
+		selectedVtl,
+		selectedVtcg,
+		onSelectedRowsChange,
+	]);
 
 	const vtcgItems = useMemo(
 		() =>
@@ -208,37 +214,10 @@ function DepartmentPlanProductsTable({
 									: 'Vận tải cơ giới'}
 						</div>
 					)}
-					<DataTable
-						columns={VTCG_COST_PLAN_COLUMNS}
+					<VtcgPlanTreeTable
 						items={vtcgItems}
-						getRowId={(item) => item.id}
-						filters={[
-							{ key: 'productionProcessCode', label: 'Mã CĐSX' },
-							{ key: 'productionProcessName', label: 'Tên CĐSX' },
-							{ key: 'contractCodeCode', label: 'Mã nhóm xe/VTTS' },
-							{ key: 'contractCodeName', label: 'Tên nhóm xe/VTTS' },
-						]}
-						onExpand={(props) => (
-							<PlanExpand
-								{...props}
-								monthId={monthId}
-								data={{
-									...props.data,
-									refresh: async () => {
-										await props.data.refresh();
-									},
-								}}
-								key={`${monthId}-${reloadKey}-${props.row?.id ?? ''}`}
-							/>
-						)}
-						onDelete={async () => undefined}
-						showCreateAction={false}
-						showFilterAction={false}
-						showDeleteAction={false}
-						showUtilityActions={false}
+						selectAllRows={selectAllRows}
 						onSelectedRowsChange={handleVtcgSelectionChange}
-						selectAllPageRows={selectAllRows}
-						hasPagination={false}
 					/>
 				</div>
 			)}
@@ -252,29 +231,31 @@ function MonthLowValuePerishableSupplyRow({
 	costs?: MonthLowValuePerishableSupplyCost[];
 }) {
 	if (!costs || costs.length === 0) return null;
+	// VTCG có thêm Điện năng (kWh) cạnh VTMHRT
+	const showElectricity = costs.some((cost) => cost.isMechanized);
 
 	return (
 		<div className='scrollbar-sm mb-4 overflow-x-auto rounded-md border border-neutral-200 bg-white shadow'>
 			<table className='w-full border-collapse text-left text-sm text-black'>
 				<thead className='border-b border-neutral-200 bg-[#fafafa] text-sm font-semibold text-black'>
 					<tr>
-						<th className='px-4 py-2.5'>Chi phí vật tư mau hỏng rẻ tiền</th>
-						<th className='px-4 py-2.5'>Nhóm công đoạn</th>
-						<th className='w-56 px-4 py-2.5 text-right'>
-							Thành tiền (đ/tháng)
+						<th className='px-4 py-2.5'>Nhóm công đoạn sản xuất</th>
+						<th className='w-64 px-4 py-2.5 text-right'>
+							Chi phí vật tư mau hỏng rẻ tiền (đ/tháng)
 						</th>
+						{showElectricity && (
+							<th className='w-48 px-4 py-2.5 text-right'>Điện năng (kWh)</th>
+						)}
 					</tr>
 				</thead>
 				<tbody className='divide-y divide-neutral-200'>
 					{costs.map((cost) => (
 						<tr key={cost.processGroupId}>
 							<td className='px-4 py-2.5'>
-								{cost.isMechanized ? 'Vận tải cơ giới' : 'Vận tải lò'}
-							</td>
-							<td className='px-4 py-2.5'>
 								{[cost.processGroupCode, cost.processGroupName]
 									.filter(Boolean)
-									.join(' - ') || '-'}
+									.join(' - ') ||
+									(cost.isMechanized ? 'Vận tải cơ giới' : 'Vận tải lò')}
 							</td>
 							<td className='px-4 py-2.5 text-right'>
 								{cost.amount > 0 ? (
@@ -283,6 +264,13 @@ function MonthLowValuePerishableSupplyRow({
 									<span className='text-red-500'>Chưa có đơn giá</span>
 								)}
 							</td>
+							{showElectricity && (
+								<td className='px-4 py-2.5 text-right'>
+									{cost.isMechanized && cost.electricityKwh
+										? formatNumber(cost.electricityKwh)
+										: '-'}
+								</td>
+							)}
 						</tr>
 					))}
 				</tbody>
@@ -349,7 +337,9 @@ function DepartmentPlanMonthsTable({
 	selectAllRows,
 	onSelectedProductIdsChange,
 }: DepartmentPlanMonthsTableProps) {
-	const [monthGroups, setMonthGroups] = useState<DepartmentPlanMonthGroup[]>([]);
+	const [monthGroups, setMonthGroups] = useState<DepartmentPlanMonthGroup[]>(
+		[],
+	);
 	const [selectedProductIdsByMonth, setSelectedProductIdsByMonth] = useState<
 		Record<string, string[]>
 	>({});
@@ -388,48 +378,47 @@ function DepartmentPlanMonthsTable({
 				hasVanTaiLo ||
 				hasVanTaiCoGioi;
 
-			const vanTaiLoPromise =
-				shouldFetchTransport
-					? api
-							.get<{
-								departmentId: string;
-								departmentCode: string;
-								departmentName: string;
-								months: {
-									month: string;
-									lowValuePerishableSupplyCosts?: MonthLowValuePerishableSupplyCost[];
-									items: {
-										id: string;
-										productionProcessId?: string;
-										productionProcessCode?: string;
-										productionProcessName?: string;
-										transportRouteId?: string;
-										transportRouteCode?: string;
-										transportRouteName?: string;
-										routeDepartmentId?: string;
-										routeDepartmentCode?: string;
-										routeDepartmentName?: string;
-										equipmentId?: string;
-										equipmentCode?: string;
-										equipmentName?: string;
-										equipmentQuality?: string;
-										productionMeters?: number;
-										unitOfMeasureId?: string;
-										unitOfMeasureName?: string;
-										material?: TransportCostComponent;
-										maintenance?: TransportCostComponent;
-										power?: TransportCostComponent;
-										isLowVolumeCase?: boolean;
-										plannedTotalCost?: number;
-									}[];
+			const vanTaiLoPromise = shouldFetchTransport
+				? api
+						.get<{
+							departmentId: string;
+							departmentCode: string;
+							departmentName: string;
+							months: {
+								month: string;
+								lowValuePerishableSupplyCosts?: MonthLowValuePerishableSupplyCost[];
+								items: {
+									id: string;
+									productionProcessId?: string;
+									productionProcessCode?: string;
+									productionProcessName?: string;
+									transportRouteId?: string;
+									transportRouteCode?: string;
+									transportRouteName?: string;
+									routeDepartmentId?: string;
+									routeDepartmentCode?: string;
+									routeDepartmentName?: string;
+									equipmentId?: string;
+									equipmentCode?: string;
+									equipmentName?: string;
+									equipmentQuality?: string;
+									productionMeters?: number;
+									unitOfMeasureId?: string;
+									unitOfMeasureName?: string;
+									material?: TransportCostComponent;
+									maintenance?: TransportCostComponent;
+									power?: TransportCostComponent;
+									isLowVolumeCase?: boolean;
+									plannedTotalCost?: number;
 								}[];
-							}>(
-								API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
-									departmentId,
-								),
-							)
-							.catch(() => null)
-					: Promise.resolve(null);
+							}[];
+						}>(
+							API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(
+								departmentId,
+							),
+						)
+						.catch(() => null)
+				: Promise.resolve(null);
 
 			const [khaiThacRes, vanTaiLoRes] = await Promise.all([
 				khaiThacPromise,
@@ -460,8 +449,12 @@ function DepartmentPlanMonthsTable({
 								item.haulDistanceId ||
 								item.haulDistanceValue ||
 								item.processGroupCode === 'VTCG' ||
-								(item.processGroupName || '').toLowerCase().includes('cơ giới') ||
-								(item.productionProcessName || '').toLowerCase().includes('cơ giới') ||
+								(item.processGroupName || '')
+									.toLowerCase()
+									.includes('cơ giới') ||
+								(item.productionProcessName || '')
+									.toLowerCase()
+									.includes('cơ giới') ||
 								(item.productionProcessCode || '').startsWith('VC_') ||
 								(item.equipmentCode || '').includes('SCANIA') ||
 								(item.equipmentCode || '').includes('KOMATSU') ||
@@ -469,15 +462,16 @@ function DepartmentPlanMonthsTable({
 
 							const defaultCode = isVtcg ? 'VTCG' : 'VTL';
 							const defaultName = isVtcg ? 'Vận tải cơ giới' : 'Vận tải lò';
-							const defaultGroupType = isVtcg ? ProcessGroupType.VTCG : ProcessGroupType.VTL;
+							const defaultGroupType = isVtcg
+								? ProcessGroupType.VTCG
+								: ProcessGroupType.VTL;
 
 							const nameParts = [
 								item.productionProcessName,
 								item.equipmentName && `TB: ${item.equipmentName}`,
 								item.equipmentQuality && `Loại ${item.equipmentQuality}`,
 								item.haulDistanceValue && `Cung độ: ${item.haulDistanceValue}`,
-								item.transportRouteName &&
-									`Tuyến: ${item.transportRouteName}`,
+								item.transportRouteName && `Tuyến: ${item.transportRouteName}`,
 							].filter(Boolean);
 
 							return {
@@ -514,8 +508,10 @@ function DepartmentPlanMonthsTable({
 								endMonth: monthKey,
 								productionProcessCode: item.productionProcessCode || '-',
 								productionProcessName: item.productionProcessName || '-',
-								contractCodeCode: item.equipmentCode || item.transportRouteCode || '-',
-								contractCodeName: item.equipmentName || item.transportRouteName || '-',
+								contractCodeCode:
+									item.equipmentCode || item.transportRouteCode || '-',
+								contractCodeName:
+									item.equipmentName || item.transportRouteName || '-',
 								transportRouteId: item.transportRouteId,
 								transportRouteCode: item.transportRouteCode,
 								transportRouteName: item.transportRouteName,
@@ -549,7 +545,8 @@ function DepartmentPlanMonthsTable({
 							time: monthKey,
 							productUnitPriceIds: vtlMonth.items.map((it) => it.id),
 							products: vtlProducts,
-							lowValuePerishableSupplyCosts: vtlMonth.lowValuePerishableSupplyCosts,
+							lowValuePerishableSupplyCosts:
+								vtlMonth.lowValuePerishableSupplyCosts,
 						});
 					}
 				});
@@ -784,9 +781,7 @@ export function MainCostPlanPage() {
 					const allItems = months.flatMap((m) => m.items || []);
 					if (!allItems.length) return;
 
-					const monthDates = months
-						.map((m) => m.month.substring(0, 10))
-						.sort();
+					const monthDates = months.map((m) => m.month.substring(0, 10)).sort();
 
 					const deptInfo = deptsMap.get(detail.departmentId);
 
@@ -795,14 +790,18 @@ export function MainCostPlanPage() {
 							it.haulDistanceId ||
 							it.haulDistanceValue ||
 							it.processGroupCode === 'VTCG' ||
-							(it.productionProcessName || '').toLowerCase().includes('cơ giới'),
+							(it.productionProcessName || '')
+								.toLowerCase()
+								.includes('cơ giới'),
 					);
 					const hasVtl = allItems.some(
 						(it: any) =>
 							!it.haulDistanceId &&
 							!it.haulDistanceValue &&
 							it.processGroupCode !== 'VTCG' &&
-							!(it.productionProcessName || '').toLowerCase().includes('cơ giới'),
+							!(it.productionProcessName || '')
+								.toLowerCase()
+								.includes('cơ giới'),
 					);
 
 					vtlGroups.push({
@@ -954,18 +953,26 @@ export function MainCostPlanPage() {
 				{ key: 'code', label: 'Mã đơn vị' },
 				{ key: 'name', label: 'Tên đơn vị' },
 			]}
-			onCreate={hasPermission('production.productunitprice.create') ? (props) => (
-				<PlanForm
-					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
-					onSuccess={() => setReloadKey((prev) => prev + 1)}
-				/>
-			) : undefined}
-			onUpdate={hasPermission('production.productunitprice.update') ? (props) => (
-				<PlanForm
-					{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
-					onSuccess={() => setReloadKey((prev) => prev + 1)}
-				/>
-			) : undefined}
+			onCreate={
+				hasPermission('production.productunitprice.create')
+					? (props) => (
+							<PlanForm
+								{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
+								onSuccess={() => setReloadKey((prev) => prev + 1)}
+							/>
+						)
+					: undefined
+			}
+			onUpdate={
+				hasPermission('production.productunitprice.update')
+					? (props) => (
+							<PlanForm
+								{...(props as unknown as ActionDialogProps<DepartmentPlanGroup>)}
+								onSuccess={() => setReloadKey((prev) => prev + 1)}
+							/>
+						)
+					: undefined
+			}
 			onDelete={handleDeleteDepartment}
 			deleteCountOverride={selectedProductIds.length}
 			deleteDisabledOverride={

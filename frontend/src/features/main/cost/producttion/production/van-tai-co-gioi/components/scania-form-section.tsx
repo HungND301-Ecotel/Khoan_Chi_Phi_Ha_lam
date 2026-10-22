@@ -6,7 +6,6 @@ import {
 	getAllowedProcessIds,
 	type MotorizedPricingIndex,
 } from '@/features/main/cost/plan/van-tai-co-gioi/pricing-index';
-import { CategoryProcessSelect } from '@/features/main/cost/plan/van-tai-co-gioi/components/category-process-select';
 import type { ProductionFormSchema } from '../../production-form-schema';
 import { getUnitForProcess } from '../utils';
 
@@ -21,6 +20,8 @@ type ScaniaFormSectionProps = {
 	dropoffLocations: any[];
 	distances: any[];
 	locations?: any[];
+	// Chỉ nhập cho 1 Nhóm vật tư, gọn ngay trong thẻ Nhóm vật tư (không khung loại xe / header nhóm)
+	assignmentCodeId?: string;
 };
 
 export function ScaniaFormSection({
@@ -34,6 +35,7 @@ export function ScaniaFormSection({
 	dropoffLocations,
 	distances,
 	locations = [],
+	assignmentCodeId,
 }: ScaniaFormSectionProps) {
 	const groupPath = `groups.${groupIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,8 +46,11 @@ export function ScaniaFormSection({
 		name: groupPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] =
+	const categoryAssignmentCodeIds: string[] =
 		watchedGroup?.scaniaAssignmentCodeIds || [];
+	const assignmentCodeIds = assignmentCodeId
+		? categoryAssignmentCodeIds.filter((id) => id === assignmentCodeId)
+		: categoryAssignmentCodeIds;
 	const equipmentProcesses: Record<string, string[]> =
 		watchedGroup?.equipmentProcesses || {};
 	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
@@ -217,6 +222,7 @@ export function ScaniaFormSection({
 									haulDistanceValue: distValue,
 									productionMeters: existing?.productionMeters ?? Number.NaN,
 									fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1,
+									vehicleType: 1,
 									unitName: getUnitForProcess(procName, 'scania'),
 								});
 							});
@@ -240,10 +246,18 @@ export function ScaniaFormSection({
 	]);
 
 	return (
-		<div className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'>
-			<div className='border-b border-neutral-100 pb-2 text-sm font-semibold text-black'>
-				<span>Vận chuyển (Xe Scania)</span>
-			</div>
+		<div
+			className={
+				assignmentCodeId
+					? 'space-y-4'
+					: 'space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-2xs'
+			}
+		>
+			{!assignmentCodeId && (
+				<div className='border-b border-neutral-100 pb-2 text-sm font-semibold text-black'>
+					<span>Vận chuyển (Xe Scania)</span>
+				</div>
+			)}
 
 			{/* LẶP QUA TỪNG XE SCANIA */}
 			{assignmentCodeIds.map((acId) => {
@@ -260,22 +274,20 @@ export function ScaniaFormSection({
 				return (
 					<div
 						key={acId}
-						className='space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs'
+						className={
+							assignmentCodeId
+								? 'space-y-4'
+								: 'space-y-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-xs'
+						}
 					>
 						{/* HEADER XE */}
-						<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
-							<span className='text-sm font-semibold text-black'>{title}</span>
-						</div>
-
-						{/* CẤP 2: CHỌN CÔNG ĐOẠN SẢN XUẤT CHO XE NÀY */}
-						<CategoryProcessSelect
-							form={form}
-							basePath={groupPath}
-							assignmentCodeId={acId}
-							category='scania'
-							pricingIndex={pricingIndex}
-							processes={processes}
-						/>
+						{!assignmentCodeId && (
+							<div className='flex items-center justify-between border-b border-neutral-100 pb-2'>
+								<span className='text-sm font-semibold text-black'>
+									{title}
+								</span>
+							</div>
+						)}
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN SẢN XUẤT */}
 						{selectedProcs.map((procId) => {

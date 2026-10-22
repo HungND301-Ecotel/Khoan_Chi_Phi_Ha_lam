@@ -67,7 +67,8 @@ public class CreateTransportPlanLineByDepartmentCommandHandler(
                     item.CargoTypeId,
                     item.ReceivingLocationId,
                     item.DumpingLocationId,
-                    item.FuelAdjustmentFactor);
+                    item.FuelAdjustmentFactor,
+                    item.VehicleType);
 
                 await _transportPlanLineRepository.InsertAsync(line, cancellationToken);
 

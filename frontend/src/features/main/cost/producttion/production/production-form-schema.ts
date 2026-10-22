@@ -50,6 +50,8 @@ const transportLineItemSchema = z.object({
 	// Sản lượng kế hoạch VTL — chỉ dòng đầu của mỗi Tuyến/Nhóm VTTS mang giá trị (xem planMeters)
 	planProductionMeters: z.number().optional(),
 	// Hệ số nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu (bỏ trống = 1)
+	// Loại xe (MechanizedTransportUnitPriceType) của khối sinh ra dòng VTCG
+	vehicleType: z.number().nullable().optional(),
 	fuelAdjustmentFactor: z.preprocess(
 		(val) =>
 			val === '' || val === null || Number.isNaN(val) ? undefined : val,
@@ -114,6 +116,10 @@ const productionGroupSchema = z
 		vacuumTruckAssignmentCodeIds: z.array(z.string()).optional().default([]),
 		equipmentQualities: z.record(z.string(), z.any()).optional().default({}),
 		equipmentProcesses: z.record(z.string(), z.any()).optional().default({}),
+		// Loại xe chọn tay cho Nhóm vật tư chưa có đơn giá VTCG
+		assetCategoryOverrides: z.record(z.string(), z.string()).optional(),
+		// Loại xe chọn cho Công đoạn có đơn giá ở nhiều loại xe — khoá `${nhóm vật tư}::${công đoạn}`
+		processCategories: z.record(z.string(), z.string()).optional(),
 		equipmentDistances: z.record(z.string(), z.any()).optional().default({}),
 		processCargoTypes: z.record(z.string(), z.any()).optional().default({}),
 		processPickupLocations: z

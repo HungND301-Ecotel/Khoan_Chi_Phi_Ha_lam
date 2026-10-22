@@ -215,7 +215,8 @@ public class CreateProductionOutputListCommandHandler(IUnitOfWork unitOfWork) : 
                         transportLineDto.RouteDepartmentId,
                         transportLineDto.ProductionMeters,
                         planProductionMeters: transportLineDto.PlanProductionMeters,
-                        fuelAdjustmentFactor: transportLineDto.FuelAdjustmentFactor));
+                        fuelAdjustmentFactor: transportLineDto.FuelAdjustmentFactor,
+                        vehicleType: transportLineDto.VehicleType));
                 }
             }
 

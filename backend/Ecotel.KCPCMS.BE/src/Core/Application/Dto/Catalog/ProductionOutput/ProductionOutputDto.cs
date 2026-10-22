@@ -64,4 +64,5 @@ public class ProductionOutputTransportLineDto
     public double ProductionMeters { get; set; }
     public double PlanProductionMeters { get; set; }
     public double FuelAdjustmentFactor { get; set; } = 1;
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; set; }
 }

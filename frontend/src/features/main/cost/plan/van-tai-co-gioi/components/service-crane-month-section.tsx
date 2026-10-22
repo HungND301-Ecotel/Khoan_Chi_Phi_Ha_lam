@@ -9,7 +9,6 @@ import {
 	getAllowedProcessIds,
 	type MotorizedPricingIndex,
 } from '../pricing-index';
-import { CategoryProcessSelect } from './category-process-select';
 import { getUnitForMotorizedProcess } from '../utils';
 
 type ServiceCraneMonthSectionProps = {
@@ -19,6 +18,8 @@ type ServiceCraneMonthSectionProps = {
 	assignmentCodes: any[];
 	processes: any[];
 	distances: any[];
+	// Chỉ nhập cho 1 Nhóm vật tư, gọn ngay trong thẻ Nhóm vật tư (không khung loại xe / header nhóm)
+	assignmentCodeId?: string;
 };
 
 export function ServiceCraneMonthSection({
@@ -28,6 +29,7 @@ export function ServiceCraneMonthSection({
 	assignmentCodes,
 	processes,
 	distances,
+	assignmentCodeId,
 }: ServiceCraneMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
 	const unitOptions = uomList || [];
@@ -40,8 +42,11 @@ export function ServiceCraneMonthSection({
 		name: monthPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] =
+	const categoryAssignmentCodeIds: string[] =
 		watchedMonth?.serviceCraneAssignmentCodeIds || [];
+	const assignmentCodeIds = assignmentCodeId
+		? categoryAssignmentCodeIds.filter((id) => id === assignmentCodeId)
+		: categoryAssignmentCodeIds;
 	const equipmentProcesses: Record<string, string[]> =
 		watchedMonth?.equipmentProcesses || {};
 	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
@@ -156,6 +161,7 @@ export function ServiceCraneMonthSection({
 								: undefined,
 							productionMeters: existing?.productionMeters ?? Number.NaN,
 							fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1,
+							vehicleType: 3,
 							unitName: defaultUnitName,
 							unitOfMeasureId:
 								existing?.unitOfMeasureId || matchedUnit?.id || undefined,
@@ -177,10 +183,18 @@ export function ServiceCraneMonthSection({
 	]);
 
 	return (
-		<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-			<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
-				<span>Xe cẩu tự hành, xe dịch vụ</span>
-			</div>
+		<div
+			className={
+				assignmentCodeId
+					? 'space-y-4'
+					: 'space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'
+			}
+		>
+			{!assignmentCodeId && (
+				<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
+					<span>Xe cẩu tự hành, xe dịch vụ</span>
+				</div>
+			)}
 
 			{/* LẶP QUA TỪNG NHÓM XE */}
 			{assignmentCodeIds.map((eqId) => {
@@ -192,26 +206,22 @@ export function ServiceCraneMonthSection({
 				return (
 					<div
 						key={eqId}
-						className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						className={
+							assignmentCodeId
+								? 'space-y-4'
+								: 'space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						}
 					>
 						{/* HEADER XE */}
-						<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
-							<span className='text-sm font-bold text-gray-900'>
-								{eq?.code
-									? `${eq.code} - ${eq.name || eq.label}`
-									: eq?.name || eq?.label || eqId}
-							</span>
-						</div>
-
-						{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO XE NÀY */}
-						<CategoryProcessSelect
-							form={form}
-							basePath={monthPath}
-							assignmentCodeId={eqId}
-							category='service_crane'
-							pricingIndex={pricingIndex}
-							processes={processes}
-						/>
+						{!assignmentCodeId && (
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>
+									{eq?.code
+										? `${eq.code} - ${eq.name || eq.label}`
+										: eq?.name || eq?.label || eqId}
+								</span>
+							</div>
+						)}
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN */}
 						{selectedProcs.map((procId) => {
@@ -349,7 +359,7 @@ export function ServiceCraneMonthSection({
 																		<td className='px-3 py-2'>
 																			<div className='flex h-9 items-center rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-black'>
 																				{row.haulDistanceValue
-																					? `L ≤ ${row.haulDistanceValue} km`
+																					? ` ${row.haulDistanceValue} km`
 																					: '-'}
 																			</div>
 																		</td>

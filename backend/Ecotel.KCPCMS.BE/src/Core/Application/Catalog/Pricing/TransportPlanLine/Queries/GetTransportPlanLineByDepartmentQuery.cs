@@ -146,7 +146,7 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
 
     private static List<TransportLowValuePerishableSupplyCostDto> ToLowValuePerishableSupplyCosts(
         IEnumerable<TransportPlanLineEntity> monthLines,
-        Dictionary<TransportLowValuePerishableSupplyCostResolver.Key, double> lookup)
+        Dictionary<TransportLowValuePerishableSupplyCostResolver.Key, TransportLowValuePerishableSupplyCostResolver.Price> lookup)
     {
         return monthLines
             .Where(x => x.PlannedTransportCost?.LowValuePerishableSupplyInclusion == LowValuePerishableSupplyInclusion.Include
@@ -164,6 +164,7 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                     IsMechanized = processGroup?.Type == ProcessGroupType.VTCG
                         || processGroup?.FixedKey?.Key == "VTCG",
                     Amount = TransportLowValuePerishableSupplyCostResolver.Resolve(first, lookup),
+                    ElectricityKwh = TransportLowValuePerishableSupplyCostResolver.ResolveElectricityKwh(first, lookup),
                 };
             })
             .OrderBy(x => x.IsMechanized)
@@ -219,6 +220,7 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
             DumpingLocationName = line.DumpingLocation?.Name,
             ProductionMeters = line.ProductionMeters,
             FuelAdjustmentFactor = line.FuelAdjustmentFactor,
+            VehicleType = line.VehicleType,
             UnitOfMeasureId = line.UnitOfMeasureId,
             UnitOfMeasureName = line.UnitOfMeasure?.Name,
             K1 = ToSelectionDto(cost, FixedKeyType.K1, "K1"),
@@ -353,7 +355,8 @@ public class GetTransportPlanLineByDepartmentQueryHandler(IUnitOfWork unitOfWork
                 line.ProductionMeters,
                 line.UnitOfMeasureId,
                 null,
-                null);
+                null,
+                VehicleType: line.VehicleType);
 
             var isVtcg = line.HaulDistanceId.HasValue
                 || candidateVtcg.Any(x => x.ProductionProcessId == line.ProductionProcessId)

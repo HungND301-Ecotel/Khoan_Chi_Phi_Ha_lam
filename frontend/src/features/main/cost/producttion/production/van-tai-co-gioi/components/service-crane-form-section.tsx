@@ -6,7 +6,6 @@ import {
 	getAllowedProcessIds,
 	type MotorizedPricingIndex,
 } from '@/features/main/cost/plan/van-tai-co-gioi/pricing-index';
-import { CategoryProcessSelect } from '@/features/main/cost/plan/van-tai-co-gioi/components/category-process-select';
 import type { ProductionFormSchema } from '../../production-form-schema';
 import { getUnitForProcess } from '../utils';
 
@@ -17,6 +16,8 @@ type ServiceCraneFormSectionProps = {
 	assignmentCodes: any[];
 	processes: any[];
 	distances: any[];
+	// Chỉ nhập cho 1 Nhóm vật tư, gọn ngay trong thẻ Nhóm vật tư (không khung loại xe / header nhóm)
+	assignmentCodeId?: string;
 };
 
 export function ServiceCraneFormSection({
@@ -26,6 +27,7 @@ export function ServiceCraneFormSection({
 	assignmentCodes,
 	processes,
 	distances,
+	assignmentCodeId,
 }: ServiceCraneFormSectionProps) {
 	const groupPath = `groups.${groupIndex}` as const;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,8 +38,11 @@ export function ServiceCraneFormSection({
 		name: groupPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] =
+	const categoryAssignmentCodeIds: string[] =
 		watchedGroup?.serviceCraneAssignmentCodeIds || [];
+	const assignmentCodeIds = assignmentCodeId
+		? categoryAssignmentCodeIds.filter((id) => id === assignmentCodeId)
+		: categoryAssignmentCodeIds;
 	const equipmentProcesses: Record<string, string[]> =
 		watchedGroup?.equipmentProcesses || {};
 	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
@@ -142,6 +147,7 @@ export function ServiceCraneFormSection({
 								: undefined,
 							productionMeters: existing?.productionMeters ?? Number.NaN,
 							fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1,
+							vehicleType: 3,
 							unitName: getUnitForProcess(
 								proc?.name || proc?.label,
 								'service_crane',
@@ -163,10 +169,18 @@ export function ServiceCraneFormSection({
 	]);
 
 	return (
-		<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-			<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
-				<span>Xe cẩu tự hành, xe dịch vụ</span>
-			</div>
+		<div
+			className={
+				assignmentCodeId
+					? 'space-y-4'
+					: 'space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'
+			}
+		>
+			{!assignmentCodeId && (
+				<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
+					<span>Xe cẩu tự hành, xe dịch vụ</span>
+				</div>
+			)}
 
 			{/* LẶP QUA TỪNG NHÓM XE */}
 			{assignmentCodeIds.map((eqId) => {
@@ -178,26 +192,22 @@ export function ServiceCraneFormSection({
 				return (
 					<div
 						key={eqId}
-						className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						className={
+							assignmentCodeId
+								? 'space-y-4'
+								: 'space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						}
 					>
 						{/* HEADER XE */}
-						<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
-							<span className='text-sm font-bold text-gray-900'>
-								{eq?.code
-									? `${eq.code} - ${eq.name || eq.label}`
-									: eq?.name || eq?.label || eqId}
-							</span>
-						</div>
-
-						{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO XE NÀY */}
-						<CategoryProcessSelect
-							form={form}
-							basePath={groupPath}
-							assignmentCodeId={eqId}
-							category='service_crane'
-							pricingIndex={pricingIndex}
-							processes={processes}
-						/>
+						{!assignmentCodeId && (
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>
+									{eq?.code
+										? `${eq.code} - ${eq.name || eq.label}`
+										: eq?.name || eq?.label || eqId}
+								</span>
+							</div>
+						)}
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN */}
 						{selectedProcs.map((procId) => {

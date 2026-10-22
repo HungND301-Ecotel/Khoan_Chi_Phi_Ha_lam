@@ -101,7 +101,8 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                         item.CargoTypeId,
                         item.ReceivingLocationId,
                         item.DumpingLocationId,
-                        item.FuelAdjustmentFactor);
+                        item.FuelAdjustmentFactor,
+                        item.VehicleType);
                     _transportPlanLineRepository.Update(existingLine);
 
                     UpdateCost(existingLine.PlannedTransportCost, item, lowValuePerishableSupplyInclusion);
@@ -125,7 +126,8 @@ public class UpdateTransportPlanLineByDepartmentCommandHandler(
                     item.CargoTypeId,
                     item.ReceivingLocationId,
                     item.DumpingLocationId,
-                    item.FuelAdjustmentFactor);
+                    item.FuelAdjustmentFactor,
+                    item.VehicleType);
 
                 await _transportPlanLineRepository.InsertAsync(newLine, cancellationToken);
 

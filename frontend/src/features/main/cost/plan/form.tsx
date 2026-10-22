@@ -52,6 +52,7 @@ import {
 } from './van-tai-lo/form-section';
 import { buildTransportMonthsPayload } from './van-tai-lo/utils';
 import { MotorizedMonthSection } from './van-tai-co-gioi/form-section';
+import { buildProcessCategories } from './van-tai-co-gioi/pricing-index';
 import { buildMotorizedTransportMonthsPayload } from './van-tai-co-gioi/utils';
 
 export function detectPlanModeFromDepartment(
@@ -230,9 +231,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							unitOfMeasureId?: string;
 						}[];
 					}[];
-				}>(
-					API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId),
-				);
+				}>(API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId));
 				const detail = detailRes.result;
 
 				const months = (detail.months || [])
@@ -243,7 +242,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 								it.haulDistanceValue ||
 								it.processGroupCode === 'VTCG' ||
 								(it.processGroupName || '').toLowerCase().includes('cơ giới') ||
-								(it.productionProcessName || '').toLowerCase().includes('cơ giới') ||
+								(it.productionProcessName || '')
+									.toLowerCase()
+									.includes('cơ giới') ||
 								!it.transportRouteId,
 						);
 						if (!vtcgItems.length) return null;
@@ -267,6 +268,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							dumpingLocationName: it.dumpingLocationName,
 							productionMeters: it.productionMeters,
 							fuelAdjustmentFactor: it.fuelAdjustmentFactor ?? 1.0,
+							vehicleType: it.vehicleType ?? undefined,
 							unitOfMeasureId: it.unitOfMeasureId,
 							unitName: it.unitOfMeasureName,
 						}));
@@ -289,7 +291,11 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!eqProcessesMap[it.equipmentId]) {
 										eqProcessesMap[it.equipmentId] = [];
 									}
-									if (!eqProcessesMap[it.equipmentId].includes(it.productionProcessId)) {
+									if (
+										!eqProcessesMap[it.equipmentId].includes(
+											it.productionProcessId,
+										)
+									) {
 										eqProcessesMap[it.equipmentId].push(it.productionProcessId);
 									}
 								}
@@ -299,7 +305,11 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!eqQualitiesMap[it.equipmentId]) {
 										eqQualitiesMap[it.equipmentId] = [];
 									}
-									if (!eqQualitiesMap[it.equipmentId].includes(it.equipmentQuality)) {
+									if (
+										!eqQualitiesMap[it.equipmentId].includes(
+											it.equipmentQuality,
+										)
+									) {
 										eqQualitiesMap[it.equipmentId].push(it.equipmentQuality);
 									}
 
@@ -308,7 +318,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 										if (!eqQualitiesMap[scopeKey]) {
 											eqQualitiesMap[scopeKey] = [];
 										}
-										if (!eqQualitiesMap[scopeKey].includes(it.equipmentQuality)) {
+										if (
+											!eqQualitiesMap[scopeKey].includes(it.equipmentQuality)
+										) {
 											eqQualitiesMap[scopeKey].push(it.equipmentQuality);
 										}
 									}
@@ -319,7 +331,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!eqDistancesMap[it.equipmentId]) {
 										eqDistancesMap[it.equipmentId] = [];
 									}
-									if (!eqDistancesMap[it.equipmentId].includes(it.haulDistanceId)) {
+									if (
+										!eqDistancesMap[it.equipmentId].includes(it.haulDistanceId)
+									) {
 										eqDistancesMap[it.equipmentId].push(it.haulDistanceId);
 									}
 
@@ -345,8 +359,14 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!procCargoTypesMap[it.productionProcessId]) {
 										procCargoTypesMap[it.productionProcessId] = [];
 									}
-									if (!procCargoTypesMap[it.productionProcessId].includes(it.cargoTypeId)) {
-										procCargoTypesMap[it.productionProcessId].push(it.cargoTypeId);
+									if (
+										!procCargoTypesMap[it.productionProcessId].includes(
+											it.cargoTypeId,
+										)
+									) {
+										procCargoTypesMap[it.productionProcessId].push(
+											it.cargoTypeId,
+										);
 									}
 									if (scopeKey) {
 										if (!procCargoTypesMap[scopeKey]) {
@@ -361,15 +381,27 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!procPickupLocationsMap[it.productionProcessId]) {
 										procPickupLocationsMap[it.productionProcessId] = [];
 									}
-									if (!procPickupLocationsMap[it.productionProcessId].includes(it.receivingLocationId)) {
-										procPickupLocationsMap[it.productionProcessId].push(it.receivingLocationId);
+									if (
+										!procPickupLocationsMap[it.productionProcessId].includes(
+											it.receivingLocationId,
+										)
+									) {
+										procPickupLocationsMap[it.productionProcessId].push(
+											it.receivingLocationId,
+										);
 									}
 									if (scopeKey) {
 										if (!procPickupLocationsMap[scopeKey]) {
 											procPickupLocationsMap[scopeKey] = [];
 										}
-										if (!procPickupLocationsMap[scopeKey].includes(it.receivingLocationId)) {
-											procPickupLocationsMap[scopeKey].push(it.receivingLocationId);
+										if (
+											!procPickupLocationsMap[scopeKey].includes(
+												it.receivingLocationId,
+											)
+										) {
+											procPickupLocationsMap[scopeKey].push(
+												it.receivingLocationId,
+											);
 										}
 									}
 								}
@@ -377,15 +409,27 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 									if (!procDropoffLocationsMap[it.productionProcessId]) {
 										procDropoffLocationsMap[it.productionProcessId] = [];
 									}
-									if (!procDropoffLocationsMap[it.productionProcessId].includes(it.dumpingLocationId)) {
-										procDropoffLocationsMap[it.productionProcessId].push(it.dumpingLocationId);
+									if (
+										!procDropoffLocationsMap[it.productionProcessId].includes(
+											it.dumpingLocationId,
+										)
+									) {
+										procDropoffLocationsMap[it.productionProcessId].push(
+											it.dumpingLocationId,
+										);
 									}
 									if (scopeKey) {
 										if (!procDropoffLocationsMap[scopeKey]) {
 											procDropoffLocationsMap[scopeKey] = [];
 										}
-										if (!procDropoffLocationsMap[scopeKey].includes(it.dumpingLocationId)) {
-											procDropoffLocationsMap[scopeKey].push(it.dumpingLocationId);
+										if (
+											!procDropoffLocationsMap[scopeKey].includes(
+												it.dumpingLocationId,
+											)
+										) {
+											procDropoffLocationsMap[scopeKey].push(
+												it.dumpingLocationId,
+											);
 										}
 									}
 								}
@@ -397,7 +441,8 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							eqName?: string,
 							procName?: string,
 						) => {
-							const text = `${eqCode || ''} ${eqName || ''} ${procName || ''}`.toLowerCase();
+							const text =
+								`${eqCode || ''} ${eqName || ''} ${procName || ''}`.toLowerCase();
 							if (
 								text.includes('hút bùn') ||
 								text.includes('chất thải') ||
@@ -501,9 +546,12 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 
 						const activeCategories: string[] = [];
 						if (scaniaEqIds.length > 0) activeCategories.push('scania');
-						if (excavatorEqIds.length > 0) activeCategories.push('excavator_dozer');
-						if (serviceCraneEqIds.length > 0) activeCategories.push('service_crane');
-						if (vacuumTruckEqIds.length > 0) activeCategories.push('vacuum_truck');
+						if (excavatorEqIds.length > 0)
+							activeCategories.push('excavator_dozer');
+						if (serviceCraneEqIds.length > 0)
+							activeCategories.push('service_crane');
+						if (vacuumTruckEqIds.length > 0)
+							activeCategories.push('vacuum_truck');
 						if (activeCategories.length === 0) activeCategories.push('scania');
 
 						return {
@@ -518,6 +566,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							vacuumTruckAssignmentCodeIds: vacuumTruckEqIds,
 							equipmentQualities: eqQualitiesMap,
 							equipmentProcesses: eqProcessesMap,
+							processCategories: buildProcessCategories(vtcgItems),
 							equipmentDistances: eqDistancesMap,
 							processCargoTypes: procCargoTypesMap,
 							processPickupLocations: procPickupLocationsMap,
@@ -555,9 +604,7 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 							k2?: any;
 						}[];
 					}[];
-				}>(
-					API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId),
-				);
+				}>(API.COST.TRANSPORT_PLAN_LINE.DETAIL_PLANNED_BY_DEPARTMENT(deptId));
 				const detail = detailRes.result;
 
 				const months = (detail.months || [])
@@ -565,7 +612,9 @@ export function PlanForm({ data, row, onSuccess }: PlanFormProps) {
 						const vtlItems = (m.items || []).filter(
 							(it: any) =>
 								it.transportRouteId ||
-								(!it.haulDistanceId && !it.haulDistanceValue && !it.processGroupCode?.includes('VTCG')),
+								(!it.haulDistanceId &&
+									!it.haulDistanceValue &&
+									!it.processGroupCode?.includes('VTCG')),
 						);
 						if (!vtlItems.length) return null;
 

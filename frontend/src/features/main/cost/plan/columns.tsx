@@ -25,6 +25,8 @@ export type MonthLowValuePerishableSupplyCost = {
 	processGroupName?: string;
 	isMechanized: boolean;
 	amount: number;
+	// Chỉ VTCG: Điện năng (kWh) trong đơn giá VTMHRT, điện năng — chỉ hiển thị, không cộng vào tiền
+	electricityKwh?: number | null;
 };
 
 export type DepartmentPlanMonthGroup = {

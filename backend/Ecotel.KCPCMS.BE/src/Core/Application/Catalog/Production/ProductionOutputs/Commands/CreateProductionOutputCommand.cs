@@ -186,7 +186,8 @@ public class CreateProductionOutputCommandHandler(IUnitOfWork unitOfWork) : IReq
                         transportLineDto.ReceivingLocationId,
                         transportLineDto.DumpingLocationId,
                         transportLineDto.PlanProductionMeters,
-                        transportLineDto.FuelAdjustmentFactor));
+                        transportLineDto.FuelAdjustmentFactor,
+                        transportLineDto.VehicleType));
                 }
             }
 

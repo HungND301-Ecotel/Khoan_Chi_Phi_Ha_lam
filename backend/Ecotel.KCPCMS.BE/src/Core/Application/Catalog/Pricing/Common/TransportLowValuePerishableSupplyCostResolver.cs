@@ -10,7 +10,10 @@ public static class TransportLowValuePerishableSupplyCostResolver
 {
     public readonly record struct Key(Guid DepartmentId, Guid ProcessGroupId, DateOnly Month);
 
-    public static async Task<Dictionary<Key, double>> ResolveAsync(
+    // VTCG có 2 giá trị: VTMHRT (đ/tháng) + Điện năng (kWh, chỉ hiển thị — không quy ra tiền); VTL chỉ có VTMHRT
+    public readonly record struct Price(double Amount, double? ElectricityKwh);
+
+    public static async Task<Dictionary<Key, Price>> ResolveAsync(
         IReadOnlyCollection<TransportPlanLineEntity> lines,
         IWriteRepository<Domain.Entities.Pricing.LowValuePerishableSupplyUnitPrice> lowValuePerishableSupplyUnitPriceRepository,
         IWriteRepository<MechanizedTransportOverheadUnitPrice> mechanizedTransportOverheadUnitPriceRepository,
@@ -63,23 +66,24 @@ public static class TransportLowValuePerishableSupplyCostResolver
             .Select(x => x.ProductionProcess!.ProcessGroupId)
             .ToHashSet();
 
-        var result = new Dictionary<Key, double>();
+        var result = new Dictionary<Key, Price>();
         foreach (var key in includedKeys)
         {
             var isVtcg = vtcgProcessGroupIds.Contains(key.ProcessGroupId);
             if (isVtcg)
             {
-                var price = vtcgCatalog
+                var matched = vtcgCatalog
                     .Where(x => x.DepartmentId == key.DepartmentId
                         && x.ProcessGroupId == key.ProcessGroupId
                         && x.StartMonth <= key.Month
                         && x.EndMonth >= key.Month)
                     .OrderByDescending(x => x.StartMonth)
                     .ThenByDescending(x => x.EndMonth)
-                    .Select(x => (double)x.LowValuePerishableSupplyUnitPrice)
                     .FirstOrDefault();
 
-                result[key] = price;
+                result[key] = new Price(
+                    (double?)matched?.LowValuePerishableSupplyUnitPrice ?? 0,
+                    (double?)matched?.ElectricityUnitPrice);
             }
             else
             {
@@ -93,22 +97,28 @@ public static class TransportLowValuePerishableSupplyCostResolver
                     .Select(x => x.TotalPrice)
                     .FirstOrDefault();
 
-                result[key] = price;
+                result[key] = new Price(price, null);
             }
         }
 
         return result;
     }
 
-    public static double Resolve(TransportPlanLineEntity line, Dictionary<Key, double> lookup)
+    public static double Resolve(TransportPlanLineEntity line, Dictionary<Key, Price> lookup) =>
+        TryResolve(line, lookup)?.Amount ?? 0;
+
+    public static double? ResolveElectricityKwh(TransportPlanLineEntity line, Dictionary<Key, Price> lookup) =>
+        TryResolve(line, lookup)?.ElectricityKwh;
+
+    private static Price? TryResolve(TransportPlanLineEntity line, Dictionary<Key, Price> lookup)
     {
         if (line.PlannedTransportCost?.LowValuePerishableSupplyInclusion != LowValuePerishableSupplyInclusion.Include
             || line.ProductionProcess?.ProcessGroupId == null)
         {
-            return 0;
+            return null;
         }
 
         var key = new Key(line.DepartmentId, line.ProductionProcess.ProcessGroupId, line.StartMonth);
-        return lookup.TryGetValue(key, out var price) ? price : 0;
+        return lookup.TryGetValue(key, out var price) ? price : null;
     }
 }
