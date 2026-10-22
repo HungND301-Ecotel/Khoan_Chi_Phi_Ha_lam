@@ -18,12 +18,47 @@ export const MOTORIZED_CATEGORY_ORDER: MotorizedCategory[] = [
 	'vacuum_truck',
 ];
 
-const VEHICLE_TYPE_TO_CATEGORY: Record<number, MotorizedCategory> = {
+// MechanizedTransportUnitPriceType (BE) ↔ loại xe (khối nhập)
+export const VEHICLE_TYPE_TO_CATEGORY: Record<number, MotorizedCategory> = {
 	1: 'scania',
 	2: 'vacuum_truck',
 	3: 'service_crane',
 	4: 'excavator_dozer',
 };
+
+export const CATEGORY_TO_VEHICLE_TYPE: Record<MotorizedCategory, number> = {
+	scania: 1,
+	vacuum_truck: 2,
+	service_crane: 3,
+	excavator_dozer: 4,
+};
+
+// Khoá lưu loại xe người dùng chọn cho Công đoạn có đơn giá ở nhiều loại xe của 1 Nhóm vật tư
+export const processCategoryKey = (
+	assignmentCodeId: string,
+	processId: string,
+) => `${assignmentCodeId}::${processId}`;
+
+// Dựng lại lựa chọn loại xe từ các dòng đã lưu (VehicleType) khi mở form sửa
+export function buildProcessCategories(
+	lines: {
+		equipmentId?: string | null;
+		productionProcessId?: string | null;
+		vehicleType?: number | null;
+	}[],
+): Record<string, string> {
+	const result: Record<string, string> = {};
+	lines.forEach((line) => {
+		const category = line.vehicleType
+			? VEHICLE_TYPE_TO_CATEGORY[line.vehicleType]
+			: undefined;
+		if (category && line.equipmentId && line.productionProcessId) {
+			result[processCategoryKey(line.equipmentId, line.productionProcessId)] =
+				category;
+		}
+	});
+	return result;
+}
 
 type PricingGroup = {
 	assignmentCodeId: string;
@@ -93,7 +128,119 @@ export function getAssetCategories(
 		own.forEach((id) => claimed.add(id));
 		return own.length > 0;
 	});
-	return categories.length > 0 ? categories : ['scania'];
+	if (categories.length > 0) return categories;
+	// Chưa có đơn giá: dùng loại xe người dùng chọn (gắn vào index qua withCategoryOverrides)
+	const declared = MOTORIZED_CATEGORY_ORDER.find(
+		(category) => byCategory[category],
+	);
+	return [declared || 'scania'];
+}
+
+// Nhóm vật tư đã có đơn giá VTCG ở ít nhất 1 Công đoạn
+export function hasAssetPricing(
+	index: MotorizedPricingIndex,
+	assignmentCodeId: string,
+): boolean {
+	return Object.values(index[assignmentCodeId] || {}).some(
+		(procs) => (procs || []).length > 0,
+	);
+}
+
+// Đoán loại xe theo mã / tên Nhóm vật tư khi chưa có đơn giá — người dùng sửa lại được trên form
+export function guessAssetCategory(asset?: {
+	code?: string;
+	name?: string;
+	label?: string;
+}): MotorizedCategory {
+	const text =
+		`${asset?.code || ''} ${asset?.name || asset?.label || ''}`.toLowerCase();
+	if (
+		['hút bùn', 'chất thải', 'xe bồn', 'bồn hút'].some((k) => text.includes(k))
+	) {
+		return 'vacuum_truck';
+	}
+	if (
+		['xúc', 'gạt', 'ủi', 'dx210', 'jcb', 'd7r', 'komatsu'].some((k) =>
+			text.includes(k),
+		)
+	) {
+		return 'excavator_dozer';
+	}
+	if (
+		['cẩu', 'nâng', 'forklift', 'dịch vụ', 'tưới', 'cứu hỏa', 'phục vụ'].some(
+			(k) => text.includes(k),
+		)
+	) {
+		return 'service_crane';
+	}
+	return 'scania';
+}
+
+// Kế hoạch / vận hành được lập trước khi có đơn giá: Nhóm vật tư chưa có đơn giá được gắn loại xe
+// người dùng chọn (mặc định đoán theo tên) để vẫn hiện khối nhập, đơn giá sẽ tự khớp khi được tạo.
+// Công đoạn có đơn giá ở nhiều loại xe: chỉ giữ ở loại xe người dùng chọn (processCategories).
+export function withCategoryOverrides(
+	index: MotorizedPricingIndex,
+	assignmentCodeIds: string[],
+	overrides: Record<string, string>,
+	assets: {
+		id?: string;
+		value?: string;
+		code?: string;
+		name?: string;
+		label?: string;
+	}[],
+	processCategories: Record<string, string> = {},
+): MotorizedPricingIndex {
+	const next: MotorizedPricingIndex = { ...index };
+	assignmentCodeIds.forEach((id) => {
+		if (!hasAssetPricing(index, id)) {
+			const category = (MOTORIZED_CATEGORY_ORDER as string[]).includes(
+				overrides[id],
+			)
+				? (overrides[id] as MotorizedCategory)
+				: guessAssetCategory(assets.find((a) => a.id === id || a.value === id));
+			next[id] = { [category]: [] };
+			return;
+		}
+		const byCategory = { ...index[id] };
+		let changed = false;
+		Object.entries(processCategories).forEach(([key, chosen]) => {
+			const prefix = `${id}::`;
+			if (!key.startsWith(prefix)) return;
+			const procId = key.slice(prefix.length);
+			if (!(byCategory[chosen as MotorizedCategory] || []).includes(procId)) {
+				return;
+			}
+			MOTORIZED_CATEGORY_ORDER.forEach((category) => {
+				if (category !== chosen && byCategory[category]?.includes(procId)) {
+					byCategory[category] = byCategory[category]!.filter(
+						(other) => other !== procId,
+					);
+					changed = true;
+				}
+			});
+		});
+		if (changed) next[id] = byCategory;
+	});
+	return next;
+}
+
+// Loại xe (khối nhập) mà Công đoạn đã chọn của 1 Nhóm vật tư thuộc về — chọn Nhóm vật tư + Công đoạn
+// là biết dòng đó khớp đơn giá loại xe nào, chỉ hiện khối có Công đoạn được chọn.
+export function getProcessCategories(
+	index: MotorizedPricingIndex,
+	assignmentCodeId: string,
+	selectedProcessIds: string[],
+): MotorizedCategory[] {
+	return getAssetCategories(index, assignmentCodeId).filter((category) =>
+		getAllowedProcessIds(
+			index,
+			category,
+			assignmentCodeId,
+			selectedProcessIds,
+		).some((procId) => selectedProcessIds.includes(procId)),
+	);
 }
 
 // Công đoạn được hiện trong khối của 1 loại xe. Công đoạn đã chọn mà không có đơn giá ở loại xe

@@ -39,6 +39,10 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
     // Hệ số do người dùng nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu (mặc định 1)
     public double FuelAdjustmentFactor { get; protected set; } = 1;
 
+    // Loại xe (khối nhập) của dòng VTCG — cùng Nhóm vật tư + Công đoạn có đơn giá ở nhiều loại xe thì
+    // người dùng chọn loại xe, dò đơn giá đúng loại đó. Null: dữ liệu cũ / VTL
+    public MechanizedTransportUnitPriceType? VehicleType { get; protected set; }
+
     // Navigation properties
     public virtual Department? Department { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
@@ -69,13 +73,15 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
         Guid? dumpingLocationId = null,
-        double? fuelAdjustmentFactor = null)
+        double? fuelAdjustmentFactor = null,
+        MechanizedTransportUnitPriceType? vehicleType = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
         return new TransportPlanLine
         {
             FuelAdjustmentFactor = NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor),
+            VehicleType = vehicleType,
             DepartmentId = departmentId,
             ProductionProcessId = productionProcessId,
             ProductionMeters = productionMeters,
@@ -110,11 +116,13 @@ public class TransportPlanLine : AuditableEntity<Guid>, IAggregateRoot
         Guid? cargoTypeId = null,
         Guid? receivingLocationId = null,
         Guid? dumpingLocationId = null,
-        double? fuelAdjustmentFactor = null)
+        double? fuelAdjustmentFactor = null,
+        MechanizedTransportUnitPriceType? vehicleType = null)
     {
         Validate(departmentId, productionProcessId, productionMeters, startMonth, endMonth);
 
         FuelAdjustmentFactor = NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor);
+        VehicleType = vehicleType;
         DepartmentId = departmentId;
         ProductionProcessId = productionProcessId;
         ProductionMeters = productionMeters;

@@ -3836,6 +3836,9 @@ namespace Migrators.PostgreSQL.Migrations
                     b.Property<Guid?>("UnitOfMeasureId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("VehicleType")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CargoTypeId");
@@ -5021,6 +5024,9 @@ namespace Migrators.PostgreSQL.Migrations
 
                     b.Property<Guid?>("TransportRouteId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("VehicleType")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

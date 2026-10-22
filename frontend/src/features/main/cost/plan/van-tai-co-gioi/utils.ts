@@ -113,6 +113,7 @@ export function buildMotorizedTransportMonthsPayload(
 				productionMeters: item.productionMeters,
 				unitOfMeasureId: item.unitOfMeasureId || undefined,
 				fuelAdjustmentFactor: item.fuelAdjustmentFactor ?? 1.0,
+				vehicleType: item.vehicleType ?? undefined,
 			}));
 
 		return {

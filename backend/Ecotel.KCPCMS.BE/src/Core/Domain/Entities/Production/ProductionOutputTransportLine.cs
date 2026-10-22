@@ -33,6 +33,10 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
     // Hệ số do người dùng nhập tay cho dòng VTCG — nhân vào đơn giá nhiên liệu khi quyết toán (mặc định 1)
     public double FuelAdjustmentFactor { get; protected set; } = 1;
 
+    // Loại xe (khối nhập) của dòng VTCG — cùng Nhóm vật tư + Công đoạn có đơn giá ở nhiều loại xe thì
+    // người dùng chọn loại xe, dò đơn giá đúng loại đó. Null: dữ liệu cũ / VTL
+    public Domain.Common.Enums.MechanizedTransportUnitPriceType? VehicleType { get; protected set; }
+
     // Navigation properties
     public virtual ProductionOutputProcessGroup? ProductionOutputProcessGroup { get; protected set; }
     public virtual ProductionProcess? ProductionProcess { get; protected set; }
@@ -56,11 +60,13 @@ public class ProductionOutputTransportLine : AuditableEntity<Guid>
         Guid? receivingLocationId = null,
         Guid? dumpingLocationId = null,
         double planProductionMeters = 0,
-        double? fuelAdjustmentFactor = null)
+        double? fuelAdjustmentFactor = null,
+        Domain.Common.Enums.MechanizedTransportUnitPriceType? vehicleType = null)
     {
         return new ProductionOutputTransportLine
         {
             FuelAdjustmentFactor = Domain.Entities.Pricing.TransportPlanLine.NormalizeFuelAdjustmentFactor(fuelAdjustmentFactor),
+            VehicleType = vehicleType,
             ProductionProcessId = productionProcessId,
             EquipmentId = equipmentId,
             EquipmentQuality = equipmentQuality,

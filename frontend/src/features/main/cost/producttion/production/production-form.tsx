@@ -43,6 +43,7 @@ import {
 	VanTaiLoGroupFields,
 	type ProductionProcessOption,
 } from './van-tai-lo/form-section';
+import { buildProcessCategories } from '@/features/main/cost/plan/van-tai-co-gioi/pricing-index';
 import { VanTaiCoGioiGroupFields } from './van-tai-co-gioi/form-section';
 
 type ProductionOutputDetailProduct = {
@@ -67,6 +68,7 @@ type ProductionOutputDetailTransportLine = {
 	productionMeters: number;
 	planProductionMeters?: number;
 	fuelAdjustmentFactor?: number;
+	vehicleType?: number | null;
 };
 
 type ProductionOutputDetailProcessGroup = {
@@ -337,6 +339,7 @@ function buildProcessGroupPayload(
 					dumpingLocationId: item.dumpingLocationId || undefined,
 					productionMeters: item.productionMeters,
 					fuelAdjustmentFactor: item.fuelAdjustmentFactor ?? 1,
+					vehicleType: item.vehicleType ?? undefined,
 				})),
 		],
 	}));
@@ -547,6 +550,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 										dumpingLocationName: line.dumpingLocationName || undefined,
 										productionMeters: line.productionMeters,
 										fuelAdjustmentFactor: line.fuelAdjustmentFactor ?? 1,
+										vehicleType: line.vehicleType ?? undefined,
 									};
 								});
 
@@ -710,6 +714,7 @@ export function ProductionForm({ data, row, onSuccess }: ProductionFormProps) {
 								vacuumTruckAssignmentCodeIds: [],
 								equipmentQualities,
 								equipmentProcesses,
+								processCategories: buildProcessCategories(rawLines),
 								equipmentDistances,
 								processCargoTypes,
 								processPickupLocations,

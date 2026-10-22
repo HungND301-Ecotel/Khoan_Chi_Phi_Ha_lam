@@ -120,7 +120,8 @@ public class GetProductionOutputByIdQueryHandler(IUnitOfWork unitOfWork) : IRequ
                             DumpingLocationName = tl.DumpingLocation?.Name,
                             ProductionMeters = tl.ProductionMeters,
                             PlanProductionMeters = tl.PlanProductionMeters,
-                            FuelAdjustmentFactor = tl.FuelAdjustmentFactor
+                            FuelAdjustmentFactor = tl.FuelAdjustmentFactor,
+                            VehicleType = tl.VehicleType
                         }).ToList()
                 }).ToList()
         };

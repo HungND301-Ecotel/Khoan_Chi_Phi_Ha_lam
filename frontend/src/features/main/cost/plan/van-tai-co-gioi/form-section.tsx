@@ -5,17 +5,19 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import type { DepartmentPlanFormSchema } from '@/features/main/cost/plan/schema';
 import { XCircleIcon } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import { ExcavatorMonthSection } from './components/excavator-month-section';
 import { ScaniaMonthSection } from './components/scania-month-section';
 import { ServiceCraneMonthSection } from './components/service-crane-month-section';
 import { VacuumTruckMonthSection } from './components/vacuum-truck-month-section';
 import {
-	getAssetCategories,
+	getProcessCategories,
 	MOTORIZED_CATEGORY_ORDER,
 	useMotorizedPricingIndex,
+	withCategoryOverrides,
 } from './pricing-index';
+import { AssetProcessSelect } from './components/asset-process-select';
 import type { MotorizedCategory } from './types';
 
 const CATEGORY_ASSIGNMENT_FIELDS: Record<MotorizedCategory, string> = {
@@ -60,19 +62,54 @@ export function MotorizedMonthSection({
 
 	const pricingIndex = useMotorizedPricingIndex();
 	const assignmentCodeIds: string[] = watchedMonth?.assignmentCodeIds || [];
-	const selectedCategories: string[] = watchedMonth?.motorizedCategories || [];
+	const categoryOverrides: Record<string, string> =
+		watchedMonth?.assetCategoryOverrides || {};
+	const equipmentProcesses: Record<string, string[]> =
+		watchedMonth?.equipmentProcesses || {};
+	const processCategories: Record<string, string> =
+		watchedMonth?.processCategories || {};
 
-	// Chọn thẳng Nhóm vật tư — loại xe (khối nhập) suy ra từ Đơn giá VTCG của nhóm vật tư đó
+	const assignmentCodeKey = JSON.stringify(assignmentCodeIds);
+	const categoryOverridesKey = JSON.stringify(categoryOverrides);
+	const equipmentProcessesKey = JSON.stringify(equipmentProcesses);
+	const processCategoriesKey = JSON.stringify(processCategories);
+
+	// Nhóm vật tư chưa có đơn giá vẫn chọn được: gắn loại xe người dùng chọn (mặc định đoán theo tên);
+	// Công đoạn có đơn giá ở nhiều loại xe chỉ thuộc loại xe người dùng chọn
+	const effectiveIndex = useMemo(
+		() =>
+			pricingIndex
+				? withCategoryOverrides(
+						pricingIndex,
+						assignmentCodeIds,
+						categoryOverrides,
+						assignmentCodes,
+						processCategories,
+					)
+				: null,
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[
+			pricingIndex,
+			assignmentCodeKey,
+			categoryOverridesKey,
+			processCategoriesKey,
+			assignmentCodes,
+		],
+	);
+
+	// Chọn Nhóm vật tư + Công đoạn — khối loại xe chỉ hiện khi có Công đoạn (có đơn giá ở loại xe đó) được chọn
 	useEffect(() => {
-		if (!pricingIndex) return;
+		if (!effectiveIndex) return;
 
 		const idsByCategory = Object.fromEntries(
 			MOTORIZED_CATEGORY_ORDER.map((category) => [category, [] as string[]]),
 		) as Record<MotorizedCategory, string[]>;
 		assignmentCodeIds.forEach((acId) => {
-			getAssetCategories(pricingIndex, acId).forEach((category) =>
-				idsByCategory[category].push(acId),
-			);
+			getProcessCategories(
+				effectiveIndex,
+				acId,
+				equipmentProcesses[acId] || [],
+			).forEach((category) => idsByCategory[category].push(acId));
 		});
 
 		const current = form.getValues(monthPath) as any;
@@ -94,17 +131,7 @@ export function MotorizedMonthSection({
 			);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [pricingIndex, JSON.stringify(assignmentCodeIds), monthPath]);
-
-	// Chỉ cho chọn Nhóm vật tư đã có đơn giá VTCG (giữ lại nhóm đã chọn trước đó để không mất dữ liệu)
-	const pricedAssignmentCodes =
-		pricingIndex && Object.keys(pricingIndex).length > 0
-			? assignmentCodes.filter(
-					(a) =>
-						!!pricingIndex[a.id || a.value] ||
-						assignmentCodeIds.includes(a.id || a.value),
-				)
-			: assignmentCodes;
+	}, [effectiveIndex, assignmentCodeKey, equipmentProcessesKey, monthPath]);
 
 	const currentEquipments = assignmentCodes;
 	const currentProcesses = productionProcesses;
@@ -126,6 +153,74 @@ export function MotorizedMonthSection({
 			(l.name || '').toLowerCase().includes('kho') ||
 			(l.name || '').toLowerCase().includes('thải'),
 	);
+
+	// Nhập chi tiết ngay trong thẻ Nhóm vật tư, theo loại xe của các Công đoạn đã chọn
+	const renderDetails = (acId: string) => {
+		if (!effectiveIndex) return null;
+		const categories = getProcessCategories(
+			effectiveIndex,
+			acId,
+			equipmentProcesses[acId] || [],
+		);
+		return (
+			<>
+				{categories.includes('scania') && (
+					<ScaniaMonthSection
+						form={form}
+						monthIndex={monthIndex}
+						pricingIndex={effectiveIndex}
+						assignmentCodes={currentEquipments}
+						processes={currentProcesses}
+						cargoTypes={currentCargoTypes}
+						pickupLocations={
+							pickupLocations.length > 0 ? pickupLocations : currentLocations
+						}
+						dropoffLocations={
+							dropoffLocations.length > 0 ? dropoffLocations : currentLocations
+						}
+						distances={currentDistances}
+						locations={currentLocations}
+						assignmentCodeId={acId}
+					/>
+				)}
+
+				{categories.includes('excavator_dozer') && (
+					<ExcavatorMonthSection
+						form={form}
+						monthIndex={monthIndex}
+						pricingIndex={effectiveIndex}
+						assignmentCodes={currentEquipments}
+						processes={currentProcesses}
+						assignmentCodeId={acId}
+					/>
+				)}
+
+				{categories.includes('service_crane') && (
+					<ServiceCraneMonthSection
+						form={form}
+						monthIndex={monthIndex}
+						pricingIndex={effectiveIndex}
+						assignmentCodes={currentEquipments}
+						processes={currentProcesses}
+						distances={currentDistances}
+						assignmentCodeId={acId}
+					/>
+				)}
+
+				{categories.includes('vacuum_truck') && (
+					<VacuumTruckMonthSection
+						form={form}
+						monthIndex={monthIndex}
+						pricingIndex={effectiveIndex}
+						assignmentCodes={currentEquipments}
+						processes={currentProcesses}
+						distances={currentDistances}
+						assignmentCodeId={acId}
+					/>
+				)}
+			</>
+		);
+	};
 
 	return (
 		<div className='flex flex-col gap-4 rounded-sm border border-[#999999] p-4'>
@@ -164,13 +259,13 @@ export function MotorizedMonthSection({
 				label='Chi phí vật tư mau hỏng rẻ tiền (đồng/tháng)'
 			/>
 
-			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN — khối loại xe tự hiện theo đơn giá */}
+			{/* CẤP 1: CHỌN NHÓM VẬT TƯ, TÀI SẢN */}
 			<FormMultiSelect
 				control={form.control as any}
 				name={`${monthPath}.assignmentCodeIds` as any}
 				label='Nhóm vật tư, tài sản'
 				placeholder='Chọn nhóm vật tư, tài sản'
-				options={pricedAssignmentCodes.map((a) => ({
+				options={assignmentCodes.map((a) => ({
 					value: a.id || a.value,
 					label: a.code
 						? `${a.code} - ${a.name || a.label}`
@@ -178,55 +273,17 @@ export function MotorizedMonthSection({
 				}))}
 			/>
 
-			{/* RENDER DÃY FORM THEO TỪNG NHÓM ĐƯỢC CHỌN */}
-			{pricingIndex && selectedCategories.includes('scania') && (
-				<ScaniaMonthSection
+			{/* CẤP 2: CÔNG ĐOẠN THEO TỪNG NHÓM VẬT TƯ — biết dòng thuộc đơn giá loại xe nào */}
+			{pricingIndex && effectiveIndex && (
+				<AssetProcessSelect
 					form={form}
-					monthIndex={monthIndex}
+					basePath={monthPath}
+					assignmentCodeIds={assignmentCodeIds}
 					pricingIndex={pricingIndex}
-					assignmentCodes={currentEquipments}
-					processes={currentProcesses}
-					cargoTypes={currentCargoTypes}
-					pickupLocations={
-						pickupLocations.length > 0 ? pickupLocations : currentLocations
-					}
-					dropoffLocations={
-						dropoffLocations.length > 0 ? dropoffLocations : currentLocations
-					}
-					distances={currentDistances}
-					locations={currentLocations}
-				/>
-			)}
-
-			{pricingIndex && selectedCategories.includes('excavator_dozer') && (
-				<ExcavatorMonthSection
-					form={form}
-					monthIndex={monthIndex}
-					pricingIndex={pricingIndex}
-					assignmentCodes={currentEquipments}
-					processes={currentProcesses}
-				/>
-			)}
-
-			{pricingIndex && selectedCategories.includes('service_crane') && (
-				<ServiceCraneMonthSection
-					form={form}
-					monthIndex={monthIndex}
-					pricingIndex={pricingIndex}
-					assignmentCodes={currentEquipments}
-					processes={currentProcesses}
-					distances={currentDistances}
-				/>
-			)}
-
-			{pricingIndex && selectedCategories.includes('vacuum_truck') && (
-				<VacuumTruckMonthSection
-					form={form}
-					monthIndex={monthIndex}
-					pricingIndex={pricingIndex}
-					assignmentCodes={currentEquipments}
-					processes={currentProcesses}
-					distances={currentDistances}
+					effectiveIndex={effectiveIndex}
+					assignmentCodes={assignmentCodes}
+					processes={productionProcesses}
+					renderDetails={renderDetails}
 				/>
 			)}
 		</div>

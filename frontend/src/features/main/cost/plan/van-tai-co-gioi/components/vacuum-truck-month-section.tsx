@@ -9,7 +9,6 @@ import {
 	getAllowedProcessIds,
 	type MotorizedPricingIndex,
 } from '../pricing-index';
-import { CategoryProcessSelect } from './category-process-select';
 import { getUnitForMotorizedProcess } from '../utils';
 
 type VacuumTruckMonthSectionProps = {
@@ -19,6 +18,8 @@ type VacuumTruckMonthSectionProps = {
 	assignmentCodes: any[];
 	processes: any[];
 	distances: any[];
+	// Chỉ nhập cho 1 Nhóm vật tư, gọn ngay trong thẻ Nhóm vật tư (không khung loại xe / header nhóm)
+	assignmentCodeId?: string;
 };
 
 export function VacuumTruckMonthSection({
@@ -28,6 +29,7 @@ export function VacuumTruckMonthSection({
 	assignmentCodes,
 	processes,
 	distances,
+	assignmentCodeId,
 }: VacuumTruckMonthSectionProps) {
 	const { units: uomList } = useUnitsOfMeasure();
 	const unitOptions = uomList || [];
@@ -40,8 +42,11 @@ export function VacuumTruckMonthSection({
 		name: monthPath,
 	}) as any;
 
-	const assignmentCodeIds: string[] =
+	const categoryAssignmentCodeIds: string[] =
 		watchedMonth?.vacuumTruckAssignmentCodeIds || [];
+	const assignmentCodeIds = assignmentCodeId
+		? categoryAssignmentCodeIds.filter((id) => id === assignmentCodeId)
+		: categoryAssignmentCodeIds;
 	const equipmentProcesses: Record<string, string[]> =
 		watchedMonth?.equipmentProcesses || {};
 	// equipmentProcesses dùng chung cho mọi khối loại xe — khối này chỉ lấy Công đoạn có đơn giá ở
@@ -143,6 +148,7 @@ export function VacuumTruckMonthSection({
 							haulDistanceValue: dist?.value || dist?.name || dist?.label,
 							productionMeters: existing?.productionMeters ?? Number.NaN,
 							fuelAdjustmentFactor: existing?.fuelAdjustmentFactor ?? 1.0,
+							vehicleType: 2,
 							unitName: defaultUnitName,
 							unitOfMeasureId:
 								existing?.unitOfMeasureId || matchedUnit?.id || undefined,
@@ -164,10 +170,18 @@ export function VacuumTruckMonthSection({
 	]);
 
 	return (
-		<div className='space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'>
-			<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
-				<span>Xe hút chất thải</span>
-			</div>
+		<div
+			className={
+				assignmentCodeId
+					? 'space-y-4'
+					: 'space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-2xs'
+			}
+		>
+			{!assignmentCodeId && (
+				<div className='border-b border-gray-100 pb-2 text-sm font-semibold text-black'>
+					<span>Xe hút chất thải</span>
+				</div>
+			)}
 
 			{/* LẶP QUA TỪNG NHÓM XE */}
 			{assignmentCodeIds.map((eqId) => {
@@ -179,26 +193,22 @@ export function VacuumTruckMonthSection({
 				return (
 					<div
 						key={eqId}
-						className='space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						className={
+							assignmentCodeId
+								? 'space-y-4'
+								: 'space-y-4 rounded-lg border border-gray-300 bg-white p-4 shadow-2xs'
+						}
 					>
 						{/* HEADER XE */}
-						<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
-							<span className='text-sm font-bold text-gray-900'>
-								{eq?.code
-									? `${eq.code} - ${eq.name || eq.label}`
-									: eq?.name || eq?.label || eqId}
-							</span>
-						</div>
-
-						{/* CẤP 2: CHỌN CÔNG ĐOẠN CHO XE NÀY */}
-						<CategoryProcessSelect
-							form={form}
-							basePath={monthPath}
-							assignmentCodeId={eqId}
-							category='vacuum_truck'
-							pricingIndex={pricingIndex}
-							processes={processes}
-						/>
+						{!assignmentCodeId && (
+							<div className='flex items-center justify-between border-b border-gray-200 pb-2'>
+								<span className='text-sm font-bold text-gray-900'>
+									{eq?.code
+										? `${eq.code} - ${eq.name || eq.label}`
+										: eq?.name || eq?.label || eqId}
+								</span>
+							</div>
+						)}
 
 						{/* LẶP QUA TỪNG CÔNG ĐOẠN */}
 						{selectedProcs.map((procId) => {

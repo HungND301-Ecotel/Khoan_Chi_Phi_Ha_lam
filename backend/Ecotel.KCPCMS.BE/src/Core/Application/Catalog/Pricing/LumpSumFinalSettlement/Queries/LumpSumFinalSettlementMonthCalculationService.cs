@@ -44,7 +44,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
         Guid? HaulDistanceId,
         Guid? CargoTypeId,
         Guid? ReceivingLocationId,
-        Guid? DumpingLocationId);
+        Guid? DumpingLocationId,
+        MechanizedTransportUnitPriceType? VehicleType);
 
     public async Task<LumpSumFinalSettlementMonthResponseDto> CalculateAsync(
         int month,
@@ -84,7 +85,8 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 x.Line.HaulDistanceId,
                 x.Line.CargoTypeId,
                 x.Line.ReceivingLocationId,
-                x.Line.DumpingLocationId))
+                x.Line.DumpingLocationId,
+                x.Line.VehicleType))
             .ToDictionary(
                 g => g.Key,
                 g => new TransportActual(
@@ -716,10 +718,14 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
                 line.HaulDistanceId,
                 line.CargoTypeId,
                 line.ReceivingLocationId,
-                line.DumpingLocationId);
+                line.DumpingLocationId,
+                line.VehicleType);
+            // Thực hiện nhập trước khi có loại xe (VehicleType = null) vẫn ghép được với kế hoạch đã có loại xe
             var actual = actualByTransportLine.TryGetValue(key, out var actualLine)
                 ? actualLine
-                : new TransportActual(0, 0);
+                : line.VehicleType != null && actualByTransportLine.TryGetValue(key with { VehicleType = null }, out var legacyLine)
+                    ? legacyLine
+                    : new TransportActual(0, 0);
             var actualQuantity = actual.Meters;
 
             double ComponentTotal(TransportCostComponentDto component) => planItem.IsLowVolumeCase
@@ -839,7 +845,7 @@ internal sealed class LumpSumFinalSettlementMonthCalculationService(IUnitOfWork 
             var first = group.First();
             var key = new TransportLowValuePerishableSupplyCostResolver.Key(
                 group.Key.DepartmentId, group.Key.ProcessGroupId, first.StartMonth);
-            var price = lowValueLookup.TryGetValue(key, out var resolvedPrice) ? resolvedPrice : 0;
+            var price = lowValueLookup.TryGetValue(key, out var resolvedPrice) ? resolvedPrice.Amount : 0;
             if (price <= 0)
             {
                 continue;

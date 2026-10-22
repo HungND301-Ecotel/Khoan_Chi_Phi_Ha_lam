@@ -223,7 +223,8 @@ public class UpdateProductionOutputCommandHandler(IUnitOfWork unitOfWork, IMedia
                         transportLineDto.ReceivingLocationId,
                         transportLineDto.DumpingLocationId,
                         transportLineDto.PlanProductionMeters,
-                        transportLineDto.FuelAdjustmentFactor));
+                        transportLineDto.FuelAdjustmentFactor,
+                        transportLineDto.VehicleType));
                 }
             }
 
