@@ -1,4 +1,5 @@
 import { FormControlProps } from '@/components/form/form-provider';
+import { usePasteGridCell } from '@/components/form/form-paste-grid';
 import { FieldError } from '@/components/ui/field';
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
@@ -44,12 +45,14 @@ export function FormNumber<T extends FieldValues>({
 	className,
 	autoComplete = 'off',
 	disabled,
+	onPaste,
 	...props
 }: FormNumberProps<T>) {
 	const {
 		field: { onChange, value, ...field },
 		fieldState,
 	} = useController({ control, name });
+	const pasteCell = usePasteGridCell(onChange, onPaste);
 	const numberTitle =
 		(props.readOnly || disabled) &&
 		value !== undefined &&
@@ -84,6 +87,7 @@ export function FormNumber<T extends FieldValues>({
 					inputMode='decimal'
 					disabled={disabled}
 					{...props}
+					{...pasteCell}
 				/>
 			</InputGroup>
 			{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -97,8 +101,10 @@ export function FormNumberInput({
 	className,
 	autoComplete = 'off',
 	disabled,
+	onPaste,
 	...props
 }: FormNumberInputProps) {
+	const pasteCell = usePasteGridCell(onValueChange, onPaste);
 	const numberTitle =
 		(props.readOnly || disabled) && value !== undefined && value !== null
 			? formatNumber(value)
@@ -120,6 +126,7 @@ export function FormNumberInput({
 				inputMode='decimal'
 				disabled={disabled}
 				{...props}
+				{...pasteCell}
 			/>
 		</InputGroup>
 	);

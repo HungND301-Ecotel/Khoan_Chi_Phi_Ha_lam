@@ -1,3 +1,4 @@
+import { PasteGridContext } from '@/components/form/form-paste-grid';
 import { DynamicBreadCrumbs } from '@/features/main/layout/breadcrumbs';
 import { DynamicTitle } from '@/features/main/layout/title';
 import { Outlet } from 'react-router-dom';
@@ -9,7 +10,9 @@ export function MainPricingLayout() {
 				<DynamicBreadCrumbs />
 				<DynamicTitle />
 			</div>
-			<Outlet />
+			<PasteGridContext.Provider value={true}>
+				<Outlet />
+			</PasteGridContext.Provider>
 		</div>
 	);
 }
