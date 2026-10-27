@@ -159,10 +159,3 @@ public class PermissionItemDto
     public PermissionCode Code { get; set; }
     public string Name { get; set; } = string.Empty;
 }
-
-public record PermissionDefinition(
-    string ModuleCode,
-    string ModuleName,
-    string SubModuleCode,
-    string SubModuleName,
-    string FullCode);

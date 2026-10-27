@@ -13,7 +13,7 @@ import {
 	Table,
 	useReactTable,
 } from '@tanstack/react-table';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type UseDataTable<TData> = {
 	data: TData[];
@@ -36,7 +36,14 @@ export function useDataTable<TData>(
 	customGetRowId?: (row: TData, index: number) => string,
 	searchableColumnIds?: string[],
 ): UseDataTable<TData> {
-	const [data, setData] = useState<TData[]>([]);
+	const [rawData, setRawData] = useState<TData[]>([]);
+	// Áp transformData trên dữ liệu đã tải: đổi transformData không gọi lại API
+	const data = useMemo(
+		() => (transformData ? transformData(rawData) : rawData),
+		[rawData, transformData],
+	);
+	// Chỉ nhận phản hồi của lần gọi mới nhất, tránh phản hồi cũ về muộn ghi đè
+	const requestIdRef = useRef(0);
 	const [loading, setLoading] = useState(false);
 	const [refreshVersion, setRefreshVersion] = useState(0);
 	const [sorting, setSorting] = useState<SortingState>([]);
@@ -95,6 +102,7 @@ export function useDataTable<TData>(
 	};
 
 	const refresh = useCallback(async () => {
+		const requestId = ++requestIdRef.current;
 		try {
 			setLoading(true);
 			// Bảng truyền sẵn items (không có url): vẫn tăng version để các expand con tải lại
@@ -113,8 +121,9 @@ export function useDataTable<TData>(
 				...(globalFilter ? { search: globalFilter } : {}),
 			};
 			const response = await api.pagging<TData>(url, mergedQuery);
+			if (requestId !== requestIdRef.current) return;
 			const result = response.result.data || [];
-			setData(transformData ? transformData(result) : result);
+			setRawData(result);
 			setTotalCount(
 				isServerPaginated
 					? (response.result.totalCount ?? result.length)
@@ -122,13 +131,12 @@ export function useDataTable<TData>(
 			);
 			setRefreshVersion((prev) => prev + 1);
 		} finally {
-			setLoading(false);
+			if (requestId === requestIdRef.current) setLoading(false);
 			// bỏ setExpanded({}) để không tự đóng expand
 		}
 	}, [
 		url,
 		query,
-		transformData,
 		globalFilter,
 		isServerPaginated,
 		pagination.pageIndex,
