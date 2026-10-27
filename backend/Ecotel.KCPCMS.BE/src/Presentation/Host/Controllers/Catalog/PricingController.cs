@@ -64,6 +64,7 @@ using Host.Controllers.Base;
 using Infrastructure.Auth.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
+using Shared.Authorization;
 using Shared.Constants;
 
 namespace Host.Controllers.Catalog;
@@ -74,7 +75,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MaterialUnitPrice")]
     [OpenApiOperation("Get All MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.read","Đơn giá, định mức","Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Read)]
     public async Task<IActionResult> GetAllMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMaterialUnitPriceQuery(
@@ -88,7 +89,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MaterialUnitPrice/Grouped")]
     [OpenApiOperation("Get Grouped MaterialUnitPrice (Đào lò - 3-Tier)", "")]
-    [HasPermission("pricing.materialunitprice.read","Đơn giá, định mức","Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Read)]
     public async Task<IActionResult> GetGroupedMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetGroupedMaterialUnitPriceQuery(
@@ -102,7 +103,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MaterialUnitPrice/All")]
     [OpenApiOperation("Get All MaterialUnitPrice (All Types - Longwall, TunnelExcavation)", "")]
-    [HasPermission("pricing.materialunitprice.read", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Read)]
 
     public async Task<IActionResult> GetAllMaterialUnitPricesUnified([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false, [FromQuery] MaterialUnitPriceType? materialType = null)
     {
@@ -112,7 +113,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get MaterialUnitPrice By Id", "")]
-    [HasPermission("pricing.materialunitprice.read", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Read)]
 
     public async Task<IActionResult> GetMaterialUnitPriceById([FromRoute] Guid id)
     {
@@ -122,7 +123,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("MaterialUnitPrice")]
     [OpenApiOperation("Update MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.update", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
     {
@@ -133,7 +134,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("MaterialUnitPrice")]
     [OpenApiOperation("Create New MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.create", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Create)]
 
     public async Task<IActionResult> CreateMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
     {
@@ -144,7 +145,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("MaterialUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.delete", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteMaterialUnitPrice([FromRoute] Guid deleteId)
     {
@@ -154,7 +155,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("MaterialUnitPriceList")]
     [OpenApiOperation("Delete MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.delete", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Delete)]
 
 
     public async Task<IActionResult> DeleteMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
@@ -165,7 +166,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MaterialUnitPrice/export")]
     [OpenApiOperation("Export MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.export", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Export)]
 
 
     public async Task<IActionResult> ExportMaterialUnitPrice()
@@ -177,7 +178,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("MaterialUnitPrice/import")]
     [OpenApiOperation("Import MaterialUnitPrice", "")]
-    [HasPermission("pricing.materialunitprice.import", "Đơn giá, định mức", "Đơn giá định mức vật liệu (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaterialUnitPrice.Import)]
 
 
     public async Task<IActionResult> ImportMaterialUnitPrice([FromForm] ImportDto importModel)
@@ -191,7 +192,7 @@ public class PricingController : BaseAuthController
     #region TrimmingMaterialUnitPrice (xén lò)
     [HttpGet("TrimmingMaterialUnitPrice")]
     [OpenApiOperation("Get All Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Read)]
     public async Task<IActionResult> GetAllTrimmingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMaterialUnitPriceQuery(
@@ -205,7 +206,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaterialUnitPrice/Grouped")]
     [OpenApiOperation("Get Grouped Trimming MaterialUnitPrice (Xén lò - 3-Tier)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Read)]
     public async Task<IActionResult> GetGroupedTrimmingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetGroupedMaterialUnitPriceQuery(
@@ -219,7 +220,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Trimming MaterialUnitPrice By Id (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Read)]
     public async Task<IActionResult> GetTrimmingMaterialUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMaterialUnitPriceByIdQuery(id));
@@ -228,7 +229,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TrimmingMaterialUnitPrice")]
     [OpenApiOperation("Update Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.update", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Update)]
 
     public async Task<IActionResult> UpdateTrimmingMaterialUnitPrice([FromBody] UpdateMaterialUnitPriceDto updateModel)
     {
@@ -239,7 +240,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingMaterialUnitPrice")]
     [OpenApiOperation("Create New Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.create", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Create)]
 
     public async Task<IActionResult> CreateTrimmingMaterialUnitPrice([FromBody] CreateMaterialUnitPriceDto createModel)
     {
@@ -250,7 +251,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TrimmingMaterialUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.delete", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Delete)]
 
     public async Task<IActionResult> DeleteTrimmingMaterialUnitPrice([FromRoute] Guid deleteId)
     {
@@ -260,7 +261,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TrimmingMaterialUnitPriceList")]
     [OpenApiOperation("Delete Trimming MaterialUnitPrice List (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.delete", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Delete)]
 
     public async Task<IActionResult> DeleteTrimmingMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
@@ -270,7 +271,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaterialUnitPrice/export")]
     [OpenApiOperation("Export Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.export", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Export)]
 
     public async Task<IActionResult> ExportTrimmingMaterialUnitPrice()
     {
@@ -281,7 +282,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingMaterialUnitPrice/import")]
     [OpenApiOperation("Import Trimming MaterialUnitPrice (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaterialunitpricing.import", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaterialUnitPricing.Import)]
 
     public async Task<IActionResult> ImportTrimmingMaterialUnitPrice([FromForm] ImportDto importModel)
     {
@@ -294,7 +295,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Get All Tunnel Support And Drilling MaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Read)]
 
     public async Task<IActionResult> GetAllTunnelSupportAndDrillingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
@@ -304,7 +305,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/Grouped")]
     [OpenApiOperation("Get Grouped Tunnel Support And Drilling MaterialUnitPrice (3-Tier)", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Read)]
     public async Task<IActionResult> GetGroupedTunnelSupportAndDrillingMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetGroupedTunnelSupportAndDrillingMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -313,7 +314,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Tunnel Support And Drilling MaterialUnitPrice By Id", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Read)]
 
     public async Task<IActionResult> GetTunnelSupportAndDrillingMaterialUnitPriceById([FromRoute] Guid id)
     {
@@ -323,7 +324,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Update Tunnel Support And Drilling MaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] UpdateTunnelSupportAndDrillingMaterialUnitPrice updateModel)
     {
@@ -333,7 +334,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice")]
     [OpenApiOperation("Create New Tunnel Support And Drilling MaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Create)]
 
     public async Task<IActionResult> CreateTunnelSupportAndDrillingMaterialUnitPrice([FromBody] CreateTunnelSupportAndDrillingMaterialUnitPriceDto createModel)
     {
@@ -343,7 +344,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelSupportAndDrillingMaterialUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Tunnel Support And Drilling MaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPrice([FromRoute] Guid deleteId)
     {
@@ -353,7 +354,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelSupportAndDrillingMaterialUnitPriceList")]
     [OpenApiOperation("Delete Multiple Tunnel Support And Drilling MaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteTunnelSupportAndDrillingMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
@@ -363,7 +364,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelSupportAndDrillingMaterialUnitPrice/export")]
     [OpenApiOperation("Export TunnelSupportAndDrillingMaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Export)]
 
     public async Task<IActionResult> ExportTunnelSupportAndDrillingMaterialUnitPrice()
     {
@@ -374,7 +375,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelSupportAndDrillingMaterialUnitPrice/import")]
     [OpenApiOperation("Import TunnelSupportAndDrillingMaterialUnitPrice", "")]
-    [HasPermission("pricing.tunnelsupportanddrillingmaterialunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức lò neo bê tông phun")]
+    [HasPermission(AppPermissions.Pricing.TunnelSupportAndDrillingMaterialUnitPrice.Import)]
     public async Task<IActionResult> ImportTunnelSupportAndDrillingMaterialUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTunnelSupportAndDrillingMaterialUnitPriceExcelCommand(importModel.FormFile));
@@ -386,7 +387,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaterialUnitPrice")]
     [OpenApiOperation("Get All Longwall MaterialUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Read)]
     public async Task<IActionResult> GetAllLongwallMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLongwallMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -395,7 +396,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaterialUnitPrice/Grouped")]
     [OpenApiOperation("Get Grouped Longwall MaterialUnitPrice (Lò chợ - 3-Tier)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Read)]
     public async Task<IActionResult> GetGroupedLongwallMaterialUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetGroupedLongwallMaterialUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -404,7 +405,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaterialUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Longwall MaterialUnitPrice By Id (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Read)]
 
     public async Task<IActionResult> GetLongwallMaterialUnitPriceById([FromRoute] Guid id)
     {
@@ -414,7 +415,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("LongwallMaterialUnitPrice")]
     [OpenApiOperation("Update Longwall MaterialUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateLongwallMaterialUnitPrice([FromBody] UpdateLongwallMaterialUnitPriceDto updateModel)
     {
@@ -424,7 +425,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallMaterialUnitPrice")]
     [OpenApiOperation("Create New Longwall MaterialUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Create)]
 
     public async Task<IActionResult> CreateLongwallMaterialUnitPrice([FromBody] CreateLongwallMaterialUnitPriceDto createModel)
     {
@@ -434,7 +435,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallMaterialUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Longwall MaterialUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteLongwallMaterialUnitPrice([FromRoute] Guid deleteId)
     {
@@ -444,7 +445,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallMaterialUnitPriceList")]
     [OpenApiOperation("Delete Multiple Longwall MaterialUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteLongwallMaterialUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
@@ -454,7 +455,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaterialUnitPrice/export")]
     [OpenApiOperation("Export LongwallMaterialUnitPrice", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Export)]
 
     public async Task<IActionResult> ExportLongwallMaterialUnitPrice()
     {
@@ -465,7 +466,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallMaterialUnitPrice/import")]
     [OpenApiOperation("Import LongwallMaterialUnitPrice", "")]
-    [HasPermission("pricing.longwallmaterialunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức vật liệu (lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaterialUnitPrice.Import)]
 
     public async Task<IActionResult> ImportLongwallMaterialUnitPrice([FromForm] ImportDto importModel)
     {
@@ -479,7 +480,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("SlideUnitPrice")]
     [OpenApiOperation("Get All SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Read)]
     public async Task<IActionResult> GetAllSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -488,7 +489,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("SlideUnitPrice/Grouped")]
     [OpenApiOperation("Get Grouped SlideUnitPrice (Máng trượt - 3-Tier)", "")]
-    [HasPermission("pricing.slideunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Read)]
     public async Task<IActionResult> GetGroupedSlideUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetGroupedSlideUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -497,7 +498,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("SlideUnitPrice/Details")]
     [OpenApiOperation("Get All SlideUnitPrice Detail list", "")]
-    [HasPermission("pricing.slideunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Read)]
 
     public async Task<IActionResult> GetAllSlideUnitPriceAssignmentCode([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
@@ -507,7 +508,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("SlideUnitPrice/{id:guid}")]
     [OpenApiOperation("Get SlideUnitPrice By Id", "")]
-    [HasPermission("pricing.slideunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Read)]
 
     public async Task<IActionResult> GetSlideUnitPriceById([FromRoute] Guid id)
     {
@@ -517,7 +518,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("SlideUnitPrice")]
     [OpenApiOperation("Update SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateSlideUnitPrice([FromBody] UopdateSlideUnitPriceDto updateModel)
     {
@@ -527,7 +528,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("SlideUnitPrice")]
     [OpenApiOperation("Create New SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Create)]
 
     public async Task<IActionResult> CreateSlideUnitPrice([FromBody] CreateSlideUnitPriceDto createModel)
     {
@@ -537,7 +538,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("SlideUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteSlideUnitPrice([FromRoute] Guid deleteId)
     {
@@ -547,7 +548,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("SlideUnitPrice")]
     [OpenApiOperation("Delete SlideUnitPrice List", "")]
-    [HasPermission("pricing.slideunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteSlideUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
@@ -557,7 +558,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("SlideUnitPrice/export")]
     [OpenApiOperation("Export SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Export)]
 
     public async Task<IActionResult> ExportSlideUnitPrice()
     {
@@ -568,7 +569,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("SlideUnitPrice/import")]
     [OpenApiOperation("Import SlideUnitPrice", "")]
-    [HasPermission("pricing.slideunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức máng trượt (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.SlideUnitPrice.Import)]
 
     public async Task<IActionResult> ImportSlideUnitPrice([FromForm] ImportDto importModel)
     {
@@ -592,7 +593,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelMaintainUnitPriceEquipment")]
     [OpenApiOperation("Get All Tunnel MaintainUnitPriceEquipment", "")]
-    [HasPermission("pricing.maintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Read)]
     public async Task<IActionResult> GetAllTunnelMaintainUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMaintainUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, MaintainUnitPriceType.TunnelExcavation));
@@ -601,7 +602,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelMaintainUnitPriceEquipment")]
     [OpenApiOperation("Create New Tunnel MaintainUnitPriceEquipment", "")]
-    [HasPermission("pricing.maintainunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Create)]
     public async Task<IActionResult> CreateTunnelMaintainUnitPriceEquipment([FromBody] IList<Application.Dto.Catalog.MaintainUnitPrice.CreateMaintainUnitPriceEquipmentDto> createModel)
     {
         foreach (var item in createModel)
@@ -614,7 +615,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelMaintainUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Tunnel MaintainUnitPriceEquipment By Equipment Id", "")]
-    [HasPermission("pricing.maintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Read)]
     public async Task<IActionResult> GetTunnelMaintainUnitPriceEquipmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMaintainUnitPriceEquipmentByIdQuery(id));
@@ -652,7 +653,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TunnelMaintainUnitPriceEquipment")]
     [OpenApiOperation("Update Tunnel MaintainUnitPriceEquipment", "")]
-    [HasPermission("pricing.maintainunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Update)]
     public async Task<IActionResult> UpdateTunnelMaintainUnitPriceEquipment([FromBody] UpdateMaintainUnitPriceDto updateModel)
     {
         updateModel.Type = MaintainUnitPriceType.TunnelExcavation;
@@ -662,7 +663,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelMaintainUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Tunnel MaintainUnitPriceEquipment", "")]
-    [HasPermission("pricing.maintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTunnelMaintainUnitPriceEquipment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentCommand(deleteId));
@@ -671,7 +672,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelMaintainUnitPriceEquipment")]
     [OpenApiOperation("Delete Tunnel MaintainUnitPriceEquipment List", "")]
-    [HasPermission("pricing.maintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTunnelMaintainUnitPriceEquipmenteList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentListCommand(deleteIds));
@@ -680,7 +681,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelMaintainUnitPriceEquipment/export")]
     [OpenApiOperation("Export Tunnel MaintainUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.maintainunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Export)]
 
     public async Task<IActionResult> ExportTunnelMaintainUnitPriceEquipment()
     {
@@ -691,7 +692,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelMaintainUnitPriceEquipment/import")]
     [OpenApiOperation("Import Tunnel MaintainUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.maintainunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.MaintainUnitPrice.Import)]
 
     public async Task<IActionResult> ImportTunnelMaintainUnitPriceEquipment([FromForm] ImportDto importModel)
     {
@@ -701,7 +702,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaintainUnitPriceEquipment")]
     [OpenApiOperation("Get All Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Read)]
 
     public async Task<IActionResult> GetAllTrimmingMaintainUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
@@ -711,7 +712,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingMaintainUnitPriceEquipment")]
     [OpenApiOperation("Create New Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Create)]
 
     public async Task<IActionResult> CreateTrimmingMaintainUnitPriceEquipment([FromBody] IList<Application.Dto.Catalog.MaintainUnitPrice.CreateMaintainUnitPriceEquipmentDto> createModel)
     {
@@ -726,7 +727,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaintainUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Trimming MaintainUnitPriceEquipment By Id (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Read)]
 
     public async Task<IActionResult> GetTrimmingMaintainUnitPriceEquipmentById([FromRoute] Guid id)
     {
@@ -736,7 +737,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TrimmingMaintainUnitPriceEquipment")]
     [OpenApiOperation("Update Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateTrimmingMaintainUnitPriceEquipment([FromBody] UpdateMaintainUnitPriceDto updateModel)
     {
@@ -747,7 +748,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TrimmingMaintainUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Delete)]
 
     public async Task<IActionResult> DeleteTrimmingMaintainUnitPriceEquipment([FromRoute] Guid deleteId)
     {
@@ -757,7 +758,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingMaintainUnitPriceEquipment/export")]
     [OpenApiOperation("Export Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Export)]
 
     public async Task<IActionResult> ExportTrimmingMaintainUnitPriceEquipment()
     {
@@ -768,7 +769,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingMaintainUnitPriceEquipment/import")]
     [OpenApiOperation("Import Trimming MaintainUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Import)]
 
     public async Task<IActionResult> ImportTrimmingMaintainUnitPriceEquipment([FromForm] ImportDto importModel)
     {
@@ -778,7 +779,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TrimmingMaintainUnitPriceEquipment")]
     [OpenApiOperation("Delete Trimming MaintainUnitPriceEquipment List (Xén lò)", "")]
-    [HasPermission("pricing.trimmingmaintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingMaintainUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTrimmingMaintainUnitPriceEquipmentList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentListCommand(deleteIds));
@@ -787,7 +788,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaintainUnitPriceEquipment")]
     [OpenApiOperation("Get All Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Read)]
     public async Task<IActionResult> GetAllLongwallMaintainUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMaintainUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, MaintainUnitPriceType.Longwall));
@@ -796,7 +797,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallMaintainUnitPriceEquipment")]
     [OpenApiOperation("Create New Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Create)]
     public async Task<IActionResult> CreateLongwallMaintainUnitPriceEquipment([FromBody] IList<Application.Dto.Catalog.MaintainUnitPrice.CreateMaintainUnitPriceEquipmentDto> createModel)
     {
         foreach (var item in createModel)
@@ -809,7 +810,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaintainUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Longwall MaintainUnitPriceEquipment By Id (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Read)]
     public async Task<IActionResult> GetLongwallMaintainUnitPriceEquipmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMaintainUnitPriceEquipmentByIdQuery(id));
@@ -818,7 +819,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("LongwallMaintainUnitPriceEquipment")]
     [OpenApiOperation("Update Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Update)]
     public async Task<IActionResult> UpdateLongwallMaintainUnitPriceEquipment([FromBody] UpdateMaintainUnitPriceDto updateModel)
     {
         updateModel.Type = MaintainUnitPriceType.Longwall;
@@ -828,7 +829,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallMaintainUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Delete)]
     public async Task<IActionResult> DeleteLongwallMaintainUnitPriceEquipment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentCommand(deleteId));
@@ -837,7 +838,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallMaintainUnitPriceEquipment")]
     [OpenApiOperation("Delete Longwall MaintainUnitPriceEquipment List (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Delete)]
     public async Task<IActionResult> DeleteLongwallMaintainUnitPriceEquipmentList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMaintainUnitPriceEquipmentListCommand(deleteIds));
@@ -846,7 +847,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallMaintainUnitPriceEquipment/export")]
     [OpenApiOperation("Export Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Export)]
 
     public async Task<IActionResult> ExportLongwallMaintainUnitPriceEquipment()
     {
@@ -857,7 +858,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallMaintainUnitPriceEquipment/import")]
     [OpenApiOperation("Import Longwall MaintainUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallmaintainunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức SCTX (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallMaintainUnitPrice.Import)]
 
     public async Task<IActionResult> ImportLongwallMaintainUnitPriceEquipment([FromForm] ImportDto importModel)
     {
@@ -871,7 +872,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelElectricityUnitPriceEquipment")]
     [OpenApiOperation("Get All Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetAllTunnelElectricityUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllTunnelElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, ElectricityUnitPriceType.TunnelExcavation));
@@ -880,7 +881,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelElectricityUnitPriceEquipment")]
     [OpenApiOperation("Create New Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Create)]
     public async Task<IActionResult> CreateTunnelElectricityUnitPriceEquipment([FromBody] IList<CreateElectricityUnitPriceEquipmentDto> createModel)
     {
         foreach (var item in createModel)
@@ -894,7 +895,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelElectricityUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Tunnel ElectricityUnitPriceEquipment By Id (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetTunnelElectricityUnitPriceEquipmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTunnelElectricityUnitPriceEquipmentByIdQuery(id, ElectricityUnitPriceType.TunnelExcavation));
@@ -903,7 +904,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TunnelElectricityUnitPriceEquipment")]
     [OpenApiOperation("Update Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Update)]
     public async Task<IActionResult> UpdateTunnelElectricityUnitPriceEquipment([FromBody] UpdateElectricityUnitPriceEquipmentDto updateModel)
     {
         updateModel.Type = ElectricityUnitPriceType.TunnelExcavation;
@@ -913,7 +914,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelElectricityUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTunnelElectricityUnitPriceEquipment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTunnelElectricityUnitPriceEquipmentCommand(deleteId, ElectricityUnitPriceType.TunnelExcavation));
@@ -922,7 +923,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelElectricityUnitPriceEquipment/export")]
     [OpenApiOperation("Export Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Export)]
     public async Task<IActionResult> ExportTunnelElectricityUnitPriceEquipment()
     {
         var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery(ElectricityUnitPriceType.TunnelExcavation));
@@ -932,7 +933,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelElectricityUnitPriceEquipment/import")]
     [OpenApiOperation("Import Tunnel ElectricityUnitPriceEquipment (Đào lò)", "")]
-    [HasPermission("pricing.tunnerelectricityunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnerElectricityUnitPrice.Import)]
     public async Task<IActionResult> ImportTunnelElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTunnelElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile, ElectricityUnitPriceType.TunnelExcavation));
@@ -941,7 +942,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingElectricityUnitPriceEquipment")]
     [OpenApiOperation("Get All Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetAllTrimmingElectricityUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllTunnelElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination, ElectricityUnitPriceType.Trimming));
@@ -950,7 +951,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingElectricityUnitPriceEquipment")]
     [OpenApiOperation("Create New Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Create)]
     public async Task<IActionResult> CreateTrimmingElectricityUnitPriceEquipment([FromBody] IList<CreateElectricityUnitPriceEquipmentDto> createModel)
     {
         foreach (var item in createModel)
@@ -964,7 +965,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingElectricityUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Trimming ElectricityUnitPriceEquipment By Id (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetTrimmingElectricityUnitPriceEquipmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTunnelElectricityUnitPriceEquipmentByIdQuery(id, ElectricityUnitPriceType.Trimming));
@@ -973,7 +974,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TrimmingElectricityUnitPriceEquipment")]
     [OpenApiOperation("Update Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Update)]
     public async Task<IActionResult> UpdateTrimmingElectricityUnitPriceEquipment([FromBody] UpdateElectricityUnitPriceEquipmentDto updateModel)
     {
         updateModel.Type = ElectricityUnitPriceType.Trimming;
@@ -983,7 +984,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TrimmingElectricityUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTrimmingElectricityUnitPriceEquipment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTunnelElectricityUnitPriceEquipmentCommand(deleteId, ElectricityUnitPriceType.Trimming));
@@ -992,7 +993,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TrimmingElectricityUnitPriceEquipment/export")]
     [OpenApiOperation("Export Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Export)]
     public async Task<IActionResult> ExportTrimmingElectricityUnitPriceEquipment()
     {
         var fileByte = await Mediator.Send(new ExportExcelTunnelElectricityUnitPriceEquipmentQuery(ElectricityUnitPriceType.Trimming));
@@ -1002,7 +1003,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TrimmingElectricityUnitPriceEquipment/import")]
     [OpenApiOperation("Import Trimming ElectricityUnitPriceEquipment (Xén lò)", "")]
-    [HasPermission("pricing.trimmingelectricityunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Xén lò)")]
+    [HasPermission(AppPermissions.Pricing.TrimmingElectricityUnitPrice.Import)]
     public async Task<IActionResult> ImportTrimmingElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTunnelElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile, ElectricityUnitPriceType.Trimming));
@@ -1014,7 +1015,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallElectricityUnitPriceEquipment")]
     [OpenApiOperation("Get All Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetAllLongwallElectricityUnitPriceEquipment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLongwallElectricityUnitPriceEquipmentQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1023,7 +1024,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallElectricityUnitPriceEquipment")]
     [OpenApiOperation("Create New Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Create)]
     public async Task<IActionResult> CreateLongwallElectricityUnitPriceEquipment([FromBody] IList<CreateLongwallElectricityUnitPriceEquipmentDto> createModel)
     {
         var result = await Mediator.Send(new CreateLongwallElectricityUnitPriceEquipmentCommand(createModel));
@@ -1032,7 +1033,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallElectricityUnitPriceEquipment/{id:guid}")]
     [OpenApiOperation("Get Longwall ElectricityUnitPriceEquipment By Id (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Read)]
     public async Task<IActionResult> GetLongwallElectricityUnitPriceEquipmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetLongwallElectricityUnitPriceEquipmentByIdQuery(id));
@@ -1041,7 +1042,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("LongwallElectricityUnitPriceEquipment")]
     [OpenApiOperation("Update Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Update)]
     public async Task<IActionResult> UpdateLongwallElectricityUnitPriceEquipment([FromBody] UpdateLongwallElectricityUnitPriceEquipmentDto updateModel)
     {
         var result = await Mediator.Send(new UpdateLongwallElectricityUnitPriceEquipmentCommand(updateModel));
@@ -1050,7 +1051,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallElectricityUnitPriceEquipment/{deleteId:guid}")]
     [OpenApiOperation("Delete Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Delete)]
     public async Task<IActionResult> DeleteLongwallElectricityUnitPriceEquipment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteLongwallElectricityUnitPriceEquipmentCommand(deleteId));
@@ -1059,7 +1060,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallElectricityUnitPriceEquipment/export")]
     [OpenApiOperation("Export Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Export)]
     public async Task<IActionResult> ExportLongwallElectricityUnitPriceEquipment()
     {
         var fileByte = await Mediator.Send(new ExportExcelLongwallElectricityUnitPriceEquipmentQuery());
@@ -1069,7 +1070,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallElectricityUnitPriceEquipment/import")]
     [OpenApiOperation("Import Longwall ElectricityUnitPriceEquipment (Lò chợ)", "")]
-    [HasPermission("pricing.longwallelectricityunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức điện năng (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallElectricityUnitPrice.Import)]
     public async Task<IActionResult> ImportLongwallElectricityUnitPriceEquipment([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportLongwallElectricityUnitPriceEquipmentExcelCommand(importModel.FormFile));
@@ -1117,7 +1118,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Read)]
     public async Task<IActionResult> GetAllTunnelLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.TunnelExcavation));
@@ -1126,7 +1127,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Create Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Create)]
     public async Task<IActionResult> CreateTunnelLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
     {
         foreach (var item in createModel)
@@ -1140,7 +1141,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelLowValuePerishableSupplyUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Tunnel LowValuePerishableSupplyUnitPrice By Id (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Read)]
 
     public async Task<IActionResult> GetTunnelLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
     {
@@ -1150,7 +1151,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TunnelLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Update Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Update)]
     public async Task<IActionResult> UpdateTunnelLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
     {
         updateModel.Type = LowValuePerishableSupplyType.TunnelExcavation;
@@ -1160,7 +1161,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TunnelLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTunnelLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
@@ -1169,7 +1170,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TunnelLowValuePerishableSupplyUnitPrice/export")]
     [OpenApiOperation("Export Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Export)]
     public async Task<IActionResult> ExportTunnelLowValuePerishableSupplyUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.TunnelExcavation));
@@ -1178,7 +1179,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TunnelLowValuePerishableSupplyUnitPrice/import")]
     [OpenApiOperation("Import Tunnel LowValuePerishableSupplyUnitPrice (Đào lò)", "")]
-    [HasPermission("pricing.tunnellowvalueperishablesupplyunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Đào lò)")]
+    [HasPermission(AppPermissions.Pricing.TunnelLowValuePerishableSupplyUnitPrice.Import)]
     public async Task<IActionResult> ImportTunnelLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.TunnelExcavation));
@@ -1187,7 +1188,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]  
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Read)]  
     public async Task<IActionResult> GetAllLongwallLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.Longwall));
@@ -1196,7 +1197,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Create Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Create)]
     public async Task<IActionResult> CreateLongwallLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
     {
         foreach (var item in createModel)
@@ -1210,7 +1211,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallLowValuePerishableSupplyUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Longwall LowValuePerishableSupplyUnitPrice By Id (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Read)]
     public async Task<IActionResult> GetLongwallLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetLowValuePerishableSupplyUnitPriceByIdQuery(id, LowValuePerishableSupplyType.Longwall));
@@ -1219,7 +1220,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("LongwallLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Update Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Update)]
     public async Task<IActionResult> UpdateLongwallLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
     {
         updateModel.Type = LowValuePerishableSupplyType.Longwall;
@@ -1229,7 +1230,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("LongwallLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Delete)]
     public async Task<IActionResult> DeleteLongwallLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
@@ -1238,7 +1239,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("LongwallLowValuePerishableSupplyUnitPrice/export")]
     [OpenApiOperation("Export Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Export)]
     public async Task<IActionResult> ExportLongwallLowValuePerishableSupplyUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.Longwall));
@@ -1247,7 +1248,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("LongwallLowValuePerishableSupplyUnitPrice/import")]
     [OpenApiOperation("Import Longwall LowValuePerishableSupplyUnitPrice (Lò chợ)", "")]
-    [HasPermission("pricing.longwalllowvalueperishablesupplyunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Lò chợ)")]
+    [HasPermission(AppPermissions.Pricing.LongwallLowValuePerishableSupplyUnitPrice.Import)]
     public async Task<IActionResult> ImportLongwallLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.Longwall));
@@ -1256,7 +1257,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Get All LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Read)]
     public async Task<IActionResult> GetAllTransportLowValuePerishableSupplyUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLowValuePerishableSupplyUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, LowValuePerishableSupplyType.Transport));
@@ -1265,7 +1266,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Create Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.create", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Create)]
     public async Task<IActionResult> CreateTransportLowValuePerishableSupplyUnitPrice([FromBody] IList<CreateLowValuePerishableSupplyUnitPriceDto> createModel)
     {
         foreach (var item in createModel)
@@ -1279,7 +1280,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportLowValuePerishableSupplyUnitPrice/{id:guid}")]
     [OpenApiOperation("Get Transport LowValuePerishableSupplyUnitPrice By Id (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.read", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Read)]
     public async Task<IActionResult> GetTransportLowValuePerishableSupplyUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetLowValuePerishableSupplyUnitPriceByIdQuery(id, LowValuePerishableSupplyType.Transport));
@@ -1288,7 +1289,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TransportLowValuePerishableSupplyUnitPrice")]
     [OpenApiOperation("Update Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.update", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Update)]
     public async Task<IActionResult> UpdateTransportLowValuePerishableSupplyUnitPrice([FromBody] UpdateLowValuePerishableSupplyUnitPriceDto updateModel)
     {
         updateModel.Type = LowValuePerishableSupplyType.Transport;
@@ -1298,7 +1299,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportLowValuePerishableSupplyUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.delete", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTransportLowValuePerishableSupplyUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteLowValuePerishableSupplyUnitPriceCommand(deleteId));
@@ -1307,7 +1308,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportLowValuePerishableSupplyUnitPrice/export")]
     [OpenApiOperation("Export Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.export", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Export)]
     public async Task<IActionResult> ExportTransportLowValuePerishableSupplyUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelLowValuePerishableSupplyUnitPriceQuery(LowValuePerishableSupplyType.Transport));
@@ -1316,7 +1317,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportLowValuePerishableSupplyUnitPrice/import")]
     [OpenApiOperation("Import Transport LowValuePerishableSupplyUnitPrice (Vận tải lò)", "")]
-    [HasPermission("pricing.transportlowvalueperishablesupplyunitprice.import", "Đơn giá, định mức", "Đơn giá và định mức vật tư mau hỏng rẻ tiền (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportLowValuePerishableSupplyUnitPrice.Import)]
     public async Task<IActionResult> ImportTransportLowValuePerishableSupplyUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportLowValuePerishableSupplyUnitPriceExcelCommand(importModel.FormFile, LowValuePerishableSupplyType.Transport));
@@ -1336,7 +1337,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice")]
     [OpenApiOperation("Get All TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Read)]
 
     public async Task<IActionResult> GetAllTransportUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
@@ -1346,7 +1347,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice/{id:guid}")]
     [OpenApiOperation("Get TransportUnitPrice By Id", "")]
-    [HasPermission("pricing.transportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Read)]
 
     public async Task<IActionResult> GetTransportUnitPriceById([FromRoute] Guid id)
     {
@@ -1356,7 +1357,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportUnitPrice")]
     [OpenApiOperation("Create New TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.create", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Create)]
 
     public async Task<IActionResult> CreateTransportUnitPrice([FromBody] CreateTransportUnitPriceDto createModel)
     {
@@ -1366,7 +1367,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TransportUnitPrice")]
     [OpenApiOperation("Update TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.update", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Update)]
 
     public async Task<IActionResult> UpdateTransportUnitPrice([FromBody] TransportUnitPriceDto updateModel)
     {
@@ -1376,7 +1377,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTransportUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTransportUnitPriceCommand(deleteId));
@@ -1385,7 +1386,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportUnitPrice")]
     [OpenApiOperation("Delete Many TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Delete)]
     public async Task<IActionResult> DeleteTransportUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteTransportUnitPriceListCommand(deleteIds));
@@ -1394,7 +1395,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportUnitPrice/export")]
     [OpenApiOperation("Export TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.export", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Export)]
 
     public async Task<IActionResult> ExportTransportUnitPrice()
     {
@@ -1404,7 +1405,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportUnitPrice/import")]
     [OpenApiOperation("Import TransportUnitPrice", "")]
-    [HasPermission("pricing.transportunitprice.import", "Đơn giá và định mức", "Đơn giá định mức vật liệu-nhiên liệu, động lực, SCTX (Vận tải lò)")]
+    [HasPermission(AppPermissions.Pricing.TransportUnitPrice.Import)]
     public async Task<IActionResult> ImportTransportUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTransportUnitPriceExcelCommand(importModel.FormFile));
@@ -1416,7 +1417,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportPlanLine")]
     [OpenApiOperation("Get All Planned TransportPlanLine Summary List", "")]
-    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Read)]
     public async Task<IActionResult> GetAllTransportPlanLine([FromQuery] bool ignorePagination = true)
     {
         var result = await Mediator.Send(new GetAllTransportPlanLineQuery(ignorePagination));
@@ -1425,7 +1426,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportPlanLine/Planned/Department/{departmentId:guid}")]
     [OpenApiOperation("Get Planned TransportPlanLine By Department", "")]
-    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Read)]
     public async Task<IActionResult> GetPlannedTransportPlanLineByDepartment([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetTransportPlanLineByDepartmentQuery(departmentId));
@@ -1434,7 +1435,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportPlanLine/Planned/{id:guid}")]
     [OpenApiOperation("Get Planned TransportPlanLine By Id", "")]
-    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Read)]
     public async Task<IActionResult> GetPlannedTransportPlanLineById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTransportPlanLineByIdQuery(id));
@@ -1443,7 +1444,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("TransportPlanLine/Adjustment/Department/{departmentId:guid}")]
     [OpenApiOperation("Get Adjustment TransportPlanLine By Department", "")]
-    [HasPermission("production.transportplanline.read", "Thống kê vận hành", "Doanh thu điều chỉnh")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Read, screen: "Doanh thu điều chỉnh")]
     public async Task<IActionResult> GetAdjustmentTransportPlanLineByDepartment([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetTransportPlanLineAdjustmentByDepartmentQuery(departmentId));
@@ -1452,7 +1453,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("TransportPlanLine/Planned-By-Department")]
     [OpenApiOperation("Create Planned TransportPlanLine By Department", "")]
-    [HasPermission("production.transportplanline.create", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Create)]
     public async Task<IActionResult> CreatePlannedTransportPlanLineByDepartment([FromBody] CreateTransportPlanLineByDepartmentDto createModel)
     {
         var result = await Mediator.Send(new CreateTransportPlanLineByDepartmentCommand(createModel));
@@ -1461,7 +1462,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("TransportPlanLine/Planned-By-Department")]
     [OpenApiOperation("Update Planned TransportPlanLine By Department", "")]
-    [HasPermission("production.transportplanline.update", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Update)]
     public async Task<IActionResult> UpdatePlannedTransportPlanLineByDepartment([FromBody] UpdateTransportPlanLineByDepartmentDto updateModel)
     {
         var result = await Mediator.Send(new UpdateTransportPlanLineByDepartmentCommand(updateModel));
@@ -1470,7 +1471,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportPlanLine/{deleteId:guid}")]
     [OpenApiOperation("Delete TransportPlanLine", "")]
-    [HasPermission("production.transportplanline.delete", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Delete)]
     public async Task<IActionResult> DeleteTransportPlanLine([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTransportPlanLineCommand(deleteId));
@@ -1479,7 +1480,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("TransportPlanLine")]
     [OpenApiOperation("Delete TransportPlanLine List", "")]
-    [HasPermission("production.transportplanline.delete", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.TransportPlanLine.Delete)]
     public async Task<IActionResult> DeleteTransportPlanLineList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteTransportPlanLineListCommand(deleteIds));
@@ -1492,7 +1493,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ProductUnitPrice")]
     [OpenApiOperation("Get All ProductUnitPrice", "")]
-    [HasPermission("production.productunitprice.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Read)]
     public async Task<IActionResult> GetAllProductUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false, [FromQuery] ProductUnitPriceScenarioType scenarioType = ProductUnitPriceScenarioType.Plan, [FromQuery] Guid? departmentId = null)
     {
         var result = await Mediator.Send(new GetAllProductUnitPriceQuery(pageIndex, pageSize, search, ignorePagination, scenarioType, departmentId));
@@ -1501,7 +1502,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ProductUnitPrice/Planned/{id:guid}")]
     [OpenApiOperation("Get ProductUnitPrice By Id", "")]
-    [HasPermission("production.productunitprice.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Read)]
     public async Task<IActionResult> GetPlannedProductUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetPlannedProductUnitPriceByIdQuery(id));
@@ -1510,7 +1511,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ProductUnitPrice/Planned/Department/{departmentId:guid}")]
     [OpenApiOperation("Get Planned ProductUnitPrice By Department", "")]
-    [HasPermission("production.productunitprice.read", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Read)]
     public async Task<IActionResult> GetPlannedProductUnitPriceByDepartment([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetPlannedProductUnitPriceByDepartmentQuery(departmentId));
@@ -1527,7 +1528,7 @@ public class PricingController : BaseAuthController
   
     [HttpGet("ProductUnitPrice/Adjustment/{id:guid}")]
     [OpenApiOperation("Get ProductAdjustmentUnitPrice By Id", "")]
-    [HasPermission("production.productionoutput.read", "Thống kê vận hành", "Vận hành sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductionOutput.Read)]
     public async Task<IActionResult> GetAdjustmentProductUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAdjustmentProductUnitPriceByIdQuery(id));
@@ -1536,7 +1537,7 @@ public class PricingController : BaseAuthController
     
     [HttpGet("ProductUnitPrice/Adjustment/Department/{departmentId:guid}")]
     [OpenApiOperation("Get Adjustment ProductUnitPrice By Department", "")]
-    [HasPermission("production.productionoutput.read", "Thống kê vận hành", "Vận hành sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductionOutput.Read)]
     public async Task<IActionResult> GetAdjustmentProductUnitPriceByDepartment([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetAdjustmentProductUnitPriceByDepartmentQuery(departmentId));
@@ -1545,7 +1546,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("ProductUnitPrice")]
     [OpenApiOperation("Update ProductUnitPrice", "")]
-    [HasPermission("production.productunitprice.update", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Update)]
     public async Task<IActionResult> UpdateProductUnitPrice([FromBody] UpdateProductUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductUnitPriceCommand(updateModel));
@@ -1554,7 +1555,7 @@ public class PricingController : BaseAuthController
     
     [HttpPut("ProductUnitPrice/Planned-By-Department")]
     [OpenApiOperation("Update Planned ProductUnitPrice By Department", "")]
-    [HasPermission("production.productunitprice.update", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Update)]
 
     public async Task<IActionResult> UpdatePlannedProductUnitPriceByDepartment([FromBody] UpdatePlannedProductUnitPriceByDepartmentDto updateModel)
     {
@@ -1564,7 +1565,7 @@ public class PricingController : BaseAuthController
     
     [HttpPut("ProductUnitPrice/Adjustment")]
     [OpenApiOperation("Update Adjustment ProductUnitPrice", "")]
-    [HasPermission("production.productionoutput.update", "Thống kê vận hành", "Vận hành sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductionOutput.Update)]
 
     public async Task<IActionResult> UpdateAdjustmentProductUnitPrice([FromBody] UpdateAdjustmentProductUnitPriceDto updateModel)
     {
@@ -1574,7 +1575,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ProductUnitPrice")]
     [OpenApiOperation("Create New ProductUnitPrice", "")]
-    [HasPermission("production.productunitprice.create", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Create)]
     public async Task<IActionResult> CreateProductUnitPrice([FromBody] CreateProductUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateProductUnitPriceCommand(createModel));
@@ -1583,7 +1584,7 @@ public class PricingController : BaseAuthController
     
     [HttpPost("ProductUnitPrice/Planned-By-Department")]
     [OpenApiOperation("Create Planned ProductUnitPrice By Department", "")]
-    [HasPermission("production.productunitprice.create", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Create)]
 
     public async Task<IActionResult> CreatePlannedProductUnitPriceByDepartment([FromBody] CreatePlannedProductUnitPriceByDepartmentDto createModel)
     {
@@ -1593,7 +1594,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ProductUnitPrice")]
     [OpenApiOperation("Delete ProductUnitPrice List", "")]
-    [HasPermission("production.productunitprice.delete", "Thống kê vận hành", "Kế hoạch sản xuất")]
+    [HasPermission(AppPermissions.Production.ProductUnitPrice.Delete)]
     public async Task<IActionResult> DeleteProductUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductUnitPriceListCommand(deleteIds));
@@ -1602,7 +1603,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ProductUnitPrice/export-adjustment-electricity-maintain-report")]
     [OpenApiOperation("Export Adjustment Electricity And Maintain Report", "Export Bảng tính đơn giá SCTX và điện năng")]
-    [HasPermission("report.productunitprice.export", "Báo cáo", "Bảng tính đơn giá SCTX và điện năng")]
+    [HasPermission(AppPermissions.Report.ProductUnitPrice.Export)]
     public async Task<IActionResult> ExportAdjustmentElectricityAndMaintainReport(
         [FromQuery] string? month,
         [FromQuery] string? year,
@@ -1619,7 +1620,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("PlannedMaterialCost/{id:guid}")]
     [OpenApiOperation("Get PlannedMaterialCost By Id", "")]
-    [HasPermission("production.plannedmaterialcost.read", "Thống kê vận hành", "Doanh thu vật liệu kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaterialCost.Read)]
     public async Task<IActionResult> GetPlannedMaterialCost([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetPlannedMaterialCostByIdQuery(id));
@@ -1628,7 +1629,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("PlannedMaterialCost")]
     [OpenApiOperation("Update PlannedMaterialCost", "")]
-    [HasPermission("production.plannedmaterialcost.update", "Thống kê vận hành", "Doanh thu vật liệu kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaterialCost.Update)]
     public async Task<IActionResult> UpdatePlannedMaterialCost([FromBody] UpdatePlannedMaterialCostDto updateModel)
     {
         var result = await Mediator.Send(new UpdatePlannedMaterialCostCommand(updateModel));
@@ -1637,7 +1638,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("PlannedMaterialCost")]
     [OpenApiOperation("Create New PlannedMaterialCost", "")]
-    [HasPermission("production.plannedmaterialcost.create", "Thống kê vận hành", "Doanh thu vật liệu kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaterialCost.Create)]
     public async Task<IActionResult> CreatePlannedMaterialCost([FromBody] CreatePlannedMaterialCostDto createModel)
     {
         var result = await Mediator.Send(new CreatePlannedMaterialCostCommand(createModel));
@@ -1646,7 +1647,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("PlannedMaterialCost")]
     [OpenApiOperation("Delete PlannedMaterialCost List", "")]
-    [HasPermission("production.plannedmaterialcost.delete", "Thống kê vận hành", "Doanh thu vật liệu kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaterialCost.Delete)]
     public async Task<IActionResult> DeletePlannedMaterialCostList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeletePlannedMaterialCostListCommand(deleteIds));
@@ -1659,7 +1660,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("PlannedMaintainCost/{id:guid}")]
     [OpenApiOperation("Get PlannedMaintainCost By Id", "")]
-    [HasPermission("production.plannedmaintaincost.read", "Thống kê vận hành","Doanh thu SCTX kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaintainCost.Read)]
     public async Task<IActionResult> GetPlannedMaintainCost([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetPlannedMaintainCostByIdQuery(id));
@@ -1668,7 +1669,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("PlannedMaintainCost")]
     [OpenApiOperation("Update PlannedMaintainCost", "")]
-    [HasPermission("production.plannedmaintaincost.update", "Thống kê vận hành", "Doanh thu SCTX kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaintainCost.Update)]
 
     public async Task<IActionResult> UpdatePlannedMaintainCost([FromBody] UpdatePlannedMaintainCostDto updateModel)
     {
@@ -1678,7 +1679,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("PlannedMaintainCost")]
     [OpenApiOperation("Create New PlannedMaintainCost", "")]
-    [HasPermission("production.plannedmaintaincost.create", "Thống kê vận hành", "Doanh thu SCTX kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaintainCost.Create)]
 
     public async Task<IActionResult> CreatePlannedMaintainCost([FromBody] CreatePlannedMaintainCostDto createModel)
     {
@@ -1688,7 +1689,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("PlannedMaintainCost")]
     [OpenApiOperation("Delete PlannedMaintainCost List", "")]
-    [HasPermission("production.plannedmaintaincost.delete", "Thống kê vận hành", "Doanh thu SCTX kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedMaintainCost.Delete)]
 
     public async Task<IActionResult> DeletePlannedMaintainCostList([FromBody] IList<Guid> deleteIds)
     {
@@ -1701,7 +1702,7 @@ public class PricingController : BaseAuthController
     #region PlannedElectricityCost
     [HttpGet("PlannedElectricityCost/{id:guid}")]
     [OpenApiOperation("Get PlannedElectricityCost By Id", "")]
-    [HasPermission("production.plannedelecticitycost.read", "Thống kê vận hành", "Doanh thu điện năng kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedElecticityCost.Read)]
 
     public async Task<IActionResult> GetPlannedElectricityCost([FromRoute] Guid id)
     {
@@ -1711,7 +1712,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("PlannedElectricityCost")]
     [OpenApiOperation("Update PlannedElectricityCost", "")]
-    [HasPermission("production.plannedelecticitycost.update", "Thống kê vận hành", "Doanh thu điện năng kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedElecticityCost.Update)]
 
     public async Task<IActionResult> UpdatePlannedElectricityCost([FromBody] UpdatePlannedElectricityCostDto updateModel)
     {
@@ -1721,7 +1722,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("PlannedElectricityCost")]
     [OpenApiOperation("Create New PlannedElectricityCost", "")]
-    [HasPermission("production.plannedelecticitycost.create", "Thống kê vận hành", "Doanh thu điện năng kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedElecticityCost.Create)]
 
     public async Task<IActionResult> CreatePlannedElectricityCost([FromBody] CreatePlannedElectricityCostDto createModel)
     {
@@ -1731,7 +1732,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("PlannedElectricityCost")]
     [OpenApiOperation("Delete PlannedElectricityCost List", "")]
-    [HasPermission("production.plannedelecticitycost.delete", "Thống kê vận hành", "Doanh thu điện năng kế hoạch ban đầu")]
+    [HasPermission(AppPermissions.Production.PlannedElecticityCost.Delete)]
 
     public async Task<IActionResult> DeletePlannedElectricityCostList([FromBody] IList<Guid> deleteIds)
     {
@@ -1771,7 +1772,7 @@ public class PricingController : BaseAuthController
     #region AdjustmentCost
     [HttpGet("AdjustmnetMaterialCost/{id:guid}")]
     [OpenApiOperation("Get AdjustmnetMaterialCost By Id", "")]
-    [HasPermission("production.adjustmentmaterialcost.read", "Thống kê vận hành","Doanh thu vật liệu điều chỉnh")]
+    [HasPermission(AppPermissions.Production.AdjustmentMaterialCost.Read)]
     public async Task<IActionResult> GetAdjustmnetMaterialCost([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAdjustmentMaterialCostByOutputQuery(id));
@@ -1780,7 +1781,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("AdjustmentMaintainCost/{id:guid}")]
     [OpenApiOperation("Get AdjustmentMaintainCost By Id", "")]
-    [HasPermission("production.adjustmentmaintaincost.read", "Thống kê vận hành", "Doanh thu SCTX điều chỉnh")]
+    [HasPermission(AppPermissions.Production.AdjustmentMaintainCost.Read)]
 
     public async Task<IActionResult> GetAdjustmentMaintainCost([FromRoute] Guid id)
     {
@@ -1790,7 +1791,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("AdjustmentElectricityCost/{id:guid}")]
     [OpenApiOperation("Get AdjustmentElectricityCost By Id", "")]
-    [HasPermission("production.adjustmentelectricitycost.read", "Thống kê vận hành", "Doanh thu điện năng điều chỉnh")]
+    [HasPermission(AppPermissions.Production.AdjustmentElectricityCost.Read)]
 
     public async Task<IActionResult> GetAdjustmentElectricityCost([FromRoute] Guid id)
     {
@@ -1803,7 +1804,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("lump-sum-final-settlement/list")]
     [OpenApiOperation("Get Lump Sum Final Settlement List", "")]
-    [HasPermission("production.lumpsumfinalsettlement.read", "Thống kê vận hành","Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Read)]
     public async Task<IActionResult> GetLumpSumFinalSettlementList([FromBody] LumpSumFinalSettlementListRequest request)
     {
         var result = await Mediator.Send(new GetLumpSumFinalSettlementListQuery(request.Month, request.Year, request.ProcessGroupId, request.DepartmentId));
@@ -1812,7 +1813,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("lump-sum-final-settlement/month-export")]
     [OpenApiOperation("Export Lump Sum Final Settlement Month Excel", "")]
-    [HasPermission("report.lumpsumfinalsettlement.export", "Báo cáo", "Bảng thanh toán")]
+    [HasPermission(AppPermissions.Report.LumpSumFinalSettlement.Export, screen: "Bảng thanh toán")]
 
     public async Task<IActionResult> ExportLumpSumFinalSettlementMonthExcel(
         [FromQuery] string month,
@@ -1827,7 +1828,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("lump-sum-final-settlement/quarter-list")]
     [OpenApiOperation("Get Lump Sum Final Settlement Quarter List", "")]
-    [HasPermission("production.lumpsumfinalsettlement.read", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Read)]
 
     public async Task<IActionResult> GetLumpSumFinalSettlementQuarterList([FromBody] LumpSumFinalSettlementQuarterListRequest request)
     {
@@ -1837,7 +1838,7 @@ public class PricingController : BaseAuthController
     
     [HttpPost("lump-sum-final-settlement/quarter-custom-cost/list")]
     [OpenApiOperation("Get Lump Sum Quarter Custom Cost List", "")]
-    [HasPermission("production.lumpsumfinalsettlement.read", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Read)]
 
     public async Task<IActionResult> GetLumpSumQuarterCustomCostList([FromBody] LumpSumQuarterCustomCostListRequest request)
     {
@@ -1847,7 +1848,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("lump-sum-final-settlement/quarter-export")]
     [OpenApiOperation("Export Lump Sum Final Settlement Quarter Excel", "")]
-    [HasPermission("report.lumpsumfinalsettlement.export", "Báo cáo", "Bảng quyết toán")]
+    [HasPermission(AppPermissions.Report.LumpSumFinalSettlement.Export, screen: "Bảng quyết toán")]
 
     public async Task<IActionResult> ExportLumpSumFinalSettlementQuarterExcel(
         [FromQuery] string quarter,
@@ -1862,7 +1863,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("lump-sum-final-settlement/quarter-custom-cost")]
     [OpenApiOperation("Create Lump Sum Quarter Custom Cost", "")]
-    [HasPermission("production.lumpsumfinalsettlement.create", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Create)]
 
     public async Task<IActionResult> CreateLumpSumQuarterCustomCost([FromBody] CreateLumpSumQuarterCustomCostRequest request)
     {
@@ -1872,7 +1873,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("lump-sum-final-settlement/quarter-custom-cost")]
     [OpenApiOperation("Update Lump Sum Quarter Custom Cost", "")]
-    [HasPermission("production.lumpsumfinalsettlement.update", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Update)]
 
     public async Task<IActionResult> UpdateLumpSumQuarterCustomCost([FromBody] UpdateLumpSumQuarterCustomCostRequest request)
     {
@@ -1882,7 +1883,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("lump-sum-final-settlement/month-special-quantity")]
     [OpenApiOperation("Update Lump Sum Month Special Quantity", "")]
-    [HasPermission("production.lumpsumfinalsettlement.update", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Update)]
 
     public async Task<IActionResult> UpdateLumpSumMonthSpecialQuantity([FromBody] UpdateLumpSumMonthSpecialQuantityRequest request)
     {
@@ -1892,7 +1893,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("lump-sum-final-settlement/month-carry-forward")]
     [OpenApiOperation("Update Lump Sum Month Carry Forward Value", "")]
-    [HasPermission("production.lumpsumfinalsettlement.update", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Update)]
 
     public async Task<IActionResult> UpdateLumpSumMonthCarryForward([FromBody] UpdateLumpSumMonthCarryForwardRequest request)
     {
@@ -1902,7 +1903,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("lump-sum-final-settlement/quarter-custom-cost/{id:guid}")]
     [OpenApiOperation("Delete Lump Sum Quarter Custom Cost", "")]
-    [HasPermission("production.lumpsumfinalsettlement.delete", "Thống kê vận hành", "Quyết toán giao khoán")]
+    [HasPermission(AppPermissions.Production.LumpSumFinalSettlement.Delete)]
 
     public async Task<IActionResult> DeleteLumpSumQuarterCustomCost([FromRoute] Guid id)
     {
@@ -1916,7 +1917,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MechanizedTransportOverheadUnitPrice")]
     [OpenApiOperation("Get All MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Read)]
     public async Task<IActionResult> GetAllMechanizedTransportOverheadUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMechanizedTransportOverheadUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1925,7 +1926,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MechanizedTransportOverheadUnitPrice/{id:guid}")]
     [OpenApiOperation("Get MechanizedTransportOverheadUnitPrice By Id", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.read", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Read)]
     public async Task<IActionResult> GetMechanizedTransportOverheadUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMechanizedTransportOverheadUnitPriceByIdQuery(id));
@@ -1934,7 +1935,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("MechanizedTransportOverheadUnitPrice")]
     [OpenApiOperation("Create New MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.create", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Create)]
     public async Task<IActionResult> CreateMechanizedTransportOverheadUnitPrice([FromBody] CreateMechanizedTransportOverheadUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateMechanizedTransportOverheadUnitPriceCommand(createModel));
@@ -1943,7 +1944,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("MechanizedTransportOverheadUnitPrice")]
     [OpenApiOperation("Update MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.update", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Update)]
     public async Task<IActionResult> UpdateMechanizedTransportOverheadUnitPrice([FromBody] UpdateMechanizedTransportOverheadUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMechanizedTransportOverheadUnitPriceCommand(updateModel));
@@ -1952,7 +1953,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("MechanizedTransportOverheadUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Delete)]
     public async Task<IActionResult> DeleteMechanizedTransportOverheadUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMechanizedTransportOverheadUnitPriceCommand(deleteId));
@@ -1961,7 +1962,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("MechanizedTransportOverheadUnitPrice")]
     [OpenApiOperation("Delete Many MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Delete)]
     public async Task<IActionResult> DeleteMechanizedTransportOverheadUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMechanizedTransportOverheadUnitPriceListCommand(deleteIds));
@@ -1970,7 +1971,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MechanizedTransportOverheadUnitPrice/export")]
     [OpenApiOperation("Export MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.export", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Export)]
     public async Task<IActionResult> ExportMechanizedTransportOverheadUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelMechanizedTransportOverheadUnitPriceQuery());
@@ -1980,7 +1981,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("MechanizedTransportOverheadUnitPrice/import")]
     [OpenApiOperation("Import MechanizedTransportOverheadUnitPrice", "")]
-    [HasPermission("pricing.mechanizedtransportoverheadunitprice.import", "Đơn giá và định mức", "Đơn giá định mức vật tư mau hỏng rẻ tiền và điện năng")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportOverheadUnitPrice.Import)]
     public async Task<IActionResult> ImportMechanizedTransportOverheadUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportMechanizedTransportOverheadUnitPriceExcelCommand(importModel.FormFile));
@@ -1992,7 +1993,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ExcavatorAndBulldozerUnitPrice")]
     [OpenApiOperation("Get All ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.read", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Read)]
     public async Task<IActionResult> GetAllExcavatorAndBulldozerUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllExcavatorAndBulldozerUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2001,7 +2002,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ExcavatorAndBulldozerUnitPrice/{id:guid}")]
     [OpenApiOperation("Get ExcavatorAndBulldozerUnitPrice By Id", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.read", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Read)]
     public async Task<IActionResult> GetExcavatorAndBulldozerUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetExcavatorAndBulldozerUnitPriceByIdQuery(id));
@@ -2010,7 +2011,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ExcavatorAndBulldozerUnitPrice")]
     [OpenApiOperation("Create New ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.create", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Create)]
     public async Task<IActionResult> CreateExcavatorAndBulldozerUnitPrice([FromBody] CreateExcavatorAndBulldozerUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateExcavatorAndBulldozerUnitPriceCommand(createModel));
@@ -2019,7 +2020,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("ExcavatorAndBulldozerUnitPrice")]
     [OpenApiOperation("Update ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.update", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Update)]
     public async Task<IActionResult> UpdateExcavatorAndBulldozerUnitPrice([FromBody] UpdateExcavatorAndBulldozerUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateExcavatorAndBulldozerUnitPriceCommand(updateModel));
@@ -2028,7 +2029,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ExcavatorAndBulldozerUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Delete)]
     public async Task<IActionResult> DeleteExcavatorAndBulldozerUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteExcavatorAndBulldozerUnitPriceCommand(deleteId));
@@ -2037,7 +2038,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ExcavatorAndBulldozerUnitPrice")]
     [OpenApiOperation("Delete Many ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Delete)]
     public async Task<IActionResult> DeleteExcavatorAndBulldozerUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteExcavatorAndBulldozerUnitPriceListCommand(deleteIds));
@@ -2046,7 +2047,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ExcavatorAndBulldozerUnitPrice/export")]
     [OpenApiOperation("Export ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.export", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Export)]
     public async Task<IActionResult> ExportExcavatorAndBulldozerUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelExcavatorAndBulldozerUnitPriceQuery());
@@ -2056,7 +2057,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ExcavatorAndBulldozerUnitPrice/import")]
     [OpenApiOperation("Import ExcavatorAndBulldozerUnitPrice", "")]
-    [HasPermission("pricing.excavatorandbulldozerunitprice.import", "Đơn giá và định mức", "Đơn giá định mức máy xúc và máy gạt")]
+    [HasPermission(AppPermissions.Pricing.ExcavatorAndBulldozerUnitPrice.Import)]
     public async Task<IActionResult> ImportExcavatorAndBulldozerUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportExcavatorAndBulldozerUnitPriceExcelCommand(importModel.FormFile));
@@ -2068,7 +2069,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("WasteSuctionTruckUnitPrice")]
     [OpenApiOperation("Get All WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Read)]
     public async Task<IActionResult> GetAllWasteSuctionTruckUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllWasteSuctionTruckUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2077,7 +2078,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("WasteSuctionTruckUnitPrice/{id:guid}")]
     [OpenApiOperation("Get WasteSuctionTruckUnitPrice By Id", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Read)]
     public async Task<IActionResult> GetWasteSuctionTruckUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetWasteSuctionTruckUnitPriceByIdQuery(id));
@@ -2086,7 +2087,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("WasteSuctionTruckUnitPrice")]
     [OpenApiOperation("Create New WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Create)]
     public async Task<IActionResult> CreateWasteSuctionTruckUnitPrice([FromBody] CreateWasteSuctionTruckUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateWasteSuctionTruckUnitPriceCommand(createModel));
@@ -2095,7 +2096,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("WasteSuctionTruckUnitPrice")]
     [OpenApiOperation("Update WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Update)]
     public async Task<IActionResult> UpdateWasteSuctionTruckUnitPrice([FromBody] UpdateWasteSuctionTruckUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateWasteSuctionTruckUnitPriceCommand(updateModel));
@@ -2104,7 +2105,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("WasteSuctionTruckUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Delete)]
     public async Task<IActionResult> DeleteWasteSuctionTruckUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteWasteSuctionTruckUnitPriceCommand(deleteId));
@@ -2113,7 +2114,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("WasteSuctionTruckUnitPrice")]
     [OpenApiOperation("Delete Many WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Delete)]
     public async Task<IActionResult> DeleteWasteSuctionTruckUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteWasteSuctionTruckUnitPriceListCommand(deleteIds));
@@ -2122,7 +2123,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("WasteSuctionTruckUnitPrice/export")]
     [OpenApiOperation("Export WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Export)]
     public async Task<IActionResult> ExportWasteSuctionTruckUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelWasteSuctionTruckUnitPriceQuery());
@@ -2132,7 +2133,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("WasteSuctionTruckUnitPrice/import")]
     [OpenApiOperation("Import WasteSuctionTruckUnitPrice", "")]
-    [HasPermission("pricing.wastesuctiontruckunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe hút bùn chất thải")]
+    [HasPermission(AppPermissions.Pricing.WasteSuctionTruckUnitPrice.Import)]
     public async Task<IActionResult> ImportWasteSuctionTruckUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportWasteSuctionTruckUnitPriceExcelCommand(importModel.FormFile));
@@ -2144,7 +2145,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ServiceAndCraneVehicleUnitPrice")]
     [OpenApiOperation("Get All ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Read)]
     public async Task<IActionResult> GetAllServiceAndCraneVehicleUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllServiceAndCraneVehicleUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2153,7 +2154,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ServiceAndCraneVehicleUnitPrice/export")]
     [OpenApiOperation("Export ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Export)]
     public async Task<IActionResult> ExportServiceAndCraneVehicleUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelServiceAndCraneVehicleUnitPriceQuery());
@@ -2163,7 +2164,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ServiceAndCraneVehicleUnitPrice/import")]
     [OpenApiOperation("Import ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Import)]
     public async Task<IActionResult> ImportServiceAndCraneVehicleUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportServiceAndCraneVehicleUnitPriceExcelCommand(importModel.FormFile));
@@ -2172,7 +2173,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ServiceAndCraneVehicleUnitPrice/{id:guid}")]
     [OpenApiOperation("Get ServiceAndCraneVehicleUnitPrice By Id", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Read)]
     public async Task<IActionResult> GetServiceAndCraneVehicleUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetServiceAndCraneVehicleUnitPriceByIdQuery(id));
@@ -2181,7 +2182,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ServiceAndCraneVehicleUnitPrice")]
     [OpenApiOperation("Create New ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Create)]
     public async Task<IActionResult> CreateServiceAndCraneVehicleUnitPrice([FromBody] CreateServiceAndCraneVehicleUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateServiceAndCraneVehicleUnitPriceCommand(createModel));
@@ -2190,7 +2191,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("ServiceAndCraneVehicleUnitPrice")]
     [OpenApiOperation("Update ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Update)]
     public async Task<IActionResult> UpdateServiceAndCraneVehicleUnitPrice([FromBody] UpdateServiceAndCraneVehicleUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateServiceAndCraneVehicleUnitPriceCommand(updateModel));
@@ -2199,7 +2200,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ServiceAndCraneVehicleUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Delete)]
     public async Task<IActionResult> DeleteServiceAndCraneVehicleUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteServiceAndCraneVehicleUnitPriceCommand(deleteId));
@@ -2208,7 +2209,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ServiceAndCraneVehicleUnitPrice")]
     [OpenApiOperation("Delete Many ServiceAndCraneVehicleUnitPrice", "")]
-    [HasPermission("pricing.serviceandcranevehicleunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe phục vụ và xe cẩu")]
+    [HasPermission(AppPermissions.Pricing.ServiceAndCraneVehicleUnitPrice.Delete)]
     public async Task<IActionResult> DeleteServiceAndCraneVehicleUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteServiceAndCraneVehicleUnitPriceListCommand(deleteIds));
@@ -2221,7 +2222,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ScaniaTruckUnitPrice")]
     [OpenApiOperation("Get All ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Read)]
     public async Task<IActionResult> GetAllScaniaTruckUnitPrice([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllScaniaTruckUnitPriceQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2230,7 +2231,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ScaniaTruckUnitPrice/export")]
     [OpenApiOperation("Export ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.export", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Export)]
     public async Task<IActionResult> ExportScaniaTruckUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelScaniaTruckUnitPriceQuery());
@@ -2240,7 +2241,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ScaniaTruckUnitPrice/import")]
     [OpenApiOperation("Import ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.import", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Import)]
     public async Task<IActionResult> ImportScaniaTruckUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportScaniaTruckUnitPriceExcelCommand(importModel.FormFile));
@@ -2249,7 +2250,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("ScaniaTruckUnitPrice/{id:guid}")]
     [OpenApiOperation("Get ScaniaTruckUnitPrice By Id", "")]
-    [HasPermission("pricing.scaniatruckunitprice.read", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Read)]
     public async Task<IActionResult> GetScaniaTruckUnitPriceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetScaniaTruckUnitPriceByIdQuery(id));
@@ -2258,7 +2259,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("ScaniaTruckUnitPrice")]
     [OpenApiOperation("Create New ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.create", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Create)]
     public async Task<IActionResult> CreateScaniaTruckUnitPrice([FromBody] CreateScaniaTruckUnitPriceDto createModel)
     {
         var result = await Mediator.Send(new CreateScaniaTruckUnitPriceCommand(createModel));
@@ -2267,7 +2268,7 @@ public class PricingController : BaseAuthController
 
     [HttpPut("ScaniaTruckUnitPrice")]
     [OpenApiOperation("Update ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.update", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Update)]
     public async Task<IActionResult> UpdateScaniaTruckUnitPrice([FromBody] UpdateScaniaTruckUnitPriceDto updateModel)
     {
         var result = await Mediator.Send(new UpdateScaniaTruckUnitPriceCommand(updateModel));
@@ -2276,7 +2277,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ScaniaTruckUnitPrice/{deleteId:guid}")]
     [OpenApiOperation("Delete ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Delete)]
     public async Task<IActionResult> DeleteScaniaTruckUnitPrice([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteScaniaTruckUnitPriceCommand(deleteId));
@@ -2285,7 +2286,7 @@ public class PricingController : BaseAuthController
 
     [HttpDelete("ScaniaTruckUnitPrice")]
     [OpenApiOperation("Delete Many ScaniaTruckUnitPrice", "")]
-    [HasPermission("pricing.scaniatruckunitprice.delete", "Đơn giá và định mức", "Đơn giá định mức xe Scania")]
+    [HasPermission(AppPermissions.Pricing.ScaniaTruckUnitPrice.Delete)]
     public async Task<IActionResult> DeleteScaniaTruckUnitPriceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteScaniaTruckUnitPriceListCommand(deleteIds));
@@ -2296,7 +2297,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MechanizedTransportUnitPrice")]
     [OpenApiOperation("Get All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
-    [HasPermission("pricing.mechanizedtransportunitprice.read", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportUnitPrice.Read)]
     public async Task<IActionResult> GetAllMechanizedTransportUnitPrice(
     [FromQuery] int pageIndex = 1,
     [FromQuery] int pageSize = 10,
@@ -2310,7 +2311,7 @@ public class PricingController : BaseAuthController
 
     [HttpGet("MechanizedTransportUnitPrice/export")]
     [OpenApiOperation("Export All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
-    [HasPermission("pricing.mechanizedtransportunitprice.export", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportUnitPrice.Export)]
     public async Task<IActionResult> ExportAllMechanizedTransportUnitPrice()
     {
         var fileByte = await Mediator.Send(new ExportExcelAllMechanizedTransportUnitPriceQuery());
@@ -2320,7 +2321,7 @@ public class PricingController : BaseAuthController
 
     [HttpPost("MechanizedTransportUnitPrice/import")]
     [OpenApiOperation("Import All MechanizedTransportUnitPrice (gộp 4 loại)", "")]
-    [HasPermission("pricing.mechanizedtransportunitprice.import", "Đơn giá và định mức", "Đơn giá định mức nhiên liệu-vật tư, động lực, SCTX")]
+    [HasPermission(AppPermissions.Pricing.MechanizedTransportUnitPrice.Import)]
     public async Task<IActionResult> ImportAllMechanizedTransportUnitPrice([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportAllMechanizedTransportUnitPriceExcelCommand(importModel.FormFile));

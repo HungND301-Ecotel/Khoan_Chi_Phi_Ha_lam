@@ -8,6 +8,7 @@ using Host.Controllers.Base;
 using Infrastructure.Auth.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
+using Shared.Authorization;
 using Shared.Constants;
 
 namespace Host.Controllers.Systems;
@@ -18,7 +19,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("FixedKey")]
     [OpenApiOperation("Get All FixedKey", "")]
-    [HasPermission("system.fixkey.read","Hệ thống","Khóa cấu hình")]
+    [HasPermission(AppPermissions.System.FixKey.Read)]
     public async Task<IActionResult> GetAllFixedKey([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllFixedKeyQuery(pageIndex, pageSize, search, ignorePagination));
@@ -27,7 +28,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("FixedKey/{id:guid}")]
     [OpenApiOperation("Get FixedKey By Id", "")]
-    [HasPermission("system.fixkey.read", "Hệ thống", "Khóa cấu hình")]
+    [HasPermission(AppPermissions.System.FixKey.Read)]
 
     public async Task<IActionResult> GetFixedKeyById([FromRoute] Guid id)
     {
@@ -37,7 +38,7 @@ public class SystemController : BaseAuthController
 
     [HttpPut("FixedKey")]
     [OpenApiOperation("Update FixedKey", "")]
-    [HasPermission("system.fixkey.update", "Hệ thống", "Khóa cấu hình")]
+    [HasPermission(AppPermissions.System.FixKey.Update)]
 
     public async Task<IActionResult> UpdateFixedKey([FromBody] FixedKeyDto updateModel)
     {
@@ -50,7 +51,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("permission/catalog")]
     [OpenApiOperation("Get Permission Catalog", "")]
-    [HasPermission("system.permission.read", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Read)]
     public async Task<IActionResult> GetPermissionCatalogAsync()
     {
         var result = await Mediator.Send(new GetPermissionCatalogQuery());
@@ -59,7 +60,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("permission/department/{departmentId:guid}")]
     [OpenApiOperation("Get Department Permissions", "")]
-    [HasPermission("system.permission.read", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Read)]
     public async Task<IActionResult> GetDepartmentPermissionsAsync([FromRoute] Guid departmentId)
     {
         var result = await Mediator.Send(new GetDepartmentPermissionsQuery(departmentId));
@@ -68,7 +69,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("permission/position/{positionId:int}")]
     [OpenApiOperation("Get Position Permissions", "")]
-    [HasPermission("system.permission.read", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Read)]
     public async Task<IActionResult> GetPositionPermissionsAsync([FromRoute] int positionId)
     {
         var result = await Mediator.Send(new GetPositionPermissionsQuery(positionId));
@@ -77,7 +78,7 @@ public class SystemController : BaseAuthController
 
     [HttpGet("permission/user-override/{userId:int}")]
     [OpenApiOperation("Get User Override Permissions", "")]
-    [HasPermission("system.permission.read", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Read)]
     public async Task<IActionResult> GetUserOverridePermissionsAsync([FromRoute] int userId)
     {
         var result = await Mediator.Send(new GetUserOverridePermissionsQuery(userId));
@@ -93,7 +94,7 @@ public class SystemController : BaseAuthController
     }
     [HttpPost("permission/department")]
     [OpenApiOperation("Update Department Permissions", "")]
-    [HasPermission("system.permission.update", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Update)]
     public async Task<IActionResult> UpdateDepartmentPermissions([FromBody] UpdateDepartmentPermissionsDto dto)
     {
         var result = await Mediator.Send(new UpdateDepartmentPermissionsCommand(dto));
@@ -101,7 +102,7 @@ public class SystemController : BaseAuthController
     }
     [HttpPost("permission/position")]
     [OpenApiOperation("Update Position Permissions", "")]
-    [HasPermission("system.permission.update", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Update)]
     public async Task<IActionResult> UpdatePositionPermissions([FromBody] UpdatePositionPermissionsDto dto)
     {
         var result = await Mediator.Send(new UpdatePositionPermissionsCommand(dto));
@@ -109,7 +110,7 @@ public class SystemController : BaseAuthController
     }
     [HttpPost("permission/user-override")]
     [OpenApiOperation("Update User Override Permissions", "")]
-    [HasPermission("system.permission.update", "Hệ thống", "Phân quyền")]
+    [HasPermission(AppPermissions.System.Permission.Update)]
     public async Task<IActionResult> UpdateUserOverridePermissions([FromBody] UpdateUserOverridePermissionsDto dto)
     {
         var result = await Mediator.Send(new UpdateUserOverridePermissionsCommand(dto));

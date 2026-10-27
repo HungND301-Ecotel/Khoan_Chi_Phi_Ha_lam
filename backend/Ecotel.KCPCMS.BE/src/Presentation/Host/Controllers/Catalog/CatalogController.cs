@@ -71,6 +71,7 @@ using Host.Controllers.Base;
 using Infrastructure.Auth.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
+using Shared.Authorization;
 using Shared.Constants;
 
 namespace Host.Controllers.Catalog;
@@ -81,7 +82,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("UnitOfMeasure")]
     [OpenApiOperation("Get All UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.read", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Read)]
     public async Task<IActionResult> GetAllUnitOfMeasure([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllUnitOfMeasureQuery(pageIndex, pageSize, search, ignorePagination));
@@ -90,7 +91,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("UnitOfMeasure/{id:guid}")]
     [OpenApiOperation("Get All UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.read", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Read)]
     public async Task<IActionResult> GetUnitOfMeasureById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetUnitOfMeasureByIdQuery(id));
@@ -99,7 +100,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("UnitOfMeasure")]
     [OpenApiOperation("Create New UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.create", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Create)]
     public async Task<IActionResult> CreateUnitOfMeasure([FromBody] CreateUnitOfMeasureDto createModel)
     {
         var result = await Mediator.Send(new CreateUnitOfMeasureCommand(createModel));
@@ -108,7 +109,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("UnitOfMeasure/export")]
     [OpenApiOperation("Export UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.export", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Export)]
     public async Task<IActionResult> ExportUnitOfMeasure()
     {
         var fileByte = await Mediator.Send(new ExportExcelUnitOfMeasureQuery());
@@ -118,7 +119,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("UnitOfMeasure/import")]
     [OpenApiOperation("Import UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.import", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Import)]
     public async Task<IActionResult> ImportUnitOfMeasure([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportUnitOfMeasureExcelCommand(importModel.FormFile));
@@ -127,7 +128,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("UnitOfMeasure")]
     [OpenApiOperation("Update UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.update", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Update)]
     public async Task<IActionResult> UpdateUnitOfMeasure([FromBody] UnitOfMeasureDto updateModel)
     {
         var result = await Mediator.Send(new UpdateUnitOfMeasureCommand(updateModel));
@@ -136,7 +137,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("UnitOfMeasure/{deleteId:guid}")]
     [OpenApiOperation("Delete UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.delete", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Delete)]
     public async Task<IActionResult> DeleteUnitOfMeasure([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteUnitOfMeasureCommand(deleteId));
@@ -145,7 +146,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("UnitOfMeasure")]
     [OpenApiOperation("Delete Many UnitOfMeasure", "")]
-    [HasPermission("catalog.unitofmeasure.delete", "Danh mục", "Đơn vị tính")]
+    [HasPermission(AppPermissions.Catalog.UnitOfMeasure.Delete)]
     public async Task<IActionResult> DeleteUnitOfMeasureList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteUnitOfMeasureListCommand(deleteIds));
@@ -158,7 +159,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AssignmentCode")]
     [OpenApiOperation("Get All AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.read", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Read)]
     public async Task<IActionResult> GetAllAssignmentCode([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllAssignmentCodeQuery(pageIndex, pageSize, search, ignorePagination));
@@ -167,7 +168,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AssignmentCode/export")]
     [OpenApiOperation("Export AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.export", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Export)]
     public async Task<IActionResult> ExportAssignmentCode()
     {
         var fileByte = await Mediator.Send(new ExportExcelAssignmentCodeQuery());
@@ -177,7 +178,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AssignmentCode/import")]
     [OpenApiOperation("Import AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.import", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Import)]
     public async Task<IActionResult> ImportAssignmentCode([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportAssignmentCodeExcelCommand(importModel.FormFile));
@@ -186,7 +187,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AssignmentCode/{id:guid}")]
     [OpenApiOperation("Get AssignmentCode by Id", "")]
-    [HasPermission("catalog.assignmentcode.read", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Read)]
     public async Task<IActionResult> GetAssignmentCodeById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAssignmentCodeDetailByIdQuery(id));
@@ -195,7 +196,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AssignmentCode")]
     [OpenApiOperation("Create New AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.create", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Create)]
     public async Task<IActionResult> CreateAssignmentCode([FromBody] CreateAssignmentCodeDto createModel)
     {
         var result = await Mediator.Send(new CreateAssignmentCodeCommand(createModel));
@@ -204,7 +205,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("AssignmentCode")]
     [OpenApiOperation("Update AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.update", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Update)]
     public async Task<IActionResult> UpdateAssignmentCode([FromBody] UpdateAssignmentCodeDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAssignmentCodeCommand(updateModel));
@@ -213,7 +214,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AssignmentCode/{deleteId:guid}")]
     [OpenApiOperation("Delete AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.delete", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Delete)]
     public async Task<IActionResult> DeleteAssignmentCode([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteAssignmentCodeCommand(deleteId));
@@ -222,7 +223,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AssignmentCode")]
     [OpenApiOperation("Delete Many AssignmentCode", "")]
-    [HasPermission("catalog.assignmentcode.delete", "Danh mục", "Nhóm vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.AssignmentCode.Delete)]
     public async Task<IActionResult> DeleteAssignmentCodeList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteAssignmentCodeListCommand(deleteIds));
@@ -234,7 +235,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Department")]
     [OpenApiOperation("Get All Department", "")]
-    [HasPermission("catalog.department.read", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Read)]
     public async Task<IActionResult> GetAllDepartment([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllDepartmentQuery(pageIndex, pageSize, search, ignorePagination));
@@ -243,7 +244,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Department/export")]
     [OpenApiOperation("Export Department", "")]
-    [HasPermission("catalog.department.export", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Export)]
     public async Task<IActionResult> ExportDepartment()
     {
         var fileByte = await Mediator.Send(new ExportExcelDepartmentQuery());
@@ -253,7 +254,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Department/import")]
     [OpenApiOperation("Import Department", "")]
-    [HasPermission("catalog.department.import", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Import)]
     public async Task<IActionResult> ImportDepartment([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportDepartmentExcelCommand(importModel.FormFile));
@@ -262,7 +263,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Department/{id:guid}")]
     [OpenApiOperation("Get Department By Id", "")]
-    [HasPermission("catalog.department.read", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Read)]
     public async Task<IActionResult> GetDepartmentById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetDepartmentByIdQuery(id));
@@ -271,7 +272,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Department")]
     [OpenApiOperation("Create New Department", "")]
-    [HasPermission("catalog.department.create", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Create)]
     public async Task<IActionResult> CreateDepartment([FromBody] CreateDepartmentDto createModel)
     {
         var result = await Mediator.Send(new CreateDepartmentCommand(createModel));
@@ -280,7 +281,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Department")]
     [OpenApiOperation("Update Department", "")]
-    [HasPermission("catalog.department.update", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Update)]
     public async Task<IActionResult> UpdateDepartment([FromBody] UpdateDepartmentDto updateModel)
     {
         var result = await Mediator.Send(new UpdateDepartmentCommand(updateModel));
@@ -289,7 +290,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Department/{deleteId:guid}")]
     [OpenApiOperation("Delete Department", "")]
-    [HasPermission("catalog.department.delete", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Delete)]
     public async Task<IActionResult> DeleteDepartment([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteDepartmentCommand(deleteId));
@@ -298,7 +299,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Department")]
     [OpenApiOperation("Delete Many Department", "")]
-    [HasPermission("catalog.department.delete", "Danh mục", "Đơn vị")]
+    [HasPermission(AppPermissions.Catalog.Department.Delete)]
     public async Task<IActionResult> DeleteDepartmentList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteDepartmentListCommand(deleteIds));
@@ -311,7 +312,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Material")]
     [OpenApiOperation("Get All Material", "")]
-    [HasPermission("catalog.material.read", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Read)]
     public async Task<IActionResult> GetAllMaterial([FromQuery] MaterialType? materialType, [FromQuery] DateTime? date, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var normalizedMaterialType = materialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : materialType;
@@ -321,7 +322,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Material/export")]
     [OpenApiOperation("Export Material", "")]
-    [HasPermission("catalog.material.export", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Export)]
     public async Task<IActionResult> ExportMaterial([FromQuery] MaterialType materialType = MaterialType.MaterialInContract)
     {
         var normalizedMaterialType = materialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : materialType;
@@ -332,7 +333,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Material/import")]
     [OpenApiOperation("Import Material", "")]
-    [HasPermission("catalog.material.import", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Import)]
     public async Task<IActionResult> ImportMaterial([FromForm] ImportMaterialDto importModel)
     {
         var normalizedMaterialType = importModel.MaterialType == MaterialType.MaterialOutContract ? MaterialType.MaterialInContract : importModel.MaterialType;
@@ -342,7 +343,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Material/{id:guid}")]
     [OpenApiOperation("Get Material by Id", "")]
-    [HasPermission("catalog.material.read", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Read)]
     public async Task<IActionResult> GetMaterialById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMaterialByIdQuery(id));
@@ -351,7 +352,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Material")]
     [OpenApiOperation("Create New Material", "")]
-    [HasPermission("catalog.material.create", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Create)]
     public async Task<IActionResult> CreateMaterial([FromBody] CreateMaterialDto createModel)
     {
         var result = await Mediator.Send(new CreateMaterialCommand(createModel));
@@ -360,7 +361,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Material")]
     [OpenApiOperation("Update AssignmentCode", "")]
-    [HasPermission("catalog.material.update", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Update)]
     public async Task<IActionResult> UpdateAssignmentCode([FromBody] UpdateMaterialDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMaterialCommand(updateModel));
@@ -369,7 +370,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Material/{deleteId:guid}")]
     [OpenApiOperation("Delete Material", "")]
-    [HasPermission("catalog.material.delete", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Delete)]
     public async Task<IActionResult> DeleteMaterial([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMaterialCommand(deleteId));
@@ -378,7 +379,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Material")]
     [OpenApiOperation("Delete Many Material", "")]
-    [HasPermission("catalog.material.delete", "Danh mục", "Vật tư, tài sản")]
+    [HasPermission(AppPermissions.Catalog.Material.Delete)]
     public async Task<IActionResult> DeleteMaterialList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMaterialListCommand(deleteIds));
@@ -389,7 +390,7 @@ public class CatalogController : BaseAuthController
     #region Position
     [HttpGet("Position")]
     [OpenApiOperation("Get All Position", "")]
-    [HasPermission("catalog.position.read", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Read)]
     public async Task<IActionResult> GetAllPosition(
         [FromQuery] int pageIndex = 1,
         [FromQuery] int pageSize = 10,
@@ -402,7 +403,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Position/{id:int}")]
     [OpenApiOperation("Get Position by Id", "")]
-    [HasPermission("catalog.position.read", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Read)]
 
     public async Task<IActionResult> GetPositionById([FromRoute] int id)
     {
@@ -412,7 +413,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Position")]
     [OpenApiOperation("Create Position", "")]
-    [HasPermission("catalog.position.create", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Create)]
     public async Task<IActionResult> CreatePosition([FromBody] CreatePositionDto dto)
     {
         var result = await Mediator.Send(new CreatePositionCommand(dto));
@@ -421,7 +422,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Position")]
     [OpenApiOperation("Update Position", "")]
-    [HasPermission("catalog.position.update", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Update)]
     public async Task<IActionResult> UpdatePosition([FromBody] UpdatePositionDto dto)
     {
         var result = await Mediator.Send(new UpdatePositionCommand(dto));
@@ -430,7 +431,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Position/{id:int}")]
     [OpenApiOperation("Delete Position", "")]
-    [HasPermission("catalog.position.delete", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Delete)]
     public async Task<IActionResult> DeletePosition([FromRoute] int id)
     {
         var result = await Mediator.Send(new DeletePositionCommand(id));
@@ -439,7 +440,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Position/list")]
     [OpenApiOperation("Delete Position List", "")]
-    [HasPermission("catalog.position.delete", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Delete)]
 
     public async Task<IActionResult> DeletePositionList([FromBody] IList<int> deleteIds)
     {
@@ -449,7 +450,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Position/export")]
     [OpenApiOperation("Export Position List To Excel", "")]
-    [HasPermission("catalog.position.export", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Export)]
 
     public async Task<IActionResult> ExportPosition()
     {
@@ -460,7 +461,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Position/import")]
     [Consumes("multipart/form-data")]
-    [HasPermission("catalog.position.import", "Danh mục", "Chức vụ")]
+    [HasPermission(AppPermissions.Catalog.Position.Import)]
 
     public async Task<IActionResult> ImportPosition([FromForm] ImportDto importModel)
     {
@@ -475,7 +476,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProcessGroup")]
     [OpenApiOperation("Get All ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.read", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Read)]
     public async Task<IActionResult> GetAllProcessGroup([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllProcessGroupQuery(pageIndex, pageSize, search, ignorePagination));
@@ -484,7 +485,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProcessGroup/export")]
     [OpenApiOperation("Export ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.export", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Export)]
     public async Task<IActionResult> ExportProcessGroup()
     {
         var fileByte = await Mediator.Send(new ExportExcelProcessGroupQuery());
@@ -494,7 +495,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("ProcessGroup/import")]
     [OpenApiOperation("Import ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.import", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Import)]
     public async Task<IActionResult> ImportProcessGroup([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportProcessGroupExcelCommand(importModel.FormFile));
@@ -503,7 +504,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProcessGroup/{Id:guid}")]
     [OpenApiOperation("Get All ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.read", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Read)]
     public async Task<IActionResult> GetProcessGroupById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProcessGroupByIdQuery(id));
@@ -512,7 +513,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("ProcessGroup")]
     [OpenApiOperation("Create New ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.create", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Create)]
     public async Task<IActionResult> CreateProcessGroup([FromBody] CreateProcessGroupDto createModel)
     {
         var result = await Mediator.Send(new CreateProcessGroupCommand(createModel));
@@ -521,7 +522,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("ProcessGroup")]
     [OpenApiOperation("Update ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.update", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Update)]
     public async Task<IActionResult> UpdateProcessGroup([FromBody] UpdateProcessGroupDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProcessGroupCommand(updateModel));
@@ -530,7 +531,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("ProcessGroup/{deleteId:guid}")]
     [OpenApiOperation("Delete ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.delete", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Delete)]
     public async Task<IActionResult> DeleteProcessGroup([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteProcessGroupCommand(deleteId));
@@ -539,7 +540,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("ProcessGroup")]
     [OpenApiOperation("Delete Many ProcessGroup", "")]
-    [HasPermission("catalog.processgroup.delete", "Danh mục", "Nhóm công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProcessGroup.Delete)]
     public async Task<IActionResult> DeleteProcessGroupList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProcessGroupListCommand(deleteIds));
@@ -551,7 +552,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportRoute")]
     [OpenApiOperation("Get All TransportRoute", "")]
-    [HasPermission("catalog.transportroute.read", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Read)]
     public async Task<IActionResult> GetAllTransportRoute([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllTransportRouteQuery(pageIndex, pageSize, search, ignorePagination));
@@ -560,7 +561,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportRoute/{id:guid}")]
     [OpenApiOperation("Get TransportRoute By Id", "")]
-    [HasPermission("catalog.transportroute.read", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Read)]
     public async Task<IActionResult> GetTransportRouteById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTransportRouteByIdQuery(id));
@@ -569,7 +570,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("TransportRoute")]
     [OpenApiOperation("Create New TransportRoute", "")]
-    [HasPermission("catalog.transportroute.create", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Create)]
     public async Task<IActionResult> CreateTransportRoute([FromBody] CreateTransportRouteDto createModel)
     {
         var result = await Mediator.Send(new CreateTransportRouteCommand(createModel));
@@ -578,7 +579,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("TransportRoute")]
     [OpenApiOperation("Update TransportRoute", "")]
-    [HasPermission("catalog.transportroute.update", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Update)]
     public async Task<IActionResult> UpdateTransportRoute([FromBody] TransportRouteDto updateModel)
     {
         var result = await Mediator.Send(new UpdateTransportRouteCommand(updateModel));
@@ -587,7 +588,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("TransportRoute/{deleteId:guid}")]
     [OpenApiOperation("Delete TransportRoute", "")]
-    [HasPermission("catalog.transportroute.delete", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Delete)]
     public async Task<IActionResult> DeleteTransportRoute([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTransportRouteCommand(deleteId));
@@ -596,7 +597,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("TransportRoute")]
     [OpenApiOperation("Delete Many TransportRoute", "")]
-    [HasPermission("catalog.transportroute.delete", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Delete)]
     public async Task<IActionResult> DeleteTransportRouteList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteTransportRouteListCommand(deleteIds));
@@ -605,7 +606,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportRoute/export")]
     [OpenApiOperation("Export TransportRoute", "")]
-    [HasPermission("catalog.transportroute.export", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Export)]
     public async Task<IActionResult> ExportTransportRoute()
     {
         var fileByte = await Mediator.Send(new ExportExcelTransportRouteQuery());
@@ -615,7 +616,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("TransportRoute/import")]
     [OpenApiOperation("Import TransportRoute", "")]
-    [HasPermission("catalog.transportroute.import", "Danh mục", "Tuyến vận tải")]
+    [HasPermission(AppPermissions.Catalog.TransportRoute.Import)]
     public async Task<IActionResult> ImportTransportRoute([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTransportRouteExcelCommand(importModel.FormFile));
@@ -627,7 +628,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionProcess")]
     [OpenApiOperation("Get All ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.read", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Read)]
     public async Task<IActionResult> GetAllProductionProcess([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllProductionProcessQuery(pageIndex, pageSize, search, ignorePagination));
@@ -636,7 +637,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionProcess/export")]
     [OpenApiOperation("Export ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.export", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Export)]
     public async Task<IActionResult> ExportProductionProcess()
     {
         var fileByte = await Mediator.Send(new ExportExcelProductionProcessQuery());
@@ -646,7 +647,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("ProductionProcess/import")]
     [OpenApiOperation("Import ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.import", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Import)]
     public async Task<IActionResult> ImportProductionProcess([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportProductionProcessExcelCommand(importModel.FormFile));
@@ -655,7 +656,7 @@ public class CatalogController : BaseAuthController
     // check api fe 
     [HttpPost("ProductionProcess")]
     [OpenApiOperation("Create New ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.create", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Create)]
     public async Task<IActionResult> CreateProductionProcess([FromBody] CreateProductionProcessDto createModel)
     {
         var result = await Mediator.Send(new CreateProductionProcessCommand(createModel));
@@ -664,7 +665,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionProcess/{Id:guid}")]
     [OpenApiOperation("Get All ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.read", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Read)]
     public async Task<IActionResult> GetProductionProcessById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProductionProcessByIdQuery(id));
@@ -673,7 +674,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("ProductionProcess")]
     [OpenApiOperation("Update ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.update", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Update)]
     public async Task<IActionResult> UpdateProductionProcess([FromBody] UpdateProductionProcessDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductionProcessCommand(updateModel));
@@ -682,7 +683,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("ProductionProcess/{deleteId:guid}")]
     [OpenApiOperation("Delete ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.delete", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Delete)]
     public async Task<IActionResult> DeleteProductionProcess([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteProductionProcessCommand(deleteId));
@@ -691,7 +692,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("ProductionProcess")]
     [OpenApiOperation("Delete Many ProductionProcess", "")]
-    [HasPermission("catalog.productionprocess.delete", "Danh mục", "Công đoạn sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionProcess.Delete)]
     public async Task<IActionResult> DeleteProductionProcessList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductionProcessListCommand(deleteIds));
@@ -703,7 +704,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactor")]
     [OpenApiOperation("Get All AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.read", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Read)]
     public async Task<IActionResult> GetAllAdjustmentFactor([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllAdjustmentFactorQuery(pageIndex, pageSize, search, ignorePagination));
@@ -712,7 +713,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactor/export")]
     [OpenApiOperation("Export AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.export", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Export)]
     public async Task<IActionResult> ExportAdjustmentFactor()
     {
         var fileByte = await Mediator.Send(new ExportExcelAdjustmentFactorQuery());
@@ -722,7 +723,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AdjustmentFactor/import")]
     [OpenApiOperation("Import AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.import", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Import)]
     public async Task<IActionResult> ImportAdjustmentFactor([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportAdjustmentFactorExcelCommand(importModel.FormFile));
@@ -731,7 +732,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactor/details")]
     [OpenApiOperation("Get All AdjustmentFactorDetail", "")]
-    [HasPermission("catalog.adjustmentfactor.read", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Read)]
     public async Task<IActionResult> GetAllAdjustmentFactorDetail([FromQuery] Guid? ProcessGroupId)
     {
         var result = await Mediator.Send(new GetAllAdjustmentFactorDetailQuery(ProcessGroupId));
@@ -740,7 +741,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactor/{id:guid}")]
     [OpenApiOperation("Get AdjustmentFactor By Id", "")]
-    [HasPermission("catalog.adjustmentfactor.read", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Read)]
     public async Task<IActionResult> GetAdjustmentFactorById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAdjustmentFactorByIdQuery(id));
@@ -749,7 +750,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AdjustmentFactor")]
     [OpenApiOperation("Create New AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.create", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Create)]
     public async Task<IActionResult> CreateAdjustmentFactor([FromBody] CreateAdjustmentFactorDto createModel)
     {
         var result = await Mediator.Send(new CreateAdjustmentFactorCommand(createModel));
@@ -758,7 +759,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("AdjustmentFactor")]
     [OpenApiOperation("Update AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.update", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Update)]
     public async Task<IActionResult> UpdateAdjustmentFactor([FromBody] UpdateAdjustmentFactorDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAdjustmentFactorCommand(updateModel));
@@ -767,7 +768,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AdjustmentFactor/{deleteId:guid}")]
     [OpenApiOperation("Delete AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.delete", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Delete)]
     public async Task<IActionResult> DeleteAdjustmentFactor([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteAdjustmentFactorCommand(deleteId));
@@ -776,7 +777,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AdjustmentFactor")]
     [OpenApiOperation("Delete Many AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactor.delete", "Danh mục", "Hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactor.Delete)]
     public async Task<IActionResult> DeleteAdjustmentFactorList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteAdjustmentFactorListCommand(deleteIds));
@@ -788,7 +789,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactorDescription")]
     [OpenApiOperation("Get All AdjustmentFactor", "")]
-    [HasPermission("catalog.adjustmentfactordescription.read", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Read)]
     public async Task<IActionResult> GetAllAdjustmentFactorDescription([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllAdjustmentFactorDescriptionQuery(pageIndex, pageSize, search, ignorePagination));
@@ -797,7 +798,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactorDescription/export")]
     [OpenApiOperation("Export AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.export", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Export)]
     public async Task<IActionResult> ExportAdjustmentFactorDescription()
     {
         var fileByte = await Mediator.Send(new ExportExcelAdjustmentFactorDescriptionQuery());
@@ -807,7 +808,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AdjustmentFactorDescription/import")]
     [OpenApiOperation("Import AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.import", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Import)]
     public async Task<IActionResult> ImportAdjustmentFactorDescription([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportAdjustmentFactorDescriptionExcelCommand(importModel.FormFile));
@@ -816,7 +817,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AdjustmentFactorDescription/{id:guid}")]
     [OpenApiOperation("Get All AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.read", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Read)]
     public async Task<IActionResult> GetAdjustmentFactorDescriptionById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAdjustmentFactorDescriptionByIdQuery(id));
@@ -825,7 +826,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AdjustmentFactorDescription")]
     [OpenApiOperation("Create New AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.create", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Create)]
     public async Task<IActionResult> CreateAdjustmentFactorDescription([FromBody] CreateAdjustmentFactorDescriptionDto createModel)
     {
         var result = await Mediator.Send(new CreateAdjustmentFactorDescriptionCommand(createModel));
@@ -834,7 +835,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("AdjustmentFactorDescription")]
     [OpenApiOperation("Update AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.update", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Update)]
     public async Task<IActionResult> UpdateAdjustmentFactorDescription([FromBody] UpdateAdjustmentFactorDescriptionDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAdjustmentFactorDescriptionCommand(updateModel));
@@ -843,7 +844,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AdjustmentFactorDescription/{deleteId:guid}")]
     [OpenApiOperation("Delete AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.delete", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Delete)]
     public async Task<IActionResult> DeleteAdjustmentFactorDescription([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteAdjustmentFactorDescriptionCommand(deleteId));
@@ -852,7 +853,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AdjustmentFactorDescription")]
     [OpenApiOperation("Delete Many AdjustmentFactorDescription", "")]
-    [HasPermission("catalog.adjustmentfactordescription.delete", "Danh mục", "Diễn giải hệ số điều chỉnh")]
+    [HasPermission(AppPermissions.Catalog.AdjustmentFactorDescription.Delete)]
     public async Task<IActionResult> DeleteAdjustmentFactorDescriptionList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteAdjustmentFactorDescriptionListCommand(deleteIds));
@@ -864,7 +865,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Passport")]
     [OpenApiOperation("Get All Passport", "")]
-    [HasPermission("catalog.passport.read", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Read)]
     public async Task<IActionResult> GetAllPassport([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllPassportQuery(pageIndex, pageSize, search, ignorePagination));
@@ -873,7 +874,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Passport/export")]
     [OpenApiOperation("Export Passport", "")]
-    [HasPermission("catalog.passport.export", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Export)]
     public async Task<IActionResult> ExportPassport()
     {
         var fileByte = await Mediator.Send(new ExportExcelPassportQuery());
@@ -883,7 +884,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Passport/import")]
     [OpenApiOperation("Import Passport", "")]
-    [HasPermission("catalog.passport.import", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Import)]
     public async Task<IActionResult> ImportPassport([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportPassportExcelCommand(importModel.FormFile));
@@ -892,7 +893,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Passport/{id:guid}")]
     [OpenApiOperation("Get Passport By Id", "")]
-    [HasPermission("catalog.passport.read", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Read)]
     public async Task<IActionResult> GetPassportById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetPassportByIdQuery(id));
@@ -901,7 +902,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Passport")]
     [OpenApiOperation("Create New Passport", "")]
-    [HasPermission("catalog.passport.create", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Create)]
     public async Task<IActionResult> CreatePassport([FromBody] CreatePassportDto createModel)
     {
         var result = await Mediator.Send(new CreatePassportCommand(createModel));
@@ -910,7 +911,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Passport")]
     [OpenApiOperation("Update Passport", "")]
-    [HasPermission("catalog.passport.update", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Update)]
     public async Task<IActionResult> UpdatePassport([FromBody] PassportDto updateModel)
     {
         var result = await Mediator.Send(new UpdatePassportCommand(updateModel));
@@ -919,7 +920,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Passport/{deleteId:guid}")]
     [OpenApiOperation("Delete Passport", "")]
-    [HasPermission("catalog.passport.delete", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Delete)]
     public async Task<IActionResult> DeletePassport([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeletePassportCommand(deleteId));
@@ -928,7 +929,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Passport")]
     [OpenApiOperation("Delete Many Passport", "")]
-    [HasPermission("catalog.passport.delete", "Danh mục", "Hộ chiếu, Sđ, Sc")]
+    [HasPermission(AppPermissions.Catalog.Passport.Delete)]
     public async Task<IActionResult> DeletePassportList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeletePassportListCommand(deleteIds));
@@ -940,7 +941,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("LongwallParameters")]
     [OpenApiOperation("Get All LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.read", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Read)]
     public async Task<IActionResult> GetAllLongwallParameters([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllLongwallParametersQuery(pageIndex, pageSize, search, ignorePagination));
@@ -949,7 +950,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("LongwallParameters/export")]
     [OpenApiOperation("Export LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.export", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Export)]
     public async Task<IActionResult> ExportLongwallParameters()
     {
         var fileByte = await Mediator.Send(new ExportExcelLongwallParametersQuery());
@@ -959,7 +960,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("LongwallParameters/import")]
     [OpenApiOperation("Import LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.import", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Import)]
     public async Task<IActionResult> ImportLongwallParameters([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportLongwallParametersExcelCommand(importModel.FormFile));
@@ -968,7 +969,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("LongwallParameters/{id:guid}")]
     [OpenApiOperation("Get LongwallParameters By Id", "")]
-    [HasPermission("catalog.longwallparameters.read", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Read)]
     public async Task<IActionResult> GetLongwallParametersById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetLongwallParametersByIdQuery(id));
@@ -977,7 +978,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("LongwallParameters")]
     [OpenApiOperation("Create New LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.create", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Create)]
     public async Task<IActionResult> CreateLongwallParameters([FromBody] CreateLongwallParametersDto createModel)
     {
         var result = await Mediator.Send(new CreateLongwallParametersCommand(createModel));
@@ -986,7 +987,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("LongwallParameters")]
     [OpenApiOperation("Update LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.update", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Update)]
     public async Task<IActionResult> UpdateLongwallParameters([FromBody] LongwallParametersDto updateModel)
     {
         var result = await Mediator.Send(new UpdateLongwallParametersCommand(updateModel));
@@ -995,7 +996,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("LongwallParameters/{deleteId:guid}")]
     [OpenApiOperation("Delete LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.delete", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Delete)]
     public async Task<IActionResult> DeleteLongwallParameters([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteLongwallParametersCommand(deleteId));
@@ -1004,7 +1005,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("LongwallParameters")]
     [OpenApiOperation("Delete Many LongwallParameters", "")]
-    [HasPermission("catalog.longwallparameters.delete", "Danh mục", "Thông số lò chợ")]
+    [HasPermission(AppPermissions.Catalog.LongwallParameters.Delete)]
     public async Task<IActionResult> DeleteLongwallParametersList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteLongwallParametersListCommand(deleteIds));
@@ -1016,7 +1017,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CuttingThickness")]
     [OpenApiOperation("Get All CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.read", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Read)]
     public async Task<IActionResult> GetAllCuttingThickness([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllCuttingThicknessQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1025,7 +1026,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CuttingThickness/export")]
     [OpenApiOperation("Export CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.export", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Export)]
     public async Task<IActionResult> ExportCuttingThickness()
     {
         var fileByte = await Mediator.Send(new ExportExcelCuttingThicknessQuery());
@@ -1035,7 +1036,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("CuttingThickness/import")]
     [OpenApiOperation("Import CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.import", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Import)]
     public async Task<IActionResult> ImportCuttingThickness([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportCuttingThicknessExcelCommand(importModel.FormFile));
@@ -1044,7 +1045,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CuttingThickness/{id:guid}")]
     [OpenApiOperation("Get CuttingThickness By Id", "")]
-    [HasPermission("catalog.cuttingthickness.read", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Read)]
     public async Task<IActionResult> GetCuttingThicknessById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetCuttingThicknessByIdQuery(id));
@@ -1053,7 +1054,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("CuttingThickness")]
     [OpenApiOperation("Create New CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.create", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Create)]
     public async Task<IActionResult> CreateCuttingThicknesss([FromBody] CreateCuttingThicknessDto createModel)
     {
         var result = await Mediator.Send(new CreateCuttingThicknessCommand(createModel));
@@ -1062,7 +1063,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("CuttingThickness")]
     [OpenApiOperation("Update CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.update", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Update)]
     public async Task<IActionResult> UpdateCuttingThickness([FromBody] CuttingThicknessDto updateModel)
     {
         var result = await Mediator.Send(new UpdateCuttingThicknessCommand(updateModel));
@@ -1071,7 +1072,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CuttingThickness/{deleteId:guid}")]
     [OpenApiOperation("Delete CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.delete", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Delete)]
     public async Task<IActionResult> DeleteCuttingThickness([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteCuttingThicknessCommand(deleteId));
@@ -1080,7 +1081,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CuttingThickness")]
     [OpenApiOperation("Delete Many CuttingThickness", "")]
-    [HasPermission("catalog.cuttingthickness.delete", "Danh mục", "Chiều dày lớp khấu")]
+    [HasPermission(AppPermissions.Catalog.CuttingThickness.Delete)]
     public async Task<IActionResult> DeleteCuttingThicknessList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteCuttingThicknessListCommand(deleteIds));
@@ -1092,7 +1093,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Hardness")]
     [OpenApiOperation("Get All Hardness", "")]
-    [HasPermission("catalog.hardness.read", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Read)]
     public async Task<IActionResult> GetAllHardness([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<Hardness>(pageIndex, pageSize, search, ignorePagination));
@@ -1101,7 +1102,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Hardness/export")]
     [OpenApiOperation("Export Hardness", "")]
-    [HasPermission("catalog.hardness.export", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Export)]
     public async Task<IActionResult> ExportHardness()
     {
         var fileByte = await Mediator.Send(new ExportExcelHardnessQuery());
@@ -1111,7 +1112,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Hardness/import")]
     [OpenApiOperation("Import Hardness", "")]
-    [HasPermission("catalog.hardness.import", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Import)]
     public async Task<IActionResult> ImportHardness([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportHardnessExcelCommand(importModel.FormFile));
@@ -1120,7 +1121,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Hardness/{Id:guid}")]
     [OpenApiOperation("Get Hardness By Id", "")]
-    [HasPermission("catalog.hardness.read", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Read)]
     public async Task<IActionResult> GetHardnessById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<Hardness>(id));
@@ -1129,7 +1130,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Hardness")]
     [OpenApiOperation("Create New Hardness", "")]
-    [HasPermission("catalog.hardness.create", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Create)]
     public async Task<IActionResult> CreateHardness([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<Hardness>(createModel));
@@ -1138,7 +1139,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Hardness")]
     [OpenApiOperation("Update Hardness", "")]
-    [HasPermission("catalog.hardness.update", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Update)]
     public async Task<IActionResult> UpdateHardness([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<Hardness>(updateModel));
@@ -1147,7 +1148,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Hardness/{deleteId:guid}")]
     [OpenApiOperation("Delete Hardness", "")]
-    [HasPermission("catalog.hardness.delete", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Delete)]
     public async Task<IActionResult> DeleteHardness([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<Hardness>(deleteId));
@@ -1156,7 +1157,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Hardness")]
     [OpenApiOperation("Delete Many Hardness", "")]
-    [HasPermission("catalog.hardness.delete", "Danh mục", "Độ kiên cố than đá")]
+    [HasPermission(AppPermissions.Catalog.Hardness.Delete)]
     public async Task<IActionResult> DeleteHardnessList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<Hardness>(deleteIds));
@@ -1168,7 +1169,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Power")]
     [OpenApiOperation("Get All Power", "")]
-    [HasPermission("catalog.power.read", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Read)]
     public async Task<IActionResult> GetAllPower([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<Power>(pageIndex, pageSize, search, ignorePagination));
@@ -1177,7 +1178,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Power/export")]
     [OpenApiOperation("Export Power", "")]
-    [HasPermission("catalog.power.export", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Export)]
     public async Task<IActionResult> ExportPower()
     {
         var fileByte = await Mediator.Send(new ExportExcelPowerQuery());
@@ -1187,7 +1188,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Power/import")]
     [OpenApiOperation("Import Power", "")]
-    [HasPermission("catalog.power.import", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Import)]
     public async Task<IActionResult> ImportPower([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportPowerExcelCommand(importModel.FormFile));
@@ -1196,7 +1197,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Power/{Id:guid}")]
     [OpenApiOperation("Get Power By Id", "")]
-    [HasPermission("catalog.power.read", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Read)]
     public async Task<IActionResult> GetPowerById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<Power>(id));
@@ -1205,7 +1206,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Power")]
     [OpenApiOperation("Create New Power", "")]
-    [HasPermission("catalog.power.create", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Create)]
     public async Task<IActionResult> CreatePower([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<Power>(createModel));
@@ -1214,7 +1215,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Power")]
     [OpenApiOperation("Update Power", "")]
-    [HasPermission("catalog.power.update", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Update)]
     public async Task<IActionResult> UpdatePower([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<Power>(updateModel));
@@ -1223,7 +1224,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Power/{deleteId:guid}")]
     [OpenApiOperation("Delete Power", "")]
-    [HasPermission("catalog.power.delete", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Delete)]
     public async Task<IActionResult> DeletePower([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<Power>(deleteId));
@@ -1232,7 +1233,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Power")]
     [OpenApiOperation("Delete Many Power", "")]
-    [HasPermission("catalog.power.delete", "Danh mục", "Công suất")]
+    [HasPermission(AppPermissions.Catalog.Power.Delete)]
     public async Task<IActionResult> DeletePowerList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<Power>(deleteIds));
@@ -1244,7 +1245,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("InsertItem")]
     [OpenApiOperation("Get All InsertItem", "")]
-    [HasPermission("catalog.insertitem.read", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Read)]
     public async Task<IActionResult> GetAllInsertItem([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<InsertItem>(pageIndex, pageSize, search, ignorePagination));
@@ -1253,7 +1254,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("InsertItem/export")]
     [OpenApiOperation("Export InsertItem", "")]
-    [HasPermission("catalog.insertitem.export", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Export)]
     public async Task<IActionResult> ExportInsertItem()
     {
         var fileByte = await Mediator.Send(new ExportExcelInsertItemQuery());
@@ -1263,7 +1264,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("InsertItem/import")]
     [OpenApiOperation("Import InsertItem", "")]
-    [HasPermission("catalog.insertitem.import", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Import)]
     public async Task<IActionResult> ImportInsertItem([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportInsertItemExcelCommand(importModel.FormFile));
@@ -1272,7 +1273,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("InsertItem/{id:guid}")]
     [OpenApiOperation("Get InsertItem By Id", "")]
-    [HasPermission("catalog.insertitem.read", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Read)]
     public async Task<IActionResult> GetInsertItemById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<InsertItem>(id));
@@ -1281,7 +1282,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("InsertItem")]
     [OpenApiOperation("Create New InsertItem", "")]
-    [HasPermission("catalog.insertitem.create", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Create)]
     public async Task<IActionResult> CreateInsertItem([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<InsertItem>(createModel));
@@ -1290,7 +1291,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("InsertItem")]
     [OpenApiOperation("Update InsertItem", "")]
-    [HasPermission("catalog.insertitem.update", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Update)]
     public async Task<IActionResult> UpdateInsertItem([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<InsertItem>(updateModel));
@@ -1299,7 +1300,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("InsertItem/{deleteId:guid}")]
     [OpenApiOperation("Delete InsertItem", "")]
-    [HasPermission("catalog.insertitem.delete", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Delete)]
     public async Task<IActionResult> DeleteInsertItem([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<InsertItem>(deleteId));
@@ -1308,7 +1309,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("InsertItem")]
     [OpenApiOperation("Delete Many InsertItems", "")]
-    [HasPermission("catalog.insertitem.delete", "Danh mục", "Chèn")]
+    [HasPermission(AppPermissions.Catalog.InsertItem.Delete)]
     public async Task<IActionResult> DeleteInsertItemList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<InsertItem>(deleteIds));
@@ -1320,7 +1321,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionOrder")]
     [OpenApiOperation("Get All ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.read", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Read)]
     public async Task<IActionResult> GetAllProductionOrder([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllProductionOrderQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1329,7 +1330,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionOrder/{id:guid}")]
     [OpenApiOperation("Get ProductionOrder By Id", "")]
-    [HasPermission("catalog.productionorder.read", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Read)]
     public async Task<IActionResult> GetProductionOrderById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProductionOrderByIdQuery(id));
@@ -1338,7 +1339,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("ProductionOrder/export")]
     [OpenApiOperation("Export ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.export", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Export)]
     public async Task<IActionResult> ExportProductionOrder()
     {
         var fileByte = await Mediator.Send(new ExportExcelProductionOrderQuery());
@@ -1348,7 +1349,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("ProductionOrder/import")]
     [OpenApiOperation("Import ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.import", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Import)]
     public async Task<IActionResult> ImportProductionOrder([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportProductionOrderExcelCommand(importModel.FormFile));
@@ -1357,7 +1358,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("ProductionOrder")]
     [OpenApiOperation("Create New ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.create", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Create)]
     public async Task<IActionResult> CreateProductionOrder([FromBody] CreateProductionOrderDto createModel)
     {
         var result = await Mediator.Send(new CreateProductionOrderCommand(createModel));
@@ -1366,7 +1367,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("ProductionOrder")]
     [OpenApiOperation("Update ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.update", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Update)]
     public async Task<IActionResult> UpdateProductionOrder([FromBody] ProductionOrderDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductionOrderCommand(updateModel));
@@ -1375,7 +1376,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("ProductionOrder")]
     [OpenApiOperation("Delete Many ProductionOrder", "")]
-    [HasPermission("catalog.productionorder.delete", "Danh mục", "Quyết định, lệnh sản xuất")]
+    [HasPermission(AppPermissions.Catalog.ProductionOrder.Delete)]
     public async Task<IActionResult> DeleteProductionOrderList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductionOrderListCommand(deleteIds));
@@ -1387,7 +1388,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Technology")]
     [OpenApiOperation("Get All Technology", "")]
-    [HasPermission("catalog.technology.read", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Read)]
     public async Task<IActionResult> GetAllTechnology([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<Technology>(pageIndex, pageSize, search, ignorePagination));
@@ -1396,7 +1397,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Technology/export")]
     [OpenApiOperation("Export Technology", "")]
-    [HasPermission("catalog.technology.export", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Export)]
     public async Task<IActionResult> ExportTechnology()
     {
         var fileByte = await Mediator.Send(new ExportExcelTechnologyQuery());
@@ -1406,7 +1407,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Technology/import")]
     [OpenApiOperation("Import Technology", "")]
-    [HasPermission("catalog.technology.import", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Import)]
     public async Task<IActionResult> ImportTechnology([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTechnologyExcelCommand(importModel.FormFile));
@@ -1415,7 +1416,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Technology/{id:guid}")]
     [OpenApiOperation("Get Technology By Id", "")]
-    [HasPermission("catalog.technology.read", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Read)]
     public async Task<IActionResult> GetTechnologyById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<Technology>(id));
@@ -1424,7 +1425,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Technology")]
     [OpenApiOperation("Create New Technology", "")]
-    [HasPermission("catalog.technology.create", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Create)]
     public async Task<IActionResult> CreateTechnology([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<Technology>(createModel));
@@ -1433,7 +1434,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Technology")]
     [OpenApiOperation("Update Technology", "")]
-    [HasPermission("catalog.technology.update", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Update)]
     public async Task<IActionResult> UpdateTechnology([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<Technology>(updateModel));
@@ -1442,7 +1443,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Technology/{deleteId:guid}")]
     [OpenApiOperation("Delete Technology", "")]
-    [HasPermission("catalog.technology.delete", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Delete)]
     public async Task<IActionResult> DeleteTechnology([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<Technology>(deleteId));
@@ -1451,7 +1452,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Technology")]
     [OpenApiOperation("Delete Many Technology", "")]
-    [HasPermission("catalog.technology.delete", "Danh mục", "Công nghệ khai thác")]
+    [HasPermission(AppPermissions.Catalog.Technology.Delete)]
     public async Task<IActionResult> DeleteTechnologyList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<Technology>(deleteIds));
@@ -1463,7 +1464,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SeamFace")]
     [OpenApiOperation("Get All SeamFace", "")]
-    [HasPermission("catalog.seamface.read", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Read)]
     public async Task<IActionResult> GetAllSeamFace([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<SeamFace>(pageIndex, pageSize, search, ignorePagination));
@@ -1491,7 +1492,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SeamFace/export")]
     [OpenApiOperation("Export SeamFace", "")]
-    [HasPermission("catalog.seamface.export", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Export)]
     public async Task<IActionResult> ExportSeamFace()
     {
         var fileByte = await Mediator.Send(new ExportExcelSeamFaceQuery());
@@ -1501,7 +1502,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SeamFace/import")]
     [OpenApiOperation("Import SeamFace", "")]
-    [HasPermission("catalog.seamface.import", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Import)]
     public async Task<IActionResult> ImportSeamFace([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportSeamFaceExcelCommand(importModel.FormFile));
@@ -1510,7 +1511,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SeamFace/{id:guid}")]
     [OpenApiOperation("Get SeamFace By Id", "")]
-    [HasPermission("catalog.seamface.read", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Read)]
     public async Task<IActionResult> GetSeamFaceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<SeamFace>(id));
@@ -1519,7 +1520,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SeamFace")]
     [OpenApiOperation("Create New SeamFace", "")]
-    [HasPermission("catalog.seamface.create", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Create)]
     public async Task<IActionResult> CreateSeamFace([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<SeamFace>(createModel));
@@ -1528,7 +1529,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("SeamFace")]
     [OpenApiOperation("Update SeamFace", "")]
-    [HasPermission("catalog.seamface.update", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Update)]
     public async Task<IActionResult> UpdateSeamFace([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<SeamFace>(updateModel));
@@ -1537,7 +1538,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SeamFace/{deleteId:guid}")]
     [OpenApiOperation("Delete SeamFace", "")]
-    [HasPermission("catalog.seamface.delete", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Delete)]
     public async Task<IActionResult> DeleteSeamFace([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<SeamFace>(deleteId));
@@ -1546,7 +1547,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SeamFace")]
     [OpenApiOperation("Delete Many SeamFace", "")]
-    [HasPermission("catalog.seamface.delete", "Danh mục", "Mặt vỉa")]
+    [HasPermission(AppPermissions.Catalog.SeamFace.Delete)]
     public async Task<IActionResult> DeleteSeamFaceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<SeamFace>(deleteIds));
@@ -1558,7 +1559,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("StoneClampRatio")]
     [OpenApiOperation("Get All StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.read", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Read)]
     public async Task<IActionResult> GetAllStoneClampRatio([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllStoneClampRatioQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1567,7 +1568,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("StoneClampRatio/{id:guid}")]
     [OpenApiOperation("Get StoneClampRatio By Id", "")]
-    [HasPermission("catalog.stoneclampratio.read", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Read)]
     public async Task<IActionResult> GetStoneClampRatioById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetStoneClampRatioByIdQuery(id));
@@ -1576,7 +1577,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("StoneClampRatio/export")]
     [OpenApiOperation("Export StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.export", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Export)]
     public async Task<IActionResult> ExportStoneClampRatio()
     {
         var fileByte = await Mediator.Send(new ExportExcelStoneClampRatioQuery());
@@ -1586,7 +1587,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("StoneClampRatio/import")]
     [OpenApiOperation("Import StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.import", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Import)]
     public async Task<IActionResult> ImportStoneClampRatio([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportStoneClampRatioExcelCommand(importModel.FormFile));
@@ -1595,7 +1596,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("StoneClampRatio")]
     [OpenApiOperation("Create New StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.create", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Create)]
     public async Task<IActionResult> CreateStoneClampRatio([FromBody] CreateStoneClampRatioDto createModel)
     {
         var result = await Mediator.Send(new CreateStoneClampRatioCommand(createModel));
@@ -1604,7 +1605,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("StoneClampRatio")]
     [OpenApiOperation("Update StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.update", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Update)]
     public async Task<IActionResult> UpdateStoneClampRatio([FromBody] UpdateStoneClampRatioDto updateModel)
     {
         var result = await Mediator.Send(new UpdateStoneClampRatioCommand(updateModel));
@@ -1613,7 +1614,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("StoneClampRatio/{deleteId:guid}")]
     [OpenApiOperation("Delete StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.delete", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Delete)]
     public async Task<IActionResult> DeleteStoneClampRatio([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteStoneClampRatioCommand(deleteId));
@@ -1622,7 +1623,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("StoneClampRatio")]
     [OpenApiOperation("Delete Many StoneClampRatio", "")]
-    [HasPermission("catalog.stoneclampratio.delete", "Danh mục", "Tỉ lệ đá kẹp")]
+    [HasPermission(AppPermissions.Catalog.StoneClampRatio.Delete)]
     public async Task<IActionResult> DeleteStoneClampRatioList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteStoneClampRatioListCommand(deleteIds));
@@ -1634,7 +1635,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SupportStep")]
     [OpenApiOperation("Get All SupportStep", "")]
-    [HasPermission("catalog.supportstep.read", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Read)]
     public async Task<IActionResult> GetAllSupportStep([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<SupportStep>(pageIndex, pageSize, search, ignorePagination));
@@ -1643,7 +1644,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SupportStep/export")]
     [OpenApiOperation("Export SupportStep", "")]
-    [HasPermission("catalog.supportstep.export", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Export)]
     public async Task<IActionResult> ExportSupportStep()
     {
         var fileByte = await Mediator.Send(new ExportExcelSupportStepQuery());
@@ -1653,7 +1654,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SupportStep/import")]
     [OpenApiOperation("Import SupportStep", "")]
-    [HasPermission("catalog.supportstep.import", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Import)]
     public async Task<IActionResult> ImportSupportStep([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportSupportStepExcelCommand(importModel.FormFile));
@@ -1662,7 +1663,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SupportStep/{id:guid}")]
     [OpenApiOperation("Get SupportStep By Id", "")]
-    [HasPermission("catalog.supportstep.read", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Read)]
     public async Task<IActionResult> GetSupportStepById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<SupportStep>(id));
@@ -1671,7 +1672,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SupportStep")]
     [OpenApiOperation("Create New SupportStep", "")]
-    [HasPermission("catalog.supportstep.create", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Create)]
     public async Task<IActionResult> CreateSupportStep([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<SupportStep>(createModel));
@@ -1680,7 +1681,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("SupportStep")]
     [OpenApiOperation("Update SupportStep", "")]
-    [HasPermission("catalog.supportstep.update", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Update)]
     public async Task<IActionResult> UpdateSupportStep([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<SupportStep>(updateModel));
@@ -1689,7 +1690,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SupportStep/{deleteId:guid}")]
     [OpenApiOperation("Delete SupportStep", "")]
-    [HasPermission("catalog.supportstep.delete", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Delete)]
     public async Task<IActionResult> DeleteSupportStep([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<SupportStep>(deleteId));
@@ -1698,7 +1699,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SupportStep")]
     [OpenApiOperation("Delete Many SupportStep", "")]
-    [HasPermission("catalog.supportstep.delete", "Danh mục", "Bước chống")]
+    [HasPermission(AppPermissions.Catalog.SupportStep.Delete)]
     public async Task<IActionResult> DeleteSupportStepList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<SupportStep>(deleteIds));
@@ -1710,7 +1711,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Product")]
     [OpenApiOperation("Get All Product", "")]
-    [HasPermission("catalog.product.read", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Read)]
     public async Task<IActionResult> GetAllProduct([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllProductQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1719,7 +1720,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Product/export")]
     [OpenApiOperation("Export Product", "")]
-    [HasPermission("catalog.product.export", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Export)]
     public async Task<IActionResult> ExportProduct()
     {
         var fileByte = await Mediator.Send(new ExportExcelProductQuery());
@@ -1729,7 +1730,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Product/import")]
     [OpenApiOperation("Import Product", "")]
-    [HasPermission("catalog.product.import", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Import)]
     public async Task<IActionResult> ImportProduct([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportProductExcelCommand(importModel.FormFile));
@@ -1738,7 +1739,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("Product/{id:guid}")]
     [OpenApiOperation("Get Product By Id", "")]
-    [HasPermission("catalog.product.read", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Read)]
     public async Task<IActionResult> GetProductById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetProductByIdQuery(id));
@@ -1747,7 +1748,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("Product")]
     [OpenApiOperation("Create New Product", "")]
-    [HasPermission("catalog.product.create", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Create)]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductDto createModel)
     {
         var result = await Mediator.Send(new CreateProductCommand(createModel));
@@ -1756,7 +1757,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("Product")]
     [OpenApiOperation("Update Product", "")]
-    [HasPermission("catalog.product.update", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Update)]
     public async Task<IActionResult> UpdateProduct([FromBody] UpdateProductDto updateModel)
     {
         var result = await Mediator.Send(new UpdateProductCommand(updateModel));
@@ -1765,7 +1766,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Product/{deleteId:guid}")]
     [OpenApiOperation("Delete Product", "")]
-    [HasPermission("catalog.product.delete", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Delete)]
     public async Task<IActionResult> DeleteProduct([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteProductCommand(deleteId));
@@ -1774,7 +1775,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("Product")]
     [OpenApiOperation("Delete Many Product", "")]
-    [HasPermission("catalog.product.delete", "Danh mục", "Sản phẩm")]
+    [HasPermission(AppPermissions.Catalog.Product.Delete)]
     public async Task<IActionResult> DeleteProductList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteProductListCommand(deleteIds));
@@ -1786,7 +1787,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("NormFactor")]
     [OpenApiOperation("Get All NormFactor", "")]
-    [HasPermission("catalog.normfactor.read", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Read)]
     public async Task<IActionResult> GetAllNormFactor([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllNormFactorQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1795,7 +1796,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("NormFactor/{id:guid}")]
     [OpenApiOperation("Get NormFactor By Id", "")]
-    [HasPermission("catalog.normfactor.read", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Read)]
     public async Task<IActionResult> GetNormFactorById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetNormFactorByIdQuery(id));
@@ -1804,7 +1805,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("NormFactor/export")]
     [OpenApiOperation("Export NormFactor", "")]
-    [HasPermission("catalog.normfactor.export", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Export)]
     public async Task<IActionResult> ExportNormFactor()
     {
         var fileByte = await Mediator.Send(new ExportExcelNormFactorQuery());
@@ -1814,7 +1815,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("NormFactor/import")]
     [OpenApiOperation("Import NormFactor", "")]
-    [HasPermission("catalog.normfactor.import", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Import)]
     public async Task<IActionResult> ImportNormFactor([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportNormFactorExcelCommand(importModel.FormFile));
@@ -1823,7 +1824,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("NormFactor")]
     [OpenApiOperation("Create New NormFactor", "")]
-    [HasPermission("catalog.normfactor.create", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Create)]
     public async Task<IActionResult> CreateNormFactor([FromBody] CreateNormFactorDto createModel)
     {
         var result = await Mediator.Send(new CreateNormFactorCommand(createModel));
@@ -1832,7 +1833,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("NormFactor")]
     [OpenApiOperation("Update NormFactor", "")]
-    [HasPermission("catalog.normfactor.update", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Update)]
     public async Task<IActionResult> UpdateNormFactor([FromBody] UpdateNormFactorDto updateModel)
     {
         var result = await Mediator.Send(new UpdateNormFactorCommand(updateModel));
@@ -1841,7 +1842,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("NormFactor")]
     [OpenApiOperation("Delete Many NormFactor", "")]
-    [HasPermission("catalog.normfactor.delete", "Danh mục", "Hệ số định mức")]
+    [HasPermission(AppPermissions.Catalog.NormFactor.Delete)]
     public async Task<IActionResult> DeleteNormFactorList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteNormFactorListCommand(deleteIds));
@@ -1853,7 +1854,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SavingsRateConfig")]
     [OpenApiOperation("Get All SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.read", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Read)]
     public async Task<IActionResult> GetAllSavingsRateConfig([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllSavingsRateConfigQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1862,7 +1863,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SavingsRateConfig/{id:guid}")]
     [OpenApiOperation("Get SavingsRateConfig By Id", "")]
-    [HasPermission("catalog.savingsrateconfig.read", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Read)]
     public async Task<IActionResult> GetSavingsRateConfigById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetSavingsRateConfigByIdQuery(id));
@@ -1871,7 +1872,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("SavingsRateConfig/export")]
     [OpenApiOperation("Export SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.export", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Export)]
     public async Task<IActionResult> ExportSavingsRateConfig()
     {
         var fileByte = await Mediator.Send(new ExportExcelSavingsRateConfigQuery());
@@ -1881,7 +1882,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SavingsRateConfig/import")]
     [OpenApiOperation("Import SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.import", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Import)]
     public async Task<IActionResult> ImportSavingsRateConfig([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportSavingsRateConfigExcelCommand(importModel.FormFile));
@@ -1890,7 +1891,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("SavingsRateConfig")]
     [OpenApiOperation("Create New SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.create", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Create)]
     public async Task<IActionResult> CreateSavingsRateConfig([FromBody] CreateSavingsRateConfigDto createModel)
     {
         var result = await Mediator.Send(new CreateSavingsRateConfigCommand(createModel));
@@ -1899,7 +1900,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("SavingsRateConfig")]
     [OpenApiOperation("Update SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.update", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Update)]
     public async Task<IActionResult> UpdateSavingsRateConfig([FromBody] SavingsRateConfigDto updateModel)
     {
         var result = await Mediator.Send(new UpdateSavingsRateConfigCommand(updateModel));
@@ -1908,7 +1909,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SavingsRateConfig/{deleteId:guid}")]
     [OpenApiOperation("Delete SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.delete", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Delete)]
     public async Task<IActionResult> DeleteSavingsRateConfig([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteSavingsRateConfigCommand(deleteId));
@@ -1917,7 +1918,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("SavingsRateConfig")]
     [OpenApiOperation("Delete Many SavingsRateConfig", "")]
-    [HasPermission("catalog.savingsrateconfig.delete", "Danh mục", "Hệ số tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.SavingsRateConfig.Delete)]
     public async Task<IActionResult> DeleteSavingsRateConfigList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteSavingsRateConfigListCommand(deleteIds));
@@ -1930,7 +1931,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AkFactorConfig")]
     [OpenApiOperation("Get All AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.read", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Read)]
     public async Task<IActionResult> GetAllAkFactorConfig([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllAkFactorConfigQuery(pageIndex, pageSize, search, ignorePagination));
@@ -1939,7 +1940,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AkFactorConfig/{id:guid}")]
     [OpenApiOperation("Get AkFactorConfig By Id", "")]
-    [HasPermission("catalog.akfactorconfig.read", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Read)]
     public async Task<IActionResult> GetAkFactorConfigById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetAkFactorConfigByIdQuery(id));
@@ -1948,7 +1949,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("AkFactorConfig/export")]
     [OpenApiOperation("Export AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.export", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Export)]
     public async Task<IActionResult> ExportAkFactorConfig()
     {
         var fileByte = await Mediator.Send(new ExportExcelAkFactorConfigQuery());
@@ -1958,7 +1959,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AkFactorConfig/import")]
     [OpenApiOperation("Import AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.import", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Import)]
     public async Task<IActionResult> ImportAkFactorConfig([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportAkFactorConfigExcelCommand(importModel.FormFile));
@@ -1967,7 +1968,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("AkFactorConfig")]
     [OpenApiOperation("Create New AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.create", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Create)]
     public async Task<IActionResult> CreateAkFactorConfig([FromBody] CreateAkFactorConfigDto createModel)
     {
         var result = await Mediator.Send(new CreateAkFactorConfigCommand(createModel));
@@ -1976,7 +1977,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("AkFactorConfig")]
     [OpenApiOperation("Update AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.update", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Update)]
     public async Task<IActionResult> UpdateAkFactorConfig([FromBody] AkFactorConfigDto updateModel)
     {
         var result = await Mediator.Send(new UpdateAkFactorConfigCommand(updateModel));
@@ -1985,7 +1986,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AkFactorConfig/{deleteId:guid}")]
     [OpenApiOperation("Delete AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.delete", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Delete)]
     public async Task<IActionResult> DeleteAkFactorConfig([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteAkFactorConfigCommand(deleteId));
@@ -1994,7 +1995,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("AkFactorConfig")]
     [OpenApiOperation("Delete Many AkFactorConfig", "")]
-    [HasPermission("catalog.akfactorconfig.delete", "Danh mục", "Hệ số Ak")]
+    [HasPermission(AppPermissions.Catalog.AkFactorConfig.Delete)]
     public async Task<IActionResult> DeleteAkFactorConfigList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteAkFactorConfigListCommand(deleteIds));
@@ -2006,7 +2007,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("RevenueCostAdjustmentConfig")]
     [OpenApiOperation("Get All RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.read", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Read)]
     public async Task<IActionResult> GetAllRevenueCostAdjustmentConfig([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllRevenueCostAdjustmentConfigQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2015,7 +2016,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("RevenueCostAdjustmentConfig/{id:guid}")]
     [OpenApiOperation("Get RevenueCostAdjustmentConfig By Id", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.read", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Read)]
     public async Task<IActionResult> GetRevenueCostAdjustmentConfigById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetRevenueCostAdjustmentConfigByIdQuery(id));
@@ -2024,7 +2025,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("RevenueCostAdjustmentConfig/export")]
     [OpenApiOperation("Export RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.export", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Export)]
     public async Task<IActionResult> ExportRevenueCostAdjustmentConfig()
     {
         var fileByte = await Mediator.Send(new ExportExcelRevenueCostAdjustmentConfigQuery());
@@ -2034,7 +2035,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("RevenueCostAdjustmentConfig/import")]
     [OpenApiOperation("Import RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.import", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Import)]
     public async Task<IActionResult> ImportRevenueCostAdjustmentConfig([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportRevenueCostAdjustmentConfigExcelCommand(importModel.FormFile));
@@ -2043,7 +2044,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("RevenueCostAdjustmentConfig")]
     [OpenApiOperation("Create New RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.create", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Create)]
     public async Task<IActionResult> CreateRevenueCostAdjustmentConfig([FromBody] CreateRevenueCostAdjustmentConfigDto createModel)
     {
         var result = await Mediator.Send(new CreateRevenueCostAdjustmentConfigCommand(createModel));
@@ -2052,7 +2053,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("RevenueCostAdjustmentConfig")]
     [OpenApiOperation("Update RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.update", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Update)]
     public async Task<IActionResult> UpdateRevenueCostAdjustmentConfig([FromBody] RevenueCostAdjustmentConfigDto updateModel)
     {
         var result = await Mediator.Send(new UpdateRevenueCostAdjustmentConfigCommand(updateModel));
@@ -2061,7 +2062,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("RevenueCostAdjustmentConfig/{deleteId:guid}")]
     [OpenApiOperation("Delete RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.delete", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Delete)]
     public async Task<IActionResult> DeleteRevenueCostAdjustmentConfig([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteRevenueCostAdjustmentConfigCommand(deleteId));
@@ -2070,7 +2071,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("RevenueCostAdjustmentConfig")]
     [OpenApiOperation("Delete Many RevenueCostAdjustmentConfig", "")]
-    [HasPermission("catalog.revenuecostadjustmentconfig.delete", "Danh mục", "Giá trị tiết kiệm")]
+    [HasPermission(AppPermissions.Catalog.RevenueCostAdjustmentConfig.Delete)]
     public async Task<IActionResult> DeleteRevenueCostAdjustmentConfigList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteRevenueCostAdjustmentConfigListCommand(deleteIds));
@@ -2082,7 +2083,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("HaulDistance")]
     [OpenApiOperation("Get All HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.read", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Read)]
     public async Task<IActionResult> GetAllHaulDistance([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllMetricQuery<HaulDistance>(pageIndex, pageSize, search, ignorePagination));
@@ -2091,7 +2092,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("HaulDistance/{id:guid}")]
     [OpenApiOperation("Get HaulDistance By Id", "")]
-    [HasPermission("catalog.hauldistance.read", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Read)]
     public async Task<IActionResult> GetHaulDistanceById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetMetricByIdQuery<HaulDistance>(id));
@@ -2100,7 +2101,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("HaulDistance")]
     [OpenApiOperation("Create New HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.create", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Create)]
     public async Task<IActionResult> CreateHaulDistance([FromBody] CreateMetricDto createModel)
     {
         var result = await Mediator.Send(new CreateMetricCommand<HaulDistance>(createModel));
@@ -2109,7 +2110,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("HaulDistance")]
     [OpenApiOperation("Update HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.update", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Update)]
     public async Task<IActionResult> UpdateHaulDistance([FromBody] MetricDto updateModel)
     {
         var result = await Mediator.Send(new UpdateMetricCommand<HaulDistance>(updateModel));
@@ -2118,7 +2119,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("HaulDistance/{deleteId:guid}")]
     [OpenApiOperation("Delete HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.delete", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Delete)]
     public async Task<IActionResult> DeleteHaulDistance([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteMetricCommand<HaulDistance>(deleteId));
@@ -2127,7 +2128,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("HaulDistance")]
     [OpenApiOperation("Delete Many HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.delete", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Delete)]
     public async Task<IActionResult> DeleteHaulDistanceList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteMetricListCommand<HaulDistance>(deleteIds));
@@ -2136,7 +2137,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("HaulDistance/export")]
     [OpenApiOperation("Export HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.export", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Export)]
     public async Task<IActionResult> ExportHaulDistance()
     {
         var fileByte = await Mediator.Send(new ExportExcelHaulDistanceQuery());
@@ -2146,7 +2147,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("HaulDistance/import")]
     [OpenApiOperation("Import HaulDistance", "")]
-    [HasPermission("catalog.hauldistance.import", "Danh mục", "Cung độ vận tải")]
+    [HasPermission(AppPermissions.Catalog.HaulDistance.Import)]
     public async Task<IActionResult> ImportHaulDistance([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportHaulDistanceExcelCommand(importModel.FormFile));
@@ -2158,7 +2159,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportLocation")]
     [OpenApiOperation("Get All TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.read", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Read)]
     public async Task<IActionResult> GetAllTransportLocation([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllTransportLocationQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2167,7 +2168,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportLocation/export")]
     [OpenApiOperation("Export TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.export", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Export)]
     public async Task<IActionResult> ExportTransportLocation()
     {
         var fileByte = await Mediator.Send(new ExportExcelTransportLocationQuery());
@@ -2177,7 +2178,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("TransportLocation/import")]
     [OpenApiOperation("Import TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.import", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Import)]
     public async Task<IActionResult> ImportTransportLocation([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportTransportLocationExcelCommand(importModel.FormFile));
@@ -2186,7 +2187,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("TransportLocation/{id:guid}")]
     [OpenApiOperation("Get TransportLocation By Id", "")]
-    [HasPermission("catalog.transportlocation.read", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Read)]
     public async Task<IActionResult> GetTransportLocationById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetTransportLocationByIdQuery(id));
@@ -2195,7 +2196,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("TransportLocation")]
     [OpenApiOperation("Create New TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.create", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Create)]
     public async Task<IActionResult> CreateTransportLocation([FromBody] CreateTransportLocationDto createModel)
     {
         var result = await Mediator.Send(new CreateTransportLocationCommand(createModel));
@@ -2204,7 +2205,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("TransportLocation")]
     [OpenApiOperation("Update TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.update", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Update)]
     public async Task<IActionResult> UpdateTransportLocation([FromBody] UpdateTransportLocationDto updateModel)
     {
         var result = await Mediator.Send(new UpdateTransportLocationCommand(updateModel));
@@ -2213,7 +2214,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("TransportLocation/{deleteId:guid}")]
     [OpenApiOperation("Delete TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.delete", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Delete)]
     public async Task<IActionResult> DeleteTransportLocation([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteTransportLocationCommand(deleteId));
@@ -2222,7 +2223,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("TransportLocation")]
     [OpenApiOperation("Delete Many TransportLocation", "")]
-    [HasPermission("catalog.transportlocation.delete", "Danh mục", "Vị trí nhận, đổ")]
+    [HasPermission(AppPermissions.Catalog.TransportLocation.Delete)]
     public async Task<IActionResult> DeleteTransportLocationList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteTransportLocationListCommand(deleteIds));
@@ -2235,7 +2236,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType")]
     [OpenApiOperation("Get All CargoType", "")]
-    [HasPermission("catalog.cargotype.read", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Read)]
     public async Task<IActionResult> GetAllCargoType([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool ignorePagination = false)
     {
         var result = await Mediator.Send(new GetAllCargoTypeQuery(pageIndex, pageSize, search, ignorePagination));
@@ -2244,7 +2245,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType/export")]
     [OpenApiOperation("Export CargoType", "")]
-    [HasPermission("catalog.cargotype.export", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Export)]
     public async Task<IActionResult> ExportCargoType()
     {
         var fileByte = await Mediator.Send(new ExportExcelCargoTypeQuery());
@@ -2254,7 +2255,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("CargoType/import")]
     [OpenApiOperation("Import CargoType", "")]
-    [HasPermission("catalog.cargotype.import", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Import)]
     public async Task<IActionResult> ImportCargoType([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportCargoTypeExcelCommand(importModel.FormFile));
@@ -2263,7 +2264,7 @@ public class CatalogController : BaseAuthController
 
     [HttpGet("CargoType/{Id:guid}")]
     [OpenApiOperation("Get CargoType By Id", "")]
-    [HasPermission("catalog.cargotype.read", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Read)]
     public async Task<IActionResult> GetCargoTypeById([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetCargoTypeByIdQuery(id));
@@ -2272,7 +2273,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPost("CargoType")]
     [OpenApiOperation("Create New CargoType", "")]
-    [HasPermission("catalog.cargotype.create", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Create)]
     public async Task<IActionResult> CreateCargoType([FromBody] CreateCargoTypeDto createModel)
     {
         var result = await Mediator.Send(new CreateCargoTypeCommand(createModel));
@@ -2281,7 +2282,7 @@ public class CatalogController : BaseAuthController
 
     [HttpPut("CargoType")]
     [OpenApiOperation("Update CargoType", "")]
-    [HasPermission("catalog.cargotype.update", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Update)]
     public async Task<IActionResult> UpdateCargoType([FromBody] UpdateCargoTypeDto updateModel)
     {
         var result = await Mediator.Send(new UpdateCargoTypeCommand(updateModel));
@@ -2290,7 +2291,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CargoType/{deleteId:guid}")]
     [OpenApiOperation("Delete CargoType", "")]
-    [HasPermission("catalog.cargotype.delete", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Delete)]
     public async Task<IActionResult> DeleteCargoType([FromRoute] Guid deleteId)
     {
         var result = await Mediator.Send(new DeleteCargoTypeCommand(deleteId));
@@ -2299,7 +2300,7 @@ public class CatalogController : BaseAuthController
 
     [HttpDelete("CargoType")]
     [OpenApiOperation("Delete Many CargoType", "")]
-    [HasPermission("catalog.cargotype.delete", "Danh mục", "Loại hàng")]
+    [HasPermission(AppPermissions.Catalog.CargoType.Delete)]
     public async Task<IActionResult> DeleteCargoTypeList([FromBody] IList<Guid> deleteIds)
     {
         var result = await Mediator.Send(new DeleteCargoTypeListCommand(deleteIds));

@@ -51,7 +51,7 @@ function DepartmentProductionOutputsTable({
 					onRefresh={onRefresh}
 				/>
 			)}
-			onUpdate={hasPermission('production.production.update') ? (props) => (
+			onUpdate={hasPermission('production.productionoutput.update') ? (props) => (
 				<ProductionForm
 					{...(props as unknown as ActionDialogProps<Production>)}
 					onSuccess={onRefresh}

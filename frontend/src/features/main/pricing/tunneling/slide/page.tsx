@@ -251,7 +251,7 @@ export function MainPricingSlidePage() {
 					: undefined
 			}
 			onImport={
-				hasPermission('pricing.tunnelslideunitprice.import')
+				hasPermission('pricing.slideunitprice.import')
 					? handleImport
 					: undefined
 			}

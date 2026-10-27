@@ -1,16 +1,16 @@
-using Application.Common.Interfaces;
 using Application.Common.UnitOfWork;
 using Application.Dto.Authorization.Permission;
 using Domain.Common.Enums;
 using Domain.Entities.Identity;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Shared.Authorization;
 
 namespace Application.Catalog.Users.Queries;
 
 public record class GetPermissionCatalogQuery() : IRequest<PermissionCatalogDto>;
 
-public class GetPermissionCatalogQueryHandler(IUnitOfWork unitOfWork, IPermissionDefinitionScanner scanner) : IRequestHandler<GetPermissionCatalogQuery, PermissionCatalogDto>
+public class GetPermissionCatalogQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetPermissionCatalogQuery, PermissionCatalogDto>
 {
     public async Task<PermissionCatalogDto> Handle(GetPermissionCatalogQuery request, CancellationToken cancellationToken)
     {
@@ -19,10 +19,6 @@ public class GetPermissionCatalogQueryHandler(IUnitOfWork unitOfWork, IPermissio
 
         var modules = await moduleRepo.GetAllAsync(include: x => x.Include(m => m.SubModules), disableTracking: true);
         var permissions = await permissionRepo.GetAllAsync(disableTracking: true);
-
-        var enforcedCodes = scanner.Scan()
-            .Select(d => d.FullCode.ToLowerInvariant())
-            .ToHashSet();
 
         var result = new PermissionCatalogDto
         {
@@ -45,7 +41,7 @@ public class GetPermissionCatalogQueryHandler(IUnitOfWork unitOfWork, IPermissio
                     Code = s.Code,
                     SortOrder = s.SortOrder,
                     AllowedPermissions = Enum.GetValues<PermissionCode>()
-                        .Where(pc => enforcedCodes.Contains($"{m.Code}.{s.Code}.{pc}".ToLowerInvariant()))
+                        .Where(pc => PermissionRegistry.Contains($"{m.Code}.{s.Code}.{pc}"))
                         .ToList()
                 }).ToList()
             }).ToList()

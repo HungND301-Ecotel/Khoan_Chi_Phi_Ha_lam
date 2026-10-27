@@ -131,7 +131,7 @@ export function RawAcceptanceReport({
 				</ItemContent>
 				<ItemActions>
 					{/* Import Button */}
-					{hasPermission('report.acceptancereport.import') && (<DialogProvider>
+					{hasPermission('production.acceptancereport.import') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Tải lên'
 							crumb='Biên bản nghiệm thu'
@@ -175,7 +175,7 @@ export function RawAcceptanceReport({
 						{isExporting ? <Spinner /> : <DownloadIcon />}
 					</Button>)}
 
-					{hasPermission('report.acceptancereport.read') && (<AccordionTrigger
+					{hasPermission('production.acceptancereport.read') && (<AccordionTrigger
 						disabled={!output?.acceptanceReportId}
 						className='group p-0 disabled:opacity-50'
 					>
@@ -188,7 +188,7 @@ export function RawAcceptanceReport({
 					</AccordionTrigger>)}
 
 					{/* Update Button */}
-					{hasPermission('report.acceptancereport.update') && (<DialogProvider>
+					{hasPermission('production.acceptancereport.update') && (<DialogProvider>
 						<DataTableEditDialog
 							type='Chỉnh sửa'
 							crumb='Biên bản nghiệm thu'

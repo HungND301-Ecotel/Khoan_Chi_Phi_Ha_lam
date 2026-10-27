@@ -29,4 +29,9 @@ public class Module : AuditableEntity<Guid>
             SortOrder = sortorder
         };
     }
+
+    public void SetName(string name)
+    {
+        Name = name;
+    }
 }

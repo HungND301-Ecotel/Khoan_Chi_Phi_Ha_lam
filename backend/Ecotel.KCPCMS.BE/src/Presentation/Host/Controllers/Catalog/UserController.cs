@@ -13,6 +13,7 @@ using Infrastructure.Services.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using NSwag.Annotations;
+using Shared.Authorization;
 using Shared.Constants;
 
 namespace Host.Controllers.Catalog;
@@ -23,7 +24,7 @@ public class UserController : BaseAuthController
 
     [HttpGet("Employee")]
     [OpenApiOperation("Get All Employee", "")]
-    [HasPermission("catalog.employee.read", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Read)]
     public async Task<IActionResult> GetAllEmployee(
         [FromQuery] int pageIndex = 1,
         [FromQuery] int pageSize = 10,
@@ -45,7 +46,7 @@ public class UserController : BaseAuthController
 
     [HttpPost("Employee")]
     [OpenApiOperation("Create Employee", "")]
-    [HasPermission("catalog.employee.create","Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Create)]
     public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployeeDto dto)
     {
         var result = await Mediator.Send(new CreateEmployeeCommand(dto));
@@ -54,7 +55,7 @@ public class UserController : BaseAuthController
 
     [HttpPut("Employee/{id:int}")]
     [OpenApiOperation("Update Employee Info", "")]
-    [HasPermission("catalog.employee.update", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Update)]
     public async Task<IActionResult> UpdateEmployeeInfo([FromRoute] int id, [FromBody] UpdateEmployeeDto dto)
     {
 
@@ -80,7 +81,7 @@ public class UserController : BaseAuthController
 
     [HttpDelete("Employee/{id:int}")]
     [OpenApiOperation("Delete Employee", "")]
-    [HasPermission("catalog.employee.delete", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Delete)]
     public async Task<IActionResult> DeleteEmployee([FromRoute] int id)
     {
         var result = await Mediator.Send(new DeleteEmployeeCommand(id));
@@ -89,7 +90,7 @@ public class UserController : BaseAuthController
 
     [HttpDelete("Employee/delete-list")]
     [OpenApiOperation("Delete Employee List", "")]
-    [HasPermission("catalog.employee.delete", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Delete)]
     public async Task<IActionResult> DeleteEmployeeList([FromBody] List<int> ids)
     {
         var result = await Mediator.Send(new DeleteEmployeeListCommand(ids));
@@ -99,7 +100,7 @@ public class UserController : BaseAuthController
 
 
     [HttpPost("Employee/{id}/reset-password")]
-    [HasPermission("catalog.employee.update", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Update)]
     public async Task<IActionResult> ResetPassword(int id)
     {
         var result = await Mediator.Send(new ResetEmployeePasswordCommand(id));
@@ -138,7 +139,7 @@ public class UserController : BaseAuthController
 
     [HttpPatch("Employee/{id:int}/lock")]
     [OpenApiOperation("Lock Employee Account", "")]
-    [HasPermission("catalog.employee.update", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Update)]
     public async Task<IActionResult> SetEmployeeLock([FromRoute] int id, [FromQuery] bool isLocked)
     {
         var result = await Mediator.Send(new SetEmployeeLockCommand(id, isLocked));
@@ -156,7 +157,7 @@ public class UserController : BaseAuthController
 
     [HttpPost("Employee/{id:int}/resend-verification")]
     [OpenApiOperation("Resend Verification Email", "")]
-    //[HasPermission("catalog.employee.update", "Danh mục", "Nhân viên")]
+    //[HasPermission(AppPermissions.Catalog.Employee.Update)]
     public async Task<IActionResult> ResendVerificationEmail([FromRoute] int id)
     {
         var result = await Mediator.Send(new ResendEmployeeVerificationCommand(id));
@@ -165,7 +166,7 @@ public class UserController : BaseAuthController
 
     [HttpGet("Employee/export")]
     [OpenApiOperation("Export Employee List To Excel", "")]
-    [HasPermission("catalog.employee.export", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Export)]
     public async Task<IActionResult> ExportEmployee()
     {
         var fileBytes = await Mediator.Send(new ExportExcelEmployeeQuery());
@@ -176,7 +177,7 @@ public class UserController : BaseAuthController
     [HttpPost("Employee/import")]
     [Consumes("multipart/form-data")]
     [OpenApiOperation("Import Employee List From Excel", "")]
-    [HasPermission("catalog.employee.import", "Danh mục", "Nhân viên")]
+    [HasPermission(AppPermissions.Catalog.Employee.Import)]
     public async Task<IActionResult> ImportEmployee([FromForm] ImportDto importModel)
     {
         var result = await Mediator.Send(new ImportExcelEmployeeCommand(importModel.FormFile));

@@ -753,10 +753,13 @@ export function MainCostPlanPage() {
 		let mounted = true;
 
 		Promise.all([
-			api.pagging<{ id: string; code: string; name: string }>(
-				API.CATALOG.DEPARTMENT.LIST,
-				{ ignorePagination: true },
-			),
+			// Danh mục đơn vị chỉ để bù mã/tên: lỗi thì vẫn hiện đơn vị vận tải
+			api
+				.pagging<{ id: string; code: string; name: string }>(
+					API.CATALOG.DEPARTMENT.LIST,
+					{ ignorePagination: true },
+				)
+				.catch(() => null),
 			api.get<
 				{
 					departmentId: string;
@@ -769,7 +772,7 @@ export function MainCostPlanPage() {
 			.then(([deptsRes, vtlRes]) => {
 				if (!mounted) return;
 				const deptsMap = new Map(
-					(deptsRes.result.data ?? []).map((d) => [d.id, d]),
+					(deptsRes?.result.data ?? []).map((d) => [d.id, d]),
 				);
 				const list = vtlRes.result || [];
 				const vtlGroups: DepartmentPlanGroup[] = [];

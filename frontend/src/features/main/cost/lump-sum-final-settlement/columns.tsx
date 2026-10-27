@@ -99,7 +99,7 @@ const buildColumns = (
 	{
 		id: 'vatLieu',
 		header: () => (
-			<div className='border-l-2 border-gray-300 text-center font-bold'>
+			<div className='text-center font-bold'>
 				{MATERIAL_GROUP_TITLE[mode]}
 			</div>
 		),
@@ -142,7 +142,7 @@ const buildColumns = (
 	{
 		id: 'suaChua',
 		header: () => (
-			<div className='border-l-2 border-gray-300 text-center font-bold'>
+			<div className='text-center font-bold'>
 				SỬA CHỮA THƯỜNG XUYÊN
 			</div>
 		),
@@ -184,7 +184,7 @@ const buildColumns = (
 	{
 		id: 'dongLuc',
 		header: () => (
-			<div className='border-l-2 border-gray-300 text-center font-bold'>
+			<div className='text-center font-bold'>
 				ĐỘNG LỰC (ĐIỆN NĂNG)
 			</div>
 		),
@@ -226,7 +226,7 @@ const buildColumns = (
 	{
 		id: 'tong',
 		header: () => (
-			<div className='border-l-2 border-gray-300 text-center font-bold'>
+			<div className='text-center font-bold'>
 				TỔNG
 			</div>
 		),

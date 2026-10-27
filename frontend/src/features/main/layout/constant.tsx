@@ -251,7 +251,7 @@ export const NAVIGATIONS: Navigation[] = [
 						name: 'Đơn giá khoán Vật tư mau hỏng rẻ tiền & Điện năng',
 						href: '/pricing/motorized-transport/low-value-supply-electricity',
 						permission:
-							'pricing.motorizedlowvaluesupplyelectricityunitprice.read',
+							'pricing.mechanizedtransportoverheadunitprice.read',
 					},
 				],
 			},

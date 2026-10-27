@@ -335,7 +335,7 @@ export function ServiceCraneMonthSection({
 															>
 																Sản lượng kế hoạch
 															</th>
-															<th className='w-28 px-3 py-2'>Hệ số</th>
+															<th className='w-32 px-3 py-2 whitespace-nowrap'>Hệ số</th>
 														</tr>
 													</thead>
 													<tbody className='divide-y divide-gray-100'>
@@ -412,6 +412,7 @@ export function ServiceCraneMonthSection({
 																	</td>
 																	<td className='px-3 py-2'>
 																		<FormNumberInput
+																			className='min-w-[110px]'
 																			value={row.fuelAdjustmentFactor}
 																			onValueChange={(val) => {
 																				const next = [...items];
